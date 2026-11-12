@@ -36,8 +36,8 @@ WITH committee_code_map AS (
   nullif(trim(a.position_basis),'') AS position_basis,
   nullif(trim(a.printed_entry),'') AS printed_entry,
   nullif(trim(a.entry_label),'') AS entry_label
- FROM spicy_committee_assignments a
- LEFT JOIN committee_code_map ccm ON ccm.raw_key=upper(trim(a.system_code))
+ FROM committee_code_map ccm
+ RIGHT JOIN spicy_committee_assignments a ON ccm.raw_key=upper(trim(a.system_code))
  WHERE a.congress IS NOT NULL
    AND a.system_code IS NOT NULL AND trim(a.system_code)<>''
    AND a.bioguide_id IS NOT NULL AND trim(a.bioguide_id)<>''
@@ -57,15 +57,15 @@ WITH committee_code_map AS (
 ), chamber_file_committees AS (
  -- When a Congress combines archived chamber files with a Congressional Directory reading, each committee covered by
  -- a chamber file uses that snapshot alone rather than merging departed or reassigned Directory seats (ct-sh1i).
- SELECT DISTINCT congress,system_code
+ SELECT DISTINCT congress AS cfc_congress,system_code AS cfc_system_code
  FROM normalized_assignments
  WHERE congress_basis IN ('file','caller')
 ), single_snapshot_assignments AS (
  SELECT na.*
  FROM chamber_file_committees cfc
  RIGHT JOIN normalized_assignments na
-  ON cfc.congress=na.congress AND cfc.system_code=na.system_code
- WHERE NOT (na.congress_basis IN ('directory','directory-manual') AND cfc.system_code IS NOT NULL)
+  ON cfc.cfc_congress=na.congress AND cfc.cfc_system_code=na.system_code
+ WHERE NOT (na.congress_basis IN ('directory','directory-manual') AND cfc.cfc_system_code IS NOT NULL)
 ), dedup_assignments AS (
  SELECT *,
   row_number() OVER (
@@ -99,11 +99,13 @@ WITH committee_code_map AS (
  SELECT DISTINCT congress,bioguide_id,edition_date
  FROM selected_assignments
  WHERE edition_date IS NOT NULL
+   AND congress_basis IN ('directory','directory-manual')
+   AND edition_date < try_cast(cast(1789 + (cast(congress AS INT) - 1) * 2 + 2 AS VARCHAR)||'-01-03' AS DATE)
 ), departed_member_seats AS (
  SELECT
-  d.congress,
-  d.bioguide_id,
-  d.edition_date
+  d.congress AS dep_congress,
+  d.bioguide_id AS dep_bioguide_id,
+  d.edition_date AS dep_edition_date
  FROM dated_member_seats d
  JOIN parsed_member_terms t
   ON t.bioguide_id=d.bioguide_id
@@ -111,8 +113,7 @@ WITH committee_code_map AS (
  GROUP BY d.congress,d.bioguide_id,d.edition_date
  HAVING count(*) FILTER (WHERE t.start_date <= d.edition_date) > 0
    AND count(*) FILTER (
-    WHERE (t.start_date <= d.edition_date AND (t.end_raw IS NULL OR t.end_date IS NULL OR t.end_date >= d.edition_date))
-     OR t.start_date > d.edition_date
+    WHERE t.start_date <= d.edition_date AND (t.end_raw IS NULL OR t.end_date IS NULL OR t.end_date >= d.edition_date)
    ) = 0
 )
 SELECT
@@ -131,9 +132,10 @@ SELECT
  s.printed_entry,
  CASE
   WHEN s.entry_label IS NOT NULL THEN s.entry_label
-  WHEN dep.bioguide_id IS NOT NULL THEN 'after_departure'
+  WHEN dep.dep_bioguide_id IS NOT NULL THEN 'after_departure'
   ELSE NULL
  END AS entry_label
 FROM departed_member_seats dep
 RIGHT JOIN selected_assignments s
- ON dep.congress=s.congress AND dep.bioguide_id=s.bioguide_id AND dep.edition_date=s.edition_date
+ ON dep.dep_congress=s.congress AND dep.dep_bioguide_id=s.bioguide_id AND dep.dep_edition_date=s.edition_date
+ AND s.congress_basis IN ('directory','directory-manual')

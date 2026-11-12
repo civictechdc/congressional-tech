@@ -502,6 +502,14 @@ def test_unrelated_locked_package_leaves_model_profile_while_imported_package_mo
     from viewer_publication.archive_model_profile import ROOT, _definition_hashes, profile_record
 
     base_hashes = _definition_hashes(ROOT)
+    assert {
+        'packages/house-naming/src/house_naming/data/guide.json',
+        'packages/house-naming/src/house_naming/catalog.py',
+        'packages/congress_api/src/congress_api/lake/receipt_metadata.py',
+        'packages/congress_api/src/congress_api/lake/playlist_records.py',
+        'packages/congress_api/src/congress_api/lake/committee_records.py',
+        'packages/viewer_publication/src/viewer_publication/release_gate.py',
+    } <= base_hashes.keys()
     checkout = tmp_path / 'checkout'
     for name in base_hashes:
         target = checkout / name
@@ -533,7 +541,7 @@ def test_unrelated_locked_package_leaves_model_profile_while_imported_package_mo
         assert record['profile']['file_hashes'] == base_hashes, unrelated
         assert record['profile_sha256'] == original_sha, unrelated
 
-    for imported in ('pyarrow', 'duckdb'):
+    for imported in ('pyarrow', 'duckdb', 'jsonschema', 'pydantic'):
         record = bump(imported)
         assert record['profile']['file_hashes']['uv.lock'] != base_hashes['uv.lock'], imported
         assert record['profile_sha256'] != original_sha, imported

@@ -53,7 +53,7 @@ WITH keys AS (
  LEFT JOIN package_mods_facts f ON f.package_id=l.package_id WHERE f.package_id IS NULL
 ), recording_tracks AS (
  SELECT video_key,event_ids,t['format'] AS format,t['language'] AS language,t['production'] AS production,t['body'] AS body
- FROM (SELECT video_key,event_ids,unnest(tracks) AS t FROM recordings_entity WHERE tracks IS NOT NULL)
+ FROM (SELECT video_key,event_ids,unnest(tracks) AS t FROM recordings_export WHERE tracks IS NOT NULL)
 ), caption_tracks AS (
  SELECT DISTINCT video_key,unnest(event_ids) AS event_id,format,language,production FROM recording_tracks
  -- The empty body's digest is no caption file (338611's YouTube track is 0 bytes).

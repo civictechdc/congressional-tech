@@ -2159,25 +2159,39 @@ def link_rule(d: Diff, sample=100):
     if missing_input:
         out['unchecked'].append(missing_input)
     else:
-        fields = ('key', 'live_row', 'live_file', 'live_body', 'candidate_row', 'candidate_file', 'candidate_body')
-        for rule, label in (('rule_changed', 'changed'), ('rule_demoted', 'demoted')):
-            out[label] = d.one(f'SELECT count(*) FROM {rule}')
-            out[f'{label}_answers'] = [dict(zip(fields, r)) for r in d.rows(f"""SELECT c.k,c.pr,pl.filename,c.live_body,c.lr,ll.filename,lower(hex(ld.saved_body))
-              FROM {rule} c JOIN candidate_detail ld ON ld.file_row_number=c.lr
-              LEFT JOIN {name('base')} pl ON pl.file_row_number=c.pr LEFT JOIN {name('candidate')} ll ON ll.file_row_number=c.lr
-              ORDER BY 1 LIMIT {int(sample)}""")]
-            out[f'{label}_keys'] = [a['key'] for a in out[f'{label}_answers']]
+        ready_tables = []
         for table, label in (('urls', 'lookup'), ('sources', 'address')):
             missing_input = changed_addresses(d, table)
             if missing_input:
                 out['unchecked'].append(missing_input)
-                continue
+            else:
+                ready_tables.append((table, label))
+        proven = proven_corrections(d)
+        d.con.execute('CREATE TEMP TABLE rule_proven_keys(kind VARCHAR, k VARCHAR)')
+        if proven:
+            d.con.executemany('INSERT INTO rule_proven_keys VALUES (?, ?)',
+                              sorted({(p['kind'], p['key']) for p in proven}))
+        fields = ('key', 'live_row', 'live_file', 'live_body', 'candidate_row', 'candidate_file', 'candidate_body')
+        for rule, label in (('rule_changed', 'changed'), ('rule_demoted', 'demoted')):
+            out[label] = d.one(f'SELECT count(*) FROM {rule}')
+            sample_where = (f"""WHERE c.k IN (
+                SELECT c2.k FROM {rule} c2
+                ORDER BY EXISTS (SELECT 1 FROM rule_proven_keys pk WHERE pk.kind='link_key' AND pk.k=c2.k), c2.k
+                LIMIT {int(sample)})
+              ORDER BY 1""" if rule == 'rule_changed' else f'ORDER BY 1 LIMIT {int(sample)}')
+            out[f'{label}_answers'] = [dict(zip(fields, r)) for r in d.rows(f"""SELECT c.k,c.pr,pl.filename,c.live_body,c.lr,ll.filename,lower(hex(ld.saved_body))
+              FROM {rule} c JOIN candidate_detail ld ON ld.file_row_number=c.lr
+              LEFT JOIN {name('base')} pl ON pl.file_row_number=c.pr LEFT JOIN {name('candidate')} ll ON ll.file_row_number=c.lr
+              {sample_where}""")]
+            out[f'{label}_keys'] = [a['key'] for a in out[f'{label}_answers']]
+        for table, label in ready_tables:
             # One name per key or address: the hex lookup key, or the URL with its archive member.
             shown = ('lower(hex(c.lookup_key))' if table == 'urls' else
                      "c.url||CASE WHEN c.member_path IS NULL THEN '' ELSE ' member '||c.member_path END")
+            kind = 'lookup_key' if table == 'urls' else 'address'
             on = ' AND '.join(f'l.{f} IS NOT DISTINCT FROM c.{f}' for f in ADDRESSED[table])
             out[f'{label}_changed'] = d.one(f'SELECT count(DISTINCT {shown}) FROM rule_changed_{table} c')
-            # Every live row of the first `sample` keys, so a key is listed whole or not at all.
+            # Every live row of the first `sample` keys (unproven before proven), so a key is listed whole or not at all.
             # candidate_bodies: the saved body of each row reached, null for a row with none.
             fields = ('key', 'live_row', 'live_file', 'live_body', 'candidate_rows', 'candidate_files', 'candidate_bodies')
             out[f'{label}_changed_answers'] = [dict(zip(fields, r)) for r in d.rows(f"""SELECT {shown},c.pr,any_value(pl.filename),c.live_body,
@@ -2185,10 +2199,12 @@ def link_rule(d: Diff, sample=100):
                 list_sort(array_agg(DISTINCT lower(hex(ld.saved_body))))
               FROM rule_changed_{table} c JOIN candidate_{table} l ON {on} LEFT JOIN candidate_detail ld ON ld.file_row_number=l.list_row
               LEFT JOIN {name('base')} pl ON pl.file_row_number=c.pr LEFT JOIN {name('candidate')} ll ON ll.file_row_number=l.list_row
-              WHERE {shown} IN (SELECT DISTINCT {shown} FROM rule_changed_{table} c ORDER BY 1 LIMIT {int(sample)})
+              WHERE {shown} IN (
+                SELECT s.k FROM (SELECT DISTINCT {shown} AS k FROM rule_changed_{table} c) s
+                ORDER BY EXISTS (SELECT 1 FROM rule_proven_keys pk WHERE pk.kind='{kind}' AND pk.k=s.k), s.k
+                LIMIT {int(sample)})
               GROUP BY 1,2,4 ORDER BY 1,2""")]
             out[f'{label}_changed_keys'] = sorted({a['key'] for a in out[f'{label}_changed_answers']})
-        proven = proven_corrections(d)
         if proven:
             out['proven_corrections'] = proven
     out['ok'] = not any(out[name] for name in (

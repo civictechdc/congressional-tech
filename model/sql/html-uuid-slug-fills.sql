@@ -14,7 +14,8 @@ WITH sibling_ranked AS (
   AND coalesce(s.filename,'')<>''
   AND NOT regexp_like(s.filename,'(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
 ), sibling_fills AS (
- SELECT doc_key,filename,document_kind,document_family,facts
+ SELECT doc_key AS sf_doc_key,filename AS sf_filename,
+  document_kind AS sf_document_kind,document_family AS sf_document_family,facts AS sf_facts
  FROM sibling_ranked
  WHERE rn=1
 ), candidate_urls AS (
@@ -33,6 +34,7 @@ WITH sibling_ranked AS (
  SELECT doc_key,url_rank,clean_url,
   CASE
    WHEN trailing_seg IS NOT NULL
+    AND strpos(lower(trailing_seg),lower(uuid_name))>0
     AND regexp_like(trailing_seg,'[A-Za-z]')
     AND NOT regexp_like(trailing_seg,'(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
     AND NOT regexp_like(trailing_seg,'(?i)^(?:files?|documents?|docs?|services?|downloads?|uploads?|media|assets?|attachments?|items?|nodes?|pages?|posts?|events?|hearings?|meetings?|press|releases?|news|articles?|publications?|reports?|library|content|view|detail|details|index)$')
@@ -45,6 +47,7 @@ WITH sibling_ranked AS (
   END AS mode_rank,
   CASE
    WHEN trailing_seg IS NOT NULL
+    AND strpos(lower(trailing_seg),lower(uuid_name))>0
     AND regexp_like(trailing_seg,'[A-Za-z]')
     AND NOT regexp_like(trailing_seg,'(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')
     AND NOT regexp_like(trailing_seg,'(?i)^(?:files?|documents?|docs?|services?|downloads?|uploads?|media|assets?|attachments?|items?|nodes?|pages?|posts?|events?|hearings?|meetings?|press|releases?|news|articles?|publications?|reports?|library|content|view|detail|details|index)$')
@@ -67,7 +70,7 @@ WITH sibling_ranked AS (
  FROM qualified
  WHERE filename IS NOT NULL
 ), url_slug_fills AS (
- SELECT doc_key,filename,
+ SELECT doc_key AS uf_doc_key,filename AS uf_filename,
   array_sort(array_distinct(array_concat(
    array_concat(
     CASE WHEN has_bm THEN arrow_cast(make_array('business-meeting'),'List(Utf8)')
@@ -81,7 +84,7 @@ WITH sibling_ranked AS (
     CASE WHEN has_nom THEN arrow_cast(make_array('nomination'),'List(Utf8)')
      ELSE arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') END
    )
-  ))) AS kinds,
+  ))) AS uf_kinds,
   array_sort(array_distinct(array_concat(
    array_concat(
     CASE WHEN has_bm THEN make_array(
@@ -103,16 +106,16 @@ WITH sibling_ranked AS (
      named_struct('field','document_kind','value','nomination'))
      ELSE array_slice(make_array(named_struct('field',cast(NULL AS VARCHAR),'value',cast(NULL AS VARCHAR))),1,0) END
    )
-  ))) AS facts
+  ))) AS uf_facts
  FROM picked
  WHERE rn=1
 )
 SELECT c.doc_key,
- coalesce(sf.filename,uf.filename) AS filename,
- CASE WHEN sf.doc_key IS NOT NULL THEN sf.document_kind ELSE uf.kinds END AS document_kind,
- CASE WHEN sf.doc_key IS NOT NULL THEN sf.document_family ELSE uf.kinds END AS document_family,
- CASE WHEN sf.doc_key IS NOT NULL THEN sf.facts ELSE uf.facts END AS facts
+ coalesce(sf.sf_filename,uf.uf_filename) AS filename,
+ CASE WHEN sf.sf_doc_key IS NOT NULL THEN sf.sf_document_kind ELSE uf.uf_kinds END AS document_kind,
+ CASE WHEN sf.sf_doc_key IS NOT NULL THEN sf.sf_document_family ELSE uf.uf_kinds END AS document_family,
+ CASE WHEN sf.sf_doc_key IS NOT NULL THEN sf.sf_facts ELSE uf.uf_facts END AS facts
 FROM sibling_fills sf
-RIGHT JOIN (url_slug_fills uf RIGHT JOIN html_uuid_candidates c ON uf.doc_key=c.doc_key)
- ON sf.doc_key=c.doc_key
-WHERE sf.doc_key IS NOT NULL OR uf.doc_key IS NOT NULL
+RIGHT JOIN (url_slug_fills uf RIGHT JOIN html_uuid_candidates c ON uf.uf_doc_key=c.doc_key)
+ ON sf.sf_doc_key=c.doc_key
+WHERE sf.sf_doc_key IS NOT NULL OR uf.uf_doc_key IS NOT NULL

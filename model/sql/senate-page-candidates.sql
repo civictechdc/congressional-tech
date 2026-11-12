@@ -18,11 +18,16 @@ WITH stopwords AS (
 ), capture_urls AS (
  SELECT sc.record_sha_hex,
   coalesce(c.url,c.requested_url,c.context_url) AS source_url
- FROM captures c
- JOIN senate_candidates sc ON c.sha256=sc.sha256
+ FROM senate_candidates sc
+ JOIN captures c ON c.sha256=sc.sha256
  WHERE c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged')
   AND c.http_status BETWEEN 200 AND 299 AND c.sha256 IS NOT NULL
  GROUP BY sc.record_sha_hex,coalesce(c.url,c.requested_url,c.context_url)
+), pf_matched AS (
+ SELECT sc.record_sha_hex,pf.heading,pf.title,pf.content_date,pf.text_head
+ FROM senate_candidates sc
+ JOIN page_facts pf ON pf.body_sha=sc.sha256
+ WHERE pf.status='completed'
 ), senate_hosts AS (
  SELECT DISTINCT
   lower((regexp_match(website_url,'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]senate[.]gov'))[1]) AS host,
@@ -70,9 +75,11 @@ WITH stopwords AS (
   coalesce(pf.text_head,'') AS text_head,
   CASE WHEN regexp_like(coalesce(cu.source_url,sc.context_url,''),'(?i)^https?://(?:www[.])?banking[.]senate[.]gov/hearings/')
    THEN coalesce(cu.source_url,sc.context_url) END AS banking_hearing_url
- FROM senate_candidates sc
- LEFT JOIN capture_urls cu ON cu.record_sha_hex=sc.record_sha_hex
- LEFT JOIN page_facts pf ON pf.body_sha=sc.sha256 AND pf.status='completed'
+ FROM pf_matched pf
+ RIGHT JOIN (
+  capture_urls cu
+  RIGHT JOIN senate_candidates sc ON cu.record_sha_hex=sc.record_sha_hex
+ ) ON pf.record_sha_hex=sc.record_sha_hex
  JOIN senate_hosts sh ON sh.host=lower((regexp_match(coalesce(cu.source_url,sc.context_url,''),'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]senate[.]gov'))[1])
 ), senate_text_dates AS (
  SELECT r.*,

@@ -699,6 +699,103 @@ def test_published_corrections_table_proves_changed_answers_without_hand_list(tm
     assert f'`{link_hex}`' in notes and 'dec-1' in notes
 
 
+def test_proven_corrections_do_not_crowd_out_manual_or_unnamed_link_rule_findings(tmp_path):
+    """P2-1 (ct-faan): link_rule samples unproven keys before proven ones so >= sample proven keys
+    never hide an unnamed regression or prevent a manual named_correction from matching."""
+    from viewer_publication.lookup_aliases import address_keys
+    from viewer_publication.release_comparison import Diff, link_rule
+
+    # Pick URLs whose link_key hexes sort alphabetically BEFORE manual/regressed link_keys ('fe...', 'ff...').
+    urls = [f'https://www.house.gov/proven-{i}.pdf' for i in range(40)]
+    proven_three = sorted(
+        [(next(iter(address_keys(u)['link_key'])), u) for u in urls],
+        key=lambda pair: pair[0],
+    )[:3]
+    manual_key = bytes.fromhex('fe' * 8)
+    reg_key = bytes.fromhex('ff' * 8)
+    assert proven_three[-1][0] < manual_key.hex() < reg_key.hex()
+
+    def build_case(sub, *, include_reg):
+        base, cand = sub / 'base', sub / 'cand'
+        extra_keys = [manual_key] + ([reg_key] if include_reg else [])
+        n_rows = 1 + len(proven_three) + len(extra_keys)
+        base_link_keys = [K('K'), *[bytes.fromhex(kh) for kh, _ in proven_three], *extra_keys]
+        base_bodies = [bytes.fromhex(body('K'))] + [sha256(f'old-{i}'.encode()).digest() for i in range(n_rows - 1)]
+        cand_bodies = [bytes.fromhex(body('K'))] + [sha256(f'new-{i}'.encode()).digest() for i in range(n_rows - 1)]
+        src_urls = ['https://www.example.test/keep.pdf', *[u for _, u in proven_three]] + [
+            f'https://www.example.test/extra-{i}.pdf' for i in range(len(extra_keys))
+        ]
+        lookup_keys = [bytes.fromhex(sorted(address_keys(u)['lookup_key'])[0]) for u in src_urls]
+        release_dir(
+            base, [f'doc-{i}' for i in range(n_rows)],
+            detail=pa.table({'link_key': pa.array(base_link_keys, pa.binary(8)),
+                             'saved_body': pa.array(base_bodies, pa.binary(32))}),
+            links=pa.table({'link_key': pa.array(base_link_keys, pa.binary(8)),
+                            'list_row': pa.array(list(range(n_rows)), pa.int32())}),
+            urls=pa.table({'lookup_key': pa.array(lookup_keys, pa.binary(8)),
+                           'list_row': pa.array(list(range(n_rows)), pa.int32())}),
+            sources=pa.table({'list_row': pa.array(list(range(n_rows)), pa.int32()),
+                              'url': pa.array(src_urls, pa.string()),
+                              'member_path': pa.array([None] * n_rows, pa.string())}),
+        )
+        rec_rows = [
+            dict(list_row=1 + idx, ordinal=0, kind='wayback_exact_url', body=cand_bodies[1 + idx], suffix='', bytes=128,
+                 imported_at=None, recovered_url=f'http://web.archive.org/{idx}.pdf', identity_note=None)
+            for idx, (_, u) in enumerate(proven_three)
+        ]
+        corr_rows = [
+            dict(original_url=u, rejected_body=base_bodies[1 + idx], decision_id=f'dec-{idx}',
+                 decided_at=datetime(2026, 11, 10, tzinfo=timezone.utc),
+                 recovered_url=f'http://web.archive.org/bad-{idx}.pdf',
+                 identity_note=f"The copy holds a different document; this address's document is body {cand_bodies[1 + idx].hex()[:12]}.")
+            for idx, (_, u) in enumerate(proven_three)
+        ]
+        release_dir(
+            cand, [f'doc-{i}' for i in range(n_rows)],
+            detail=pa.table({'link_key': pa.array(base_link_keys, pa.binary(8)),
+                             'saved_body': pa.array(cand_bodies, pa.binary(32))}),
+            links=pa.table({'link_key': pa.array(base_link_keys, pa.binary(8)),
+                            'list_row': pa.array(list(range(n_rows)), pa.int32())}),
+            urls=pa.table({'lookup_key': pa.array(lookup_keys, pa.binary(8)),
+                           'list_row': pa.array(list(range(n_rows)), pa.int32())}),
+            sources=pa.table({'list_row': pa.array(list(range(n_rows)), pa.int32()),
+                              'url': pa.array(src_urls, pa.string()),
+                              'member_path': pa.array([None] * n_rows, pa.string())}),
+            recoveries=pa.Table.from_pylist(rec_rows, schema=RECOVERIES_SCHEMA),
+            corrections=pa.Table.from_pylist(corr_rows, schema=CORRECTIONS_SCHEMA),
+        )
+        return base, cand, base_bodies, cand_bodies, src_urls, lookup_keys
+
+    # Case 1: 3 proven + 1 manual named_correction with sample=2 passes with 0 link-rule refusals!
+    from viewer_publication.release_comparison import documents as diff_documents
+    from viewer_publication.release_gate import named_corrections
+    b1, c1, bb1, cb1, su1, lk1 = build_case(tmp_path / 'manual-ok', include_reg=False)
+    d1 = Diff(b1, c1)
+    d1.documents = diff_documents(d1)
+    rule1 = link_rule(d1, sample=2)
+    manual_corrs = [
+        dict(kind='link_key', key=manual_key.hex(), live_body=bb1[4].hex(), candidate_body=cb1[4].hex(),
+             decision='Reviewed manual fix', tickets=['ct-faan']),
+        dict(kind='lookup_key', key=lk1[4].hex(), live_body=bb1[4].hex(), candidate_body=cb1[4].hex(),
+             decision='Reviewed manual fix', tickets=['ct-faan']),
+        dict(kind='address', key=su1[4], live_body=bb1[4].hex(), candidate_body=cb1[4].hex(),
+             decision='Reviewed manual fix', tickets=['ct-faan']),
+    ]
+    waived1, _prov1, refused1, stale1 = named_corrections(rule1, manual_corrs)
+    assert stale1 == []
+    assert refused1 == {'link_key': [], 'lookup_key': [], 'address': []}
+    assert waived1['link_key'] == [manual_key.hex()]
+
+    # Case 2: 3 proven + 1 manual + 1 unnamed regression with sample=2 names the regressed key explicitly!
+    b2, c2, bb2, cb2, su2, lk2 = build_case(tmp_path / 'reg-caught', include_reg=True)
+    d2 = Diff(b2, c2)
+    d2.documents = diff_documents(d2)
+    rule2 = link_rule(d2, sample=2)
+    _waived2, _prov2, refused2, stale2 = named_corrections(rule2, manual_corrs)
+    assert stale2 == []
+    assert refused2['link_key'] == [f'link rule: 1 live link keys answer another file ({reg_key.hex()})']
+
+
 @pytest.mark.parametrize('plant', [
     'wrong_live_body',
     'wrong_candidate_fused_not_recovery',
@@ -2781,6 +2878,63 @@ def test_new_no_meeting_recordings_from_new_page_receipts_pass_unattended(tmp_pa
     assert by_file['recordings.parquet'] == ['ct-zdj8']
     trace = json.loads((tmp_path / 'auto2/automatic-trace.json').read_text())
     assert trace['recording_pages'] == [page_body.hex()[:16]]
+
+    # P2-4 (ct-zdj8): when evidence_base and evidence_candidate are passed (as in nightly_publish.py),
+    # compare classifies the group as 'empty event_ids; capture newly real'; automatic_causes must accept it too.
+    ev_base = tmp_path / 'evidence-base'
+    ev_base.mkdir()
+    pq.write_table(
+        pa.Table.from_pylist([dict(
+            receipt_key=page_receipt, receipt_line=1, capture_index=0, member_path=None, sha256=page_body,
+            mode='fetch', complete=True, outcome='stored', http_status=200,
+            url='https://agriculture.house.gov/event/1',
+            requested_url='https://agriculture.house.gov/event/1',
+            context_url='https://agriculture.house.gov/event/1', is_real_file=False,
+        )], schema=pa.schema([
+            ('receipt_key', pa.string()), ('receipt_line', pa.int32()), ('capture_index', pa.int32()),
+            ('member_path', pa.string()), ('sha256', pa.binary()), ('mode', pa.string()), ('complete', pa.bool_()),
+            ('outcome', pa.string()), ('http_status', pa.int32()), ('url', pa.string()),
+            ('requested_url', pa.string()), ('context_url', pa.string()), ('is_real_file', pa.bool_()),
+        ])),
+        ev_base / 'capture_evidence.parquet',
+    )
+    pq.write_table(
+        pa.Table.from_pylist([dict(
+            receipt_key=page_receipt, receipt_line=1, capture_index=0, member_path=None, sha256=page_body,
+            mode='fetch', complete=True, outcome='stored', http_status=200,
+            url='https://agriculture.house.gov/event/1',
+            requested_url='https://agriculture.house.gov/event/1',
+            context_url='https://agriculture.house.gov/event/1', is_real_file=True,
+        )], schema=pq.read_schema(ev_base / 'capture_evidence.parquet')),
+        ev_dir / 'capture_evidence.parquet',
+    )
+    report_with_ev = require_release_gates(
+        base, candidate, None, report_path=tmp_path / 'r-ev.json',
+        evidence_base=ev_base / 'capture_evidence.parquet', evidence_candidate=ev_dir / 'capture_evidence.parquet',
+        automatic=lambda rep: automatic_causes(
+            rep, base, candidate,
+            engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+            captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
+            live_receipt_keys=LIVE_RECEIPTS,
+            read_receipt=lambda k: (
+                gzip.compress((json.dumps(dict(record=dict(mode='fetch', requested_url='https://agriculture.house.gov/event/1', outcome='stored'),
+                                               captures=[dict(sha256=page_body.hex())])) + '\n').encode(), mtime=0)
+                if k == page_receipt else
+                gzip.compress((json.dumps(dict(record=dict(mode='fetch', requested_url=REQUEST, outcome='stored',
+                                                           http_status=200, retrieved_at=FETCHED.isoformat()),
+                                               captures=[dict(sha256=(K('N') + sha256(b'N').digest()[:24]).hex())])) + '\n' +
+                               json.dumps(dict(record=dict(mode='fetch', requested_url=REQUEST), captures=[])) + '\n').encode(), mtime=0)
+            ),
+            work=tmp_path / 'auto-ev',
+            candidate_receipt_keys={*LIVE_RECEIPTS, NEW_RECEIPT, page_receipt},
+            evidence_dir=ev_dir,
+        ),
+    )
+    assert report_with_ev['reasons'] == []
+    rec_groups = report_with_ev['files']['recordings.parquet']['groups']
+    assert any(g['group'] == 'added keys' and g['cause'] == 'empty event_ids; capture newly real' for g in rec_groups)
+    trace_ev = json.loads((tmp_path / 'auto-ev/automatic-trace.json').read_text())
+    assert trace_ev['recording_pages'] == [page_body.hex()[:16]]
 
 
 @pytest.mark.parametrize('mode,expected_reason', [

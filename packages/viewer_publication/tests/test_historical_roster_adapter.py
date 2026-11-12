@@ -291,3 +291,57 @@ def test_unprinted_source_rank_stays_absent_and_mixed_118th_uses_single_dated_sn
         ssfi = connection.execute(recipe['sql'], ['ssfi00', 118]).fetchall()
         # Leadership (C000003 Chairman) sorts ahead of untitled member (A000001) when rank is NULL
         assert [(r[3], r[5], r[6]) for r in ssfi] == [('C000003', 'Chairman', None), ('A000001', None, None)]
+
+
+def test_after_departure_respects_directory_basis_congress_end_and_mid_congress_gap(tmp_path):
+    """P2-3 (ct-sh1i):
+    1. Post-Congress directory edition_date (>= Jan 3 end of Congress) is not stamped after_departure.
+    2. Wayback file/caller chamber snapshots are not stamped after_departure.
+    3. A mid-Congress service gap (resigned early, re-elected later in the same Congress) IS stamped after_departure
+       when the directory edition falls inside the gap."""
+    from congress_api.retention.provenance import json_input, parquet_output, run_job
+    from congress_api.lake.model_sql import model_steps
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.archive_model import REGISTRIES, SPICY_SCHEMAS
+    import os
+
+    directory = tmp_path / 'gap-and-bounds'
+    directory.mkdir()
+    inputs = [
+        json_input(directory, 'committee_codes',
+                   json.loads((ROOT / 'model/registries/committee-codes.json').read_text()),
+                   **REGISTRIES['committee_codes']),
+        json_input(directory, 'spicy_member_terms', [
+            # P000001 served full 115th (ended 2019-01-03), did not return in 116th; directory printed 2019-01-05
+            dict(bioguide_id='P000001', term_type='sen', term_state='AZ', term_district=None,
+                 term_party='Republican', term_start='2013-01-03', term_end='2019-01-03'),
+            # W000002 resigned 2018-05-01, listed on a 2018-09-01 Wayback caller snapshot (not a Directory)
+            dict(bioguide_id='W000002', term_type='sen', term_state='MS', term_district=None,
+                 term_party='Republican', term_start='2013-01-03', term_end='2018-05-01'),
+            # G000003 resigned 2017-06-01, won special election 2018-11-15; directory edition 2018-07-01 is in the gap!
+            dict(bioguide_id='G000003', term_type='rep', term_state='PA', term_district=1,
+                 term_party='Democrat', term_start='2017-01-03', term_end='2017-06-01'),
+            dict(bioguide_id='G000003', term_type='rep', term_state='PA', term_district=1,
+                 term_party='Democrat', term_start='2018-11-15', term_end='2019-01-03'),
+        ], **SPICY_SCHEMAS['spicy_member_terms']),
+        json_input(directory, 'spicy_committee_assignments', [
+            dict(congress=115, session='2', system_code='SSAS00', bioguide_id='P000001', position='Member', rank=2,
+                 party='Republican', chamber='Senate', congress_basis='directory', edition_date='2019-01-05',
+                 source_granule='CDIR-2019-01-05', source_line='1:1', position_basis='printed', printed_entry=None, entry_label=None),
+            dict(congress=115, session='2', system_code='SSFI00', bioguide_id='W000002', position='Member', rank=None,
+                 party='Republican', chamber='Senate', congress_basis='caller', edition_date=None,
+                 source_granule='https://web.archive.org/web/20180901120000id_/https://www.senate.gov/cvc.xml',
+                 source_line=None, position_basis=None, printed_entry=None, entry_label=None),
+            dict(congress=115, session='2', system_code='HSAG00', bioguide_id='G000003', position='Member', rank=5,
+                 party='Democrat', chamber='House', congress_basis='directory', edition_date='2018-07-01',
+                 source_granule='CDIR-2018-07-01', source_line='2:1', position_basis='printed', printed_entry=None, entry_label=None),
+        ], **SPICY_SCHEMAS['spicy_committee_assignments']),
+    ]
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        run_job(directory, engine, inputs=inputs,
+                outputs=[parquet_output(directory, 'rosters', 'SELECT * FROM entity_rosters', ['congress', 'system_code', 'rank', 'bioguide_id'])],
+                steps=model_steps(['entity-rosters'], root=ROOT, materialize=True))
+    got = {r['bioguide_id']: r['entry_label'] for r in pq.read_table(directory / 'rosters.parquet').to_pylist()}
+    assert got['P000001'] is None
+    assert got['W000002'] is None
+    assert got['G000003'] == 'after_departure'

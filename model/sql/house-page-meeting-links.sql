@@ -1,6 +1,6 @@
 -- Link House committee proceeding pages holding recordings to canonical meetings (ct-ywz2).
 -- Pages resolve either by a unique single-meeting proceeding document linked from the page
--- (HHRG/HMKP/HMTG/CRPT or docs.house.gov/meetings/ address) or by parent committee (.house.gov host)
+-- (HHRG/HMKP/HMTG or docs.house.gov/meetings/ address) or by parent committee (.house.gov host)
 -- and proceeding date, corroborated by substantive title/heading/measure word overlap (or unique
 -- same-kind proceeding when one side carries only a generic kind label).
 WITH stopwords AS (
@@ -56,7 +56,7 @@ WITH stopwords AS (
  JOIN component_meeting_links cml ON cml.component=dm.component
  WHERE cardinality(cml.meeting_keys)=1
   AND try_cast(cml.meeting_keys[1] AS BIGINT) IS NOT NULL
-  AND (regexp_like(coalesce(dm.filename,''),'(?i)^(?:hhrg|hmkp|hmtg|crpt)-')
+  AND (regexp_like(coalesce(dm.filename,''),'(?i)^(?:hhrg|hmkp|hmtg)-')
    OR regexp_like(coalesce(dm.source_url,''),'(?i)docs[.]house[.]gov/meetings/'))
 ), unique_doc_events AS (
  SELECT page_body,min(event_id) AS event_id

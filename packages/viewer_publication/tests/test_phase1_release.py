@@ -71,6 +71,8 @@ def test_raw_lake_model_exports_one_group_and_keeps_download_names(tmp_path):
     assert detail[0]['alternates'][0]['format']=='html'
     assert detail[0]['alternates'][0]['size']==len(html)
     assert pq.read_table(tmp_path/'release/url_variants.parquet').to_pylist()==[dict(canonical_url='https://fixture.test/report.pdf',variant_url='https://fixture.test/mirror.pdf')]
+    import pyarrow as pa
+    assert pq.read_schema(tmp_path/'release/corrections.parquet').field('decided_at').type==pa.timestamp('us',tz='UTC')
     corrections_rows=pq.read_table(tmp_path/'release/corrections.parquet').to_pylist()
     assert len(corrections_rows)==1
     assert corrections_rows[0]['original_url']=='https://fixture.test/dead-link.pdf'

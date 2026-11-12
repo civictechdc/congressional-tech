@@ -83,63 +83,58 @@ def _copy(value):
     return json.loads(json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':'),allow_nan=False))
 
 
-_MODEL_WORKSPACE = frozenset({'viewer_publication', 'congress_api', 'congress_shared', 'docspec_client', 'house_naming'})
 _MODEL_NON_MODEL_PY = frozenset({
     *_PLUMBING,
     'packages/congress_api/src/congress_api/lake/_record_producer.py',
     'packages/congress_api/src/congress_api/lake/meeting_records.py',
     'packages/congress_api/src/congress_api/lake/appearance_records.py',
+    'packages/congress_api/src/congress_api/lake/video_records.py',
+    'packages/congress_api/src/congress_api/lake/committee_records.py',
+    'packages/congress_api/src/congress_api/lake/playlist_records.py',
     'packages/congress_api/src/congress_api/lake/reading_versions.py',
+    'packages/viewer_publication/src/viewer_publication/release_gate.py',
+    'packages/viewer_publication/src/viewer_publication/release_comparison.py',
 })
 
 
-def _locked_model_digest(root, python_files):
+def _locked_model_digest(closure, seed_py):
     """Hash only the locked packages imported by model Python definitions, not the whole uv.lock."""
-    closure = ImportClosure(root, distributions={'house_naming': ['house-naming-guide']})
-    modules = set()
-    for path in python_files:
-        resolved = path.resolve()
-        parts = next((list(resolved.parent.relative_to(src).parts)
-                      for src in closure.sources if resolved.is_relative_to(src)), [])
-        for module in _module_imports(path.read_bytes(), parts, str(path)):
-            top = module.split('.')[0]
-            if top and top not in sys.stdlib_module_names and top not in _MODEL_WORKSPACE:
-                modules.add(top)
-    locked = closure.locked(modules)
-    if locked['unresolved']:
-        raise ValueError('Model imports without a locked package: ' + ', '.join(locked['unresolved']))
-    summary = sorted(
-        (dict(name=p['name'], version=p['version'], source=p['source']) for p in locked['packages']),
-        key=lambda item: json.dumps(item, sort_keys=True),
-    )
-    return version_digest(packages={}, files={}, values={'locked_imports': summary})
+    locked = closure.locked_versions(seed_py, stop=_MODEL_NON_MODEL_PY)
+    return version_digest(packages={}, files={}, values={'locked_imports': locked})
 
 
 def _definition_hashes(root):
-    root=Path(root)
+    root = Path(root).resolve()
     # Source definitions are small metadata, read once each; table data is never opened.
-    files=list((root/'model/sql').glob('*.sql'))
-    files+=list((root/'model/registries').glob('*.json'))
-    files+=list((root/'model/lake').glob('*.json'))
-    package=root/'packages/viewer_publication/src/viewer_publication'
-    files += [package/name for name in ('archive_model.py','archive_model_profile.py','archive_format.py','archive_schema.py','archive_model_lifetimes.py','legislative_data.py',
-        'archive_annotations.py','archive_provenance.py','archive_reviews.py','archive_url_state.py','archive_text_index.py',
-        'lookup_aliases.py','meeting_detail_observations.py','historical_recording_matcher.py')]
-    files += [root/'packages/congress_api/src/congress_api/models/archive_profile.py',
-        root/'packages/house-naming/src/house_naming/bill_codes.py']
-    files += [root/'packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv']
-    files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','lake/reading_versions.py',
-        'lake/compatible_versions.py','lake/versions.py','lake/model_sql.py','lake/_record_producer.py','lake/meeting_records.py','lake/appearance_records.py',
-        'retention/parser_worker.py','retention/process_resources.py']]
-    unique_files = sorted(set(files))
-    model_py = [
-        path for path in unique_files
-        if path.suffix == '.py'
-        and not any(path.relative_to(root).as_posix() == p or path.relative_to(root).as_posix().startswith(p + '/')
-                    for p in _MODEL_NON_MODEL_PY)
+    files = list((root / 'model/sql').glob('*.sql'))
+    files += list((root / 'model/registries').glob('*.json'))
+    files += list((root / 'model/lake').glob('*.json'))
+    files += [
+        root / 'packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv',
+        root / 'packages/house-naming/src/house_naming/data/guide.json',
     ]
-    hashes = {path.relative_to(root).as_posix():file_pin(path)['sha256'] for path in unique_files}
-    hashes['uv.lock'] = _locked_model_digest(root, model_py)
+    package = Path('packages/viewer_publication/src/viewer_publication')
+    seed_py = [
+        *(package / name for name in (
+            'archive_model.py', 'archive_model_profile.py', 'archive_format.py', 'archive_schema.py',
+            'archive_model_lifetimes.py', 'legislative_data.py', 'archive_annotations.py',
+            'archive_provenance.py', 'archive_reviews.py', 'archive_url_state.py', 'archive_text_index.py',
+            'lookup_aliases.py', 'meeting_detail_observations.py', 'historical_recording_matcher.py',
+        )),
+        Path('packages/congress_api/src/congress_api/models/archive_profile.py'),
+        Path('packages/house-naming/src/house_naming/bill_codes.py'),
+        *(Path('packages/congress_api/src/congress_api') / name for name in (
+            'lake/readings.py', 'lake/reading_versions.py', 'lake/compatible_versions.py', 'lake/versions.py',
+            'lake/model_sql.py', 'lake/_record_producer.py', 'lake/meeting_records.py', 'lake/appearance_records.py',
+            'retention/parser_worker.py', 'retention/process_resources.py',
+        )),
+    ]
+    closure = ImportClosure(root, distributions={'house_naming': ['house-naming-guide']})
+    seen_py, _ = closure.reachable([p.as_posix() for p in seed_py], stop=_MODEL_NON_MODEL_PY)
+    files += list(seen_py)
+    unique_files = sorted(set(files))
+    hashes = {path.relative_to(root).as_posix(): file_pin(path)['sha256'] for path in unique_files}
+    hashes['uv.lock'] = _locked_model_digest(closure, [p.as_posix() for p in seed_py])
     return dict(sorted(hashes.items()))
 
 

@@ -314,7 +314,8 @@ URL_STATE_COLUMNS = ('attempts', 'last_attempt', 'last_status', 'last_outcome', 
                      'recheck_meeting_date', 'linked_from')
 URL_STATE_GROUPS = {*(('changed ' + column, 'value differs on matched key') for column in URL_STATE_COLUMNS),
                     ('added URLs', ATTEMPTED_URLS), ('added URLs', QUEUED_URLS)}
-RECORDING_ADD_GROUP = ('recordings.parquet', 'added keys', 'empty event_ids; source not traced')
+RECORDING_ADD_GROUPS = {('recordings.parquet', 'added keys', 'empty event_ids; source not traced'),
+                        ('recordings.parquet', 'added keys', 'empty event_ids; capture newly real')}
 AUTOMATIC_CAUSE = "addition traced to receipts absent from the live release's receipt set (automatic, ct-ud0b)"
 URL_STATE_CAUSE = ("every row is what the lines of receipts absent from the live release's receipt set imply "
                    "(automatic, ct-9j3z)")
@@ -1114,7 +1115,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     every = [dict(group, file=name) for name, facts in report['files'].items() for group in facts['groups']]
     differences = [g for g in every if not g.get('refetch_only')]
     url_state = [g for g in differences if g['file'] == 'url_state.parquet' and (g['group'], g['cause']) in URL_STATE_GROUPS]
-    recording_adds = [g for g in differences if (g['file'], g['group'], g['cause']) == RECORDING_ADD_GROUP]
+    recording_adds = [g for g in differences if (g['file'], g['group'], g['cause']) in RECORDING_ADD_GROUPS]
     other = [g for g in differences if g not in url_state and g not in recording_adds and (
         g.get('value') or g['count'] <= 0 or (g['file'], g['group']) not in AUTOMATIC_GROUPS)]
     if other:

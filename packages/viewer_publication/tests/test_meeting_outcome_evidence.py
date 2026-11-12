@@ -82,7 +82,7 @@ def sample(tmp_path_factory, request):
         'meeting_detail_observations': EMPTY_OBSERVATIONS,
         'captures': "SELECT arrow_cast(NULL,'FixedSizeBinary(32)') AS sha256,cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS mode,cast(NULL AS BOOLEAN) AS complete,cast(NULL AS VARCHAR) AS outcome,cast(NULL AS INT) AS http_status WHERE false",
         'ordered': "SELECT make_array('505') AS meeting_keys,array_slice(make_array(cast(NULL AS VARCHAR)),1,0) AS measure_keys,'print.pdf' AS filename,'pdf' AS format,cast(0 AS INT) AS list_row UNION ALL SELECT make_array('506'),array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'" + TRANSCRIPT + "','pdf',cast(1 AS INT)",
-        'recordings_entity': "SELECT cast(NULL AS VARCHAR) AS video_key,make_array(cast(NULL AS BIGINT)) AS event_ids,make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'format',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))) AS tracks WHERE false",
+        'recordings_export': "SELECT cast(NULL AS VARCHAR) AS video_key,make_array(cast(NULL AS BIGINT)) AS event_ids,make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'format',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))) AS tracks WHERE false",
         'meeting_transcript_links': "SELECT 'CHRG-micro' AS package_id,cast(505 AS BIGINT) AS event_id",
         'details': (
             "SELECT 'CHRG-micro' AS package_id,cast(0 AS INT) AS list_row,'pdf' AS format,"
@@ -169,7 +169,7 @@ def test_committee_transcript_outcome_reference_stays_stable_when_list_row_shift
             'meeting_detail_observations': EMPTY_OBSERVATIONS,
             'captures': "SELECT arrow_cast(NULL,'FixedSizeBinary(32)') AS sha256,cast(NULL AS VARCHAR) AS retrieved_at,cast(NULL AS VARCHAR) AS mode,cast(NULL AS BOOLEAN) AS complete,cast(NULL AS VARCHAR) AS outcome,cast(NULL AS INT) AS http_status WHERE false",
             'ordered': f"SELECT make_array('506') AS meeting_keys,array_slice(make_array(cast(NULL AS VARCHAR)),1,0) AS measure_keys,'{TRANSCRIPT}' AS filename,'pdf' AS format,cast({tx_row} AS INT) AS list_row",
-            'recordings_entity': "SELECT cast(NULL AS VARCHAR) AS video_key,make_array(cast(NULL AS BIGINT)) AS event_ids,make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'format',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))) AS tracks WHERE false",
+            'recordings_export': "SELECT cast(NULL AS VARCHAR) AS video_key,make_array(cast(NULL AS BIGINT)) AS event_ids,make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'format',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))) AS tracks WHERE false",
             'meeting_transcript_links': "SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false",
             'details': (
                 f"SELECT cast(NULL AS VARCHAR) AS package_id,cast({tx_row} AS INT) AS list_row,'pdf' AS format,"

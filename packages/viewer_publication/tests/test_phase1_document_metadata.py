@@ -1005,3 +1005,39 @@ def test_senate_html_urls_ending_in_bare_uuid_retain_slug_filename_kind_and_fami
     assert l3['document_family'] == []
     assert d3['facts'] == []
 
+
+def test_bare_uuid_html_ignores_unrelated_secondary_trailing_slash_url(tmp_path):
+    """P2-5a (ct-esuu): mode_rank=1 trailing_seg must contain uuid_name so an unrelated secondary
+    trailing-slash address on the component cannot replace the <slug>-<uuid> filename."""
+    import json
+    uuid_str = '5c20db43-6834-46b2-b92f-40c4c719a379'
+    inputs = [
+        json_input(tmp_path, 'html_uuid_candidates', [
+            dict(doc_key='d1', component=1, filename=uuid_str,
+                 source_url=f'https://www.energy.senate.gov/hearings/2021/5/nomination-business-meeting/{uuid_str}'),
+            dict(doc_key='d2', component=2, filename=uuid_str,
+                 source_url=f'https://www.energy.senate.gov/hearings/2021/5/nomination-business-meeting/{uuid_str}'),
+        ], doc_key='Utf8', component='Int64', filename='Utf8', source_url='Utf8'),
+        json_input(tmp_path, 'saved_files', [], component='Int64', source_id='Utf8', format='Utf8', filename='Utf8', saved_rank='Int64'),
+        json_input(tmp_path, 'source_annotations', [], source_id='Utf8', document_kind=list_of('Utf8'), document_family=list_of('Utf8'),
+                   facts=list_of(struct(field='Utf8', value='Utf8'))),
+        json_input(tmp_path, 'document_addresses', [
+            # Unrelated trailing-slash address without the UUID: must be ignored!
+            dict(component=1, url='https://www.energy.senate.gov/subcommittee-on-water/'),
+            # Redirected trailing-slash slug address containing the UUID: wins mode_rank=1!
+            dict(component=2, url=f'https://www.energy.senate.gov/hearings/hearings-2021-5-nomination-business-meeting-{uuid_str}/'),
+        ], component='Int64', url='Utf8'),
+        json_input(tmp_path, 'display_facts',
+                   json.loads((ROOT / 'model/registries/display-facts.json').read_text()),
+                   id='Utf8', field='Utf8', label='Utf8'),
+    ]
+    res = run_job(
+        tmp_path / 'job', NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+        inputs=inputs, steps=[], outputs=[],
+        queries=[dict(name='fills', sql='SELECT doc_key,filename FROM (' + (ROOT / 'model/sql/html-uuid-slug-fills.sql').read_text() + ') ORDER BY doc_key')],
+    )['fills']
+    assert res == [
+        dict(doc_key='d1', filename=f'nomination-business-meeting-{uuid_str}'),
+        dict(doc_key='d2', filename=f'hearings-2021-5-nomination-business-meeting-{uuid_str}'),
+    ]
+

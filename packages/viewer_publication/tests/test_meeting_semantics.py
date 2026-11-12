@@ -118,7 +118,7 @@ def meetings(tmp_path_factory):
     steps = [
         dict(name='meetings_resolved', sql="SELECT *,CASE WHEN false THEN make_array(named_struct('url',cast(NULL AS VARCHAR))) END AS document_references FROM ("+' UNION ALL '.join(MEETINGS)+")", materialize=True),
         dict(name='ordered', sql=ORDERED, materialize=True),
-        dict(name='recordings_entity', sql=RECORDINGS, materialize=True),
+        dict(name='recordings_export', sql=RECORDINGS, materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='details', sql="""SELECT 'CHRG-own' AS package_id,cast(7 AS INT) AS list_row,'pdf' AS format,
             array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR))),1,0) AS alternates,
@@ -1267,14 +1267,32 @@ def test_senate_page_plan_is_linear_and_coverage_codes_and_generic_titles_hold(t
         dict(name='senate_page_candidates', sql=sql('senate-page-candidates'), materialize=True),
         dict(name='package_meeting_links', sql='SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id,false AS witness_eligible WHERE false', materialize=True),
     ]
-    explained = run_job(tmp_path / 'plan', engine, inputs=inputs, steps=steps, outputs=[],
+    from viewer_publication.archive_model import senate_page_prelim_links_sql
+    explained = run_job(tmp_path / 'plan', engine, inputs=inputs + [
+                            json_input(tmp_path, 'package_mods_facts', [], package_id='Utf8', named_meetings=list_of('Int64'), held_dates=list_of('Utf8'), title='Utf8'),
+                        ], steps=steps + [
+                            dict(name='senate_page_prelim_links', sql=senate_page_prelim_links_sql(root=ROOT), materialize=True),
+                        ], outputs=[],
                         queries=[dict(name='candidates_plan', sql='EXPLAIN ' + sql('senate-page-candidates')),
-                                 dict(name='plan', sql='EXPLAIN ' + sql('senate-page-meeting-links'))])
-    for key in ('candidates_plan', 'plan'):
+                                 dict(name='plan', sql='EXPLAIN ' + sql('senate-page-meeting-links')),
+                                 dict(name='print_agreement_plan', sql='EXPLAIN ' + sql('print-meeting-agreement'))])
+    for key in ('candidates_plan', 'plan', 'print_agreement_plan'):
         phys = next(r['plan'] for r in explained[key] if r['plan_type'] == 'physical_plan')
         assert 'Decimal128' not in phys
         assert not any(line.lstrip().startswith('WindowAggExec:') for line in phys.splitlines())
-        assert phys.count('MemoryExec:') <= 6
+    cand_logic = next(r['plan'] for r in explained['candidates_plan'] if r['plan_type'] == 'logical_plan')
+    # P1-2 (ct-uul8): captures must never be the left (build) input of its join with senate_candidates,
+    # and page_facts must be inner-joined against senate_candidates rather than LEFT JOIN scanned whole.
+    for idx, line in enumerate(cand_logic.splitlines()):
+        if 'Inner Join:' in line and 'sha256' in line:
+            # First TableScan beneath the join is its left (build) side; captures must come after selected_appearance_records.
+            sub_scans = [l.strip() for l in cand_logic.splitlines()[idx + 1:idx + 18] if 'TableScan:' in l]
+            assert sub_scans and not sub_scans[0].startswith('TableScan: captures'), cand_logic
+    assert 'Left Join: pf.body_sha' not in cand_logic and 'Left Join: sc.sha256 = pf.body_sha' not in cand_logic, cand_logic
+
+    print_logic = next(r['plan'] for r in explained['print_agreement_plan'] if r['plan_type'] == 'logical_plan')
+    assert print_logic.count('TableScan: appearance_people') <= 4, print_logic
+    assert print_logic.count('TableScan: meetings_resolved') <= 2, print_logic
 
     # Check source-annotations-codes.sql with host aliases:
     code_inputs = [
