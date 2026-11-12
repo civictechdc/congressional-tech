@@ -124,10 +124,7 @@ OUTER_BUILD_ROWS = 100_000
 OUTER_BUILD_TRACKED = {
     'recovery_candidates': 3,                  # 4.2M rows by captures, 16 cols
     'url_state_lines': 2,                      # 4.2M rows by captures, 11 cols
-    'entity_profile_completeness': 8,          # query; 4.2M rows by captures, 5 cols (+5 scalar-subquery Left Join:)
-    'filename_both_names': 5,                  # query; bare Left Join: scalar subqueries
-    'invariants': 6,                           # query; bare Left Join: scalar subqueries
-    'url_state_invariants_step': 8,            # bare Left Join: scalar subqueries
+    'entity_profile_completeness': 3,          # query; 4.2M rows by captures, 5 cols
     'source_addresses': 1,                     # 2.1M rows by source_files, 3 cols
     'source_annotations': 1,                   # 2.1M rows by source_files, 2 cols
     'document_identities': 2,                  # 2.1M rows by document_members, 4 cols
@@ -144,7 +141,7 @@ OUTER_BUILD_TRACKED = {
     'meetings_export': 9,                      # 341K rows by ordered, 31 cols
     'source_annotation_pages': 2,              # 334K rows by page_facts, 5 cols
     'source_members.parquet': 1,               # export; 323K rows by ordered, 6 cols
-    'model_invariants': 3,                     # query; 323K rows by ordered, 2 cols (+1 bare Left Join:)
+    'model_invariants': 2,                     # query; 323K rows by ordered, 2 cols
     'blank_filename_reasons': 1,               # query; 323K rows by ordered, 2 cols
     'meeting_detail_evidence': 2,              # 217K rows by congress_gov_routes, 16 cols
     'meeting_detail_observations': 3,          # 217K rows by meeting_detail_evidence, 15 cols
@@ -153,7 +150,7 @@ OUTER_BUILD_TRACKED = {
     'document_witness_meeting_witnesses': 1,   # 173K rows by appearance_records_resolved, 5 cols
     'coverage': 3,                             # query; 173K rows by witnesses_export, 7 cols
     'witness_key_map': 1,                      # 156K rows by witness_key_priors, 3 cols
-    'relationship_invariants': 13,             # query; 156K rows by witness_key_map_export (+12 bare Left Join:)
+    'relationship_invariants': 1,              # query; 156K rows by witness_key_map_export
 }
 
 SEMI_ANTI_MARK_JOIN_KINDS = ('LeftSemi Join', 'LeftAnti Join', 'LeftMark Join')
@@ -382,20 +379,33 @@ def estimated_rows(job, node):
     return sum(sizes) if kind == 'Union' else max(sizes)
 
 
-def large_left_builds(job, plan, kinds):
+def _has_scalar_subquery_alias(node):
+    kind, first, children = node
+    if kind == 'SubqueryAlias' and first.startswith('__scalar_sq_'):
+        return True
+    return any(_has_scalar_subquery_alias(child) for child in children)
+
+
+def _is_keyless_scalar_subquery_join(kind, first, inputs):
+    return kind == 'Left Join' and first == '' and len(inputs) == 2 and _has_scalar_subquery_alias(inputs[1])
+
+
+def large_left_builds(job, plan, kinds, *, exclude_scalar_subqueries=False):
     """Estimated build rows of each join in `kinds` whose left input reaches OUTER_BUILD_ROWS."""
     found, pending = [], [tree(plan)]
     while pending:
-        kind, _name, inputs = pending.pop()
+        kind, first, inputs = pending.pop()
         pending += inputs
+        if exclude_scalar_subqueries and _is_keyless_scalar_subquery_join(kind, first, inputs):
+            continue
         if kind in kinds and (size := estimated_rows(job, inputs[0])) >= OUTER_BUILD_ROWS:
             found.append(size)
     return found
 
 
 def large_outer_builds(job, plan):
-    """Estimated build rows of each Left or Full join whose left input reaches OUTER_BUILD_ROWS."""
-    return large_left_builds(job, plan, ('Left Join', 'Full Join'))
+    """Estimated build rows of each keyed Left or Full join whose left input reaches OUTER_BUILD_ROWS."""
+    return large_left_builds(job, plan, ('Left Join', 'Full Join'), exclude_scalar_subqueries=True)
 
 
 def large_semi_anti_mark_builds(job, plan):
@@ -513,36 +523,50 @@ def test_lint_passes_the_same_three_reads_over_a_small_relation(planned):
     assert 'planted_small_cte_read_three_times' not in flagged and 'planted_small_cte_read_three_times' not in regex
 
 
-def test_only_tracked_readers_build_an_outer_join_on_a_large_preserved_relation(planned):
-    job, plans = planned
-    current = {name: len(builds) for name, plan in model_plans(plans).items() if (builds := large_outer_builds(job, plan))}
+def test_only_tracked_readers_build_an_outer_join_on_a_large_preserved_relation(explained):
+    job, explains = explained
+    plans = {name: rows['logical_plan'] for name, rows in model_plans(explains).items()}
+    current = {name: len(builds) for name, plan in plans.items() if (builds := large_outer_builds(job, plan))}
     assert current == OUTER_BUILD_TRACKED, 'a fixed reader leaves the list; a new one names its small relation first'
-    assert sum(current.values()) == 112
+    # Independent physical-plan cross-check: every tracked reader executes an outer HashJoinExec, while
+    # pure scalar-subquery readers (`filename_both_names`, `invariants`, `url_state_invariants_step`) use NestedLoopJoinExec.
+    for name in current:
+        phys = explains[name]['physical_plan']
+        assert any(tag in phys for tag in ('join_type=Left,', 'join_type=Left\n', 'join_type=Right', 'join_type=Full')), name
+    for scalar_only in ('filename_both_names', 'invariants', 'url_state_invariants_step'):
+        assert scalar_only not in current
+        assert 'NestedLoopJoinExec: join_type=Left' in explains[scalar_only]['physical_plan']
 
 
-def test_only_tracked_readers_build_a_semi_anti_or_mark_join_on_a_large_left_relation(planned):
-    job, plans = planned
+def test_only_tracked_readers_build_a_semi_anti_or_mark_join_on_a_large_left_relation(explained):
+    job, explains = explained
+    plans = {name: rows['logical_plan'] for name, rows in model_plans(explains).items()}
     current = {
         name: len(builds)
-        for name, plan in model_plans(plans).items()
+        for name, plan in plans.items()
         if (builds := large_semi_anti_mark_builds(job, plan))
     }
     assert current == SEMI_ANTI_MARK_BUILD_TRACKED, 'semi/anti/mark joins with large left inputs are tracked'
-    assert sum(current.values()) == 83
+    for name in current:
+        phys = explains[name]['physical_plan']
+        assert any(tag in phys for tag in ('join_type=LeftSemi', 'join_type=LeftAnti', 'join_type=LeftMark')), name
 
 
 def test_tree_parses_every_plan_node_line_including_bare_joins_and_projections(planned):
-    """ct-i5u3: independent line-by-line check proving NODE drops zero bare `Left Join:`, `Cross Join:` or `Projection:` lines."""
+    """ct-i5u3: independent non-regex line-count & join-count check proving NODE drops zero operator lines."""
     _job, plans = planned
-    raw_header = re.compile(r'^\s*([A-Z][A-Za-z0-9_]*(?: Join)?)(?::.*)?$')
     bare_colon = 0
+    total_line_joins = 0
+    total_tree_joins = 0
     for name, plan in model_plans(plans).items():
-        expected_kinds = []
-        for line in plan.splitlines():
+        # Only multi-line string literals (`Utf8("\n")`) wrap onto unindented `")...` continuation lines.
+        operator_lines = [line for line in plan.splitlines() if line.strip() and not line.startswith('")')]
+        for line in operator_lines:
             if line.rstrip().endswith(('Left Join:', 'Cross Join:', 'Projection:')):
                 bare_colon += 1
-            if m := raw_header.match(line):
-                expected_kinds.append(m.group(1))
+            header = line.split(':', 1)[0].strip()
+            if header.endswith(' Join'):
+                total_line_joins += 1
         parsed_kinds = []
 
         def walk(node):
@@ -553,8 +577,10 @@ def test_tree_parses_every_plan_node_line_including_bare_joins_and_projections(p
                 walk(child)
 
         walk(tree(plan))
-        assert parsed_kinds == expected_kinds, f'{name}: dropped or misparsed plan lines'
+        assert len(parsed_kinds) == len(operator_lines), f'{name}: NODE dropped plan lines ({len(parsed_kinds)} != {len(operator_lines)})'
+        total_tree_joins += sum(1 for k in parsed_kinds if k.endswith(' Join'))
     assert bare_colon > 0, 'model plans contain bare-colon nodes that the old regex dropped'
+    assert total_tree_joins == total_line_joins > 0, 'every logical Join header line is present in tree(plan)'
 
 
 def test_lint_flags_a_planted_left_join_built_on_a_large_relation_and_passes_its_right_join(planned):

@@ -267,8 +267,8 @@ def query(config, sql, pairs, *, explain=False, analyze=False, as_json=False, me
 
     The runtime is the one the offline lane tests with (DOCSPEC_JOB_CONFIG), verified against this
     checkout's pin and refused if it names a remote or credentials, before anything is loaded. Rows
-    print in the statement's column order; a statement naming one column twice is refused, because
-    the engine would keep only the last (provenance.query_result). TERM (how the watchdog stops a
+    print in the statement's column order; a statement naming one column twice is refused before
+    execution by the engine (invalid_sql, provenance.query_result). TERM (how the watchdog stops a
     job) exits through the query's cleanup, so its temporary folder goes with it."""
     import csv
     import signal

@@ -180,8 +180,9 @@ def create_table(*,engine,work,catalog_root,table,schema,location,create_namespa
 def add_optional_columns(*,engine,work,catalog_root,table,expected_schema_id,columns):
     """Add optional primitive top-level columns while the table's head is `expected_schema_id` (ct-auhc).
 
-    The engine assigns fresh Iceberg field IDs above `highest_field_id`, refuses a stale head, and
-    reports an idempotent no-op when every requested column already exists with the same optional type."""
+    The engine assigns fresh Iceberg field IDs above `highest_field_id`, reports an idempotent no-op
+    when every requested column already exists with the same optional type (even on a stale
+    `expected_schema_id`), and otherwise refuses a stale head (`stale_authority`)."""
     if type(expected_schema_id) is not int or expected_schema_id<0:
         raise ValueError('add_optional_columns requires a non-negative integer expected_schema_id')
     if not isinstance(columns,(list,tuple)) or not columns:
@@ -249,15 +250,11 @@ def append_rows(source, *, engine,work,catalog_root,table,keys,definition,
 
 
 def table_columns(engine, work, source):
-    """Column names of a Parquet file or an exact native table pin (one row read for a pin)."""
+    """Column names of a Parquet file or an exact native table pin, in schema order."""
     if not isinstance(source, dict):
         return pq.read_schema(source).names
-    from congress_api.retention.provenance import run_job
-    rows = run_job(work, engine, inputs=[table_input('t', source)], steps=[], outputs=[],
-                   queries=[dict(name='row', sql='SELECT * FROM t LIMIT 1')])['row']
-    if not rows:
-        raise ValueError('Cannot read the columns of an empty table')
-    return list(rows[0])
+    from congress_api.retention.provenance import query_result
+    return query_result(engine, 'SELECT * FROM t LIMIT 0', {'t': source}, work=work)[0]
 
 
 def column_differential(engine, work, old, new, *, keys, compared, value_columns=(), predicate_sql='true',

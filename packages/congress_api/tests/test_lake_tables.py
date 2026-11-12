@@ -348,7 +348,9 @@ def test_mods_style_two_column_addition_evolves_lake_table_in_place_and_filters_
         assert [c['name'] for c in added['added_columns']] == ['title', 'created']
         assert [c['field_id'] for c in added['added_columns']] == [34, 35]
 
-        # Repeating at the new schema is an idempotent no-op; repeating at stale schema_id=0 refuses.
+        # Repeating all-present columns is an idempotent no-op even on a stale expected_schema_id;
+        # adding a new column on a stale expected_schema_id refuses with stale_authority;
+        # re-adding an existing column with a conflicting type refuses with schema_mismatch.
         noop = tables.add_optional_columns(
             engine=engine,
             work=tmp_path / 'add-cols-noop',
@@ -358,7 +360,16 @@ def test_mods_style_two_column_addition_evolves_lake_table_in_place_and_filters_
             columns=[dict(name='title', type='string'), dict(name='created', type='string')],
         )
         assert noop['added_columns'] == [] and noop['schema_id'] == noop['previous_schema_id'] == 1
-        with pytest.raises(DocSpecFailure):
+        noop_stale = tables.add_optional_columns(
+            engine=engine,
+            work=tmp_path / 'add-cols-noop-stale',
+            catalog_root=catalog,
+            table=table_ref,
+            expected_schema_id=0,
+            columns=[dict(name='title', type='string'), dict(name='created', type='string')],
+        )
+        assert noop_stale['added_columns'] == [] and noop_stale['schema_id'] == 1
+        with pytest.raises(DocSpecFailure, match='stale_authority'):
             tables.add_optional_columns(
                 engine=engine,
                 work=tmp_path / 'add-cols-stale',
@@ -366,6 +377,15 @@ def test_mods_style_two_column_addition_evolves_lake_table_in_place_and_filters_
                 table=table_ref,
                 expected_schema_id=0,
                 columns=[dict(name='extra', type='string')],
+            )
+        with pytest.raises(DocSpecFailure, match='schema_mismatch'):
+            tables.add_optional_columns(
+                engine=engine,
+                work=tmp_path / 'add-cols-conflict',
+                catalog_root=catalog,
+                table=table_ref,
+                expected_schema_id=1,
+                columns=[dict(name='title', type='long')],
             )
 
         evolved_stage = tmp_path / 'new.parquet'
@@ -430,4 +450,55 @@ def test_mods_style_two_column_addition_evolves_lake_table_in_place_and_filters_
         assert query(engine, 'SELECT package_id FROM t WHERE held_dates IS NOT NULL', dict(t=new_pin)) == [
             dict(package_id='CHRG-118shrg55102')
         ]
+        # table_columns preserves schema order on pins (including empty tables) without scanning rows.
+        assert tables.table_columns(engine, tmp_path / 'cols-old', old_pin) == [f.name for f in base_fields]
+        assert tables.table_columns(engine, tmp_path / 'cols-new', new_pin) == [
+            *[f.name for f in base_fields],
+            'title',
+            'created',
+        ]
+        empty_ref = dict(namespace=['archive'], name='empty_appearances')
+        empty_created = tables.create_table(
+            engine=engine,
+            work=tmp_path / 'create-empty',
+            catalog_root=catalog,
+            table=empty_ref,
+            schema=initial_schema,
+            location=tmp_path / 'lake-empty',
+            create_namespace=False,
+        )['table_operations'][-1]
+        empty_pin = {
+            'metadata_location': empty_created['metadata_location'],
+            'table_uuid': empty_created['table_uuid'],
+            'snapshot': None,
+            'schema_id': empty_created['schema_id'],
+        }
+        assert tables.table_columns(engine, tmp_path / 'cols-empty', empty_pin) == [f.name for f in base_fields]
+
+
+def test_add_optional_columns_validates_inputs(tmp_path):
+    from congress_api.lake import tables
+
+    base = dict(
+        engine=None,
+        work=tmp_path / 'work',
+        catalog_root=tmp_path / 'cat',
+        table=dict(namespace=['archive'], name='t'),
+        expected_schema_id=0,
+        columns=[dict(name='title', type='string')],
+    )
+    with pytest.raises(ValueError, match='expected_schema_id'):
+        tables.add_optional_columns(**{**base, 'expected_schema_id': True})
+    with pytest.raises(ValueError, match='expected_schema_id'):
+        tables.add_optional_columns(**{**base, 'expected_schema_id': -1})
+    with pytest.raises(ValueError, match='at least one column'):
+        tables.add_optional_columns(**{**base, 'columns': []})
+    with pytest.raises(ValueError, match='dict of name, type'):
+        tables.add_optional_columns(**{**base, 'columns': [dict(name='title', type='string', required=False)]})
+    with pytest.raises(ValueError, match='Lake SQL identifiers'):
+        tables.add_optional_columns(**{**base, 'columns': [dict(name='bad-name', type='string')]})
+    with pytest.raises(ValueError, match='primitive Iceberg type'):
+        tables.add_optional_columns(**{**base, 'columns': [dict(name='title', type='')]})
+    with pytest.raises(ValueError, match='doc must be a string'):
+        tables.add_optional_columns(**{**base, 'columns': [dict(name='title', type='string', doc=123)]})
 

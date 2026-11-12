@@ -336,11 +336,7 @@ def parquet_output(root,name,sql,order):
             columns=[],dictionary_columns=[],delta_columns=[],created_by='docspec raw provenance v1',footer_limit=512<<10))
 
 
-def run_job(root,engine,*,inputs,steps,outputs,queries=()):
-    """Run one engine job in `root`, leaving `job.json`, the engine's stderr in `engine.log`, and `result.json`.
-
-    `engine.log` is this job's own metric lines and error text. The model build submits its job itself
-    (`viewer_publication.archive_format`) and keeps no such log yet (ct-zlj6)."""
+def _run_job_raw(root,engine,*,inputs,steps,outputs,queries=()):
     from congress_api.lake.model_sql import check_relations
     check_relations(inputs,steps)
     root=Path(root)
@@ -350,6 +346,15 @@ def run_job(root,engine,*,inputs,steps,outputs,queries=()):
                                    outputs=outputs,queries=list(queries)),separators=(',',':')))
     result=engine.run_job(path,log=root/'engine.log')
     (root/'result.json').write_text(json.dumps(result,separators=(',',':')))
+    return result
+
+
+def run_job(root,engine,*,inputs,steps,outputs,queries=()):
+    """Run one engine job in `root`, leaving `job.json`, the engine's stderr in `engine.log`, and `result.json`.
+
+    `engine.log` is this job's own metric lines and error text. The model build submits its job itself
+    (`viewer_publication.archive_format`) and keeps no such log yet (ct-zlj6)."""
+    result=_run_job_raw(root,engine,inputs=inputs,steps=steps,outputs=outputs,queries=queries)
     return {query['name']:query['data'] for query in result.get('queries',[])}
 
 
@@ -390,8 +395,8 @@ def _query_job(engine,queries,tables,*,memory_bytes=QUERY_MEMORY_BYTES,scratch_b
     with nullcontext(work) if work is not None else TemporaryDirectory(prefix='docspec-query-') as root:
         bounded=bounded_engine(engine,root,memory_bytes=memory_bytes,scratch_bytes=scratch_bytes)
         try:
-            run_job(root,bounded,inputs=inputs,steps=[],outputs=[],queries=queries)
-            return {entry['name']:entry for entry in json.loads((Path(root)/'result.json').read_text()).get('queries',[])}
+            result=_run_job_raw(root,bounded,inputs=inputs,steps=[],outputs=[],queries=queries)
+            return {entry['name']:entry for entry in result.get('queries',[])}
         finally:
             if bounded is not engine:bounded.close()
 
@@ -403,8 +408,8 @@ def query_result(engine,sql,tables,**options):
     records `columns` in the statement's output order alongside each row's sorted JSON map, so rows come
     back in the statement's column order without a planning pre-pass. Values are the engine's JSON: binary
     as lowercase hex, timestamps as RFC 3339 text. The result must fit the runtime's `max_metadata_bytes`,
-    and the engine charges it to memory at many times its JSON size. Options are `_query_job`'s. A pin is
-    read through whatever object connection `engine` has: none for a local runtime."""
+    and the engine charges its Arrow batches and serialized JSON buffer to the memory pool. Options are
+    `_query_job`'s. A pin is read through whatever object connection `engine` has: none for a local runtime."""
     entry=_query_job(engine,[dict(name='query',sql=sql)],tables,**options)['query']
     columns=entry['columns']
     rows=entry['data']
