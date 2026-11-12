@@ -1,7 +1,7 @@
 """The body-text producer: one read per body writes `body_text` and its `readings` row.
 
 Data model §6.6 (and §6.2 for the narrow readings row). The work list is every body whose
-pinned sniff format is `pdf`, `html`, `xml` or `warc` with no `readings` row at that format's
+pinned sniff format is `pdf`, `html` or `xml` with no `readings` row at that format's
 declared body-text version and no active `unreadable` decision; an `error` or `size_limit`
 row settles a body too. Per batch, `body_text` commits first and `readings` second, each
 through `append_rows`' PK anti-join, so a crash between the commits leaves the body on the
@@ -12,8 +12,9 @@ local raw root or, given ``origin``, the raw bucket's public origin: one ranged 
 the readings range cache and R2Store's pinned read (`retention/public_origin.py`), conditional on the
 capture's stored MD5 and size, then the readings storage rule, which decodes and checks the body's
 SHA-256. Most captures record no MD5 (1,280 of 158,267 rows for one sixteenth of the corpus, 2026-11-09);
-such a read is pinned instead to the ETag a one-byte GET of the object answers, so it still reads one
-object version, and the SHA-256 check alone decides the bytes. A body whose stored size is over the
+given ``body_listing`` (from one credentialed bucket LIST), such a read is pinned directly by the
+listed strong ETag and size with no extra request, or without a listing by the ETag a one-byte GET
+answers first, so it still reads one object version, and the SHA-256 check alone decides the bytes. A body whose stored size is over the
 bound settles as `size_limit` before any byte is fetched; one with no stored size stays listed
 (`missing_pins`). A worker returns its
 text as a file (path, bytes, SHA-256), so no text crosses the supervisor's 8 MiB pipe; the
@@ -47,11 +48,12 @@ ROOT = Path(__file__).resolve().parents[5]
 # Read here, not through tables.LAKE_SCHEMA_PATHS, whose module every reading version's evidence hashes.
 SCHEMA = ROOT / 'model/lake/body-text.schema.json'
 PK = readings.PK
-FORMAT_PARSERS = {'pdf': 'pdf_text', 'html': 'html_text', 'xml': 'xml_text', 'warc': 'warc'}
+FORMAT_PARSERS = {'pdf': 'pdf_text', 'html': 'html_text', 'xml': 'xml_text'}
 PARSERS = tuple(FORMAT_PARSERS.values())
 MAX_STORED_BYTES = readings.MAX_STORED_BYTES
 MAX_DECODED_BYTES = readings.MAX_DECODED_BYTES
-WORKER_MEMORY_BYTES = readings.WORKER_MEMORY_BYTES
+WORKER_MEMORY_BYTES = 2 << 30
+PARSER_MEMORY_BYTES = 32 << 30
 # A fixed bound per document (the supervisor kills the worker past it) and per page (inside the
 # worker). Both are first-pass values for the census to confirm (plan §1, "Census").
 DOCUMENT_DEADLINE_SECONDS = 1800
@@ -74,8 +76,75 @@ def worker_limits():
                 max_input_bytes=65536, max_output_bytes=8 << 20)
 
 
+def _listing_schema():
+    import pyarrow as pa
+    return pa.schema([('key', pa.string()), ('size', pa.int64()), ('etag', pa.string())])
+
+
+def write_body_listing(client, *, bucket=PUBLIC_BUCKET, out, prefix='bodies/sha256/'):
+    """Write one credentialed ``list_objects_v2`` pass under ``prefix`` as ``(key, size, etag)`` Parquet.
+
+    One LIST request per 1,000 objects, streamed in bounded row batches; preserves quoted ETags so
+    weak ETags (``W/...``) remain distinguishable from strong ones.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.retention.body_store import R2Source
+
+    out = Path(out).resolve()
+    schema = _listing_schema()
+    rows, total = [], 0
+    with pq.ParquetWriter(out, schema, compression='zstd') as writer:
+        for entry in R2Source(client, bucket).listing(prefix, preserve_etags=True):
+            validate_key(entry['key'])
+            if type(entry['size']) is not int or entry['size'] < 0:
+                raise ValueError('Invalid body listing object size')
+            rows.append(entry)
+            total += 1
+            if len(rows) >= 16384:
+                writer.write_table(pa.Table.from_pylist(rows, schema=schema))
+                rows = []
+        if rows or total == 0:
+            writer.write_table(pa.Table.from_pylist(rows, schema=schema))
+    return dict(path=out, rows=total)
+
+
+def copy_selection_steps(*, with_listing=False):
+    """The candidate bodies' chosen captured copies, joined to ``body_listing`` when supplied."""
+    steps = [
+        # Captures grouped only after the semi-join to the candidates (AGENTS.md pushdown rule).
+        dict(name='body_storage', materialize=True, sql="""SELECT c.sha256 AS body_sha,
+            coalesce(c.stored_suffix,'.gz') AS stored_suffix,
+            concat('bodies/sha256/',substr(encode(c.sha256,'hex'),1,2),'/',encode(c.sha256,'hex'),
+                coalesce(c.stored_suffix,'.gz')) AS physical_key,
+            max(c.bytes) AS decoded_bytes,max(c.stored_bytes) AS stored_bytes,max(c.retrieved_at) AS latest,
+            max(encode(c.stored_md5,'hex')) AS stored_md5,
+            min(c.bytes)<>max(c.bytes) OR min(c.stored_bytes)<>max(c.stored_bytes)
+                OR min(encode(c.stored_md5,'hex'))<>max(encode(c.stored_md5,'hex')) AS conflict
+            FROM candidates k RIGHT SEMI JOIN captures c ON k.body_sha=c.sha256
+            GROUP BY c.sha256,coalesce(c.stored_suffix,'.gz')"""),
+        dict(name='selected_copies', materialize=True, sql='''SELECT * FROM (SELECT *,row_number() OVER (
+            PARTITION BY body_sha ORDER BY stored_bytes IS NULL,
+                CASE stored_suffix WHEN '' THEN 0 WHEN '.gz' THEN 1 ELSE 2 END) AS choice
+            FROM body_storage) WHERE choice=1'''),
+    ]
+    if with_listing:
+        steps.append(dict(name='body_copies', materialize=True, sql=f'''SELECT s.*,
+            nullif(l.etag,'') AS listed_etag,
+            CASE WHEN s.physical_key IS NULL OR (s.stored_bytes IS NOT NULL AND s.stored_bytes>{MAX_STORED_BYTES}) THEN NULL
+                 WHEN l.key IS NULL OR nullif(l.etag,'') IS NULL OR starts_with(l.etag,'W/') THEN 'changed_input'
+                 WHEN s.stored_bytes IS NOT NULL AND l.size<>s.stored_bytes THEN 'changed_input'
+                 WHEN s.stored_md5 IS NOT NULL AND lower(trim(BOTH '"' FROM l.etag))<>s.stored_md5 THEN 'changed_input'
+                 END AS listing_refusal
+            FROM selected_copies s LEFT JOIN body_listing l ON s.physical_key=l.key'''))
+    else:
+        steps.append(dict(name='body_copies', sql='''SELECT *,cast(NULL AS VARCHAR) AS listed_etag,
+            cast(NULL AS VARCHAR) AS listing_refusal FROM selected_copies'''))
+    return steps
+
+
 def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, unreadable_files=(),
-         registry=None, filename_readings=None):
+         registry=None, filename_readings=None, body_listing=None):
     """Materialize the ordered work list in one native job, opening no body.
 
     Newest Congress first (plan §1), each body taking the highest Congress any of its captures'
@@ -84,6 +153,8 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
     `filename_readings`, newest capture first, so weekly bodies lead a backfill.
     """
     from congress_api.lake import compatible_versions
+    if body_listing is not None and local_root is not None:
+        raise ValueError('body_listing applies to remote origin reads, not local_root')
     instant(decided_at)
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
@@ -92,13 +163,16 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
     entries = compatible_versions.load_registry(current=pins, **({} if registry is None else dict(path=registry)))
     sniff_entries = [e for e in entries if e['parser'] == 'sniff']
     selected = {'sniff': pins['sniff'], **versions}
-    unreadable_schema = dict(id='Utf8', body_sha256='Utf8', parser='Utf8', parser_version='Utf8', supersedes='Utf8')
+    unreadable_schema = dict(id='Utf8', body_sha256='Utf8', parser='Utf8', parser_version='Utf8',
+                             reason='Utf8', supersedes='Utf8')
     inputs = [json_input(work, 'parser_versions', [dict(parser=p, version=v) for p, v in selected.items()],
                          parser='Utf8', version='Utf8'),
               json_input(work, 'format_parsers', [dict(format=f, parser=p) for f, p in FORMAT_PARSERS.items()],
                          format='Utf8', parser='Utf8'),
               compatible_versions.accepted_versions_input(work, sniff_entries, pins={'sniff': pins['sniff']}),
               table_input('captures', captures)]
+    if body_listing is not None:
+        inputs.append(table_input('body_listing', body_listing))
     if unreadable_files:
         inputs.append(dict(name='unreadable', kind='json_lines', files=list(unreadable_files),
             schema=dict(fields=[field(k, v) for k, v in unreadable_schema.items()], metadata={})))
@@ -124,8 +198,9 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
         *[dict(name=name.replace('-', '_'), sql=(ROOT / 'model/sql' / (name + '.sql')).read_text())
           for name in ['pinned-readings', 'sniff-observations', 'sniff-conflicts', 'sniff-facts']],
         dict(name='active_unreadable', sql='''SELECT u.* FROM unreadable u
-            WHERE NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id)'''),
-        # Body-text rows at their declared versions: the four (parser, version) partitions only.
+            WHERE coalesce(u.reason,'')<>'withdrawn'
+              AND NOT EXISTS (SELECT 1 FROM unreadable s WHERE s.supersedes=u.id)'''),
+        # Body-text rows at their declared versions: the three (parser, version) partitions only.
         dict(name='settled', materialize=True, sql='''SELECT r.body_sha,r.parser FROM parser_versions v
             JOIN readings r ON r.parser=v.parser AND r.parser_version=v.version WHERE v.parser<>'sniff' '''),
         dict(name='candidates', materialize=True, sql='''SELECT f.body_sha,f.format,p.parser,v.version AS parser_version
@@ -133,21 +208,7 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
             WHERE NOT EXISTS (SELECT 1 FROM settled s WHERE s.body_sha=f.body_sha AND s.parser=p.parser)
               AND NOT EXISTS (SELECT 1 FROM active_unreadable u WHERE u.body_sha256=encode(f.body_sha,'hex')
                 AND u.parser=p.parser AND u.parser_version=v.version)'''),
-        # Captures grouped only after the semi-join to the candidates (AGENTS.md pushdown rule).
-        dict(name='body_storage', materialize=True, sql="""SELECT c.sha256 AS body_sha,
-            coalesce(c.stored_suffix,'.gz') AS stored_suffix,
-            concat('bodies/sha256/',substr(encode(c.sha256,'hex'),1,2),'/',encode(c.sha256,'hex'),
-                coalesce(c.stored_suffix,'.gz')) AS physical_key,
-            max(c.bytes) AS decoded_bytes,max(c.stored_bytes) AS stored_bytes,max(c.retrieved_at) AS latest,
-            max(encode(c.stored_md5,'hex')) AS stored_md5,
-            min(c.bytes)<>max(c.bytes) OR min(c.stored_bytes)<>max(c.stored_bytes)
-                OR min(encode(c.stored_md5,'hex'))<>max(encode(c.stored_md5,'hex')) AS conflict
-            FROM candidates k RIGHT SEMI JOIN captures c ON k.body_sha=c.sha256
-            GROUP BY c.sha256,coalesce(c.stored_suffix,'.gz')"""),
-        dict(name='body_copies', materialize=True, sql='''SELECT * FROM (SELECT *,row_number() OVER (
-            PARTITION BY body_sha ORDER BY stored_bytes IS NULL,
-                CASE stored_suffix WHEN '' THEN 0 WHEN '.gz' THEN 1 ELSE 2 END) AS choice
-            FROM body_storage) WHERE choice=1'''),
+        *copy_selection_steps(with_listing=body_listing is not None),
     ]
     if filename_readings is not None:
         version = "'" + filenames.current_version().replace("'", "''") + "'"
@@ -170,20 +231,28 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
         else ('cast(NULL AS INT)', '')
     steps.append(dict(name='pending_bodies', materialize=True, sql=f'''SELECT k.body_sha,k.format,k.parser,
         k.parser_version,s.physical_key,s.physical_key AS relative_path,s.stored_bytes,s.stored_md5,s.decoded_bytes,
+        s.listed_etag,s.listing_refusal,
         coalesce(s.conflict,false) AS conflict,{congress[0]} AS congress,
         cast(row_number() OVER (ORDER BY {congress[0]} DESC NULLS LAST,s.latest DESC NULLS LAST,k.body_sha) AS BIGINT)
             AS position
         FROM candidates k LEFT JOIN body_copies s ON k.body_sha=s.body_sha{congress[1]}'''))
+    queries = [dict(name='work_items', sql='SELECT count(*) AS n,count(congress) AS with_congress FROM pending_bodies'),
+               dict(name='by_parser', sql='''SELECT parser,count(*) AS n,coalesce(sum(stored_bytes),0) AS stored_bytes
+                  FROM pending_bodies GROUP BY parser ORDER BY parser'''),
+               dict(name='conflicts', sql='''SELECT count(*) AS n FROM (SELECT body_sha FROM sniff_conflicts
+                  UNION ALL SELECT body_sha FROM pending_bodies WHERE conflict
+                  UNION ALL SELECT body_sha FROM body_storage WHERE stored_suffix NOT IN ('','.gz','.pdf'))''')]
+    if body_listing is not None:
+        queries.append(dict(name='listing_conflicts', sql='''SELECT count(*) AS n FROM (
+            SELECT key FROM body_listing WHERE key IS NULL OR size IS NULL OR size<0
+            UNION ALL SELECT key FROM body_listing GROUP BY key HAVING count(*)>1)'''))
     checks = run_job(work, engine, inputs=inputs, steps=steps,
         outputs=[parquet_output(work, 'work-list', 'SELECT * FROM pending_bodies', ['position'])],
-        queries=[dict(name='work_items', sql='SELECT count(*) AS n,count(congress) AS with_congress FROM pending_bodies'),
-                 dict(name='by_parser', sql='''SELECT parser,count(*) AS n,coalesce(sum(stored_bytes),0) AS stored_bytes
-                    FROM pending_bodies GROUP BY parser ORDER BY parser'''),
-                 dict(name='conflicts', sql='''SELECT count(*) AS n FROM (SELECT body_sha FROM sniff_conflicts
-                    UNION ALL SELECT body_sha FROM pending_bodies WHERE conflict
-                    UNION ALL SELECT body_sha FROM body_storage WHERE stored_suffix NOT IN ('','.gz','.pdf'))''')])
+        queries=queries)
     if checks['conflicts'][0]['n']:
         raise ValueError('Conflicting sniff facts or captured copies for body-text work')
+    if body_listing is not None and checks['listing_conflicts'][0]['n']:
+        raise ValueError('Invalid or duplicate keys in body_listing')
     return dict(status='planned', work=work, work_list=work / 'work-list.parquet', versions=versions,
                 work_items=checks['work_items'][0]['n'], with_congress=checks['work_items'][0]['with_congress'],
                 by_parser=checks['by_parser'],
@@ -228,11 +297,11 @@ def _origin_store(origin):
 
 
 def _read_remote(request):
-    """One ranged GET of the whole stored object, pinned by size and the captured MD5 (with none
-    captured, by the ETag a one-byte GET answers first), kept in the body's range cache so a retried
-    body reads no byte twice; the storage rule then decodes and checks the SHA-256."""
+    """One ranged GET of the whole stored object, pinned by size and the captured MD5 or listed
+    ETag (with neither, by the ETag a one-byte GET answers first), kept in the body's range cache
+    so a retried body reads no byte twice; the storage rule then decodes and checks the SHA-256."""
     remote = request['remote']
-    if remote.get('md5') is None:  # no captured MD5: pin to the version the origin serves now
+    if remote.get('md5') is None and not remote.get('etag'):  # no captured MD5 or listed ETag: probe once
         remote = dict(remote, etag=_observed_etag(remote, request['stored_bytes']))
     source = readings._ReadOnceBody(None, request['cache'], request['stored_bytes'], remote=remote,
                                     body_store=_origin_store(remote['origin']))
@@ -375,7 +444,7 @@ def _write_texts(path, texts):
 
 
 def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadable_store=None,
-          parser_workers=1, parser_memory_bytes=readings.PARSER_MEMORY_BYTES,
+          parser_workers=1, parser_memory_bytes=PARSER_MEMORY_BYTES,
           strategy=None, page_deadline_seconds=PAGE_DEADLINE_SECONDS, origin=None):
     """Read one batch with bounded workers; stage its texts, readings rows and decisions.
 
@@ -418,8 +487,13 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
                 if not oversize and item['stored_bytes'] is None:
                     counters['missing_pins'] += 1  # a ranged read needs the captured size
                     continue
-                request.update(cache=str(bodies_dir / body_hex), remote=dict(
-                    origin=origin, bucket=PUBLIC_BUCKET, key=item['physical_key'], md5=item.get('stored_md5')))
+                if not oversize and item.get('listing_refusal'):
+                    pending_read(item['listing_refusal'])
+                    continue
+                remote = dict(origin=origin, bucket=PUBLIC_BUCKET, key=item['physical_key'], md5=item.get('stored_md5'))
+                if remote['md5'] is None and item.get('listed_etag'):
+                    remote['etag'] = item['listed_etag']
+                request.update(cache=str(bodies_dir / body_hex), remote=remote)
                 yield item, request
                 continue
             request['path'] = str(raw / relative)
@@ -537,17 +611,20 @@ def create_table(*, engine, work, catalog_root, table, location, create_namespac
 def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=None, origin=None, execute=False,
         unreadable_store=None, unreadable_files=(), max_cache_bytes=MAX_CACHE_BYTES, max_batch_items=MAX_BATCH_ITEMS,
         max_batches=None, worker_factory=ParserWorker, parser_workers=1,
-        parser_memory_bytes=readings.PARSER_MEMORY_BYTES, strategy=None,
-        page_deadline_seconds=PAGE_DEADLINE_SECONDS, registry=None, filename_readings=None):
+        parser_memory_bytes=PARSER_MEMORY_BYTES, strategy=None,
+        page_deadline_seconds=PAGE_DEADLINE_SECONDS, registry=None, filename_readings=None, body_listing=None):
     """Plan once against current `readings`, then stage and commit batches in work-list order.
 
-    Bodies come from ``local_root`` or ``origin`` (exactly one). Resuming is a fresh run: a new plan
+    Bodies come from ``local_root`` or ``origin`` (exactly one); ``body_listing`` pins MD5-less
+    ``origin`` reads from one credentialed bucket LIST. Resuming is a fresh run: a new plan
     against the current tables, never a local journal.
     """
     from congress_api.lake.tables import resolve_tables, validate_catalog_authority
     validate_catalog_authority(engine, catalog_root)
     if (local_root is None) == (origin is None):
         raise ValueError('Name exactly one body source: a local raw root or an origin')
+    if body_listing is not None and local_root is not None:
+        raise ValueError('body_listing applies to remote origin reads, not local_root')
     if set(tables) != {'readings', 'body_text'}:
         raise ValueError('Body text needs the readings and body_text table identifiers')
     if execute and unreadable_store is None:
@@ -565,7 +642,7 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
                   if r['key'] not in known]
     planned = plan(captures=captures, engine=engine, work=work / 'plan', decided_at=decided_at,
                    local_root=local_root, existing=current, unreadable_files=files, registry=registry,
-                   filename_readings=filename_readings)
+                   filename_readings=filename_readings, body_listing=body_listing)
     report = dict(status='planned', work_items=planned['work_items'], with_congress=planned['with_congress'],
                   by_parser=planned['by_parser'],
                   versions=planned['versions'], batches=[], pending_read_reasons={}, applied=False)

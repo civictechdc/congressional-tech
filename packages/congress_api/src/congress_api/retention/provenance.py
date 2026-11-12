@@ -80,7 +80,8 @@ def validate_provenance(kind,row):
         if re.fullmatch('[0-9a-f]{64}',row[identity]) is None:
             raise ValueError('Unreadable identity must be canonical lowercase SHA-256')
         for name in ('parser','parser_version','reason','decided_by'):text(name)
-        if re.fullmatch('[a-z][a-z0-9_]*',row['reason']) is None:
+        if (re.fullmatch('[a-z][a-z0-9_]*',row['reason']) is None
+                or (row['reason']=='withdrawn' and row['supersedes'] is None)):
             raise ValueError('Invalid unreadable reason')
     elif kind=='reviews':
         verdict=row['verdict']

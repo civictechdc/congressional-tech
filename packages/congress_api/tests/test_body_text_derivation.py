@@ -126,19 +126,80 @@ def test_a_failed_page_is_an_error_with_no_text():
     assert reading.row()['text_bytes'] is None and reading.row()['fingerprint'] is None
 
 
-class Slow:
+class BusyCpu:
     def extract(self, page):
-        time.sleep(5)
+        assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
+        total = 0
+        while True:
+            total = (total + 1) & 0xFFFF
 
 
-def test_page_deadline_interrupts_the_page_and_restores_the_handler():
-    before = signal.getsignal(signal.SIGALRM)
+class Sleepy:
+    def extract(self, page):
+        from spicy_docs.extraction import NativeText
+        if page.number == 1:
+            time.sleep(0.18)
+        return NativeText().extract(page)
+
+
+def test_page_deadline_interrupts_cpu_work_and_restores_prior_virtual_timer_and_handler():
+    before = signal.getsignal(signal.SIGVTALRM)
     started = time.monotonic()
-    with pytest.raises(bt.PageDeadline):
-        derive(two_page_pdf(), 'pdf_text', strategy=Slow(), deadline=0.2)
-    assert time.monotonic() - started < 3
-    assert signal.getsignal(signal.SIGALRM) is before
-    assert signal.getitimer(signal.ITIMER_REAL) == (0.0, 0.0)
+    with pytest.raises(bt.PageDeadline) as raised:
+        derive(two_page_pdf(), 'pdf_text', strategy=BusyCpu(), deadline=0.06)
+    assert raised.value.args == (1,)
+    assert time.monotonic() - started < 5
+    assert signal.getsignal(signal.SIGVTALRM) is before
+    assert signal.getitimer(signal.ITIMER_VIRTUAL) == (0.0, 0.0)
+
+    def caller_handler(*_):
+        pass
+
+    prev = signal.signal(signal.SIGVTALRM, caller_handler)
+    try:
+        signal.setitimer(signal.ITIMER_VIRTUAL, 10.0, 2.5)
+        with pytest.raises(bt.PageDeadline):
+            derive(two_page_pdf(), 'pdf_text', strategy=BusyCpu(), deadline=0.05)
+        delay, interval = signal.getitimer(signal.ITIMER_VIRTUAL)
+        assert signal.getsignal(signal.SIGVTALRM) is caller_handler
+        assert delay > 5.0 and interval == pytest.approx(2.5, abs=0.05)
+    finally:
+        signal.setitimer(signal.ITIMER_VIRTUAL, 0)
+        signal.signal(signal.SIGVTALRM, prev)
+
+
+def test_page_deadline_does_not_advance_across_sleep_or_sigstop():
+    import os
+    import subprocess
+    import sys
+
+    reading = derive(two_page_pdf(), 'pdf_text', strategy=Sleepy(), deadline=0.06)
+    assert reading.status == 'completed' and reading.text == PAGE_ONE + '\n' + PAGE_TWO
+
+    code = (
+        'import sys, time\n'
+        'from congress_api.parsers.body_text import page_deadline\n'
+        'with page_deadline(0.08, 1):\n'
+        '    sys.stdout.write("ready\\n")\n'
+        '    sys.stdout.flush()\n'
+        '    for line in sys.stdin:\n'
+        '        break\n'
+        'sys.stdout.write("done\\n")\n'
+    )
+    child = subprocess.Popen([sys.executable, '-c', code], stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        assert child.stdout.readline().strip() == 'ready'
+        os.kill(child.pid, signal.SIGSTOP)
+        time.sleep(0.22)
+        os.kill(child.pid, signal.SIGCONT)
+        out, err = child.communicate('go\n', timeout=5)
+        assert child.returncode == 0, err
+        assert out.strip() == 'done'
+    finally:
+        if child.poll() is None:
+            child.kill()
+            child.wait()
 
 
 def test_not_a_pdf_is_an_error_reading():
@@ -234,7 +295,8 @@ def test_body_text_evidence_is_recorded_and_its_drift_is_named():
     from congress_api.lake import reading_version_diagnostics as diagnostics
     recorded = json.loads((diagnostics.ROOT / diagnostics.BASELINE).read_text())
     current = diagnostics.body_text_evidence(diagnostics.ImportClosure(diagnostics.ROOT))
-    for parser in ('pdf_text', 'html_text', 'xml_text', 'warc'):
+    assert set(current) == {'pdf_text', 'html_text', 'xml_text'}
+    for parser in ('pdf_text', 'html_text', 'xml_text'):
         assert recorded[parser]['version'] == current[parser]['version']
         assert recorded[parser]['sample_sha256'] == diagnostics.sample_digest(parser)
     moved = dict(current['pdf_text'], pymupdf='0.0.0')
@@ -246,7 +308,7 @@ def test_body_text_evidence_is_recorded_and_its_drift_is_named():
 
 
 # ct-r91j (owner, 2026-11-11): reading evidence covers only the code a reader runs to turn a body into text.
-BODY_TEXT = ('pdf_text', 'html_text', 'xml_text', 'warc')
+BODY_TEXT = ('pdf_text', 'html_text', 'xml_text')
 PAGE = ('html', 'xml', 'json')
 
 
@@ -332,7 +394,7 @@ def reader_runs(tmp_path):
     from congress_api.lake.reading_version_diagnostics import ROOT
     cases = [(case['body'].encode(), case['parser']) for case in json.loads((ROOT / 'model/fixtures/parser-cases.json').read_text())]
     bodies = {'pdf': (two_page_pdf(), 'pdf_text'), 'html': (HTML, 'html_text'), 'xml': (XML, 'xml_text'),
-              'web': (WEB_PAGE, 'html_text'), 'warc': (warc_member(HTML), 'warc'), 'gzip': (gzip.compress(HTML), 'html_text'),
+              'web': (WEB_PAGE, 'html_text'), 'gzip': (gzip.compress(HTML), 'html_text'),
               'cover': ((FIXTURES / 'document-covers/house-hearing.pdf').read_bytes(), 'pdf_text')}
     metadata = (FIXTURES / 'html_metadata/marked-no-statement.html').read_bytes()
     written = iter(range(10 ** 6))

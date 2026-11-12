@@ -16,9 +16,10 @@ page rule's injection point and the bounds around it:
   leaves that body on the work list (§6.6: the version names its OCR engine).
 - **Failed pages.** A page whose extraction fails is recorded in ``failed_pages`` and the
   reading is an ``error`` with no text: a partial text is never passed as complete.
-- **Deadlines.** A per-page deadline runs inside the worker (``SIGALRM``, main thread only);
-  it can interrupt Python code between bytecodes, not one long native call, which the
-  supervisor's document deadline bounds instead.
+- **Deadlines.** A per-page user-CPU deadline runs inside the worker (``ITIMER_VIRTUAL`` /
+  ``SIGVTALRM``, main thread only), so stopping or sleeping does not spend it; it can interrupt
+  Python code between bytecodes, not one long native call, which the supervisor's document
+  deadline bounds instead.
 
 Cost: O(B) in the body's bytes per rule; the PDF branch holds the body and one page's
 objects at a time, plus the page texts (O(T)) that GPO normalization reads as a whole.
@@ -159,23 +160,28 @@ def load_page_rule(spec):
 
 @contextmanager
 def page_deadline(seconds, page_number):
-    """Raise :class:`PageDeadline` in this thread after ``seconds``; off outside the main thread.
+    """Raise :class:`PageDeadline` in this thread after ``seconds`` of user CPU; off outside the main thread.
 
-    ``SIGALRM`` reaches Python only between bytecodes, so one long native call runs to its end
-    (the supervisor's document deadline bounds that). The previous handler is always restored.
+    ``ITIMER_VIRTUAL`` advances only while the process runs in user space, so a stop (``SIGSTOP``)
+    or sleep never spends the deadline. ``SIGVTALRM`` reaches Python only between bytecodes, so one
+    long native call runs to its end (the supervisor's document deadline bounds that). Any previous
+    virtual timer and handler are always restored.
     """
     if not seconds or threading.current_thread() is not threading.main_thread():
         yield
         return
     def expire(*_):
         raise PageDeadline(page_number)
-    previous = signal.signal(signal.SIGALRM, expire)
+    previous_handler = signal.signal(signal.SIGVTALRM, expire)
+    previous_timer = (0.0, 0.0)
     try:
-        signal.setitimer(signal.ITIMER_REAL, seconds)
+        previous_timer = signal.setitimer(signal.ITIMER_VIRTUAL, seconds)
         yield
     finally:
-        signal.setitimer(signal.ITIMER_REAL, 0)
-        signal.signal(signal.SIGALRM, previous)
+        signal.setitimer(signal.ITIMER_VIRTUAL, 0)
+        signal.signal(signal.SIGVTALRM, previous_handler)
+        if any(previous_timer):
+            signal.setitimer(signal.ITIMER_VIRTUAL, *previous_timer)
 
 
 class _PageRun:

@@ -118,7 +118,7 @@ def body_text_evidence(closure):
                require_images=rule.require_images, garble=name(rule.garble), normalize=name(rule.normalize),
                bands=derivation.OCR_BANDS, dpi=derivation.OCR_DPI, default_strategy=derivation.DEFAULT_STRATEGY,
                engine_strategy=derivation.VISION_STRATEGY), macos_build=derivation.macos_build())
-    return {parser: dict(version=version_, **common, **(pdf if parser in ('pdf_text', 'warc') else {}))
+    return {parser: dict(version=version_, **common, **(pdf if parser == 'pdf_text' else {}))
             for parser, version_ in body_text.current_versions().items()}
 
 

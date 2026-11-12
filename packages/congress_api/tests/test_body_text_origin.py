@@ -184,3 +184,146 @@ def test_a_real_small_body_reads_from_the_public_origin(tmp_path, monkeypatch):
     assert hashlib.sha256(data).hexdigest() == digest and len(data) == probe['decoded_bytes']
     value = body_text.parse_payload(json.dumps(request))
     assert value['row']['status'] == 'completed' and value['text']['bytes'] > 0
+
+
+class PagedListClient:
+    """Minimal S3 client answering paged list_objects_v2 over in-memory metadata."""
+
+    def __init__(self, entries, *, page_size=2):
+        self.entries = sorted(entries, key=lambda item: item['Key'])
+        self.page_size = page_size
+        self.list_calls = []
+
+    def get_paginator(self, operation):
+        assert operation == 'list_objects_v2'
+        client = self
+
+        class Paginator:
+            def paginate(self, *, Bucket, Prefix):
+                matched = [e for e in client.entries if e['Key'].startswith(Prefix)]
+                for start in range(0, max(1, len(matched)), client.page_size):
+                    client.list_calls.append((Bucket, Prefix, start))
+                    yield {'Contents': matched[start:start + client.page_size]}
+
+        return Paginator()
+
+
+def test_write_body_listing_pages_list_objects_v2_and_validates_keys(tmp_path):
+    entries = [
+        {'Key': f'bodies/sha256/{i:02x}/' + (f'{i:02x}' * 32) + '.gz', 'Size': 100 + i, 'ETag': f'"{i:032x}"'}
+        for i in range(5)
+    ]
+    client = PagedListClient(entries, page_size=2)
+    out = tmp_path / 'body-listing.parquet'
+    written = body_text.write_body_listing(client, bucket='congressional-tech-raw', out=out)
+    assert written == {'path': out.resolve(), 'rows': 5}
+    assert len(client.list_calls) == 3  # ceil(5 / 2) LIST calls, zero GET/HEAD calls
+    rows = pq.read_table(out).to_pylist()
+    assert rows == [{'key': e['Key'], 'size': e['Size'], 'etag': e['ETag']} for e in entries]
+
+
+@pytest.mark.loopback
+def test_body_listing_pins_md5_less_reads_with_zero_probe_gets_and_preserves_refusals(tmp_path, monkeypatch, capsys):
+    from congress_api.cli import body_text as command
+
+    bodies = dict(
+        md5_pinned=(two_page_pdf(), 'pdf'),
+        unpinned_plain=(b'<doc>plain listed</doc>', 'xml'),
+        unpinned_gzip=(HTML, 'html'),
+        weak=(b'<doc>weak</doc>', 'xml'),
+        resized=(b'<doc>resized</doc>', 'xml'),
+        unlisted=(b'<doc>unlisted</doc>', 'xml'),
+        md5_conflict=(b'<doc>md5_conflict</doc>', 'xml'),
+        whole=(b'<doc>whole</doc>', 'xml'),
+        replaced_after_list=(b'<doc>before</doc>', 'xml'),
+    )
+    args, names = lake(tmp_path, bodies, gzip_stored={'unpinned_gzip'})
+    digests = {name: digest for digest, name in names.items()}
+    raw, captures = args.pop('local_root'), args['captures']
+    file_of = lambda name: next(raw.glob(f'bodies/sha256/*/{digests[name].hex()}*'))
+    rel_key = lambda name: file_of(name).relative_to(raw).as_posix()
+
+    for name in ('unpinned_plain', 'unpinned_gzip', 'weak', 'resized', 'unlisted', 'whole', 'replaced_after_list'):
+        set_capture(captures, digests[name], stored_md5=None)
+
+    listing_rows = []
+    for name in bodies:
+        if name == 'unlisted':
+            continue
+        stored = file_of(name).read_bytes()
+        etag = '"' + hashlib.md5(stored).hexdigest() + '"'
+        size = len(stored)
+        if name == 'weak':
+            etag = 'W/' + etag
+        elif name == 'resized':
+            size += 1
+        elif name == 'md5_conflict':
+            etag = '"' + ('0' * 32) + '"'
+        listing_rows.append({'key': rel_key(name), 'size': size, 'etag': etag})
+
+    listing_path = tmp_path / 'body-listing.parquet'
+    listing_schema = pa.schema([('key', pa.string()), ('size', pa.int64()), ('etag', pa.string())])
+    pq.write_table(pa.Table.from_pylist(listing_rows, schema=listing_schema), listing_path)
+
+    # Mutate replaced_after_list on origin AFTER listing was captured so If-Match fails with 412.
+    file_of('replaced_after_list').write_bytes(b'<doc>changed after listing</doc>')
+
+    def forbid_probe(*_args, **_kwargs):
+        raise AssertionError('_observed_etag must not run when body_listing pins remote reads')
+
+    monkeypatch.setattr(body_text, '_observed_etag', forbid_probe)
+
+    with Origin(raw) as origin:
+        origin.quirks = {'/' + rel_key('whole'): 'no_range'}
+        report = body_text.run(**args, origin=origin.url, body_listing=listing_path, work=tmp_path / 'run', execute=True)
+
+    assert report['status'] == 'pending'
+    # 4 refused before any GET (weak, resized, unlisted, md5_conflict) + 1 no_range + 1 412 = 6 pending reads.
+    assert report['pending_read_reasons'] == dict(
+        changed_input=4,
+        raw_range_ClientError=1,
+        raw_range_ValueError=1,
+    )
+
+    fetched = {}
+    for requested, headers in origin.requests:
+        fetched.setdefault(requested, []).append((headers.get('If-Match'), headers['Range']))
+    # Zero 'bytes=0-0' probes anywhere; weak/resized/unlisted/md5_conflict made zero GETs;
+    # every fetched body made exactly 1 ranged GET with If-Match!
+    assert all(rng != 'bytes=0-0' for calls in fetched.values() for _, rng in calls)
+    assert set(fetched) == {'/' + rel_key(n) for n in ('md5_pinned', 'unpinned_plain', 'unpinned_gzip', 'whole', 'replaced_after_list')}
+    assert all(len(calls) == 1 and calls[0][0] is not None for calls in fetched.values())
+
+    text = {names[bytes.fromhex(r['body'])]: r['text'] for r in committed(args, tmp_path / 't', 'body_text', 'text')}
+    assert text == dict(
+        md5_pinned=PAGE_ONE + '\n' + PAGE_TWO,
+        unpinned_plain='plain listed',
+        unpinned_gzip='STATEMENT OF THE WITNESS\n\n    Mr. Chairman, thank you.\n',
+    )
+
+    # Duplicate keys in body_listing or combining local_root + body_listing must refuse cleanly.
+    dup_listing = tmp_path / 'dup-listing.parquet'
+    pq.write_table(pa.Table.from_pylist([listing_rows[0], listing_rows[0]], schema=listing_schema), dup_listing)
+    with pytest.raises(ValueError, match='body_listing'):
+        body_text.plan(captures=captures, engine=args['engine'], work=tmp_path / 'dup-plan',
+                       decided_at=args['decided_at'], body_listing=dup_listing)
+    with pytest.raises(ValueError, match='body_listing'):
+        body_text.run(**args, local_root=raw, body_listing=listing_path, work=tmp_path / 'bad-local', execute=False)
+
+    # CLI spec accepts body_listing with origin and rejects body_listing with local_root.
+    spec_path = tmp_path / 'cli-spec.json'
+    spec_path.write_text(json.dumps(dict(
+        captures=str(captures), work=str(tmp_path / 'cli-plan'), decided_at=args['decided_at'],
+        catalog_root=str(args['catalog_root']), tables=args['tables'],
+        origin=body_text.ORIGIN, body_listing=str(listing_path),
+    )))
+    assert command.main(['--spec', str(spec_path), '--plan']) == 0
+    capsys.readouterr()
+    spec_path.write_text(json.dumps(dict(
+        captures=str(captures), work=str(tmp_path / 'cli-bad'), decided_at=args['decided_at'],
+        catalog_root=str(args['catalog_root']), tables=args['tables'],
+        local_root=str(raw), body_listing=str(listing_path),
+    )))
+    with pytest.raises(SystemExit):
+        command.main(['--spec', str(spec_path), '--plan'])
+

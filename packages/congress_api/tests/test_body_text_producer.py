@@ -15,24 +15,24 @@ from congress_api.lake import body_text
 
 
 def test_one_run_settles_every_parser_and_leaves_ocr_bodies_listed(tmp_path):
+    assert body_text.FORMAT_PARSERS == {'pdf': 'pdf_text', 'html': 'html_text', 'xml': 'xml_text'}
     bodies = dict(pdf=(two_page_pdf(), 'pdf'), scan=(scanned_pdf(), 'pdf'), html=(HTML, 'html'),
                   xml=(XML, 'xml'), warc=(warc_member(HTML), 'warc'), broken=(b'<x><y>', 'xml'),
                   zip=(b'PK\x03\x04', 'zip'))
     args, names = lake(tmp_path, bodies, gzip_stored={'html'})
     report = body_text.run(**args, work=tmp_path / 'run', execute=True)
-    assert report['status'] == 'pending' and report['work_items'] == 6  # the ZIP is no candidate
+    assert report['status'] == 'pending' and report['work_items'] == 5  # WARC envelopes and ZIP are not candidates
     [batch] = report['batches']
     assert (batch['ocr_pending'], batch['pending_reads'], batch['unreadable']) == (1, 0, 0)
     text = {names[bytes.fromhex(r['body'])]: r for r in committed(args, tmp_path / 'text', 'body_text',
             "parser,text,page_offsets,encode(text_sha256,'hex') AS sha,macos_build")}
-    assert set(text) == {'pdf', 'html', 'xml', 'warc'}
+    assert set(text) == {'pdf', 'html', 'xml'}
     assert text['pdf']['text'] == PAGE_ONE + '\n' + PAGE_TWO and text['pdf']['page_offsets'] == [0, len(PAGE_ONE) + 1]
-    assert text['warc']['text'] == text['html']['text'] and text['warc']['parser'] == 'warc'
     assert all(r['sha'] == hashlib.sha256(r['text'].encode()).hexdigest() and r['macos_build'] is None
                for r in text.values())
     rows = {names[bytes.fromhex(r['body'])]: r for r in committed(args, tmp_path / 'readings', 'readings',
             'parser,parser_version,status,error_type,text_bytes')}
-    assert set(rows) == {'pdf', 'html', 'xml', 'warc', 'broken'}  # the scan stays pending: no row
+    assert set(rows) == {'pdf', 'html', 'xml', 'broken'}  # the scan stays pending: no row
     assert rows['broken']['status'] == 'error' and rows['broken']['parser'] == 'xml_text'
     assert {r['parser_version'] for r in rows.values()} <= set(body_text.current_versions().values())
     assert all(rows[n]['text_bytes'] == len(text[n]['text'].encode()) for n in text)
@@ -208,3 +208,77 @@ def test_the_command_plans_and_executes_from_a_spec(tmp_path, capsys):
         command.main(['--spec', str(path), '--plan'])
     with pytest.raises(SystemExit):  # execution names its durable unreadable store
         command.main(['--spec', str(path), '--execute'])
+
+
+def test_worker_memory_limit_is_2_gib_and_pool_budget_allows_16_workers_under_14_gib_engine(tmp_path, capsys):
+    from congress_api.cli import body_text as command
+    from docspec_client.client import NativeDatasets
+    import os
+
+    assert body_text.WORKER_MEMORY_BYTES == 2 << 30
+    assert body_text.worker_limits()['memory_bytes'] == 2 << 30
+    assert body_text.PARSER_MEMORY_BYTES == 32 << 30
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        engine_mem = json.loads(engine.limits.read_text())['memory_bytes']
+    assert engine_mem == 14 << 30  # 14 GiB SQL engine limit must not cap body_text workers to 7
+
+    args, _ = lake(tmp_path, dict(xml=(XML, 'xml')))
+    spec = dict(captures=str(args['captures']), work=str(tmp_path / 'plan-16'), decided_at=STAMP,
+                catalog_root=str(args['catalog_root']), tables=TABLES, local_root=str(args['local_root']))
+    path = tmp_path / 'spec.json'
+    path.write_text(json.dumps(spec))
+    assert command.main(['--spec', str(path), '--plan', '--parser-workers', '16']) == 0
+    capsys.readouterr()
+
+    path.write_text(json.dumps(dict(spec, work=str(tmp_path / 'plan-17'))))
+    with pytest.raises(SystemExit):  # 17 * 2 GiB > default 32 GiB pool budget
+        command.main(['--spec', str(path), '--plan', '--parser-workers', '17'])
+
+    path.write_text(json.dumps(dict(spec, work=str(tmp_path / 'plan-18'))))
+    assert command.main(['--spec', str(path), '--plan', '--parser-workers', '18',
+                         '--parser-memory-bytes', str(36 << 30)]) == 0
+    capsys.readouterr()
+
+
+def test_withdrawn_unreadable_decision_reopens_the_body_at_the_same_parser_version(tmp_path):
+    from congress_api.retention.provenance import import_unreadable, validate_provenance
+    from congress_api.retention.provenance_inventory import unreadable_inventory
+
+    args, _ = lake(tmp_path, dict(pdf=(two_page_pdf(), 'pdf')))
+    planned = body_text.plan(captures=args['captures'], engine=args['engine'], work=tmp_path / 'plan-0',
+                             decided_at=STAMP, local_root=args['local_root'])
+    items = pq.read_table(planned['work_list']).to_pylist()
+    retry = dict(status='completed', value=dict(retry='page_deadline'))
+    Scripted.script, Scripted.calls = [retry, retry], []
+    staged = body_text.stage(planned, items, engine=args['engine'], work=tmp_path / 'stage-0',
+                             worker_factory=Scripted, unreadable_store=args['unreadable_store'])
+    assert staged['unreadable'] == 1
+    [wrong] = [json.loads(line) for line in (tmp_path / 'raw-provenance' / staged['unreadable_key']).read_text().splitlines()]
+
+    inv_before = unreadable_inventory(args['unreadable_store'], work=tmp_path / 'inv-before').files()
+    blocked = body_text.run(**args, work=tmp_path / 'blocked', unreadable_files=inv_before, execute=False)
+    assert blocked['work_items'] == 0
+
+    withdrawal = dict(
+        id=hashlib.sha256(f"withdraw:{wrong['id']}".encode()).hexdigest(),
+        body_sha256=wrong['body_sha256'],
+        parser=wrong['parser'],
+        parser_version=wrong['parser_version'],
+        reason='withdrawn',
+        decided_by='ct-a73a',
+        decided_at='2026-11-12T00:00:00Z',
+        supersedes=wrong['id'],
+    )
+    with pytest.raises(ValueError, match='Invalid unreadable'):
+        validate_provenance('unreadable', dict(withdrawal, supersedes=None))
+
+    withdraw_path = tmp_path / 'withdraw.jsonl'
+    withdraw_path.write_text(json.dumps(withdrawal, separators=(',', ':')) + '\n')
+    import_unreadable(args['unreadable_store'], withdraw_path, decided_at='2026-11-12T00:00:00Z')
+
+    reopened = body_text.run(**args, work=tmp_path / 'reopened', execute=True)
+    assert (reopened['status'], reopened['work_items'], reopened['applied']) == ('completed', 1, True)
+    [row] = committed(args, tmp_path / 'text-after', 'body_text', 'parser,parser_version,text')
+    assert row['parser'] == 'pdf_text' and row['parser_version'] == wrong['parser_version']
+    assert row['text'] == PAGE_ONE + '\n' + PAGE_TWO
+

@@ -112,7 +112,8 @@ def coverage_queries(versions, *, with_readings, with_unreadable):
     if with_unreadable:
         queries.append(dict(name='unreadable', sql=f'''SELECT u.parser,count(*) AS n FROM saved s RIGHT SEMI JOIN
             (SELECT decode(body_sha256,'hex') AS body_sha,parser FROM unreadable a
-             WHERE {_at_versions(versions, 'a.')} AND NOT EXISTS (SELECT 1 FROM unreadable b WHERE b.supersedes=a.id)) u
+             WHERE {_at_versions(versions, 'a.')} AND coalesce(a.reason,'')<>'withdrawn'
+               AND NOT EXISTS (SELECT 1 FROM unreadable b WHERE b.supersedes=a.id)) u
             ON s.saved_body=u.body_sha GROUP BY u.parser ORDER BY u.parser'''))
     return queries
 
@@ -156,7 +157,8 @@ def export(*, engine, work, body_text, detail, readings_table=None, unreadable_f
     if readings_table is not None:
         inputs.append(table_input('readings', readings_table))
     if unreadable_files:
-        schema = dict(id='Utf8', body_sha256='Utf8', parser='Utf8', parser_version='Utf8', supersedes='Utf8')
+        schema = dict(id='Utf8', body_sha256='Utf8', parser='Utf8', parser_version='Utf8',
+                      reason='Utf8', supersedes='Utf8')
         inputs.append(dict(name='unreadable', kind='json_lines', files=list(unreadable_files),
                            schema=dict(fields=[field(k, v) for k, v in schema.items()], metadata={})))
     settings = dict(definition['settings'], order_by=[dict(field=k) for k in definition['settings']['order_by']],
@@ -183,7 +185,6 @@ def export(*, engine, work, body_text, detail, readings_table=None, unreadable_f
             ocr_bodies=sum(r['ocr_bodies'] for r in by_parser.values()),
             truncated=sum(r['truncated'] for r in by_parser.values()),
             max_json_bytes=max((r['max_json_bytes'] for r in by_parser.values()), default=None),
-            warc_unwrapped=by_parser.get('warc', {}).get('rows', 0),
             readings={f"{r['parser']}:{r['status']}": r['n'] for r in counts.get('readings', [])} or None,
             unreadable={r['parser']: r['n'] for r in counts.get('unreadable', [])} if unreadable_files else None))
     durable_json(work / 'current.json', pointer)

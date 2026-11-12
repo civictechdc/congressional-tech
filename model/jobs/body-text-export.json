@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "parsers": ["pdf_text", "html_text", "xml_text", "warc"],
+  "parsers": ["pdf_text", "html_text", "xml_text"],
   "settings": {
     "profile": "ranged",
     "row_group_rows": 256,

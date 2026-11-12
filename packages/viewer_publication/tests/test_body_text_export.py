@@ -20,7 +20,7 @@ from viewer_publication import body_text_export as export
 VERSIONS = body_text.current_versions()
 LONG = 'Mr. CHAIRMAN. ' + 'The "witness" said \\ yes.\x01\n' * 40  # quotes, a backslash and controls
 TEXTS = dict(short='Opening statement.', long=LONG, unicode='Café ✓ 𝄞 testimony.', old='old version only',
-             unsaved='not shown by the release', warc='From an envelope.')
+             unsaved='not shown by the release', html='From HTML page.', warc='Legacy WARC envelope row.')
 
 
 def digest(name):
@@ -30,8 +30,8 @@ def digest(name):
 def stage(tmp_path):
     rows = []
     for name, text in TEXTS.items():
-        parser = 'warc' if name == 'warc' else 'pdf_text'
-        version = 'retired-version' if name == 'old' else VERSIONS[parser]
+        parser = 'warc' if name == 'warc' else ('html_text' if name == 'html' else 'pdf_text')
+        version = 'retired-version' if name in ('old', 'warc') else VERSIONS[parser]
         rows.append(dict(body_sha=digest(name), parser=parser, parser_version=version, text=text,
                          page_offsets=[0, 10] if name == 'long' else [0], ocr_pages=[2] if name == 'short' else [],
                          text_sha256=sha256(text.encode()).digest(), macos_build=None))
@@ -40,7 +40,7 @@ def stage(tmp_path):
     path = tmp_path / 'body-text.parquet'
     pq.write_table(pa.Table.from_pylist(rows, schema=body_text._text_schema()), path)
     detail = tmp_path / 'detail.parquet'
-    saved = [digest(n) for n in ('short', 'long', 'unicode', 'old', 'warc')] + [digest('short'), None]
+    saved = [digest(n) for n in ('short', 'long', 'unicode', 'old', 'html')] + [digest('short'), None]
     pq.write_table(pa.table({'saved_body': pa.array(saved, pa.binary(32)),
                              'filename': [f'doc-{i}.pdf' for i in range(len(saved))]}), detail)
     return path, detail
@@ -51,7 +51,7 @@ def run(tmp_path, bound):
     definition = dict(export.load_definition(), max_text_json_bytes=bound)
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     pointer = export.export(engine=engine, work=tmp_path / 'export', body_text=path, detail=detail,
-                            definition=definition, versions=VERSIONS, release_id='r' * 64)
+                            definition=definition, release_id='r' * 64)
     return pointer, tmp_path / 'export/export.parquet'
 
 
@@ -60,21 +60,23 @@ def json_len(column):
 
 
 def test_one_row_per_saved_body_at_the_declared_version_ordered_with_small_groups(tmp_path):
+    assert export.load_definition()['parsers'] == ['pdf_text', 'html_text', 'xml_text']
     pointer, output = run(tmp_path, 1 << 20)
     names = {digest(n): n for n in TEXTS}
     table = pq.read_table(output)
     assert table.column_names == export.COLUMNS
     rows = table.to_pylist()
-    assert [names[r['saved_body']] for r in rows] == sorted(['short', 'long', 'unicode', 'warc'], key=digest)
-    assert {names[r['saved_body']]: r['text'] for r in rows} == {n: TEXTS[n] for n in ('short', 'long', 'unicode', 'warc')}
+    assert [names[r['saved_body']] for r in rows] == sorted(['short', 'long', 'unicode', 'html'], key=digest)
+    assert {names[r['saved_body']]: r['text'] for r in rows} == {n: TEXTS[n] for n in ('short', 'long', 'unicode', 'html')}
     metadata = pq.ParquetFile(output).metadata
     assert metadata.num_row_groups == 1 and metadata.row_group(0).num_rows == 4
     assert pointer['rows'] == 4 and pointer['bytes'] == output.stat().st_size
     assert pointer['sha256'] == sha256(output.read_bytes()).hexdigest()
     assert pointer['key'] == 'derived/body_text/' + pointer['sha256'] + '.parquet'
     coverage = pointer['coverage']
-    assert (coverage['saved_bodies'], coverage['ocr_pages'], coverage['truncated'], coverage['warc_unwrapped']) == (5, 1, 0, 1)
-    assert coverage['bodies_with_text'] == {'pdf_text': 3, 'warc': 1}
+    assert 'warc_unwrapped' not in coverage
+    assert (coverage['saved_bodies'], coverage['ocr_pages'], coverage['truncated']) == (5, 1, 0)
+    assert coverage['bodies_with_text'] == {'html_text': 1, 'pdf_text': 3}
     assert json.loads((tmp_path / 'export/current.json').read_text()) == pointer
     tail = output.read_bytes()
     size = int.from_bytes(tail[-8:-4], 'little') + 8
@@ -84,7 +86,7 @@ def test_one_row_per_saved_body_at_the_declared_version_ordered_with_small_group
 def test_export_json_length_agrees_with_duckdb_and_truncation_fits_the_bound(tmp_path):
     bound = 400
     pointer, output = run(tmp_path, bound)
-    exported = [TEXTS[n] for n in ('short', 'long', 'unicode', 'warc')]
+    exported = [TEXTS[n] for n in ('short', 'long', 'unicode', 'html')]
     widest_lake = max(duckdb.sql("SELECT strlen(to_json(?::VARCHAR)::VARCHAR)", params=[t]).fetchone()[0]
                       for t in exported)
     assert pointer['coverage']['max_json_bytes'] == widest_lake > bound  # the SQL's count is DuckDB's
@@ -258,3 +260,32 @@ def test_publishing_keeps_only_the_export_the_current_pointer_names(tmp_path):
     assert export.retire_unnamed(bucket, bucket='archive', prefix=prefix, pointer_key=prefix + 'current.json') \
         == [pointer['key']]
     assert pending in bucket.objects and pointer['key'] not in bucket.objects
+
+
+def test_export_unreadable_coverage_excludes_withdrawn_decisions(tmp_path):
+    path, detail = stage(tmp_path)
+    extra_saved = pq.read_table(detail).to_pylist() + [
+        {'saved_body': digest('active_unr'), 'filename': 'active.pdf'},
+        {'saved_body': digest('reopened_unr'), 'filename': 'reopened.pdf'},
+    ]
+    pq.write_table(pa.table({'saved_body': pa.array([r['saved_body'] for r in extra_saved], pa.binary(32)),
+                             'filename': [r['filename'] for r in extra_saved]}), detail)
+    unreadable_path = tmp_path / 'unreadable.jsonl'
+    records = [
+        dict(id='a' * 64, body_sha256=digest('active_unr').hex(), parser='pdf_text',
+             parser_version=VERSIONS['pdf_text'], reason='memory_limit', decided_by='body_text',
+             decided_at='2026-11-10T00:00:00Z', supersedes=None),
+        dict(id='b' * 64, body_sha256=digest('reopened_unr').hex(), parser='pdf_text',
+             parser_version=VERSIONS['pdf_text'], reason='page_deadline', decided_by='body_text',
+             decided_at='2026-11-10T00:00:00Z', supersedes=None),
+        dict(id='c' * 64, body_sha256=digest('reopened_unr').hex(), parser='pdf_text',
+             parser_version=VERSIONS['pdf_text'], reason='withdrawn', decided_by='ct-a73a',
+             decided_at='2026-11-12T00:00:00Z', supersedes='b' * 64),
+    ]
+    unreadable_path.write_text(''.join(json.dumps(r) + '\n' for r in records))
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    pointer = export.export(engine=engine, work=tmp_path / 'export-unr', body_text=path, detail=detail,
+                            unreadable_files=[dict(key='provenance/unreadable/u.jsonl', path=str(unreadable_path))],
+                            versions=VERSIONS)
+    assert pointer['coverage']['unreadable'] == {'pdf_text': 1}
+
