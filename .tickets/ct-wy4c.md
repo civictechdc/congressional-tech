@@ -1,6 +1,6 @@
 ---
 id: ct-wy4c
-status: open
+status: closed
 deps: []
 links: [ct-17op]
 created: 2026-11-10T03:26:29Z
@@ -31,3 +31,7 @@ validated 2026-11-11, left open: the owner's decision is recorded (2026-11-10: r
 **2026-11-11T14:57:19Z**
 
 2026-11-11 (session congress-1): the parser ticket this decision asks for is ct-17op (filed after the release session's audit found the follow-up was not on ct-6mvl).
+
+**2026-11-12T02:42:00Z**
+
+Closed: both acceptance criteria are met — the owner decision (`2026-11-10`: `rank` and `credentials` go in their own fields, not in the name and not dropped) is recorded above, and follow-up parser ticket `ct-17op` was filed `2026-11-11T14:57:19Z` with the measured row counts (`299` MODS rows in `ct-rg34` — `47` rank, `291` credentials — plus `944` rank and `6,474` credential rows already dropped on live across sources).
