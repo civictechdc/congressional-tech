@@ -1,0 +1,80 @@
+{
+ "commit": "dd80792773083de6621c4e5856767ac38ce03f72",
+ "input": "committee_records",
+ "job": "packages/viewer_publication/src/viewer_publication/archive_import_job.py",
+ "lockfile_digest": "2f7f2579d08f497610f8df35c84f01a84a534362a92588c8fb4b11599884da5c",
+ "origin": {
+  "pin": {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/stage-1d-compose/work/committee_records/producer.json",
+   "sha256": "8aa67fc490ab30bcbfd4b0dfa6c4123851f3c08c5a4578b32c241c8aca2bdc64",
+   "size": 2788
+  },
+  "record": {
+   "appended": 49,
+   "base_model": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/inputs/base-model-committee.json",
+    "sha256": "648286f756611f277024f53d11659f2065c40f7a9d2db2e44b81e8e4aa890516",
+    "size": 21312
+   },
+   "base_selector": {
+    "kind": "native_table",
+    "metadata_location": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/stage-1b-local-import/lake/committee_records/metadata/00001-00d3038b-d76f-45fb-958a-8f4a6a7ab794.metadata.json",
+    "schema_id": 0,
+    "snapshot": 4804414712590873620,
+    "table_uuid": "01a1d11a-e828-72b8-a961-615158c77567"
+   },
+   "commit": "dd80792773083de6621c4e5856767ac38ce03f72",
+   "input": "committee_records",
+   "job": "packages/viewer_publication/src/viewer_publication/archive_backfill_job.py",
+   "lockfile_digest": "2f7f2579d08f497610f8df35c84f01a84a534362a92588c8fb4b11599884da5c",
+   "recorded": "with production",
+   "reused_rows": 6189,
+   "scope": "complete retained committee composition",
+   "selector": {
+    "kind": "parquet",
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/stage-1d-compose/work/committee_records/committee_records.parquet",
+    "sha256": "ef965acf4a7b9456937d7c98016ef08ae767ba514b8360c9924b0fdb8eb41b8c",
+    "size": 884072
+   },
+   "source": {
+    "base": {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/stage-1a-captures/work/committee_records/committee_records.parquet",
+     "sha256": "793e05094522dd9ce1c56a90daaef4857c5b110fc28502bccd2eeeb300c73701",
+     "size": 865496
+    },
+    "base_producer": {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/stage-1b-local-import/work/producers/committee_records.json",
+     "sha256": "3016326c9befce65c4f05ed4eb5de598e6ae9e187a7cc5c6bdebf70ca0e3e437",
+     "size": 2646
+    },
+    "delta": {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/stage-1c-retained/work/committee_records/committee_records.parquet",
+     "sha256": "c555ceb97226bf1fa2d6f5f3a153d3ee18e7ee32d08d69154520cb205d0dc304",
+     "size": 26320
+    },
+    "delta_producer": {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/stage-1c-retained/work/committee_records/producer.json",
+     "sha256": "cd2e430d98b1592328d31b042bef7f4271e2fc94d1d27f2480bb9f9ff928ea6a",
+     "size": 2155
+    },
+    "expected_base_rows": 6189,
+    "expected_delta_rows": 49
+   },
+   "version": 1
+  }
+ },
+ "selector": {
+  "kind": "native_table",
+  "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/committee_records_bill_20261112/metadata/00001-01a1d14c-d31f-7cf0-9d68-55ea5835876e.gz.metadata.json",
+  "schema_id": 0,
+  "snapshot": 4209633858763154714,
+  "table_uuid": "01a1d14c-c68f-7701-93fb-65e6a799185e"
+ },
+ "source": {
+  "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/stage-1d-compose/work/committee_records/committee_records.parquet",
+  "sha256": "ef965acf4a7b9456937d7c98016ef08ae767ba514b8360c9924b0fdb8eb41b8c",
+  "size": 884072
+ },
+ "verified": "EXCEPT ALL both ways against the source file",
+ "version": 1
+}

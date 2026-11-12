@@ -2,13 +2,13 @@
   "version": 1,
   "model_spec": {
     "path": "publish-model.json",
-    "sha256": "df98d6dde26990d459cf2aeb0f8d0fc4c078191e4b5f9344caf2d89b9ca6245c",
-    "size": 5517
+    "sha256": "4102c1ff64422690c9638cbaca48c542fdc106f5d343a8afaa2bed9f55074291",
+    "size": 6002
   },
   "daily": {
     "path": "publish-daily.json",
-    "sha256": "ea585f250d7c026eb2f73130ef061447f2c193dc6ef3e2de3f92107c082f5580",
-    "size": 2836
+    "sha256": "2b8f8bcd08f541606b7524a0019ba4241634cf6e53df32506341aa2542f9b019",
+    "size": 2960
   },
   "bucket": "congressional-tech-raw",
   "work": "../../output/archive-publish",
@@ -27,9 +27,9 @@
   "automatic_causes": true,
   "producers": {
     "appearance_records": {
-      "path": "producers/appearance_records-committees-20261111.json",
-      "sha256": "31f3a7a996d4052d643b90ce7c083ab21befcff9e120ab6c6acfd8db89e9931b",
-      "size": 3066
+      "path": "producers/appearance_records-rank-20261112.json",
+      "sha256": "ebfed1e88141ae1e5eb5ccd32a466ad96f6999eedffc766734c6ea2736b17abc",
+      "size": 2147
     },
     "captures": {
       "path": "producers/captures.json",
@@ -37,34 +37,39 @@
       "size": 2084
     },
     "committee_records": {
-      "path": "producers/committee_records-mvp-20261105.json",
-      "sha256": "1087306f3c5b02e6cfce55bd01834adf1ddcdb7d8e356d4767b1f46519f35065",
-      "size": 4207
+      "path": "producers/committee_records-bill-20261112.json",
+      "sha256": "5bf65c4556b0c4a0fddcd0498792074566fb4c197b12631ae00047b770036331",
+      "size": 4103
     },
     "filename_readings": {
-      "path": "producers/filename_readings-act-citation.json",
-      "sha256": "6423670e0883a9ecebbbf1295d843f88452001f0547160762a99e9026596a42f",
-      "size": 2387
+      "path": "producers/filename_readings-20261112.json",
+      "sha256": "9baebbd4152e71cc05ae96517550c71794a055e13f466f7ae68c5d16934c8e03",
+      "size": 2135
     },
     "meeting_records": {
       "path": "producers/meeting_records-mvp-20261105.json",
       "sha256": "60a469e8ca88073249bebd52f39f3c4ba1a87be8100fc55af8bfe0f140070ecc",
       "size": 3346
     },
+    "playlist_records": {
+      "path": "producers/playlist_records-mvp-20261105.json",
+      "sha256": "b91a49c7f748c3cdf95f1441e85024a3d8bb9f3f2bb88e4a2f7ba11404694512",
+      "size": 2675
+    },
     "readings": {
       "path": "producers/readings-compact-20261112.json",
       "sha256": "df87da0a69d8fee56bd626a664f62fba61f519fdbfeda2778ec7f055fcd38dbc",
       "size": 2452
     },
+    "transcript_headings": {
+      "path": "producers/transcript_headings-20261112.json",
+      "sha256": "02fb9ea1f3cdfa5a7650c103e970b8b1be921af750d8b2fba64d17bb452f356f",
+      "size": 2616
+    },
     "video_records": {
       "path": "producers/video_records.json",
       "sha256": "5a5a8bb9c7095c9ebd6f4a8fcee848548294e9736674b0d42e01d5e1633ac065",
       "size": 2105
-    },
-    "playlist_records": {
-      "path": "producers/playlist_records-mvp-20261105.json",
-      "sha256": "b91a49c7f748c3cdf95f1441e85024a3d8bb9f3f2bb88e4a2f7ba11404694512",
-      "size": 2675
     }
   }
 }

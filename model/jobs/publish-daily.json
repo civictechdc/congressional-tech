@@ -16,7 +16,7 @@
       ]
     },
     "filename_readings": {
-      "name": "filename_readings_act_citation",
+      "name": "filename_readings_20261112",
       "namespace": [
         "archive_r1b"
       ]
@@ -28,13 +28,13 @@
       ]
     },
     "appearance_records": {
-      "name": "appearance_records_committees_20261111",
+      "name": "appearance_records_rank_20261112",
       "namespace": [
         "archive_r1b"
       ]
     },
     "committee_records": {
-      "name": "committee_records_mvp_20261105",
+      "name": "committee_records_bill_20261112",
       "namespace": [
         "archive_r1b"
       ]
@@ -47,6 +47,12 @@
     },
     "video_records": {
       "name": "video_records",
+      "namespace": [
+        "archive_r1b"
+      ]
+    },
+    "transcript_headings": {
+      "name": "transcript_headings_20261112",
       "namespace": [
         "archive_r1b"
       ]

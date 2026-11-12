@@ -1,0 +1,54 @@
+{
+ "commit": "dd80792773083de6621c4e5856767ac38ce03f72",
+ "input": "transcript_headings",
+ "job": "packages/viewer_publication/src/viewer_publication/archive_import_job.py",
+ "lockfile_digest": "2f7f2579d08f497610f8df35c84f01a84a534362a92588c8fb4b11599884da5c",
+ "origin": {
+  "pin": {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/stage-1a-captures/work/transcript_headings/producer.json",
+   "sha256": "3d12b50057fe0d9b1553d4fa0bef634fe08143cbb253824d5df2e95f00464d44",
+   "size": 1282
+  },
+  "record": {
+   "appended": 34450,
+   "base_model": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/inputs/base-model.json",
+    "sha256": "3c41d8be197f53aa50bd5b8490cc22aab70ff5d3de7980b9dfba69c2357579b1",
+    "size": 21265
+   },
+   "commit": "dd80792773083de6621c4e5856767ac38ce03f72",
+   "input": "transcript_headings",
+   "job": "packages/viewer_publication/src/viewer_publication/archive_backfill_job.py",
+   "lockfile_digest": "2f7f2579d08f497610f8df35c84f01a84a534362a92588c8fb4b11599884da5c",
+   "recorded": "with production",
+   "reused_rows": 0,
+   "scope": "selected captures",
+   "selector": {
+    "kind": "parquet",
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/stage-1a-captures/work/transcript_headings/transcript_headings.parquet",
+    "sha256": "f540712750ef8a37164e6914581524d4c0871773841d2acb863416eabecd82c1",
+    "size": 13687932
+   },
+   "source": {
+    "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/heads-export/captures-head.parquet",
+    "sha256": "bc64867b8280b9f0d27338aa9b226cd1fc162f6896d047b7286d25aede7ccefc",
+    "size": 165729771
+   },
+   "version": 1
+  }
+ },
+ "selector": {
+  "kind": "native_table",
+  "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/transcript_headings_20261112/metadata/00001-01a1d14d-6958-7470-ba18-1ad269b10f69.gz.metadata.json",
+  "schema_id": 0,
+  "snapshot": 1521016025579643986,
+  "table_uuid": "01a1d14d-50bf-74f1-a086-1e145360b249"
+ },
+ "source": {
+  "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/wave3-lake-backfill-20261112/stage-1a-captures/work/transcript_headings/transcript_headings.parquet",
+  "sha256": "f540712750ef8a37164e6914581524d4c0871773841d2acb863416eabecd82c1",
+  "size": 13687932
+ },
+ "verified": "EXCEPT ALL both ways against the source file",
+ "version": 1
+}
