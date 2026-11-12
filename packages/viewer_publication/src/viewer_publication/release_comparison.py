@@ -1637,25 +1637,33 @@ def _detail_reads(directory):
     return found
 
 
-def new_citations(base_dir, candidate_dir):
-    """Hex of every body a re-fetch row cites in the candidate and the base cites nowhere: the cache
-    files of channels and videos (ct-syp1), and witness record bodies and the bodies of the
-    meetings' detail reads (ct-uywf).
-
-    The unattended gate checks each against the capture table (release_gate): a file the
-    candidate cites for the first time must be a body some new receipt delivered. O(rows): 67k
-    videos, 172k witnesses, 19k meetings.
-    """
+def _table_record_shas(directory, tables):
     import pyarrow.parquet as pq
-    def cited(directory):
-        found = set()
-        for table in ('channels', 'videos', 'witnesses'):
-            path = Path(directory) / f'{table}.parquet'
-            if path.exists() and 'record_sha' in pq.read_schema(path).names:
-                found.update(v.hex() if isinstance(v, bytes) else v.lower()
-                             for v in pq.read_table(path, columns=['record_sha'])['record_sha'].to_pylist() if v)
-        return found | {read[3].lower() for read in _detail_reads(directory) if read[3]}
-    return sorted(cited(candidate_dir) - cited(base_dir))
+    found = set()
+    for table in tables:
+        path = Path(directory) / f'{table}.parquet'
+        if path.exists() and 'record_sha' in pq.read_schema(path).names:
+            found.update(v.hex() if isinstance(v, bytes) else v.lower()
+                         for v in pq.read_table(path, columns=['record_sha'])['record_sha'].to_pylist() if v)
+    return found
+
+
+def new_citations(base_dir, candidate_dir):
+    """Hex of every body a re-fetch row cites in the candidate and the base does not cite in that
+    domain: the cache files of channels and videos (ct-syp1, ct-xyo9), witness record bodies, and
+    the bodies of the meetings' detail reads (ct-uywf).
+
+    Computing each domain's difference separately prevents a body already cited by a live witness or
+    meeting read from hiding a newly cited video/channel hash (and vice versa). The unattended gate
+    checks each against the capture table (release_gate): a file the candidate cites for the first
+    time must be a body some new receipt delivered. O(rows): 67k videos, 172k witnesses, 19k meetings.
+    """
+    read_shas = lambda directory: {read[3].lower() for read in _detail_reads(directory) if read[3]}
+    return sorted(
+        (_table_record_shas(candidate_dir, ('channels', 'videos')) - _table_record_shas(base_dir, ('channels', 'videos')))
+        | (_table_record_shas(candidate_dir, ('witnesses',)) - _table_record_shas(base_dir, ('witnesses',)))
+        | (read_shas(candidate_dir) - read_shas(base_dir))
+    )
 
 
 def new_reads(base_dir, candidate_dir):
@@ -1672,14 +1680,6 @@ def new_video_citations(base_dir, candidate_dir):
     moved channel's new file came from the same `youtube/youtube_NN.json` cache path as its old file.
     """
     import pyarrow.parquet as pq
-    def table_shas(directory, tables):
-        found = set()
-        for table in tables:
-            path = Path(directory) / f'{table}.parquet'
-            if path.exists() and 'record_sha' in pq.read_schema(path).names:
-                found.update(v.hex() if isinstance(v, bytes) else v.lower()
-                             for v in pq.read_table(path, columns=['record_sha'])['record_sha'].to_pylist() if v)
-        return found
     def channels_by_handle(directory):
         path = Path(directory) / 'channels.parquet'
         if not path.exists() or not ({'handle', 'record_sha'} <= set(pq.read_schema(path).names)):
@@ -1687,7 +1687,7 @@ def new_video_citations(base_dir, candidate_dir):
         return {r['handle']: (r['record_sha'].hex() if isinstance(r['record_sha'], bytes) else r['record_sha'].lower())
                 for r in pq.read_table(path, columns=['handle', 'record_sha']).to_pylist()
                 if r.get('handle') and r.get('record_sha')}
-    video_shas = sorted(table_shas(candidate_dir, ('channels', 'videos')) - table_shas(base_dir, ('channels', 'videos')))
+    video_shas = sorted(_table_record_shas(candidate_dir, ('channels', 'videos')) - _table_record_shas(base_dir, ('channels', 'videos')))
     base_ch, cand_ch = channels_by_handle(base_dir), channels_by_handle(candidate_dir)
     channel_pairs = sorted({(base_ch[h], cand_ch[h]) for h in base_ch.keys() & cand_ch.keys() if base_ch[h] != cand_ch[h]})
     return video_shas, channel_pairs
@@ -1720,7 +1720,8 @@ def cache_churn(table):
     values. The unattended gate checks the first two against the candidate build's pinned
     capture table, written by ingest rather than the archive model (`release_gate.cited_files_are_new`;
     raw receipts are not read here); without `automatic_causes`, `require_release_gates`
-    requires a reviewed cause record for any `refetch_only` group.
+    requires a reviewed cause record bound to the release pair (`groups=[]` when no unverified
+    group moved).
     """
     def run(d: Diff):
         groups, notes = generic(table)(d)

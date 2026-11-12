@@ -747,6 +747,16 @@ def test_step_9_model_build_passes_base_retired_ledger_matching_publisher(tmp_pa
     assert report['release_id']==pub_result['release_id']
     assert report['ledger']['source']=='ledger_base'
 
+    # 4. Resuming a completed empty-ledger run after adding ledger_base invalidates step 9 and rebuilds it.
+    empty_json=json.loads((tmp_path/'empty'/'spec.json').read_text())
+    empty_json['resume']=True
+    empty_json['selective']['model']['ledger_base']=str(base_dir)
+    (tmp_path/'empty'/'spec.json').write_text(json.dumps(empty_json))
+    resumed=execute(load_backfill(tmp_path/'empty'/'spec.json'))
+    assert resumed['executed'] is True
+    assert resumed['ledger']['source']=='ledger_base'
+    assert resumed['release_id']==pub_result['release_id']
+
 
 def test_the_selective_job_records_the_producer_of_every_snapshot_it_pins(tmp_path,fixture,monkeypatch):
     """Gate 5 refused spec-run's D1-D4 candidate: nothing wrote a producer record. The job that

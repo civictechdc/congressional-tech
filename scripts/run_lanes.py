@@ -85,11 +85,18 @@ def run_driver(worktree: pathlib.Path, logs: pathlib.Path, *, take_lock: bool) -
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else list(argv)
-    worktree, logs = pathlib.Path(argv[0]), pathlib.Path(argv[1])
+    worktree, logs = pathlib.Path(argv[0]).resolve(), pathlib.Path(argv[1]).resolve()
+    if not worktree.is_dir():
+        raise ValueError(f'Worktree directory does not exist: {worktree}')
     take_lock = '--take-lock' in argv
     if os.fork():
         return 0
     os.setsid()
+    devnull = os.open(os.devnull, os.O_RDWR)
+    for target in (0, 1, 2):
+        os.dup2(devnull, target)
+    if devnull > 2:
+        os.close(devnull)
     return run_driver(worktree, logs, take_lock=take_lock)
 
 

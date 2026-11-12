@@ -36,4 +36,6 @@ Resolved on `claude/ct-wave-1c-gate-mcp`:
    - **Repeated 22 MB `list JOIN detail` scans in `get_hearing_bundle` (`hearing_reader.py`):**
      Materializing `meetings.transcripts` before joining `list`/`detail` and scoping `_transcript_sql(query.kind)` between document and caption branches reduces `get_hearing_bundle` from `298 ms` -> `120 ms` locally (`~2.5x` faster).
 
-3. **Deployment note:** Live Cloudflare container redeploy and post-deploy `smoke.py` check will run with `Congress Orchestrator Lead` (`847b0a92`) alongside the upcoming Release 4 pin update.
+3. **Deployment note:** Live Cloudflare container redeploy and post-deploy `smoke.py` check will run with `Congress Orchestrator Lead` (`847b0a92`) alongside the upcoming Release 4 pin update:
+   - `cd apps/explorer_mcp/cloudflare && npm run deploy` (`wrangler deploy` builds and pushes the updated container image carrying `start.sh --warm` and `Reader.warm()`)
+   - `cd apps/explorer_mcp && .venv/bin/python cloudflare/smoke.py --url https://congress-explorer-mcp.mdeeb.workers.dev/mcp` (run immediately after deploy so both cold replica slots prove zero `Query exceeded its deadline` errors on first hit).

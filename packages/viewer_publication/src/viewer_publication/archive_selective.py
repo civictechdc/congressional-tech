@@ -471,13 +471,29 @@ def _model_value(run):
     return value
 
 
+def _ledger_spec(selective):
+    model=selective['model']
+    if 'ledger' in model:
+        ready=Path(model['ledger']).resolve()
+        return dict(kind='ledger',path=str(ready),
+            files={n:file_pin(ready/f'{n}.parquet') for n in ('prior_links','base_retired')})
+    if 'ledger_base' in model:
+        base=Path(model['ledger_base']).resolve()
+        return dict(kind='ledger_base',path=str(base),
+            files={n:file_pin(base/n) for n in ('manifest.json','links.parquet','retired_links.parquet') if (base/n).is_file()})
+    return None
+
+
 def _clear_unaccepted_model(run):
     """Delete an unaccepted model attempt's output, scratch and derived ledger before any scratch check.
 
-    The runtime is not identity, so a retry with a larger pool resumes after D4. Each failed
-    attempt leaves up to SCRATCH_BYTES; the invocation's first check would refuse on it.
+    The runtime and ledger inputs are excluded from table identity so D1-D4 are preserved across
+    step-9 retries; changing `ledger` or `ledger_base` invalidates a previously cached step-9 result.
+    Each failed attempt leaves up to SCRATCH_BYTES; the invocation's first check would refuse on it.
     """
-    if 'model' in run.state:return
+    if 'model' in run.state:
+        if run.state['model'].get('ledger_spec')==_ledger_spec(run.selective):return
+        run.state.pop('model');run.save()
     for name in ('model-output','model-scratch','ledger'):
         if (run.work/name).exists():shutil.rmtree(run.work/name)
 
@@ -503,7 +519,7 @@ def _model(run):
             if prior is None else dict(built['ledger'],
                 source='ledger' if 'ledger' in model else 'ledger_base'))
     run.state['model']=dict(release_id=built['release_id'],output=built['output'],rows=built['rows'],
-        runtime=built['engine_runtime'],ledger=ledger);run.save()
+        runtime=built['engine_runtime'],ledger=ledger,ledger_spec=_ledger_spec(run.selective));run.save()
 
 
 def _tables_report(run,started):

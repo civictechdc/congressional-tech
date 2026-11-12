@@ -2510,6 +2510,41 @@ def test_cache_refresh_refuses_non_youtube_cache_body_and_swapped_channel_caches
     r2 = json.loads((sub2 / 'r.json').read_text())
     assert any('is not from the same channel cache path' in msg for msg in r2['automatic_reasons'])
 
+    # Cross-domain S_OTHERBODY: @c0 refreshes cleanly while @c1 cites a live witness body hash.
+    sub3 = tmp_path / 'cross-domain-live-body'
+    witness_sha = cache_file('live-witness-xml')
+    witness_tbl = pa.table({'witness_key': ['w1'], 'event_id': pa.array([1001], pa.int64()),
+                            'name': ['Jane Roe'], 'record_sha': pa.array([witness_sha], pa.binary())})
+    base3_tables = {**two_ch(old0, old1, 1), 'witnesses': witness_tbl}
+    cand3_tables = {**two_ch(new0, witness_sha, 8), 'witnesses': witness_tbl}
+    base3, cand3, auto3 = nightly(
+        sub3, ['A'], ['A'], base_tables=base3_tables, candidate_tables=cand3_tables,
+        capture_lines=[
+            dict(receipt_key=sorted(LIVE_RECEIPTS)[0], sha256=old0, family='pipeline-data', requested_url=yt_url(0)),
+            dict(receipt_key=sorted(LIVE_RECEIPTS)[0], receipt_line=2, sha256=old1, family='pipeline-data', requested_url=yt_url(1)),
+            dict(receipt_key=sorted(LIVE_RECEIPTS)[0], receipt_line=3, sha256=witness_sha, family='house/witness-xml',
+                 requested_url='https://docs.house.gov/meetings/IF/IF00/20261101/1001/HHRG-119-IF00-Wstate-RoeJ-20261101.xml'),
+            dict(receipt_key=CACHE_RECEIPT, sha256=new0, family='pipeline-data', requested_url=yt_url(0)),
+        ])
+    with pytest.raises(ValueError):
+        require_release_gates(base3, cand3, None, report_path=sub3 / 'r.json', automatic=auto3)
+    r3 = json.loads((sub3 / 'r.json').read_text())
+    assert any('was already read by the live release' in msg for msg in r3['automatic_reasons'])
+    assert any('has no pipeline-data YouTube cache capture' in msg for msg in r3['automatic_reasons'])
+
+    # Symmetric cross-domain reuse: new_citations still surfaces a witness newly citing a live YouTube cache hash.
+    from viewer_publication.release_comparison import new_citations
+    cand4_witnesses = pa.table({'witness_key': ['w1'], 'event_id': pa.array([1001], pa.int64()),
+                                'name': ['Jane Roe'], 'record_sha': pa.array([old0], pa.binary())})
+    sub4_base, sub4_cand = tmp_path / 'sym-base', tmp_path / 'sym-cand'
+    sub4_base.mkdir()
+    sub4_cand.mkdir()
+    for name, tbl in {**two_ch(old0, old1, 1), 'witnesses': witness_tbl}.items():
+        pq.write_table(tbl, sub4_base / f'{name}.parquet')
+    for name, tbl in {**two_ch(new0, new1, 8), 'witnesses': cand4_witnesses}.items():
+        pq.write_table(tbl, sub4_cand / f'{name}.parquet')
+    assert old0.hex() in new_citations(sub4_base, sub4_cand)
+
 
 def test_refetch_only_groups_refuse_when_both_automatic_and_cause_record_are_absent(tmp_path):
     """ct-xyo9 (1), plant S_ABSENT: turning automatic_causes off with no cause record cannot pass made-up citations."""

@@ -170,8 +170,9 @@ embeds fetch times, so the weekly refresh rewrites all of them with no content c
 
 Because the weekly refresh rewrites all 52 cache files at once (119/119 channels and 99.6% of
 videos), no sub-100% row-count cap applies to citation-only rows; without `automatic_causes`,
-any `refetch_only` group requires a reviewed cause record. Everything else in these tables
-still needs a reviewed cause: a changed title, duration,
+`require_release_gates` requires a reviewed cause record bound to the release pair (`groups=[]`
+when no unverified group moved). Everything else in these tables still needs a reviewed cause: a
+changed title, duration,
 description or any other column, an added or removed row, and the citation change on a row
 that changed anything else.
 
