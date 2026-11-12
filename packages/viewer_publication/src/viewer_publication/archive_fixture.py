@@ -55,7 +55,7 @@ def build_fixture_release(fixture, *, output, scratch, engine):
         _step('recovery_input', f"""SELECT name AS doc_key,name AS recovery_key,source_url AS original_url,recovery['kind'] AS kind,
             {_binary(_body('body_byte'), 32)} AS body,'.gz' AS suffix,cast(100 AS BIGINT) AS bytes,
             try_cast(recovery['imported_at'] AS DATE) AS imported_at,recovery['recovered_url'] AS recovered_url,
-            recovery['identity_note'] AS identity_note FROM hand WHERE recovery IS NOT NULL"""),
+            recovery['identity_note'] AS identity_note,true AS keyed FROM hand WHERE recovery IS NOT NULL"""),
         _step('meeting_input', 'SELECT event_id,chamber,title,try_cast(meeting_date AS DATE) AS meeting_date FROM hand_meetings'),
         _step('committee_input', 'SELECT cast(NULL AS VARCHAR) AS system_code,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS chamber WHERE false'),
     ]

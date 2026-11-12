@@ -15,3 +15,9 @@ SELECT s.component,encode(sha256(CASE WHEN cardinality(b.logical_keys)>0
  ELSE json_array('sources',coalesce(x.source_ids,make_array(s.only_source))) END),'hex') AS document_id,
  s.has_real
 FROM sizes s LEFT JOIN several x USING(component) LEFT JOIN document_bodies b USING(component)
+UNION ALL
+-- An edition of a dead link's file on a document of its own (ct-u9y4: the 'c:e:' components that
+-- final-recovery-attachments.sql makes, never a source label, so sizes is not read twice) has no source file:
+-- its identity is its body's, the one a document holding that body as a file would have.
+SELECT DISTINCT component,encode(sha256(json_array('bodies',make_array('bodies/sha256/'||substr(body_sha,1,2)||'/'||body_sha||'.gz'))),'hex'),false
+FROM final_recovery_attachments WHERE role='edition' AND starts_with(component,'c:e:')

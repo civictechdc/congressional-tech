@@ -1258,6 +1258,187 @@
       "source": "ct-aoxp boundary: a page whose last path segment is 'help' with no file extension (the Senate HELP committee) stays a document"
     },
     {
+      "id": "site-calendar-listing-page",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "site-calendar-listing-page",
+        "bytes": 22860,
+        "context_url": "https://agriculture.house.gov/calendar/eventslisting.aspx?CategoryID=14887",
+        "url": "https://agriculture.house.gov/calendar/eventslisting.aspx?CategoryID=14887",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "Event List | House Agriculture Committee",
+        "heading": "Event List",
+        "text_head": "Skip to Content Menu close menu about Chairman Thompson Membership Committee History Rules and Jurisdiction news Press Releases Opening Statements Op-Eds ICYMIs Blog Newsletters subcommittees General",
+        "text_bytes": 3311,
+        "link_count": 72,
+        "link_text_bytes": 1648,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "wrapper",
+        "real_file": false
+      },
+      "source": "ct-xj8s: a committee calendar listing is site furniture; reading facts of the page published as list row 291552 in release 77673bfb8fcf, linked from 14 captured pages"
+    },
+    {
+      "id": "site-event-page-is-a-document",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "site-event-page-is-a-document",
+        "bytes": 19210,
+        "context_url": "https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=3939",
+        "url": "https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=3939",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "Full Committee - Farm Bill Listening Session: Conversations in the Field | House Agriculture Committee",
+        "heading": "Hearings",
+        "text_head": "Skip to Content Menu close menu about Chairman Thompson Membership Committee History Rules and Jurisdiction news Press Releases Opening Statements Op-Eds ICYMIs Blog Newsletters subcommittees General",
+        "text_bytes": 1493,
+        "link_count": 80,
+        "link_text_bytes": 1024,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      },
+      "source": "ct-xj8s boundary: an event page on the same site is a real page, linked often or not (list row 291171 in release 77673bfb8fcf, linked from 18 pages)"
+    },
+    {
+      "id": "site-committee-activity-index",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "site-committee-activity-index",
+        "bytes": 121726,
+        "context_url": "https://democrats-transportation.house.gov/committee-activity/markups",
+        "url": "https://democrats-transportation.house.gov/committee-activity/markups",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "Markups | Hearings & Activities | The House Committee on Transportation and Infrastructure",
+        "heading": "Committee On Transportation & Infrastructure",
+        "text_head": "Skip to content Close Home About Jurisdiction and Rules Membership Subcommittees Ranking Member Rick Larsen Hearings & Activities Hearings Markups Issues Whistleblower Rights Investigations Press",
+        "text_bytes": 4008,
+        "link_count": 98,
+        "link_text_bytes": 1563,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "wrapper",
+        "real_file": false
+      },
+      "source": "ct-xj8s: a committee-activity index page is site furniture (list row 308859 in release 77673bfb8fcf, linked from 1,491 captured pages)"
+    },
+    {
+      "id": "site-home-page",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "site-home-page",
+        "bytes": 65527,
+        "context_url": "https://www.govinfo.gov/",
+        "url": "https://www.govinfo.gov/",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "GovInfo | U.S. Government Publishing Office",
+        "heading": "Discover U.S. Government Information",
+        "text_head": "Skip to main content Menu Browse A to Z Category Date Committee Author About About Policies Authentication Digital Preservation History Agency Submission",
+        "text_bytes": 3367,
+        "link_count": 165,
+        "link_text_bytes": 2437,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "wrapper",
+        "real_file": false
+      },
+      "source": "ct-xj8s: a site's home page is furniture (list row 95 in release 77673bfb8fcf, linked from 35,363 captured pages)"
+    },
+    {
+      "id": "site-root-article-is-a-document",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "site-root-article-is-a-document",
+        "bytes": 68193,
+        "context_url": "https://oversight.house.gov/?option=com_content&view=article&id=1223%253A3-31-11-qwhy-isnt-the-department-of-homeland-security-meeting-the-presidents-standard-on-foiaq&catid=12&Itemid=1",
+        "url": "https://oversight.house.gov/?option=com_content&view=article&id=1223%253A3-31-11-qwhy-isnt-the-department-of-homeland-security-meeting-the-presidents-standard-on-foiaq&catid=12&Itemid=1",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "United States House Committee on Oversight and Government Reform -",
+        "heading": null,
+        "text_head": "Skip to main content Toggle navigation Search About Chairman James Comer Full Committee Rules Committee Activity Calendar Hearings",
+        "text_bytes": 4343,
+        "link_count": 155,
+        "link_text_bytes": 2888,
+        "http_status": 200
+      },
+      "expected": {
+        "record_role": "document",
+        "real_file": true
+      },
+      "source": "ct-xj8s boundary: an article served at a site root with a query is a real page, not the home page (list row 305426 in release 77673bfb8fcf)"
+    },
+    {
+      "id": "dead-press-release-redirected-to-news-index",
+      "input": {
+        "mode": "fetch",
+        "outcome": "stored",
+        "complete": true,
+        "sha256": "dead-press-release-redirected-to-news-index",
+        "bytes": 386726,
+        "context_url": "https://republicans-energycommerce.house.gov/news/bilirakis-this-is-a-historic-bill-that-puts-control-of-data-back-into-the-hands-of-everyday-americans/",
+        "url": "https://republicans-energycommerce.house.gov/news",
+        "member_path": null,
+        "format": "html",
+        "intact": null,
+        "intact_basis": "unchecked",
+        "reading_status": "completed",
+        "xml_root": null,
+        "title": "House Committee on Energy and Commerce",
+        "heading": "News",
+        "text_head": "Skip to main contentSubscribeMembersSubcommitteesCalendarNews & MediaAboutMembersSubcommitteesCalendarNews & MediaAbout",
+        "text_bytes": 41297,
+        "link_count": 587,
+        "link_text_bytes": 1227,
+        "http_status": 200,
+        "requested_url": "https://republicans-energycommerce.house.gov/news/bilirakis-this-is-a-historic-bill-that-puts-control-of-data-back-into-the-hands-of-everyday-americans/"
+      },
+      "expected": {
+        "record_role": "wrapper",
+        "real_file": false
+      },
+      "source": "ct-xj8s: a removed press release that redirects to the news index is that index, not the release (list row 311317 in release 77673bfb8fcf: three press-release requests answered by /news)"
+    },
+    {
       "id": "govinfo-content-details-page",
       "input": {
         "mode": "fetch",

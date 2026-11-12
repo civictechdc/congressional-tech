@@ -11,6 +11,7 @@ import gzip
 import hashlib
 import json
 import os
+import shutil
 
 import pyarrow.parquet as pq
 import pytest
@@ -64,18 +65,29 @@ def _fetch(raw, url, content=None, fmt='html', status=200):
         complete=True, retrieved_at='2026-10-12T14:25:11Z', captures=[_entry(raw, content, fmt)] if content else [])
 
 
-def _recovered(raw, original, content, category, copy_url, imported_at='2026-10-15T14:00:50Z'):
+def _recovered(raw, original, content, category, copy_url, imported_at='2026-10-15T14:00:50Z', fmt='pdf'):
     return dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='retained_import', family='documents',
         outcome='saved', requested_url=copy_url, url=copy_url, response_headers={}, http_status=200, complete=True,
         retrieved_at='2026-10-15T13:43:02Z', source_associations=[dict(original_url=original, basis='user_accepted_url_variant')],
         recovery_evidence=dict(original_url=original, imported_at=imported_at, match_basis='user_accepted_url_variant',
             acquisition=dict(prior_access_category=category, recovered_url=copy_url, source='user_accepted_recovery')),
-        captures=[_entry(raw, content, 'pdf')])
+        captures=[_entry(raw, content, fmt)])
 
 
-def _build(tmp_path, lines, decided):
-    """A release from receipt lines and (original, content, kind, copy_url) recovery decisions."""
-    from viewer_publication.archive_model import build_release
+def _root(tmp_path, name, roles):
+    """The model definitions with a recovered-file-roles registry of (original_url, content, role) entries."""
+    from viewer_publication.archive_model_profile import ROOT, _definition_hashes
+    root = tmp_path / name
+    for relative in _definition_hashes(ROOT):
+        (root / relative).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / relative, root / relative)
+    (root / 'model/registries/recovered-file-roles.json').write_text(json.dumps([dict(original_url=original,
+        body_sha=hashlib.sha256(content).hexdigest(), role=role, evidence='fixture') for original, content, role in roles], indent=2))
+    return root
+
+
+def _stage(tmp_path, lines, decided):
+    """Model inputs from receipt lines and (original, content, kind, copy_url) recovery decisions."""
     engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
     raw = tmp_path / 'raw'
     receipt = raw / 'receipts/documents/2026-10-15/slice.jsonl.gz'
@@ -100,13 +112,23 @@ def _build(tmp_path, lines, decided):
     pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw, engine=engine,
         work=tmp_path / 'read', decided_at='2026-10-27T12:00:00Z', parser='html')
     names = filenames.stage(captures=captures, recovery_files=recovery_files, engine=engine, work=tmp_path / 'names', decided_at='2026-10-27T12:00:00Z')
-    build_release(captures=captures, readings=pages['readings'], filename_readings=names['readings'], recovery_files=recovery_files,
-        parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'],
-        engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model')
-    release = tmp_path / 'release'
-    read = lambda name: pq.read_table(release / f'{name}.parquet').to_pylist()
-    return {name: read(name) for name in ('detail', 'links', 'urls', 'sources', 'recoveries')}, \
-        json.loads((tmp_path / 'model/result.json').read_text())
+    return dict(captures=captures, readings=pages['readings'], filename_readings=names['readings'], recovery_files=recovery_files,
+        parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']}, catalog_version=names['catalog_version'])
+
+
+def _release_from(tmp_path, staged, root=None, name='release', scratch='model'):
+    """Build one release from staged inputs, with the model definitions under `root` when given."""
+    from viewer_publication.archive_model import build_release
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    build_release(**staged, engine=engine, output=tmp_path / name, scratch=tmp_path / scratch, **({'root': root} if root else {}))
+    read = lambda table: pq.read_table(tmp_path / name / f'{table}.parquet').to_pylist()
+    return {table: read(table) for table in ('detail', 'links', 'urls', 'sources', 'recoveries')}, \
+        json.loads((tmp_path / scratch / 'result.json').read_text())
+
+
+def _build(tmp_path, lines, decided):
+    """A release from receipt lines and (original, content, kind, copy_url) recovery decisions."""
+    return _release_from(tmp_path, _stage(tmp_path, lines, decided))
 
 
 def _release(tmp_path):
@@ -189,7 +211,10 @@ def test_a_link_is_an_address_only_of_the_file_its_own_row_shows(tmp_path):
         # whatever else was accepted for it.
         _recovered(raw, DEAD_C, statement, 'recovered_document', COPY_C, LATER),
         _recovered(raw, DEAD_C, draft, 'recovered_document', DEAD_C, EARLIER)]
-    files, result = _build(tmp_path, lines, [(BOWMAN_DEAD, t2012, 'recovered_document', BOWMAN_2012)])
+    # Both rows hold two different files; a review must name them before the build publishes (ct-u9y4 item 4).
+    reviewed = [(BOWMAN_DEAD, t2012), (BOWMAN_DEAD, t2018), (DEAD_C, statement), (DEAD_C, draft)]
+    files, result = _release_from(tmp_path, _stage(tmp_path, lines, [(BOWMAN_DEAD, t2012, 'recovered_document', BOWMAN_2012)]),
+        _root(tmp_path, 'root', [(original, content, 'undecided') for original, content in reviewed]))
     details = files['detail']
     sha = lambda content: hashlib.sha256(content).digest()
     links = {r['link_key']: r['list_row'] for r in files['links']}
@@ -296,7 +321,8 @@ def test_the_merge_audit_names_each_signal_a_merged_link_would_lose(tmp_path, ad
         json_input(tmp_path, 'source_rows', [dict(list_row=0, url=COPY_A), dict(list_row=0, url=kept)], list_row='Int32', url='Utf8'),
         json_input(tmp_path, 'lookup_sources', [dict(list_row=0, url=kept)], list_row='Int32', url='Utf8'),
         json_input(tmp_path, 'current_recoveries', [dict(original_url=u, body_sha='b' * 64) for u in (kept, lost)], original_url='Utf8', body_sha='Utf8'),
-        json_input(tmp_path, 'recovery_rows', [dict(list_row=0, original_url=kept, body_hex='b' * 64)], list_row='Int32', original_url='Utf8', body_hex='Utf8')]
+        json_input(tmp_path, 'recovery_rows', [dict(list_row=0, original_url=kept, body_hex='b' * 64)], list_row='Int32', original_url='Utf8', body_hex='Utf8'),
+        json_input(tmp_path, 'recovered_file_roles', [], original_url='Utf8', body_sha='Utf8', role='Utf8')]
     steps = [dict(name='links', sql=f"SELECT decode(substr(encode(sha256('url:{kept}'),'hex'),1,16),'hex') AS link_key,cast(0 AS INT) AS list_row"),
              dict(name='recovery_rows_typed', sql="SELECT list_row,original_url,decode(body_hex,'hex') AS body FROM recovery_rows")]
     sql = MERGED_RECOVERY_SQL.replace('recovery_rows r ON', 'recovery_rows_typed r ON')
@@ -305,3 +331,145 @@ def test_the_merge_audit_names_each_signal_a_merged_link_would_lose(tmp_path, ad
     rows = {row.pop('source_id'): {k for k, v in row.items() if v} for row in result['a']}
     assert rows == {'kept': set(), 'lost': {'lost_address', 'lost_link', 'lost_lookup', 'lost_recovery',
         'lost_committees', 'lost_measures'} | ({'lost_package'} if adjudicated else set())}
+
+
+VETS = 'https://veterans.house.gov/hearing-transcript/between-peril-and-promise'
+VETS_HEARINGS = 'https://veterans.house.gov/hearings'
+VETS_PRINT = 'https://www.govinfo.gov/content/pkg/CHRG-113hhrg85864/pdf/CHRG-113hhrg85864.pdf'
+REPORT = 'http://thomas.loc.gov/cgi-bin/cpquery/R?cp105:FLD010:@1(hr467):'
+REPORT_PT1 = 'https://www.govinfo.gov/content/pkg/CRPT-105hrpt467/pdf/CRPT-105hrpt467-pt1.pdf'
+SAME = DEM + 'imo/media/doc/Russell%20Testimony.pdf'
+DAV = 'https://veterans.house.gov/submission-for-the-record/disabled-american-veterans-1'
+DAV_PRINT = 'https://www.govinfo.gov/content/pkg/CHRG-113hhrg82238/html/CHRG-113hhrg82238.htm'
+
+
+def _several_files(tmp_path):
+    """ct-u9y4 shapes from release 77673bfb8fcf: a dead veterans hearing page accepted with a capture of the
+    page itself (site frame) and the transcript PDF it carried, the page shown; a dead THOMAS report link
+    accepted with parts 1 and 2 of the report, both recorded at the part 1 address; a dead link accepted
+    with two copies of one testimony whose text the model does not read (PDFs)."""
+    raw = tmp_path / 'raw'
+    page = _page('Between Peril and Promise | House Committee on Veterans Affairs', [(VETS_PRINT, 'Hearing Transcript')])
+    # A submission page beside the official hearing record offered as containing it (20 such rows; the record's
+    # own title is the hearing's).
+    dav_page = _page('Disabled American Veterans | House Committee on Veterans Affairs', [(DAV_PRINT, 'Hearing record')])
+    dav_print = _page("- WHY ARE VETERANS WAITING YEARS ON APPEAL?: A REVIEW OF THE POST- DECISION PROCESS", [])
+    transcript = b'%PDF-1.7\nBETWEEN PERIL AND PROMISE: hearing before the Committee on Veterans Affairs\n%%EOF\n'
+    part1 = b'%PDF-1.7\nHouse Report 105-467 Part 1\n%%EOF\n'
+    part2 = b'%PDF-1.7\nHouse Report 105-467 Part 2\n%%EOF\n'
+    copy_a = b'%PDF-1.7\nTestimony of Deb Russell\n%%EOF\n'
+    copy_b = b'%PDF-1.7\nTestimony of Deb Russell \n%%EOF\n'
+    hearings = _page('Hearings | House Committee on Veterans Affairs', [(VETS, 'Between Peril and Promise')])
+    lines = [_fetch(raw, VETS_HEARINGS, hearings), *(_fetch(raw, url, status=404) for url in (VETS, REPORT, SAME, DAV)),
+        _recovered(raw, DAV, dav_page, 'recovered_document', DAV, EARLIER, fmt='html'),
+        _recovered(raw, DAV, dav_print, 'requested_content_in_official_hearing', DAV_PRINT, LATER, fmt='html'),
+        _recovered(raw, VETS, page, 'recovered_document', VETS, LATER, fmt='html'),
+        _recovered(raw, VETS, transcript, 'recovered_document', VETS_PRINT, EARLIER),
+        _recovered(raw, REPORT, part1, 'recovered_document', REPORT_PT1, LATER),
+        _recovered(raw, REPORT, part2, 'recovered_document', REPORT_PT1, EARLIER),
+        _recovered(raw, SAME, copy_a, 'recovered_document', SAME, LATER),
+        _recovered(raw, SAME, copy_b, 'recovered_document', SAME, EARLIER)]
+    staged = _stage(tmp_path, lines, [])
+    files = dict(page=page, transcript=transcript, part1=part1, part2=part2, copy_a=copy_a, copy_b=copy_b, dav_page=dav_page, dav_print=dav_print)
+    accepted = [(VETS, page), (VETS, transcript), (REPORT, part1), (REPORT, part2), (SAME, copy_a), (SAME, copy_b), (DAV, dav_page), (DAV, dav_print)]
+    decided = [(VETS, page, 'source_page'), (REPORT, part2, 'edition'), (SAME, copy_a, 'same_document'), (SAME, copy_b, 'same_document'),
+        (DAV, dav_page, 'source_page')]
+    return staged, files, accepted, decided
+
+
+def test_a_page_capture_is_the_source_of_its_file_and_an_edition_is_its_own_document(tmp_path):
+    """ct-u9y4 (owner, 2026-11-11). "One document, file shown": a dead committee page accepted with a capture of
+    the page itself and the file it carried is one document showing the file; the page is listed as where it
+    came from (an unsaved sources row with its listing page), not as a recovered copy, as a GovInfo details page
+    is folded into its hearing (ct-m878). "Split into separate documents": each other edition of the file a dead
+    link shows is its own document, keyed by its body; the link keeps its key and the file it shows, and the
+    link's address finds both. "Keep the page's old title" (owner, same day): a document that showed the page keeps
+    the page's title on the file, not the hearing record's own title and not none. Built twice from one capture set:
+    as published (every file reviewed undecided, which changes nothing) and with the decisions, against the first as
+    the live release."""
+    from viewer_publication.release_comparison import compare
+    staged, files, accepted, decided = _several_files(tmp_path)
+    before, _ = _release_from(tmp_path, staged, _root(tmp_path, 'before-root', [(o, c, 'undecided') for o, c in accepted]), 'before', 'before-model')
+    title_before = lambda url: next(before['detail'][r['list_row']]['title'] for r in before['links'] if r['link_key'] == _url_key(url))
+    after, result = _release_from(tmp_path, staged, _root(tmp_path, 'after-root', decided), 'after', 'after-model')
+    sha = lambda name: hashlib.sha256(files[name]).digest()
+    details, links = after['detail'], {r['link_key']: r['list_row'] for r in after['links']}
+    served = lambda row: sorted(r['body'] for r in after['recoveries'] if r['list_row'] == row)
+    lookup = lambda url: sorted(r['list_row'] for r in after['urls']
+        if r['lookup_key'] == hashlib.sha256(('lookup:' + url.split('://', 1)[1]).encode()).digest()[:8])
+
+    # The veterans page: the link's row shows the transcript; the page capture is no recovered file of it,
+    # and the dead address is its unsaved source, with the page that listed it.
+    vets = links[_url_key(VETS)]
+    assert (details[vets]['saved_kind'], details[vets]['saved_body']) == ('recovery', sha('transcript'))
+    assert served(vets) == [sha('transcript')]
+    assert [(s['url'], s['is_saved'], s['listed_on'], s['link_text']) for s in after['sources'] if s['list_row'] == vets] == [
+        (VETS, False, VETS_HEARINGS, 'Between Peril and Promise')]
+    assert lookup(VETS) == [vets]
+    # It showed the page, so the page's title stays: the transcript PDF has none of its own.
+    assert details[vets]['title'] == title_before(VETS) == 'Between Peril and Promise | House Committee on Veterans Affairs'
+
+    # The submission: the link's row shows the hearing record now, under the page's title, not the hearing's.
+    dav = links[_url_key(DAV)]
+    assert (details[dav]['saved_body'], served(dav)) == (sha('dav_print'), [sha('dav_print')])
+    assert details[dav]['title'] == title_before(DAV) == 'Disabled American Veterans | House Committee on Veterans Affairs'
+
+    # The report: the link keeps part 1; part 2 is its own document under its body key, and the dead
+    # address finds both.
+    report, part2 = links[_url_key(REPORT)], links[sha('part2')[:8]]
+    assert report != part2 and details[part2]['link_key'] == sha('part2')[:8]
+    assert (details[report]['saved_body'], served(report)) == (sha('part1'), [sha('part1')])
+    assert (details[part2]['saved_kind'], details[part2]['saved_body'], served(part2)) == ('recovery', sha('part2'), [sha('part2')])
+    assert lookup(REPORT) == sorted([report, part2])
+
+    # Reviewed as one document: two copies of one testimony stay on one row.
+    same = links[_url_key(SAME)]
+    assert served(same) == sorted([sha('copy_a'), sha('copy_b')])
+    # Beside them only the live hearings page that listed the veterans page.
+    assert [d['saved_kind'] for i, d in enumerate(details) if i not in {vets, report, part2, same, dav}] == ['original']
+
+    queries = {q['name']: q['data'] for q in result['queries']}
+    assert queries['recovered_file_invariants'] == [dict(several_files_unreviewed=0, links_without_a_file=0)]
+    assert queries['recovery_documents_with_several_files'] == [dict(agreement='text_unread', documents=1)]
+    assert queries['recovered_file_roles_unused'] == [dict(entries=0)]
+    assert queries['model_invariants'][0]['unaccounted_merged_signal'] == 0
+
+    # The publish gate's link rule: no key vanishes; only the pages' link and lookup keys answer another
+    # file (the page capture before, the file now), which a cause record names as a correction.
+    rule = compare(tmp_path / 'before', tmp_path / 'after')['link_rule']
+    assert (rule['missing'], rule['dangling'], rule['address_changed']) == (0, 0, 0)
+    assert sorted((a['key'], a['live_body'], a['candidate_body']) for a in rule['changed_answers']) == sorted([
+        (_url_key(VETS).hex(), sha('page').hex(), sha('transcript').hex()), (_url_key(DAV).hex(), sha('dav_page').hex(), sha('dav_print').hex())])
+    assert rule['lookup_changed'] == 2
+
+
+@pytest.mark.parametrize('dropped, added, invariant', [
+    # The two testimony copies unreviewed: a document holding several files whose text the model cannot read refuses.
+    ([(SAME, 'copy_a', 'same_document'), (SAME, 'copy_b', 'same_document')], [], 'several_files_unreviewed'),
+    # Every file of the report link an edition: the link would hold no file of its own, and its key no document.
+    ([], [(REPORT, 'part1', 'edition')], 'links_without_a_file')])
+def test_a_document_with_several_unreviewed_files_refuses_the_build(tmp_path, dropped, added, invariant):
+    """ct-u9y4 item 4: recovery_documents_with_several_files was a report, and 25 documents whose files' text
+    differs shipped in 77673bfb8fcf without a refusal. Several recovered files on one document need a reviewed
+    role unless their text is equal; and no review may take every file from a link."""
+    from viewer_publication.archive_model import build_release
+    staged, files, _accepted, decided = _several_files(tmp_path)
+    named = [(o, files[n], r) for o, n, r in dropped + added]
+    roles = [d for d in decided if d not in named] + [(o, files[n], r) for o, n, r in added]
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    with pytest.raises(ValueError, match='Release key invariant failed'):
+        build_release(**staged, engine=engine, output=tmp_path / 'release', scratch=tmp_path / 'model', root=_root(tmp_path, 'root', roles))
+    queries = {q['name']: q['data'] for q in json.loads((tmp_path / 'model/result.json').read_text())['queries']}
+    assert queries['recovered_file_invariants'][0][invariant] == 1
+
+
+def test_the_reviewed_roles_registry_refuses_an_unknown_role_or_a_repeated_file():
+    """recovered-file-roles.json: one reviewed role per (dead link, recovered body), each with evidence."""
+    from viewer_publication.archive_model import REVIEWED_REGISTRIES
+    check = REVIEWED_REGISTRIES['recovered_file_roles']
+    good = dict(original_url=VETS, body_sha='a' * 64, role='source_page', evidence='read')
+    check([good, dict(good, body_sha='b' * 64, role='edition'), dict(good, original_url=REPORT)])
+    for bad in [[good, dict(good, role='edition')], [dict(good, role='hidden')], [dict(good, evidence='')],
+                [dict(good, body_sha='A' * 64)], [dict(good, original_url='')]]:
+        with pytest.raises(ValueError):
+            check(bad)

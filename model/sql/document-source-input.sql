@@ -1,9 +1,10 @@
--- Address metadata and publisher evidence each retain their own grain.
+-- Address metadata and publisher evidence each retain their own grain. A recovery-only document has no
+-- saved file, so its addresses (a dead page that is its file's source, ct-u9y4) are none of them saved.
 WITH addresses AS (
  SELECT a.component,d.document_id AS doc_key,min(a.source_id) AS source_key,a.url,a.member_path,
- bool_or(a.source_id=s.source_id) AS is_saved,
+ coalesce(bool_or(a.source_id=s.source_id),false) AS is_saved,
  cast(min(cast(a.first_fetched AS TIMESTAMP WITH TIME ZONE)) AS DATE) AS first_seen
- FROM saved_files s JOIN (
+ FROM saved_files s RIGHT JOIN (
   document_identities d JOIN document_addresses a USING(component)
  ) ON a.component=s.component AND s.saved_rank=1
  GROUP BY a.component,d.document_id,a.url,a.member_path

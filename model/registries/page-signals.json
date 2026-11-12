@@ -66,6 +66,132 @@
     "sample_id": "page-signals:site_help_page"
   },
   {
+    "id": "site_home_page",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://[^/?#]+/?(?:#.*)?$",
+    "sample_id": "page-signals:site_home_page"
+  },
+  {
+    "id": "furniture_docs_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://docs[.]house[.]gov/Committee/(?:Committees[.]aspx|Calendar/By(?:Week|Month|Day)[.]aspx)(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_docs_house_gov"
+  },
+  {
+    "id": "furniture_agriculture_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?agriculture[.]house[.]gov/calendar/(?:(?:eventslisting|default)[.]aspx)?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_agriculture_house_gov"
+  },
+  {
+    "id": "furniture_democrats_agriculture_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?democrats-agriculture[.]house[.]gov/calendar/(?:(?:eventslisting|default)[.]aspx)?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_democrats_agriculture_house_gov"
+  },
+  {
+    "id": "furniture_armedservices_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?armedservices[.]house[.]gov/calendar/(?:(?:eventslisting|default)[.]aspx)?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_armedservices_house_gov"
+  },
+  {
+    "id": "furniture_edworkforce_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?edworkforce[.]house[.]gov/calendar/(?:list[.]aspx)?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_edworkforce_house_gov"
+  },
+  {
+    "id": "furniture_democrats_financialservices_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?democrats-financialservices[.]house[.]gov/events/(?:(?:eventslisting|default)[.]aspx)?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_democrats_financialservices_house_gov"
+  },
+  {
+    "id": "furniture_transportation_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?transportation[.]house[.]gov/calendar/(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_transportation_house_gov"
+  },
+  {
+    "id": "furniture_democrats_transportation_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?democrats-transportation[.]house[.]gov/committee-activity/(?:hearings|markups)/?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_democrats_transportation_house_gov"
+  },
+  {
+    "id": "furniture_democrats_waysandmeans_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?democrats-waysandmeans[.]house[.]gov/committee-activity/(?:markups(?:/all)?|equity-work|committee-submissions)/?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_democrats_waysandmeans_house_gov"
+  },
+  {
+    "id": "furniture_waysandmeans_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?waysandmeans[.]house[.]gov/(?:calendar|hearings|markups)/?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_waysandmeans_house_gov"
+  },
+  {
+    "id": "furniture_foreignaffairs_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?foreignaffairs[.]house[.]gov/committee-activity/(?:hearings/all|markups/all|bills)/?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_foreignaffairs_house_gov"
+  },
+  {
+    "id": "furniture_energy_senate_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?energy[.]senate[.]gov/committee-activity/(?:business-meetings|all-publications|hearings)/?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_energy_senate_gov"
+  },
+  {
+    "id": "furniture_energycommerce_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?(?:republicans-)?energycommerce[.]house[.]gov/news/?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_energycommerce_house_gov"
+  },
+  {
+    "id": "furniture_democrats_budget_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?democrats-budget[.]house[.]gov/news/press-releases/?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_democrats_budget_house_gov"
+  },
+  {
+    "id": "furniture_budget_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?budget[.]house[.]gov/hearings/?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_budget_house_gov"
+  },
+  {
+    "id": "furniture_democrats_veterans_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?democrats-veterans[.]house[.]gov/events/(?:hearings|markups|roundtables)/?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_democrats_veterans_house_gov"
+  },
+  {
+    "id": "furniture_humanrightscommission_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?humanrightscommission[.]house[.]gov/events/hearings/?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_humanrightscommission_house_gov"
+  },
+  {
+    "id": "furniture_appropriations_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?appropriations[.]house[.]gov/committee-activity/enacted-legislation(?:/fiscal-year-[0-9]{4}-enacted-legislation)?/?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_appropriations_house_gov"
+  },
+  {
+    "id": "furniture_science_house_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?science[.]house[.]gov/markups[?]label_id=",
+    "sample_id": "page-signals:furniture_science_house_gov"
+  },
+  {
+    "id": "furniture_judiciary_senate_gov",
+    "kind": "wrapper_url",
+    "pattern": "(?i)^https?://(?:www[.])?judiciary[.]senate[.]gov/search/?(?:[?#]|$)",
+    "sample_id": "page-signals:furniture_judiciary_senate_gov"
+  },
+  {
     "id": "govinfo_content_details",
     "kind": "landing_url",
     "pattern": "(?i)^https?://(?:www[.])?govinfo[.]gov/app/details/",

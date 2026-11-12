@@ -11,12 +11,12 @@ ROOT=Path(__file__).parents[3]
 def test_native_recovery_export_preserves_saved_recovery_preference(tmp_path):
     rows=[dict(component='component',id=str(i),receipt_key=key,receipt_line=1,capture_index=0,
         original_url='https://fixture.test/original',kind=kind,body_sha=body*64,bytes=100,
-        imported_at=stamp,recovered_url='https://fixture.test/copy',identity_note=None)
+        imported_at=stamp,recovered_url='https://fixture.test/copy',identity_note=None,role=None)
         for i,(key,kind,body,stamp) in enumerate([
             ('a','requested_content_in_official_hearing','a','2026-10-27T12:00:00Z'),
             ('z','recovered_document','b','2026-10-25T12:00:00Z'),
             ('y','recovered_document','c','2026-10-26T12:00:00Z')])]
-    fields={name:'Utf8' for name in ['component','id','receipt_key','original_url','kind','body_sha','imported_at','recovered_url','identity_note']}
+    fields={name:'Utf8' for name in ['component','id','receipt_key','original_url','kind','body_sha','imported_at','recovered_url','identity_note','role']}
     fields.update(receipt_line='Int32',capture_index='Int32',bytes='Int64')
     inputs=[json_input(tmp_path,'final_recovery_attachments',rows,**fields),
         json_input(tmp_path,'document_identities',[dict(component='component',document_id='d'*64)],component='Utf8',document_id='Utf8'),

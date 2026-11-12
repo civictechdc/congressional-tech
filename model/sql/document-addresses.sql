@@ -12,3 +12,9 @@ UNION
 SELECT DISTINCT l.component,l.source_id,c.context_url AS url,c.member_path,l.first_fetched
 FROM landing_pages l JOIN capture_source_contexts c ON c.source_id=l.source_id
 WHERE l.component IS NOT NULL AND c.outcome NOT IN ('reference','saved-record') AND c.context_url IS NOT NULL
+UNION
+-- A dead page accepted with a capture of itself beside the file it carried (ct-u9y4, role source_page) is an
+-- address of the link's document, which shows the file, never its saved one.
+SELECT DISTINCT m.component,m.source_id,m.source_url AS url,cast(NULL AS VARCHAR) AS member_path,m.first_fetched
+FROM (SELECT DISTINCT component,original_url FROM final_recovery_attachments WHERE role='source_page') r
+JOIN document_members m ON m.component=r.component AND m.source_url=r.original_url AND m.body_sha IS NULL
