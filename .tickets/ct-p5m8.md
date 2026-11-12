@@ -1,6 +1,6 @@
 ---
 id: ct-p5m8
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-10T03:26:30Z
@@ -23,3 +23,7 @@ The video record reader normalises surrounding whitespace and maps whitespace-on
 **2026-11-11T14:44:37Z**
 
 validated 2026-11-11, left open: not fixed. DuckDB on 77673bfb8fcf videos.parquet: 1,095 source_description values are whitespace-only and 1,159 rows have a title or source_description with surrounding whitespace (0 whitespace-only titles).
+
+**2026-11-12T04:34:00Z**
+
+Closed: `model/sql/entity-videos.sql` now normalizes `title` and `source_description` via `nullif(regexp_replace(..., '^\s+|\s+$', '', 'g'), '')` over all retained `video_records` rows (handling ASCII and Unicode whitespace without moving pinned `video_records` producer versions or requiring an R2 lake backfill; clears all 1,095 whitespace-only descriptions and 1,177 Unicode-whitespace-padded rows measured on `46ebbdf8dcaf` `videos.parquet`). Added `untrimmed_video_texts` to `explorer_invariants` in `archive_model.py` so any empty or whitespace-padded `videos_export` text fails the model build.

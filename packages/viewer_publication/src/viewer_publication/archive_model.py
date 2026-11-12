@@ -1500,10 +1500,11 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         steps += _sql_steps(['youtube-cache-bodies','youtube-api-bodies'],root=root)
         auxiliary += [(name,(Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary) for name,file,keys,dictionary in EXPLORER_TABLES]
         from congress_api.lake.committee_records import CANDIDATE_SQL
-        explorer_diagnostics=[dict(name='explorer_invariants',sql=f"""SELECT (SELECT count(*) FROM meeting_coverage_export)-5*(SELECT count(*) FROM meetings_export) AS coverage_row_mismatch,
+        explorer_diagnostics=[dict(name='explorer_invariants',sql=rf"""SELECT (SELECT count(*) FROM meeting_coverage_export)-5*(SELECT count(*) FROM meetings_export) AS coverage_row_mismatch,
             (SELECT count(*) FROM meeting_coverage_export WHERE state='present' AND count=0) AS coverage_present_without_rows,
             (SELECT count(*) FROM (SELECT record_sha FROM youtube_cache_bodies UNION SELECT record_sha FROM youtube_api_bodies) b WHERE b.record_sha NOT IN ({explorer_settled_sql('video_records')})) AS unsettled_video_records,
-            (SELECT count(*) FROM ({CANDIDATE_SQL}) c WHERE c.record_sha NOT IN ({explorer_settled_sql('committee_records')})) AS unsettled_committee_records""")]
+            (SELECT count(*) FROM ({CANDIDATE_SQL}) c WHERE c.record_sha NOT IN ({explorer_settled_sql('committee_records')})) AS unsettled_committee_records,
+            (SELECT count(*) FROM videos_export WHERE (title IS NOT NULL AND (title='' OR regexp_like(title,'^\s|\s$'))) OR (source_description IS NOT NULL AND (source_description='' OR regexp_like(source_description,'^\s|\s$')))) AS untrimmed_video_texts""")]
         meta_explorer=[dict(name='videos_in_several_channels',sql="SELECT count(*) AS videos FROM (SELECT v['video_id'] AS video_id FROM (SELECT unnest(r.videos) AS v FROM selected_video_records r JOIN youtube_cache_bodies b ON encode(r.record_sha,'hex')=b.record_sha WHERE r.source='youtube_cache') GROUP BY v['video_id'] HAVING count(DISTINCT v['handle'])>1)")]
     if prepared.get('historical_recording_matcher'):
         from viewer_publication.historical_recording_matcher import SOURCE_FIELDS

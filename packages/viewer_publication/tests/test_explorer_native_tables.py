@@ -338,3 +338,49 @@ def test_only_a_pinned_version_failure_settles_an_explorer_record():
         steps = [dict(name='selected_video_records', sql="SELECT arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,'completed' AS status")]
         result = run(work / 'job', engine, inputs=inputs, steps=steps, outputs=[], queries=[dict(name='s', sql=explorer_settled_sql('video_records') + ' ORDER BY sha')])
     assert [row['sha'] for row in result['s']] == ['ab' * 32, 'new']  # The old version's failure settles nothing.
+
+
+def test_entity_videos_trims_surrounding_whitespace_and_nulls_blank_text(tmp_path):
+    """ct-p5m8: surrounding whitespace is trimmed and whitespace-only title/source_description become NULL."""
+    import pyarrow.parquet as pq
+    from congress_api.lake import video_records
+    from congress_api.retention.provenance import parquet_output, run_job as run
+    from viewer_publication.archive_model import channel_directory_rows, selected_record_step
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    directory = channel_directory_rows()
+    ag = next(row['channel_id'] for row in directory if row['handle'] == '@AgRepublicans')
+    cache = json.dumps({
+        'youtube_videos_@AgRepublicans': {
+            '1': dict(videoId='v_trail', title='  Hearing Title \n', description='  Body text  \t', channelId=ag),
+            '2': dict(videoId='v_blank_one', title='   ', description=' ', channelId=ag),
+            '3': dict(videoId='v_blank_two', title='\u00a0\t\n', description='  \u00a0 ', channelId=ag),
+        }
+    }).encode()
+    sha = 'ab' * 32
+    pq.write_table(video_records.table([video_records.build_row(sha, 'youtube_cache', cache, parser_version='p')]),
+                   tmp_path / 'videos.parquet')
+    inputs = [
+        dict(name='video_records', kind='parquet', path=str(tmp_path / 'videos.parquet')),
+        json_input(tmp_path, 'parser_versions', [
+            dict(parser='video_records.youtube_cache', version='p'),
+            dict(parser='video_records.youtube_api', version='a'),
+        ], parser='Utf8', version='Utf8'),
+        json_input(tmp_path, 'channel_directory', directory,
+                   handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8'),
+    ]
+    steps = [
+        dict(name='youtube_cache_bodies', sql=f"SELECT 'youtube/youtube_00.json' AS cache_path,'{sha}' AS record_sha,'' AS stored_suffix"),
+        dict(name='youtube_api_bodies', sql="SELECT '' AS record_sha,'' AS stored_suffix WHERE false"),
+        selected_record_step('video_records', 'video_records'),
+    ]
+    run(tmp_path / 'job', engine, inputs=inputs, steps=steps,
+        outputs=[parquet_output(tmp_path, 'v', sql('entity-videos'), ['video_key'])], queries=[])
+    rows = {r['video_key']: r for r in pq.read_table(tmp_path / 'v.parquet').to_pylist()}
+    assert rows['youtube:v_trail']['title'] == 'Hearing Title'
+    assert rows['youtube:v_trail']['source_description'] == 'Body text'
+    assert rows['youtube:v_blank_one']['title'] is None
+    assert rows['youtube:v_blank_one']['source_description'] is None
+    assert rows['youtube:v_blank_two']['title'] is None
+    assert rows['youtube:v_blank_two']['source_description'] is None
+
