@@ -495,3 +495,131 @@ def test_the_reviewed_roles_registry_refuses_an_unknown_role_or_a_repeated_file(
                 [dict(good, body_sha='A' * 64)], [dict(good, original_url='')]]:
         with pytest.raises(ValueError):
             check(bad)
+
+
+def test_live_edition_at_govinfo_zip_url_keeps_recovered_copy_link_and_passes_gate(tmp_path):
+    """ct-jcnd item 3 / F1 (CHRG-119hhrg64154.pdf): a GovInfo ZIP member + recovered_document at the
+    published PDF URL followed by a later live HTTP 200 fetch of revised PDF bytes at that URL must
+    keep the recovered-copy link key and recovery row on the ZIP member's document (unaccounted_merged_signal=0)
+    and pass release_comparison.compare() + automatic_causes() with zero split rows, moved keys, or changed_answers."""
+    from viewer_publication.release_comparison import compare
+    from viewer_publication.release_gate import automatic_causes, require_release_gates
+    zip_url = 'https://www.govinfo.gov/content/pkg/CHRG-119hhrg64154.zip'
+    pdf_url = 'https://www.govinfo.gov/content/pkg/CHRG-119hhrg64154/pdf/CHRG-119hhrg64154.pdf'
+    zip_bytes = b'PK\x03\x04CHRG-119hhrg64154-container'
+    zip_pdf = b'%PDF-1.7\nCHRG-119hhrg64154 first print from GovInfo ZIP\n%%EOF\n'
+    live_pdf = b'%PDF-1.7\nCHRG-119hhrg64154 revised print fetched live HTTP 200\n%%EOF\n'
+    base_key = 'receipts/documents/2026-10-16/base.jsonl.gz'
+    live_key = 'receipts/documents/2026-10-31/live.jsonl.gz'
+
+    def build_variant(sub, include_live):
+        work = tmp_path / sub
+        raw = work / 'raw'
+        engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+        zip_entry = dict(_entry(raw, zip_bytes, 'zip'), media_type='application/zip', intact=None, expansion='expanded')
+        member_entry = dict(_entry(raw, zip_pdf, 'pdf'), member_path='CHRG-119hhrg64154/pdf/CHRG-119hhrg64154.pdf')
+        zip_line = dict(writer=dict(job='fixture', commit='a' * 40), run_id='fixture', mode='fetch', family='documents',
+            outcome='stored', requested_url=zip_url, url=zip_url, response_headers={}, http_status=200,
+            complete=True, retrieved_at='2026-10-16T10:00:00Z', captures=[zip_entry, member_entry])
+        base_lines = [
+            zip_line,
+            _recovered(raw, pdf_url, zip_pdf, 'recovered_document', pdf_url, '2026-10-16T12:00:00Z'),
+        ]
+        receipt_entries = [(base_key, base_lines)]
+        if include_live:
+            live_line = _fetch(raw, pdf_url, live_pdf, 'pdf')
+            live_line['retrieved_at'] = '2026-10-31T03:12:11Z'
+            receipt_entries.append((live_key, [live_line]))
+        receipt_specs = []
+        raw_blobs = {}
+        for idx, (rkey, rlines) in enumerate(receipt_entries):
+            rpath = raw / rkey
+            rpath.parent.mkdir(parents=True, exist_ok=True)
+            encoded = gzip.compress(''.join(json.dumps(r) + '\n' for r in rlines).encode(), mtime=0)
+            rpath.write_bytes(encoded)
+            raw_blobs[rkey] = encoded
+            pin = work / f'pin-{idx}.json'
+            pin.write_text(json.dumps(dict(path=str(rpath), size=len(encoded),
+                sha256=hashlib.sha256(encoded).hexdigest(), producer='fixture creation')))
+            receipt_specs.append(dict(key=rkey, path=str(rpath), qualification=str(pin)))
+        decided = [(pdf_url, zip_pdf, 'recovered_document', pdf_url)]
+        decisions = work / 'recoveries.jsonl'
+        decisions.write_text(''.join(json.dumps(dict(id=f'decision-{i}', body_sha256=hashlib.sha256(content).hexdigest(),
+            original_url=original, recovered_filename=None, recovered_url=copy_url, kind=kind, identity_note=None,
+            decided_at='2026-10-27T15:46:39Z', supersedes=None, recovery_record_version=2)) + '\n'
+            for i, (original, content, kind, copy_url) in enumerate(decided)))
+        recovery_files = [dict(key='provenance/recoveries/fixture.jsonl', path=str(decisions))]
+        captures = stage_captures(receipt_specs, engine=engine, work=work / 'stage') / 'captures.parquet'
+        inventory = work / 'inventory'
+        inventory.mkdir()
+        run_job(inventory, engine, inputs=[dict(name='captures', kind='parquet', path=str(captures))], steps=[],
+            outputs=[parquet_output(inventory, 'bodies',
+                """SELECT DISTINCT sha256 AS body_sha,'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS physical_key,
+                'bodies/sha256/'||substr(encode(sha256,'hex'),1,2)||'/'||encode(sha256,'hex')||stored_suffix AS relative_path,stored_bytes
+                FROM captures WHERE sha256 IS NOT NULL""", ['body_sha'])])
+        pages = readings.stage(captures=captures, body_inventory=inventory / 'bodies.parquet', local_root=raw,
+            engine=engine, work=work / 'read', decided_at='2026-10-27T12:00:00Z', parser='html')
+        names = filenames.stage(captures=captures, recovery_files=recovery_files, engine=engine,
+            work=work / 'names', decided_at='2026-10-27T12:00:00Z')
+        staged = dict(captures=captures, readings=pages['readings'], filename_readings=names['readings'],
+            recovery_files=recovery_files,
+            parser_versions={p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']},
+            catalog_version=names['catalog_version'])
+        files, result = _release_from(work, staged, name='release', scratch='model')
+        return work / 'release', files, result, captures, raw_blobs
+
+    base_dir, base_files, _, _, _ = build_variant('base', include_live=False)
+    cand_dir, cand_files, cand_result, cand_captures, cand_raw = build_variant('candidate', include_live=True)
+
+    queries = {q['name']: q['data'] for q in cand_result['queries']}
+    assert queries['model_invariants'][0]['unaccounted_merged_signal'] == 0
+    assert queries['model_invariants'][0]['invalid_recovery_attachments'] == 0
+
+    sha_zip_pdf = hashlib.sha256(zip_pdf).digest()
+    sha_live_pdf = hashlib.sha256(live_pdf).digest()
+    cand_details = cand_files['detail']
+    zip_row = next(i for i, d in enumerate(cand_details) if d['saved_body'] == sha_zip_pdf)
+    live_row = next(i for i, d in enumerate(cand_details) if d['saved_body'] == sha_live_pdf)
+    assert zip_row != live_row
+
+    cand_links = {r['link_key']: r['list_row'] for r in cand_files['links']}
+    assert cand_links[sha_zip_pdf[:8]] == zip_row
+    assert cand_links[_url_key(pdf_url)] == zip_row
+    assert cand_links[sha_live_pdf[:8]] == live_row
+    assert [r['list_row'] for r in cand_files['recoveries']] == [zip_row]
+
+    cand_list = pq.read_table(cand_dir / 'list.parquet').to_pylist()
+    assert cand_list[zip_row]['version_keys'] and cand_list[zip_row]['version_keys'] == cand_list[live_row]['version_keys']
+    lookup_key = hashlib.sha256(('lookup:' + pdf_url.removeprefix('https://').removeprefix('www.')).encode()).digest()[:8]
+    assert sorted(r['list_row'] for r in cand_files['urls'] if r['lookup_key'] == lookup_key) == sorted([zip_row, live_row])
+
+    report = compare(base_dir, cand_dir)
+    assert report['link_rule']['ok'] is True
+    assert report['link_rule']['changed_answers'] == []
+    assert report['link_rule']['address_changed'] == 0
+    assert [(g['group'], g['cause']) for g in report['files']['list.parquet']['groups']] == [
+        ('added rows', 'no surviving link key'),
+        ('changed version_keys', 'value differs on matched key'),
+    ]
+    assert [(g['group'], g['cause']) for g in report['files']['links.parquet']['groups']] == [
+        ('added keys', 'no evidence given'),
+    ]
+
+    gate_report = require_release_gates(
+        base_dir, cand_dir, None, report_path=tmp_path / 'gate-report.json',
+        automatic=lambda rep: automatic_causes(
+            rep, base_dir, cand_dir,
+            engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
+            captures=dict(kind='parquet', path=str(cand_captures)),
+            live_receipt_keys={base_key},
+            read_receipt=lambda k: cand_raw[k],
+            work=tmp_path / 'auto-gate',
+            candidate_receipt_keys={base_key, live_key},
+        ),
+    )
+    assert gate_report['reasons'] == []
+    auto_ids = {e['id']: e['tickets'] for e in gate_report['automatic_causes']}
+    assert auto_ids['list.parquet|changed version_keys|value differs on matched key'] == ['ct-jcnd']
+    assert auto_ids['detail.parquet|changed version_keys|value differs on matched key'] == ['ct-jcnd']
+    assert auto_ids['sources.parquet|documents changed for a shared key|the key now answers other documents'] == ['ct-jcnd']
+    assert auto_ids['urls.parquet|documents changed for a shared key|the key now answers other documents'] == ['ct-jcnd']

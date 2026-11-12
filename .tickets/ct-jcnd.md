@@ -1,6 +1,6 @@
 ---
 id: ct-jcnd
-status: open
+status: closed
 deps: []
 links: [ct-5q3g, ct-swyw, ct-fk4w, cat2-x47u, ct-lft6, ct-esuu, cat2-8ai9, ct-ywz2, ct-yizl]
 created: 2026-11-10T14:57:27Z
@@ -44,3 +44,9 @@ Closed with all nine review items resolved or explicitly routed:
 - (7) Widened `link_word_bill_placeholder` (`'H.R.___,'`, `'H.Res.___'`, `'S ___.pdf'`), widened `link_word_download` (`'Download ...'` link labels), and added `link_word_filename` (bare filenames used as link text such as `'BILLS-116hr5430rfs.pdf'`) in `model/registries/title-rules.json` + `model/fixtures/registry-samples.json` (`test_a_bill_number_placeholder_is_a_link_word`).
 - (8) Synced static registry counts (`saved_name_decisions: 84`, `title_rules: 10`) in `packages/viewer_publication/tests/fixtures/model-relation-rows.json`; full step-log regeneration from remote lake snapshots is tracked on `ct-swyw`.
 - (9) House transcript date-vs-kind verification is tracked on `ct-fk4w` (`pdf_text` model step).
+
+**2026-11-12T12:49:00Z**
+
+Resolved live nightly release blocker `F1` (`CHRG-119hhrg64154.pdf` `unaccounted_merged_signal == 1`):
+- In `model/sql/provenance-recovery-original-components.sql` and `model/sql/provenance-recovery-attachments.sql`, when `recovered_copy_members` moves a bodiless original link into the unique document holding its recovered copy (e.g. a GovInfo ZIP member + `recovered_document` at `.../CHRG-119hhrg64154.pdf`), `recovery_attachments` now preserves `o.component` even after a later live HTTP 200 fetch stores a revised PDF edition at that same `original_url` (`c.components = 1` pointing to the new live edition). That keeps the recovered-copy link key (`links.parquet`) and `recoveries.parquet` row on the ZIP member's document (`unaccounted_merged_signal = 0`, `changed_answers = []`).
+- In `packages/viewer_publication/src/viewer_publication/release_gate.py` (`automatic_causes`), added `VERSION_KEY_ADD_GROUPS` and `SHARED_ADDRESS_ADD_GROUPS` so an unattended nightly build adding a revised edition at an existing endpoint passes `automatic_causes` when every gained `version_key` is shared with a receipt-traced `added_documents` row and zero existing `version_keys` or addresses are lost (`test_live_edition_at_govinfo_zip_url_keeps_recovered_copy_link_and_passes_gate`, `test_changed_version_keys_outside_added_documents_refuses_unattended`).

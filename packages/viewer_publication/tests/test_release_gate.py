@@ -2997,3 +2997,19 @@ def test_new_no_meeting_recordings_refuse_when_unlinked_or_not_from_new_raw_rece
         )
     report = json.loads((tmp_path / 'r.json').read_text())
     assert any(expected_reason in r for r in report['automatic_reasons']), report['automatic_reasons']
+
+
+def test_changed_version_keys_outside_added_documents_refuses_unattended(tmp_path):
+    """ct-jcnd: existing rows may gain version_keys shared with added documents only; any lost or unshared key refuses."""
+    base, candidate, automatic = nightly(
+        tmp_path, ['A'], ['A', 'N'],
+        base_tables=dict(list=pa.table({'filename': ['A.pdf'], 'version_keys': pa.array([[]], pa.list_(pa.string()))})),
+        candidate_tables=dict(list=pa.table({
+            'filename': ['A.pdf', 'N.pdf'],
+            'version_keys': pa.array([['c0b8169c42a2b3a1'], []], pa.list_(pa.string())),
+        })),
+    )
+    with pytest.raises(ValueError, match='no recorded cause'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'r.json', automatic=automatic)
+    report = json.loads((tmp_path / 'r.json').read_text())
+    assert 'automatic causes: 1 list rows changed version_keys outside added documents' in report['automatic_reasons']

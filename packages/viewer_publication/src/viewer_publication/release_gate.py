@@ -316,6 +316,10 @@ URL_STATE_GROUPS = {*(('changed ' + column, 'value differs on matched key') for 
                     ('added URLs', ATTEMPTED_URLS), ('added URLs', QUEUED_URLS)}
 RECORDING_ADD_GROUPS = {('recordings.parquet', 'added keys', 'empty event_ids; source not traced'),
                         ('recordings.parquet', 'added keys', 'empty event_ids; capture newly real')}
+VERSION_KEY_ADD_GROUPS = {('list.parquet', 'changed version_keys', 'value differs on matched key'),
+                          ('detail.parquet', 'changed version_keys', 'value differs on matched key')}
+SHARED_ADDRESS_ADD_GROUPS = {('sources.parquet', 'documents changed for a shared key', 'the key now answers other documents'),
+                             ('urls.parquet', 'documents changed for a shared key', 'the key now answers other documents')}
 AUTOMATIC_CAUSE = "addition traced to receipts absent from the live release's receipt set (automatic, ct-ud0b)"
 URL_STATE_CAUSE = ("every row is what the lines of receipts absent from the live release's receipt set imply "
                    "(automatic, ct-9j3z)")
@@ -1116,7 +1120,10 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     differences = [g for g in every if not g.get('refetch_only')]
     url_state = [g for g in differences if g['file'] == 'url_state.parquet' and (g['group'], g['cause']) in URL_STATE_GROUPS]
     recording_adds = [g for g in differences if (g['file'], g['group'], g['cause']) in RECORDING_ADD_GROUPS]
-    other = [g for g in differences if g not in url_state and g not in recording_adds and (
+    version_key_adds = [g for g in differences if (g['file'], g['group'], g['cause']) in VERSION_KEY_ADD_GROUPS]
+    shared_addr_adds = [g for g in differences if (g['file'], g['group'], g['cause']) in SHARED_ADDRESS_ADD_GROUPS]
+    other = [g for g in differences if g not in url_state and g not in recording_adds and g not in version_key_adds
+             and g not in shared_addr_adds and (
         g.get('value') or g['count'] <= 0 or (g['file'], g['group']) not in AUTOMATIC_GROUPS)]
     if other:
         return [], [f'automatic causes: {group_id(g)} ({g["count"]}) is not an addition that can be traced' for g in other]
@@ -1164,6 +1171,38 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     added_links = sum(g['count'] for g in differences if (g['file'], g['group']) == ('links.parquet', 'added keys'))
     if len(keys) != added_links:
         reasons.append(f'automatic causes: {added_links} added link keys, {len(keys)} attached to new documents')
+    if version_key_adds:
+        empty_vk = 'CAST([] AS VARCHAR[])'
+        for table in sorted({g['file'].removesuffix('.parquet') for g in version_key_adds}):
+            if d.has('base', table) and d.has('candidate', table):
+                bad_vk = d.one(f"""WITH chg AS (
+                      SELECT o.pr,coalesce(p.version_keys,{empty_vk}) AS pk,coalesce(l.version_keys,{empty_vk}) AS lk
+                      FROM one_to_one o
+                      JOIN base_{table} p ON p.file_row_number=o.pr
+                      JOIN candidate_{table} l ON l.file_row_number=o.lr
+                      WHERE p.version_keys IS DISTINCT FROM l.version_keys),
+                    added_vk AS (
+                      SELECT DISTINCT unnest(coalesce(a.version_keys,{empty_vk})) AS vk
+                      FROM added_documents ad JOIN candidate_{table} a ON a.file_row_number=ad.r),
+                    lost AS (
+                      SELECT DISTINCT pr FROM chg, unnest(pk) AS t(k) WHERE NOT list_contains(lk, k)),
+                    unshared AS (
+                      SELECT DISTINCT pr FROM chg, unnest(lk) AS t(k)
+                      WHERE NOT list_contains(pk, k) AND k NOT IN (SELECT vk FROM added_vk))
+                  SELECT count(*) FROM (SELECT pr FROM lost UNION SELECT pr FROM unshared)""")
+                if bad_vk:
+                    reasons.append(f'automatic causes: {bad_vk} {table} rows changed version_keys outside added documents')
+    if shared_addr_adds:
+        addr_fields = {'sources': 'url,member_path', 'urls': 'lookup_key'}
+        for table in sorted({g['file'].removesuffix('.parquet') for g in shared_addr_adds}):
+            fields = addr_fields[table]
+            if d.has('base', table) and d.has('candidate', table):
+                lost_addr = d.one(f"""SELECT count(*) FROM (
+                    SELECT DISTINCT {','.join('p.' + f for f in fields.split(','))},x.lr AS r
+                    FROM base_{table} p JOIN pairs x ON p.list_row=x.pr
+                    EXCEPT SELECT DISTINCT {fields},list_row AS r FROM candidate_{table})""")
+                if lost_addr:
+                    reasons.append(f'automatic causes: {lost_addr} {table} rows were removed from existing documents')
     recording_pages = set()
     if recording_adds:
         cand_rec_cols = set(d.columns('candidate', 'recordings')) if d.has('candidate', 'recordings') else set()
@@ -1245,9 +1284,11 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     pin = dict(path=str(evidence), **file_pin(evidence))
     bookkeeping = {group_id(g) for g in url_state}
     recording_ids = {group_id(g) for g in recording_adds}
+    edition_ids = {group_id(g) for g in [*version_key_adds, *shared_addr_adds]}
     return [dict(id=group_id(g), count=g['count'], disposition='explained', evidence=[pin], automatic=True,
                  **(dict(cause=URL_STATE_CAUSE, tickets=['ct-9j3z']) if group_id(g) in bookkeeping else
                     dict(cause=AUTOMATIC_CAUSE, tickets=['ct-zdj8']) if group_id(g) in recording_ids else
+                    dict(cause=AUTOMATIC_CAUSE, tickets=['ct-jcnd']) if group_id(g) in edition_ids else
                     dict(cause=AUTOMATIC_CAUSE, tickets=['ct-ud0b']))) for g in groups], []
 
 
