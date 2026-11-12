@@ -25,8 +25,8 @@ def test_native_job_creates_a_fresh_work_root_before_writing_its_spec(tmp_path):
 
 STEPS=[dict(name='one',sql='SELECT 1 AS x')]
 # An engine failure's first line is its code, then (on an engine that names it, the one line's X2) the failing
-# statement, then the cause. A query() job holds only its planning query "columns" and the statement "query".
-QUERY_STATEMENT=r'(?:query \d+ "(?:columns|query)": )?'
+# statement, then the cause. A query() job holds only its statement "query".
+QUERY_STATEMENT=r'(?:query \d+ "query": )?'
 
 
 def native():
@@ -107,7 +107,7 @@ def test_a_kept_query_is_a_job_with_no_steps_or_outputs_under_small_memory_and_s
     assert query(engine,sql,capture_files(tmp_path),work=tmp_path/'kept')==[dict(n=3)]
     spec=json.loads((tmp_path/'kept/job.json').read_text())
     assert spec['steps']==spec['outputs']==[] and [i['name'] for i in spec['inputs']]==['captures','cited']
-    assert spec['queries']==[dict(name='columns',sql='EXPLAIN FORMAT pgjson '+sql),dict(name='query',sql=sql)]
+    assert spec['queries']==[dict(name='query',sql=sql)]
     runtime=json.loads(engine.limits.read_text())
     # The local runtime allows more of both; a query gets less, so a stopped query leaves at most this much spill.
     assert runtime['memory_bytes']>QUERY_MEMORY_BYTES and runtime['scratch_bytes']>QUERY_SCRATCH_BYTES
@@ -128,13 +128,19 @@ def test_a_kept_query_refuses_a_folder_that_already_holds_files(tmp_path):
 
 
 @pytest.mark.parametrize('sql',['SELECT k.sha,c.sha FROM cited k LEFT JOIN cited c ON c.sha=k.sha',
-                                'SELECT * FROM cited k LEFT JOIN cited c ON c.sha=k.sha'])
+                                'SELECT * FROM cited k LEFT JOIN cited c ON c.sha=k.sha',
+                                'SELECT 1 AS sha, 2 AS sha'])
 def test_a_statement_returning_two_columns_of_one_name_is_refused(tmp_path,sql):
-    """The engine returns each row as a map, so one `sha` would silently replace the other: in a LEFT JOIN the right
-    side's NULL replaced the left key (engine src/job/query_result.rs:58-76 at the pin). The plan names them first."""
+    """The engine refuses duplicate output column names before running (ct-pyai), both via query() and direct run_job()."""
+    from docspec_client.models import DocSpecFailure
+    from congress_api.lake.tables import table_input
     from congress_api.retention.provenance import query
-    with pytest.raises(ValueError,match="2 columns named 'sha'"):
-        query(native(),sql,capture_files(tmp_path))
+    tables=capture_files(tmp_path)
+    with pytest.raises(DocSpecFailure,match=r'^invalid_sql: '):
+        query(native(),sql,tables)
+    with pytest.raises(DocSpecFailure,match=r'^invalid_sql: '):
+        run_job(tmp_path/'direct',native(),inputs=[table_input(k,v) for k,v in tables.items()],
+                steps=[],outputs=[],queries=[dict(name='q',sql=sql)])
 
 
 def test_the_memory_limit_reaches_the_engine(tmp_path):
@@ -171,8 +177,9 @@ def test_explain_returns_the_logical_and_physical_plans_without_running_the_stat
         query(native(),failing,tables)
     measured=explain(native(),JOINED,tables,analyze=True)  # this one runs, and says what each operator did
     assert 'HashJoinExec' in measured['Plan with Metrics'] and 'output_rows=2' in measured['Plan with Metrics']
-    with pytest.raises(DocSpecFailure,match='Nested EXPLAINs'):  # plans come from explain(), not query()
-        query(native(),'EXPLAIN '+JOINED,tables)
+    from congress_api.retention.provenance import query_result
+    cols,explain_rows=query_result(native(),'EXPLAIN '+JOINED,tables)
+    assert cols==['plan_type','plan'] and {r['plan_type'] for r in explain_rows}=={'logical_plan','physical_plan'}
 
 
 def test_a_failing_statement_raises_the_engines_own_error_first(tmp_path):

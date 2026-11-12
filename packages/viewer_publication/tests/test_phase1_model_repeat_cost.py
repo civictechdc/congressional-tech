@@ -124,7 +124,10 @@ OUTER_BUILD_ROWS = 100_000
 OUTER_BUILD_TRACKED = {
     'recovery_candidates': 3,                  # 4.2M rows by captures, 16 cols
     'url_state_lines': 2,                      # 4.2M rows by captures, 11 cols
-    'entity_profile_completeness': 3,          # query; 4.2M rows by captures, 5 cols
+    'entity_profile_completeness': 8,          # query; 4.2M rows by captures, 5 cols (+5 scalar-subquery Left Join:)
+    'filename_both_names': 5,                  # query; bare Left Join: scalar subqueries
+    'invariants': 6,                           # query; bare Left Join: scalar subqueries
+    'url_state_invariants_step': 8,            # bare Left Join: scalar subqueries
     'source_addresses': 1,                     # 2.1M rows by source_files, 3 cols
     'source_annotations': 1,                   # 2.1M rows by source_files, 2 cols
     'document_identities': 2,                  # 2.1M rows by document_members, 4 cols
@@ -141,7 +144,7 @@ OUTER_BUILD_TRACKED = {
     'meetings_export': 9,                      # 341K rows by ordered, 31 cols
     'source_annotation_pages': 2,              # 334K rows by page_facts, 5 cols
     'source_members.parquet': 1,               # export; 323K rows by ordered, 6 cols
-    'model_invariants': 2,                     # query; 323K rows by ordered, 2 cols
+    'model_invariants': 3,                     # query; 323K rows by ordered, 2 cols (+1 bare Left Join:)
     'blank_filename_reasons': 1,               # query; 323K rows by ordered, 2 cols
     'meeting_detail_evidence': 2,              # 217K rows by congress_gov_routes, 16 cols
     'meeting_detail_observations': 3,          # 217K rows by meeting_detail_evidence, 15 cols
@@ -150,7 +153,27 @@ OUTER_BUILD_TRACKED = {
     'document_witness_meeting_witnesses': 1,   # 173K rows by appearance_records_resolved, 5 cols
     'coverage': 3,                             # query; 173K rows by witnesses_export, 7 cols
     'witness_key_map': 1,                      # 156K rows by witness_key_priors, 3 cols
-    'relationship_invariants': 1,              # query; 156K rows by witness_key_map_export, 2 cols
+    'relationship_invariants': 13,             # query; 156K rows by witness_key_map_export (+12 bare Left Join:)
+}
+
+SEMI_ANTI_MARK_JOIN_KINDS = ('LeftSemi Join', 'LeftAnti Join', 'LeftMark Join')
+SEMI_ANTI_MARK_BUILD_TRACKED = {
+    'pinned_readings': 9,
+    'link_inputs': 9,
+    'duplicate_component_edges': 2,
+    'source_annotation_facts': 1,
+    'filename_conflicts': 1,
+    'document_witness_url_matches': 1,
+    'document_witness_raw_matches': 2,
+    'url_state_queue_links': 1,
+    'url_state_invariants_step': 1,
+    'retired_links_export': 18,
+    'model_invariants': 5,
+    'explorer_invariants': 1,
+    'profile_completeness': 18,
+    'entity_profile_completeness': 10,
+    'relationship_invariants': 3,
+    'unresolved_meeting_document_urls': 1,
 }
 
 # New offenders the lint must catch, and ones it must let through.
@@ -170,6 +193,21 @@ PLANTED = {
         FROM resolved_links l LEFT JOIN witness_precedence w ON l.target_url=w.witness_key""",
     'planted_right_join_built_on_small_relation': """SELECT l.page_body,w.superseded_by
         FROM witness_precedence w RIGHT JOIN resolved_links l ON l.target_url=w.witness_key""",
+    'planted_left_semi_join_built_on_large_relation': """SELECT l.page_body FROM resolved_links l
+        WHERE EXISTS (SELECT 1 FROM witness_precedence w WHERE l.target_url=w.witness_key)""",
+    'planted_left_anti_join_built_on_large_relation': """SELECT l.page_body FROM resolved_links l
+        WHERE NOT EXISTS (SELECT 1 FROM witness_precedence w WHERE l.target_url=w.witness_key)""",
+    'planted_semi_join_built_on_small_relation': """SELECT w.witness_key FROM witness_precedence w
+        WHERE EXISTS (SELECT 1 FROM resolved_links l WHERE l.target_url=w.witness_key)""",
+    'planted_reverted_recovery_captures_join': """SELECT r.body_sha,c.media_type FROM saved_recoveries r
+        LEFT JOIN (SELECT encode(c.sha256,'hex') AS body_sha,max(c.media_type) AS media_type
+        FROM captures c JOIN (SELECT DISTINCT decode(body_sha,'hex') AS sha256 FROM saved_recoveries WHERE saved_rank=1) s
+        ON c.sha256=s.sha256 GROUP BY c.sha256) c ON r.body_sha=c.body_sha""",
+    'planted_reverted_recovery_pages_join': """SELECT r.body_sha,t.title FROM saved_recoveries r
+        LEFT JOIN (SELECT encode(p.body_sha,'hex') AS body_sha,max(p.title) AS title
+        FROM source_annotation_pages p JOIN (SELECT DISTINCT decode(coalesce(page_shown,body_sha),'hex') AS sha256
+        FROM saved_recoveries WHERE saved_rank=1) s ON p.body_sha=s.sha256
+        WHERE p.status='completed' GROUP BY p.body_sha) t ON coalesce(r.page_shown,r.body_sha)=t.body_sha""",
 }
 
 # A second direct read of the lake table. Its SQL names the job's own input, so the fixture builds it.
@@ -190,8 +228,8 @@ LAKE_REFUSAL_SQL = """WITH said AS (SELECT f.filename AS component, f.congress A
 SCAN = re.compile(r'^\s*TableScan: (\S+)', re.M)
 JOIN = re.compile(r'^\s*\w+ Join: (.*)$', re.M)
 REGEX = re.compile(r'regexp_|\s!?~\*?\s|SIMILAR TO', re.I)
-# A plan node line; a line of any other shape continues the expression above it.
-NODE = re.compile(r'^( *)([A-Z]\w*(?: Join)?)(?:: (\S*).*)?$')
+# A plan node line (including bare `Left Join:`, `Cross Join:`, `Projection:` lines with nothing after `:`).
+NODE = re.compile(r'^( *)([A-Z]\w*(?: Join)?)(?::(?:\s*(\S*).*)?)?$')
 
 
 #: All eight tables the release job reads from the lake (model/jobs/publish-model.json), each bound
@@ -344,15 +382,35 @@ def estimated_rows(job, node):
     return sum(sizes) if kind == 'Union' else max(sizes)
 
 
-def large_outer_builds(job, plan):
-    """Estimated build rows of each Left or Full join whose left input reaches OUTER_BUILD_ROWS."""
+def large_left_builds(job, plan, kinds):
+    """Estimated build rows of each join in `kinds` whose left input reaches OUTER_BUILD_ROWS."""
     found, pending = [], [tree(plan)]
     while pending:
         kind, _name, inputs = pending.pop()
         pending += inputs
-        if kind in ('Left Join', 'Full Join') and (size := estimated_rows(job, inputs[0])) >= OUTER_BUILD_ROWS:
+        if kind in kinds and (size := estimated_rows(job, inputs[0])) >= OUTER_BUILD_ROWS:
             found.append(size)
     return found
+
+
+def large_outer_builds(job, plan):
+    """Estimated build rows of each Left or Full join whose left input reaches OUTER_BUILD_ROWS."""
+    return large_left_builds(job, plan, ('Left Join', 'Full Join'))
+
+
+def large_semi_anti_mark_builds(job, plan):
+    """Estimated build rows of each LeftSemi, LeftAnti or LeftMark join whose left input reaches OUTER_BUILD_ROWS."""
+    return large_left_builds(job, plan, SEMI_ANTI_MARK_JOIN_KINDS)
+
+
+def recovery_subquery_large_builds(physical_plan):
+    """Any leaf Inner HashJoinExec whose build side scans `captures` or `source_annotation_pages` directly (ct-i5u3)."""
+    from test_phase1_model_join_audit import build_children
+    return [
+        build for build in build_children(physical_plan, join_types={'Inner'})
+        if 'HashJoinExec:' not in build
+        and ('step=captures,' in build or 'step=source_annotation_pages,' in build)
+    ]
 
 
 def model_plans(plans):
@@ -459,10 +517,60 @@ def test_only_tracked_readers_build_an_outer_join_on_a_large_preserved_relation(
     job, plans = planned
     current = {name: len(builds) for name, plan in model_plans(plans).items() if (builds := large_outer_builds(job, plan))}
     assert current == OUTER_BUILD_TRACKED, 'a fixed reader leaves the list; a new one names its small relation first'
+    assert sum(current.values()) == 112
+
+
+def test_only_tracked_readers_build_a_semi_anti_or_mark_join_on_a_large_left_relation(planned):
+    job, plans = planned
+    current = {
+        name: len(builds)
+        for name, plan in model_plans(plans).items()
+        if (builds := large_semi_anti_mark_builds(job, plan))
+    }
+    assert current == SEMI_ANTI_MARK_BUILD_TRACKED, 'semi/anti/mark joins with large left inputs are tracked'
+    assert sum(current.values()) == 83
+
+
+def test_tree_parses_every_plan_node_line_including_bare_joins_and_projections(planned):
+    """ct-i5u3: independent line-by-line check proving NODE drops zero bare `Left Join:`, `Cross Join:` or `Projection:` lines."""
+    _job, plans = planned
+    raw_header = re.compile(r'^\s*([A-Z][A-Za-z0-9_]*(?: Join)?)(?::.*)?$')
+    bare_colon = 0
+    for name, plan in model_plans(plans).items():
+        expected_kinds = []
+        for line in plan.splitlines():
+            if line.rstrip().endswith(('Left Join:', 'Cross Join:', 'Projection:')):
+                bare_colon += 1
+            if m := raw_header.match(line):
+                expected_kinds.append(m.group(1))
+        parsed_kinds = []
+
+        def walk(node):
+            kind, _first, children = node
+            if kind:
+                parsed_kinds.append(kind)
+            for child in children:
+                walk(child)
+
+        walk(tree(plan))
+        assert parsed_kinds == expected_kinds, f'{name}: dropped or misparsed plan lines'
+    assert bare_colon > 0, 'model plans contain bare-colon nodes that the old regex dropped'
 
 
 def test_lint_flags_a_planted_left_join_built_on_a_large_relation_and_passes_its_right_join(planned):
     job, plans = planned
-    assert large_outer_builds(job, plans['planted_left_join_built_on_large_relation']) == [MEASURED['rows']['resolved_links']]
+    resolved_links = MEASURED['rows']['resolved_links']
+    assert large_outer_builds(job, plans['planted_left_join_built_on_large_relation']) == [resolved_links]
     assert large_outer_builds(job, plans['planted_right_join_built_on_small_relation']) == []
+    assert large_semi_anti_mark_builds(job, plans['planted_left_semi_join_built_on_large_relation']) == [resolved_links]
+    assert large_semi_anti_mark_builds(job, plans['planted_left_anti_join_built_on_large_relation']) == [resolved_links]
+    assert large_semi_anti_mark_builds(job, plans['planted_semi_join_built_on_small_relation']) == []
+
+
+def test_document_recovery_subqueries_build_on_saved_recoveries_and_fail_when_reverted(explained):
+    """ct-i5u3: guard both 2ae32ba5 subquery flips in model/sql/document-recovery-normalized.sql."""
+    _job, explains = explained
+    assert recovery_subquery_large_builds(explains['base_normalized']['physical_plan']) == []
+    assert recovery_subquery_large_builds(explains['planted_reverted_recovery_captures_join']['physical_plan']) != []
+    assert recovery_subquery_large_builds(explains['planted_reverted_recovery_pages_join']['physical_plan']) != []
 

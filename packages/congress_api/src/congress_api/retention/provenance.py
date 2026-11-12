@@ -1,5 +1,4 @@
 """Append-only provenance records, pinned local-only import stages, and the engine job helpers they run on."""
-from collections import Counter
 from contextlib import nullcontext
 from datetime import datetime
 from hashlib import file_digest, sha256
@@ -391,7 +390,8 @@ def _query_job(engine,queries,tables,*,memory_bytes=QUERY_MEMORY_BYTES,scratch_b
     with nullcontext(work) if work is not None else TemporaryDirectory(prefix='docspec-query-') as root:
         bounded=bounded_engine(engine,root,memory_bytes=memory_bytes,scratch_bytes=scratch_bytes)
         try:
-            return run_job(root,bounded,inputs=inputs,steps=[],outputs=[],queries=queries)
+            run_job(root,bounded,inputs=inputs,steps=[],outputs=[],queries=queries)
+            return {entry['name']:entry for entry in json.loads((Path(root)/'result.json').read_text()).get('queries',[])}
         finally:
             if bounded is not engine:bounded.close()
 
@@ -399,23 +399,17 @@ def _query_job(engine,queries,tables,*,memory_bytes=QUERY_MEMORY_BYTES,scratch_b
 def query_result(engine,sql,tables,**options):
     """Column names and rows of one read-only statement over `tables` (name: Parquet path or exact table pin).
 
-    The engine returns each row as a JSON map, sorted by name, and keeps only the last of two columns of one
-    name (ct-pyai). So the same job first plans the statement (`EXPLAIN FORMAT pgjson`, nothing run) for its
-    output names: a name given twice (`SELECT k.sha, c.sha`, `SELECT *` over a join) is refused after the
-    statement has run, and rows come back in the statement's column order. An EXPLAIN statement cannot be
-    planned that way; plans come from `explain`. Values are the engine's JSON: binary as lowercase hex,
-    timestamps as RFC 3339 text. The result must fit the runtime's `max_metadata_bytes`, and the engine
-    charges it to memory at many times its JSON size. Options are `_query_job`'s. A pin is read through
-    whatever object connection `engine` has: none for a local runtime."""
-    found=_query_job(engine,[dict(name='columns',sql='EXPLAIN FORMAT pgjson '+sql),dict(name='query',sql=sql)],
-                     tables,**options)
-    columns=json.loads(found['columns'][0]['plan'])[0]['Plan']['Output']
-    if repeated:=[f'{count} columns named {name!r}' for name,count in Counter(columns).items() if count>1]:
-        raise ValueError('The statement returns '+', '.join(repeated)+'; the engine would keep only the last '
-                         'of each (ct-pyai). Name every column once, with AS.')
-    rows=found['query']
+    The engine refuses a statement whose result schema repeats a column name (`invalid_sql`, ct-pyai) and
+    records `columns` in the statement's output order alongside each row's sorted JSON map, so rows come
+    back in the statement's column order without a planning pre-pass. Values are the engine's JSON: binary
+    as lowercase hex, timestamps as RFC 3339 text. The result must fit the runtime's `max_metadata_bytes`,
+    and the engine charges it to memory at many times its JSON size. Options are `_query_job`'s. A pin is
+    read through whatever object connection `engine` has: none for a local runtime."""
+    entry=_query_job(engine,[dict(name='query',sql=sql)],tables,**options)['query']
+    columns=entry['columns']
+    rows=entry['data']
     if rows and sorted(rows[0])!=sorted(columns):
-        raise ValueError(f'The engine returned columns {sorted(rows[0])}, its plan names {columns}')
+        raise ValueError(f'The engine returned columns {sorted(rows[0])}, its schema names {columns}')
     return columns,[{name:row[name] for name in columns} for row in rows]
 
 
@@ -429,7 +423,7 @@ def explain(engine,sql,tables,*,analyze=False,**options):
 
     With `analyze` the statement runs and its plan says what each operator did (`Plan with Metrics`)."""
     sql=('EXPLAIN ANALYZE ' if analyze else 'EXPLAIN ')+sql
-    return {row['plan_type']:row['plan'] for row in _query_job(engine,[dict(name='plan',sql=sql)],tables,**options)['plan']}
+    return {row['plan_type']:row['plan'] for row in _query_job(engine,[dict(name='plan',sql=sql)],tables,**options)['plan']['data']}
 
 
 def parquet_records(path):

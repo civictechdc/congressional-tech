@@ -177,6 +177,33 @@ def create_table(*,engine,work,catalog_root,table,schema,location,create_namespa
     return _job(engine,work,catalog_root=catalog_root,operations=operations)
 
 
+def add_optional_columns(*,engine,work,catalog_root,table,expected_schema_id,columns):
+    """Add optional primitive top-level columns while the table's head is `expected_schema_id` (ct-auhc).
+
+    The engine assigns fresh Iceberg field IDs above `highest_field_id`, refuses a stale head, and
+    reports an idempotent no-op when every requested column already exists with the same optional type."""
+    if type(expected_schema_id) is not int or expected_schema_id<0:
+        raise ValueError('add_optional_columns requires a non-negative integer expected_schema_id')
+    if not isinstance(columns,(list,tuple)) or not columns:
+        raise ValueError('add_optional_columns requires at least one column specification')
+    normalized=[]
+    for item in columns:
+        if not isinstance(item,dict) or not {'name','type'}<=set(item)<={'name','type','doc'}:
+            raise ValueError('Each optional column must be a dict of name, type and optional doc')
+        _identifier(item['name'])
+        if not isinstance(item['type'],str) or not item['type']:
+            raise ValueError('Each optional column requires a primitive Iceberg type name')
+        entry=dict(name=item['name'],type=item['type'])
+        if item.get('doc') is not None:
+            if not isinstance(item['doc'],str):
+                raise ValueError('Optional column doc must be a string')
+            entry['doc']=item['doc']
+        normalized.append(entry)
+    operation=dict(kind='add_columns',name='add_columns',table=table,
+                   expected_schema_id=expected_schema_id,columns=normalized)
+    return _job(engine,work,catalog_root=catalog_root,operations=[operation])['table_operations'][0]
+
+
 def append_rows(source, *, engine,work,catalog_root,table,keys,definition,
                 file_bytes=128<<20,row_group_rows=8192,row_group_bytes=32<<20):
     """Recompute missing keys inside the engine on each catalog conflict.

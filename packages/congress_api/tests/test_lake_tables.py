@@ -235,3 +235,199 @@ def test_record_table_declared_schemas_preserve_created_iceberg_and_arrow_equiva
             s_new, s_old = _read_schema(c_new), _read_schema(c_old)
             assert s_new['fields'] == s_old['fields'] == declared['fields']
             assert set(s_new['identifier-field-ids']) == set(s_old['identifier-field-ids']) == set(declared['identifier-field-ids'])
+
+
+def test_mods_style_two_column_addition_evolves_lake_table_in_place_and_filters_nullable_lists(tmp_path):
+    """ct-auhc + ct-ly88: add two optional MODS columns (`title`, `created`) without a new table, keep old snapshots
+    readable, append rows carrying the new fields, and filter nullable list columns (`held_dates IS [NOT] NULL`)."""
+    import copy
+    from congress_api.lake import tables
+    from congress_api.retention.provenance import query, query_result
+    from docspec_client.models import DocSpecFailure
+
+    full_schema = tables.load_schema('appearance_records')
+    initial_schema = copy.deepcopy(full_schema)
+    initial_schema['fields'] = [
+        f for f in full_schema['fields'] if f['name'] not in {'title', 'created', 'committees', 'committee_members'}
+    ]
+    catalog = tmp_path / 'catalog'
+    table_ref = dict(namespace=['archive'], name='appearance_records')
+
+    appearance_struct = pa.struct([
+        pa.field('source_locator', pa.string(), nullable=False),
+        pa.field('name_key', pa.string()),
+        pa.field('name', pa.string()),
+        pa.field('honorific', pa.string()),
+        pa.field('given', pa.string()),
+        pa.field('middle', pa.string()),
+        pa.field('family', pa.string()),
+        pa.field('suffix', pa.string()),
+        pa.field('position', pa.string()),
+        pa.field('organization', pa.string()),
+        pa.field('on_behalf_of', pa.string()),
+        pa.field('location', pa.string()),
+        pa.field('panel', pa.string()),
+        pa.field('panel_order', pa.int32()),
+        pa.field('display_order', pa.int32()),
+        pa.field('witness_type', pa.string()),
+        pa.field('testified', pa.bool_()),
+        pa.field('bioguide_id', pa.string()),
+        pa.field('document_links', pa.list_(pa.field('item', pa.string(), nullable=False)), nullable=False),
+    ])
+    base_fields = [
+        pa.field('record_sha', pa.binary(32), nullable=False),
+        pa.field('parser_version', pa.string(), nullable=False),
+        pa.field('status', pa.string(), nullable=False),
+        pa.field('error_type', pa.string()),
+        pa.field('source', pa.string(), nullable=False),
+        pa.field('event_id', pa.int64()),
+        pa.field('package_id', pa.string()),
+        pa.field('declared_base', pa.string()),
+        pa.field('collection_state', pa.string()),
+        pa.field('appearances', pa.list_(pa.field('item', appearance_struct, nullable=False)), nullable=False),
+        pa.field('held_dates', pa.list_(pa.field('item', pa.string(), nullable=False))),
+    ]
+
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        tables.create_table(
+            engine=engine,
+            work=tmp_path / 'create',
+            catalog_root=catalog,
+            table=table_ref,
+            schema=initial_schema,
+            location=tmp_path / 'lake',
+            create_namespace=True,
+        )
+        old_stage = tmp_path / 'old.parquet'
+        pq.write_table(
+            pa.Table.from_pylist(
+                [
+                    dict(
+                        record_sha=b'\x01' * 32,
+                        parser_version='mods-v1',
+                        status='completed',
+                        error_type=None,
+                        source='govinfo_mods',
+                        event_id=None,
+                        package_id='CHRG-118shrg55101',
+                        declared_base=None,
+                        collection_state='complete',
+                        appearances=[],
+                        held_dates=None,
+                    )
+                ],
+                schema=pa.schema(base_fields),
+            ),
+            old_stage,
+        )
+        first = tables.append_rows(
+            old_stage,
+            engine=engine,
+            work=tmp_path / 'append-old',
+            catalog_root=catalog,
+            table=table_ref,
+            keys=['record_sha', 'source', 'parser_version'],
+            definition='mods-appearance-v1',
+        )
+        old_pin = {k: first[k] for k in ('metadata_location', 'table_uuid', 'snapshot', 'schema_id')}
+        assert old_pin['schema_id'] == 0
+
+        added = tables.add_optional_columns(
+            engine=engine,
+            work=tmp_path / 'add-cols',
+            catalog_root=catalog,
+            table=table_ref,
+            expected_schema_id=0,
+            columns=[
+                dict(name='title', type='string', doc='MODS hearing title'),
+                dict(name='created', type='string'),
+            ],
+        )
+        assert added['table_uuid'] == old_pin['table_uuid']
+        assert added['previous_schema_id'] == 0 and added['schema_id'] == 1
+        assert [c['name'] for c in added['added_columns']] == ['title', 'created']
+        assert [c['field_id'] for c in added['added_columns']] == [34, 35]
+
+        # Repeating at the new schema is an idempotent no-op; repeating at stale schema_id=0 refuses.
+        noop = tables.add_optional_columns(
+            engine=engine,
+            work=tmp_path / 'add-cols-noop',
+            catalog_root=catalog,
+            table=table_ref,
+            expected_schema_id=1,
+            columns=[dict(name='title', type='string'), dict(name='created', type='string')],
+        )
+        assert noop['added_columns'] == [] and noop['schema_id'] == noop['previous_schema_id'] == 1
+        with pytest.raises(DocSpecFailure):
+            tables.add_optional_columns(
+                engine=engine,
+                work=tmp_path / 'add-cols-stale',
+                catalog_root=catalog,
+                table=table_ref,
+                expected_schema_id=0,
+                columns=[dict(name='extra', type='string')],
+            )
+
+        evolved_stage = tmp_path / 'new.parquet'
+        pq.write_table(
+            pa.Table.from_pylist(
+                [
+                    dict(
+                        record_sha=b'\x02' * 32,
+                        parser_version='mods-v2',
+                        status='completed',
+                        error_type=None,
+                        source='govinfo_mods',
+                        event_id=None,
+                        package_id='CHRG-118shrg55102',
+                        declared_base=None,
+                        collection_state='complete',
+                        appearances=[],
+                        held_dates=['2024-05-14'],
+                        title='Oversight of Agency Operations',
+                        created='2024-09-01',
+                    )
+                ],
+                schema=pa.schema([*base_fields, pa.field('title', pa.string()), pa.field('created', pa.string())]),
+            ),
+            evolved_stage,
+        )
+        second = tables.append_rows(
+            evolved_stage,
+            engine=engine,
+            work=tmp_path / 'append-new',
+            catalog_root=catalog,
+            table=table_ref,
+            keys=['record_sha', 'source', 'parser_version'],
+            definition='mods-appearance-v2',
+        )
+        new_pin = {k: second[k] for k in ('metadata_location', 'table_uuid', 'snapshot', 'schema_id')}
+        assert new_pin['table_uuid'] == old_pin['table_uuid'] and new_pin['schema_id'] == 1
+
+        # Old snapshot still reads with its original 11-column schema; new head reads both rows with NULL fill.
+        old_cols, old_rows = query_result(engine, 'SELECT * FROM t', dict(t=old_pin))
+        assert 'title' not in old_cols and 'created' not in old_cols and len(old_rows) == 1
+        assert old_rows[0]['package_id'] == 'CHRG-118shrg55101'
+
+        head_rows = query(
+            engine,
+            'SELECT package_id, title, created, held_dates FROM t ORDER BY package_id',
+            dict(t=new_pin),
+        )
+        assert head_rows == [
+            dict(package_id='CHRG-118shrg55101', title=None, created=None, held_dates=None),
+            dict(
+                package_id='CHRG-118shrg55102',
+                title='Oversight of Agency Operations',
+                created='2024-09-01',
+                held_dates=['2024-05-14'],
+            ),
+        ]
+        # ct-ly88: IS NULL / IS NOT NULL on nullable list column `held_dates` pushes cleanly without accessor failure.
+        assert query(engine, 'SELECT package_id FROM t WHERE held_dates IS NULL', dict(t=new_pin)) == [
+            dict(package_id='CHRG-118shrg55101')
+        ]
+        assert query(engine, 'SELECT package_id FROM t WHERE held_dates IS NOT NULL', dict(t=new_pin)) == [
+            dict(package_id='CHRG-118shrg55102')
+        ]
+
