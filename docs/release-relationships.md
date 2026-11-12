@@ -32,7 +32,8 @@ Coverage: Date bounds span accepted document dates only and Congress bounds skip
 | `chambers` | `list<dict>` | no | Chambers associated with the document |
 | `congress` | `int16` | yes | Congress number when unambiguous |
 | `format` | `dict` | no | Original file format |
-| `document_date` | `date32` | yes | Date of the document as read; detail.document_date_status says whether it is accepted or suspect |
+| `document_date` | `date32` | yes | Date of the document as read; document_date_status says whether it is accepted or suspect |
+| `document_date_status` | `dict` | yes | accepted, or suspect for a filename date more than 30 days after first_captured or outside the tagged Congress's years (one year of margin); document_date keeps the literal reading either way; null when undated |
 | `first_captured` | `date32` | yes | First good fetch date |
 | `date_kind` | `dict` | no | Basis of the archive date |
 | `saved_kind` | `dict` | no | Original file or recovery |
@@ -73,7 +74,6 @@ Coverage: Date bounds span accepted document dates only and Congress bounds skip
 | `saved_media_type` | `dict` | no | Media type of the saved file |
 | `saved_bytes` | `int64` | no | Size of original bytes before storage compression |
 | `document_date_source` | `dict` | yes | Filename, content or meeting date basis |
-| `document_date_status` | `dict` | yes | accepted, or suspect for a filename date more than 30 days after first_captured or outside the tagged Congress's years (one year of margin); document_date keeps the literal reading either way; null when undated |
 | `title_source` | `dict` | yes | Which candidate gave the title: correction, page_title, page_heading (including a dead source page the document showed), link_text, other_format_page_title, other_format_page_heading, copy_link_text, recovered_copy, mods_title, or label_witness (a label with the witness name); null when untitled |
 | `in_archive_since` | `date32` | yes | Earliest known archive import date |
 | `removed_on` | `date32` | yes | Date the publisher removed the document |
@@ -101,7 +101,8 @@ Coverage: Date bounds span accepted document dates only and Congress bounds skip
 | `chambers` | `list<dict>` | no | Chambers associated with the document |
 | `congress` | `int16` | yes | Congress number when unambiguous |
 | `format` | `dict` | no | Original file format |
-| `document_date` | `date32` | yes | Date of the document as read; detail.document_date_status says whether it is accepted or suspect |
+| `document_date` | `date32` | yes | Date of the document as read; document_date_status says whether it is accepted or suspect |
+| `document_date_status` | `dict` | yes | accepted, or suspect for a filename date more than 30 days after first_captured or outside the tagged Congress's years (one year of margin); document_date keeps the literal reading either way; null when undated |
 | `first_captured` | `date32` | yes | First good fetch date |
 | `date_kind` | `dict` | no | Basis of the archive date |
 | `saved_kind` | `dict` | no | Original file or recovery |

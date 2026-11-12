@@ -145,7 +145,6 @@ OUTER_BUILD_TRACKED = {
     'blank_filename_reasons': 1,               # query; 323K rows by ordered, 2 cols
     'meeting_detail_evidence': 2,              # 217K rows by congress_gov_routes, 16 cols
     'meeting_detail_observations': 3,          # 217K rows by meeting_detail_evidence, 15 cols
-    'document_witness_keys': 2,                # 204K rows by document_witness_raw_matches, 3 cols
     'witness_key_current': 1,                  # 173K rows by appearance_records_resolved, 15 cols
     'document_witness_url_matches': 1,         # 173K rows by appearance_records_resolved, 4 cols
     'document_witness_meeting_witnesses': 1,   # 173K rows by appearance_records_resolved, 5 cols

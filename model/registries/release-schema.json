@@ -55,7 +55,13 @@
         {
           "name": "document_date",
           "type": "date32",
-          "meaning": "Date of the document as read; detail.document_date_status says whether it is accepted or suspect",
+          "meaning": "Date of the document as read; document_date_status says whether it is accepted or suspect",
+          "nullable": true
+        },
+        {
+          "name": "document_date_status",
+          "type": "dict",
+          "meaning": "accepted, or suspect for a filename date more than 30 days after first_captured or outside the tagged Congress's years (one year of margin); document_date keeps the literal reading either way; null when undated",
           "nullable": true
         },
         {
@@ -203,12 +209,6 @@
           "name": "document_date_source",
           "type": "dict",
           "meaning": "Filename, content or meeting date basis",
-          "nullable": true
-        },
-        {
-          "name": "document_date_status",
-          "type": "dict",
-          "meaning": "accepted, or suspect for a filename date more than 30 days after first_captured or outside the tagged Congress's years (one year of margin); document_date keeps the literal reading either way; null when undated",
           "nullable": true
         },
         {
@@ -376,7 +376,13 @@
         {
           "name": "document_date",
           "type": "date32",
-          "meaning": "Date of the document as read; detail.document_date_status says whether it is accepted or suspect",
+          "meaning": "Date of the document as read; document_date_status says whether it is accepted or suspect",
+          "nullable": true
+        },
+        {
+          "name": "document_date_status",
+          "type": "dict",
+          "meaning": "accepted, or suspect for a filename date more than 30 days after first_captured or outside the tagged Congress's years (one year of margin); document_date keeps the literal reading either way; null when undated",
           "nullable": true
         },
         {

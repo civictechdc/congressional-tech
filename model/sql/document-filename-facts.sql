@@ -18,10 +18,10 @@ WITH copies AS (
   CASE WHEN f.congress_valid THEN 2
    WHEN regexp_like(coalesce(f.congress_name,''),'(?i)^[0-9a-f]{64}[.](hhrg|hmkp|hmtg)-') THEN 1 ELSE 0 END AS congress_convention
  FROM copies c JOIN source_filename_readings f ON f.source_id=c.source_id
-), judged AS (
+ ), judged AS (
  SELECT *,
-  (first_fetched IS NULL OR filename_date<=cast(first_fetched AS DATE))
-  AND (congress IS NULL OR date_part('year',filename_date) BETWEEN 2*congress+1787 AND 2*congress+1789) AS date_plausible
+  (first_fetched IS NULL OR filename_date<=cast(first_fetched AS DATE)+INTERVAL '30 days')
+  AND (congress IS NULL OR date_part('year',filename_date) BETWEEN 2*congress+1786 AND 2*congress+1790) AS date_plausible
  FROM named
 )
 SELECT component,

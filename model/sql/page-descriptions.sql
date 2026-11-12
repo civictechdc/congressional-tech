@@ -44,4 +44,19 @@ WITH docs AS (
  FROM candidates c LEFT JOIN page_signals f ON f.kind='description_format' AND regexp_like(c.format,f.pattern)
  WHERE NOT c.rejected
 )
-SELECT doc_key,trim(value) AS description,path FROM ranked WHERE choice=1
+SELECT doc_key,
+ nullif(trim(
+  replace(replace(replace(replace(replace(replace(replace(replace(replace(
+  replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(
+   value,
+   '&amp;','&'),'&#38;','&'),
+   '&ldquo;','“'),'&rdquo;','”'),
+   '&lsquo;','‘'),'&rsquo;','’'),
+   '&ndash;','–'),'&mdash;','—'),
+   '&bull;','•'),
+   '&#39;',''''),'&#039;',''''),'&#x27;',''''),'&#X27;',''''),'&apos;',''''),
+   '&quot;','"'),'&quote;','"'),'&#34;','"'),'&#x22;','"'),
+   '&nbsp;',' ')
+ ),'') AS description,
+ path
+FROM ranked WHERE choice=1

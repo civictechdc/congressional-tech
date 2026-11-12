@@ -64,7 +64,7 @@ PAGE_DEFAULTS = dict(description='cast(NULL AS VARCHAR)', published_on='cast(NUL
 
 
 LIST_COLUMNS = ['filename', 'title', 'document_kind', 'document_family', 'committee_keys', 'chambers',
-    'congress', 'format', 'document_date', 'first_captured', 'date_kind', 'saved_kind', 'hidden',
+    'congress', 'format', 'document_date', 'document_date_status', 'first_captured', 'date_kind', 'saved_kind', 'hidden',
     'meeting_keys', 'measure_keys', 'bioguide_ids', 'witness_keys', 'version_keys']
 
 
@@ -73,7 +73,7 @@ PAGE_COLUMNS = ['description', 'published_on', 'modified_on', 'publisher_labels'
 
 
 DETAIL_COLUMNS = ['link_key', 'saved_body', 'saved_suffix', 'saved_media_type', 'saved_bytes',
-    'document_date_source', 'document_date_status', 'title_source', 'in_archive_since', 'removed_on', 'review_note', 'review_decided_at',
+    'document_date_source', 'title_source', 'in_archive_since', 'removed_on', 'review_note', 'review_decided_at',
     'src_start', 'src_len', 'rec_start', 'rec_len', 'alternates', 'package_id', 'facts', *PAGE_COLUMNS]
 
 
@@ -93,10 +93,10 @@ DOCUMENT_DATE_STATUS = """CASE WHEN document_date IS NULL THEN NULL
 DOCUMENT_COLUMNS = [*DETAIL_COLUMNS, *LIST_COLUMNS]
 
 
-LIST_DICTIONARY = [*(f'{name}.list.item' for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys', 'measure_keys', 'bioguide_ids', 'witness_keys', 'version_keys']), 'format', 'date_kind', 'saved_kind']
+LIST_DICTIONARY = [*(f'{name}.list.item' for name in ['document_kind', 'document_family', 'committee_keys', 'chambers', 'meeting_keys', 'measure_keys', 'bioguide_ids', 'witness_keys', 'version_keys']), 'format', 'document_date_status', 'date_kind', 'saved_kind']
 
 
-DETAIL_DICTIONARY = ['saved_suffix', 'saved_media_type', 'document_date_source', 'document_date_status', 'title_source', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field',
+DETAIL_DICTIONARY = ['saved_suffix', 'saved_media_type', 'document_date_source', 'title_source', 'alternates.list.item.format', 'alternates.list.item.suffix', 'facts.list.item.field',
     'publisher_labels.list.item', 'page_metadata.list.item.field', 'page_metadata.list.item.format', 'page_metadata.list.item.precision', 'main_content.outcome']
 
 

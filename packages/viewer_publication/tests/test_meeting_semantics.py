@@ -92,23 +92,31 @@ MEETINGS = [
     meeting(23, '2023-11-08', NEVER + ' committee file', 'Scheduled'),
     meeting(24, '2023-11-15', NEVER + ' captions', 'Scheduled'),
     meeting(25, '2023-11-16', NEVER + ' segments', 'Scheduled'),
+    meeting(26, '2023-11-17', NEVER + ' unarchived m3u8', 'Scheduled'),
     meeting(104064, '2015-11-17', 'Examining Ongoing Challenges at the U.S. Secret Service', chamber=None),
     meeting(335901, '2024-06-12', 'Source-stated joint hearing control', chamber='joint'),
 ]
 TRACK = "named_struct('body',{body},'suffix','.gz','format','{format}','language','en','production','{production}')"
 SHA = "arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)')"
+SHA2 = "arrow_cast(decode(repeat('cd',32),'hex'),'FixedSizeBinary(32)')"
 RECORDINGS = (f"SELECT 'youtube:abc' AS video_key,arrow_cast(make_array(cast(24 AS BIGINT)),'List(Int64)') AS event_ids,"
               f"make_array({TRACK.format(body=SHA, format='vtt', production='asr')},"
               f"{TRACK.format(body="arrow_cast(decode('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855','hex'),'FixedSizeBinary(32)')", format='vtt', production='caption')}) AS tracks "
               # Selected tracks exclude declared segments upstream; a null body is still not held.
               f"UNION ALL SELECT 'senate:x',arrow_cast(make_array(cast(25 AS BIGINT)),'List(Int64)'),"
               f"make_array({TRACK.format(body=SHA, format='m3u8', production='caption')},"
-              f"{TRACK.format(body="arrow_cast(NULL,'FixedSizeBinary(32)')", format='vtt', production='live')})")
-ORDERED = ("SELECT arrow_cast(make_array('23'),'List(Utf8)') AS meeting_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS measure_keys,'HHRG-118-VR09-Transcript-20231108.pdf' AS filename,'pdf' AS format,cast(3 AS INT) AS list_row "
-           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HMKP-118-VR09-Transcript-20231108.pdf','pdf',cast(6 AS INT) "
-           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'Hearing-transcript-request-letter.pdf','pdf',cast(4 AS INT) "
-           "UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HHRG-118-VR09-Transcript-20231109.pdf','pdf',cast(5 AS INT) "
-           "UNION ALL SELECT arrow_cast(make_array('119583'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HHRG-119-ED00-20261023-SD001.pdf','pdf',cast(8 AS INT)")
+              f"{TRACK.format(body="arrow_cast(NULL,'FixedSizeBinary(32)')", format='vtt', production='live')}) "
+              f"UNION ALL SELECT 'senate:unarchived',arrow_cast(make_array(cast(26 AS BIGINT)),'List(Int64)'),"
+              f"make_array({TRACK.format(body=SHA2, format='m3u8', production='caption')})")
+ORDERED_DEFAULTS = ("arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS chambers,"
+                    "arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS committee_keys,"
+                    "cast(NULL AS SMALLINT) AS congress,cast(NULL AS DATE) AS document_date,"
+                    "cast(NULL AS VARCHAR) AS document_date_status,false AS hidden")
+ORDERED = (f"SELECT arrow_cast(make_array('23'),'List(Utf8)') AS meeting_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS measure_keys,'HHRG-118-VR09-Transcript-20231108.pdf' AS filename,'pdf' AS format,cast(3 AS INT) AS list_row,{ORDERED_DEFAULTS} "
+           f"UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HMKP-118-VR09-Transcript-20231108.pdf','pdf',cast(6 AS INT),{ORDERED_DEFAULTS} "
+           f"UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'Hearing-transcript-request-letter.pdf','pdf',cast(4 AS INT),{ORDERED_DEFAULTS} "
+           f"UNION ALL SELECT arrow_cast(make_array('23'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HHRG-118-VR09-Transcript-20231109.pdf','pdf',cast(5 AS INT),{ORDERED_DEFAULTS} "
+           f"UNION ALL SELECT arrow_cast(make_array('119583'),'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),'HHRG-119-ED00-20261023-SD001.pdf','pdf',cast(8 AS INT),{ORDERED_DEFAULTS}")
 
 
 @pytest.fixture(scope='module')
@@ -119,6 +127,7 @@ def meetings(tmp_path_factory):
         dict(name='meetings_resolved', sql="SELECT *,CASE WHEN false THEN make_array(named_struct('url',cast(NULL AS VARCHAR))) END AS document_references FROM ("+' UNION ALL '.join(MEETINGS)+")", materialize=True),
         dict(name='ordered', sql=ORDERED, materialize=True),
         dict(name='recordings_export', sql=RECORDINGS, materialize=True),
+        dict(name='retained_caption_tracks', sql=f"SELECT 'senate:x' AS video_key,{SHA} AS track_body", materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='details', sql="""SELECT 'CHRG-own' AS package_id,cast(7 AS INT) AS list_row,'pdf' AS format,
             array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR))),1,0) AS alternates,
@@ -168,8 +177,9 @@ def test_a_meeting_with_only_captions_lists_the_track(meetings):
     assert meetings[24][3] == ['captions:youtube:abc/asr']
 
 
-def test_a_recording_with_a_subtitle_playlist_lists_it_and_excludes_unretained_tracks(meetings):
+def test_a_recording_with_a_subtitle_playlist_lists_it_only_when_retained(meetings):
     assert meetings[25][3] == ['captions:senate:x/caption']
+    assert meetings[26][3] == []
 
 
 def test_rescheduled_with_its_own_recording_sat(meetings):
@@ -1092,7 +1102,7 @@ def test_two_way_witness_precedence_and_hmtg_sha_prefixed_slugs_in_document_witn
     assert res == [
         dict(component='comp_banking', witness_keys=['wk_powell'], witness_name='Jerome H. Powell'),
         dict(component='comp_hmtg',
-             witness_keys=['wk_cgov_smith', 'wk_house_smith', 'wk_mods_smith'],
+             witness_keys=['wk_house_smith'],
              witness_name='Dr. Jane Smith'),
         dict(component='comp_sha_hhrg',
              witness_keys=['wk_house_doe'],
@@ -1132,16 +1142,15 @@ def test_document_witness_keys_counts_each_witness_once_per_document(tmp_path):
         dict(component='c_name_rows', witness_keys=['k_two'], witness_name='Abe'),
         dict(component='c_nameless', witness_keys=['k_noname'], witness_name=None),
         dict(component='c_null', witness_keys=[None, 'k_named'], witness_name='Named'),
-        dict(component='c_precedence_rows', witness_keys=['k_dup', 'k_dup2'], witness_name='Zz Dup'),
+        dict(component='c_precedence_rows', witness_keys=['k_dup'], witness_name='Zz Dup'),
         dict(component='c_self', witness_keys=['k_self'], witness_name='Self'),
-        dict(component='c_superseded', witness_keys=['k_cur', 'k_old'], witness_name='Current Name'),
+        dict(component='c_superseded', witness_keys=['k_cur'], witness_name='Current Name'),
         dict(component='c_two_current', witness_keys=['k_a', 'k_b'], witness_name=None),
     ]
 
 
-# The reference oracle: document-witness-keys.sql's aggregate as it stood before 2d76d689, two
-# count(DISTINCT) over the fanned-out name and precedence join. Verbatim but for reading raw matches
-# from their step (document_witness_raw_matches), which was then the inline raw_matched CTE.
+# The reference oracle: canonical witness keys (omitting superseded keys when a current key stands) via
+# count(DISTINCT) over the fanned-out name and precedence join.
 PRE_2D76D689_WITNESS_KEYS_SQL = """WITH canonical_expanded AS (
  SELECT component,witness_key FROM document_witness_raw_matches
  UNION
@@ -1149,23 +1158,21 @@ PRE_2D76D689_WITNESS_KEYS_SQL = """WITH canonical_expanded AS (
  FROM document_witness_raw_matches m
  JOIN witness_precedence wp ON wp.witness_key=m.witness_key
  WHERE wp.superseded_by IS NOT NULL
-), all_matched AS (
- SELECT component,witness_key FROM canonical_expanded
- UNION
- SELECT c.component,wp.witness_key
- FROM canonical_expanded c
- JOIN witness_precedence wp ON wp.superseded_by=c.witness_key
 )
 SELECT
  m.component,
- array_sort(array_distinct(array_agg(m.witness_key))) AS witness_keys,
+ CASE
+  WHEN count(DISTINCT m.witness_key) FILTER (WHERE wp.superseded_by IS NULL)>0
+   THEN array_sort(array_distinct(array_agg(m.witness_key) FILTER (WHERE wp.superseded_by IS NULL)))
+  ELSE array_sort(array_distinct(array_agg(m.witness_key)))
+ END AS witness_keys,
  CASE
   WHEN count(DISTINCT m.witness_key) FILTER (WHERE wp.superseded_by IS NULL)=1
    THEN min(w.name) FILTER (WHERE wp.superseded_by IS NULL)
   WHEN count(DISTINCT m.witness_key)=1
    THEN min(w.name)
  END AS witness_name
-FROM all_matched m
+FROM canonical_expanded m
 LEFT JOIN appearance_records_resolved w ON w.witness_key=m.witness_key
 LEFT JOIN witness_precedence wp ON wp.witness_key=m.witness_key
 GROUP BY m.component"""

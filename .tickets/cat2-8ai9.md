@@ -1,6 +1,6 @@
 ---
 id: cat2-8ai9
-status: open
+status: closed
 deps: []
 links: [ct-jcnd, ct-ywz2, ct-yizl]
 created: 2026-11-12T12:20:24Z
@@ -16,4 +16,15 @@ From the 22-slice horizontal raw-data audit (P0-2 SQL, P1-5 SQL, P1-6 SQL, P1-8 
 ## Acceptance Criteria
 
 m3u8 playlists without retained caption_resources report advertised_not_archived; list.witness_keys holds canonical keys only; plausible dates beat suspect filename_date; HTML 404 .pdf impostors hidden and entities decoded; unambiguous shell meetings backfilled from linked documents.
+
+## Notes
+
+**2026-11-12:** Closed on `claude/ct-wave-4-model`:
+- `P0-2`: Added `retained_caption_tracks` (`caption_resources` with `status='retained'`) and restricted `m3u8` tracks in `model/sql/entity-meetings.sql` (`caption_tracks`) to playlists with at least one retained child caption resource, so unarchived Senate HLS playlists omit `source='captions'` from `meetings.transcripts` and report `advertised_not_archived`.
+- `P1-5`: Removed backward supersession expansion in `model/sql/document-witness-keys.sql`, switched `per_key` to `RIGHT JOIN`s (eliminating `'document_witness_keys': 2` from `OUTER_BUILD_TRACKED`), and emitted canonical (`is_current`) `witness_keys` whenever any current key exists.
+- `P1-6`: Aligned `date_plausible` in `model/sql/document-filename-facts.sql` with `DOCUMENT_DATE_STATUS` (`<= first_fetched + 30 days` and within Congress date bounds), ranked plausible `filename_date` -> `content_date` -> `meeting_date` -> `mods_date` -> suspect `filename_date` in `document-normalized.sql` and `document-recovery-normalized.sql`, restricted fallback `congress`-from-date derivation to non-filename dates `>= 1935-01-04` (excluding odd-year `01-03`), and promoted `document_date_status` into `list.parquet` (`archive_format.py`, `release-schema.json`, `docs/release-relationships.md`).
+- `P1-8`: Hid HTML soft-404 error pages (`Error | ...`, `Page Not Found`, `404`, `Not Found | ...`, `File Not Found`, or `PAGE NOT FOUND` description) in `archive_model.py` (`normalized`, covering both `document-normalized` and `document-recovery-normalized`) while preserving legitimate HTML transcripts under `.pdf` names, and decoded residual HTML entities (`&amp;`, `&ldquo;`, `&rdquo;`, `&lsquo;`, `&rsquo;`, `&ndash;`, `&mdash;`, `&bull;`, `&#39;`, `&quot;`, `&nbsp;`) in `model/sql/page-descriptions.sql`.
+- `P2-10a`: Backfilled unambiguous `chamber`, `congress`, `committees`, and `meeting_date` on shell meetings (`m.event_id IS NULL`) from non-hidden linked `ordered` documents in `model/sql/entity-meetings.sql` while keeping `chamber_basis='meeting_detail_missing'`.
+- Verified end-to-end in `packages/viewer_publication/tests/test_horizontal_audit_wave4.py` plus full `viewer_publication` regression suite.
+
 

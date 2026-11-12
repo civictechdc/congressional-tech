@@ -1373,9 +1373,10 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         CASE WHEN uf.doc_key IS NULL THEN n.filename ELSE uf.filename END AS filename,
         t.title,t.title_source,coalesce(r.kind_override,{printed('document_kind')}) AS document_kind,
         {printed('document_family')} AS document_family,
-        coalesce(n.congress,CASE WHEN h.document_date>=DATE '1789-03-04' AND date_part('year',h.document_date)<=2028
+        coalesce(n.congress,CASE WHEN h.document_date>=DATE '1935-01-04' AND date_part('year',h.document_date)<=2028
+         AND NOT (cast(date_part('year',h.document_date) AS INT)%2=1 AND substr(cast(h.document_date AS VARCHAR),6,5)='01-03')
          THEN cast((cast(date_part('year',h.document_date) AS INT)-CASE WHEN substr(cast(h.document_date AS VARCHAR),6,5)<'01-03' THEN 1 ELSE 0 END-1789)/2+1 AS SMALLINT) END) AS congress,
-        r.hidden IS TRUE AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on,
+        (r.hidden OR (n.format='html' AND (regexp_like(coalesce(t.title,''),'(?i)^(?:error\\s*[|:-]|page not found\\b|404\\b|not found\\s*[|:-]|file not found\\b)') OR regexp_like(coalesce(pm.description,''),'(?i)^\\s*page not found\\b')))) IS TRUE AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on,
         CASE WHEN h.doc_key IS NULL THEN n.document_date ELSE h.document_date END AS document_date,
         CASE WHEN h.doc_key IS NULL THEN n.document_date_source ELSE h.document_date_source END AS document_date_source,
         CASE WHEN coalesce(array_length(n.facts),0)>0 OR uf.doc_key IS NULL THEN n.facts ELSE uf.facts END AS facts,{page}
@@ -1408,6 +1409,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             dict(name='recording_video_links',sql="SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS VARCHAR) AS extracted_key WHERE false",materialize=True),
             dict(name='recordings_entity',sql=EMPTY_RECORDINGS_SQL,materialize=True),
             dict(name='recordings_export',sql=EMPTY_RECORDINGS_SQL,materialize=True),
+            dict(name='retained_caption_tracks',sql="SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(NULL,'FixedSizeBinary(32)') AS track_body WHERE false",materialize=True),
             dict(name='recording_page_video_events',sql=EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL,materialize=True),
         ]
     if prepared.get('explorer_inputs'):
@@ -1550,6 +1552,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         steps += [dict(name='recording_tracks',sql=(Path(root)/'model/sql/recording-tracks.sql').read_text(),materialize=True),
             dict(name='caption_resource_requests',sql=(Path(root)/'model/sql/caption-resource-requests.sql').read_text(),materialize=True),
             dict(name='caption_resources',sql=(Path(root)/'model/sql/caption-resources.sql').read_text(),materialize=True),
+            dict(name='retained_caption_tracks',sql="SELECT DISTINCT video_key,track_body FROM caption_resources WHERE status='retained' AND ordinal>0 AND format IN ('vtt','srt','ttml')",materialize=True),
             dict(name='recordings_entity',sql=(Path(root)/'model/sql/entity-recordings.sql').read_text(),materialize=True),
             dict(name='recording_page_video_events',sql="""SELECT video_key,event_id,'committee_page:'||min(page_body) AS source_ref
                 FROM (SELECT pvl.page_body,pvl.extracted_key AS video_key,pm.event_id

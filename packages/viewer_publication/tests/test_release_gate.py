@@ -1896,17 +1896,17 @@ def held_document_update_case(kind='date_title_meta_and_reorder'):
     list_schema = pa.schema([
         ('filename', pa.string()), ('title', pa.string()), ('committee_keys', pa.list_(pa.string())),
         ('chambers', pa.list_(pa.string())), ('congress', pa.int16()), ('document_date', pa.date32()),
+        ('document_date_status', pa.string()),
         ('meeting_keys', pa.list_(pa.string())), ('witness_keys', pa.list_(pa.string()))])
     detail_schema = pa.schema([
         ('link_key', pa.binary(8)), ('saved_body', pa.binary(32)), ('document_date_source', pa.string()),
-        ('document_date_status', pa.string()), ('title_source', pa.string()),
+        ('title_source', pa.string()),
         *list_schema])
 
     def doc_tables(rows):
         list_rows = [{f.name: r[f.name] for f in list_schema} for r in rows]
         detail_rows = [dict(link_key=K(r['key']), saved_body=K(r['key']) + bytes(24),
                             document_date_source=r['document_date_source'],
-                            document_date_status=r['document_date_status'],
                             title_source=r.get('title_source',
                                                None if r['title'] is None
                                                else ('page_title' if kind == 'non_generic_title' else 'label_witness')),

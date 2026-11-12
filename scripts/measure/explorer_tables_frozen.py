@@ -57,7 +57,11 @@ def positioned_list(release, work):
     work.mkdir(parents=True, exist_ok=True)
     path = work / 'list-positions.parquet'
     with duckdb.connect() as db:
-        db.execute(f"""COPY (SELECT meeting_keys,measure_keys,filename,format,file_row_number AS list_row FROM read_parquet('{release / 'list.parquet'}',file_row_number=true)) TO '{path}' (FORMAT PARQUET)""")
+        db.execute(f"""COPY (SELECT l.meeting_keys,l.measure_keys,l.filename,l.format,
+            l.chambers,l.committee_keys,l.congress,l.document_date,d.document_date_status,l.hidden,
+            l.file_row_number AS list_row
+            FROM read_parquet('{release / 'list.parquet'}',file_row_number=true) l
+            JOIN read_parquet('{release / 'detail.parquet'}',file_row_number=true) d USING (file_row_number)) TO '{path}' (FORMAT PARQUET)""")
     return path
 
 
@@ -84,7 +88,7 @@ def positioned_detail(release, work):
     path = work / 'detail-positions.parquet'
     with duckdb.connect() as db:
         # detail and list share row positions; transcripts read the saved format and alternates (g).
-        db.execute(f"""COPY (SELECT d.package_id,d.file_row_number AS list_row,l.format,d.alternates
+        db.execute(f"""COPY (SELECT d.package_id,d.file_row_number AS list_row,l.format,d.alternates,d.link_key
             FROM read_parquet('{release / 'detail.parquet'}',file_row_number=true) d
             JOIN read_parquet('{release / 'list.parquet'}',file_row_number=true) l USING (file_row_number)) TO '{path}' (FORMAT PARQUET)""")
     return path
@@ -111,6 +115,10 @@ def main(argv=None):
         parquet('released_detail', positioned_detail(args.release, work)),
         parquet('page_facts', mods_page_facts(spec, work)),
         parquet('recordings_entity', args.release / 'recordings.parquet'),
+        *(
+            [parquet('released_caption_resources', args.release / 'caption_resources.parquet')]
+            if (args.release / 'caption_resources.parquet').is_file() else []
+        ),
         dict(name='recording_decision_records', kind='json_lines', files=[dict(key='decisions', path=str(args.decisions))],
              schema=dict(fields=[field(k, v) for k, v in RECORDING_DECISION_FIELDS.items()], metadata={})),
         json_input(work, 'channel_directory', channel_directory_rows(), handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8'),
@@ -141,10 +149,15 @@ def main(argv=None):
         dict(name='active_recording_decisions', sql='SELECT r.* FROM recording_decision_records r WHERE NOT EXISTS(SELECT 1 FROM recording_decision_records s WHERE s.supersedes=r.id)', materialize=True),
         dict(name='youtube_cache_bodies', sql=sql('youtube-cache-bodies'), materialize=True),
         dict(name='youtube_api_bodies', sql=sql('youtube-api-bodies'), materialize=True),
-        dict(name='ordered', sql='SELECT meeting_keys,measure_keys,filename,format,cast(list_row AS INT) AS list_row FROM released_list WHERE coalesce(array_length(meeting_keys),0)>0', materialize=True),
+        dict(name='ordered', sql='SELECT meeting_keys,measure_keys,filename,format,chambers,committee_keys,congress,document_date,document_date_status,hidden,cast(list_row AS INT) AS list_row FROM released_list WHERE coalesce(array_length(meeting_keys),0)>0', materialize=True),
         dict(name='recordings_export', sql='SELECT * FROM recordings_entity', materialize=True),
+        dict(name='retained_caption_tracks', sql=(
+            "SELECT DISTINCT video_key,track_body FROM released_caption_resources WHERE status='retained' AND ordinal>0 AND format IN ('vtt','srt','ttml')"
+            if (args.release / 'caption_resources.parquet').is_file()
+            else "SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(NULL,'FixedSizeBinary(32)') AS track_body WHERE false"
+        ), materialize=True),
         dict(name='meeting_document_urls', sql=sql('meeting-document-urls'), materialize=True),
-        dict(name='details', sql='SELECT package_id,cast(list_row AS INT) AS list_row,format,alternates FROM released_detail', materialize=True),
+        dict(name='details', sql='SELECT package_id,cast(list_row AS INT) AS list_row,format,alternates,link_key FROM released_detail', materialize=True),
         dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),
     ]
     outputs = [dict(name='resolved_meetings.parquet', path=str(args.output / 'resolved_meetings.parquet'),

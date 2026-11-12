@@ -1,3 +1,24 @@
+SELECT q.doc_key,q.body_expected,q.filename,q.own_title,q.own_title_source,q.link_title,q.mods_title,q.component,
+ q.document_kind,q.document_family,q.committee_keys,q.chambers,q.congress,q.format,
+ coalesce(
+  CASE WHEN q.a_date IS NOT NULL
+   AND (q.congress IS NULL OR date_part('year',q.a_date) BETWEEN 2*cast(q.congress AS INT)+1786 AND 2*cast(q.congress AS INT)+1790)
+   THEN q.a_date END,
+  q.meeting_date,q.mods_date,q.a_date
+ ) AS document_date,
+ q.first_captured,q.date_kind,q.saved_kind,q.hidden,
+ q.meeting_keys,q.measure_keys,q.bioguide_ids,q.witness_keys,q.version_keys,
+ q.body_hex,q.source_url,q.suffix,q.media_type,q.bytes,
+ CASE
+  WHEN q.a_date IS NOT NULL
+   AND (q.congress IS NULL OR date_part('year',q.a_date) BETWEEN 2*cast(q.congress AS INT)+1786 AND 2*cast(q.congress AS INT)+1790)
+   THEN 'filename'
+  WHEN q.meeting_date IS NOT NULL THEN 'meeting'
+  WHEN q.mods_date IS NOT NULL THEN 'content'
+  WHEN q.a_date IS NOT NULL THEN 'filename'
+ END AS document_date_source,
+ q.in_archive_since,q.removed_on,q.review_note,q.review_decided_at,q.alternates,q.package_id,q.facts,q.link_bodies
+FROM (
 SELECT d.document_id AS doc_key,false AS body_expected,n.filename,
  t.title AS own_title,t.source AS own_title_source,a.listing_title AS link_title,pmf.mods_title,d.component,
  a.document_kind,a.document_family,
@@ -17,13 +38,17 @@ SELECT d.document_id AS doc_key,false AS body_expected,n.filename,
   a.congress,ml.congress,
   try_cast((regexp_match(coalesce(a.package_id,''),'(?i)^(?:CHRG|CRPT|CPRT|CDOC|BILLS)-([1-9][0-9]{0,2})'))[1] AS INT),
   CASE
-   WHEN coalesce(a.filename_date,ml.meeting_date,pmf.mods_date)>=DATE '1789-03-04'
-    AND date_part('year',coalesce(a.filename_date,ml.meeting_date,pmf.mods_date))<=2028
-   THEN (cast(date_part('year',coalesce(a.filename_date,ml.meeting_date,pmf.mods_date)) AS INT)
-    -CASE WHEN substr(cast(coalesce(a.filename_date,ml.meeting_date,pmf.mods_date) AS VARCHAR),6,5)<'01-03' THEN 1 ELSE 0 END-1789)/2+1
+   WHEN coalesce(ml.meeting_date,pmf.mods_date)>=DATE '1935-01-04'
+    AND date_part('year',coalesce(ml.meeting_date,pmf.mods_date))<=2028
+    AND NOT (
+     cast(date_part('year',coalesce(ml.meeting_date,pmf.mods_date)) AS INT)%2=1
+     AND substr(cast(coalesce(ml.meeting_date,pmf.mods_date) AS VARCHAR),6,5)='01-03'
+    )
+   THEN (cast(date_part('year',coalesce(ml.meeting_date,pmf.mods_date)) AS INT)
+    -CASE WHEN substr(cast(coalesce(ml.meeting_date,pmf.mods_date) AS VARCHAR),6,5)<'01-03' THEN 1 ELSE 0 END-1789)/2+1
   END
  ) AS SMALLINT) AS congress,
- coalesce(b.format,'other') AS format,coalesce(a.filename_date,ml.meeting_date,pmf.mods_date) AS document_date,cast(NULL AS DATE) AS first_captured,
+ coalesce(b.format,'other') AS format,a.filename_date AS a_date,ml.meeting_date,pmf.mods_date,cast(NULL AS DATE) AS first_captured,
  'import_day' AS date_kind,'recovery' AS saved_kind,false AS hidden,
  array_sort(array_distinct(array_concat(a.meeting_keys,coalesce(ml.meeting_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))))) AS meeting_keys,
  a.measure_keys,a.bioguide_ids,
@@ -31,7 +56,6 @@ SELECT d.document_id AS doc_key,false AS body_expected,n.filename,
  arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS version_keys,
  r.body_sha AS body_hex,r.original_url AS source_url,b.suffix,
  coalesce(c.media_type,'application/octet-stream') AS media_type,r.bytes AS bytes,
- CASE WHEN a.filename_date IS NOT NULL THEN 'filename' WHEN ml.meeting_date IS NOT NULL THEN 'meeting' WHEN pmf.mods_date IS NOT NULL THEN 'content' END AS document_date_source,
  cast(r.imported_at AS DATE) AS in_archive_since,cast(NULL AS DATE) AS removed_on,
  cast(NULL AS VARCHAR) AS review_note,cast(NULL AS DATE) AS review_decided_at,
  array_slice(make_array(named_struct('format',cast(NULL AS VARCHAR),'body',arrow_cast(NULL,'FixedSizeBinary(32)'),
@@ -100,3 +124,4 @@ LEFT JOIN (
  RIGHT JOIN package_mods_facts p ON mc.package_id=p.package_id
 ) pmf ON pmf.pmf_package_id=a.package_id
 WHERE NOT d.has_real
+) q

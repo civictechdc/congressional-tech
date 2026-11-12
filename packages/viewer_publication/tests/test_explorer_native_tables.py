@@ -654,7 +654,7 @@ def test_meetings_transcripts_and_video_aliases_follow_recordings_export_and_ign
               (2006,'house','Crop Insurance Modernization','2025-05-15','crop insurance','hsag00',NULL,NULL),
               (2007,'house','Forestry Management Review','2025-05-15','forestry management','hsag00',NULL,NULL)
             ) AS t(event_id,chamber,title,day,title_key,committee_key,vid_url,vid_key)""", materialize=True),
-        dict(name='ordered', sql="SELECT arrow_cast(NULL,'List(Utf8)') AS meeting_keys,arrow_cast(NULL,'List(Utf8)') AS measure_keys,cast(NULL AS VARCHAR) AS filename,cast(NULL AS VARCHAR) AS format,cast(NULL AS INT) AS list_row WHERE false", materialize=True),
+        dict(name='ordered', sql="SELECT arrow_cast(NULL,'List(Utf8)') AS meeting_keys,arrow_cast(NULL,'List(Utf8)') AS measure_keys,cast(NULL AS VARCHAR) AS filename,cast(NULL AS VARCHAR) AS format,cast(NULL AS INT) AS list_row,arrow_cast(NULL,'List(Utf8)') AS chambers,arrow_cast(NULL,'List(Utf8)') AS committee_keys,cast(NULL AS SMALLINT) AS congress,cast(NULL AS DATE) AS document_date,cast(NULL AS VARCHAR) AS document_date_status,false AS hidden WHERE false", materialize=True),
         dict(name='known_meetings', sql="SELECT event_id,meeting_type,title FROM meetings_resolved", materialize=True),
         dict(name='video_key_aliases', sql="""WITH raw_meeting_videos AS (
             SELECT m.event_id,m.video_url AS url,m.explicit_key,
@@ -718,6 +718,7 @@ def test_meetings_transcripts_and_video_aliases_follow_recordings_export_and_ign
         dict(name='meeting_status_conflicts', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS held_date,cast(NULL AS VARCHAR) AS evidence WHERE false", materialize=True),
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
         dict(name='recordings_export', sql=archive_model.recordings_export_sql(root=ROOT, explorer_inputs=True), materialize=True),
+        dict(name='retained_caption_tracks', sql="SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(NULL,'FixedSizeBinary(32)') AS track_body WHERE false", materialize=True),
         dict(name='meetings_final', sql=sql('entity-meetings'), materialize=True),
     ]
     run_job(tmp_path / 'job', engine, inputs=inputs, steps=steps, outputs=[

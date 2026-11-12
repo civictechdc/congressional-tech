@@ -54,11 +54,19 @@ WITH keys AS (
 ), recording_tracks AS (
  SELECT video_key,event_ids,t['format'] AS format,t['language'] AS language,t['production'] AS production,t['body'] AS body
  FROM (SELECT video_key,event_ids,unnest(tracks) AS t FROM recordings_export WHERE tracks IS NOT NULL)
-), caption_tracks AS (
- SELECT DISTINCT video_key,unnest(event_ids) AS event_id,format,language,production FROM recording_tracks
  -- The empty body's digest is no caption file (338611's YouTube track is 0 bytes).
- WHERE format IN ('vtt','srt','ttml','m3u8') AND body IS NOT NULL AND event_ids IS NOT NULL
-  AND body<>arrow_cast(decode('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855','hex'),'FixedSizeBinary(32)')
+ WHERE t['body'] IS NOT NULL AND event_ids IS NOT NULL
+  AND t['body']<>arrow_cast(decode('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855','hex'),'FixedSizeBinary(32)')
+), caption_tracks AS (
+ SELECT DISTINCT r.video_key,unnest(r.event_ids) AS event_id,r.format,r.language,r.production
+ FROM recording_tracks r
+ WHERE r.format IN ('vtt','srt','ttml')
+ UNION
+ -- An HLS subtitle playlist (m3u8) lists captions only when at least one child resource is retained (cat2-8ai9).
+ SELECT DISTINCT r.video_key,unnest(r.event_ids) AS event_id,r.format,r.language,r.production
+ FROM retained_caption_tracks c
+ JOIN recording_tracks r ON c.video_key=r.video_key AND c.track_body=r.body
+ WHERE r.format='m3u8'
 ), transcript_rows AS (
  SELECT DISTINCT l.event_id,d.package_id,cast(d.list_row AS INT) AS list_row,d.format
  FROM transcript_links l
@@ -194,16 +202,83 @@ WITH keys AS (
   WHERE event_id IS NOT NULL AND subject_key IS NOT NULL AND subject_key<>''
  )
  GROUP BY event_id
+), shell_docs AS (
+ -- Shell meetings (m.event_id IS NULL) inherit unambiguous chamber, congress, committees and meeting_date
+ -- from their non-hidden single-meeting documents, falling back to shared documents when unambiguous (cat2-8ai9).
+ SELECT d.event_id,d.single_meeting,d.chambers,d.committee_keys,d.congress,
+  CASE WHEN d.document_date_status='accepted' THEN d.document_date END AS accepted_date
+ FROM (SELECT DISTINCT event_id FROM meetings_resolved WHERE event_id IS NOT NULL) mr
+ RIGHT ANTI JOIN (
+  SELECT try_cast(unnest(o.meeting_keys) AS BIGINT) AS event_id,
+   coalesce(array_length(o.meeting_keys),0)=1 AS single_meeting,
+   o.chambers,o.committee_keys,o.congress,o.document_date,o.document_date_status
+  FROM ordered o
+  WHERE NOT o.hidden AND o.meeting_keys IS NOT NULL
+ ) d ON mr.event_id=d.event_id
+ WHERE d.event_id IS NOT NULL
+), shell_scalars AS (
+ SELECT event_id,
+  CASE
+   WHEN (CASE WHEN h1 THEN 1 ELSE 0 END+CASE WHEN s1 THEN 1 ELSE 0 END+CASE WHEN j1 THEN 1 ELSE 0 END)=1
+    THEN CASE WHEN h1 THEN 'house' WHEN s1 THEN 'senate' ELSE 'joint' END
+   WHEN (CASE WHEN h1 THEN 1 ELSE 0 END+CASE WHEN s1 THEN 1 ELSE 0 END+CASE WHEN j1 THEN 1 ELSE 0 END)=0
+    AND (CASE WHEN ha THEN 1 ELSE 0 END+CASE WHEN sa THEN 1 ELSE 0 END+CASE WHEN ja THEN 1 ELSE 0 END)=1
+    THEN CASE WHEN ha THEN 'house' WHEN sa THEN 'senate' ELSE 'joint' END
+  END AS chamber,
+  CASE
+   WHEN c1_min IS NOT NULL THEN CASE WHEN c1_min=c1_max THEN c1_min END
+   WHEN ca_min IS NOT NULL AND ca_min=ca_max THEN ca_min
+  END AS congress,
+  CASE
+   WHEN d1_min IS NOT NULL THEN CASE WHEN d1_min=d1_max THEN d1_min END
+   WHEN da_min IS NOT NULL AND da_min=da_max THEN da_min
+  END AS meeting_date
+ FROM (
+  SELECT event_id,
+   coalesce(bool_or(array_has(chambers,'house')) FILTER (WHERE single_meeting),false) AS h1,
+   coalesce(bool_or(array_has(chambers,'senate')) FILTER (WHERE single_meeting),false) AS s1,
+   coalesce(bool_or(array_has(chambers,'joint')) FILTER (WHERE single_meeting),false) AS j1,
+   coalesce(bool_or(array_has(chambers,'house')),false) AS ha,
+   coalesce(bool_or(array_has(chambers,'senate')),false) AS sa,
+   coalesce(bool_or(array_has(chambers,'joint')),false) AS ja,
+   min(congress) FILTER (WHERE single_meeting) AS c1_min,
+   max(congress) FILTER (WHERE single_meeting) AS c1_max,
+   min(congress) AS ca_min,
+   max(congress) AS ca_max,
+   min(accepted_date) FILTER (WHERE single_meeting) AS d1_min,
+   max(accepted_date) FILTER (WHERE single_meeting) AS d1_max,
+   min(accepted_date) AS da_min,
+   max(accepted_date) AS da_max
+  FROM shell_docs
+  GROUP BY event_id
+ )
+), shell_committees AS (
+ SELECT event_id,
+  CASE
+   WHEN bool_or(from_single)
+    THEN array_agg(named_struct('system_code',code,'role',cast(NULL AS VARCHAR)) ORDER BY code) FILTER (WHERE from_single)
+   WHEN min(code)=max(code)
+    THEN make_array(named_struct('system_code',min(code),'role',cast(NULL AS VARCHAR)))
+  END AS committees
+ FROM (
+  SELECT event_id,code,bool_or(single_meeting) AS from_single
+  FROM (
+   SELECT event_id,single_meeting,nullif(trim(unnest(committee_keys)),'') AS code
+   FROM shell_docs WHERE committee_keys IS NOT NULL
+  ) WHERE code IS NOT NULL
+  GROUP BY event_id,code
+ )
+ GROUP BY event_id
 )
 SELECT k.event_id,
- m.chamber,
+ coalesce(m.chamber,ss.chamber) AS chamber,
  CASE
   WHEN m.event_id IS NULL THEN 'meeting_detail_missing'
   WHEN m.chamber IS NULL THEN 'source_chamber_unknown'
   ELSE 'source'
  END AS chamber_basis,
  m.title,
- m.meeting_date,
+ coalesce(m.meeting_date,ss.meeting_date) AS meeting_date,
  m.meeting_type,
  m.session,
  m.status,
@@ -227,7 +302,7 @@ SELECT k.event_id,
   'start',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),
   'end',arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))'),
   'place',cast(NULL AS VARCHAR),'room',cast(NULL AS VARCHAR),'building',cast(NULL AS VARCHAR),'address',cast(NULL AS VARCHAR))),1,0)) AS sittings,
- coalesce(m.committees,array_slice(make_array(named_struct(
+ coalesce(m.committees,sc.committees,array_slice(make_array(named_struct(
   'system_code',cast(NULL AS VARCHAR),'role',cast(NULL AS VARCHAR))),1,0)) AS committees,
  coalesce(sk.subject_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys,
  coalesce(t.transcripts,array_slice(make_array(named_struct(
@@ -236,7 +311,7 @@ SELECT k.event_id,
   'video_key',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0)) AS transcripts,
  coalesce(m.videos,array_slice(make_array(named_struct(
   'name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)) AS videos,
- cast(m.congress AS SMALLINT) AS congress,
+ cast(coalesce(m.congress,ss.congress) AS SMALLINT) AS congress,
  m.congress_gov_updated,
  m.house_xml_updated,
  m.congress_gov_meeting_type,
@@ -249,9 +324,9 @@ SELECT k.event_id,
  named_struct('state',coalesce(o.state,'unknown'),'coverage',coalesce(o.coverage,'unknown'),
   'successful_read',o.successful_read,'latest_attempt',o.latest_attempt,'listing',o.listing,
   'has_undated_attempt',coalesce(o.has_undated_attempt,false)) AS congress_gov_detail_observation
-FROM keys k
+FROM (shell_committees sc RIGHT JOIN (shell_scalars ss RIGHT JOIN keys k ON ss.event_id=k.event_id) ON sc.event_id=k.event_id)
 LEFT JOIN meetings_resolved m ON k.event_id=m.event_id
-LEFT JOIN meeting_detail_observations o ON m.congress=o.congress AND m.chamber=o.chamber AND k.event_id=o.event_id
+LEFT JOIN meeting_detail_observations o ON coalesce(m.congress,ss.congress)=o.congress AND coalesce(m.chamber,ss.chamber)=o.chamber AND k.event_id=o.event_id
 LEFT JOIN subject_keys_by_event sk ON k.event_id=sk.event_id
 LEFT JOIN transcripts_agg t ON k.event_id=t.event_id
 LEFT JOIN rescheduled r ON k.event_id=r.event_id
