@@ -2,7 +2,7 @@
 id: ct-chc4
 status: open
 deps: []
-links: [ct-0hay, ct-m878, ct-jnjv, ct-m704]
+links: [ct-0hay, ct-m878, ct-jnjv, ct-m704, ct-cbkz]
 created: 2026-11-09T23:14:53Z
 type: bug
 priority: 1
