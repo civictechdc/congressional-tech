@@ -617,7 +617,7 @@ def dated_receipts(tmp_path,value,store,writes):
     """
     from capture_qualification_helpers import write_qualified_bytes
     from congress_api.models.raw_fetch import BodyFile,FetchAttempt,FetchResult
-    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    from congress_api.retention.body_store import BodyStore, LocalAdapter,LocalAdapter
     from congress_api.retention.receipt_writer import ReceiptWriter
     root=store.adapter.root;qualifications={}
     class QualifiedAdapter(LocalAdapter):
@@ -743,7 +743,7 @@ def test_daily_html_unknown_size_on_r2_is_read_alone_and_the_rest_carried(tmp_pa
 
 def test_daily_html_unknown_local_size_refuses_without_opening_a_body(tmp_path,monkeypatch):
     # The refusal that survives ct-hiec: a local capture with no stored size cannot be budgeted.
-    from congress_api.retention.body_store import BodyStore,LocalAdapter
+    from congress_api.retention.body_store import BodyStore, LocalAdapter,LocalAdapter
     enabled,engine,_,_,leaves=listed_fixture(tmp_path,[html('Local base'),html('Unpinned local')],unpinned={1})
     store=BodyStore(LocalAdapter(tmp_path/'raw'))
     def forbidden(planned,**kwargs):
@@ -803,3 +803,55 @@ def test_daily_html_reconsiders_superseded_baseline_refusals(tmp_path,clean_tree
         inputs=[tables.table_input('readings',unchanged['pins']['readings'])],steps=[],outputs=[],queries=[
         dict(name='rows',sql="SELECT encode(body_sha,'hex') AS sha,parser_version,status FROM readings WHERE parser='html_metadata'")])['rows']
     assert rows==[dict(sha=keys[0],parser_version=version,status='completed')]
+
+
+def test_target_schema_mismatch_refuses_before_any_producer_record_write_or_body_fetch(tmp_path, clean_tree, monkeypatch):
+    """ct-eav2: plant a new nullable column on a writer and prove no producer record write or body fetch runs."""
+    from congress_api.lake import appearance_records, meeting_records
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+
+    value, engine, store = native_fixture(tmp_path, 1)
+    meeting_ref = dict(namespace=['archive'], name='meeting_records')
+    appearance_ref = dict(namespace=['archive'], name='appearance_records')
+    tables.create_table(
+        engine=engine, work=tmp_path / 'create-meetings', catalog_root=value['catalog_root'],
+        table=meeting_ref, schema=tables.load_schema('meeting_records'), location=tmp_path / 'lake-meetings',
+    )
+    tables.create_table(
+        engine=engine, work=tmp_path / 'create-appearances', catalog_root=value['catalog_root'],
+        table=appearance_ref, schema=tables.load_schema('appearance_records'), location=tmp_path / 'lake-appearances',
+    )
+    value['tables'] = dict(value['tables'], meeting_records=meeting_ref, appearance_records=appearance_ref)
+
+    # Plant a new nullable column on appearance_records that the target Iceberg table lacks.
+    planted_schema = appearance_records.ARROW_SCHEMA.append(
+        pa.field('planted_nullable_column', pa.list_(pa.string()), nullable=True)
+    )
+    monkeypatch.setattr(appearance_records, 'ARROW_SCHEMA', planted_schema)
+
+    ledger = tmp_path / 'ledger'
+    records = ProducerRecords(root=ledger)
+    effects = []
+    real_owe, real_write = records.owe, records.write
+    monkeypatch.setattr(records, 'owe', lambda *a, **kw: (effects.append('owe'), real_owe(*a, **kw))[1])
+    monkeypatch.setattr(records, 'write', lambda *a, **kw: (effects.append('write'), real_write(*a, **kw))[1])
+
+    class NoBodyFetchAdapter(LocalAdapter):
+        def get(self, *args, **kwargs):
+            raise AssertionError('raw_store.get called before target schema check')
+
+    # Also remove local body files so any local body open would fail immediately if reached.
+    for body_file in (tmp_path / 'raw/bodies').rglob('*'):
+        if body_file.is_file():
+            body_file.unlink()
+
+    with pytest.raises(ValueError, match=r'appearance_records.*planted_nullable_column'):
+        daily.produce_daily(
+            dict(value, work=str(tmp_path / 'refused-run')),
+            engine=engine,
+            raw_store=BodyStore(NoBodyFetchAdapter(tmp_path / 'raw')),
+            producer_records=records,
+        )
+    assert effects == []
+    assert not ledger.exists() or list(ledger.rglob('*')) == []
+

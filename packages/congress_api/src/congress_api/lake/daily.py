@@ -902,6 +902,172 @@ def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, 
     return dict(report, pins=final, unreadable=unreadable_snapshot.rows())
 
 
+def _arrow_field_paths(dtype, prefix=''):
+    out = set()
+    if pa.types.is_struct(dtype):
+        for f in dtype:
+            path = f'{prefix}.{f.name}' if prefix else f.name
+            out.add(path)
+            out.update(_arrow_field_paths(f.type, path))
+    elif pa.types.is_list(dtype) or pa.types.is_large_list(dtype):
+        out.update(_arrow_field_paths(dtype.value_type, f'{prefix}[]'))
+    return out
+
+
+def _iceberg_field_paths(schema_obj, prefix=''):
+    out = set()
+    if isinstance(schema_obj, dict) and schema_obj.get('type') == 'struct':
+        for f in schema_obj.get('fields', ()):
+            name = f['name']
+            path = f'{prefix}.{name}' if prefix else name
+            out.add(path)
+            if isinstance(f.get('type'), dict):
+                out.update(_iceberg_field_paths(f['type'], path))
+    elif isinstance(schema_obj, dict) and schema_obj.get('type') == 'list':
+        element = schema_obj.get('element')
+        if isinstance(element, dict):
+            out.update(_iceberg_field_paths(element, f'{prefix}[]'))
+    return out
+
+
+def writer_field_paths(name):
+    paths = _iceberg_field_paths(tables.load_schema(name))
+    arrow_modules = {
+        'filename_readings': (filenames, 'SCHEMA'),
+        'meeting_records': (meeting_records, 'ARROW_SCHEMA'),
+        'appearance_records': (appearance_records, 'ARROW_SCHEMA'),
+        'committee_records': (committee_records, 'ARROW_SCHEMA'),
+        'playlist_records': (playlist_records, 'ARROW_SCHEMA'),
+        'video_records': (video_records, 'ARROW_SCHEMA'),
+    }
+    if name in arrow_modules:
+        mod, attr = arrow_modules[name]
+        paths |= _arrow_field_paths(pa.struct(getattr(mod, attr)))
+    return paths
+
+
+def _sql_lit(value):
+    return "'" + str(value).replace("'", "''") + "'"
+
+
+def _count_query(name, present_columns):
+    from congress_api.lake import compatible_versions
+
+    registry = compatible_versions.load_registry()
+
+    def allowed_versions(parser_key, current):
+        vals = {current, *(e['version'] for e in registry if e.get('parser') == parser_key and e.get('current') == current)}
+        return ','.join(_sql_lit(v) for v in sorted(vals))
+
+    if name == 'captures':
+        if 'mapping_version' not in present_columns:
+            return 'SELECT count(*) AS total_rows, 0 AS current_rows, count(*) AS stale_records FROM "captures"'
+        allowed = allowed_versions('captures', captures.current_version())
+        return (
+            f'SELECT count(*) AS total_rows, '
+            f'count(*) FILTER (WHERE mapping_version IN ({allowed})) AS current_rows, '
+            f'count(*) FILTER (WHERE mapping_version IS NULL OR mapping_version NOT IN ({allowed})) AS stale_records '
+            f'FROM "captures"'
+        )
+    if name == 'readings':
+        if not {'parser', 'parser_version'} <= present_columns:
+            return 'SELECT count(*) AS total_rows, 0 AS current_rows, count(*) AS stale_records FROM "readings"'
+        pins = compatible_versions.current_pins()
+        terms = ' OR '.join(
+            f'(parser={_sql_lit(p)} AND parser_version IN ({allowed_versions(p, ver)}))'
+            for p, ver in sorted(pins.items()) if isinstance(ver, str)
+        ) or 'false'
+        return (
+            f'SELECT count(*) AS total_rows, '
+            f'count(*) FILTER (WHERE {terms}) AS current_rows, '
+            f'count(*) FILTER (WHERE parser_version IS NULL OR NOT ({terms})) AS stale_records '
+            f'FROM "readings"'
+        )
+    if name == 'filename_readings':
+        if not {'filename', 'source_url', 'catalog_version'} <= present_columns:
+            return 'SELECT count(*) AS total_rows, 0 AS current_rows, count(*) AS stale_records FROM "filename_readings"'
+        allowed = allowed_versions('filename_readings', filenames.current_version())
+        return (
+            f'WITH cur AS (SELECT DISTINCT filename, source_url FROM "filename_readings" WHERE catalog_version IN ({allowed})), '
+            f'all_keys AS (SELECT DISTINCT filename, source_url FROM "filename_readings") '
+            f'SELECT (SELECT count(*) FROM "filename_readings") AS total_rows, '
+            f'(SELECT count(*) FROM "filename_readings" WHERE catalog_version IN ({allowed})) AS current_rows, '
+            f'(SELECT count(*) FROM all_keys LEFT ANTI JOIN cur '
+            f'ON all_keys.filename = cur.filename AND all_keys.source_url = cur.source_url) AS stale_records'
+        )
+    record_modules = {'meeting_records': meeting_records, 'appearance_records': appearance_records, **DAILY_CAPTURE_RECORDS}
+    versions = record_modules[name].current_versions()
+    if not ({'record_sha', 'source', 'parser_version'} <= present_columns and versions):
+        return f'SELECT count(*) AS total_rows, 0 AS current_rows, count(*) AS stale_records FROM "{name}"'
+    pred = ' OR '.join(
+        f'(source={_sql_lit(s)} AND parser_version IN ({allowed_versions(f"{name}.{s}", v)}))'
+        for s, v in sorted(versions.items())
+    )
+    return (
+        f'WITH cur AS (SELECT DISTINCT record_sha, source FROM "{name}" WHERE {pred}), '
+        f'all_keys AS (SELECT DISTINCT record_sha, source FROM "{name}") '
+        f'SELECT (SELECT count(*) FROM "{name}") AS total_rows, '
+        f'(SELECT count(*) FROM "{name}" WHERE {pred}) AS current_rows, '
+        f'(SELECT count(*) FROM all_keys LEFT ANTI JOIN cur '
+        f'ON all_keys.record_sha = cur.record_sha AND all_keys.source = cur.source) AS stale_records'
+    )
+
+
+def inspect_targets(tables_spec, *, engine, catalog_root, work, heads=None, include_counts=False, max_work_items=None):
+    """Read target table schemas (and optional record counts) through the engine before writes."""
+    work = Path(work)
+    if heads is None:
+        heads = tables.resolve_tables(engine=engine, work=work / 'heads', catalog_root=catalog_root, tables=tables_spec)
+    inputs = [tables.table_input(name, head) for name, head in heads.items()]
+    schema_dir = work / 'schemas'
+    run_job(
+        schema_dir, engine, inputs=inputs, steps=[],
+        outputs=[
+            parquet_output(schema_dir, name, f'SELECT * FROM "{name}" WHERE FALSE', list(tables.TABLE_SPECS[name]['primary_key']))
+            for name in heads
+        ],
+    )
+    schemas_out = {}
+    present_by_table = {}
+    for name, head in heads.items():
+        actual = pq.read_schema(schema_dir / f'{name}.parquet')
+        present_by_table[name] = set(actual.names)
+        actual_paths = _arrow_field_paths(pa.struct(actual))
+        expected_paths = writer_field_paths(name)
+        missing = sorted(expected_paths - actual_paths)
+        schemas_out[name] = dict(
+            schema_id=head['schema_id'],
+            snapshot=head['snapshot'],
+            columns=[dict(name=f.name, type=str(f.type), nullable=bool(f.nullable)) for f in actual],
+            compatible=not missing,
+            missing_fields=missing,
+        )
+    counts_out = {}
+    if include_counts:
+        queries = [dict(name=name, sql=_count_query(name, present_by_table[name])) for name in heads]
+        raw_counts = run_job(work / 'counts', engine, inputs=inputs, steps=[], outputs=[], queries=queries)
+        for name in heads:
+            row = raw_counts[name][0]
+            stale = int(row['stale_records'])
+            touch = stale if max_work_items is None else min(stale, int(max_work_items))
+            counts_out[name] = dict(
+                total_rows=int(row['total_rows']),
+                current_rows=int(row['current_rows']),
+                stale_records=stale,
+                would_touch=touch,
+            )
+    return dict(heads=heads, target_schemas=schemas_out, record_counts=counts_out)
+
+
+def verify_target_schemas(heads, *, engine, work):
+    """Refuse before any producer-record write or body fetch if a target table lacks writer fields."""
+    schemas = inspect_targets({}, engine=engine, catalog_root=None, work=work, heads=heads)['target_schemas']
+    incompatible = {name: entry['missing_fields'] for name, entry in schemas.items() if not entry['compatible']}
+    if incompatible:
+        details = '; '.join(f'{name} missing {fields}' for name, fields in sorted(incompatible.items()))
+        raise ValueError(f'Target lake table schema mismatch before write: {details}')
+
+
 def produce_daily(spec,*,engine,raw_store,producer_records=None):
     """D1 then budgeted D2 then D3, returning fresh pins only after completion.
 
@@ -931,6 +1097,7 @@ def produce_daily(spec,*,engine,raw_store,producer_records=None):
     provenance['unreadable']=unreadable_snapshot.rows()
     authority=dict(engine=engine,catalog_root=spec['catalog_root'])
     heads=tables.resolve_tables(**authority,work=work/'initial-heads',tables=spec['tables'])
+    verify_target_schemas(heads,engine=engine,work=work/'target-schemas')
     versions=dict(captures=captures.current_version())
     report=dict(status='running',pins=None,receipt_keys=None,new_receipt_keys=[],provenance=provenance,
                 currentversions=versions,producerreports={})

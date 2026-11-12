@@ -1,6 +1,6 @@
 ---
 id: ct-eav2
-status: open
+status: closed
 deps: []
 links: [ct-ucwm, ct-h267]
 created: 2026-11-11T09:47:37Z
@@ -23,3 +23,11 @@ Before any producer-record write or body fetch, the job compares the rows it wou
 **2026-11-11T14:32:38Z**
 
 validated 2026-11-11, left open: not done. Neither archive_backfill_job.py nor lake/daily.py compares the rows to append with the target table's schema before producer-record writes or body fetches (rg for schema_mismatch/target schema finds nothing there); --plan still reads no data.
+
+**2026-11-12T04:33:00Z**
+
+Resolved on `claude/ct-wave-1ab-safety`:
+1. Added `inspect_targets`, `verify_target_schemas`, and `writer_field_paths` in `packages/congress_api/src/congress_api/lake/daily.py`. `inspect_targets` reads each target Iceberg table's schema through the engine (`SELECT * FROM "<table>" WHERE FALSE`, zero data scan) and compares all top-level and nested list/struct field paths against the writer's declared and Arrow schemas.
+2. Wired `verify_target_schemas` into `daily.produce_daily` (before `_producer_bases`, `_owe_records` producer-record writes, and `_produce` body fetches) and into `archive_backfill_job.execute` (before opening R2 storage or creating `work`).
+3. Extended `archive_backfill_job.plan` (`--plan`) to report `writer_schemas` and, whenever a matching catalog runtime is available, engine-inspected `target_schemas` (`columns`, `compatible`, `missing_fields`) and `record_counts` (`total_rows`, `current_rows`, `stale_records`, `would_touch`). Note: per `ba-runbook.md:98-100`, default-mode backfill intentionally has no `archive_disk.py` budget entry (`backfill-record-only` is separate).
+4. Verified with failing-first tests `test_target_schema_mismatch_refuses_before_any_producer_record_write_or_body_fetch` (`test_daily_producer_records.py`) and `test_backfill_plan_reports_target_schemas_and_record_counts_and_execute_refuses_before_storage` (`test_archive_maintenance.py`, `65 passed in 3.55s`).

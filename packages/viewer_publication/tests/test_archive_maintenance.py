@@ -698,3 +698,70 @@ def test_maintenance_spec_rejects_invalid_raw_body_worker_count(tmp_path,workers
     path.write_text(json.dumps(spec))
     with pytest.raises(ValueError,match='body_workers'):
         load_spec(path)
+
+
+def test_backfill_plan_reports_target_schemas_and_record_counts_and_execute_refuses_before_storage(tmp_path, capsys):
+    """ct-eav2: --plan reports target schema + record counts; --execute refuses missing target fields before storage."""
+    import os
+    import pyarrow.parquet as pq
+    from congress_api.lake import appearance_records, tables
+    from congress_api.lake.daily import ALL_TABLE_NAMES
+    from docspec_client.client import NativeDatasets
+    from viewer_publication import archive_backfill_job
+
+    catalog = tmp_path / 'catalog'
+    table_names = (*ALL_TABLE_NAMES, 'committee_records', 'playlist_records')
+    refs = {name: dict(namespace=['archive'], name=name) for name in table_names}
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        for idx, name in enumerate(table_names):
+            schema = tables.load_schema(name)
+            if name == 'appearance_records':
+                schema = dict(schema, fields=[
+                    f for f in schema['fields'] if f['name'] not in ('committees', 'committee_members')
+                ])
+            tables.create_table(
+                engine=engine, work=tmp_path / f'create-{name}', catalog_root=catalog,
+                table=refs[name], schema=schema, location=tmp_path / 'lake' / name, create_namespace=(idx == 0),
+            )
+        current_cg = appearance_records.current_versions()['congress_gov']
+        seed_rows = appearance_records.table([
+            dict(record_sha='1' * 64, source='mods', parser_version='old-mods', status='completed', appearances=[]),
+            dict(record_sha='2' * 64, source='mods', parser_version='old-mods', status='completed', appearances=[]),
+            dict(record_sha='3' * 64, source='congress_gov', parser_version=current_cg, status='completed', appearances=[]),
+        ]).drop_columns(['committees', 'committee_members'])
+        seed_parquet = tmp_path / 'seed-appearances.parquet'
+        pq.write_table(seed_rows, seed_parquet)
+        tables.append_rows(
+            seed_parquet, engine=engine, work=tmp_path / 'seed-append', catalog_root=catalog,
+            table=refs['appearance_records'], keys=['record_sha', 'source', 'parser_version'], definition='seed',
+        )
+
+    spec_path = tmp_path / 'backfill.json'
+    spec_path.write_text(json.dumps(dict(
+        version=1,
+        bucket='archive-fixture',
+        catalog_root=str(catalog),
+        work=str(tmp_path / 'backfill-work'),
+        tables=refs,
+        batch_size=1,
+        max_batches=1,
+        engine_config=os.environ['DOCSPEC_JOB_CONFIG'],
+    )))
+    assert archive_backfill_job.main(['--spec', str(spec_path), '--plan']) == 0
+    planned = json.loads(capsys.readouterr().out)
+    assert planned['target_schemas']['captures']['compatible'] is True
+    assert planned['target_schemas']['appearance_records']['compatible'] is False
+    assert planned['target_schemas']['appearance_records']['missing_fields'] == ['committee_members', 'committees']
+    assert 'committees' not in [c['name'] for c in planned['target_schemas']['appearance_records']['columns']]
+    assert planned['record_counts']['appearance_records'] == dict(
+        total_rows=3, current_rows=1, stale_records=2, would_touch=1,
+    )
+    assert not (tmp_path / 'backfill-work').exists()
+
+    def forbidden_storage(**_kwargs):
+        raise AssertionError('R2 storage opened before target schema compatibility check')
+
+    with pytest.raises(ValueError, match=r'appearance_records.*committee_members.*committees'):
+        archive_backfill_job.execute(archive_backfill_job.load_spec(spec_path), storage_factory=forbidden_storage)
+    assert not (tmp_path / 'backfill-work').exists()
+
