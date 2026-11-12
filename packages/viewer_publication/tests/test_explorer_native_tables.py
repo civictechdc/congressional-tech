@@ -74,6 +74,7 @@ def tables(tmp_path_factory):
               arrow_cast(make_array(cast(1003 AS BIGINT)),'List(Int64)'),false
             UNION ALL SELECT 'youtube:unmatched',arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(1 AS BIGINT)),1,0),'List(Int64)'),false""", materialize=True),
         dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
+        dict(name='recording_page_video_events', sql="SELECT cast(NULL AS VARCHAR) AS video_key,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source_ref WHERE false", materialize=True),
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
         dict(name='ordered', sql="SELECT arrow_cast(make_array('1001'),'List(Utf8)') AS meeting_keys", materialize=True),
         # 1001 shows Jane once: the print's Jane is superseded by the meeting's own row, and a letter for the
@@ -383,4 +384,83 @@ def test_entity_videos_trims_surrounding_whitespace_and_nulls_blank_text(tmp_pat
     assert rows['youtube:v_blank_one']['source_description'] is None
     assert rows['youtube:v_blank_two']['title'] is None
     assert rows['youtube:v_blank_two']['source_description'] is None
+
+
+def test_recording_matches_is_single_owner_of_video_to_meeting_links(tmp_path):
+    """ct-yizl: recording_matches owns video-to-meeting links; recordings.event_ids derives from it with 0 disagreement."""
+    import pyarrow.parquet as pq
+    from viewer_publication import archive_model
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    inputs = [
+        json_input(tmp_path, 'active_recording_decisions', [
+            decision('1' * 64, 'event', '1002', 'found', ['curatedVid01']),
+            decision('2' * 64, 'event', '1005', 'no_video_found'),
+            decision('3' * 64, 'package', 'CHRG-pkg', 'found_tracked', ['pkgOnlyVid1']),
+        ], id='Utf8', subject_kind='Utf8', subject_id='Utf8', verdict='Utf8', video_refs=_list(),
+           note='Utf8', disputed_by='Utf8', decided_at='Utf8', supersedes='Utf8'),
+        json_input(tmp_path, 'recording_sources',
+                   json.loads((ROOT / 'model/registries/recording-sources.json').read_text()),
+                   id='Utf8', kind='Utf8', pattern='Utf8', key_template='Utf8',
+                   format='Utf8', default_language='Utf8', default_production='Utf8'),
+    ]
+    recordings_sql = getattr(archive_model, 'recordings_export_sql', lambda **_kw: sql('entity-recordings'))(
+        root=ROOT, explorer_inputs=True
+    )
+    steps = [
+        dict(name='recording_url_sources', sql="SELECT id,pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'", materialize=True),
+        dict(name='meetings_resolved', sql="""SELECT cast(1001 AS BIGINT) AS event_id,
+            make_array(named_struct('name','Stream','url','https://youtu.be/pubVid00001','video_key','youtube:pubVid00001')) AS videos
+            UNION ALL SELECT 1002,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
+            UNION ALL SELECT 1004,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
+            UNION ALL SELECT 1005,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
+            UNION ALL SELECT 119546,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)""", materialize=True),
+        dict(name='meetings_export', sql="SELECT event_id FROM meetings_resolved", materialize=True),
+        dict(name='meeting_transcript_links', sql="SELECT 'CHRG-pkg' AS package_id,cast(1004 AS BIGINT) AS event_id", materialize=True),
+        dict(name='package_meeting_links', sql="SELECT 'CHRG-pkg' AS package_id,cast(1004 AS BIGINT) AS event_id", materialize=True),
+        dict(name='recording_video_links', sql="""SELECT 'aa' AS page_body,'youtube:0YtytQuMCT8' AS extracted_key
+            UNION ALL SELECT 'bb','youtube:pageVid0004'
+            UNION ALL SELECT 'cc','youtube:unmatched99'""", materialize=True),
+        dict(name='recording_page_meetings', sql="SELECT 'bb' AS page_body,cast(1004 AS BIGINT) AS event_id", materialize=True),
+        dict(name='recording_tracks', sql="""SELECT cast(NULL AS VARCHAR) AS video_key,
+            array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),
+             'format',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks WHERE false""", materialize=True),
+        dict(name='recordings_entity', sql=sql('entity-recordings'), materialize=True),
+        dict(name='recording_page_video_events', sql="""SELECT video_key,event_id,'committee_page:'||min(page_body) AS source_ref
+            FROM (SELECT pvl.page_body,pvl.extracted_key AS video_key,pm.event_id
+                  FROM recording_video_links pvl JOIN recording_page_meetings pm ON pvl.page_body=pm.page_body
+                  WHERE pvl.extracted_key IS NOT NULL AND pm.event_id IS NOT NULL)
+            GROUP BY video_key,event_id""", materialize=True),
+        dict(name='videos_export', sql="""SELECT 'youtube:0YtytQuMCT8' AS video_key,
+            arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,
+            arrow_cast(make_array(cast(119546 AS BIGINT)),'List(Int64)') AS stated_event_ids,false AS has_caption""", materialize=True),
+        dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
+        dict(name='recordings_export', sql=recordings_sql, materialize=True),
+    ]
+    run_job(tmp_path / 'job', engine, inputs=inputs, steps=steps, outputs=[
+        parquet_output(tmp_path, 'recording_matches', 'SELECT * FROM recording_matches_export', ['match_id']),
+        parquet_output(tmp_path, 'recordings', 'SELECT * FROM recordings_export', ['video_key']),
+    ], queries=[])
+    rec = {r['video_key']: r['event_ids'] for r in rows(tmp_path, 'recordings')}
+    matches = rows(tmp_path, 'recording_matches')
+
+    assert rec['youtube:pubVid00001'] == [1001]
+    assert rec['youtube:0YtytQuMCT8'] == [119546]
+    assert rec['youtube:curatedVid01'] == [1002]
+    assert rec['youtube:pageVid0004'] == [1004]
+    assert rec['youtube:unmatched99'] == []
+    assert 'youtube:pkgOnlyVid1' not in rec
+
+    rec_pairs = {(vk, ev) for vk, evs in rec.items() for ev in evs}
+    match_pairs = {
+        (m['video_key'], link['event_id'])
+        for m in matches
+        if m['video_key'] is not None
+        and m['status'] in ('asserted', 'claimed', 'decided')
+        and m['decision'] not in ('no_video_found', 'not_public')
+        for link in m['meeting_links']
+        if link['scope'] == 'event' and link['event_id'] is not None
+    }
+    assert rec_pairs == match_pairs
+
 

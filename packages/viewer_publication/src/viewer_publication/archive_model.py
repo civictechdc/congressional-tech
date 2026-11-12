@@ -979,6 +979,14 @@ def meeting_records_have_document_references(path):
 EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS event_ids,
  array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'format',cast(NULL AS VARCHAR),
   'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks WHERE false"""
+EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL="SELECT cast(NULL AS VARCHAR) AS video_key,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source_ref WHERE false"
+
+
+def recordings_export_sql(*,root=ROOT,explorer_inputs=False):
+    """Derive published recordings.event_ids from recording_matches_export when Explorer inputs are present (ct-yizl)."""
+    if explorer_inputs:
+        return (Path(root)/'model/sql/entity-recordings-matched.sql').read_text()
+    return 'SELECT * FROM recordings_entity'
 # A sitting Member acting officially is published as witness_type member_appearance, and a committee member's own
 # opening statement as member_statement (ct-kw85): the archive's classification replaces the source's for those rows,
 # whose own value stays in the appearance record.
@@ -1378,7 +1386,13 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     auxiliary=[('meetings',(Path(root)/'model/sql/entity-meetings.sql').read_text(),['event_id'],MEETING_DICTIONARY)]
     if not prepared.get('include_entities'):
         # Meetings list caption tracks among their transcripts (ct-1i4q); without entities there are none.
-        steps += [dict(name='recordings_entity',sql=EMPTY_RECORDINGS_SQL,materialize=True)]
+        steps += [
+            dict(name='recordings_entity',sql=EMPTY_RECORDINGS_SQL,materialize=True),
+            dict(name='recording_page_video_events',sql=EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL,materialize=True),
+        ]
+    if prepared.get('explorer_inputs'):
+        steps += _sql_steps(['youtube-cache-bodies','youtube-api-bodies'],root=root)
+        auxiliary += [(name,(Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary) for name,file,keys,dictionary in EXPLORER_TABLES[:3]]
     if prepared.get('include_entities'):
         from congress_api.lake.playlist_records import GOOD_FETCH_CAPTURE_SQL,PLAYLIST_CAPTURE_SQL
         steps += [
@@ -1482,11 +1496,16 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         steps += [dict(name='recording_tracks',sql=(Path(root)/'model/sql/recording-tracks.sql').read_text(),materialize=True),
             dict(name='caption_resource_requests',sql=(Path(root)/'model/sql/caption-resource-requests.sql').read_text(),materialize=True),
             dict(name='caption_resources',sql=(Path(root)/'model/sql/caption-resources.sql').read_text(),materialize=True),
-            dict(name='recordings_entity',sql=(Path(root)/'model/sql/entity-recordings.sql').read_text(),materialize=True)]
+            dict(name='recordings_entity',sql=(Path(root)/'model/sql/entity-recordings.sql').read_text(),materialize=True),
+            dict(name='recording_page_video_events',sql="""SELECT video_key,event_id,'committee_page:'||min(page_body) AS source_ref
+                FROM (SELECT pvl.page_body,pvl.extracted_key AS video_key,pm.event_id
+                      FROM recording_page_meetings pm JOIN recording_video_links pvl ON pvl.page_body=pm.page_body
+                      WHERE pvl.extracted_key IS NOT NULL AND pm.event_id IS NOT NULL)
+                GROUP BY video_key,event_id""",materialize=True)]
         auxiliary += [
             ('witnesses',WITNESSES_SQL,['occasion','panel_order','display_order','witness_key'],['occasion','source','witness_type','bioguide_id','match_basis']),
             ('witness_key_map','SELECT old_key,witness_key,status,basis,candidate_keys,occasion,source FROM witness_key_map',['old_key'],['occasion','source','status','basis']),
-            ('recordings','SELECT * FROM recordings_entity',['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
+            ('recordings',recordings_export_sql(root=root,explorer_inputs=bool(prepared.get('explorer_inputs'))),['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production']),
             ('caption_resources','SELECT * FROM caption_resources',['video_key','track_body','ordinal'],['suffix','format','status']),
             ('committees',(Path(root)/'model/sql/entity-committees.sql').read_text(),['system_code'],['chamber','committee_type','parent_system_code']),
             ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),
@@ -1497,14 +1516,19 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         auxiliary += list(detail_exports(prepared['entity_digests'],SPICY_SCHEMAS))
     explorer_diagnostics=[]
     if prepared.get('explorer_inputs'):
-        steps += _sql_steps(['youtube-cache-bodies','youtube-api-bodies'],root=root)
-        auxiliary += [(name,(Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary) for name,file,keys,dictionary in EXPLORER_TABLES]
+        auxiliary += [(name,(Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary) for name,file,keys,dictionary in EXPLORER_TABLES[3:]]
         from congress_api.lake.committee_records import CANDIDATE_SQL
         explorer_diagnostics=[dict(name='explorer_invariants',sql=rf"""SELECT (SELECT count(*) FROM meeting_coverage_export)-5*(SELECT count(*) FROM meetings_export) AS coverage_row_mismatch,
             (SELECT count(*) FROM meeting_coverage_export WHERE state='present' AND count=0) AS coverage_present_without_rows,
             (SELECT count(*) FROM (SELECT record_sha FROM youtube_cache_bodies UNION SELECT record_sha FROM youtube_api_bodies) b WHERE b.record_sha NOT IN ({explorer_settled_sql('video_records')})) AS unsettled_video_records,
             (SELECT count(*) FROM ({CANDIDATE_SQL}) c WHERE c.record_sha NOT IN ({explorer_settled_sql('committee_records')})) AS unsettled_committee_records,
-            (SELECT count(*) FROM videos_export WHERE (title IS NOT NULL AND (title='' OR regexp_like(title,'^\s|\s$'))) OR (source_description IS NOT NULL AND (source_description='' OR regexp_like(source_description,'^\s|\s$')))) AS untrimmed_video_texts""")]
+            (SELECT count(*) FROM videos_export WHERE (title IS NOT NULL AND (title='' OR regexp_like(title,'^\s|\s$'))) OR (source_description IS NOT NULL AND (source_description='' OR regexp_like(source_description,'^\s|\s$')))) AS untrimmed_video_texts,
+            ((SELECT count(*) FROM (SELECT video_key,unnest(event_ids) AS event_id FROM recordings_export WHERE event_ids IS NOT NULL) re
+              WHERE NOT EXISTS (SELECT 1 FROM (SELECT video_key,status,decision,unnest(meeting_links) AS link FROM recording_matches_export WHERE video_key IS NOT NULL AND meeting_links IS NOT NULL) rm
+                WHERE rm.video_key=re.video_key AND rm.link['scope']='event' AND rm.link['event_id']=re.event_id AND rm.status IN ('asserted','claimed','decided') AND coalesce(rm.decision,'') NOT IN ('no_video_found','not_public')))
+             + (SELECT count(*) FROM (SELECT DISTINCT video_key,link['event_id'] AS event_id FROM (SELECT video_key,status,decision,unnest(meeting_links) AS link FROM recording_matches_export WHERE video_key IS NOT NULL AND meeting_links IS NOT NULL) WHERE link['scope']='event' AND link['event_id'] IS NOT NULL AND status IN ('asserted','claimed','decided') AND coalesce(decision,'') NOT IN ('no_video_found','not_public')) rm
+                WHERE NOT EXISTS (SELECT 1 FROM (SELECT video_key,unnest(event_ids) AS event_id FROM recordings_export WHERE event_ids IS NOT NULL) re
+                  WHERE re.video_key=rm.video_key AND re.event_id=rm.event_id))) AS recording_event_link_mismatches""")]
         meta_explorer=[dict(name='videos_in_several_channels',sql="SELECT count(*) AS videos FROM (SELECT v['video_id'] AS video_id FROM (SELECT unnest(r.videos) AS v FROM selected_video_records r JOIN youtube_cache_bodies b ON encode(r.record_sha,'hex')=b.record_sha WHERE r.source='youtube_cache') GROUP BY v['video_id'] HAVING count(DISTINCT v['handle'])>1)")]
     if prepared.get('historical_recording_matcher'):
         from viewer_publication.historical_recording_matcher import SOURCE_FIELDS

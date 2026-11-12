@@ -728,9 +728,9 @@ Coverage: Historical package matcher scores are available separately when histor
 | `package_id` | `string` | yes | GPO package subject |
 | `video_key` | `string` | yes | Video identity; can lack a video row |
 | `url` | `string` | yes | Off-channel recording URL |
-| `basis` | `dict` | no | publisher_link, video_states_event_id or curated |
+| `basis` | `dict` | no | publisher_link, committee_page, video_states_event_id or curated |
 | `decision` | `dict` | yes | The verdict as stated, or linked |
-| `score` | `int16` | yes | 100 publisher link, 95 stated event ID; null otherwise |
+| `score` | `int16` | yes | 100 publisher or committee-page link, 95 stated event ID; null otherwise |
 | `recording_scope` | `dict` | yes | full, excerpt or unknown |
 | `status` | `dict` | no | asserted, claimed, decided, conflicting or unresolved; unresolved is a negative verdict that old matcher evidence disputes |
 | `note` | `string` | yes | Curator note, or the unmatched stated number |

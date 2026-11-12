@@ -2111,7 +2111,7 @@
         {
           "name": "basis",
           "type": "dict",
-          "meaning": "publisher_link, video_states_event_id or curated",
+          "meaning": "publisher_link, committee_page, video_states_event_id or curated",
           "nullable": false
         },
         {
@@ -2123,7 +2123,7 @@
         {
           "name": "score",
           "type": "int16",
-          "meaning": "100 publisher link, 95 stated event ID; null otherwise",
+          "meaning": "100 publisher or committee-page link, 95 stated event ID; null otherwise",
           "nullable": true
         },
         {

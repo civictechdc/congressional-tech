@@ -7,6 +7,14 @@ WITH publisher AS (
   cast('unknown' AS VARCHAR) AS recording_scope,cast('asserted' AS VARCHAR) AS status,
   cast(NULL AS VARCHAR) AS note,cast('meetings.videos' AS VARCHAR) AS source_ref
  FROM publisher
+), page_rows AS (
+ SELECT DISTINCT cast('event' AS VARCHAR) AS subject_kind,cast(p.event_id AS VARCHAR) AS subject_id,
+  p.event_id,cast(NULL AS VARCHAR) AS package_id,p.video_key,cast(NULL AS VARCHAR) AS url,
+  cast('committee_page' AS VARCHAR) AS basis,cast('linked' AS VARCHAR) AS decision,cast(100 AS SMALLINT) AS score,
+  cast('unknown' AS VARCHAR) AS recording_scope,cast('asserted' AS VARCHAR) AS status,
+  cast(NULL AS VARCHAR) AS note,p.source_ref
+ FROM recording_page_video_events p
+ WHERE p.video_key IS NOT NULL AND p.event_id IS NOT NULL
 ), stated AS (
  SELECT video_key,encode(record_sha,'hex') AS record_hex,unnest(stated_event_ids) AS stated_id FROM videos_export
 ), stated_rows AS (
@@ -20,7 +28,8 @@ WITH publisher AS (
   concat('video_records:',s.record_hex) AS source_ref
  FROM stated s LEFT JOIN meetings_export m ON m.event_id=s.stated_id
 ), linked_packages AS (
- SELECT DISTINCT l.package_id FROM meeting_transcript_links l JOIN publisher_rows p ON p.event_id=l.event_id
+ SELECT DISTINCT l.package_id FROM meeting_transcript_links l
+ JOIN (SELECT event_id FROM publisher_rows UNION SELECT event_id FROM page_rows) p ON p.event_id=l.event_id
 ), refs AS (
  SELECT id,subject_kind,subject_id,verdict,note,disputed_by,unnest(video_refs) AS ref
  FROM active_recording_decisions WHERE array_length(video_refs)>0
@@ -42,7 +51,7 @@ WITH publisher AS (
   CASE WHEN r.disputed_by IS NOT NULL THEN concat_ws(' | ',r.note,concat('disputed by ',r.disputed_by)) ELSE r.note END AS note,concat('recording_decisions:',r.id) AS source_ref
  FROM refs r LEFT JOIN linked_packages p ON r.subject_kind='package' AND r.subject_id=p.package_id
 ), all_rows AS (
- SELECT * FROM publisher_rows UNION ALL SELECT * FROM stated_rows UNION ALL SELECT * FROM curated_rows
+ SELECT * FROM publisher_rows UNION ALL SELECT * FROM page_rows UNION ALL SELECT * FROM stated_rows UNION ALL SELECT * FROM curated_rows
 ), keyed AS (
  SELECT *,encode(sha256(json_array(subject_kind,subject_id,coalesce(video_key,url,''),basis)),'hex') AS match_id FROM all_rows
 ), ranked AS (

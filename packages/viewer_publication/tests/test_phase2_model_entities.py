@@ -1038,6 +1038,9 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     assert [(r['event_id'], r['video_key'], r['status']) for r in matches if r['basis'] == 'video_states_event_id'] == [
         (115538, 'youtube:agHearing01', 'claimed')]
     assert not any(r['video_key'] == 'youtube:agUpload02' for r in matches)
+    recordings = {r['video_key']: r['event_ids'] for r in pq.read_table(tmp_path / 'release-explorer/recordings.parquet').to_pylist()}
+    assert recordings['youtube:agHearing01'] == [115538]
+    assert 'youtube:agUpload02' not in recordings
 
 
 def test_spicy_generations_pinned_by_publish_and_maintenance():
