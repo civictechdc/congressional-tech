@@ -1,6 +1,6 @@
 ---
 id: ct-nu3x
-status: open
+status: closed
 deps: []
 links: [ct-x00f]
 created: 2026-11-11T11:14:36Z
@@ -16,4 +16,15 @@ Follow-ups left by O9 (the engine must not refuse its own spill files; on dx/one
 ## Acceptance Criteria
 
 Test first on the engine's integration branch: a spill being written charges its row groups' metadata as it grows, as exports do per row group, shown by a budget the current writer overruns unledgered; the writer reserves nothing for statistics it does not write, with spill bytes unchanged. The pipeline's 2,048- and 8,192-row bounded jobs pass as before at the same lowest pool. Engine scripts/check green; independent review; outward: binaries and a pin move.
+
+
+## Notes
+
+**2026-11-12T16:00:00Z**
+
+Closed with Pin 2 (`docspec-rs` `e3d9092a6393e654efe221d662a76daf8fd56ca5`, hosted CI run `43238636122` 7/7 green).
+- Engine fix (`src/job/encoding.rs`, `src/job/spill.rs`): `encoding::write` for spill files now tracks and charges cumulative `RowGroupMetaData::memory_size()` per flushed row group against the shared memory budget until `ArrowWriter::close()`, and drops the obsolete `2 * stats_bytes` per-piece statistics reservation for statistics-free spill files while leaving spill Parquet bytes unchanged.
+- Empirical qualification on CT's bounded-memory capture comparison jobs (`test_capture_comparison_memory.py` `6/6` passed + direct pool sweep):
+  - `bounded2048` at `192 MiB` (`t=2` and `t=4`): `2/2` exit `0` (`0.334 GiB` / `0.308 GiB` RSS, `shared_available_min = 90.4 MB` / `89.0 MB`).
+  - `full8192` (`t=2`): `3/3` exit `0` at `192 MiB` AND `3/3` exit `0` at the lowest passing pool **`184 MiB`** (`0.539..0.590 GiB` RSS — ~60–80 MiB lower peak RSS than `ae12bbd`'s `0.634..0.667 GiB`), refusing cleanly at `176 MiB` (`step 18 "paired"`), identical to `ae12bbd`.
 

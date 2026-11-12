@@ -1,6 +1,6 @@
 ---
 id: ct-nild
-status: open
+status: closed
 deps: []
 links: [ct-x00f]
 created: 2026-11-10T17:12:34Z
@@ -23,3 +23,9 @@ A test that fails first on request count: a member of N MiB is fetched in at mos
 **2026-11-11T14:30:06Z**
 
 validated 2026-11-11, left open: not started. On the engine's integration branch dx/one-line (8db7ebb, worktree docspec-dx-one-line) SNAPSHOT_MEMBER_CHUNK_BYTES is still 64 << 10 (src/storage.rs:105); no dx/ branch carries this work. Waits on the managed-jobs stage 1 slot after the one-line pin (ct-x00f).
+
+**2026-11-12T16:00:00Z**
+
+Closed with Pin 2 (`docspec-rs` `e3d9092a6393e654efe221d662a76daf8fd56ca5`, hosted CI run `43238636122` 7/7 green).
+- Engine fix (`src/storage.rs`, `src/engine/managed_job/snapshots.rs`, `src/engine/managed_job/input_custody.rs`, `dr-3y1p`): raised snapshot custody transfer chunking from `64 KiB` to budget-admitted `8 MiB` range windows (`SNAPSHOT_MEMBER_CHUNK_BYTES`), added bounded concurrent multi-member fetching (`buffer_unordered(8)`) with every in-flight buffer explicitly reserved against `Budget` shared memory before allocation, and added content-addressed/immutable member reuse across successive snapshots of the same table (`table_uuid`) so already-held Parquet data files are hard-linked/reused without re-fetching.
+- Verification (`tests/managed_jobs.rs` + delayed local object-store benchmark matching the 756-member, 488 MiB trial shape): request count per N MiB member dropped `128x` (`1` request per `<= 8 MiB` member vs `16` per MiB), simulated 756-member / 488 MiB transfer with per-request latency dropped from sequential `64 KiB` round-trips to concurrent `8 MiB` reads within budget ceiling, and second-snapshot overlap test verified `0` duplicate fetches for members retained from the prior snapshot.

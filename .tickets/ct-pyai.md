@@ -1,6 +1,6 @@
 ---
 id: ct-pyai
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-11T00:14:12Z
@@ -23,3 +23,9 @@ The engine refuses a query whose result schema repeats a field name (or returns 
 **2026-11-11T14:30:07Z**
 
 validated 2026-11-11, left open: the engine side is unchanged on dx/one-line 8db7ebb (no refusal of repeated output names in src/job/query_result.rs). Only the pipeline guard exists: provenance.query's pgjson check (W4, on main since 623b6a63). Remains: the engine change and a test on the one line, then removing the pipeline check.
+
+**2026-11-12T16:00:00Z**
+
+Closed with Pin 2 (`docspec-rs` `e3d9092a6393e654efe221d662a76daf8fd56ca5`, hosted CI run `43238636122` 7/7 green) and CT caller cleanup on `claude/ct-wave-2-pin2`.
+- Engine fix (`src/job/query_result.rs`, `src/job.rs`): `docspec` now refuses any job query whose output schema repeats a field name before execution with `ErrorCode::InvalidSql` (`duplicate output column name '...'`), records `columns: Vec<String>` in exact SQL projection order on `QueryResult`, and replaces the `8x` JSON buffer over-reservation with exact Arrow + serialized-buffer reservation against the memory pool.
+- CT caller cleanup (`packages/congress_api/src/congress_api/retention/provenance.py`, `packages/congress_api/tests/test_provenance_job.py`, `.github/tests/test_dev_environment.py`): removed the extra `EXPLAIN FORMAT pgjson` planning query from `provenance.query_result` and `provenance.explain`, reading `entry['columns']` directly from the engine's `QueryResult`. Verified in `test_provenance_job.py` (`132/132` local tests passing) and on published `witnesses.parquet` (`witness_key = 'd0b690cee4b9bda7'`) in the 5-hop horizontal slice check.

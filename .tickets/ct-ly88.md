@@ -1,6 +1,6 @@
 ---
 id: ct-ly88
-status: open
+status: closed
 deps: []
 links: [ct-auhc]
 created: 2026-11-11T19:08:57Z
@@ -16,4 +16,13 @@ Found 2026-11-11 when the MODS appearance activation's post-import compare faile
 ## Acceptance Criteria
 
 docspec-rs: a query with IS NULL / IS NOT NULL on a nullable list column of a lake table returns correct rows; a regression test reproduces the 2026-11-11 failure; CT pins the fixed engine.
+
+
+## Notes
+
+**2026-11-12T16:00:00Z**
+
+Closed with Pin 2 (`docspec-rs` `e3d9092a6393e654efe221d662a76daf8fd56ca5`, hosted CI run `43238636122` 7/7 green).
+- Engine root-cause fix (`src/storage/pinned.rs` `PinnedIcebergTableProvider::supports_filters_pushdown`): inspects pushed `Expr` filter trees recursively and marks any filter referencing a non-primitive or nested `List` / `LargeList` / `FixedSizeList` / `Map` / `Struct` column (including `IS NULL`, `IS NOT NULL`, boolean conjunctions, and negations) as `TableProviderFilterPushDown::Unsupported` so DataFusion evaluates it cleanly above the scan while primitive column pushdown stays `Inexact`.
+- Regression coverage: reproduced & verified in `docspec-rs` (`tests/native_tables.rs`), in CT (`packages/congress_api/tests/test_lake_tables.py::test_mods_style_two_column_addition_evolves_lake_table_in_place_and_filters_nullable_lists`), and directly against the live R2 Iceberg table `archive_r1b.appearance_records_committees_20261111` (`table_uuid = 01a1cbde-6504-7571-b83b-19d9ef114596`, snapshot `4037276441541016815`, returning `CHRG-112hhrg72212` for `committees IS NOT NULL AND held_dates IS NOT NULL` and `327,721` rows for `committees IS NULL`).
 

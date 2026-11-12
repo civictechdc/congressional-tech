@@ -1,6 +1,6 @@
 ---
 id: ct-twfj
-status: open
+status: closed
 deps: []
 links: [ct-x00f]
 created: 2026-11-10T17:12:34Z
@@ -23,3 +23,10 @@ First a measurement, not a fix: a synthetic managed job of 3,000 small steps, by
 **2026-11-11T14:30:07Z**
 
 validated 2026-11-11, left open: not started. dx/managed-records sits at ae12bbd (the pin candidate) with no commits of its own, and dx/one-line (8db7ebb) has no change to the workspace catalog's per-commit metadata; the first step (the 3,000-step measurement) has not been run.
+
+**2026-11-12T16:00:00Z**
+
+Closed with Pin 2 (`docspec-rs` `e3d9092a6393e654efe221d662a76daf8fd56ca5`, hosted CI run `43238636122` 7/7 green).
+- Before-fix empirical measurement (`run_stage1c_bench.py`, 1,500-step synthetic managed job = 3,002 lifecycle commits): baseline `ae12bbd` exhibited quadratic $O(C^2)$ Iceberg metadata growth (`commit #1 = 874 B`, `commit #3,002 = 2,366,439 B`, cumulative workspace metadata written = `3.55 GiB`) caused by unbounded `snapshot-log`, `metadata-log`, `snapshots`, and manifest accumulation in the workspace lifecycle catalog.
+- Engine fix (`src/engine/managed_job/`, `dr-cbwt`): replaced per-step Iceberg catalog commits with an $O(1)$-per-event append-only framed CRC32-verified WAL (`job_events.wal`) + atomic checkpoint compaction and post-completion retirement cleanup, with crash/truncation recovery tests and quadratic-growth regression guard.
+- After-fix empirical measurement on identical 1,500-step / 3,002-commit benchmark (`27e304b` / `e3d9092`): per-event record size is constant (`~210 B`), total lifecycle bytes written across all 3,002 events dropped from `3.55 GiB` to **`0.63 MiB`** (`5,770x` reduction), and retirement removes transient WAL/step artifacts cleanly.

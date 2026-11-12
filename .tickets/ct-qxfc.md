@@ -1,6 +1,6 @@
 ---
 id: ct-qxfc
-status: in_progress
+status: closed
 deps: []
 links: [ct-i5u3]
 created: 2026-11-10T15:46:33Z
@@ -35,3 +35,11 @@ big LEFT JOIN small over two retained steps builds on the small step; the scan l
 **2026-11-11T11:14:19Z**
 
 2026-11-11: X1a landed on dx/one-line (7aa59e3) and is in the pin candidate ae12bbd (git merge-base, checked): retained-step scan leaves carry the step's name and row count in printed plans, with no statistics handed to the planner, so plans are unchanged (measured on the candidate binary: X1's job 0 repartitions on both, W12's lake job 1,020 on both; PIN-MOVE-QUALIFICATION.md section 1). X1b, the row counts handed to the planner so a join builds on the small side, is parked on dx/retained-scan (94f9995) and is not in the pin; taking it up needs its own qualification arm (PLAN.md, Q3 arm N2). The acceptance's 'builds on the small step' is therefore not met by this pin, and OUTER_BUILD_TRACKED and the AGENTS.md join rule stay.
+
+**2026-11-12T16:00:00Z**
+
+Closed with Pin 2 (`docspec-rs` `e3d9092a6393e654efe221d662a76daf8fd56ca5`, hosted CI run `43238636122` 7/7 green): `X1a` (`RetainedScan` plan display naming each retained step and row count) + `ct-88sf` per-step physical `joins` metrics ship in `e3d9092`, while `X1b` (forwarding row-only `Precision::Inexact(rows)` via `RetainedScan::partition_statistics` without calibrated byte-width statistics) was empirically tested on the real CT suite and refuted/rejected for three concrete DataFusion 53.1 `join_selection.rs` regressions:
+1. Zero-row `CollectLeft` refusal (`join_selection.rs` `*num_rows != 0`): empty retained steps fail `supports_collect_by_thresholds`, causing DataFusion to swap up to `131,071` wide capture rows onto `CollectLeft` instead of building on the `0`-row table.
+2. `Absent` (`json_lines`) vs `Inexact` (`RetainedScan`) asymmetry: joins between `Absent`-stat `json_lines` inputs (`new_input`) and `Inexact` retained steps swap the wide `new_input` side onto the hash build table (`test_phase1_source_body_urls.py`).
+3. `FilterExec` uniform `0.2` selectivity guess without column byte widths: swaps 74-column wide capture chains onto the build side over 6-column narrow key tables (`test_phase1_model_join_audit.py`).
+Keeping `RetainedScan::partition_statistics` `Absent` (`X1a`) preserves 46/46 Parquet byte-identity on the full production build (`06cd8374d1609d0e6c2d34b48824c89b65b4519de0317212f38af71768aa755e`), while `OUTER_BUILD_TRACKED` and the `AGENTS.md` join rule remain active and verified by `ct-i5u3`'s full-build `pool_reserved_peak` measurement (all 33 tracked readers `< 38%` of pool).

@@ -1,6 +1,6 @@
 ---
 id: ct-88sf
-status: in_progress
+status: closed
 deps: []
 links: [ct-w564]
 created: 2026-11-10T16:19:14Z
@@ -35,3 +35,12 @@ Phase 1: a failing step, output and query are each named with the code unchanged
 **2026-11-11T12:47:00Z**
 
 2026-11-11: for readers of engine errors, docs/development.md (One engine query, no job file) now says a memory refusal is told by its text, not its code, on both b0342a7 and ae12bbd: DataFusion's pool refuses with code query ('Resources exhausted: Failed to allocate'), the engine's budget with capacity ('shared memory budget exhausted', 'allocation exceeds admission granularity'), and capacity also names the blocking-I/O limit. X2 phase 1 names the statement but keeps these codes.
+
+**2026-11-12T16:00:00Z**
+
+Closed with Pin 2 (`docspec-rs` `e3d9092a6393e654efe221d662a76daf8fd56ca5`, hosted CI run `43238636122` 7/7 green).
+- Phase 2 engine metrics (`src/job/metrics.rs`, `src/job.rs`): emits `[docspec-metric]` `start` event (`memory_bytes`, `pool_bytes`, `shared_admission_bytes`, `retention_ceiling_bytes`, `open_files_soft`), `process_peak_rss_bytes` on `step`/`output`/`query` events, `pool_reserved_peak` on `output` events, per-statement `shared_available_min` alongside `compaction_copied_batches` and `compaction_refused_copies`, a terminal `failed` event naming the failed statement kind/index/name/code, and per-step physical `joins` summaries (`join_type`, `mode`, `build_rows`, `probe_rows`, `output_rows`).
+- Cross-instrument verification on the full CT production model build (`release-20261112-pin2/candidate-build`, `release_id = 06cd8374d1609d0e6c2d34b48824c89b65b4519de0317212f38af71768aa755e`):
+  1. `start` event vs `limits.json`: exact match (`memory_bytes = 25,769,803,776` = 24 GiB, `pool_bytes = 12,884,901,888` = 12 GiB, `shared_admission_bytes = 12,884,901,888` = 12 GiB, `retention_ceiling_bytes = 3,221,225,472` = 3 GiB, `open_files_soft = 1,048,575`).
+  2. `process_peak_rss_bytes` vs `archive_watchdog.py`: engine max `8,602,451,968` bytes (`8.012 GiB`) vs process-group `peak_rss_gb = 8.070 GiB` (the `59 MiB` delta is the Python `archive_model_job` parent RSS).
+  3. `shared_available_min` & compaction telemetry: whole-build floor `12,331,117,710` bytes (`11.484 GiB` = `95.7%` of the `12 GiB` shared budget) on `document_metadata`, `compaction_copied_batches = 29,496`, `compaction_refused_copies = 0`.
