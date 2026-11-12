@@ -1,6 +1,6 @@
 ---
 id: ct-egoo
-status: in_progress
+status: closed
 deps: []
 links: [ct-5q3g]
 created: 2026-11-10T20:37:59Z
@@ -45,3 +45,7 @@ Open for the owner: whether the 15,691 label-only pages ("House Hearing, 111th C
 **2026-11-11T16:58:12Z**
 
 2026-11-11 owner: hold the title change (titles get one composition rule, designed first; the hearing number becomes its own field shown beside the title). Part 2 is out of this branch: 0c313021 removes the title fill; the work is parked whole on branch claude/ct-egoo-title-fill-parked, commit 1e5b751a (one commit on 0c313021 restoring landing-page-titles.sql, the normalized fill, page signal govinfo_details_title with its samples, the test assertions and DM text; measurements gs-10..12). Parts 1 (list parts) and 3 (stop fetching) stay as built; the title counts in the note above no longer apply to this branch. Owner on label-only titles: numbers only (for the design).
+
+**2026-11-12T06:30:22Z**
+
+Published in release `ede659a056c04ce0c4f51c70b6848b4eaf1db1a2a2fa8aee04076973e2a1a450` (`nightly/20261112T061147.068599Z`, commit `ea76829fa376980a038cfcc1faa16b9901223cf7`, cause record `model/jobs/release-causes/21fc049940bb-ede659a056c0.json`, notes `docs/releases/2026-11-12-ede659a056c0.md`). Verified on the published Parquet tables, `capture_scope.json`, and model query results against `21fc049940bb`: (1) the 2 multi-part GovInfo Content Details pages (`CHRG-115hhrg24725`, `CHRG-116hhrg49571`) place `+4` unsaved `sources.parquet` rows and `+4` `urls.parquet` rows onto their 2 granule part documents each, `retired_links.parquet` notices `cb0383af1fd10c1e` and `97fb468681b8ac87` list their 2 granule link keys in `address_versions`, and `landing_page_invariants` = `{lost_landing_addresses: 0, saved_landing_addresses: 0, unaddressed_landing_pages: 0}`; (2) hearing-number title fill held per owner decision (`claude/ct-egoo-title-fill-parked` `1e5b751a`, pending Title Design Stage 2+); (3) `capture_scope.json` adds `(?i)^https?://(?:www\.)?govinfo\.gov/app/details/` to `documents.exclusions`, moving all `34,831` `govinfo.gov/app/details/` rows in `url_state.parquet` from `eligible` to `excluded` (`scope_exclusion`). Closed.

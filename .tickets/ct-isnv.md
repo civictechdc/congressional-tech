@@ -1,6 +1,6 @@
 ---
 id: ct-isnv
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-10T14:57:27Z
@@ -59,3 +59,7 @@ Not done here: the release note line ("the kind words changed; amendment and bio
 **2026-11-11T17:16:31Z**
 
 2026-11-11 tests on af3308cf (runner, partial lines): model/schema/registries 35, nearest 21 model files 260 (repeat cost unchanged), test_phase2_model_entities.py 53, release e2e/provenance/evidence/page metadata + test_capture_scheduler.py 134, Explorer synonyms 4, site kind-synonyms 3; all passed. No full lane or build.
+
+**2026-11-12T06:30:22Z**
+
+Published in release `ede659a056c04ce0c4f51c70b6848b4eaf1db1a2a2fa8aee04076973e2a1a450` (`nightly/20261112T061147.068599Z`, commit `ea76829fa376980a038cfcc1faa16b9901223cf7`, notes `docs/releases/2026-11-12-ede659a056c0.md`). Verified on the published `schema.json` and `list.parquet` against `21fc049940bb`: `list.parquet` `document_kind[]` synonyms publishes all 5 groups (`[witness-statement, testimony]` `64,128 -> 64,130`, `[committee-amendment, amendment]` `20,847 -> 20,845`, `[witness-biography, biography]` `22,527 -> 22,527`, `[member-statement, opening-statement]` `10,938 -> 10,938`, `[committee-transcript, transcript]` `3,869 -> 3,853`); all 17 GPO printed-hearing-cover transcripts retagged `transcript -> published-hearing` (`transcript` `1,134 -> 1,117`, `published-hearing` `36,867 -> 36,884`, `committee-transcript` `2,735 -> 2,736`); release note statement published under `## Identifiers` in `docs/releases/2026-11-12-ede659a056c0.md`. Closed.

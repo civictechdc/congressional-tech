@@ -1,6 +1,6 @@
 ---
 id: ct-u9y4
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-10T05:08:06Z
@@ -144,3 +144,7 @@ Tests (focused, worktree runner): fail before (4 failed), pass after (10 passed)
 
 2026-11-11 owner answers applied on claude/ct-doc-roles-2 (tests cca2425b, fix see branch log): "Keep the page's old title". A document that showed its dead page (the page first in the recovery order) keeps the page's title on the file. On 77673bfb8fcf exactly the 27 are affected and all keep their published title (dr2-34-title-changes.csv: published / without the rule / with it); without it 20 took the hearing record's title and 7 had none. Focused files all pass (focused/SUMMARY.txt in the report folder).
 Duplicate the split makes: edition body b3b270 (House Report 107-539 pt 1) becomes its own document while row 321977 (views.pdf, another dead link, shown through the same report) already shows those bytes. No existing rule joins them: the same-body edge and the recovered-copy move need a real file, and a duplicate_of review cannot name the edition's body key (initial keys precede the split). Same class as today's 191 recovered files each shown by 2+ recovery-only rows (446 rows); not folded here.
+
+**2026-11-12T06:30:22Z**
+
+Published in release `ede659a056c04ce0c4f51c70b6848b4eaf1db1a2a2fa8aee04076973e2a1a450` (`nightly/20261112T061147.068599Z`, commit `ea76829fa376980a038cfcc1faa16b9901223cf7`, cause record `model/jobs/release-causes/21fc049940bb-ede659a056c0.json`, notes `docs/releases/2026-11-12-ede659a056c0.md`). Verified on the published Parquet tables and model query results against `21fc049940bb`: `recoveries.parquet` `-81` rows (`role='source_page'` veterans.house.gov wrapper pages moved to `+78` unsaved `sources.parquet` rows) and `16` shared keys moved by `role='edition'` splits (`+15` new recovery-only rows with `+15` body link keys, plus `1` joining hearing `CHRG-111hhrg53240.pdf` row `82464`; `+18` `urls.parquet` rows across 17 shared dead-address lookup keys); all 27 `source_page` documents switch `saved_body` to their carried file while preserving all 27 published titles (`changed title = 0`); 32 `link_key` and 22 `lookup_key` named corrections (including multi-body `e1c6c97b78885dfc`) verified in Gate 1; `recovered_file_invariants` = `{links_without_a_file: 0, several_files_unreviewed: 0}`, `recovered_file_roles_unused = 0`, `recovery_documents_with_several_files` = `same_text 31, text_differs 4, text_unread 16` (all reviewed). Closed.

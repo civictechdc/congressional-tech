@@ -1,6 +1,6 @@
 ---
 id: ct-xj8s
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-10T20:37:59Z
@@ -37,3 +37,7 @@ Tests (focused, worktree runner): role cases and registry samples fail before (2
 **2026-11-11T16:52:12Z**
 
 2026-11-11 owner: the 199 dated floor schedules (docs.house.gov/floor/Default.aspx?date=) stay documents ("Keep them as documents"); no change to the list.
+
+**2026-11-12T06:30:22Z**
+
+Published in release `ede659a056c04ce0c4f51c70b6848b4eaf1db1a2a2fa8aee04076973e2a1a450` (`nightly/20261112T061147.068599Z`, commit `ea76829fa376980a038cfcc1faa16b9901223cf7`, cause record `model/jobs/release-causes/21fc049940bb-ede659a056c0.json`, notes `docs/releases/2026-11-12-ede659a056c0.md`). Verified on the published Parquet tables against `21fc049940bb`: exact predicted `-192` HTML `wrapper_url` navigation/index documents retired (`323,087 -> 322,965` total documents after `+70` unrelated additions; all 192 removed rows were original HTML pages with 0 meetings, witnesses, measures, or recoveries), all `208` link keys moved to `retired_links.parquet` with removal notices (`0` vanished), `-208` `sources.parquet` addresses and `-267` `urls.parquet` lookup pairs (`266` keys gone + `1` row removed on shared key `b3a3a38dbcd8b8b8`), while keeping the 199 dated floor schedules as documents. Closed.
