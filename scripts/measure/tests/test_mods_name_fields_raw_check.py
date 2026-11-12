@@ -936,3 +936,128 @@ def test_the_note_plant_is_flagged(tmp_path):
     notes(tmp_path, prints=[('11' * 32, NOTE_LINES, (), NOTE_BEFORE, NOTE_AFTER)])
     code, out = run(tmp_path, '--plant', 'note-took-given', 'note-took-given')
     assert [(p['kind'], p['flagged']) for p in out['planted']] == [('note-took-given', True)] * 2
+
+
+# Wave 3 (ct-6mvl, ct-eppo, ct-vj08, ct-uz8q, ct-17op): organization-in-position (both directions), written-answer
+# label shapes, 'the Honorable', no-space honorifics, lower-case surname particles, honorific/org abbreviations in prose,
+# and dedicated rank/credentials fields.
+WAVE3_LINES = [
+    'Page Barreto, Hon. Hector V., U.S. Small Business Administration',
+    'Hon. Eleanor Holmes Norton, a Delegate in Congress from the District of Columbia',
+    'Statement of the Honorable Richard Roe, Mayor',
+    'The Hon.Eleanor Smith, a Representative in Congress from the State of Texas, statement',
+    'van Welie, Gordon, President and CEO, ISO New England Inc.',
+    'de Rugy, Veronique, Senior Fellow; accompanied by Gov. Jane Doe and Acme Corp. staff',
+    r'Answers to submitted questions \*\ Richard Roe, Executive Director, National Association of Boards',
+    'Answers to Submitted Questions, Mr. Jeff Hopkins',
+    'Response to question submitted for the record by Jeanine Derby, Forest Supervisor.............   252',
+    'Nakasone, Lieutenant General Paul M., USA, Commander, U.S. Cyber Command',
+]
+WAVE3_BEFORE = [
+    asked('mods:witness[1]', 'Hector V. Barreto', 1, None, position='U.S. Small Business Administration'),
+    asked('mods:witness[2]', 'Eleanor Holmes Norton', 2, None, position=DELEGATE),
+    asked('mods:witness[3]', 'the Honorable Richard Roe', 3, None, position='Mayor'),
+    asked('mods:witness[4]', 'The Hon.Eleanor Smith', 4, None,
+          position='a Representative in Congress from the State of Texas', organization='statement'),
+    asked('mods:witness[5]', 'van Welie', 5, None, position='Gordon', organization='President and CEO, ISO New England Inc.'),
+    asked('mods:witness[6]', 'Veronique de Rugy', 6, None, position='Senior Fellow',
+          organization='accompanied by Gov. Jane Doe and Acme Corp. staff'),
+    asked('mods:witness[10]', 'Paul M. Nakasone', 7, None, position='Commander', organization='U.S. Cyber Command'),
+]
+WAVE3_AFTER = [
+    asked('mods:witness[1]', 'Hector V. Barreto', 1, None, position=None, organization='U.S. Small Business Administration'),
+    WAVE3_BEFORE[1],
+    asked('mods:witness[3]', 'Richard Roe', 3, None, position='Mayor'),
+    asked('mods:witness[4]', 'Eleanor Smith', 4, 'member_statement',
+          position='a Representative in Congress from the State of Texas', organization='statement'),
+    asked('mods:witness[5]', 'Gordon van Welie', 5, None, position='President and CEO', organization='ISO New England Inc.'),
+    WAVE3_BEFORE[5],
+    asked('mods:witness[7]', 'Richard Roe', 7, None, position='Executive Director',
+          organization='National Association of Boards'),
+    asked('mods:witness[8]', 'Jeff Hopkins', 8, 'statement_for_record'),
+    asked('mods:witness[9]', 'Jeanine Derby', 9, 'statement_for_record', position='Forest Supervisor'),
+    dict(asked('mods:witness[10]', 'Paul M. Nakasone', 10, None, position='Commander', organization='U.S. Cyber Command'),
+         rank='Lieutenant General', credentials='USA'),
+]
+
+
+def test_wave3_reread_passes_and_all_nine_wave3_plants_are_flagged(tmp_path):
+    kinds = [
+        'org-in-position',
+        'role-in-organization',
+        'the-honorable-kept',
+        'no-space-honorific-kept',
+        'particle-given-dropped',
+        'abbreviation-as-prose',
+        'eppo-asterisk-dropped',
+        'eppo-comma-dropped',
+        'eppo-singular-dropped',
+    ]
+    prints = [
+        (f'{n:02d}' * 32, WAVE3_LINES, ['Smith, Eleanor'], WAVE3_BEFORE, WAVE3_AFTER)
+        for n in range(21, 21 + len(kinds))
+    ]
+    write(
+        tmp_path,
+        before=WAVE3_BEFORE,
+        after=WAVE3_AFTER,
+        lines=WAVE3_LINES,
+        members=['Smith, Eleanor'],
+        table=['Eleanor Smith'],
+        people=('Hector Barreto', 'Gordon van Welie', 'Veronique de Rugy', 'Jeanine Derby', 'Paul Nakasone'),
+        prints=prints,
+    )
+    code, out = run(tmp_path)
+    assert code == 0, out['failed']
+
+    code, out = run(tmp_path, '--plant', *kinds)
+    assert code == 1
+    assert [(p['kind'], p['flagged']) for p in out['planted']] == [(k, True) for k in kinds]
+    assert len({p['body'] for p in out['planted']}) == len(kinds)
+
+
+def test_wave3_corpus_calibrations_slash_dates_particles_and_residuals(tmp_path):
+    lines = [
+        'Colonel Pamela A. Melroy, United States Air Force (Ret.)/NASA Astronaut, retired',
+        'PEER, Presidents of Local Unions, June 29, 2006',
+        'de Bernardo, Mark, partner, Jackson Lewis, LLP',
+        'von Droste, Bernd, Director, World Heritage Center',
+        'Heinen, M.P.P., LuAnn, Vice President, National Business Group on Health',
+        'Coston, Ph.D., D.C., Vice President for Agriculture, North Dakota State University',
+        'Ben Hoffman, MD, FAAP, CPST-I, Chair, American Academy of Pediatrics',
+        'Chandler &amp; Associates, LLC, and Chandler Company, Richard Roe',
+    ]
+    before = [
+        asked('mods:witness[1]', 'Pamela A. Melroy', 1, None, position='United States Air Force/NASA Astronaut', organization='retired'),
+        asked('mods:witness[2]', 'Presidents of Local Unions', 2, 'record_material', position='June 29', organization='2006'),
+        asked('mods:witness[3]', 'de Bernardo', 3, None, position='Mark', organization='partner, Jackson Lewis, LLP'),
+        asked('mods:witness[4]', 'von Droste', 4, None, position='Bernd', organization='Director, World Heritage Center'),
+        asked('mods:witness[5]', 'M.P.P. Heinen', 5, None, position='LuAnn', organization='Vice President, National Business Group on Health'),
+        asked('mods:witness[6]', 'Ph.D. Coston', 6, None, position='Vice President for Agriculture', organization='North Dakota State University'),
+        asked('mods:witness[7]', 'Ben Hoffman', 7, None, position='CPST-I', organization='Chair, American Academy of Pediatrics'),
+        asked('mods:witness[8]', 'Chandler & Associates', 8, None, position='and Chandler Company', organization='Richard Roe'),
+    ]
+    after = [
+        dict(asked('mods:witness[1]', 'Pamela A. Melroy', 1, None, position='NASA Astronaut', organization='retired'),
+             rank='Colonel', credentials='United States Air Force (Ret.)'),
+        asked('mods:witness[2]', None, 2, 'record_material', organization='PEER, Presidents of Local Unions, June 29, 2006'),
+        asked('mods:witness[3]', 'Mark de Bernardo', 3, None, position='partner', organization='Jackson Lewis, LLP'),
+        asked('mods:witness[4]', 'Bernd von Droste', 4, None, position='Director', organization='World Heritage Center'),
+        dict(asked('mods:witness[5]', 'LuAnn Heinen', 5, None, position='Vice President', organization='National Business Group on Health'),
+             credentials='M.P.P.'),
+        dict(asked('mods:witness[6]', 'D.C. Coston', 6, None, position='Vice President for Agriculture', organization='North Dakota State University'),
+             credentials='Ph.D.'),
+        dict(asked('mods:witness[7]', 'Ben Hoffman', 7, None, position='Chair', organization='American Academy of Pediatrics'),
+             credentials='MD, FAAP, CPST-I'),
+        asked('mods:witness[8]', 'Chandler & Associates', 8, None, position='LLC', organization='and Chandler Company, Richard Roe'),
+    ]
+    write(
+        tmp_path,
+        before=before,
+        after=after,
+        lines=lines,
+        people=('Pamela Melroy', 'June Smith', 'Mark Smith', 'Ben Hoffman'),
+    )
+    code, out = run(tmp_path)
+    assert code == 0, out['failed']
+    assert [r['locator'] for r in out['residual']] == ['mods:witness[8]']

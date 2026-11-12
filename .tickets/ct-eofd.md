@@ -1,6 +1,6 @@
 ---
 id: ct-eofd
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-11T13:50:59Z
@@ -16,4 +16,11 @@ spicy-regs ticket ss-mbia is done (2026-11-11): the members table now publishes 
 ## Acceptance Criteria
 
 CT pins the new members generation and spicy-docs 0.85.0; the Member-appearance step uses name_middle/name_official_full; the 8 rows become Member appearances and no other row changes unexplained; the raw check's plants pass; the spicystack session was told before the pin moved.
+
+## Notes
+
+**2026-11-12T15:48:00Z**
+
+Wave 3 (`claude/ct-wave-3-parsers`): pinned `vendor/spicy_docs-0.85.0-py3-none-any.whl` and `spicy-regs` `members` generation `26d652e10178f3b079c0af1c3ca50dbce318868541c8b3e28af6a40e4223e780` (`12,770` rows), updated `model/sql/witness-member-names.sql` + `model/sql/witness-member-facts.sql` + `scripts/measure/member_appearances_raw_check.py` (including preserving chamber cues stripped into `honorific` under cross-source civil-honorific stripping, e.g. `Senator Elizabeth Warren -> W000817` and `J. Correa -> C001110`), and verified end-to-end through `archive_model_job`, Explorer MCP `Reader`, and Playwright DOM rendering (`wave3_horizontal_slice_review.md` slice `H9`). Ready for Merge Slot #1 + R2 release build.
+
 

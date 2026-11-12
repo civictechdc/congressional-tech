@@ -34,6 +34,9 @@ WITH expanded AS (
   AND (c.event_id IS NULL OR c.event_id=m.event_id)
  LEFT JOIN selected_appearance_records a ON c.sha256=decode(a.record_sha_hex,'hex')
   AND a.source='congress_gov' AND a.status='completed'
-  AND a.parser_version='6d9460f5ec203c24c508846092505a875710f565e1ff026479b542c7555e7d48'
+  AND a.parser_version IN (
+   '6d9460f5ec203c24c508846092505a875710f565e1ff026479b542c7555e7d48',
+   'f306c3df6098936b7a336e31e434805d927d4e60c126a5cf3b68a0bc75c831b7'
+  )
 )
 SELECT DISTINCT * FROM bound WHERE event_id IS NOT NULL

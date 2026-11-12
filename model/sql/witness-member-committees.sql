@@ -8,8 +8,9 @@
 -- subcommittee code's first four letters and '00' ('hsag22' -> 'hsag00'): the full committee's chair and ranking
 -- member sit on every subcommittee and open its hearings, but rosters seat them on the full committee only.
 -- Seated: the pinned rosters (roster_seats), and, for a Congress the rosters do not hold (before the 113th), the
--- print's own MODS committee member list (package_mods_facts.committee_members). That list omits members the
--- rosters hold, so it is read only where no roster seat can be.
+-- print's own MODS committee member list (package_mods_facts.committee_members) or the roster page of the print's own
+-- transcript (witness_transcript_facts.roster_listed, ct-sfra). The MODS list omits members the rosters hold, so it
+-- is read only where no roster seat can be; the roster page lists the whole committee the print was made for.
 WITH opening AS (
  SELECT DISTINCT person,event_id,package_id,dates[1] AS day,
   -- The Congress of the hearing date: each begins on 3 January of an odd year.
@@ -53,3 +54,9 @@ SELECT o.person,upper(trim(m)) AS bioguide_id
 FROM (SELECT person,unnest(f.committee_members) AS m
  FROM (SELECT o.person,o.package_id FROM held h RIGHT ANTI JOIN opening o ON o.congress=h.congress WHERE o.package_id IS NOT NULL) o
  JOIN package_mods_facts f ON f.package_id=o.package_id) o
+UNION
+-- Before the rosters: a row of the appearance the print's own transcript roster page lists, as the Member it matched.
+SELECT DISTINCT o.person,d.bioguide_id
+FROM (SELECT DISTINCT o.person FROM held h RIGHT ANTI JOIN opening o ON o.congress=h.congress) o
+ JOIN witness_transcript_facts t ON t.person=o.person AND t.roster_listed
+ JOIN witness_member_decisions d ON d.witness_key=t.witness_key AND d.outcome='member'

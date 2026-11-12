@@ -63,5 +63,5 @@ news-lake = { workspace = true }
 inflation-gsheets = { workspace = true }
 # Sibling readers ship as vendored wheels, as spicy-regs binds them; the build
 # receipt beside each wheel names its source commit (vendor/spicy_docs-*.json).
-spicy-docs = { path = "vendor/spicy_docs-0.84.0-py3-none-any.whl" }
+spicy-docs = { path = "vendor/spicy_docs-0.85.0-py3-none-any.whl" }
 rulespec-artifacts = { path = "vendor/rulespec_artifacts-1.1.2-py3-none-any.whl" }

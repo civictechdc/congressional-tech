@@ -4,7 +4,7 @@ import {
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
 import {day} from './ArchiveRows.tsx';
-import {witnessLabel, witnessRecordEntryLabel} from '../reader/archive-entities.ts';
+import {witnessLabel, witnessMember, witnessRecordEntryLabel} from '../reader/archive-entities.ts';
 
 export function WitnessDetail({
   witness,
@@ -38,6 +38,7 @@ export function WitnessDetail({
   const documents:any[]=Array.isArray(witness.documents)?witness.documents:[];
   const shownAppearances=compact?appearances.slice(0,5):appearances;
   const recordLabel=witnessRecordEntryLabel(witness.witness_type);
+  const named=witnessMember(witness);
 
   return <section className="archive-entity-card" aria-label={recordLabel||'Witness details'} data-archive-entity="witness">
     <header className="archive-entity-header">
@@ -52,13 +53,13 @@ export function WitnessDetail({
       <h2>{witnessLabel(witness)}</h2>
       {organizations.length>0&&<p className="archive-entity-meta"><strong>Organizations:</strong> {organizations.join(' · ')}</p>}
       {positions.length>0&&<p className="archive-entity-meta"><strong>Positions:</strong> {positions.join(' · ')}</p>}
-      {witness.bioguide_id&&<p className="archive-entity-meta">
+      {named&&<p className="archive-entity-meta">
         <strong>Member of Congress:</strong>{' '}
         {onMember
-          ?<button type="button" className="archive-measure-pill" onClick={()=>onMember(String(witness.bioguide_id))}>
-              View Member Profile ({witness.bioguide_id})
+          ?<button type="button" className="archive-measure-pill" onClick={()=>onMember(named.bioguide_id)}>
+              View Member Profile ({named.name_matched?`${named.bioguide_id}, name-matched`:named.bioguide_id})
             </button>
-          :<span>{witness.bioguide_id}</span>}
+          :<span>{named.name_matched?`${named.bioguide_id} (name-matched)`:named.bioguide_id}</span>}
       </p>}
     </header>
 
@@ -68,7 +69,7 @@ export function WitnessDetail({
         {shownAppearances.map((app:any,i:number)=>{
           const ev=String(app.event_id??app.meeting_key??'');
           const title=app.meeting_title||app.title||`Hearing ${ev}`;
-          const role=[app.position,app.organization].filter(Boolean).join(' — ');
+          const role=[app.position,app.organization,app.on_behalf_of?`on behalf of ${app.on_behalf_of}`:null].filter(Boolean).join(' — ');
           return <li key={ev||i}>
             {ev&&onHearing
               ?<button type="button" className="explorer-text-button" onClick={()=>onHearing(ev)}><strong>{title}</strong></button>

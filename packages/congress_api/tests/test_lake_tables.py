@@ -273,6 +273,8 @@ def test_mods_style_two_column_addition_evolves_lake_table_in_place_and_filters_
         pa.field('testified', pa.bool_()),
         pa.field('bioguide_id', pa.string()),
         pa.field('document_links', pa.list_(pa.field('item', pa.string(), nullable=False)), nullable=False),
+        pa.field('rank', pa.string()),
+        pa.field('credentials', pa.string()),
     ])
     base_fields = [
         pa.field('record_sha', pa.binary(32), nullable=False),
@@ -346,7 +348,7 @@ def test_mods_style_two_column_addition_evolves_lake_table_in_place_and_filters_
         assert added['table_uuid'] == old_pin['table_uuid']
         assert added['previous_schema_id'] == 0 and added['schema_id'] == 1
         assert [c['name'] for c in added['added_columns']] == ['title', 'created']
-        assert [c['field_id'] for c in added['added_columns']] == [34, 35]
+        assert [c['field_id'] for c in added['added_columns']] == [36, 37]
 
         # Repeating all-present columns is an idempotent no-op even on a stale expected_schema_id;
         # adding a new column on a stale expected_schema_id refuses with stale_authority;

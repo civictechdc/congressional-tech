@@ -98,11 +98,21 @@ def _typed(result, filename):
     measures = list(metadata.get('measure_references', []))
     if one('measure_type') and one('measure_number'):
         measures.append(one('measure_type') + one('measure_number'))
+    overlong_refs = {
+        f'{m[1].lower()}{int(m[2])}'
+        for raw in [
+            *metadata.get('measure_list', []),
+            *(f'{t}{n}' for t in metadata.get('measure_token_code', []) for n in metadata.get('measure_number', [])),
+        ]
+        for m in re.finditer(r'(hr|s|hjres|sjres|hconres|sconres|hres|sres)([0-9]+)', raw, re.I)
+        if len(m[2]) > 5 and int(m[2]) > 0
+    }
     keys = set()
     if congress is not None:
         for reference in measures:
             match = re.fullmatch(r'(hr|s|hjres|sjres|hconres|sconres|hres|sres)([0-9]+)', reference.lower())
-            if match: keys.add(f'{congress}-{match[1]}-{int(match[2])}')
+            if match and len(match[2]) <= 5 and int(match[2]) > 0 and f'{match[1]}{int(match[2])}' not in overlong_refs:
+                keys.add(f'{congress}-{match[1]}-{int(match[2])}')
     stem = filename.rsplit('.', 1)[0]
     package = None
     if (one('package_family') or '').upper() in {'BILLS', 'CHRG', 'CRPT', 'CPRT'}:

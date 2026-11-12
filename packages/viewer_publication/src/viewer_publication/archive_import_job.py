@@ -58,7 +58,7 @@ def load_spec(path):
     if 'create_namespace' in value and type(value['create_namespace']) is not bool:
         raise ValueError('Import create_namespace must be boolean')
     tables=value['tables']
-    if not isinstance(tables,dict) or not tables or set(tables)-set(ALL_TABLE_NAMES)-set(EXPLORER_TABLE_NAMES)-{'playlist_records'}:
+    if not isinstance(tables,dict) or not tables or set(tables)-set(ALL_TABLE_NAMES)-set(EXPLORER_TABLE_NAMES)-{'playlist_records','transcript_headings'}:
         raise ValueError('Import tables must name archive or Explorer lake tables')
     result={}
     for name,item in tables.items():

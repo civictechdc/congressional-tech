@@ -17,7 +17,8 @@ from viewer_publication.archive_model import (
 )
 from viewer_publication.meeting_detail_observations import UNKNOWN_OBSERVATION
 
-PROOF_VERSION = '6d9460f5ec203c24c508846092505a875710f565e1ff026479b542c7555e7d48'
+PRIOR_PROOF_VERSION = 'f306c3df6098936b7a336e31e434805d927d4e60c126a5cf3b68a0bc75c831b7'
+PROOF_VERSION = 'f306c3df6098936b7a336e31e434805d927d4e60c126a5cf3b68a0bc75c831b7'
 BASE = 'https://api.congress.gov/v3/committee-meeting/118/house'
 
 

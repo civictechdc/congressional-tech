@@ -236,9 +236,41 @@ import xml.etree.ElementTree as ET
 import pyarrow.parquet as pq
 
 FIELDS = ('name', 'position', 'organization', 'on_behalf_of')
-TITLES = set('the hon honorable mr mrs ms miss dr prof professor rev reverend senator sen representative rep ambassador '
-             'general gen admiral adm colonel col lieutenant lt major maj captain capt sergeant sgt commander brigadier vice rear '
+ALL_FIELDS = (*FIELDS, 'rank', 'credentials')
+TITLES = set('the hon honorable honorables mr mrs ms miss mx dr prof professor rev reverend senator sen representative rep ambassador amb '
+             'governor gov mayor general gen ltg mg bg ltgen majgen briggen bgen admiral adm vadm radm rdml colonel col ltc ltcol '
+             'lieutenant lt ltjg ens ensign major maj captain capt cpt sergeant sgt ssg ssgt tsgt msgt msg gysgt sfc csm sgm '
+             'sgtmaj sma smmc cmsaf mcpon cmsgt smsgt commander cmdr cdr lcdr corporal cpl lcpl specialist spc pfc sra '
+             'brigadier vice rear warrant petty mcpo scpo cpo first second third class gunnery lance senior airman upper lower half junior grade '
              'master rabbi sister pastor esq'.split())
+NO_SPACE_TITLE = re.compile(r"\b(Hon|Mr|Ms|Mrs|Dr)\.(?=[A-Z][a-z])")
+HONORIFIC_IN_NAME = re.compile(r"^(?:[Tt]he\s+)?Hon(?:orables?|\.)(?:\s+|[A-Z])")
+WRITTEN_ANSWER_OPENING = re.compile(
+    r"(?i)^\s*(?:answers?\s+to\s+(?:submitted\s+|additional\s+)?questions|submitted\s+questions"
+    r"|responses?\s+to\s+(?:(?:submitted\s+|additional\s+|written\s+)?questions|question\s+submitted\s+for\s+the\s+record))"
+)
+CORP_WORDS = {'administration', 'association', 'corporation', 'corp', 'inc', 'llc', 'llp', 'ltd', 'university',
+              'college', 'institute', 'foundation', 'federation', 'coalition', 'alliance', 'society', 'union',
+              'hospital', 'senate'}
+PERSONAL_ROLES = {'director', 'directors', 'president', 'presidents', 'secretary', 'undersecretary', 'administrator',
+                  'commissioner', 'commissioners', 'chairman', 'chairwoman', 'chair', 'chairs', 'counsel', 'attorney',
+                  'attorneys', 'chief', 'chiefs', 'officer', 'officers', 'ceo', 'cfo', 'coo', 'cio', 'cto', 'evp', 'svp',
+                  'professor', 'professors', 'dean', 'senator', 'senators', 'representative', 'representatives',
+                  'delegate', 'delegates', 'congressman', 'congresswoman', 'member', 'members', 'governor', 'mayor',
+                  'judge', 'justice', 'fellow', 'analyst', 'economist', 'scientist', 'researcher', 'partner',
+                  'consultant', 'advisor', 'adviser', 'founder', 'owner', 'manager', 'superintendent', 'supervisor',
+                  'inspector', 'comptroller', 'auditor', 'spokesperson', 'nominee', 'acting', 'former', 'retired',
+                  'emeritus', 'trustee', 'resident', 'citizen', 'landowner', 'rancher', 'farmer', 'veteran',
+                  'executive', 'coordinator',
+                  'specialist', 'advocate', 'treasurer', 'principal', 'head', 'lead', 'author', 'editor', 'journalist',
+                  'physician', 'doctor', 'nurse', 'pharmacist', 'psychologist', 'teacher', 'student', 'parent'}
+ORG_WORDS_BROAD = CORP_WORDS | {'department', 'departments', 'office', 'offices', 'bureau', 'agency', 'agencies',
+                                'service', 'services', 'commission', 'committee', 'subcommittee', 'council', 'board',
+                                'boards', 'chamber', 'house', 'center', 'centers', 'clinic', 'school', 'schools', 'academy',
+                                'laboratory', 'company', 'companies', 'co', 'group', 'groups', 'bank', 'banks', 'fund',
+                                'trust', 'project', 'program', 'programs', 'authority', 'command', 'force', 'forces',
+                                'corps', 'guard', 'court', 'tribe', 'ministry', 'church', 'legion', 'system', 'systems',
+                                'network', 'networks', 'enterprise', 'enterprises', 'industry', 'industries'}
 # A committee title before a Member's name ("Chairman Michael B. Enzi", "Ranking Member Bernard Sanders") is not part of
 # the name. Read only in names, never as a credential a field may shed.
 COMMITTEE = {'chairman', 'chairwoman', 'ranking', 'member'}
@@ -249,7 +281,9 @@ FLAGS = ('added', 'removed', 'person_moved', 'name_not_in_line', 'name_cut', 'wo
          'committees_differ', 'committee_members_differ',
          'person_left_in_organization', 'reorder_unsupported', 'order_unsupported', 'order_across_lines',
          'name_not_person', 'split_unsupported', 'type_unsupported', 'question_asker_as_witness', 'member_unnamed',
-         'members_merged', 'position_not_in_line', 'text_cut', 'record_as_witness')
+         'members_merged', 'position_not_in_line', 'text_cut', 'record_as_witness',
+         'org_in_position', 'role_in_organization', 'honorific_in_name', 'lowercase_surname_unjoined',
+         'answerer_dropped')
 PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported', 'previous-segment': 'name_not_person',
           'split-untrimmed': 'split_unsupported', 'typed-organization': 'type_unsupported',
           'asker-as-witness': 'question_asker_as_witness', 'asker-dropped': 'member_unnamed',
@@ -267,7 +301,12 @@ PLANTS = {'person-moved': 'person_moved', 'reversed-name': 'reorder_unsupported'
           'member-statement-untyped': 'type_unsupported', 'office-took-initial': 'person_moved',
           'committee-from-other-record': 'committees_differ', 'member-duplicated': 'committee_members_differ',
           'surname-as-prose': 'words_lost', 'note-took-given': 'name_cut',
-          'answerer-untestified-witness': 'type_unsupported'}
+          'answerer-untestified-witness': 'type_unsupported',
+          'org-in-position': 'org_in_position', 'role-in-organization': 'role_in_organization',
+          'the-honorable-kept': 'honorific_in_name', 'no-space-honorific-kept': 'honorific_in_name',
+          'particle-given-dropped': 'lowercase_surname_unjoined', 'abbreviation-as-prose': 'words_lost',
+          'eppo-asterisk-dropped': 'answerer_dropped', 'eppo-comma-dropped': 'answerer_dropped',
+          'eppo-singular-dropped': 'answerer_dropped'}
 # Words that make a line ask: what was asked or requested, read anywhere in the line, in any case.
 ASKING = {'question', 'questions', 'request', 'requests'}
 # The words of an asking line's heading, which are no person's.
@@ -328,8 +367,9 @@ STATE_NAMES = [tuple(state.split()) for state in STATES if len(state) > 2 and '.
 
 
 def words(text):
-    """A text's words; a dot leader ("Inhofe.........73,") separates words like a space."""
-    return [w for w in re.split(r"[\s,;:()\[\]]+|\.{2,}", text or '') if w.strip('.-\'"')]
+    """A text's words; a dot leader ("Inhofe.........73,") or slash ("Force/NASA") separates words like a space."""
+    normalized = NO_SPACE_TITLE.sub(r"\1. ", text or '')
+    return [w for w in re.split(r"[\s,;:()\[\]/]+|\.{2,}", normalized) if w.strip('.-\'"')]
 
 
 def plain(word):
@@ -514,8 +554,9 @@ def raw_lines(raw_root, digest):
 def tokens(line):
     """A line's words and the marks between them, in order: ("word", text) or ("mark", text). A word keeps a single
     period ("K.", "U.S.", "Hon."), never a dot leader ("Reed.........")."""
+    normalized = NO_SPACE_TITLE.sub(r"\1. ", line)
     return [('word', m.group()) if m.group()[0].isalpha() else ('mark', m.group())
-            for m in re.finditer(r"[A-Za-z](?:[A-Za-z'’-]|\.(?!\.))*|\.{2,}|\d[\d,-]*|[,;:()]", line)]
+            for m in re.finditer(r"[A-Za-z](?:[A-Za-z'’-]|\.(?!\.))*|\.{2,}|\d[\d,-]*|[,;:()]", normalized)]
 
 
 def capital(text):
@@ -659,12 +700,14 @@ def line_segments(line):
 
 
 def bag(occurrence):
-    """The words of an occurrence's four fields, without credentials and titles."""
-    return Counter(plain(w) for f in FIELDS for w in words((occurrence or {}).get(f)) if not credential(w))
+    """The words of an occurrence's fields (including rank and credentials), without credentials and titles."""
+    return Counter(plain(w) for f in ALL_FIELDS for w in words((occurrence or {}).get(f)) if not credential(w))
 
 
 def judge(before, after, raw_root, given, family, serving=None, facts=None):
     def person(text):
+        if re.match(r"^\s*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2}\b", text or '', re.I):
+            return False
         return opening(text) in given
 
     def member_name(name, members):
@@ -697,11 +740,49 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
         return (not person(name) and not member_name(name, members)
                 and (any(person(part) for part in parts[1:]) or names_document_only(line)))
 
-    def reorder_supported(name):
+    def surname_first_in_line(name, line, quals=()):
+        if not line or ',' not in line:
+            return False
+        nw = name_words(name)
+        if len(nw) < 2:
+            return False
+        seg0 = line.split(',')[0].strip()
+        explicit_particle = bool(
+            re.match(r"^(?:(?:van|von|de|den|del|der|della|di|da|du|la|le|ten|ter)\s+)+[A-Z][\w'’-]*$", seg0)
+        )
+        explicit_cred_inversion = bool(quals) and bool(re.match(r"^[A-Z][\w'’-]*$", seg0))
+        if not (person(name) or explicit_particle or explicit_cred_inversion):
+            return False
+        seg_words = [
+            [plain(w) for w in words(seg)
+             if plain(w) and (plain(w) in nw or not credential(w)) and plain(w) not in TITLES
+             and (plain(w) in nw or plain(w) not in quals) and plain(w) not in COMMITTEE
+             and plain(w) not in SUFFIXES and len(plain(w)) > 1]
+            for seg in line.split(',') if seg.strip()
+        ]
+        seg_words = [sw for sw in seg_words if sw]
+        for k in range(1, len(nw)):
+            given_seq, surname_seq = nw[:k], nw[k:]
+            if set(given_seq) & (ORG_WORDS_BROAD | NOT_PERSON | PERSONAL_ROLES | COMMITTEE):
+                continue
+            if (
+                set(surname_seq) & (ORG_WORDS_BROAD | NOT_PERSON | PERSONAL_ROLES)
+                or (len(surname_seq) == 1 and surname_seq[0] in STATES)
+                or tuple(surname_seq) in STATE_NAMES
+            ):
+                continue
+            for idx_s, sw in enumerate(seg_words[:-1]):
+                if sw == surname_seq and seg_words[idx_s + 1][:len(given_seq)] == given_seq:
+                    return True
+        return False
+
+    def reorder_supported(name, line='', quals=()):
         # Ends in a family name: one other publishers state, or a <congMember>'s of the print ("Daniel K Akaka"); or
-        # names a Member serving in the print's Congress by the members table ("Vito Fossella", round 8).
-        return (person(name) and (family_word(name) in family or family_word(name) in {f[-1] for f in member_families})
-                or table_member(name_words(name), serving_now))
+        # names a Member serving in the print's Congress by the members table ("Vito Fossella", round 8); or prints
+        # surname-first across adjacent comma segments with a known given name ("de Rugy, Veronique").
+        return ((person(name) and (family_word(name) in family or family_word(name) in {f[-1] for f in member_families}))
+                or table_member(name_words(name), serving_now)
+                or surname_first_in_line(name, line, quals))
 
     out = {key: [] for key in (*FLAGS, 'unconfirmed', 'residual', 'split', 'restored', 'asker', 'answerer', 'not_read',
                                'no_congress', 'bodies_only_before', 'bodies_only_after')}
@@ -975,10 +1056,55 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
                                                   after={f: [r.get(f) for r in rows] for f in ('name', 'witness_type')}))
 
         for locator, b in sorted(new.items()):
+            line = line_of(locator)
+            after_keyed = {f: b.get(f) for f in KEYED}
             if opening_due(b.get('name'), locator) and not any(OPENING.search(b.get(f) or '') for f in FIELDS):
                 out['opening_statement_dropped'].append(dict(package=package, body=digest, locator=locator,
-                                                             line=line_of(locator), after={f: b.get(f) for f in KEYED},
+                                                             line=line, after=after_keyed,
                                                              under_heading=position(locator) in under))
+            b_name = b.get('name') or ''
+            if b_name and HONORIFIC_IN_NAME.search(b_name):
+                out['honorific_in_name'].append(dict(package=package, body=digest, locator=locator,
+                                                     line=line, after=after_keyed))
+            if re.match(r"^(?:van|von|de|den|del|der|della|di|da|du|la|le|ten|ter)\b", b_name):
+                segs = line.split(',')
+                if (len(segs) > 1 and GIVEN_SEGMENT.fullmatch(segs[1])
+                        and not {plain(w) for w in words(segs[1])} & (NOT_PERSON | COMMITTEE)):
+                    out['lowercase_surname_unjoined'].append(dict(package=package, body=digest, locator=locator,
+                                                                  line=line, after=after_keyed))
+            pos_role_tokens = set(
+                re.findall(r"[a-z0-9]+", re.sub(r"\bowner-operator\b", "", b.get('position') or '', flags=re.I).lower())
+            )
+            if (b_name and b.get('position') and not b.get('organization') and not b.get('on_behalf_of')
+                    and person(b_name) and 2 <= len(b_name.split()) <= 5
+                    and not any(c.isdigit() for c in b_name)
+                    and not ({plain(w) for w in words(b_name)}
+                             & (LIST_WORDS | NOT_PERSON | PERSONAL_ROLES | {'for', 'on', 'with', 'by', 'at', 'to'}))
+                    and ',' not in b['position']
+                    and bool(CORP_WORDS & pos_role_tokens)
+                    and not bool(PERSONAL_ROLES & pos_role_tokens)
+                    and not re.search(r'\b(?:to be|for|on behalf)\b', b['position'], re.I)):
+                out['org_in_position'].append(dict(package=package, body=digest, locator=locator,
+                                                   line=line, after=after_keyed))
+
+        for n, raw_line in enumerate(lines, start=1):
+            if by_line.get(n) or members_of.get(n):
+                continue
+            m_ans = WRITTEN_ANSWER_OPENING.match(raw_line)
+            if not m_ans:
+                continue
+            tail = re.sub(r"^(?:\s*\\(?:\d+|\*)\\|\s*\.{2,}\s*\S+|\s*[,:]|\s+(?:by|from|with))+\s*", "",
+                          raw_line[m_ans.end():])
+            tail_first = tail.split(',')[0].strip()
+            has_titled_person = bool(re.match(r"(?:Mr|Ms|Mrs|Dr)\.\s+[A-Z][a-z]", tail_first))
+            has_known_person = (
+                person(tail_first)
+                and len(name_words(tail_first)) >= 2
+                and (family_word(tail_first) in family or bool(PERSONAL_ROLES & {plain(w) for w in words(tail)}))
+            )
+            if has_titled_person or has_known_person:
+                out['answerer_dropped'].append(dict(package=package, body=digest, locator=f'mods:witness[{n}]',
+                                                    line=raw_line, after={}))
 
         def type_supported(a, b, line, locator):
             if b.get('witness_type') == 'record_material':
@@ -1006,12 +1132,12 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
             return (a.get('witness_type') is None and b.get('witness_type') == 'statement_for_record'
                     and not b.get('name') and b.get('organization') and names_document_only(line))
 
-        def new_name_checks(item, name, line):
+        def new_name_checks(item, name, line, quals=()):
             if not set(map(plain, words(name))) <= set(map(plain, words(line))):
                 out['name_not_in_line'].append(item)
             if name_cut(name, line):
                 out['name_cut'].append(item)
-            if not in_order(name, line) and not reorder_supported(name):
+            if not in_order(name, line) and not reorder_supported(name, line, quals):
                 out['reorder_unsupported'].append(item)
 
         moved = {}  # a split parent's locator -> the words its further parts took
@@ -1037,15 +1163,17 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
                 out['answerer'].append(item)
                 continue
             if b.get('name'):
-                new_name_checks(item, b['name'], line)
+                b_quals = {plain(w) for f in ('rank', 'credentials') for w in words(b.get(f))}
+                new_name_checks(item, b['name'], line, b_quals)
             parent = SPLIT.fullmatch(locator)
             if not parent:
                 # A line the old reading dropped, now kept at its own locator: its raw line must exist and hold the
                 # new name in order, the name must be a person's (not heading text that happens to be in the line),
                 # and its type must be supported like any other. Further parts are judged as a split, below.
+                b_quals = {plain(w) for f in ('rank', 'credentials') for w in words(b.get(f))}
                 if ('/part[' not in locator and line and not any(position(k) == position(locator) for k in old)
                         and (not b.get('name') or (set(map(plain, words(b['name']))) <= set(map(plain, words(line)))
-                                                   and (in_order(b['name'], line) or reorder_supported(b['name']))
+                                                   and (in_order(b['name'], line) or reorder_supported(b['name'], line, b_quals))
                                                    and (person(b['name']) or member_name(b['name'], members))))
                         and type_supported({}, b, line, locator)):
                     out['restored'].append(item)
@@ -1062,7 +1190,7 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
             lost = bag(old.get(parent)) - bag(new.get(parent))
             spare = SEPARATOR_WORDS | transcript(line_of(parent))
             if (parent in old and parent in new and old[parent].get('name') == new[parent].get('name') and took
-                    and all(b.get('name') and (in_order(b['name'], line_of(parent)) or reorder_supported(b['name']))
+                    and all(b.get('name') and (in_order(b['name'], line_of(parent)) or reorder_supported(b['name'], line_of(parent)))
                             and person(b['name'])
                             and name_words(b['name'])[-1] in family for b in parts)
                     and not took - lost and all(w in spare for w in (lost - took))):
@@ -1091,7 +1219,13 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
                 out['position_not_in_line'].append(item)
             if a.get('organization') != b.get('organization') and cut_short(b, line):
                 out['text_cut'].append(item)
-            if all(a.get(f) == b.get(f) for f in FIELDS):
+            org_role_tokens = set(re.findall(r"[a-z0-9]+", (b.get('organization') or '').lower()))
+            if (b.get('name') and not b.get('position') and b.get('organization')
+                    and a.get('position') == b.get('organization') and not a.get('organization')
+                    and bool(PERSONAL_ROLES & org_role_tokens)
+                    and not bool(ORG_WORDS_BROAD & org_role_tokens)):
+                out['role_in_organization'].append(item)
+            if all(a.get(f) == b.get(f) for f in ALL_FIELDS):
                 segments = [s for s in line.split(',')[1:] if s.strip()]
                 if a.get('name') and not person(a['name']) and any(person(s) for s in segments):
                     out['residual'].append(item)
@@ -1101,33 +1235,63 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
             reordered = bool(new_name) and not in_order(new_name, line)
             counts['no_name' if not new_name else 'reordered' if reordered else 'name_read'] += 1
             head = heading_words(line, new_name) if new_name else set()
-            # A name that keeps its given and family words and sheds an office printed inside it into the position
-            # ("Emanuel a Representative in Congress from the State of Missiouri Cleaver" -> "Emanuel Cleaver") moved
-            # no person.
-            shed_office = (bool(new_name) and bool(OFFICE_START.match(b.get('position') or ''))
-                           and opening(new_name) == opening(old_name)
-                           and family_word(new_name) == family_word(old_name)
-                           and {plain(w) for w in words(old_name)} - {plain(w) for w in words(b.get('position'))}
-                           <= {plain(w) for w in words(new_name)})
+            extracted_quals = {plain(w) for f in ('rank', 'credentials') for w in words(b.get(f))}
+            old_nw, new_nw = name_words(old_name), name_words(new_name)
+            same_name_in_order = (
+                bool(new_name)
+                and bool(old_name)
+                and (
+                    new_name == old_name
+                    or new_nw == old_nw
+                    or (bool(extracted_quals) and new_nw == [w for w in old_nw if w not in extracted_quals])
+                )
+            )
+            same_person_context = same_name_in_order and (
+                (a.get('position'), a.get('organization')) == (b.get('position'), b.get('organization'))
+                or (not b.get('position') and b.get('organization') == a.get('position') and not a.get('organization'))
+            )
+            # A name that keeps its given and family words and sheds an office or degree-followed role printed inside it
+            # into the position ("Emanuel a Representative in Congress from the State of Missiouri Cleaver" ->
+            # "Emanuel Cleaver", or "Jason Fichtner, Ph.D. Senior Research Fellow" -> "Jason Fichtner") moved no person.
+            shed_office = (
+                bool(new_name)
+                and opening(new_name) == opening(old_name)
+                and (
+                    (
+                        bool(OFFICE_START.match(b.get('position') or ''))
+                        and family_word(new_name) == family_word(old_name)
+                        and {plain(w) for w in words(old_name)} - {plain(w) for w in words(b.get('position'))}
+                        <= {plain(w) for w in words(new_name)}
+                    )
+                    or (
+                        bool(extracted_quals)
+                        and not re.match(r"^\W*[A-Z]\.\s+", b.get('position') or '')
+                        and bool(PERSONAL_ROLES & {plain(w) for w in words(b.get('position'))})
+                        and (
+                            {plain(w) for w in words(old_name)}
+                            - extracted_quals
+                            - {plain(w) for w in words(b.get('position'))}
+                        ) <= {plain(w) for w in words(new_name)}
+                    )
+                )
+            )
             if (old_name and old_name[:1].isupper() and person(old_name) and not shed_office
-                    and not set(name_words(old_name)) - transcript(line) - head <= set(name_words(new_name))):
+                    and not set(name_words(old_name)) - extracted_quals - transcript(line) - head <= set(name_words(new_name))):
                 out['person_moved'].append(item)
             if new_name and not set(map(plain, words(new_name))) <= set(map(plain, words(line))):
                 out['name_not_in_line'].append(item)
-            if new_name and old_name != new_name and name_cut(new_name, line):
+            if new_name and old_name != new_name and not same_name_in_order and name_cut(new_name, line):
                 out['name_cut'].append(item)
-            if reordered and not reorder_supported(new_name):
+            if reordered and not same_name_in_order and not reorder_supported(new_name, line, extracted_quals):
                 out['reorder_unsupported'].append(item)
-            if new_name and not_person(new_name, line, members):
-                out['name_not_person'].append(item)
-            if new_name and not person(new_name):
-                out['unconfirmed'].append(item)
             old_words, new_words = bag(a), bag(b) + moved.get(locator, Counter())
             # On an asking line the heading's words are no one's: a row that was named for the heading may shed them,
             # and a contents column's "Page". "Accompanied by:" is a label any line may shed.
             shed = HEADING | MEMBER_TITLES | {'member', 'the', 'to', 'by', 'from', 'of', 'for', 'and', 'following',
                                               'page'} if position(locator) in asking else set()
             shed |= {'accompanied'} | transcript(line) | head
+            if b.get('on_behalf_of') and not a.get('on_behalf_of'):
+                shed |= {'on', 'behalf', 'of'}
             # A word another row of the same line now shows (an asker appended at /part[2]) is not lost to a reader,
             # nor page numbers fused to a kept word ("EPA173-198" for "EPA").
             shown = {w for r in by_line.get(position(locator), []) if r is not b for w in bag(r)}
@@ -1138,6 +1302,25 @@ def judge(before, after, raw_root, given, family, serving=None, facts=None):
             # one loses no person or affiliation.
             if not new_name and prose_line(line, old_name):
                 lost = Counter()
+            same_opening_segment_name = same_name_in_order or (
+                bool(old_name)
+                and bool(new_name)
+                and new_name.startswith(old_name + ' ')
+                and in_order(new_name, line.split(',')[0])
+            )
+            unchanged_name_context = (
+                same_opening_segment_name
+                and not lost
+                and plain(new_name) not in plain(b.get('organization') or '')
+            )
+            if new_name and unchanged_name_context:
+                segments = [s for s in line.split(',')[1:] if s.strip()]
+                if not person(new_name) and any(person(s) for s in segments):
+                    out['residual'].append(item)
+            elif new_name and not same_person_context and not_person(new_name, line, members):
+                out['name_not_person'].append(item)
+            if new_name and not person(new_name):
+                out['unconfirmed'].append(item)
             if lost:
                 out['words_lost'].append(dict(item, words=sorted(lost.elements())))
             # A gained word must come from the raw line; a re-read may restore line text the old one dropped.
@@ -1188,6 +1371,92 @@ def plant(kind, before, after, given, family, raw_root, serving=None, taken=(), 
             continue
         old, new = before[digest][1], after[digest][1]
         asks = lambda locator: bool(ASKING & {plain(w) for w in words(lines(digest, locator))})  # noqa: E731
+        if kind == 'org-in-position':
+            for locator, b in sorted(new.items()):
+                org, b_name = b.get('organization') or '', b.get('name') or ''
+                if (b_name and org and not b.get('position') and not b.get('on_behalf_of')
+                        and opening(b_name) in given and 2 <= len(b_name.split()) <= 5
+                        and not any(c.isdigit() for c in b_name)
+                        and not ({plain(w) for w in words(b_name)}
+                                 & (LIST_WORDS | NOT_PERSON | PERSONAL_ROLES | {'for', 'on', 'with', 'by', 'at', 'to'}))
+                        and ',' not in org
+                        and bool(CORP_WORDS & {plain(w) for w in words(org)})
+                        and not bool(PERSONAL_ROLES & {plain(w) for w in words(org)})
+                        and not re.search(r'\b(?:to be|for|on behalf)\b', org, re.I)):
+                    new[locator] = dict(b, position=org, organization=None)
+                    return dict(kind=kind, body=digest, locator=locator, name=b_name, planted=org)
+            continue
+        if kind == 'role-in-organization':
+            for locator, b in sorted(new.items()):
+                a = old.get(locator) or {}
+                pos, b_name = b.get('position') or '', b.get('name') or ''
+                if (b_name and pos and not b.get('organization') and a.get('position') == pos and not a.get('organization')
+                        and bool(PERSONAL_ROLES & {plain(w) for w in words(pos)})
+                        and not bool(ORG_WORDS_BROAD & {plain(w) for w in words(pos)})):
+                    new[locator] = dict(b, position=None, organization=pos)
+                    return dict(kind=kind, body=digest, locator=locator, name=b_name, planted=pos)
+            continue
+        if kind == 'the-honorable-kept':
+            for locator, b in sorted(new.items()):
+                line, b_name = lines(digest, locator), b.get('name') or ''
+                if b_name and 'the Honorable ' in line and not HONORIFIC_IN_NAME.search(b_name):
+                    planted_name = f'the Honorable {b_name}'
+                    new[locator] = dict(b, name=planted_name)
+                    return dict(kind=kind, body=digest, locator=locator, name=b_name, planted=planted_name)
+            continue
+        if kind == 'no-space-honorific-kept':
+            for locator, b in sorted(new.items()):
+                line, b_name = lines(digest, locator), b.get('name') or ''
+                m_ns = re.search(r'\b((?:The\s+)?Hon\.[A-Z][a-z]\S*)', line)
+                if b_name and m_ns and not HONORIFIC_IN_NAME.search(b_name):
+                    rest = ' '.join(b_name.split()[1:])
+                    planted_name = f"{m_ns.group(1)} {rest}".strip()
+                    new[locator] = dict(b, name=planted_name)
+                    return dict(kind=kind, body=digest, locator=locator, name=b_name, planted=planted_name)
+            continue
+        if kind == 'particle-given-dropped':
+            for locator, b in sorted(new.items()):
+                line, b_name = lines(digest, locator), b.get('name') or ''
+                segs = line.split(',')
+                surname = segs[0].strip() if segs else ''
+                if (b_name and surname[:1].islower() and ' ' in surname and len(segs) > 1
+                        and GIVEN_SEGMENT.fullmatch(segs[1])
+                        and not {plain(w) for w in words(segs[1])} & (NOT_PERSON | COMMITTEE)
+                        and b_name.lower().endswith(surname.lower())):
+                    new[locator] = dict(b, name=surname, position=segs[1].strip())
+                    return dict(kind=kind, body=digest, locator=locator, name=b_name, planted=surname)
+            continue
+        if kind == 'abbreviation-as-prose':
+            for locator, b in sorted(new.items()):
+                line, b_name = lines(digest, locator), b.get('name') or ''
+                segs = line.split(',')
+                has_given = (
+                    len(segs) > 1
+                    and bool(GIVEN_SEGMENT.fullmatch(segs[1]))
+                    and not {plain(w) for w in words(segs[1])} & (NOT_PERSON | COMMITTEE)
+                )
+                if (b_name and has_given and locator in old
+                        and re.search(r'\b(?:Gov|Maj|Amb|Sec|Inc|Corp)\.\s+[A-Z][a-z]', line)):
+                    new[locator] = dict(b, name=None, position=None, organization=None, on_behalf_of=None,
+                                        witness_type='record_material')
+                    return dict(kind=kind, body=digest, locator=locator, name=b_name, planted=None)
+            continue
+        if kind in ('eppo-asterisk-dropped', 'eppo-comma-dropped', 'eppo-singular-dropped'):
+            for locator, b in sorted(new.items()):
+                line, b_name = lines(digest, locator), b.get('name') or ''
+                if not b_name or locator != base(locator) or locator in old:
+                    continue
+                if sum(1 for k in new if base(k) == locator) != 1 or not WRITTEN_ANSWER_OPENING.match(line):
+                    continue
+                matched = (
+                    (kind == 'eppo-asterisk-dropped' and r'\*\ '[:3] in line)
+                    or (kind == 'eppo-comma-dropped' and bool(re.match(r'(?i)^\s*(?:answers?|responses?)\b[^,]{0,50},\s*(?:Mr|Ms|Mrs|Dr)\.', line)))
+                    or (kind == 'eppo-singular-dropped' and bool(re.match(r'(?i)^\s*responses?\s+to\s+question\s+submitted\s+for\s+the\s+record\b', line)))
+                )
+                if matched:
+                    new.pop(locator)
+                    return dict(kind=kind, body=digest, locator=locator, name=b_name, planted='dropped')
+            continue
         if kind == 'answerer-to-record':
             # A named witness row on an asking line typed record material where the before side's row was nameless
             # record material, so the type does not change (the fourth review's Kulick case).

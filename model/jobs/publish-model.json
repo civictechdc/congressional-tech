@@ -51,18 +51,18 @@
   },
   "spicy_regs": {
     "path": "spicy-regs/spicy-regs.json",
-    "sha256": "07fe3d760892db138481a56850d6b0633fe93270ff93fb6928ba9e519b2c7e79",
+    "sha256": "28d5a79b0d794558957ab197ef63062c7b95545a9970d261f1f18687769d9daa",
     "size": 5772
   },
   "parser_versions": {
     "appearance_records": {
-      "congress_gov": "6d9460f5ec203c24c508846092505a875710f565e1ff026479b542c7555e7d48",
-      "house_xml": "5078ef426e0e262ffcd972b244c3b472669583f164121cc6189ccf69e6abf3a5",
-      "mods": "704ba567914cba4466954297a5fa24ba5869b2c3c59a8258d767ffc2dd225ac4",
-      "senate_page": "9d48c0f61a9f8ab1407c07f9c49cba7d6e9253a6369d73a8d14389d9bfee6bbb"
+      "house_xml": "108f7ab966e3df646b9bc982e58c66f0f53b6f16abbf90336d670f4cda166bd9",
+      "congress_gov": "f306c3df6098936b7a336e31e434805d927d4e60c126a5cf3b68a0bc75c831b7",
+      "senate_page": "4456507ba7600802801882568674a27c75000a3fe9dc151f8cd8a5fbb534b5c5",
+      "mods": "610bb71978173326dc605a7b86e60124d951f8b03fa2e8f69e53b221fe1a37a0"
     },
     "committee_records": {
-      "house_xml": "e1c6ad0d1398f1d1985e085a0fb9b94c6c42ad38a2d9175ad3e8908eb46c531e"
+      "house_xml": "363820a4dd6795fc4bdfad7e341e9070d4f8cc4bc92d22bdb89ee3474438fecc"
     },
     "html": "61d7904883f042f48d3732d0518adaa5cf5084790ebc9d5411aad7a6ab605969",
     "html_metadata": "0fff8151c7752109cc3778d9570e682985edce2e1f90e04c3b638c37a6c4a129",
@@ -81,7 +81,7 @@
     },
     "xml": "c9d955b28b401a3fe56386a4a221b3f2147baa0f1da503c7c6a224f4808d085f"
   },
-  "catalog_version": "c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09",
+  "catalog_version": "e6e2699343ebae7fd149702114d58360a3bd62a7331d19db58215edc042aba70",
   "output": "../../output/archive-release",
   "scratch": "../../output/archive-model",
   "recording_decision_files": [

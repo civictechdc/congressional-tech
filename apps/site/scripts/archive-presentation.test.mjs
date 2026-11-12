@@ -550,3 +550,34 @@ test('meeting outcomes stay separate from publisher notices and older evidence',
   assert(renderMeeting({outcome:'canceled'}).includes('Outcome: canceled'));
   assert(renderMeeting({}).includes('Outcome: evidence unavailable in this release'));
 });
+
+test('WitnessDetail renders parenthetical retirement credentials, on_behalf_of, and name-matched Member links cleanly',()=>{
+  const retiredHtml=renderToStaticMarkup(React.createElement(WitnessDetail,{
+    witness:{
+      witness_key:'janes_william',
+      name:'William H. Janes',
+      rank:'Colonel',
+      credentials:'(U.S. Army, Ret.)',
+      appearances:[{event_id:110001,title:'Defense oversight',position:'Counsel',organization:'Veterans League',on_behalf_of:'Military Retirees Association'}],
+    },
+    onHearing:()=>{},
+  }));
+  assert(retiredHtml.includes('<h2>Colonel William H. Janes (U.S. Army, Ret.)</h2>'));
+  assert(!retiredHtml.includes('Janes, (U.S. Army'));
+  assert(retiredHtml.includes('Counsel — Veterans League — on behalf of Military Retirees Association'));
+
+  const matchedMemberHtml=renderToStaticMarkup(React.createElement(WitnessDetail,{
+    witness:{
+      witness_key:'matched_member',
+      name:'Gus Bilirakis',
+      witness_type:'member_appearance',
+      bioguide_id:'B00O257',
+      matched_bioguide_id:'B001257',
+      match_basis:'name_chamber',
+      appearances:[{event_id:118200,title:'Members Day'}],
+    },
+    onMember:()=>{},
+  }));
+  assert(matchedMemberHtml.includes('View Member Profile (B001257, name-matched)'));
+  assert(!matchedMemberHtml.includes('B00O257'));
+});

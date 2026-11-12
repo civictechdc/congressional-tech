@@ -1,6 +1,6 @@
 ---
 id: ct-vj08
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-11T10:58:10Z
@@ -16,4 +16,11 @@ Found by the seventh independent review of the MODS witness-list branch (2026-11
 ## Acceptance Criteria
 
 Every lower-case-surname entry keeps its given name; no published name begins with 'the Honorable'; the abbreviation list covers the six; a raw-check plant for each shape is flagged; removals 0 against the live generation.
+
+## Notes
+
+**2026-11-12T15:57:00Z**
+
+Wave 3 (`claude/ct-wave-3-parsers`): joined lowercase surname particles (`van`, `von`, `de`, `den`, `del`, `der`, `della`, `di`, `da`, `du`, `la`, `le`, `ten`, `ter`, `al`) to given names, stripped lowercase `the Honorable` into `honorific`, and added `Gov.`, `Maj.`, `Amb.`, `Sec.`, `Inc.`, `Corp.` to `_MODS_PROSE_ABBREV`. Full `35,020`-print MODS corpus: lowercase-initial names dropped `161 -> 94` (remaining 94 are legitimate lowercase particles/prefixes or non-inverted prose, `0` `lowercase_surname_unjoined`), leading `the Honorable` dropped `25 -> 4` (`0` `honorific_in_name`; the 4 remaining are non-honorific institutional phrases), `removals == 0`, plants caught; verified end-to-end through Playwright DOM (`wave3_horizontal_slice_review.md` slice `H7` Mark de Bernardo). Ready for Merge Slot #2 + R2 backfill.
+
 

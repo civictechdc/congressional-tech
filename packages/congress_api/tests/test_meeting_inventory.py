@@ -77,7 +77,7 @@ def test_pdf_schedule_is_not_a_witness_affiliation():
 def test_mods_witnesses_can_live_in_granules():
     from congress_api.parsers.gpo_hearings import mods_witnesses
     data = b'<mods xmlns="http://www.loc.gov/mods/v3"><relatedItem><extension><witness>Coffren, Lauren</witness></extension></relatedItem></mods>'
-    assert mods_witnesses(data) == [{"name": "Lauren Coffren", "honorific": "", "position": "", "organization": ""}]
+    assert mods_witnesses(data) == [{"name": "Lauren Coffren", "honorific": "", "rank": "", "credentials": "", "position": "", "organization": ""}]
 
 
 def test_completeness_preserves_legacy_title_newlines():

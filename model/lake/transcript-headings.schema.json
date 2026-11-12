@@ -1,0 +1,92 @@
+{
+  "schema-id": 0,
+  "identifier-field-ids": [
+    1,
+    5,
+    2
+  ],
+  "type": "struct",
+  "fields": [
+    {
+      "id": 1,
+      "name": "record_sha",
+      "required": true,
+      "type": "fixed[32]"
+    },
+    {
+      "id": 2,
+      "name": "parser_version",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 3,
+      "name": "status",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 4,
+      "name": "error_type",
+      "required": false,
+      "type": "string"
+    },
+    {
+      "id": 5,
+      "name": "source",
+      "required": true,
+      "type": "string"
+    },
+    {
+      "id": 6,
+      "name": "entries",
+      "required": true,
+      "type": {
+        "type": "list",
+        "element-id": 7,
+        "element-required": true,
+        "element": {
+          "type": "struct",
+          "fields": [
+            {
+              "id": 8,
+              "name": "kind",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "id": 9,
+              "name": "name",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "id": 10,
+              "name": "family",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "id": 11,
+              "name": "given",
+              "required": true,
+              "type": "string"
+            },
+            {
+              "id": 12,
+              "name": "style",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 13,
+              "name": "line",
+              "required": false,
+              "type": "int"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

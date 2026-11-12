@@ -129,6 +129,7 @@ PLANTS = {
         ('06d4a0fec7d98a8a', 'D000355'),
     "a Senator's opening statement left an appearance, before the rosters (Max Baucus, CHRG-106shrg66376)":
         ('17ca83fecc8359b8', 'B000243'),
+    'bare-initial Member with middle name left a witness (French Hill 2019)': ('f8f5a78cdca352a1', None),
 }
 
 
@@ -161,10 +162,16 @@ class Reference:
 
     def __init__(self, con, members, terms):
         self.names = {}
-        for b, first, last, nick, others in con.execute(
-                f"select bioguide_id,name_first,name_last,name_nickname,other_names from read_parquet('{members}')").fetchall():
+        cols = {r[0] for r in con.execute(f"describe select * from read_parquet('{members}')").fetchall()}
+        mid_col = 'name_middle' if 'name_middle' in cols else 'NULL'
+        full_col = 'name_official_full' if 'name_official_full' in cols else 'NULL'
+        for b, first, middle, last, nick, official, others in con.execute(
+                f"select bioguide_id,name_first,{mid_col},name_last,name_nickname,{full_col},other_names from read_parquet('{members}')").fetchall():
             given = set(words(re.sub(r'[()]', ' ', first or ''))) | set(words(nick or ''))
             family = set(words(last or ''))
+            extra = (set(words(re.sub(r'[()]', ' ', middle or '')))
+                     | set(words(re.sub(r'[()]', ' ', (official or '').split(',')[0])))) - family
+            given |= {w for w in extra if len(w) >= 2}
             abbreviations = {fold(first).strip('. ')} if re.fullmatch(r'\s*[A-Za-z]{2,4}\.\s*', first or '') else set()
             for other in others or []:
                 given |= set(words(other.get('first') or '')) | set(words(other.get('nickname') or ''))

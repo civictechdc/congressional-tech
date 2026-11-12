@@ -20,39 +20,20 @@ import tomllib
 # Any later source, schema, parameter or imported-package change produces an
 # unmapped fingerprint. Add an entry only with a reviewed equivalence decision.
 # ct-zs48/ct-3aap changed MODS extraction, so appearance_records.mods publishes
-# its new fingerprint and its entry was removed. ct-gfo7 round 8 added two
-# MODS-only record columns to the shared appearance_records table, whose bytes
-# every source hashes (3fb41ddd); congress_gov, house_xml and senate_page keep
-# their published IDs under reviewed equivalence (2026-11-11, orchestrating
-# session, on mods-rebase-20261110/round-8/m8-equivalence.json). ct-tx7u
-# (2026-11-12, owner Option 2) aligned declared Iceberg field IDs in
-# model/lake/*.schema.json with the IDs create_table assigns (zero change to
-# Arrow schemas, created Iceberg schemas, or parsed rows); all record producers
-# keep their published IDs under reviewed equivalence.
+# its new fingerprint and its entry was removed. ct-tx7u (2026-11-12, owner
+# Option 2) aligned declared Iceberg field IDs in model/lake/*.schema.json with
+# the IDs create_table assigns (zero change to Arrow schemas, created Iceberg
+# schemas, or parsed rows). Wave 3 (ct-17op, ct-eppo, ct-6mvl, ct-vj08, ct-uz8q,
+# ct-29n4, ct-eofd, cat2-ddas) intentionally bumps all four appearance_records
+# sources, committee_records.house_xml, and filename_readings, so their prior
+# entries are removed; meeting_records, playlist_records, and video_records keep
+# their published IDs under reviewed equivalence.
 _REVIEWED_PRODUCER_VERSIONS = {
-    # appearance_records.congress_gov
-    "5f542e5fd70535ce27ac9bfc32339b300d6e919bf6c8ff0e95cbfc2b4e1a8210":
-        "6d9460f5ec203c24c508846092505a875710f565e1ff026479b542c7555e7d48",
-    # appearance_records.house_xml
-    "c8f18235c90f6709c5b1fbba332db8df4e43beb99e24a0b52b51274dae062fe8":
-        "5078ef426e0e262ffcd972b244c3b472669583f164121cc6189ccf69e6abf3a5",
-    # appearance_records.mods
-    "e47f87b451c8311cc5409d9f1d6191991480d35b7190f0ea57f74972400dc357":
-        "704ba567914cba4466954297a5fa24ba5869b2c3c59a8258d767ffc2dd225ac4",
-    # appearance_records.senate_page
-    "62c1d3b258654306d78a1b65e86edfc1b3dc8d89e42fcda6865f796777fcc0a2":
-        "9d48c0f61a9f8ab1407c07f9c49cba7d6e9253a6369d73a8d14389d9bfee6bbb",
-    # committee_records.house_xml
-    "10193e7b67fac70a925fe02d9461358326cca0ce8a13c8351fe0c39e353fc795":
-        "e1c6ad0d1398f1d1985e085a0fb9b94c6c42ad38a2d9175ad3e8908eb46c531e",
-    # filename_readings
-    "59d2a03312cff0ac590bf8b3da6aee712f39b6cbc37af96b2ce8d4e79b3a5312":
-        "c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09",
     # meeting_records.congress_gov
     "d3ffb805e7de5cf81e785b401dbd35d43579287644c4edb2c15cd9ebbcede3e6":
         "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
     # meeting_records.house_xml
-    "a617b044a2e10edcc213688e52e512406fb3bf94df09f55786b18180cbfdb0b7":
+    "d877097eeb25a48c80655c0c9f698faf525394d164e97362496bfa9d35aafe63":
         "24c88e855dab86f0c362387ffd4c40cf196e2a6f5c14d8aa1dba66f821ca0df5",
     # playlist_records.hls
     "8a66fe42927b6e1d5586a2532ab8d58164890369226e30aa7214456343d05135":

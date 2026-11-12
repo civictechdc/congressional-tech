@@ -17,7 +17,7 @@ from pathlib import Path
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.lake import appearance_records,capture_staging,captures,committee_records,filenames,meeting_records,playlist_records,tables,video_records
+from congress_api.lake import appearance_records,capture_staging,captures,committee_records,filenames,meeting_records,playlist_records,transcript_headings,tables,video_records
 from congress_api.lake._record_producer import INLINE_CONGRESS_MEETINGS_SQL,_candidate_rel_paths,stage_record_table
 from congress_api.lake.video_records import NO_INLINE_SQL
 from congress_api.lake.readings import BackfillRequired
@@ -27,7 +27,8 @@ RECORD_TABLES={'meeting_records':(meeting_records,meeting_records.build_meeting_
                'appearance_records':(appearance_records,appearance_records.build_appearance_record_row)}
 # Explorer tables (ct-gi01) have no base: a run that names them builds them in full here,
 # through the same completion pass, so they come from this run's captures.
-EXPLORER_TABLES={'video_records':video_records,'committee_records':committee_records,'playlist_records':playlist_records}
+EXPLORER_TABLES={'video_records':video_records,'committee_records':committee_records,'playlist_records':playlist_records,
+                 'transcript_headings':transcript_headings}
 SELECTION_SCHEMA=pa.schema([('record_sha',pa.string()),('source',pa.string()),('stored_suffix',pa.string()),
     ('receipt_key',pa.string()),('receipt_line',pa.int64()),('source_url',pa.string())])
 

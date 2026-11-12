@@ -235,6 +235,7 @@ MODS_RECORD_ENTRIES: dict[str, dict[int, RecordEntry]] = {
     },
     'CHRG-110shrg52887': {
         11: ('f471a53d2479573000a10fdd1645b531bed2d11c3af392c95f32c956e67072d6', None, 'title'),
+        14: ('86fb72fab2d78989d763d8f88873a2e25e9477a56b87ca3cc614a14ca37498c3', None, 'document'),
         16: ('f80dbd0215387353a0cbe56d5a0a2188dbbb8f516768a5ffe397c5922b60293b', None, 'document'),
     },
     'CHRG-110shrg55921': {

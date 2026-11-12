@@ -20,7 +20,9 @@ def test_strip_appropriation_prefix():
 
 
 def test_lazy_house_naming_and_bill_codes():
-    # Test lazy Engine accessor
+    # Test lazy Engine accessor (including after get_engine.cache_clear() from sys.modules cache sweeps)
+    _ = naming.HOUSE_NAMING
+    naming.get_engine.cache_clear()
     eng = naming.get_engine()
     assert isinstance(eng, Engine)
     assert naming.HOUSE_NAMING is eng

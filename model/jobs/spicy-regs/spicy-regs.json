@@ -3,7 +3,7 @@
     "amendments": "75c96edc20e43499f45efb19c135344cb849a801ce0f0abec1d0861b755698e2",
     "bill-family": "f719442c6a814666c5747624ef8a52da002bc2982f4ebd7f2be990f86bc38d42",
     "committee-rosters": "32ac9696f43b585ec5f1bc3f3fd001812cc181787571af551eed33544b472f17",
-    "members": "29718daf2daec8dd84dfcbfdb1f4bc7ed5daa439e6567294ef4b59cee3b58764",
+    "members": "26d652e10178f3b079c0af1c3ca50dbce318868541c8b3e28af6a40e4223e780",
     "nominations": "d17c43e1bc6773cff17dc3ac6c7d79f5938ba9fa105a837e96deda23c91255f3",
     "roll-call-votes": "e7cdd80d9eecbf13ce172ce076c9a5df77fd418c97fb80d13393ce6ab595ace0"
   },
@@ -84,7 +84,7 @@
     "spicy_member_terms": {
       "family": "members",
       "key": "member_terms.parquet",
-      "path": "generations/members/29718daf2daec8dd84dfcbfdb1f4bc7ed5daa439e6567294ef4b59cee3b58764/member_terms.parquet",
+      "path": "generations/members/26d652e10178f3b079c0af1c3ca50dbce318868541c8b3e28af6a40e4223e780/member_terms.parquet",
       "rows": 45535,
       "sha256": "dc8fd9f024f60a29f61bbb01ebddc28418d8f6c1d680fe09eca4d283a9887fb6",
       "size": 234901
@@ -100,10 +100,10 @@
     "spicy_members": {
       "family": "members",
       "key": "members.parquet",
-      "path": "generations/members/29718daf2daec8dd84dfcbfdb1f4bc7ed5daa439e6567294ef4b59cee3b58764/members.parquet",
+      "path": "generations/members/26d652e10178f3b079c0af1c3ca50dbce318868541c8b3e28af6a40e4223e780/members.parquet",
       "rows": 12770,
-      "sha256": "ef0dace053bd888bc5f696e1cd8dceaed06f4d1ba379807bf835a0b2ff175579",
-      "size": 395401
+      "sha256": "97fe69cf3e020f7cb185e3512e8c0001290bb253b619376e47eacad873d5562a",
+      "size": 453575
     },
     "spicy_nominations": {
       "family": "nominations",

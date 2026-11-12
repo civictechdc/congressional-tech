@@ -362,6 +362,8 @@ Coverage: A committee member's opening statement stays a member_appearance when 
 | `package_id` | `string` | yes | GovInfo CHRG package ID when occasion is a package or matched transcript |
 | `page_url` | `string` | yes | Senate hearing page URL when occasion is a page |
 | `name` | `string` | yes | Display name of the witness |
+| `rank` | `string` | yes | Military rank of the witness when stated (e.g. Lt. Gen., Rear Adm.); extracted from the witness heading rather than left in name (owner decision 2026-11-10, ct-17op) |
+| `credentials` | `string` | yes | Academic, professional, or service credentials of the witness when stated (e.g. M.D., M.P.H., Ph.D., USAF (Ret.)); extracted rather than dropped or left in name (owner decision 2026-11-10, ct-17op) |
 | `position` | `string` | yes | Witness title or position |
 | `organization` | `string` | yes | Witness organization or affiliation |
 | `on_behalf_of` | `string` | yes | Represented entity when distinct from organization |

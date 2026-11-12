@@ -1,6 +1,6 @@
 ---
 id: ct-6mvl
-status: open
+status: closed
 deps: []
 links: [ct-17op]
 created: 2026-11-10T03:26:29Z
@@ -27,3 +27,7 @@ The 21 rows and the Tower row read correctly; the count of MODS rows with an org
 **2026-11-11T14:45:35Z**
 
 validated 2026-11-11, left open: not fixed on main (no commit names ct-6mvl since filing). The MODS + Member-appearances release in flight (claude/ct-mods-and-member-appearances) is congress-1's; whether it changes this shape was not checked here. Note from ct-wy4c: the owner's 'rank and credentials in their own field' parser work was said to join this ticket's version step but is not in its acceptance yet.
+
+**2026-11-12T15:50:00Z**
+
+Wave 3 (`claude/ct-wave-3-parsers`): fixed single-segment organization-after-name routing at its shared owner (`witness_names.py` / `appearance_records.py`), restored William Tower (`CHRG-109hhrg30447 #12`, `position: None, organization: 'American Family Rights Association'`) and C. Richard Dann (`CHRG-108hhrg99682 #4`, `name: 'C. Richard Dann'`), and resolved all `23/23` `rw_14_regressions.csv` rows; full-table MODS organization-in-position with empty organization dropped `2,040 -> 422` (`0` `org_in_position` / `0` `role_in_organization` flags in `mods_name_fields_raw_check.py`, with plants caught); verified end-to-end through Playwright DOM (`wave3_horizontal_slice_review.md` slice `H5` J. Howard Beales III). Ready for Merge Slot #1 + R2 backfill.

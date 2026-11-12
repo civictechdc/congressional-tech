@@ -41,6 +41,14 @@
   },
   {
     "body_sha": "ca96a11e95fdc2d2bb1def1ed9f7964b6547e7118d8b08e16f07026e7f41d6c5",
+    "locator": "mods:witness[14]",
+    "package": "CHRG-110shrg52887",
+    "source_literal": "PEER, Presidents of Local Unions, June 29, 2006",
+    "organization": "PEER, Presidents of Local Unions, June 29, 2006",
+    "line_sha256": "86fb72fab2d78989d763d8f88873a2e25e9477a56b87ca3cc614a14ca37498c3"
+  },
+  {
+    "body_sha": "ca96a11e95fdc2d2bb1def1ed9f7964b6547e7118d8b08e16f07026e7f41d6c5",
     "locator": "mods:witness[16]",
     "package": "CHRG-110shrg52887",
     "source_literal": "Society of Environmental Journalists (SEJ), August 8, 2006",
@@ -100,7 +108,7 @@
     "locator": "mods:witness[3]",
     "package": "CHRG-112shrg85232",
     "source_literal": "Our Projects, DOE, Loan Programs Office",
-    "organization": "Our Projects, Loan Programs Office",
+    "organization": "Our Projects, DOE, Loan Programs Office",
     "line_sha256": "494ecd9f0cb7c1aead06b9e9ca313960d54639847a80a024f220de164198316d"
   },
   {

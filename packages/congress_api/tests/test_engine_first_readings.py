@@ -160,3 +160,37 @@ def test_a_decoded_address_is_text_not_markup():
     anchor = f'<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="{token.hex()}">[email&#160;protected]</a>'
     row = read_page(transcript(TRANSCRIPT.format(anchor)), 'html')
     assert address in row['text_head']
+
+
+def test_cat2_ddas_amendment_doc_xml_extracts_rules_committee_print_heading_and_title():
+    """cat2-ddas (1): HOLC <amendment-doc> XML renditions extract visible <legis-num> heading and <action-desc> title."""
+    from congress_api.parsers.archive_readings import read_page
+
+    rcp_xml = b"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE amendment-doc PUBLIC "-//US Congress//DTDs/amend v2.8 20020720//EN" "http://xml.house.gov/amend.dtd">
+<amendment-doc dms-id="H017D294AA3F64E4CBA26EF1D7750106A" amend-stage="proposed" amend-type="house-amendment">
+  <pre-form>
+    <meta-house><holc-filename>G:\\CMTE\\RU\\16\\RCP\\RCP_H2203.XML</holc-filename></meta-house>
+    <running-header display="no">[Discussion Draft]</running-header>
+    <first-page-date display="yes">July 23, 2019</first-page-date>
+  </pre-form>
+  <amendment-form>
+    <purpose display="no"><?xm-replace_text {purpose}?></purpose>
+    <congress display="no">116th CONGRESS</congress>
+    <legis-num>Rules Committee Print 116\xe2\x80\x9327</legis-num>
+    <action display="no">
+      <action-desc>Hidden instruction</action-desc>
+    </action>
+    <action>
+      <action-desc>Text of H.R. 2203, Homeland Security Improvement Act</action-desc>
+      <action-desc blank-lines-after="1" display="no">Offered by M_. ______</action-desc>
+    </action>
+  </amendment-form>
+  <amendment-body><amendment><amendment-instruction/></amendment></amendment-body>
+</amendment-doc>"""
+    row = read_page(rcp_xml, 'xml')
+    assert row['status'] == 'completed'
+    assert row['xml_root'] == 'amendment-doc'
+    assert row['heading'] == 'Rules Committee Print 116\u201327'
+    assert row['title'] == 'Rules Committee Print 116\u201327 \u2014 Text of H.R. 2203, Homeland Security Improvement Act'
+

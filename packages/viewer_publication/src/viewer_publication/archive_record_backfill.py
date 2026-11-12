@@ -7,7 +7,7 @@ import re
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.lake import appearance_records, committee_records, meeting_records, playlist_records
+from congress_api.lake import appearance_records, committee_records, meeting_records, playlist_records, transcript_headings
 from congress_api.lake._record_producer import _candidate_rel_paths
 from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_key
 from congress_api.retention.provenance import file_pin
@@ -19,7 +19,8 @@ from viewer_publication.producer_proof import BACKFILL, IMPORT, ROOT, _record_re
 
 FILE = {'path', 'size', 'sha256'}
 RECORD_TABLES = {'meeting_records', 'appearance_records'}
-CAPTURE_PRODUCERS = {'committee_records': committee_records, 'playlist_records': playlist_records}
+CAPTURE_PRODUCERS = {'committee_records': committee_records, 'playlist_records': playlist_records,
+                     'transcript_headings': transcript_headings}
 HOUSE_XML_RECEIPTS = 'receipts/house/meeting-xml/'
 HOUSE_XML_PATH = 'external-sources/hearing-text/docs_house_xml/meeting/'
 MEETING_PRIOR = {
@@ -59,7 +60,7 @@ def load_record_only(value, *, base):
 
     captures = job.get('capture_inputs', {})
     if not isinstance(captures, dict) or captures.keys() - CAPTURE_PRODUCERS.keys():
-        raise ValueError('Record-only capture inputs must name committee_records or playlist_records')
+        raise ValueError('Record-only capture inputs must name committee_records, playlist_records or transcript_headings')
     retained = job.get('retained_committee')
     if 'retained_committee' in job:
         if (not isinstance(retained, dict) or set(retained) != {'receipt_key', 'receipt', 'selection', 'base'}

@@ -50,19 +50,21 @@ def writer(monkeypatch):
     import congress_api.retention.writer_identity as identity
     monkeypatch.setattr(identity, 'writer_identity', lambda *a: value)
 
-    # This fixture replays the historical House-only change. Its pinned
-    # predecessor never produced later Senate or MODS generations.
+    # This fixture replays the historical House-only change (transition.NEW).
+    # Its pinned predecessor never produced later Senate, MODS, or House generations.
     from viewer_publication import producer_proof
     versions_at = producer_proof.versions_at
     historical = versions_at(HOUSE_ORIGIN)['appearance_records']
-    house_version = transition.appearance_records.current_versions()['house_xml']
-    house_fixture_versions = dict(historical, house_xml=house_version)
+    house_fixture_versions = dict(historical, house_xml=transition.NEW['appearance_records'])
+    committee_fixture_versions = dict(house_xml=transition.NEW['committee_records'])
     monkeypatch.setattr(transition.appearance_records, 'current_versions', lambda **kw: dict(house_fixture_versions))
+    monkeypatch.setattr(transition.committee_records, 'current_versions', lambda **kw: dict(committee_fixture_versions))
 
     def fixture_versions_at(revision, **kw):
         versions = versions_at(revision, **kw)
         if revision == commit:
-            return dict(versions, appearance_records=dict(house_fixture_versions))
+            return dict(versions, appearance_records=dict(house_fixture_versions),
+                        committee_records=dict(committee_fixture_versions))
         return versions
 
     monkeypatch.setattr(producer_proof, 'versions_at', fixture_versions_at)

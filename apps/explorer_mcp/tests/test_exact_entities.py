@@ -150,3 +150,15 @@ def test_uppercase_document_query_link_key_normalizes_for_lookup_and_cursor_bind
     sources_upper = reader.get_document(dict(release_id=ref['release_id'], link_key=upper_key, section='sources', limit=1))
     sources_lower = reader.get_document(dict(release_id=ref['release_id'], link_key=ref['link_key'], section='sources', limit=1))
     assert sources_upper == sources_lower
+
+
+def test_witness_rank_and_credentials_are_searchable_and_returned(reader):
+    lt_gen = reader.search_entities(dict(table='witnesses', text='Lt. Gen.'))['rows']
+    assert [r['witness_key'] for r in lt_gen] == ['appearance-1', 'mods-appearance-1']
+    assert lt_gen[0]['rank'] == 'Lt. Gen.'
+    assert lt_gen[0]['credentials'] == 'USAF'
+
+    phd = reader.search_entities(dict(table='witnesses', text='Ph.D.'))['rows']
+    assert {r['witness_key'] for r in phd} == {'0001497931f99cd1', '0000b43c099edbc2'}
+    assert all(r['credentials'] == 'Ph.D.' and r['rank'] is None for r in phd)
+

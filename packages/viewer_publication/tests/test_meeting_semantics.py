@@ -223,7 +223,8 @@ def test_a_twin_that_is_itself_not_held_is_never_chosen(meetings):
 
 
 # Witness attachment (ct-dx22, ct-x78c): appearance-records-resolved over hand appearance records.
-APPEARANCE = dict(source_locator='Utf8', name_key='Utf8', name='Utf8', honorific='Utf8', given='Utf8', middle='Utf8',
+APPEARANCE = dict(source_locator='Utf8', name_key='Utf8', name='Utf8', rank='Utf8', credentials='Utf8',
+                  honorific='Utf8', given='Utf8', middle='Utf8',
                   family='Utf8', suffix='Utf8', position='Utf8', organization='Utf8', on_behalf_of='Utf8', location='Utf8',
                   panel='Utf8', panel_order='Int32', display_order='Int32', witness_type='Utf8', testified='Boolean',
                   bioguide_id='Utf8', document_links=list_of('Utf8'))

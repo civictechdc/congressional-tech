@@ -67,6 +67,24 @@ def _text(node):
     return normalized(''.join(node.itertext()))
 
 
+def _visible_xml_text(node):
+    """Normalized visible text of an XML element, skipping `display="no"` subtrees, comments and PIs."""
+    parts = []
+
+    def walk(el):
+        if not isinstance(el.tag, str) or (el.get('display') or '').lower() == 'no':
+            return
+        if el.text:
+            parts.append(el.text)
+        for child in el:
+            walk(child)
+            if child.tail:
+                parts.append(child.tail)
+
+    walk(node)
+    return normalized(''.join(parts))
+
+
 def _link(href, *, text='', tag='', basis='', group_path=None, **publisher):
     return dict(href=href, text=text, tag=tag, basis=basis, group_path=group_path,
                 doc_type=publisher.get('doc_type'), add_date=publisher.get('add_date'),
@@ -237,6 +255,30 @@ def _markup_facts(body, parser):
                     fields.append(dict(field='unparsed_event_id', value=value))
             held.extend(_text(node) for node in mods_elements(scope, 'heldDate'))
         date_values = held or date_values
+    elif parser == 'xml' and _name(tree) == 'amendment-doc':
+        form = next((child for child in tree if _name(child) == 'amendment-form'), None)
+        if form is not None and (form.get('display') or '').lower() != 'no':
+            def _iter_visible_descendants(el):
+                for ch in el:
+                    if not isinstance(ch.tag, str) or (ch.get('display') or '').lower() == 'no':
+                        continue
+                    yield ch
+                    yield from _iter_visible_descendants(ch)
+
+            legis_num = next(
+                (val for child in _iter_visible_descendants(form) if _name(child) == 'legis-num' and (val := _visible_xml_text(child))),
+                '',
+            )
+            action_descs = [
+                val for child in _iter_visible_descendants(form) if _name(child) == 'action-desc' and (val := _visible_xml_text(child))
+            ]
+            if legis_num:
+                heading = legis_num
+            action_text = ' '.join(action_descs)
+            if legis_num and action_text:
+                title = f'{legis_num} \u2014 {action_text}'
+            elif legis_num or action_text:
+                title = legis_num or action_text
     # Links/title/date evidence is complete before invisible nodes are removed.
     if parser == 'html':
         etree.strip_elements(tree, etree.Comment, with_tail=False)

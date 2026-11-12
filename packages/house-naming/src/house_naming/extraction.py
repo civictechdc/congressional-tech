@@ -1189,6 +1189,15 @@ class Extractor:
                         and not later_measure_date
                         and not (following_date and date_candidates(following_date['date_token'])[1])):
                     reason = 'Reference would consume only a prefix of a complete separated date.'
+            if not reason and rule['id'] == 'measure-reference':
+                sep = stem[hit.end('measure_token') : hit.start('measure_number')]
+                num = hit['measure_number']
+                if '__' in sep:
+                    reason = 'Underscore placeholder separates measure token from trailing digits.'
+                elif any(m['rule'] == 'draft-legislation' for m in observations) and (
+                    len(num) > 5 or (len(num) >= 6 and num.startswith('0'))
+                ):
+                    reason = 'Overlong digits in untyped draft suffix are not a legislative measure number.'
             if self._overlaps(a, b, protected):
                 reason = 'Overlaps a structured or already assigned token.'
             if rule.get('respect_measure') and self._overlaps(a, b, measure_spans):
@@ -1565,6 +1574,21 @@ class Extractor:
                     observations.append(self._match(rule, hit, start))
                     self._refine(observations[-1], filename, observations, 'supplemental')
 
+        if (not payloads
+                and any(f.get('category') in {'committee-print', 'report', 'letter'}
+                        for m in observations for f in m['fields'])
+                and not any(f['name'] in {'amendment_marker', 'target_amendment_marker'}
+                            for m in observations for f in m['fields'])):
+            substitute_protected = [(f['start'], f['end']) for m in observations for f in m['fields']
+                                    if not self._searchable(m, f) and f['name'] != 'generic_identifier']
+            for role in ('descriptive_substitute', 'substitute_marker'):
+                rule, regex = self.roles[role]
+                for hit in regex.finditer(stem):
+                    a, b = start + hit.start(), start + hit.end()
+                    if not self._overlaps(a, b, substitute_protected):
+                        observations.append(self._match(rule, hit, start))
+                        substitute_protected.append((a, b))
+
         observations.extend(self._subject_remainders(filename, observations))
         observations.extend(self._description_remainders(filename, observations))
         if member_surnames:
@@ -1662,12 +1686,18 @@ class Extractor:
         )
         stem = filename[start:stem_end]
         measure_regex = self.roles['measure'][1]
-        measure_spans = [(start + m.start(), start + m.end()) for m in measure_regex.finditer(stem)]
         act_references, act_suffix_dates = self._act_dates(stem, start)
 
         payloads = self._match_stem_and_payloads(
             filename, start, stem_end, stem, source_url, source_host, observations, source_readings
         )
+        is_untyped_draft = any(m['rule'] == 'draft-legislation' for m in observations)
+        measure_spans = [
+            (start + m.start(), start + m.end())
+            for m in measure_regex.finditer(stem)
+            if '__' not in stem[m.end('measure_token') : m.start('measure_number')]
+            and not (is_untyped_draft and len(m['measure_number']) > 5)
+        ]
         self._refine_payload_slots(filename, stem_end, payloads, observations, ignored)
         self._exclude_act_citation_dates(observations, ignored, act_references)
         self._scan_free_text_and_qualifiers(

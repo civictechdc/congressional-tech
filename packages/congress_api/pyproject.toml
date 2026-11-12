@@ -35,7 +35,7 @@ archive = [
     # and acquisition extras are not requested: pdf pins Pillow<13 against ours and pdf-apple
     # installs ocrmac only for PyObjC, so PyMuPDF, warcio and the Vision and Quartz bindings
     # AppleVision imports are named directly, the last at the release spicy-docs measured.
-    "spicy-docs==0.84.0; python_version < '3.13'",
+    "spicy-docs==0.85.0; python_version < '3.13'",
     # spicy-docs' own dependency, vendored beside it; named so its path source binds.
     "rulespec-artifacts==1.1.2; python_version < '3.13'",
     "pymupdf>=1.28,<2",

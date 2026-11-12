@@ -186,10 +186,22 @@
               "required": true,
               "type": {
                 "type": "list",
-                "element-id": 36,
+                "element-id": 38,
                 "element-required": true,
                 "element": "string"
               }
+            },
+            {
+              "id": 36,
+              "name": "rank",
+              "required": false,
+              "type": "string"
+            },
+            {
+              "id": 37,
+              "name": "credentials",
+              "required": false,
+              "type": "string"
             }
           ]
         }
@@ -201,7 +213,7 @@
       "required": false,
       "type": {
         "type": "list",
-        "element-id": 37,
+        "element-id": 39,
         "element-required": true,
         "element": "string"
       }
@@ -224,7 +236,7 @@
       "required": false,
       "type": {
         "type": "list",
-        "element-id": 38,
+        "element-id": 40,
         "element-required": true,
         "element": "string"
       }
@@ -235,7 +247,7 @@
       "required": false,
       "type": {
         "type": "list",
-        "element-id": 39,
+        "element-id": 41,
         "element-required": true,
         "element": "string"
       }

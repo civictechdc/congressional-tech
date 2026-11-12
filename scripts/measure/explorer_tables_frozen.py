@@ -17,7 +17,7 @@ from docspec_client.client import NativeDatasets
 from viewer_publication.archive_format import MEETING_DICTIONARY, _settings
 from viewer_publication.archive_model_lifetimes import retire_relations
 from viewer_publication.archive_model_profile import expand_parser_version_rows
-from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, SPICY_SCHEMAS, WITNESSES_SQL, appearance_steps, channel_directory_rows, meeting_records_have_document_references,
+from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, SPICY_SCHEMAS, TRANSCRIPT_HEADINGS_UNAVAILABLE, WITNESSES_SQL, appearance_steps, channel_directory_rows, meeting_records_have_document_references,
     meeting_steps, registry_inputs, selected_record_step)
 from congress_api.retention.provenance import field, json_input, run_job
 
@@ -142,6 +142,9 @@ def main(argv=None):
         # Curated URL variants live outside the frozen inputs; with none, Senate page keys may differ
         # from the release, equally on both sides of a before/after comparison.
         dict(name='url_variants', sql='SELECT cast(NULL AS VARCHAR) AS canonical_url,cast(NULL AS VARCHAR) AS variant_url WHERE false', materialize=True),
+        # No transcript_headings input: the transcript decides nothing here (ct-sfra).
+        dict(name='transcript_headings', sql=TRANSCRIPT_HEADINGS_UNAVAILABLE, materialize=True),
+        selected_record_step('transcript_headings', 'transcript_headings'),
         *appearance_steps(),
         dict(name='witnesses_export', sql=WITNESSES_SQL, materialize=True),
         selected_record_step('video_records', 'video_records'),

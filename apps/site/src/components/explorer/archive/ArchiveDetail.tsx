@@ -238,7 +238,7 @@ export function ArchiveDetail({
         <span className="archive-measure-list">
           {witnessItems.map((w:any)=>{
             const wk=String(w.witness_key??w.name_key??w.name??'');
-            const label=w.name&&w.organization?`${w.name} (${w.organization})`:(witnessLabel(w)||wk);
+            const label=w.name&&w.organization?`${witnessLabel(w)} (${w.organization})`:(witnessLabel(w)||wk);
             return onWitness
               ?<button key={wk} type="button" className="archive-measure-pill" onClick={()=>onWitness(wk)}>{label}</button>
               :<span key={wk} className="archive-measure-pill">{label}</span>;

@@ -12,8 +12,8 @@ from .release import encoded, quote, literal, kind_words
 from .hearing_reader import HearingReader
 
 # Published display columns that text search reads, wherever a table has them.
-TEXT_FIELDS = ('name', 'title', 'short_title', 'public_law_number', 'description', 'organization', 'position', 'video_key',
-               'source_description', 'committee_label', 'handle', 'note', 'action_text', 'question', 'member_name')
+TEXT_FIELDS = ('name', 'rank', 'credentials', 'on_behalf_of', 'title', 'short_title', 'public_law_number', 'description', 'organization', 'position', 'video_key',
+               'source_description', 'committee_label', 'handle', 'note', 'identity_note', 'action_text', 'question', 'member_name')
 
 DOCUMENT_SUMMARY_COLUMNS = (
     'l.list_row,l.filename,l.title,l.congress,l.format,l.document_date,d.document_date_source,'
@@ -535,8 +535,15 @@ class Reader(HearingReader, LegislativeReader):
         conditions, args = [], []
         if query.text:
             fields = [name for name in TEXT_FIELDS if name in columns]
-            conditions.append('(' + ' OR '.join(f'contains(lower(coalesce({quote(name)},\'\')),lower(?))' for name in fields) + ')' if fields else 'false')
-            args += [query.text] * len(fields)
+            exprs = [f'contains(lower(coalesce({quote(name)},\'\')),lower(?))' for name in fields]
+            if {'rank', 'name'} <= columns.keys():
+                base = 'concat_ws(\' \',"rank","name")'
+                exprs.append(f'contains(lower({base}),lower(?))')
+                if 'credentials' in columns:
+                    exprs.append(f'contains(lower(concat_ws(\' \',{base},"credentials")),lower(?))')
+                    exprs.append(f'contains(lower(concat_ws(\', \',{base},"credentials")),lower(?))')
+            conditions.append('(' + ' OR '.join(exprs) + ')' if exprs else 'false')
+            args += [query.text] * len(exprs)
         scalars = ', '.join(k for k, t in columns.items() if '[]' not in t and not t.startswith(('STRUCT', 'MAP', 'BLOB')))
         for name, value in query.filters.items():
             if name not in columns:

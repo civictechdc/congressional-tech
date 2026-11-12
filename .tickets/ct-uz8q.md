@@ -1,6 +1,6 @@
 ---
 id: ct-uz8q
-status: open
+status: closed
 deps: []
 links: [ct-gfo7, ct-sfra, ct-kw85]
 created: 2026-11-12T00:18:56Z
@@ -25,4 +25,11 @@ Carries forward the non-shipped MODS parser residuals after MODS round 9 (pin 70
 ## Acceptance Criteria
 
 Items 1-3 each applied or explicitly declined in a single intentional MODS parser bump with raw-check plant verification; item 4 reconciled if unattached print-witness coverage is revisited.
+
+## Notes
+
+**2026-11-12T15:57:00Z**
+
+Wave 3 (`claude/ct-wave-3-parsers`): resolved all items 1–3 in the unified MODS parser bump (`ad2de967afe934cb59a303e0ce32124b68bde0979d4852f7fd24ca07f2baadc0`): (1) Erik Paulsen (`CHRG-113hhrg91127`) & Cedric Richmond (`CHRG-114hhrg96873`, no-space `The Hon.Cedric`) -> `member_statement`, Tim Walberg (`CHRG-114hhrg94823`), John Tierney (`CHRG-112hhrg73706`), & Luke Messer (`CHRG-113hhrg89535`) -> `record_material`; (2) all 3 `ct-eppo` written-answer label residuals restored; (3) acronym org-before-person (`AARP, Marie Smith` / `AARP, David Certner`), `CHRG-115shrg25981 #4` Bill Cassidy split, `CHRG-112shrg25114 #3`, `CHRG-106shrg66376 #25`, and newly exposed `CHRG-110shrg52887 #14` (`PEER, Presidents of Local Unions, June 29, 2006` -> `record_material`). Verified end-to-end through `archive_model_job` & Playwright DOM (`wave3_horizontal_slice_review.md` slices `H6`, `H8`). Ready for Merge Slot #2 + R2 backfill.
+
 

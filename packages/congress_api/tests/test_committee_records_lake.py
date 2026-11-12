@@ -49,3 +49,24 @@ def test_same_bytes_same_rows_and_schema():
     payload = meeting(document('CA', 'https://docs.house.gov/a.pdf'))
     assert build(payload) == build(payload)
     assert committee_records.table([build(payload)]).schema.equals(committee_records.ARROW_SCHEMA)
+
+
+def test_cat2_ddas_rules_markup_bare_slot_legis_num_is_not_a_bill():
+    # Verbatim shape from Rules Committee markup event_id=118455 (sha f954b7fc...): <legis-num>7</legis-num> is an agenda slot
+    slot_doc = (
+        '<meeting-document type="CA"><description>The Honorable Mr. McGovern</description>'
+        '<legis-num>7</legis-num><filename-metadata><amdt-num>7</amdt-num><bioguideID>M000312</bioguideID></filename-metadata>'
+        '<files><file doc-url="https://docs.house.gov/meetings/RU/RU00/20250521/118455/BILLS-119-7-M000312-Amdt-7.pdf"/></files>'
+        '</meeting-document>'
+    )
+    unnumbered_hr_doc = (
+        '<meeting-document type="CA"><description>FY 2018 SFOPS</description>'
+        '<legis-num>H.R.</legis-num><filename-metadata><amdt-num>1</amdt-num><bioguideID>R000395</bioguideID></filename-metadata>'
+        '<files><file doc-url="https://docs.house.gov/a1.pdf"/></files></meeting-document>'
+    )
+    row = build(meeting(slot_doc, unnumbered_hr_doc, meeting_id='118455'))
+    assert row['records'][0]['bill'] is None
+    assert row['records'][0]['number'] == '7'
+    assert row['records'][1]['bill'] == 'H.R.'
+    assert row['records'][1]['number'] == '1'
+

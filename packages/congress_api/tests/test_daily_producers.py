@@ -594,7 +594,7 @@ def test_inline_saved_record_and_govinfo_mods_staging_with_anti_join(tmp_path):
             local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
         assert a_stage['work_items']==1 and a_stage['produced']==1
         a_rows=pq.read_table(a_stage['records']).to_pylist()
-        assert len(a_rows)==1 and a_rows[0]['appearances'][0]['name']=='Dr. Inline Witness'
+        assert len(a_rows)==1 and a_rows[0]['appearances'][0]['name']=='Inline Witness' and a_rows[0]['appearances'][0]['honorific']=='Dr.'
         a_stage2=appearance_records.stage(captures=cap_stage,readings=empty_readings(tmp_path/"readings"),existing=a_stage['records'],engine=eng,
             work=tmp_path/'a2',local_root=raw,raw_store=store,decided_at=STAMP,unreadable_store=store)
         assert a_stage2['work_items']==0 and a_stage2['produced']==0

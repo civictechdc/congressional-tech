@@ -773,8 +773,8 @@
     "fields": {
       "name": "William Tower",
       "honorific": null,
-      "position": "Fair Oaks",
-      "organization": "California, American Family Rights Association",
+      "position": null,
+      "organization": "American Family Rights Association",
       "on_behalf_of": null
     },
     "line_sha256": "31d93bd253aa826f28c8e3204e4cac85d2fcc267aa14eefa8028686e7f274329"

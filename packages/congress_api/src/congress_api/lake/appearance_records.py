@@ -48,7 +48,17 @@ from ..parsers.xml_repair import parse_xml_with_repairs
 from ..parsers.senate_page import plain_testimony_address, plain_witness_links
 from ..parsers.senate_page import witness_occurrences as senate_witness_occurrences
 from ..parsers.text import text as clean_text
-from ..parsers.witness_names import FOOTNOTE_TEXT, LABEL_NAME, TITLE as WITNESS_TITLE, drop_footnote_text, is_name, strip_contents_markers, witness as parse_gpo_witness
+from ..parsers.witness_names import (
+    FOOTNOTE_TEXT,
+    LABEL_NAME,
+    TITLE as WITNESS_TITLE,
+    drop_footnote_text,
+    is_name,
+    peel_leading_position_credentials,
+    split_rank_and_credentials,
+    strip_contents_markers,
+    witness as parse_gpo_witness,
+)
 from .mods_person_fields import MODS_JOINED_LINES, MODS_PERSON_FIELDS
 from .mods_record_entries import MODS_MIXED_RECORD_ENTRIES, MODS_RECORD_ENTRIES
 from ._record_producer import (
@@ -99,6 +109,8 @@ APPEARANCE_STRUCT = pa.struct(
         pa.field("testified", pa.bool_(), nullable=True),
         pa.field("bioguide_id", pa.string(), nullable=True),
         pa.field("document_links", pa.list_(pa.field("element", pa.string(), nullable=False)), nullable=False),
+        pa.field("rank", pa.string(), nullable=True),
+        pa.field("credentials", pa.string(), nullable=True),
     ]
 )
 
@@ -312,6 +324,7 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
                 "record_producer": pkg_dir / "lake/_record_producer.py",
                 "models_congress": pkg_dir / "models/congress.py",
                 "parsers_congress": pkg_dir / "parsers/congress.py",
+                "parsers_witness_names": pkg_dir / "parsers/witness_names.py",
                 "lake_schema": root / "model/lake/appearance-records.schema.json",
             },
             values={
@@ -328,6 +341,7 @@ def current_version(source: str | None = None, *, root: Path = ROOT) -> str:
                 "parsers_house_xml": pkg_dir / "parsers/house_xml.py",
                 "parsers_xml_repair": pkg_dir / "parsers/xml_repair.py",
                 "parsers_house_documents": pkg_dir / "parsers/house_documents.py",
+                "parsers_witness_names": pkg_dir / "parsers/witness_names.py",
                 "lake_schema": root / "model/lake/appearance-records.schema.json",
             },
             values={
@@ -483,6 +497,8 @@ def preserve_appearances(
                 "testified": _opt_bool(item.get("testified")),
                 "bioguide_id": _opt_str(item.get("bioguide_id")),
                 "document_links": doc_links,
+                "rank": _opt_str(item.get("rank")),
+                "credentials": _opt_str(item.get("credentials")),
             }
         )
     return preserved
@@ -561,14 +577,26 @@ def extract_house_xml_observation(
             name_parts = {field: value(name_node, tag) for field, tag in NAME}
             full_name = clean_text(" ".join(v for v in name_parts.values() if v)) or None
 
-            honorific = _opt_str(name_parts.get("honorific"))
-            given = _opt_str(name_parts.get("first"))
+            split_rc = split_rank_and_credentials(
+                full_name,
+                honorific=_opt_str(name_parts.get("honorific")),
+                given=_opt_str(name_parts.get("first")),
+                family=_opt_str(name_parts.get("last")),
+                suffix=_opt_str(name_parts.get("suffix")),
+                retired=_opt_str(name_parts.get("retired")),
+                strip_civil_from_name=True,
+            )
+            full_name = _opt_str(split_rc["name"])
+            honorific = _opt_str(split_rc["honorific"])
+            rank = _opt_str(split_rc["rank"])
+            credentials = _opt_str(split_rc["credentials"])
+            given = _opt_str(split_rc["given"])
             middle = _opt_str(name_parts.get("middle"))
-            family = _opt_str(name_parts.get("last"))
-            suffix_parts = [s for s in (name_parts.get("suffix"), name_parts.get("retired")) if s]
-            suffix = _opt_str(" ".join(suffix_parts)) if suffix_parts else None
+            family = _opt_str(split_rc["family"])
+            suffix = _opt_str(split_rc["suffix"])
 
-            position = _opt_str(value(w_elem, "position") or value(w_elem, "title"))
+            raw_pos = _opt_str(value(w_elem, "position") or value(w_elem, "title"))
+            position, credentials = peel_leading_position_credentials(raw_pos, credentials)
             organization = _opt_str(value(w_elem, "organization"))
             on_behalf_of = _opt_str(value(w_elem, "behalf-of") or value(w_elem, "on-behalf-of"))
 
@@ -622,6 +650,8 @@ def extract_house_xml_observation(
                     "source_locator": locator,
                     "name": full_name,
                     "honorific": honorific,
+                    "rank": rank,
+                    "credentials": credentials,
                     "given": given,
                     "middle": middle,
                     "family": family,
@@ -728,16 +758,28 @@ def extract_congress_gov_observation(
         w_bioguide = _opt_str(w.get("bioguideId") or w.get("bioguide_id") or w.get("bioguideID"))
 
         doc_links = _clean_links(w.get("document_links") or w.get("document_urls") or w.get("documents"))
+        split_rc = split_rank_and_credentials(
+            w_name,
+            honorific=_opt_str(w.get("honorific")),
+            given=_opt_str(w.get("given") or w.get("firstName")),
+            family=_opt_str(w.get("family") or w.get("lastName")),
+            suffix=_opt_str(w.get("suffix")),
+            strip_civil_from_name=True,
+        )
+        w_creds = _opt_str(w.get("credentials")) or _opt_str(split_rc["credentials"])
+        w_pos, w_creds = peel_leading_position_credentials(w_pos, w_creds)
 
         raw_rows.append(
             {
                 "source_locator": _opt_str(w.get("source_locator")) or f"congress_gov:witness[{idx}]",
-                "name": w_name,
-                "honorific": _opt_str(w.get("honorific")),
-                "given": _opt_str(w.get("given") or w.get("firstName")),
+                "name": _opt_str(split_rc["name"]),
+                "honorific": _opt_str(split_rc["honorific"]),
+                "rank": _opt_str(w.get("rank")) or _opt_str(split_rc["rank"]),
+                "credentials": w_creds,
+                "given": _opt_str(split_rc["given"]),
                 "middle": _opt_str(w.get("middle") or w.get("middleName")),
-                "family": _opt_str(w.get("family") or w.get("lastName")),
-                "suffix": _opt_str(w.get("suffix")),
+                "family": _opt_str(split_rc["family"]),
+                "suffix": _opt_str(split_rc["suffix"]),
                 "position": w_pos,
                 "organization": w_org,
                 "on_behalf_of": w_behalf,
@@ -822,10 +864,15 @@ def _fallback_senate_cards(html_text: str) -> list[dict[str, Any]]:
             if raw_href and raw_href not in doc_links:
                 doc_links.append(raw_href)
 
+        split_rc = split_rank_and_credentials(raw_name, strip_civil_from_name=True)
+        pos_val, fb_creds = peel_leading_position_credentials(pos_val, _opt_str(split_rc["credentials"]))
         rows.append(
             {
                 "source_locator": f"senate_page:card[{idx}]",
-                "name": raw_name,
+                "name": _opt_str(split_rc["name"]) or raw_name,
+                "honorific": _opt_str(split_rc["honorific"]),
+                "rank": _opt_str(split_rc["rank"]),
+                "credentials": fb_creds,
                 "position": pos_val,
                 "organization": org_val,
                 "location": loc_val,
@@ -927,6 +974,8 @@ def extract_senate_page_observation(
                             "source_locator": _opt_str(w.get("source_locator")) or f"senate_page:witness[{idx}]",
                             "name": w_name,
                             "honorific": _opt_str(w.get("honorific")),
+                            "rank": _opt_str(w.get("rank")),
+                            "credentials": _opt_str(w.get("credentials")),
                             "position": _opt_str(w.get("position") or w.get("title")),
                             "organization": _opt_str(w.get("organization")),
                             "location": _opt_str(w.get("location")),
@@ -992,6 +1041,8 @@ def extract_senate_page_observation(
                     "source_locator": f"senate_page:witness[{idx + 1}]",
                     "name": _opt_str(p.get("name")),
                     "honorific": _opt_str(p.get("honorific")),
+                    "rank": _opt_str(p.get("rank")),
+                    "credentials": _opt_str(p.get("credentials")),
                     "position": _opt_str(p.get("position")),
                     "organization": _opt_str(p.get("organization")),
                     "location": _opt_str(p.get("location")),
@@ -1062,7 +1113,7 @@ _RECORD_ENTRY = re.compile(
 # or gives an oral statement, is a witness (red-f3). A submission is also the document the line names after the
 # Member's style ("Courtney, Hon. Joe, a Representative in Congress from the State of Connecticut: Hartford Courant
 # article: ...", "...: May 2008 Executive Summary ...", "..., letter, dated Sept. 3, 2014"; round 5).
-_STATEMENT_WORD = re.compile(r"\bprepared statements?\b", re.I)
+_STATEMENT_WORD = re.compile(r"\b(?:prepared|written) statements?\b", re.I)
 _MEMBER_SUBMISSION = re.compile(
     r"\b(?:articles?|(?:executive )?summary|letters?|reports?|editorials?|op-eds?|memorand(?:um|a)|press releases?"
     r"|submitted|on behalf of)\b", re.I)
@@ -1086,8 +1137,9 @@ _RETAINED_IN_FILES = re.compile(r"^\W*[^\\]*?\b(?:has|have|are) been retained in
 # ("Coston, James E., Attorney, Chicago, IL, prepared statement") is their own entry, so this reads only lines
 # with no name.
 _MODS_ORGANIZATION_DOCUMENT = re.compile(
-    r",\s*(?:prepared |submitted )?(?:statement|letter|memorandum|article|paper|report)s?(?: and attachments?)?"
-    r"(?:,\s*dated\b[^,]*(?:,\s*\d{4})?)?\s*$", re.I)
+    r"(?:,\s*(?:prepared |submitted )?(?:statement|letter|memorandum|article|paper|report|resolution)s?(?: and attachments?)?"
+    r"(?:,\s*dated\b[^,]*(?:,\s*\d{4})?)?\s*$"
+    r"|^\W*(?:prepared |written |submitted )?statements?\s+(?:of|by|from)\b)", re.I)
 # Questions for the record (owner decisions 2026-11-10). A Member who asked questions for the record, or asked
 # during the hearing for information, did not testify: each Member a contents line names as an asker is a
 # record_material row of that line, named as the line prints them ("Grassley" when it prints only that), in printed
@@ -1118,8 +1170,13 @@ _MODS_ORGANIZATION_DOCUMENT = re.compile(
 # line names ("Submitted questions: Avalos, Hon. Edward M", "Responses by Robert Raben, ...", "Answers from Caroline
 # Beteta, ..."). An answerer with a testimony row of their own in the print is typed as that row; one with none
 # answered only in writing, a statement for the record (owner decision 2026-11-10, round 6); never record material.
-_MODS_WRITTEN_ANSWER = re.compile(r"^\W*(?:submitted questions:\s|(?:responses?|answers?)\s+(?:by|from)\s+(?=[A-Z]))",
-                                  re.I)
+_MODS_WRITTEN_ANSWER = re.compile(
+    r"^\W*(?:submitted questions:\s"
+    r"|(?:responses?|answers?)\s+(?:by|from)\s+(?=[A-Z])"
+    r"|answers? to (?:submitted |additional )?questions(?:\s*\\\*\\|\s*,)\s*"
+    r"|responses? to (?:(?:submitted |additional |written )?questions|question submitted for the record)\s+by\s+(?=[A-Z]))",
+    re.I,
+)
 _MODS_HON = r"(?:The Honorable|Honorable|Hon\.)"
 _MODS_CHAMBER_TITLE = r"(?:Senator|Sen\.|Representative|Rep\.|Congress(?:man|woman)|Delegate)"
 _MODS_COMMITTEE_TITLE = r"(?:Chairman|Chairwoman|Ranking Member)"
@@ -1411,8 +1468,8 @@ def _mods_representative_value(text: str) -> str | None:
 _MODS_ORGANIZATION_WORD = re.compile(
     r"\b(?:Department|Office|Administration|Agency|Bureau|Service|Commission|Association|Institute|Foundation"
     r"|Federation|Union|League|Society|Coalition|Committee|Center|Legion|Veterans|Project|Fund|Group|Corporation"
-    r"|Company|Inc|Clinic|Hospital|University|College|Organization|Alliance|Network|Program|Conference|Authority"
-    r"|Partnership|Corps|Panel|Initiative|Institution|Lab|Laboratory|Museum|Library|School|Academy)s?\b")
+    r"|Company|Inc|L\.?L\.?C|L\.?L\.?P|Ltd|Clinic|Hospital|University|College|Organization|Alliance|Network|Program"
+    r"|Conference|Authority|Partnership|Corps|Panel|Initiative|Institution|Lab|Laboratory|Museum|Library|School|Academy)s?\b")
 # A name that is a sentence ("American Council of Life Insurers given by Stephen E. Rahn", "Testimony before House
 # Small Business Committee") or a person run into their post, rank or title ("Robert K. Stumberg Professor of Law
 # and Director of Harrison Institute ...", "First Class Cadet Kyra Grace Holmstrup ...", "Committee on Agriculture
@@ -1444,8 +1501,9 @@ def _mods_organization_first(line: str, parsed: dict[str, Any]) -> tuple[dict[st
     organization to follow their own; or, with no person, no name and the whole reading as the organization.
     None for any other line, a titled person's, a nominee's and a record entry's, which keeps its label."""
     name = parsed["name"]
+    is_acronym_org = bool(re.fullmatch(r"[A-Z]{2,6}", name) and any(c.islower() for c in line))
     # "Nomination of Patrick W. Dunne to be Under Secretary ... of Veterans Affairs" names its nominee.
-    if (not name or not _MODS_ORGANIZATION_NAME.search(name) or _MODS_NOT_ORGANIZATION.search(name)
+    if (not name or (not _MODS_ORGANIZATION_NAME.search(name) and not is_acronym_org) or _MODS_NOT_ORGANIZATION.search(name)
             or re.search(r"\b[Nn]omination\b", name) or mods_entry_kind(line, name)):
         return None
     text = strip_contents_markers(line)
@@ -1462,11 +1520,15 @@ def _mods_organization_first(line: str, parsed: dict[str, Any]) -> tuple[dict[st
 
     def person_at(i: int) -> dict[str, Any] | None:
         candidate = WITNESS_TITLE.sub("", parts[i] + " ").strip()
-        # A surname alone opens a surname-first entry that ends the line ("..., Hill, James A"); a firm's
-        # names ("Akin, Gump, Strauss, Hauer & Feld") run on past theirs.
-        surname = (re.fullmatch(r"[A-Z][a-z]+(?:-[A-Z][a-z]+)?", candidate)
-                   and i + 2 == len(parts) and bool(re.fullmatch(r"[A-Z][a-z]+(?: [A-Z]\.?)?", parts[i + 1]))
-                   and not _MODS_STATE.fullmatch(parts[i + 1]))
+        # A surname alone opens a surname-first entry that ends the line ("..., Hill, James A", "..., Dann, Dr. C. Richard");
+        # a firm's names ("Akin, Gump, Strauss, Hauer & Feld") run on past theirs.
+        next_given = _MODS_CIVIL_TITLE.sub("", (parts[i + 1] + " ") if i + 1 < len(parts) else "").strip()
+        surname = (
+            re.fullmatch(r"[A-Z][a-z]+(?:-[A-Z][a-z]+)?", candidate)
+            and i + 2 == len(parts)
+            and bool(re.fullmatch(r"(?:[A-Z]\. )?[A-Z][a-z'’-]+(?: [A-Z]\.?)?", next_given))
+            and not _MODS_STATE.fullmatch(parts[i + 1])
+        )
         if (not (is_name(candidate) or surname) or _MODS_ORGANIZATION_WORD.search(candidate) or "&" in candidate
                 or re.search(r"[`'\"’]$", candidate)
                 or _MODS_STATE.fullmatch(candidate) or place_follows(i)):
@@ -1493,7 +1555,17 @@ def _mods_organization_first(line: str, parsed: dict[str, Any]) -> tuple[dict[st
                     or re.search(r"(?:^|[A-Z][a-z]+ )[A-Z]\. (?:[A-Z]\. )?[A-Z][a-z'’]", part))
 
     people = {i: person for i in range(1, len(parts)) if (person := person_at(i))}
-    read = [i for i in people if marked(parts[i])]
+    read = [
+        i
+        for i in people
+        if marked(parts[i])
+        or (
+            " " not in parts[i]
+            and i + 2 == len(parts)
+            and i + 1 < len(parts)
+            and bool(_MODS_CIVIL_TITLE.match(parts[i + 1] + " "))
+        )
+    ]
     unmarked = [i for i in people if i not in read
                 and len([w for w in people[i]["name"].split() if not re.fullmatch(r"(?:Jr|Sr|II|III|IV)\.?", w)]) <= 3]
     if read or (len(people) == len(unmarked) == 1 and not any(marked(part) for part in parts[1:])):
@@ -1505,10 +1577,11 @@ def _mods_organization_first(line: str, parsed: dict[str, Any]) -> tuple[dict[st
     if people or any((re.match(r"(?:[A-Z][a-z'’-]+|[A-Z]\.) (?:[A-Z]\. )?[A-Z][a-z'’-]+", part)
                       or re.fullmatch(r"[A-Z][a-z'’-]+", part))
                      and not _MODS_STATE.fullmatch(part) and not _MODS_ORGANIZATION_WORD.search(part)
+                     and part.lower() not in {"statement", "statements", "letter", "letters", "memorandum", "article", "articles", "paper", "report", "reports", "resolution", "resolutions"}
                      for part in parts[1:]):
         return None
     whole = ", ".join(filter(None, (name, parsed["position"], parsed["organization"])))
-    return dict(parsed, name="", honorific="", position="", organization=whole), None
+    return dict(parsed, name="", honorific="", rank="", credentials="", position="", organization=whole), None
 
 
 # A surname of more than one word, written first ("Torres Small, Hon. Xochitl, Under Secretary ..."), or a
@@ -1519,7 +1592,9 @@ def _mods_organization_first(line: str, parsed: dict[str, Any]) -> tuple[dict[st
 _MODS_SURNAME = re.compile(
     r"(?P<page>Page )?(?P<surname>(?:(?:de|la|van|von|del|der|di|da|du|le) )*(?:[A-Z]['’])?[A-Z][a-z][A-Za-z'’-]*"
     r"(?: (?:(?:de|la|van|von|del|der|di|da|du|le) )*(?:[A-Z]['’])?[A-Z][a-z][A-Za-z'’-]*){0,3})")
-_MODS_CIVIL_TITLE = re.compile(r"(?:The )?(?:Hon|Honorable|Mr|Ms|Mrs|Miss|Mx|Dr|Rep|Representative|Senator|Sen|Rev|Reverend)\.? ")
+_MODS_CIVIL_TITLE = re.compile(
+    r"(?:[Tt]he )?(?:Hon|Honorables?|Mr|Ms|Mrs|Miss|Mx|Dr|Rep|Representative|Senator|Sen|Rev|Reverend)\.?(?: +|(?<=\.)(?=[A-Z]))"
+)
 _MODS_GIVEN = re.compile(r"(?:[A-Z]\. )?[A-Z][a-z'’-]+(?: [A-Z]\.)*")
 _MODS_PAGE_GIVEN = re.compile(r"(?:[A-Z]\.|[A-Z][a-z'’-]+)(?: (?:[A-Z]\.|[A-Z][a-z'’-]+)){0,2}")
 
@@ -1624,8 +1699,10 @@ def _mods_entry_before_heading(line: str, roster: Mapping[tuple[str, ...], set[s
 # "accompanied by" list also open in lower case and hold people, so neither is prose here.
 _MODS_SENTENCE_BREAK = re.compile(r"([A-Za-z]*[a-z]{2,})[.?!]['’\"]*\s+[A-Z][a-z]")
 # ...but an honorific's or a title's abbreviation ends no sentence ("de Lugo, Hon. Ron, ... Hon. Oscar ...", round 9).
-_MODS_ABBREVIATION = frozenset(("hon", "mrs", "messrs", "sen", "rep", "gen", "col", "capt", "sgt", "prof", "esq",
-                                "rev", "adm", "cmdr"))
+_MODS_ABBREVIATION = frozenset(
+    ("hon", "mrs", "messrs", "sen", "rep", "gen", "col", "capt", "sgt", "prof", "esq", "rev", "adm", "cmdr",
+     "gov", "maj", "amb", "sec", "inc", "corp")
+)
 # A speaker's turn run in after a panel's names ("... R STREET INSTITUTE Mr. Yoder. We will call forward ...").
 _MODS_SPEAKER_TURN = re.compile(r"^(?:Mr|Ms|Mrs|Dr|Chairman|Chairwoman|Senator)\.?\s+[A-Z][A-Za-z'’-]+\.\s+[A-Z]")
 
@@ -1736,6 +1813,8 @@ def extract_mods_observation(
                         "source_locator": f"mods:witness[{idx}]",
                         "name": w_name,
                         "honorific": _opt_str(parsed.get("honorific")),
+                        "rank": _opt_str(parsed.get("rank")),
+                        "credentials": _opt_str(parsed.get("credentials")),
                         "position": _opt_str(parsed.get("position")),
                         "organization": _opt_str(parsed.get("organization")),
                         "on_behalf_of": _opt_str(parsed.get("on_behalf_of")),
@@ -1752,6 +1831,8 @@ def extract_mods_observation(
                         "source_locator": _opt_str(w.get("source_locator")) or f"mods:witness[{idx}]",
                         "name": w_name,
                         "honorific": _opt_str(w.get("honorific")),
+                        "rank": _opt_str(w.get("rank")),
+                        "credentials": _opt_str(w.get("credentials")),
                         "position": _opt_str(w.get("position")),
                         "organization": _opt_str(w.get("organization")),
                         "on_behalf_of": _opt_str(w.get("on_behalf_of")),
@@ -1838,10 +1919,19 @@ def extract_mods_observation(
     def row(locator: str, parsed: Mapping[str, Any], kind: str | None) -> dict[str, Any]:
         w_name = _opt_str(parsed.get("name"))
         nk = normalize_name_key(w_name)
-        return {"source_locator": locator, "name": w_name, "honorific": _opt_str(parsed.get("honorific")),
-                "position": _opt_str(parsed.get("position")), "organization": _opt_str(parsed.get("organization")),
-                "on_behalf_of": _opt_str(parsed.get("on_behalf_of")),
-                "bioguide_id": member_bioguides.get(nk) if nk else None, "witness_type": kind, "document_links": []}
+        return {
+            "source_locator": locator,
+            "name": w_name,
+            "honorific": _opt_str(parsed.get("honorific")),
+            "rank": _opt_str(parsed.get("rank")),
+            "credentials": _opt_str(parsed.get("credentials")),
+            "position": _opt_str(parsed.get("position")),
+            "organization": _opt_str(parsed.get("organization")),
+            "on_behalf_of": _opt_str(parsed.get("on_behalf_of")),
+            "bioguide_id": member_bioguides.get(nk) if nk else None,
+            "witness_type": kind,
+            "document_links": [],
+        }
 
     def emit(found: list[tuple[int, dict[str, Any]]], askers: Sequence[tuple[int, str]], parts: Iterator[str],
              answerers: Sequence[tuple[int, str]] = (), lead: str | None = None) -> None:
@@ -1904,6 +1994,12 @@ def extract_mods_observation(
                 kept = {"organization": _opt_str(fields.get("organization"))}
             elif how == "title":  # a document run into a question heading: its own printed text
                 kept = {"organization": _mods_document_text(cleaned_line)}
+            elif len(names) == 1 and names[0]:
+                fields = _mods_witness_fields(cleaned_line, package_id=resolved_pkg, source_index=idx)
+                if fields.get("rank"):
+                    kept["rank"] = _opt_str(fields.get("rank"))
+                if fields.get("credentials"):
+                    kept["credentials"] = _opt_str(fields.get("credentials"))
             found = [(0, r) for r in _mods_record_rows(names, parts, "record_material" if how in ("document", "title")
                                                        else how or entry_type, **kept)]
             if (resolved_pkg, idx) in MODS_MIXED_RECORD_ENTRIES:

@@ -1,6 +1,6 @@
 ---
 id: ct-eppo
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-10T23:54:23Z
@@ -23,3 +23,7 @@ The three lines each produce the answerer's row, typed by the owner's rule; a co
 **2026-11-11T14:41:23Z**
 
 validated 2026-11-11, left open: not fixed on main or on the MODS release branch claude/ct-mods-and-member-appearances (no diff to parsers/witness_names.py, no commit naming ct-eppo besides its filing 0bc32ccb).
+
+**2026-11-12T15:50:00Z**
+
+Wave 3 (`claude/ct-wave-3-parsers`): widened `witness_names.py` (`FOOTNOTE` / `CONTENTS_LABEL` `\*\`, `UNMARKED_LABEL` comma separator, singular `Response to question submitted for the record by`) and applied the owner's answerer typing rule in `appearance_records.py`. Full `35,020`-print MODS corpus survey matched the exact 3 rows (`CHRG-113hhrg86394 #8` Carmen Catizone, `CHRG-111hhrg62589 #5` Jeff Hopkins, `CHRG-110hhrg33608 #3` Jeanine Derby) with `0` unintended changes (`additions_vs_live == {'mods': 3}`, `removals == 0`); horizontal trace (`wave3_horizontal_slice_review.md` slice `H6`) further verified `ct-eppo` × `ct-sfra` promoting Carmen Catizone from `statement_for_record` in MODS lake to live witness (`None`) upon matching `STATEMENT OF CARMEN CATIZONE` in `CHRG-113hhrg86394.htm`. Ready for Merge Slot #1 + R2 backfill.

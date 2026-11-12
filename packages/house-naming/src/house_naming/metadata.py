@@ -71,7 +71,11 @@ def _references(record: dict, measures: tuple[str, ...]) -> list[dict]:
         hits = []
         for hit in measure.finditer(value):
             number = int(hit['number'])
-            if not 0 < number <= 2147483647 or re.fullmatch(r'[A-Z][0-9]{6}', hit[0], re.I | re.ASCII):
+            if (
+                not 0 < number <= 2147483647
+                or re.fullmatch(r'[A-Z][0-9]{6}', hit[0], re.I | re.ASCII)
+                or (record['kind'] == 'bill-untyped-draft' and len(hit['number']) > 5)
+            ):
                 continue
             if field == 'subject' and hit[0] == value and record.get('measureType', '').lower() == hit['code'].lower() and record.get('measureNumber') == number:
                 continue  # Already the complete, explicitly assigned primary measure.

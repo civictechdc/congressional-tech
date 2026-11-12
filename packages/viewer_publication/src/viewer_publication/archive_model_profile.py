@@ -22,7 +22,7 @@ MEETING_SOURCES=('congress_gov','house_xml')
 APPEARANCE_SOURCES=('house_xml','congress_gov','senate_page','mods')
 ENTITY_SOURCES={'meeting_records':MEETING_SOURCES,'appearance_records':APPEARANCE_SOURCES}
 EXPLORER_SOURCES={'video_records':('youtube_cache','youtube_api'),'committee_records':('house_xml',)}
-SELECTED_SOURCES={**ENTITY_SOURCES,**EXPLORER_SOURCES,'playlist_records':('hls',)}
+SELECTED_SOURCES={**ENTITY_SOURCES,**EXPLORER_SOURCES,'playlist_records':('hls',),'transcript_headings':('gpo_html',)}
 
 
 def current_parser_versions(keys=()):
@@ -31,9 +31,11 @@ def current_parser_versions(keys=()):
     Job specs, the selective job and its model template all build their expected
     pins here, so a new source-scoped table cannot be added to one and not the others.
     """
-    from congress_api.lake import readings,meeting_records,appearance_records,video_records,committee_records,playlist_records
+    from congress_api.lake import (readings,meeting_records,appearance_records,video_records,committee_records,playlist_records,
+                                   transcript_headings)
     modules=dict(meeting_records=meeting_records,appearance_records=appearance_records,
-                 video_records=video_records,committee_records=committee_records,playlist_records=playlist_records)
+                 video_records=video_records,committee_records=committee_records,playlist_records=playlist_records,
+                 transcript_headings=transcript_headings)
     result={p:readings.current_version(p) for p in (*PARSERS, *(p for p in OPTIONAL_PARSERS if p in keys))}
     result.update({name:modules[name].current_versions() for name in SELECTED_SOURCES if name in keys})
     return result

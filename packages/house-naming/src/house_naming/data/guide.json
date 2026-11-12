@@ -24856,7 +24856,7 @@
       "id": "document-role-wording",
       "scope": "search",
       "priority": 0,
-      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>(?:Committee|Rules)[ _-]+Memo(?:randum)?|Revenue[ _-]+Estimate|Estimated[ _-]+Revenue[ _-]+Effects|Issue[ _-]+Brief|Brochure|Flyer|Pamphlet|Graphic|Scatterplot|Slides?|Tally[ _-]+Sheets?|Letters|Letter(?![ _-]*of[ _-]*Support)|Exhibit|Append(?:ix(?:es)?|ices)|Attachment|Report)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
+      "pattern": "(?:(?<![A-Za-z0-9])|(?-i:(?<=[a-z0-9])(?=[A-Z])))(?P<label>(?:Committee|Rules)[ _-]+Memo(?:randum)?|Revenue[ _-]+Estimate|Estimated[ _-]+Revenue[ _-]+Effects|Issue[ _-]+Brief|Brochure|Flyer|Pamphlet|Graphic|Scatterplot|Slides?|(?:Tally[ _-]+Sheets?|(?:Vote|Final)[ _-]+Tall(?:y|ies))|Letters|Letter(?![ _-]*of[ _-]*Support)|Exhibit|Append(?:ix(?:es)?|ices)|Attachment|Report)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=pdf(?:-[0-9]+)?\\Z))",
       "description": "Literal descriptive document wording; no publication family, content verification or official status inferred.",
       "scan_order": 5,
       "field_vocabularies": {
@@ -27735,6 +27735,94 @@
           "note": "Literal publisher serial-shaped filename, not a GPO publication number or verified Congress. The reviewed 103-3.pdf body prints serial 113-3."
         }
       }
+    },
+    {
+      "id": "leading-substitute-target",
+      "scope": "stem",
+      "priority": 1,
+      "pattern": "(?P<amendment_marker>AINS|ANS)(?:[ _-]+(?P<target_marker>to)[ _-]+|[_-]+(?=(?:Rules[_-]+)?(?:Subcommittee|Committee|Cmte)[_-]*Print))(?P<target_subject>.+)",
+      "description": "Leading substitute marker followed by explicit target wording or committee-print target; contents and adoption are not verified.",
+      "searchable_fields": [
+        "target_subject"
+      ],
+      "field_readings": {
+        "amendment_marker": {
+          "label": "Amendment in the nature of a substitute",
+          "note": "Filename convention describes substitute form; it does not verify contents, a bill identity or legislative action.",
+          "category": "amendment"
+        },
+        "target_marker": {
+          "note": "Printed target relationship; no target identity is established."
+        },
+        "target_subject": {
+          "note": "Literal target wording; does not establish this document as the target genre."
+        }
+      }
+    },
+    {
+      "id": "truth-in-testimony-wording",
+      "scope": "document-wording-search",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "allow_overlap_fields": [
+        "label",
+        "document_token"
+      ],
+      "pattern": "(?:(?<![A-Za-z])|(?-i:(?<=[a-z0-9])(?=[A-Z]))|(?<=[a-z]))(?P<label>Trur?thi?[\\s_.-]*in[\\s_.-]*(?:Testimon(?:y|ies)|Testimomy|Testimon|Testifying)(?:[\\s_.-]*(?:Disclosure(?:[\\s_.-]*(?:Statement|Stmt|Form))?|Form))?)(?:(?![A-Za-z])|(?-i:(?<=[a-z])(?=[A-Z]))|(?=(?:signed|copy|redacted|final|pdf|docx?)(?:[^a-z]|\\Z)))",
+      "description": "Explicit Truth in Testimony disclosure wording, including observed run-together and misspelled committee basenames; no speaker identity or form completeness is inferred.",
+      "field_readings": {
+        "label": {
+          "label": "Truth in Testimony disclosure",
+          "category": "testimony-disclosure",
+          "note": "Literal Truth in Testimony wording; raw spelling retained without repairing typos."
+        }
+      }
+    },
+    {
+      "id": "amendment-vote-result-wording",
+      "scope": "document-wording-search",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "reserve_field": "vote_wording",
+      "pattern": "(?<![A-Za-z])(?:Amendment|Amdt|Amnt)[ _#.-]*[0-9]+[A-Za-z]?(?:[ _-]+to[ _-]+(?:h\\.?[ _-]*r\\.?|s\\.?)[ _-]*[0-9]+)?[ _-]+(?P<vote_wording>Results?)(?![A-Za-z])",
+      "description": "Printed result wording following an amendment reference; vote counts and outcome are not verified.",
+      "field_readings": {
+        "vote_wording": {
+          "category": "tally-sheet",
+          "note": "Printed result wording following an amendment reference; vote counts and outcome are not verified."
+        }
+      }
+    },
+    {
+      "id": "roll-call-motion-wording",
+      "scope": "document-wording-search",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "(?:\\A|(?<=[.]))(?P<vote_wording>on[ _-]+the[ _-]+motion[ _-]+to[ _-]+(?:report|table|recommit|proceed|adopt|strike|waive|suspend|postpone|authorize))(?![A-Za-z])",
+      "description": "Printed roll-call motion wording; vote counts and outcome are not verified.",
+      "field_readings": {
+        "vote_wording": {
+          "category": "committee-vote",
+          "note": "Printed roll-call motion wording; vote counts and outcome are not verified."
+        }
+      },
+      "allow_overlap_fields": [
+        "label"
+      ]
+    },
+    {
+      "id": "dated-vote-prefix",
+      "scope": "document-wording-search",
+      "priority": 0,
+      "scan_stage": "supplemental",
+      "pattern": "\\A(?P<vote_wording>VOTE)(?=[_-][0-9]{1,2}[._-][0-9]{1,2}[._-][0-9]{2,4}[_-])",
+      "description": "Leading uppercase VOTE prefix before a numeric calendar date; vote counts and outcome are not verified.",
+      "field_readings": {
+        "vote_wording": {
+          "category": "committee-vote",
+          "note": "Leading VOTE prefix before a numeric date; vote counts and outcome are not verified."
+        }
+      }
     }
   ],
   "extraction_vocabularies": {
@@ -29661,6 +29749,30 @@
       },
       "letterofrecommendationfor": {
         "category": "letter"
+      },
+      "explanatorystatement": {
+        "category": "explanatory-statement"
+      },
+      "explanatorystatements": {
+        "category": "explanatory-statement"
+      },
+      "jointexplanatorystatement": {
+        "category": "explanatory-statement"
+      },
+      "jointexplanatorystatements": {
+        "category": "explanatory-statement"
+      },
+      "votetally": {
+        "category": "tally-sheet"
+      },
+      "votetallies": {
+        "category": "tally-sheet"
+      },
+      "finaltally": {
+        "category": "tally-sheet"
+      },
+      "finaltallies": {
+        "category": "tally-sheet"
       }
     },
     "person-slot-roles": {

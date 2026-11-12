@@ -31,8 +31,7 @@ CONSTITUTIONAL_ORDINAL = re.compile(
 # their own name until there is a deliberate reason to group them.
 _FAMILY_MEMBERS = {
     'letter': ('letter-of-support',),
-    'statement': ('opening-statement', 'member-statement', 'witness-statement', 'testimony',
-                  'explanatory-statement'),
+    'statement': ('opening-statement', 'member-statement', 'witness-statement', 'testimony'),
     'remarks': ('opening-remarks',),
     'transcript': ('committee-transcript',),
     'report': ('committee-report', 'committee-report-part', 'committee-report-unnumbered',
@@ -145,9 +144,19 @@ def document_category_fields(filename: str | None, observations: list[dict]) -> 
             if (ordinal and not operative_target and not re.search(
                     r'(?:^|[\s_.-])(?:proposed|offered)[\s_.-]+$', before[:ordinal.start()], re.I)):
                 continue
+        if kind == 'amendment-collection' and (
+                re.match(r'[ _-]+(?:Act(?![A-Za-z])|of[ _-]+(?:19|20)[0-9]{2}(?![0-9]))', after, re.I)
+                or re.search(r'(?:\b|_)User[ _-]+Fee[ _-]+$', before, re.I)):
+            continue
+        if kind == 'biography' and field['raw'].lower() == 'bio' and (
+                re.search(r'(?:^|[._])[A-Z]{2,}_$', before)
+                and re.match(r'[-_][a-z]+[-_][0-9]{2}(?![0-9])', after)):
+            continue
         if kind == 'summary' and re.match(r'[ _-]+Judgments?(?![A-Za-z])', after, re.I):
             continue
         if kind == 'report' and re.match(r'(?:(?i:[ _-]+Cards?(?![A-Za-z]))|Cards?(?=[A-Z]|\b))', after):
+            continue
+        if kind == 'report' and re.search(r'(?:\b|_)(?:Un)?favorably[ _-]+$', before, re.I):
             continue
         if kind == 'response' and re.search(
                 r'(?:\b|_)(?:(?:Policy|US|U\.S\.|National|International|Emergency|Federal)[ _-]+'
@@ -189,6 +198,22 @@ def document_category_fields(filename: str | None, observations: list[dict]) -> 
                 and not re.search(r'(?:^|[ _-])(?:and|&)(?:$|[ _-])',
                                   filename[min(f['end'], other['end']):max(f['start'], other['start'])], re.I)
                 for other in candidates):
+            continue
+        if (filename is not None and f['category'] in {'committee-print', 'report', 'letter'}
+                and not any(v['category'] in {'tally-sheet', 'committee-vote'} for v in candidates)
+                and any(other['category'] == 'amendment'
+                        and other.get('label') == 'Amendment in the nature of a substitute'
+                        and (f['end'] <= other['start'] or other['end'] <= f['start'])
+                        and not re.search(r'(?:^|[ _-])(?:and|&)(?:$|[ _-])',
+                                          filename[min(f['end'], other['end']):max(f['start'], other['start'])], re.I)
+                        for other in candidates)):
+            continue
+        if (filename is not None and f['category'] == 'testimony'
+                and any(other['category'] == 'testimony-disclosure'
+                        and f['end'] <= other['start']
+                        and not re.search(r'(?:^|[\s_.-])(?:and|&|with)(?:$|[\s_.-])',
+                                          filename[f['end']:other['start']], re.I)
+                        for other in candidates)):
             continue
         if filename is not None and any(f['end'] <= other['start'] and re.fullmatch(r'[ _-]+', filename[f['end']:other['start']])
                and (f['category'], other['category']) in {('managers-package', 'summary'), ('summary', 'slides')}

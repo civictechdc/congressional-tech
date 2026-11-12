@@ -10,6 +10,8 @@ from .content import RawContent
 class DocumentWitness(SourceModel):
     name: str
     honorific: str = ''
+    rank: str = ''
+    credentials: str = ''
     position: str = ''
     organization: str = ''
 

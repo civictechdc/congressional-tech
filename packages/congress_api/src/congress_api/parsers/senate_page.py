@@ -13,7 +13,12 @@ from urllib.parse import parse_qs, unquote, urljoin, urlsplit
 from lxml import html as dom
 
 from congress_api.parsers.text import text
-from congress_api.parsers.witness_names import is_name, witness
+from congress_api.parsers.witness_names import (
+    CIVIL_PREFIX,
+    is_name,
+    peel_leading_position_credentials,
+    witness,
+)
 from congress_api.parsers.document_links import feed_link, http_url, is_document_url
 from congress_api.parsers.document_types import document_type
 from congress_api.parsers.media import youtube_video_id
@@ -78,10 +83,33 @@ KINDS = [("transcript", r"transcript"), ("questions for the record", r"qfr|quest
 AMENDMENT_LIST = re.compile(r".+\bas (?:amended|modified) by(?::(?:\s*PASSED BY VOICE VOTE)?)?", re.I)
 
 
-def person(name, details, page):
+def _peel_civil_honorific(raw_text: str) -> str:
+    rem = (raw_text or "").strip()
+    parts: list[str] = []
+    while cm := CIVIL_PREFIX.match(rem):
+        parts.append(cm.group(0).strip())
+        rem = rem[cm.end():].lstrip()
+    return " ".join(parts)
+
+
+def person(name, details, page, *, include_qualifications=False):
     """One witness row from a name as the page writes it ("The Honorable Jay Bhattacharya, M.D., Ph.D.") and the lines under it."""
     details = [d for d in (text(d) for d in details) if d and not re.match(r"(download|view|watch) ", d, re.I)]
-    return {"name": witness(text(name))["name"], "position": details[0] if details else "", "organization": ", ".join(details[1:3]), "page": page}
+    cleaned_name = text(name)
+    parsed = witness(cleaned_name)
+    row = {
+        "name": parsed["name"],
+        "position": details[0] if details else "",
+        "organization": ", ".join(details[1:3]),
+        "page": page,
+    }
+    if include_qualifications:
+        pos, creds = peel_leading_position_credentials(row["position"], parsed["credentials"])
+        row["position"] = pos or ""
+        row["honorific"] = parsed["honorific"] or _peel_civil_honorific(cleaned_name)
+        row["rank"] = parsed["rank"]
+        row["credentials"] = creds or ""
+    return row
 
 
 def sections(page_html, levels):
@@ -89,7 +117,8 @@ def sections(page_html, levels):
     return [s for s in re.split(rf"(?=<h[{levels}]\b)", page_html) if not (s.startswith("<h") and re.search(r"statement|remarks", text(s.split("</h")[0]), re.I))]
 
 
-def witnesses(page_html, url, *, plain=False, deduplicate=True, exclude_address_fallback=False):
+def witnesses(page_html, url, *, plain=False, deduplicate=True, exclude_address_fallback=False,
+              include_qualifications=False):
     """The witnesses a hearing page lists, by whichever of the seven layouts it uses."""
     page_html, out = re.sub(r"<!--.*?-->", "", page_html, flags=re.S), []
     if "capigacr-widget-card" in page_html:
@@ -100,7 +129,8 @@ def witnesses(page_html, url, *, plain=False, deduplicate=True, exclude_address_
             for card in re.split(r"<li class=\"capigacr-widget-card\"", section)[1:]:
                 name = re.search(r"capigacr-widget-card__title[^>]*>(.*?)</h3>", card, re.S)
                 if name:
-                    out.append(person(name.group(1), re.findall(r"member-detail-item[^>]*>(.*?)</div>", card, re.S), url))
+                    out.append(person(name.group(1), re.findall(r"member-detail-item[^>]*>(.*?)</div>", card, re.S), url,
+                                      include_qualifications=include_qualifications))
     elif "witness-content" in page_html:
         for item in ("<li" + i for s in sections(page_html, "2") for i in re.split(r"<li\b", s)[1:]):
             details = re.search(r"<div class=\"witness-content[^\"]*\">(.*?)</div>\s*</div>", item, re.S)
@@ -112,7 +142,8 @@ def witnesses(page_html, url, *, plain=False, deduplicate=True, exclude_address_
                 post = [l for l in (text(l) for l in re.split(r"</(?:p|div)>", item[heading[-1].end():details.start()])) if l] if heading else []
                 if above:
                     out.append(person(re.sub(r"^\d+\.\s*", "", text(heading[-1].group(1)) if heading else above[-1]),
-                                      post + re.findall(r"<div>(.*?)</div>", details.group(1), re.S), url))
+                                      post + re.findall(r"<div>(.*?)</div>", details.group(1), re.S), url,
+                                      include_qualifications=include_qualifications))
     elif "class=\"vcard" in page_html:
         start = re.search(r">\s*(Witnesses|Nominees|Panel)", page_html)
         for card in re.split(r"<li[^>]*class=\"vcard", page_html[start.start() if start else 0:])[1:]:
@@ -120,36 +151,45 @@ def witnesses(page_html, url, *, plain=False, deduplicate=True, exclude_address_
             name = re.search(r"class=\"fn\">((?:\s*<span[^>]*>[^<]*</span>)*[^<]*)</span>", card, re.S)  # "<span>Dr.</span> Saule T. Omarova"
             if name:
                 prefix = re.search(r"class=\"honorific-prefix\">(.*?)</span>", card, re.S)
-                out.append(person(f"{text(prefix.group(1)) if prefix else ''} {text(name.group(1))}", re.findall(r"class=\"(?:title|org)\">(.*?)</div>", card, re.S), url))
+                out.append(person(f"{text(prefix.group(1)) if prefix else ''} {text(name.group(1))}", re.findall(r"class=\"(?:title|org)\">(.*?)</div>", card, re.S), url,
+                                  include_qualifications=include_qualifications))
     elif re.search(r"class=\"(?:full-name|person)\"", page_html):
         for item in (i for s in sections(page_html, "23") for i in re.split(r"<li class=\"[^\"]*list-group-item", s)[1:]):
             name = re.search(r"class=\"(?:full-name|person)\">(.*?)</(?:h4|div)>", item, re.S)
             if name:
-                out.append(person(name.group(1), re.findall(r"class=\"(?:occupation|organization)\">(.*?)</div>", item, re.S), url))
+                out.append(person(name.group(1), re.findall(r"class=\"(?:occupation|organization)\">(.*?)</div>", item, re.S), url,
+                                  include_qualifications=include_qualifications))
     elif "paragraph--witness" in page_html:
         for item in re.split(r"paragraph--witness\"", page_html)[1:]:
             name = re.search(r"witness__field-name\">(.*?)</div>", item, re.S)
             if name:
-                out.append(person(name.group(1), re.findall(r"witness__field-(?:position|organization)\">(.*?)</div>", item, re.S), url))
+                out.append(person(name.group(1), re.findall(r"witness__field-(?:position|organization)\">(.*?)</div>", item, re.S), url,
+                                  include_qualifications=include_qualifications))
     elif "field-hearing-new-witness" in page_html:
         for item in re.split(r"field-collection-item-field-hearing-new-witness", page_html)[1:]:
             name = re.search(r"class=\"group-header\">(.*?)</div>", item, re.S)
             if name:
-                out.append(person(name.group(1), re.findall(r"<(?:em|span)>(.*?)</(?:em|span)>", item.split("more-link")[0], re.S), url))
+                out.append(person(name.group(1), re.findall(r"<(?:em|span)>(.*?)</(?:em|span)>", item.split("more-link")[0], re.S), url,
+                                  include_qualifications=include_qualifications))
     else:
         start = re.search(r">\s*Witnesses\s*</h\d>", page_html)
         for item in re.split(r"jet-listing-grid__item ", page_html[start.start():] if start else "")[1:]:
             names = re.findall(r"<h[34] class=\"jet-listing-dynamic-field__content\">(.*?)</h[34]>", item, re.S)
             if names:
-                out.append(person(" ".join(names), re.findall(r"<(?:div|p) class=\"jet-listing-dynamic-field__content\">(.*?)</(?:div|p)>", item, re.S), url))
+                out.append(person(" ".join(names), re.findall(r"<(?:div|p) class=\"jet-listing-dynamic-field__content\">(.*?)</(?:div|p)>", item, re.S), url,
+                                  include_qualifications=include_qualifications))
     if plain:
         root = dom.fromstring(page_html)
         card_nodes = {node for node in root.iter() if participant_card_identity(node)}
-        out += [
-            {**witness(line), 'page': url}
-            for anchor, line, _ in plain_witness_links(root, exclude_address_fallback=exclude_address_fallback)
-            if not any(parent in card_nodes for parent in anchor.iterancestors())
-        ]
+        for anchor, line, _ in plain_witness_links(root, exclude_address_fallback=exclude_address_fallback):
+            if any(parent in card_nodes for parent in anchor.iterancestors()):
+                continue
+            parsed = witness(line)
+            if include_qualifications:
+                parsed['honorific'] = parsed['honorific'] or _peel_civil_honorific(line)
+                out.append({**parsed, 'page': url})
+            else:
+                out.append({**{k: v for k, v in parsed.items() if k not in ('rank', 'credentials')}, 'page': url})
     valid = [w for w in out if is_name(w["name"])]
     if not deduplicate:
         return valid
@@ -1304,7 +1344,7 @@ def witness_occurrences(page_html, url=None, *, plain=True, exclude_address_fall
     except Exception:
         pass
     people = witnesses(page_html, effective_base, plain=plain, deduplicate=False,
-                       exclude_address_fallback=exclude_address_fallback)
+                       exclude_address_fallback=exclude_address_fallback, include_qualifications=True)
     if not people:
         return []
     files, witness_metadata, _ = source_details(
@@ -1358,7 +1398,7 @@ def witness_occurrences(page_html, url=None, *, plain=True, exclude_address_fall
                     and re.fullmatch(r"[A-Z][A-Z'-]+ [A-Z]\. (?:[A-Z][A-Z'-]+ )*[A-Z][A-Z'-]+(?: IV)?", meta['name'])):
                 # These nominee headings put the full name in its own field.
                 # An uppercase surname there is not a trailing credential.
-                row = {**row, 'name': meta['name']}
+                row = {**row, 'name': meta['name'], 'credentials': ''}
         occurrences.append(
             {
                 **row,

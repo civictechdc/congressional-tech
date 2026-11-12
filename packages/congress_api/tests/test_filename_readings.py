@@ -49,6 +49,11 @@ def test_typed_bill_keys_use_known_congress_and_preserve_literals():
     unknown = reader().read_filename('H.R.1.S.2.pdf', '', catalog_version='v')
     assert unknown['measure_keys'] == [] and unknown['measure_number'] is None
     assert [v['value'] for v in unknown['fields'] if v['field'] == 'measure_references'] == ['hr1', 's2']
+    # cat2-ddas (2): >5-digit numbers never mint canonical measure_keys, while 5-digit bills do
+    assert reader().read_filename('bills-117pih-1hres___6162021.pdf', '', catalog_version='v')['measure_keys'] == []
+    assert reader().read_filename('BILLS-117hres081022.pdf', '', catalog_version='v')['measure_keys'] == []
+    assert reader().read_filename('BILLS-118HR57365430ih-U2.pdf', '', catalog_version='v')['measure_keys'] == []
+    assert reader().read_filename('BILLS-119hr10357ih.pdf', '', catalog_version='v')['measure_keys'] == ['119-hr-10357']
 
 
 def test_dates_bioguide_and_all_facets_keep_ambiguity():

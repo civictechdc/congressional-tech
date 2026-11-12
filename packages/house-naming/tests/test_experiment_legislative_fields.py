@@ -587,3 +587,19 @@ def test_date_shaped_measure_numbers_keep_their_role(engine,name):
     assert row.get('subject_token') == ['Garcia']
     assert not row.get('date_token')
     assert not row.get('short_date_token')
+
+
+def test_cat2_ddas_untyped_placeholder_and_overlong_bills_payloads_rejected(engine):
+    # Placeholder underscores before trailing compact date (bills-117pih-1hres___6162021.pdf)
+    draft = engine.extract('bills-117pih-1hres___6162021.pdf')['metadata']
+    assert not draft.get('measure_references')
+    assert not draft.get('measure_number')
+    assert draft.get('number_placeholder') == ['___']
+    assert draft.get('date_token') == ['6162021']
+    assert draft.get('date_token_candidates') == ['2021-06-16']
+
+    # Overlong (>5-digit) date-suffixed untyped drafts do not mint measure_references, while 5-digit bills stay valid
+    assert not engine.extract('bills-117pih-hres081022.pdf')['metadata'].get('measure_references')
+    assert engine.extract('bills-117pih-hres10357.pdf')['metadata'].get('measure_references') == ['hres10357']
+    assert engine.extract('BILLS-119hr10357ih.pdf')['metadata'].get('measure_references') == ['hr10357']
+

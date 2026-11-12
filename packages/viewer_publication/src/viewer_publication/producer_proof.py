@@ -45,7 +45,8 @@ ROOT = Path(__file__).resolve().parents[4]
 REGISTRY = ROOT / 'model/registries/compatible-versions.json'
 ROW_VERSIONED = {'readings': 'parser_version', 'filename_readings': 'catalog_version',
                  'meeting_records': 'parser_version', 'appearance_records': 'parser_version',
-                 'video_records': 'parser_version', 'committee_records': 'parser_version', 'playlist_records': 'parser_version'}
+                 'video_records': 'parser_version', 'committee_records': 'parser_version', 'playlist_records': 'parser_version',
+                 'transcript_headings': 'parser_version'}
 
 
 def _lit(value):
@@ -112,6 +113,7 @@ PRODUCERS = {
     'video_records': {DAILY, BACKFILL, IMPORT},
     'committee_records': {DAILY, BACKFILL, IMPORT},
     'playlist_records': {DAILY, BACKFILL, IMPORT},
+    'transcript_headings': {DAILY, BACKFILL, IMPORT},
 }
 # Older producers hashed installed library versions (sniff: pypdf, lxml), so report the versions
 # the commit's own uv.lock pins rather than today's environment.
@@ -130,7 +132,8 @@ out = dict(captures=version('captures', lambda m: m.current_version()),
         for p in ('sniff', 'html', 'xml', 'json', *getattr(m, 'READ_AS', {}))}),
     filename_readings=version('filenames', lambda m: m.current_version()),
     module=importlib.import_module('congress_api.lake.captures').__file__)
-for name in ['meeting_records', 'appearance_records', 'video_records', 'committee_records', 'playlist_records']:
+for name in ['meeting_records', 'appearance_records', 'video_records', 'committee_records', 'playlist_records',
+             'transcript_headings']:
     out[name] = version(name, lambda m: m.current_versions())
 print(json.dumps(out))
 """

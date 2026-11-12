@@ -146,6 +146,7 @@
   "members_export": 12770,
   "model_recovery_rows": 12751,
   "model_url_keys": 1704221,
+  "name_fold": 1,
   "nominations_export": 783,
   "non_document_good_fetches": 1,
   "normalized": 323087,
@@ -341,6 +342,9 @@
   "witness_member_tiers": 12439,
   "witness_members": 10496,
   "witness_precedence": 37001,
+  "witness_transcript_entries": 17516,
+  "witness_transcript_facts": 1109,
+  "witness_transcript_rows": 3464,
   "witnesses_export": 172604,
   "youtube_api_bodies": 295,
   "youtube_cache_bodies": 52

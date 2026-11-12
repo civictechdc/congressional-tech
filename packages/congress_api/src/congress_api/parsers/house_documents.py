@@ -113,6 +113,14 @@ def document_kind(code, description, url):
             or next((k for k, pattern in NAMED if re.search(pattern, description, re.I)), "") or "support document")
 
 
+_MEASURE_BILL = re.compile(
+    r"^\s*(?:H\.?\s*R\.?|S\.?|H\.?\s*J\.?\s*Res\.?|S\.?\s*J\.?\s*Res\.?|"
+    r"H\.?\s*Con\.?\s*Res\.?|S\.?\s*Con\.?\s*Res\.?|H\.?\s*Res\.?|S\.?\s*Res\.?)"
+    r"(?:\s*$|\s*[-_]?\s*(?:\d+\b|_{2,}))",
+    re.I,
+)
+
+
 def read_xml(root: ET.Element | HouseMeetingXML, wlist: ET.Element | HouseWitnessListXML | None):
     """(kind, name, url, every file's name) per document, and the amendments and votes. A document's files are one
     document in several formats (a bill's PDF and its XML); the record has the document when it has any of them."""
@@ -130,8 +138,10 @@ def read_xml(root: ET.Element | HouseMeetingXML, wlist: ET.Element | HouseWitnes
             name = description or (f"{k}: {witness}" if witness else file)
             docs.append((k, name, url, {u.rsplit("/", 1)[-1] for u in files}))
         if d.tag == "meeting-document" and code in ("CA", "HA", "FA", "CV"):
+            raw_bill = value(d, "legis-num") or value(d, "filename-metadata/legis-num")
+            bill = raw_bill if _MEASURE_BILL.match(raw_bill) else ""
             for url in files or [""]:
-                amendments.append({"kind": "vote" if code == "CV" else "amendment", "bill": value(d, "legis-num") or value(d, "filename-metadata/legis-num"),
+                amendments.append({"kind": "vote" if code == "CV" else "amendment", "bill": bill,
                                    "number": value(d, "filename-metadata/" + ("vote-num" if code == "CV" else "amdt-num")),
                                    "sponsor_bioguide": value(d, "filename-metadata/bioguideID"), "amendment_type": value(d, "filename-metadata/amdt-type"),
                                    "enbloc": value(d, "filename-metadata/enbloc-num"), "description": description, "url": url})

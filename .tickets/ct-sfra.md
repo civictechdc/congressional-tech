@@ -1,6 +1,6 @@
 ---
 id: ct-sfra
-status: open
+status: closed
 deps: []
 links: [ct-gfo7, ct-uz8q, ct-kw85]
 created: 2026-11-11T02:06:19Z
@@ -27,3 +27,7 @@ The ~22 rows change as measured and no other row changes unexplained; the produc
 **2026-11-11T10:57:59Z**
 
 2026-11-11 (session congress-1): also Dona Abbott (CHRG-109, meeting 108846): her statement_for_record type is read from the cut-off end of a GPO note, but Congress.gov lists her among that meeting's witnesses; it equals the live value, so not a regression; the transcript should decide (seventh MODS review, .cache/archive-release/investigations/mods-rebase-20261110/review-6/r7-signed-verdicts.json).
+
+**2026-11-12T15:57:00Z**
+
+Wave 3 (`claude/ct-wave-3-parsers`): folded `.claude/worktrees/ct-sfra` cleanly onto `claude/ct-wave-3-parsers` (`transcript_headings` lake table, `gpo_headings.py` parser, `model/sql/name-fold.sql` + `witness-transcript-{entries,facts,rows}.sql`, `archive_model.py` / `archive_import_job.py` / `daily.py` wiring, and `scripts/measure/transcript_appearance_raw_check.py` speaker-turn raw check with plants). Verified unit + raw-check tests and end-to-end horizontal slices (`wave3_horizontal_slice_review.md` slices `H3` & `H6`, including `ct-eppo` × `ct-sfra` promoting Carmen Catizone on `CHRG-113hhrg86394` from `statement_for_record` in MODS lake to live attending witness `None` upon matching `STATEMENT OF CARMEN CATIZONE` in `CHRG-113hhrg86394.htm`). Ready for Merge Slot #2 + R2 `transcript_headings` backfill.

@@ -341,3 +341,30 @@ test('a witness row with no name is labelled by its organization, never by its k
   assert.equal(witnessLabel({witness_key:'k',name:null,organization:'American Legion',witness_type:'statement_for_record'}),'Statement for the record');
   assert.equal(witnessLabel({witness_key:'k',name:null,organization:null}),'k');
 });
+
+test('witnessLabel, witness search, and member document filter preserve rank, parenthetical credentials, on_behalf_of, and name-matched Members (ct-17op, ct-eofd)',async()=>{
+  const {witnessLabel, createArchiveEntities}=await import('./archive-entities.ts');
+  assert.equal(witnessLabel({witness_key:'k',name:'Michael E. Conley',rank:'Lt. Gen.',credentials:'USAF'}),'Lt. Gen. Michael E. Conley, USAF');
+  assert.equal(witnessLabel({witness_key:'k',name:'Rochelle Walensky',rank:null,credentials:'MD, MPH'}),'Rochelle Walensky, MD, MPH');
+  assert.equal(witnessLabel({witness_key:'k',name:'William H. Janes',rank:'Colonel',credentials:'(U.S. Army, Ret.)'}),'Colonel William H. Janes (U.S. Army, Ret.)');
+  assert.equal(witnessLabel({witness_key:'k',name:'Nancy Knight',rank:'Rear Admiral',credentials:'M.D., USPHS (Ret.)'}),'Rear Admiral Nancy Knight, M.D., USPHS (Ret.)');
+  const entities=createArchiveEntities({
+    count:2,files:new Map([['witnesses.parquet',{}],['members.parquet',{}]]),columns:new Map(),value:()=>null,row:(i:number)=>({list_row:i}),
+    entity:async(name:string)=>name==='witnesses'?[
+      {witness_key:'w1',occasion:'meeting:1001',name:'Michael E. Conley',rank:'Lt. Gen.',credentials:'USAF',position:'Commander',organization:'U.S. Air Force',on_behalf_of:'Air Mobility Coalition',list_rows:[0]},
+      {witness_key:'w2',occasion:'meeting:1002',name:'Gus Bilirakis',witness_type:'member_appearance',matched_bioguide_id:'B001257',match_basis:'member_day',list_rows:[1]},
+    ]:[{bioguide_id:'B001257',name:'Gus M. Bilirakis'}],
+    resolve:async()=>null,entry:async()=>null,versions:async()=>[],
+  });
+  const res:any=await entities.getWitness('w1');
+  assert.ok(res);
+  assert.equal(res.rank,'Lt. Gen.');
+  assert.equal(res.credentials,'USAF');
+  assert.equal(res.appearances[0].rank,'Lt. Gen.');
+  assert.equal(res.appearances[0].credentials,'USAF');
+  for(const q of ['Lt. Gen.','USAF','Lt. Gen. Michael E. Conley','Air Mobility Coalition']){
+    assert.deepEqual((await entities.listEntities('witnesses',{q})).rows.map((w:any)=>w.witness_key),['w1'],`query=${q}`);
+  }
+  const filtered=await entities.prepareQuery({member:['B001257']});
+  assert.deepEqual([...(filtered.allowedRows??[])],[1]);
+});

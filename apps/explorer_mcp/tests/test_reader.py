@@ -391,3 +391,35 @@ def test_document_address_tables_are_never_entities(phase2, tmp_path, shape):
             reader.search_entities({'table': 'links'})
     finally:
         reader.close()
+
+
+def test_witness_entity_search_matches_rank_name_credentials_and_on_behalf_of(phase2, tmp_path):
+    import pyarrow as pa
+    witnesses = pq.read_table(phase2.parent / 'witnesses.parquet')
+    rows = witnesses.to_pylist()
+    rows[0]['rank'] = 'Lt. Gen.'
+    rows[0]['name'] = 'Michael E. Conley'
+    rows[0]['credentials'] = 'USAF'
+    rows[0]['on_behalf_of'] = 'Air Mobility Coalition'
+    new_cols = {c.name: c.type for c in witnesses.schema}
+    new_cols.setdefault('rank', pa.string())
+    new_cols.setdefault('credentials', pa.string())
+    new_cols.setdefault('on_behalf_of', pa.string())
+    schema_pa = pa.schema([(k, v) for k, v in new_cols.items()])
+    table = pa.Table.from_pylist([{k: r.get(k) for k in new_cols} for r in rows], schema=schema_pa)
+
+    def declare(value):
+        cols = next(f for f in value['files'] if f['name'] == 'witnesses.parquet')['columns']
+        existing = {c['name'] for c in cols}
+        for field in ('rank', 'credentials', 'on_behalf_of'):
+            if field not in existing:
+                cols.append(dict(name=field, type='string', meaning=field, nullable=True))
+
+    reader = edited_release(phase2, tmp_path, files=[('witnesses.parquet', table)], schema=declare)
+    try:
+        key = rows[0]['witness_key']
+        for q in ('Lt. Gen.', 'USAF', 'Lt. Gen. Michael E. Conley', 'Michael E. Conley, USAF', 'Air Mobility Coalition'):
+            found = [r['witness_key'] for r in reader.search_entities({'table': 'witnesses', 'text': q})['rows']]
+            assert key in found, q
+    finally:
+        reader.close()

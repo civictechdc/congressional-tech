@@ -26,7 +26,7 @@ MEMBERS = [  # bioguide, first, last, nickname, (term type, state, start, end, d
     ('J000177', 'Tim', 'Johnson', None, ('sen', 'SD', '1997-01-07', '2015-01-03', None)),
     ('P000602', 'Mike', 'Pompeo', None, ('rep', 'KS', '2011-01-05', '2017-01-23', '4')),
     ('C000077', 'Ben', 'Campbell', None, ('sen', 'CO', '1993-01-05', '2005-01-03', None)),
-    ('H001072', 'J.', 'Hill', 'French', ('rep', 'AR', '2015-01-06', '2027-01-03', '2')),
+    ('H001072', 'J.', 'Hill', None, ('rep', 'AR', '2015-01-06', '2027-01-03', '2')),
     ('H001087', 'Katie', 'Hill', None, ('rep', 'CA', '2019-01-03', '2019-11-03', '25')),
     ('L000263', 'Sander', 'Levin', None, ('rep', 'MI', '1983-01-03', '2019-01-03', '9')),
     ('L000261', 'Carl', 'Levin', None, ('sen', 'MI', '1979-01-15', '2015-01-03', None)),
@@ -60,6 +60,7 @@ WITNESSES = {
     'pompeo': ('mods', 3, 'Mike Pompeo', 'a Representative in Congress from the State of Kansas', None, None, None, False, None),
     'campbell': ('mods', 4, 'Ben Nighthorse Campbell', 'U.S. Senator from Colorado', None, None, None, False, None),
     'hill': ('mods', 5, 'French J. Hill', 'U.S. House of Representatives', None, None, None, True, 'H001072'),
+    'hill-ar': ('mods', 5, 'French Hill', 'a Representative in Congress from the State of Arkansas', None, None, None, True, 'H001072'),
     'levin': ('mods', 6, 'Sander M. Levin', 'a Representative in Congress from the State of Michigan', None, None, None, True, 'L000263'),
     'publisher-sitting': ('house_xml', 7, 'The Honorable Gus M. Bilirakis', 'Member of Congress', None, 'B001257', None, True, 'B001257'),
     'publisher-former': ('house_xml', 8, 'The Honorable Heather Wilson', 'President', 'University of Texas at El Paso', 'W000789', None, False, None),
@@ -102,7 +103,9 @@ PLANTS = {
     'a Member Day testimony typed a statement': ('newhouse', ('statement', 'N000189')),
     "committee member's opening statement left an appearance, before the rosters": ('dingell-early-opening', 'D000355'),
     "a Senator's opening statement left an appearance, before the rosters": ('baucus-early-opening', 'B000243'),
+    'bare-initial Member with middle name left a witness': ('hill-ar', None),
 }
+MIDDLE_OFFICIAL = {'H001072': ('French', 'J. French Hill')}
 PACKAGES = {'dingell-early-opening': 'CHRG-110hhrg77777', 'pallone-early-opening': 'CHRG-110hhrg77777',
             'baucus-early-opening': 'CHRG-106shrg77778'}
 # The prints' own GovInfo HTML transcripts, as the captures table names them: the House form, a suffix before it, and
@@ -118,7 +121,9 @@ PRINT_MEMBERS = {'kaptur-opening': ['K000009', 'A000055']}
 def tables(tmp_path):
     other = pa.struct([('first', pa.string()), ('last', pa.string()), ('nickname', pa.string())])
     pq.write_table(pa.table(dict(bioguide_id=[m[0] for m in MEMBERS], name_first=[m[1] for m in MEMBERS],
+                                 name_middle=[MIDDLE_OFFICIAL.get(m[0], (None, None))[0] for m in MEMBERS],
                                  name_last=[m[2] for m in MEMBERS], name_nickname=[m[3] for m in MEMBERS],
+                                 name_official_full=[MIDDLE_OFFICIAL.get(m[0], (None, None))[1] for m in MEMBERS],
                                  other_names=pa.array([[] for _ in MEMBERS], pa.list_(other)))), tmp_path / 'members.parquet')
     pq.write_table(pa.table(dict(bioguide_id=[m[0] for m in MEMBERS], term_type=[m[4][0] for m in MEMBERS],
                                  term_state=[m[4][1] for m in MEMBERS], term_start=[m[4][2] for m in MEMBERS],

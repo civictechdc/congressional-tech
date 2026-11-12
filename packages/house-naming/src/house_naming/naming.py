@@ -35,18 +35,12 @@ def code_label(context: str, token: str) -> tuple[str, str] | None:
 
 def __getattr__(name: str) -> Any:
     if name == 'HOUSE_NAMING':
-        val = get_engine()
-        globals()['HOUSE_NAMING'] = val
-        return val
+        return get_engine()
     if name == 'COLLECTION_CODES':
-        val = tuple(get_engine().guide['codes']['collection'])
-        globals()['COLLECTION_CODES'] = val
-        return val
+        return tuple(get_engine().guide['codes']['collection'])
     if name == 'APPROPRIATION_SUBJECTS':
-        val = tuple(strip_appropriation_prefix(token)
-                    for token in get_engine().guide['codes']['appropriation-subject'])
-        globals()['APPROPRIATION_SUBJECTS'] = val
-        return val
+        return tuple(strip_appropriation_prefix(token)
+                     for token in get_engine().guide['codes']['appropriation-subject'])
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 

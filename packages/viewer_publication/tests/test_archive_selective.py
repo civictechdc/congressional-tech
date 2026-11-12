@@ -55,11 +55,15 @@ def sorted_rows(rows):
     return sorted(rows,key=lambda row:repr(sorted(row.items(),key=lambda item:item[0])))
 
 
-def test_filename_transition_reuses_values_and_records_the_producer(tmp_path):
+def test_filename_transition_reuses_values_and_records_the_producer(tmp_path, monkeypatch):
     from datetime import date
     from congress_api.lake import filenames, tables
-    from viewer_publication.archive_backfill_job import FILENAME_PRIOR_VERSION, load_spec
-    from viewer_publication.producer_proof import snapshot_reasons
+    from viewer_publication.archive_backfill_job import FILENAME_ACT_CITATION_VERSION, FILENAME_PRIOR_VERSION, load_spec
+    from viewer_publication.producer_proof import snapshot_reasons, versions_at
+
+    # Rehearse the historical Act-citation endpoint; attributing it to a later HEAD refuses.
+    assert filenames.current_version() != FILENAME_ACT_CITATION_VERSION
+    monkeypatch.setattr(filenames, 'current_version', lambda: FILENAME_ACT_CITATION_VERSION)
 
     runtime = os.environ['DOCSPEC_JOB_CONFIG']
     catalog = tmp_path / 'base-catalog'
@@ -88,12 +92,16 @@ def test_filename_transition_reuses_values_and_records_the_producer(tmp_path):
     report = execute(load_spec(spec_file))
     assert report['rows'] == 3 and report['reused'] == 1 and report['recomputed'] == 2
     rows = {row['filename']: row for row in pq.read_table(work / 'check' / 'filename-readings.parquet').to_pylist()}
-    assert rows[unaffected['filename']] == dict(unaffected, catalog_version=filenames.current_version())
+    assert rows[unaffected['filename']] == dict(unaffected, catalog_version=FILENAME_ACT_CITATION_VERSION)
     assert (rows[eps]['date_token'], rows[eps]['filename_date']) == ('1-12-16', date(2016, 1, 12))
     assert (rows[afwa]['date_token'], rows[afwa]['filename_date']) == ('6-23-20', None)
     producer = json.loads(Path(report['producer']['path']).read_text())
+    producing_commit = producer['commit']
     model = dict(filename_readings=report['selector'], catalog_version=report['catalog_version'], parser_versions={})
-    assert snapshot_reasons(model, {'filename_readings': producer}) == []
+    expected = ([] if versions_at(producing_commit)['filename_readings'] == FILENAME_ACT_CITATION_VERSION else [
+        f'producer proof: filename_readings: the code at {producing_commit[:12]} computes another version than the pinned rows carry'
+    ])
+    assert snapshot_reasons(model, {'filename_readings': producer}) == expected
 
 
 @pytest.mark.parametrize('basename,refused', [

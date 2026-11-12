@@ -1,6 +1,8 @@
--- ct-kw85: what witness_members weighs, read once. One row per named witness row that is not a record entry
--- (part 'name'), and per Member two rows: the family name (part 'family', from name_last) and the first names (part
--- 'given': name_first, a nickname it holds in parentheses, and the members data's own name_nickname). Every name is
+-- ct-kw85 / ct-eofd: what witness_members weighs, read once. One row per named witness row that is not a record entry
+-- (part 'name'), and per Member up to three rows: the family name (part 'family', from name_last), the first names
+-- (part 'given': name_first, a nickname it holds in parentheses, and the members data's own name_nickname), and any
+-- middle or official full names (part 'middle': name_middle and name_official_full, from which witness_member_names
+-- keeps multi-letter non-family words so bare middle initials like 'M.' never match a namesake). Every name is
 -- read by the same rule: accents folded, a parenthetical and everything after the first comma dropped ('Bill
 -- Cassidy, M.D.'), honorifics, ranks and suffixes dropped as words, trailing initials dropped ('M.D.'), repeats kept
 -- once; 'JD' is a credential at the end of a witness's name and a first name at its start (JD Vance). A Member's first
@@ -16,46 +18,55 @@
 -- 'Representative of' or 'for' an organization is not the House. 'eligible' marks the rows the name and seat rules
 -- read: dated, without the publisher's ID of a known Member, and with no words that keep them witnesses.
 -- Its own step: the name, candidate, row, seat and decision steps read it.
-WITH fold(accented,plain) AS (
- -- The one accent table the Member appearance steps fold names and words with.
- VALUES ('áàâäãåāăąéèêëēėęěíìîïīįóòôöõøōőúùûüūůűñńçćčýÿšśžźżłđ','aaaaaaaaaeeeeeeeeiiiiiioooooooouuuuuuunncccyysszzzld')
-), witness_rows AS (
+WITH witness_rows AS (
  SELECT r.witness_key,coalesce(p.superseded_by,r.witness_key) AS person,r.bioguide_id AS publisher_id,
   k.bioguide_id IS NOT NULL AS publisher_member,r.event_id,r.package_id,r.name,
+  concat_ws(' ',r.honorific,r.name) AS titled_name,
   concat_ws(' | ',r.position,r.organization,r.on_behalf_of,r.location) AS fields,
-  concat_ws(chr(10),r.name,r.position,r.organization,r.on_behalf_of,r.location) AS name_lines,
+  concat_ws(chr(10),r.honorific,r.name,r.position,r.organization,r.on_behalf_of,r.location) AS name_lines,
   concat_ws(chr(10),r.position,r.organization,r.on_behalf_of,r.location) AS field_lines,
   CASE WHEN m.meeting_date IS NOT NULL THEN make_array(cast(m.meeting_date AS VARCHAR)) ELSE f.held_dates END AS dates,
   coalesce(m.title,f.title) AS title
  FROM (SELECT DISTINCT bioguide_id FROM spicy_members WHERE bioguide_id IS NOT NULL) k RIGHT JOIN (package_mods_facts f
-  RIGHT JOIN (meetings_resolved m RIGHT JOIN (witness_precedence p RIGHT JOIN appearance_records_resolved r
-  ON p.witness_key=r.witness_key) ON m.event_id=r.event_id) ON f.package_id=r.package_id) ON k.bioguide_id=r.bioguide_id
- WHERE r.name IS NOT NULL AND coalesce(r.witness_type,'') NOT IN ('statement_for_record','member_statement','record_material')
+  RIGHT JOIN (meetings_resolved m RIGHT JOIN ((SELECT witness_key,promote FROM witness_transcript_facts WHERE promote) t
+  RIGHT JOIN (witness_precedence p RIGHT JOIN appearance_records_resolved r ON p.witness_key=r.witness_key)
+  ON t.witness_key=r.witness_key) ON m.event_id=r.event_id) ON f.package_id=r.package_id) ON k.bioguide_id=r.bioguide_id
+ -- A record entry the print's transcript shows was a testimony (witness_transcript_facts.promote, ct-sfra) is read too.
+ -- Tested by the facts' own column: a test of the outer join's key (t.witness_key IS NOT NULL) let every typed row
+ -- through in a Parquet-input run of the pinned engine (ct-sfra sample harness, 2026-11-11), not in the hand-row test.
+ WHERE r.name IS NOT NULL
+  AND (coalesce(r.witness_type,'') NOT IN ('statement_for_record','member_statement','record_material') OR coalesce(t.promote,false))
 ), named AS (
- SELECT 'witness' AS side,'name' AS part,witness_key AS id,person,publisher_id,publisher_member,event_id,package_id,name AS raw,fields,name_lines,field_lines,dates,title,
+ SELECT 'witness' AS side,'name' AS part,witness_key AS id,person,publisher_id,publisher_member,event_id,package_id,name AS raw,titled_name AS titled_raw,fields,name_lines,field_lines,dates,title,
   false AS abbreviated
  FROM witness_rows
  UNION ALL
  SELECT 'member' AS side,'family' AS part,bioguide_id AS id,cast(NULL AS VARCHAR) AS person,cast(NULL AS VARCHAR) AS publisher_id,
-  false AS publisher_member,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS package_id,name_last AS raw,cast(NULL AS VARCHAR) AS fields,cast(NULL AS VARCHAR) AS name_lines,cast(NULL AS VARCHAR) AS field_lines,
+  false AS publisher_member,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS package_id,name_last AS raw,name_last AS titled_raw,cast(NULL AS VARCHAR) AS fields,cast(NULL AS VARCHAR) AS name_lines,cast(NULL AS VARCHAR) AS field_lines,
   arrow_cast(NULL,'List(Utf8)') AS dates,cast(NULL AS VARCHAR) AS title,false AS abbreviated
  FROM spicy_members WHERE bioguide_id IS NOT NULL
  UNION ALL
  SELECT 'member' AS side,'given' AS part,bioguide_id AS id,cast(NULL AS VARCHAR) AS person,cast(NULL AS VARCHAR) AS publisher_id,
-  false AS publisher_member,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS package_id,regexp_replace(coalesce(name_first,''),'[()]',' ','g')||' '||coalesce(name_nickname,'') AS raw,cast(NULL AS VARCHAR) AS fields,
+  false AS publisher_member,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS package_id,regexp_replace(coalesce(name_first,''),'[()]',' ','g')||' '||coalesce(name_nickname,'') AS raw,regexp_replace(coalesce(name_first,''),'[()]',' ','g')||' '||coalesce(name_nickname,'') AS titled_raw,cast(NULL AS VARCHAR) AS fields,
   cast(NULL AS VARCHAR) AS name_lines,cast(NULL AS VARCHAR) AS field_lines,arrow_cast(NULL,'List(Utf8)') AS dates,
   cast(NULL AS VARCHAR) AS title,coalesce(regexp_like(name_first,'^\s*[A-Za-z]{2,4}\.\s*$'),false) AS abbreviated
  FROM spicy_members WHERE bioguide_id IS NOT NULL
+ UNION ALL
+ SELECT 'member' AS side,'middle' AS part,bioguide_id AS id,cast(NULL AS VARCHAR) AS person,cast(NULL AS VARCHAR) AS publisher_id,
+  false AS publisher_member,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS package_id,regexp_replace(coalesce(name_middle,'')||' '||coalesce(name_official_full,''),'[()]',' ','g') AS raw,regexp_replace(coalesce(name_middle,'')||' '||coalesce(name_official_full,''),'[()]',' ','g') AS titled_raw,cast(NULL AS VARCHAR) AS fields,
+  cast(NULL AS VARCHAR) AS name_lines,cast(NULL AS VARCHAR) AS field_lines,arrow_cast(NULL,'List(Utf8)') AS dates,
+  cast(NULL AS VARCHAR) AS title,false AS abbreviated
+ FROM spicy_members WHERE bioguide_id IS NOT NULL AND (name_middle IS NOT NULL OR name_official_full IS NOT NULL)
 ), folded AS (
  SELECT n.*,translate(lower(n.raw),f.accented,f.plain) AS raw_folded,
-  translate(lower(n.raw||' | '||n.fields),f.accented,f.plain) AS full_text,
+  translate(lower(n.titled_raw||' | '||n.fields),f.accented,f.plain) AS full_text,
   translate(lower(n.fields),f.accented,f.plain) AS field_text,
   translate(lower(n.name_lines),f.accented,f.plain) AS name_lines_folded,
   translate(lower(n.field_lines),f.accented,f.plain) AS field_lines_folded,
   ' '||regexp_replace(translate(lower(n.title),f.accented,f.plain),'[^a-z]+',' ','g')||' ' AS title_words,
   -- The words of the name and the first field: a seat's holder may be named in either ('Page Pomeroy | The Honorable Earl').
-  translate(lower(regexp_replace(n.raw||' '||coalesce(split_part(n.fields,' | ',1),''),'[''’`]','','g')),f.accented,f.plain) AS seat_text
- FROM fold f CROSS JOIN named n
+  translate(lower(regexp_replace(n.titled_raw||' '||coalesce(split_part(n.fields,' | ',1),''),'[''’`]','','g')),f.accented,f.plain) AS seat_text
+ FROM name_fold f CROSS JOIN named n
 ), tokened AS (
  SELECT *,array_except(string_to_array(regexp_replace(trim(regexp_replace(translate(regexp_replace(regexp_replace(
    split_part(regexp_replace(raw_folded,'\([^)]*\)',' ','g'),',',1),'[''’`]','','g'),'[^a-z .\-]+',' ','g'),'.-','  '),
@@ -73,7 +84,7 @@ SELECT side,part,id,person,publisher_id,publisher_member,event_id,package_id,tok
  regexp_like(full_text,'\d(st|nd|rd|th|d)? (congressional )?district\b|\bdistrict,? \d|\([a-z]{2}[- ](\d+|at[- ]large|al)\)|\bdelegate\b|resident commissioner|at[- ]large') AS seat_cue,
  CASE WHEN part='name' AND cardinality(toks)>=2 THEN toks[cast(cardinality(toks) AS BIGINT)] END AS family,
  CASE WHEN part='name' AND cardinality(toks)>=2 THEN array_slice(toks,1,cast(cardinality(toks) AS BIGINT)-1) END AS givens,
- dates,full_text,field_text,raw||' | '||fields AS raw_text,
+ dates,full_text,field_text,titled_raw||' | '||fields AS raw_text,
  regexp_like(full_text,'\b(former|retired|ex-)\b|\b(19|20)\d\d\s*[-–]\s*(19|20)\d\d\b') AS says_former,
  -- A legislature named by its state ('Utah House of Representatives') is read with the states in witness_member_mentions.
  regexp_like(full_text,'\bstate (senator|senate|representative|house|legislat\w*|assembl\w*)\b|\bassembly(man|woman|member)\b|\bstatehood (senator|representative)\b|\bshadow (senator|representative)\b|\b(senator|representative|senate|house),? (\w+ ){0,2}(legislature|general assembly)\b|\blegislative district\b') AS says_state_legislature,
@@ -85,8 +96,9 @@ SELECT side,part,id,person,publisher_id,publisher_member,event_id,package_id,tok
    AND cardinality(array_except(array_slice(toks,1,cast(cardinality(toks) AS BIGINT)-1),
     string_to_array(trim(title_words),' ')))<cardinality(toks)-1) AS says_nominee,
  CASE WHEN regexp_like(full_text,'\bsenator\b|\bunited states senate\b|\bu\.\s?s\.\s?senate\b')
-   OR regexp_like(field_lines_folded,'(?m)^\W*sen\.?\W*$') THEN 'senate'
-  WHEN regexp_like(name_lines_folded,'(?m)\brepresentatives? in congress\b|\b(u\.\s?s\.|united states|us)\s+(house of )?representatives?\b|\bcongress(wo)?man\b|\bdelegate (in|to|from|of|for)\b|\bresident commissioner\b|^\W*representative\s*($|,|\(|from\b|in\b)|\brepresentative\s*(\(|from\b)|\bcongressional district\b|^\W*rep\.?\W*$|\([a-z]{2}-(\d+|al|at[- ]large)\)') THEN 'house'
+   OR regexp_like(field_lines_folded,'(?m)^\W*sen\.?\W*$')
+   OR regexp_like(name_lines_folded,'(?m)^\W*(?:the\s+hon(?:orable|\.)?\s+)?sen\.?\W*$') THEN 'senate'
+  WHEN regexp_like(name_lines_folded,'(?m)\brepresentatives? in congress\b|\b(u\.\s?s\.?|united states|us)\s+(house of )?representatives?\b|\bcongress(wo)?man\b|\bdelegate (in|to|from|of|for)\b|\bresident commissioner\b|^\W*(?:the\s+hon(?:orable|\.)?\s+)?representative\s*($|,|\(|from\b|in\b)|\brepresentative\s*(\(|from\b)|\bcongressional district\b|^\W*(?:the\s+hon(?:orable|\.)?\s+)?rep\.?\W*$|\([a-z]{2}-(\d+|al|at[- ]large)\)') THEN 'house'
   WHEN regexp_like(full_text,'\b(member of (the )?(united states |u\.\s?s\.\s?)?congress|members? of congress)\b') THEN 'either' END AS chamber,
  -- A congressional role opening a field, with a full first name (witness_member_tiers): chair or ranking member of a
  -- committee, subcommittee, caucus or conference; a committee member; a leadership office. A commission counts only

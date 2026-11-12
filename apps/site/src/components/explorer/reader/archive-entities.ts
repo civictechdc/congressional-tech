@@ -18,10 +18,18 @@ export const witnessRecordEntryLabel = (kind: string) => RECORD_ENTRY_LABELS.get
 export const witnessMember = (w: any): { bioguide_id: string, name_matched: boolean } | null =>
   w?.matched_bioguide_id ? { bioguide_id: String(w.matched_bioguide_id), name_matched: w.match_basis !== 'publisher_id' }
     : w?.bioguide_id ? { bioguide_id: String(w.bioguide_id), name_matched: false } : null;
-// A witness row's label: its name, else its record-entry kind, else the organization its line lists (a line that
-// names only an organization keeps its row with no name, ct-rg34), and the key only when nothing else is stated.
-export const witnessLabel = (w: any): string =>
-  String(w?.name || witnessRecordEntryLabel(w?.witness_type) || w?.organization || w?.witness_key || w?.name_key || '');
+// A witness row's label: its name (with military rank before and credentials after when stated; ct-17op), else its
+// record-entry kind, else the organization its line lists (a line that names only an organization keeps its row with
+// no name, ct-rg34), and the key only when nothing else is stated.
+export const witnessLabel = (w: any): string => {
+  if (w?.name) {
+    const base = [w.rank, w.name].filter(Boolean).map(String).join(' ');
+    if (!w.credentials) return base;
+    const creds = String(w.credentials).trim();
+    return creds ? (/^[(\[]/.test(creds) ? `${base} ${creds}` : `${base}, ${creds}`) : base;
+  }
+  return String(witnessRecordEntryLabel(w?.witness_type) || w?.organization || w?.witness_key || w?.name_key || '');
+};
 
 const hex = (value: Uint8Array) => [...value].map(v => v.toString(16).padStart(2, '0')).join('');
 const date = (value: any) => value instanceof Date ? value.toISOString().slice(0, 10) : value == null ? null : String(value).slice(0, 10);
@@ -170,6 +178,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const colRows = rowsForColumn('witness_keys', wKey);
     const rawAppearances = Array.isArray(w.appearances) ? w.appearances : (inferredEventId || w.occasion || w.package_id || w.page_url) ? [{
       event_id: inferredEventId, occasion: w.occasion ?? null, package_id: w.package_id ?? null, page_url: w.page_url ?? null,
+      rank: w.rank ?? null, credentials: w.credentials ?? null,
       position: w.position ?? null, organization: w.organization ?? null, on_behalf_of: w.on_behalf_of ?? null, location: w.location ?? null,
       panel: w.panel ?? null, panel_order: w.panel_order != null ? Number(w.panel_order) : null, display_order: w.display_order != null ? Number(w.display_order) : null,
       witness_type: w.witness_type ?? null, testified: w.testified ?? null, list_rows: colRows,
@@ -186,6 +195,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const listRows = uniqueInts([...(Array.isArray(w.list_rows) ? w.list_rows : []), ...colRows, ...appearances.flatMap((a: any) => a.list_rows ?? [])]);
     return {
       ...w, witness_key: wKey, name_key: w.name_key ?? wKey, event_id: inferredEventId,
+      rank: w.rank ?? null, credentials: w.credentials ?? null,
       panel_order: w.panel_order != null ? Number(w.panel_order) : null, display_order: w.display_order != null ? Number(w.display_order) : null,
       organization: w.organization ?? organizations[0] ?? null, organizations, position: w.position ?? positions[0] ?? null, positions,
       appearances, list_rows: listRows,
@@ -536,7 +546,10 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       }
       if (files.has('witnesses.parquet')) {
         const wIdx = await witnessesIndex();
-        for (const key of wantedLower) for (const w of wIdx.byBioguide.get(key) ?? []) for (const r of w.list_rows) rowSet.add(r);
+        for (const key of wantedLower) {
+          for (const w of wIdx.byBioguide.get(key) ?? []) for (const r of w.list_rows) rowSet.add(r);
+          for (const w of wIdx.byMatchedBioguide.get(key) ?? []) for (const r of w.list_rows) rowSet.add(r);
+        }
       }
       entitySets.push(rowSet);
     }
@@ -938,9 +951,10 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       }
       if (text) {
         const hay = [
-          item.title, item.short_title, item.description, item.name, item.current_name, item.organization,
+          item.title, item.short_title, item.description, item.name, item.rank, item.credentials, item.on_behalf_of,
+          kind === 'witnesses' ? witnessLabel(item) : null, item.current_name, item.organization,
           ...(Array.isArray(item.organizations) ? item.organizations : []), item.position, ...(Array.isArray(item.positions) ? item.positions : []),
-          item.subject_key, item.bill_id, item.nomination_id, item.citation, item.bioguide_id, item.committee_key, item.event_id,
+          item.subject_key, item.bill_id, item.nomination_id, item.citation, item.bioguide_id, item.matched_bioguide_id, item.committee_key, item.event_id,
           item.sponsor_name, item.policy_area, item.state, item.party,
         ].filter(Boolean).join(' ').toLowerCase();
         if (!hay.includes(text)) return false;

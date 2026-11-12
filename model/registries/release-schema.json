@@ -1086,6 +1086,18 @@
           "meaning": "Display name of the witness"
         },
         {
+          "name": "rank",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Military rank of the witness when stated (e.g. Lt. Gen., Rear Adm.); extracted from the witness heading rather than left in name (owner decision 2026-11-10, ct-17op)"
+        },
+        {
+          "name": "credentials",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Academic, professional, or service credentials of the witness when stated (e.g. M.D., M.P.H., Ph.D., USAF (Ret.)); extracted rather than dropped or left in name (owner decision 2026-11-10, ct-17op)"
+        },
+        {
           "name": "position",
           "type": "string",
           "nullable": true,

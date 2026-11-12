@@ -131,6 +131,8 @@ def test_meeting_and_appearance_lake_schemas_and_table_profiles():
         "source_locator",
         "name_key",
         "name",
+        "rank",
+        "credentials",
         "honorific",
         "given",
         "middle",
@@ -482,7 +484,12 @@ def test_shared_witness_helper_is_versioned_for_both_callers(monkeypatch):
 
     monkeypatch.setattr(Path, "read_bytes", changed_witness_helper)
     after = appearance_records.current_versions()
-    assert {source for source in before if before[source] != after[source]} == {"mods", "senate_page"}
+    assert {source for source in before if before[source] != after[source]} == {
+        "congress_gov",
+        "house_xml",
+        "mods",
+        "senate_page",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -579,17 +586,19 @@ def test_s2_fixture_1_repeated_names_and_unnamed_witnesses_preserved_with_locato
         "house_xml:panel[2]/witness[1]",
         "house_xml:panel[2]/witness[2]",
     ]
-    assert [a["name_key"] for a in apps] == [None, "hon jane m smith", None, "hon jane m smith"]
+    assert [a["name_key"] for a in apps] == [None, "jane m smith", None, "jane m smith"]
     assert apps[0]["name"] is None
     assert apps[0]["position"] == "Anonymous Whistleblower"
-    assert apps[1]["name"] == "Hon. Jane M. Smith"
+    assert apps[1]["name"] == "Jane M. Smith"
+    assert apps[1]["honorific"] == "Hon."
     assert apps[1]["position"] == "Administrator"
     assert apps[1]["bioguide_id"] == "S000148"
     assert apps[1]["testified"] is True
     assert apps[1]["document_links"] == ["/118/HHRG-118-WTTF-Smith.pdf"]
     assert apps[2]["name"] is None
     assert apps[2]["position"] == "Second Unnamed Witness"
-    assert apps[3]["name"] == "HON JANE M SMITH,"
+    assert apps[3]["name"] == "JANE M SMITH"
+    assert apps[3]["honorific"] == "HON"
     assert apps[3]["position"] == "Acting Director"
     assert apps[3]["organization"] == "Agency Y"
     assert apps[3]["document_links"] == ["/118/HHRG-118-WState-Smith-Panel2.pdf"]
@@ -707,7 +716,8 @@ def test_appearance_records_from_congress_gov_senate_page_and_mods():
     )
     assert cg_row["event_id"] == 116010
     assert cg_row["collection_state"] == "present"
-    assert [a["name_key"] for a in cg_row["appearances"]] == ["the honorable janet yellen", None]
+    assert [a["name_key"] for a in cg_row["appearances"]] == ["janet yellen", None]
+    assert cg_row["appearances"][0]["honorific"] == "The Honorable"
     assert [a["source_locator"] for a in cg_row["appearances"]] == [
         "congress_gov:witness[1]",
         "congress_gov:witness[2]",
@@ -1983,6 +1993,8 @@ def test_ct_30fp_congress_gov_invalid_witness_items_and_sql_per_context_freshnes
                     source_locator="Utf8",
                     name_key="Utf8",
                     name="Utf8",
+                    rank="Utf8",
+                    credentials="Utf8",
                     honorific="Utf8",
                     given="Utf8",
                     middle="Utf8",
@@ -3058,16 +3070,16 @@ def test_the_testifying_bodys_own_statement_is_record_material(package, index, l
 
 
 def test_reviewed_document_titles_keep_their_text_in_organization():
-    """Owner decision 2026-11-10 (ct-3aap): the sixteen reviewed document titles are record material and keep in
-    `organization` the text the activated generation holds for them, the title and the publisher it names, as an
-    organization's letter or statement does. Each control's line is the print's own and its organization is that
-    generation's (pin 8a0023a9); the dot-leader leftovers and the reviewed askers keep no field."""
+    """Owner decision 2026-11-10 (ct-3aap, plus CHRG-110shrg52887 #14 in ct-uz8q): the seventeen reviewed document titles
+    are record material and keep in `organization` the text the activated generation holds for them, the title and the
+    publisher it names, as an organization's letter or statement does. Each control's line is the print's own and its
+    organization is that generation's (pin 8a0023a9); the dot-leader leftovers and the reviewed askers keep no field."""
     controls = json.loads((Path(__file__).parent / "fixtures/source_models/mods-record-titles.json").read_text())
     entries = mods_record_entries.MODS_RECORD_ENTRIES
     documents = {(package, index) for package, by in entries.items() for index, entry in by.items()
                  if entry[2:] == ("document",)}
     assert {(c["package"], int(c["locator"][13:-1])) for c in controls} == documents - {s[:2] for s in OWN_STATEMENTS}
-    assert len(controls) == 16
+    assert len(controls) == 17
     for control in controls:
         package, index, line = control["package"], int(control["locator"][13:-1]), control["source_literal"]
         assert entries[package][index] == (hashlib.sha256(line.encode()).hexdigest(), None, "document")

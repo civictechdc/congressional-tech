@@ -34,7 +34,7 @@ ENTITY_TABLES=('meeting_records','appearance_records')
 # The Explorer tables (ct-gi01): with recording decisions they add meeting_coverage, videos,
 # channels, recording_matches and committee_records. All three inputs or none.
 EXPLORER_TABLES=('video_records','committee_records')
-OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES,'playlist_records')
+OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES,'playlist_records','transcript_headings')
 OPTIONAL={'engine_config',*OPTIONAL_TABLES,'spicy_regs','recovery_requirements','text_index','historical_recording_matcher'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants',
