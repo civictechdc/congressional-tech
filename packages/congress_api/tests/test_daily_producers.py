@@ -694,3 +694,73 @@ def test_daily_derived_scope_refuses_before_effects(tmp_path,change):
     with pytest.raises(ValueError,match='scope|stored_bytes|batch_size'):
         daily.produce_daily(value,engine=NeverNative(),raw_store=BodyStore(LocalAdapter(tmp_path/'durable')))
     assert not (tmp_path/'work').exists() and not (tmp_path/'durable').exists()
+
+
+def test_daily_runs_full_readings_scan_once_and_shares_routed_xml_readings(tmp_path):
+    """ct-6p6d: full pending_bodies/settled_parsers scan runs once per night; routed xml readings scan once."""
+    from congress_api.lake import appearance_records, meeting_records
+    from congress_api.lake.daily import ALL_TABLE_NAMES, produce_daily
+    from test_daily_raw_listing import fixture as r2_fixture
+
+    detail_a = json.dumps({
+        'committeeMeeting': {
+            'eventId': '115538', 'congress': 118, 'chamber': 'House', 'title': 'Hearing A',
+            'date': '2024-07-09T14:00:00Z',
+            'committees': [{'systemCode': 'hsju00', 'name': 'Judiciary', 'chamber': 'House'}],
+            'witnesses': [{'name': 'Dr. Jane Doe', 'organization': 'ACME'}],
+        }
+    }).encode()
+    detail_b = json.dumps({
+        'committeeMeeting': {
+            'eventId': '115539', 'congress': 118, 'chamber': 'House', 'title': 'Hearing B',
+            'date': '2024-07-10T14:00:00Z',
+            'committees': [{'systemCode': 'hsju00', 'name': 'Judiciary', 'chamber': 'House'}],
+            'witnesses': [{'name': 'Dr. John Roe', 'organization': 'ACME'}],
+        }
+    }).encode()
+    value, engine, _bucket, store = r2_fixture(tmp_path, [detail_a, detail_b])
+    five_tables = {name: dict(namespace=['archive'], name=name) for name in ALL_TABLE_NAMES}
+    meeting_records.create_table(engine=engine, work=tmp_path / 'create-meetings',
+        catalog_root=value['catalog_root'], table=five_tables['meeting_records'], location=tmp_path / 'lake-meetings')
+    appearance_records.create_table(engine=engine, work=tmp_path / 'create-appearances',
+        catalog_root=value['catalog_root'], table=five_tables['appearance_records'], location=tmp_path / 'lake-appearances')
+    value['tables'] = five_tables
+    receipts = value['receipt_inventory']
+
+    # Seed first receipt so heads['captures'] and heads['readings'] hold settled rows.
+    seeded = produce_daily(dict(value, receipt_inventory=receipts[:1], work=str(tmp_path / 'seed')),
+        engine=engine, raw_store=store)
+    assert seeded['status'] == 'completed'
+
+    recorded = []
+
+    class RecordingNative:
+        def __getattr__(self, name):
+            return getattr(engine, name)
+
+        def run_job(self, path, log=None):
+            recorded.append((path.relative_to(tmp_path / 'run2').as_posix(), json.loads(path.read_text())))
+            return engine.run_job(path, log=log)
+
+    second = produce_daily(dict(value, work=str(tmp_path / 'run2')), engine=RecordingNative(), raw_store=store)
+    assert second['status'] == 'completed'
+    assert second['producerreports']['readings']['work_items'] == 1
+
+    # Exactly 1 job ('readings-backlog/plan/job.json') runs pending_bodies over native_table readings.
+    pending_jobs = [
+        (rel, {i['name']: i['kind'] for i in job.get('inputs', [])})
+        for rel, job in recorded
+        if any(s['name'] == 'pending_bodies' for s in job.get('steps', []))
+    ]
+    native_pending = [rel for rel, kinds in pending_jobs if kinds.get('existing') == 'native_table' or kinds.get('captures') == 'native_table']
+    assert native_pending == ['readings-backlog/plan/job.json'], pending_jobs
+
+    # Both meeting_records and appearance_records read local parquet routed readings rather than native_table readings twice.
+    cpr_jobs = [
+        (rel, {i['name']: i['kind'] for i in job.get('inputs', [])})
+        for rel, job in recorded
+        if any(s['name'] == 'current_page_readings' for s in job.get('steps', []))
+    ]
+    assert len(cpr_jobs) == 2
+    assert all(kinds.get('readings') == 'parquet' for _rel, kinds in cpr_jobs), cpr_jobs
+

@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import re
+import sys
 
 from congress_api.lake._record_producer import (
     CURRENT_PAGE_READINGS_SQL,
@@ -9,7 +10,7 @@ from congress_api.lake._record_producer import (
     expected_records_sql,
 )
 from congress_api.lake.readings import bundle_version,worker_limits
-from congress_api.lake.versions import version_digest
+from congress_api.lake.versions import ImportClosure,_PLUMBING,_module_imports,version_digest
 from congress_api.models.archive_profile import build_capture_profile
 from congress_api.retention.provenance import file_pin
 
@@ -82,6 +83,38 @@ def _copy(value):
     return json.loads(json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(',',':'),allow_nan=False))
 
 
+_MODEL_WORKSPACE = frozenset({'viewer_publication', 'congress_api', 'congress_shared', 'docspec_client', 'house_naming'})
+_MODEL_NON_MODEL_PY = frozenset({
+    *_PLUMBING,
+    'packages/congress_api/src/congress_api/lake/_record_producer.py',
+    'packages/congress_api/src/congress_api/lake/meeting_records.py',
+    'packages/congress_api/src/congress_api/lake/appearance_records.py',
+    'packages/congress_api/src/congress_api/lake/reading_versions.py',
+})
+
+
+def _locked_model_digest(root, python_files):
+    """Hash only the locked packages imported by model Python definitions, not the whole uv.lock."""
+    closure = ImportClosure(root, distributions={'house_naming': ['house-naming-guide']})
+    modules = set()
+    for path in python_files:
+        resolved = path.resolve()
+        parts = next((list(resolved.parent.relative_to(src).parts)
+                      for src in closure.sources if resolved.is_relative_to(src)), [])
+        for module in _module_imports(path.read_bytes(), parts, str(path)):
+            top = module.split('.')[0]
+            if top and top not in sys.stdlib_module_names and top not in _MODEL_WORKSPACE:
+                modules.add(top)
+    locked = closure.locked(modules)
+    if locked['unresolved']:
+        raise ValueError('Model imports without a locked package: ' + ', '.join(locked['unresolved']))
+    summary = sorted(
+        (dict(name=p['name'], version=p['version'], source=p['source']) for p in locked['packages']),
+        key=lambda item: json.dumps(item, sort_keys=True),
+    )
+    return version_digest(packages={}, files={}, values={'locked_imports': summary})
+
+
 def _definition_hashes(root):
     root=Path(root)
     # Source definitions are small metadata, read once each; table data is never opened.
@@ -92,12 +125,22 @@ def _definition_hashes(root):
     files += [package/name for name in ('archive_model.py','archive_model_profile.py','archive_format.py','archive_schema.py','archive_model_lifetimes.py','legislative_data.py',
         'archive_annotations.py','archive_provenance.py','archive_reviews.py','archive_url_state.py','archive_text_index.py',
         'lookup_aliases.py','meeting_detail_observations.py','historical_recording_matcher.py')]
-    files += [root/'packages/congress_api/src/congress_api/models/archive_profile.py',root/'uv.lock']
+    files += [root/'packages/congress_api/src/congress_api/models/archive_profile.py',
+        root/'packages/house-naming/src/house_naming/bill_codes.py']
     files += [root/'packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv']
     files += [root/'packages/congress_api/src/congress_api'/name for name in ['lake/readings.py','lake/reading_versions.py',
-        'lake/compatible_versions.py','lake/versions.py','lake/_record_producer.py','lake/meeting_records.py','lake/appearance_records.py',
+        'lake/compatible_versions.py','lake/versions.py','lake/model_sql.py','lake/_record_producer.py','lake/meeting_records.py','lake/appearance_records.py',
         'retention/parser_worker.py','retention/process_resources.py']]
-    return {path.relative_to(root).as_posix():file_pin(path)['sha256'] for path in sorted(set(files))}
+    unique_files = sorted(set(files))
+    model_py = [
+        path for path in unique_files
+        if path.suffix == '.py'
+        and not any(path.relative_to(root).as_posix() == p or path.relative_to(root).as_posix().startswith(p + '/')
+                    for p in _MODEL_NON_MODEL_PY)
+    ]
+    hashes = {path.relative_to(root).as_posix():file_pin(path)['sha256'] for path in unique_files}
+    hashes['uv.lock'] = _locked_model_digest(root, model_py)
+    return dict(sorted(hashes.items()))
 
 
 def capture_profile_record(*,engine_revision,root=ROOT):

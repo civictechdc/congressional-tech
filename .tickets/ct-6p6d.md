@@ -1,6 +1,6 @@
 ---
 id: ct-6p6d
-status: open
+status: closed
 deps: []
 links: [ct-64t4, ct-w2kf, ct-07wr]
 created: 2026-11-10T13:27:30Z
@@ -35,3 +35,11 @@ The repeated daily scans run once per night, or the reason they cannot is writte
 **2026-11-11T14:33:14Z**
 
 validated 2026-11-11, left open. Since filing: item 3 answered (threads are not the limit; do not raise them); the model's lake re-reads are cut for captures by W10 (ct-07wr, closed): statement seconds 778 -> 454 on the like-for-like pair, and the 20261111T103005Z production nightly's publish step took 1,158 s against 1,579 s on 2026-11-10 12:15Z. Not done: item 1 (the daily's three producer passes each run the full pending_bodies/settled_parsers scan, current_page_readings twice), item 2 (uv.lock in the model identity forces a full rebuild on any dependency bump), item 4 (incremental model, a project). Each still needs doing, declining or its own ticket.
+
+**2026-11-12T03:26:00Z**
+
+Closed with all four items resolved or explicitly disposed:
+- **Item 1 (Done):** `lake/daily.py` now runs the full native `pending_bodies`/`settled_parsers` scan once per night in `readings-backlog`. `_scope_daily_inputs` materializes both `scoped-captures.parquet` and `scoped-readings.parquet` over `(backlog + staged)` bodies once (with `prior_captures` avoiding a second `captures` anti-join scan), feeds both `_listed_custody` and `readings.run(..., execute=True)` after verifying `readings` head stability, and materializes `routed-readings` (`parser IN ('xml')`) once when both `meeting_records` and `appearance_records` run so remote `readings` is not scanned twice for `current_page_readings`. Byte-hashed producer modules (`_record_producer.py`, `meeting_records.py`, `appearance_records.py`, `readings.py`) are untouched so published pins do not move.
+- **Item 2 (Done):** `archive_model_profile._definition_hashes` replaces raw `uv.lock` byte hashing with `_locked_model_digest`, hashing only locked packages imported by model Python definitions (`pyarrow`, `duckdb` and their lock closure) plus `model_sql.py` and `bill_codes.py`. Unrelated dependency bumps (`pytest`, `aiohttp`, `boto3`, `pillow`, `trafilatura`, etc.) leave `profile_sha256` unchanged.
+- **Item 3 (Decided):** Thread measurement recorded above (`2` vs `4` vs `8` threads); lake I/O rather than compute threads is the bottleneck, so engine threads remain at `2`.
+- **Item 4 (Declined for maintenance scope):** A general incremental model engine is a standalone multi-phase architecture project rather than a point fix; with `ct-07wr` (lake read-once cache) plus items 1 and 2 cutting repeated daily scans and spurious lockfile rebuilds, incremental model evaluation is declined unless nightly publication grows past its operational window.

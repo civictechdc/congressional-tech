@@ -494,3 +494,48 @@ def test_entity_completeness_and_record_producer_candidates_agree_1_for_1(tmp_pa
     assert ent_missing_inline['unsettled_meeting_records'] == 1
     assert ent_missing_inline['unsettled_appearance_records'] == 1
 
+
+def test_unrelated_locked_package_leaves_model_profile_while_imported_package_moves_it(tmp_path):
+    """ct-6p6d: bumping an unrelated uv.lock package leaves profile_sha256 unchanged; bumping an imported one moves it."""
+    import re
+    import shutil
+    from viewer_publication.archive_model_profile import ROOT, _definition_hashes, profile_record
+
+    base_hashes = _definition_hashes(ROOT)
+    checkout = tmp_path / 'checkout'
+    for name in base_hashes:
+        target = checkout / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / name, target)
+    assert _definition_hashes(checkout) == base_hashes
+
+    common = dict(
+        parser_versions=VERSIONS,
+        catalog_version='catalog-1',
+        engine_revision='a' * 40,
+        runtime_pins=dict(platform='local', binary_sha256='e' * 64),
+        lake_versions=dict(captures='b' * 64),
+        writer_settings=dict(row_group_rows=65536),
+        snapshots={'captures': dict(metadata_location='/pinned/metadata.json')},
+    )
+    original_lock = (ROOT / 'uv.lock').read_text()
+    original_sha = profile_record(**common, root=ROOT)['profile_sha256']
+
+    def bump(pkg):
+        pat = re.compile(r'(\[\[package\]\]\nname = "' + re.escape(pkg) + r'"\nversion = ")([^"]+)(")')
+        updated, count = pat.subn(lambda m: m[1] + m[2] + '.post999' + m[3], original_lock)
+        assert count == 1, pkg
+        (checkout / 'uv.lock').write_text(updated)
+        return profile_record(**common, root=checkout)
+
+    for unrelated in ('aiohttp', 'boto3', 'pillow', 'pytest', 'trafilatura'):
+        record = bump(unrelated)
+        assert record['profile']['file_hashes'] == base_hashes, unrelated
+        assert record['profile_sha256'] == original_sha, unrelated
+
+    for imported in ('pyarrow', 'duckdb'):
+        record = bump(imported)
+        assert record['profile']['file_hashes']['uv.lock'] != base_hashes['uv.lock'], imported
+        assert record['profile_sha256'] != original_sha, imported
+
+

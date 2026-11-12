@@ -348,6 +348,48 @@ def _head(client,bucket,key):
         time.sleep(delay)
 
 
+def _scope_daily_inputs(heads,backlog,stage,*,engine,output_dir,job_dir,need_keys=False):
+    """Materialize the local captures and readings subsets for (backlog + staged) bodies once."""
+    from congress_api.retention.provenance import parquet_output,run_job
+    output_dir=Path(output_dir);output_dir.mkdir(parents=True,exist_ok=True)
+    if not backlog['work_items'] and stage is None:
+        run_job(Path(job_dir),engine,inputs=[tables.table_input('captures',heads['captures']),
+            tables.table_input('readings',heads['readings'])],steps=[],
+            outputs=[parquet_output(output_dir,'scoped-captures','SELECT * FROM captures WHERE false',
+                    ['receipt_key','receipt_line','capture_index']),
+                parquet_output(output_dir,'scoped-readings','SELECT * FROM readings WHERE false',readings.PK)])
+        return dict(captures=output_dir/'scoped-captures.parquet',readings=output_dir/'scoped-readings.parquet',keys=[])
+    inputs=[tables.table_input('captures',heads['captures']),tables.table_input('readings',heads['readings']),
+            tables.table_input('backlog',backlog['work_list'])]
+    scoped='SELECT DISTINCT body_sha AS sha256 FROM backlog'
+    listed='SELECT sha256 FROM scoped_shas'
+    rows='SELECT * FROM prior_captures'
+    if stage is not None:
+        inputs.append(tables.table_input('staged',stage))
+        names=pq.read_schema(stage).names
+        scoped+=' UNION SELECT sha256 FROM staged WHERE sha256 IS NOT NULL'
+        listed=('SELECT DISTINCT body_sha AS sha256 FROM backlog'
+                ' UNION SELECT s.sha256 FROM staged s WHERE s.sha256 IS NOT NULL'
+                ' AND NOT EXISTS(SELECT 1 FROM prior_captures c WHERE c.sha256=s.sha256)')
+        rows=('SELECT '+','.join('c."'+n+'"' for n in names)+' FROM prior_captures c'
+              ' UNION ALL SELECT '+','.join('"'+n+'"' for n in names)+' FROM staged')
+    steps=[dict(name='scoped_shas',sql=scoped,materialize=True),
+           dict(name='prior_captures',sql='SELECT c.* FROM scoped_shas k JOIN captures c ON c.sha256=k.sha256',materialize=True)]
+    if need_keys:steps.append(dict(name='listed_shas',sql=listed,materialize=True))
+    steps.append(dict(name='scoped_captures',sql=rows,materialize=True))
+    queries=([dict(name='keys',sql="""SELECT DISTINCT concat('bodies/sha256/',substr(encode(c.sha256,'hex'),1,2),'/',
+        encode(c.sha256,'hex'),coalesce(c.stored_suffix,'.gz')) AS key FROM scoped_captures c
+        JOIN listed_shas k ON c.sha256=k.sha256 ORDER BY key""")] if need_keys else [])
+    result=run_job(Path(job_dir),engine,inputs=inputs,steps=steps,
+        outputs=[parquet_output(output_dir,'scoped-captures','SELECT * FROM scoped_captures',
+                ['receipt_key','receipt_line','capture_index']),
+            parquet_output(output_dir,'scoped-readings','SELECT r.* FROM scoped_shas k JOIN readings r ON k.sha256=r.body_sha',
+                readings.PK)],
+        queries=queries)
+    return dict(captures=output_dir/'scoped-captures.parquet',readings=output_dir/'scoped-readings.parquet',
+        keys=[row['key'] for row in result.get('keys',[])])
+
+
 def _listed_custody(spec,engine,raw_store,heads,backlog,stage,unreadable_snapshot,work,*,parser=None):
     """Raw custody, before captures move, for every body the readings run after the append reads.
 
@@ -359,26 +401,8 @@ def _listed_custody(spec,engine,raw_store,heads,backlog,stage,unreadable_snapsho
     one HEAD per recorded candidate copy, not a bucket LIST.
     """
     work=Path(work);work.mkdir(parents=True)
-    inputs=[tables.table_input('captures',heads['captures']),tables.table_input('backlog',backlog['work_list'])]
-    listed='SELECT body_sha AS sha256 FROM backlog'
-    scoped='SELECT sha256 FROM listed_shas'
-    rows='SELECT c.* FROM captures c JOIN scoped_shas k ON c.sha256=k.sha256'
-    if stage is not None:
-        inputs.append(tables.table_input('staged',stage))
-        names=pq.read_schema(stage).names
-        listed+=(' UNION SELECT s.sha256 FROM staged s WHERE s.sha256 IS NOT NULL'
-                 ' AND NOT EXISTS(SELECT 1 FROM captures c WHERE c.sha256=s.sha256)')
-        scoped+=' UNION SELECT sha256 FROM staged WHERE sha256 IS NOT NULL'
-        rows=('SELECT '+','.join('c."'+n+'"' for n in names)+' FROM captures c JOIN scoped_shas k ON c.sha256=k.sha256'
-              ' UNION ALL SELECT '+','.join('"'+n+'"' for n in names)+' FROM staged')
-    from congress_api.retention.provenance import parquet_output,run_job
-    keys=[row['key'] for row in run_job(work/'scope',engine,inputs=inputs,steps=[
-        dict(name='listed_shas',sql=listed,materialize=True),dict(name='scoped_shas',sql=scoped,materialize=True),
-        dict(name='scoped_captures',sql=rows,materialize=True)],
-        outputs=[parquet_output(work,'scoped-captures','SELECT * FROM scoped_captures',['receipt_key','receipt_line','capture_index'])],
-        queries=[dict(name='keys',sql="""SELECT DISTINCT concat('bodies/sha256/',substr(encode(c.sha256,'hex'),1,2),'/',
-            encode(c.sha256,'hex'),coalesce(c.stored_suffix,'.gz')) AS key FROM scoped_captures c
-            JOIN listed_shas k ON c.sha256=k.sha256 ORDER BY key""")])['keys']]
+    scoped=_scope_daily_inputs(heads,backlog,stage,engine=engine,output_dir=work,job_dir=work/'scope',need_keys=True)
+    keys=scoped['keys']
     for key in keys:validate_key(key)
     client,bucket=raw_store.adapter.client,raw_store.adapter.bucket
     with ThreadPoolExecutor(max_workers=max(1,min(HEAD_WORKERS,len(keys)))) as pool:
@@ -386,11 +410,12 @@ def _listed_custody(spec,engine,raw_store,heads,backlog,stage,unreadable_snapsho
     listing=work/'body-listing.parquet'
     pq.write_table(pa.Table.from_pylist([row for row in found if row is not None],schema=LISTING_SCHEMA),listing)
     planned=readings.run(engine=engine,work=work/'readings',mode='daily',execute=False,
-        max_work_items=spec['max_work_items'],existing=heads['readings'],captures=work/'scoped-captures.parquet',
+        max_work_items=spec['max_work_items'],existing=scoped['readings'],captures=scoped['captures'],
         unreadable_files=unreadable_snapshot.files(),body_inventory=None,body_listing=listing,raw_ranges=True,
         local_root=work/'unopened',decided_at=spec['decided_at'],parser=parser)
     return dict(listing=listing,planned=planned,heads=len(keys),
-                absent=[key for key,row in zip(keys,found) if row is None])
+                absent=[key for key,row in zip(keys,found) if row is None],
+                scoped_captures=scoped['captures'],scoped_readings=scoped['readings'])
 
 
 def _body_source(spec,raw_store,work,listing=None):
@@ -1174,9 +1199,10 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
             raise ValueError('Selected receipts produced no captures')
     report['producerreports']['captures']=dict(stage=None if stage is None else str(stage),append=None)
     listing=None
+    staged_parquet=None if stage is None else stage/'captures.parquet'
     if _listed_reads(spec,raw_store):
         try:
-            custody=_listed_custody(spec,engine,raw_store,heads,backlog,None if stage is None else stage/'captures.parquet',
+            custody=_listed_custody(spec,engine,raw_store,heads,backlog,staged_parquet,
                 unreadable_snapshot,work/'raw-custody')
         except readings.BackfillRequired as error:
             report.update(status='backfill_required');report['producerreports']['readings']=error.as_dict()
@@ -1189,6 +1215,11 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
                 work_list=str(planned['work_list']))
             return report
         listing=custody['listing']
+        scoped_captures,scoped_readings=custody['scoped_captures'],custody['scoped_readings']
+    else:
+        scoped=_scope_daily_inputs(heads,backlog,staged_parquet,engine=engine,
+            output_dir=work/'readings-scope',job_dir=work/'readings-scope/job')
+        scoped_captures,scoped_readings=scoped['captures'],scoped['readings']
     if stage is not None:
         appended=tables.append_rows(stage/'captures.parquet',**authority,work=work/'captures-append',
             table=spec['tables']['captures'],keys=['receipt_key'],definition=manifest['mapping_digest'])
@@ -1212,10 +1243,15 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
                     report['producerreports'][step]=passes[step]
                     return report
             else:
+                current_readings=tables.resolve_tables(**authority,work=work/'readings-admitted-head',
+                    tables={'readings':spec['tables']['readings']})['readings']
+                if current_readings!=heads['readings']:
+                    raise ValueError('Readings head changed during daily admission')
                 passes[step]=readings.run(engine=engine,work=work/step,mode='daily',execute=True,
                     max_work_items=spec['max_work_items'],table=spec['tables']['readings'],parser=name,
                     catalog_root=spec['catalog_root'],unreadable_store=raw_store,
-                    captures=heads['captures'],**_body_source(spec,raw_store,work/step,listing),
+                    captures=scoped_captures,read_current=lambda **_:scoped_readings,
+                    **_body_source(spec,raw_store,work/step,listing),
                     decided_at=spec['decided_at'],unreadable_snapshot=unreadable_snapshot)
         except readings.BackfillRequired as error:
             report.update(status='backfill_required');report['producerreports'][step]=error.as_dict()
@@ -1253,6 +1289,17 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
     # D4 routes House XML by its current reading, so it reads readings after this run's append.
     readings_head=tables.resolve_tables(**authority,work=work/'readings-head',
         tables={'readings':spec['tables']['readings']})['readings']
+    routed_readings=readings_head
+    if 'meeting_records' in spec['tables'] and 'appearance_records' in spec['tables']:
+        from congress_api.lake._record_producer import ROUTES
+        from congress_api.retention.provenance import parquet_output,run_job
+        routed_parsers=sorted({p for entries in ROUTES.values() for _,_,p,_ in entries if p})
+        routed_list=','.join("'"+p.replace("'","''")+"'" for p in routed_parsers)
+        routed_dir=work/'routed-readings';routed_dir.mkdir(parents=True,exist_ok=False)
+        run_job(routed_dir,engine,inputs=[tables.table_input('readings',readings_head)],steps=[],
+            outputs=[parquet_output(routed_dir,'readings',
+                f'SELECT * FROM readings WHERE parser IN ({routed_list})',readings.PK)])
+        routed_readings=routed_dir/'readings.parquet'
     if 'meeting_records' in spec['tables']:
         meeting_head=tables.resolve_tables(**authority,work=work/'meeting-head',
             tables={'meeting_records':spec['tables']['meeting_records']})['meeting_records']
@@ -1260,7 +1307,7 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
             meetings_staged=meeting_records.stage(captures=heads['captures'],existing=meeting_head,engine=engine,
                 work=work/'meeting-records',local_root=spec.get('local_root'),raw_store=raw_store,
                 unreadable_files=unreadable_snapshot.files(),max_work_items=spec['max_work_items'],
-                decided_at=spec['decided_at'],unreadable_store=raw_store,readings=readings_head)
+                decided_at=spec['decided_at'],unreadable_store=raw_store,readings=routed_readings)
         except readings.BackfillRequired as error:
             report.update(status='backfill_required');report['producerreports']['meeting_records']=error.as_dict()
             return report
@@ -1278,7 +1325,7 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
             appearances_staged=appearance_records.stage(captures=heads['captures'],existing=appearance_head,engine=engine,
                 work=work/'appearance-records',local_root=spec.get('local_root'),raw_store=raw_store,
                 unreadable_files=unreadable_snapshot.files(),max_work_items=spec['max_work_items'],
-                decided_at=spec['decided_at'],unreadable_store=raw_store,readings=readings_head)
+                decided_at=spec['decided_at'],unreadable_store=raw_store,readings=routed_readings)
         except readings.BackfillRequired as error:
             report.update(status='backfill_required');report['producerreports']['appearance_records']=error.as_dict()
             return report
