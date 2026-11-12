@@ -2,7 +2,7 @@
 id: ct-ywz2
 status: open
 deps: []
-links: []
+links: [ct-jcnd, cat2-8ai9, ct-yizl]
 created: 2026-11-10T03:26:30Z
 type: task
 priority: 2

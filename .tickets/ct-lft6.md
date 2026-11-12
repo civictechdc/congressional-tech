@@ -2,7 +2,7 @@
 id: ct-lft6
 status: closed
 deps: []
-links: [ct-gi01]
+links: [ct-gi01, cat2-ddas, ct-17op, cat2-x47u, ct-jcnd, ct-esuu, ct-5q3g]
 created: 2026-11-08T17:33:29Z
 type: task
 priority: 3

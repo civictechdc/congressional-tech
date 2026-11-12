@@ -2,7 +2,7 @@
 id: ct-5q3g
 status: closed
 deps: []
-links: [ct-fk4w, ct-jcnd, ct-egoo]
+links: [ct-fk4w, ct-jcnd, ct-egoo, cat2-x47u, ct-lft6, ct-esuu]
 created: 2026-11-11T19:02:18Z
 type: task
 priority: 2

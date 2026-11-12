@@ -2,7 +2,7 @@
 id: ct-jcnd
 status: open
 deps: []
-links: [ct-5q3g]
+links: [ct-5q3g, cat2-x47u, ct-lft6, ct-esuu, cat2-8ai9, ct-ywz2, ct-yizl]
 created: 2026-11-10T14:57:27Z
 type: task
 priority: 2

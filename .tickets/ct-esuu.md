@@ -2,7 +2,7 @@
 id: ct-esuu
 status: open
 deps: []
-links: [ct-fa2h]
+links: [ct-fa2h, cat2-x47u, ct-jcnd, ct-lft6, ct-5q3g, ct-46f3, cat2-pkk1, ct-kt2o, ct-egoo]
 created: 2026-11-12T06:08:47Z
 type: bug
 priority: 2

@@ -2,7 +2,7 @@
 id: ct-17op
 status: open
 deps: []
-links: [ct-wy4c, ct-6mvl, ct-auhc]
+links: [ct-wy4c, ct-6mvl, ct-auhc, cat2-ddas, ct-lft6]
 created: 2026-11-11T14:57:19Z
 type: feature
 priority: 2

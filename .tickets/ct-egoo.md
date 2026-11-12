@@ -2,7 +2,7 @@
 id: ct-egoo
 status: closed
 deps: []
-links: [ct-5q3g]
+links: [ct-5q3g, ct-46f3, ct-esuu, cat2-pkk1, ct-kt2o]
 created: 2026-11-10T20:37:59Z
 type: task
 priority: 3

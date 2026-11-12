@@ -2,7 +2,7 @@
 id: ct-kt2o
 status: open
 deps: [ct-ha10]
-links: []
+links: [ct-46f3, ct-esuu, cat2-pkk1, ct-egoo]
 created: 2026-11-11T00:35:01Z
 type: feature
 priority: 4
