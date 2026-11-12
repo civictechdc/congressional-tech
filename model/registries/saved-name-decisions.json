@@ -14,6 +14,13 @@
   "evidence": "not read: both names say the same in words: not read; both names say \"Budget Reconciliation Legislative Recommendations ... IPAB\"; the committee name has no notice word; reader kind unexplained"
  },
  {
+  "body_sha": "4145bb0603dae3555f5573f3aa7ddb1b4f2a2fa107cb7623437ac00403f62d5c",
+  "decision": "official",
+  "official_name": "BILLS-114pih-FCCquarterlyreport-U1.pdf | BILLS-114pih-FCCquarterlyreport.pdf",
+  "committee_name": "Discussion-Draft-CT-FCC-Quarterly-Report-2015-5-15.pdf",
+  "evidence": "text read: bill discussion draft: \"[DISCUSSION DRAFT] 114TH CONGRESS 1ST SESSION H. R.\" ... \"To amend the Communications Act\"; 'Quarterly Report' is the bill's subject, not the kind; second committee name Discussion-Draft-CAT-Bills114th-Clarke-PEND_01-2015-4-30.pdf (same bytes) states no kind"
+ },
+ {
   "body_sha": "30405ddcb80d17c4e2802d4a6091b338f8623988cf9286a54afba97cf60c6509",
   "decision": "official",
   "official_name": "BILLS-115-5970-W000812-Amdt-001.pdf",
@@ -98,6 +105,13 @@
   "evidence": "not read: both names say the same in words: not read; both names say vote: \"VOTE-4-21-15-Favorably-Report\" and \"Vote001\"; reader took 'Report' from the motion voted on"
  },
  {
+  "body_sha": "bfee601476123d5e2aaf7d6a3aca6baef2c6ce35c8a7736178eb02316e2a9cd1",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote002-20180411.pdf",
+  "committee_name": "fav_report_hr_3144.pdf",
+  "evidence": "text read: recorded vote sheet: \"Recorded Vote #:2 Meeting on / Amendment on: FC Markup Favorably Report HR 3144\"; the committee name is the motion voted on, as 3815 ('motion-to-report')"
+ },
+ {
   "body_sha": "1ffe727ac6fc241349b0c4bfc5079af74465d1c506ac04e34a417868ea2f8d8b",
   "decision": "official",
   "official_name": "CRPT-117-AS00-Vote002-20221213.pdf",
@@ -105,11 +119,74 @@
   "evidence": "text read: roll call: \"COMMITTEE ON ARMED SERVICES Roll Call Vote No. 2 H.Res. 1475\"; committee name is the motion voted on ('motion-to-report')"
  },
  {
+  "body_sha": "30b74ecbba7776c796e137f553c8997f6a3bb090ea656b36f4ed5ba9de52687d",
+  "decision": "official",
+  "official_name": "HHRG-114-GO24-Transcript-20150415.pdf",
+  "committee_name": "4-15-15-The-Taxpayer-Advocate-Annual-Report.pdf",
+  "evidence": "text read: GPO printed hearing: \"THE TAXPAYER ADVOCATE ANNUAL REPORT HEARING ... APRIL 15, 2015 Serial No. 114–22\"; transcript, Ms. Olson's written statement and an NTEU statement; not the report; the committee name is the hearing's title"
+ },
+ {
+  "body_sha": "16d84087aaf6028ff9ca91eac460af60275d37a29ad068988021561a147a021b",
+  "decision": "committee",
+  "official_name": "BILLS-113-2542-M001188-Amdt-2-U30.pdf",
+  "committee_name": "amendment_2_revised_final_recorded_vote.pdf",
+  "evidence": "text read: roll call sheet: \"ROLL CALL BILL: HR 2542 ... AMENDMENT NUMBER: 2 VOTE: (AYE) 11 (NO) 12\"; a tally of the vote on amendment 2, not its text"
+ },
+ {
+  "body_sha": "a581a1a792ba4ae2ecfd4b89416492947236e7c8369d5aa7fa30a96bdda839d5",
+  "decision": "committee",
+  "official_name": "BILLS-113-HR2542-A000055-Amdt-9-U9.pdf",
+  "committee_name": "amendment_9_final_recorded_vote_hr_2542.pdf",
+  "evidence": "text read: roll call sheet: \"ROLL CALL BILL: HR 2542 ... AMENDMENT NUMBER: 9 VOTE: (AYE) 9 (NO) 14\"; a tally of the vote on amendment 9, not its text"
+ },
+ {
+  "body_sha": "d17c0ab24988f189ebb834206b8007a20246148e25b81dc3e795320cec1b5996",
+  "decision": "committee",
+  "official_name": "BILLS-113-HR2542-M001188-Amdt-3-U3.pdf",
+  "committee_name": "amendment_3_final_recorded_vote_hr_2542.pdf",
+  "evidence": "text read: roll call sheet: \"ROLL CALL BILL: HR 2542 ... AMENDMENT NUMBER: 3 VOTE: (AYE) 10 (NO) 13\"; a tally of the vote on amendment 3, not its text"
+ },
+ {
   "body_sha": "0c86642838d0a951f92c5e7ef3b92cf5791e4fd3da276a5ad9e7c94f11e59a8f",
   "decision": "committee",
   "official_name": "BILLS-113-HR2542-P000604-Amdt-18-U19.pdf",
   "committee_name": "revised_amendment_18_recorded_vote_hr_2542.pdf",
   "evidence": "text read: roll call sheet: \"ROLL CALL BILL: HR 2542 ... AMENDMENT NUMBER: 18 VOTE\""
+ },
+ {
+  "body_sha": "44c4d8c14d527d73eb7d6a852eff859a78eb48efdce0ef1d66770a6537228f9d",
+  "decision": "committee",
+  "official_name": "BILLS-113-HR2542-S001180-Amdt-11-U11.pdf",
+  "committee_name": "amendment_11_final_recorded_vote_hr_2542.pdf",
+  "evidence": "text read: roll call sheet: \"ROLL CALL BILL: HR 2542 ... AMENDMENT NUMBER: 11 VOTE: (AYE)11 (NO) 13\"; a tally of the vote on amendment 11, not its text"
+ },
+ {
+  "body_sha": "df314d4dc80e74a7dddba6444f21dea3450336582036738a169de481bcf48c9a",
+  "decision": "committee",
+  "official_name": "BILLS-113-HR2542-V000081-Amdt-19-U19.pdf",
+  "committee_name": "amendment_19_final_recorded_vote_hr_2542..pdf",
+  "evidence": "text read: roll call sheet: \"ROLL CALL BILL: HR 2542 ... AMENDMENT NUMBER: 19 VOTE: (AYE) 11 (NO) 13\"; a tally of the vote on amendment 19, not its text; same form as read sibling 348798"
+ },
+ {
+  "body_sha": "3d1434b53900ce1090d10d7fbf56baac566116291ed02ccf2b3f2713ff9ab186",
+  "decision": "committee",
+  "official_name": "BILLS-1145033ih.pdf",
+  "committee_name": "HR-5033-ANS.pdf",
+  "evidence": "text read: ANS text: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO H.R. 5033\"; not the introduced bill; third name SLW_311_xml.pdf (same bytes) is a drafting file number that states no kind, so HR-5033-ANS.pdf leads"
+ },
+ {
+  "body_sha": "28d4b633704ba754504ded0a3891c63d2ada1be42284680633ec29a57a4447b9",
+  "decision": "committee",
+  "official_name": "BILLS-114HR1481ih-SmallContractorsImproveCompetitionActof2015-U2.pdf",
+  "committee_name": "3-25-2015_revised_ans_to_hr_1481.pdf",
+  "evidence": "text read: ANS text: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO H.R. 1481 OFFERED BY MR. CHABOT\"; not the introduced bill"
+ },
+ {
+  "body_sha": "f15c5a6f41b3b874d017e8caf322c24dd46086218dba8f1ab361e32d1c7d94dd",
+  "decision": "committee",
+  "official_name": "BILLS-114HR1890ih.pdf",
+  "committee_name": "042315_Vote_Sheet_Final_Passage_HR_1890.pdf",
+  "evidence": "text read: committee vote statement: \"VOTES OF THE COMMITTEE ... H.R. 1890 ... roll call vote of 25 yeas to 13 nays\"; the final-passage tally, not the bill text"
  },
  {
   "body_sha": "08b50c2b4a0ade452706e359c5fad27591532ebfcc038e088e033fe33d454980",
@@ -140,11 +217,25 @@
   "evidence": "not read: both names say the same in words: not read; both names say \"Views and Estimates FY19\"; meeting is that markup"
  },
  {
+  "body_sha": "4b0650ec444f4cd7676ac0a319bb5d2f8fd930b94ea17f19fcbc2819efb5e431",
+  "decision": "committee",
+  "official_name": "BILLS-116HR1922ih.pdf",
+  "committee_name": "AINS TO HR 1922.pdf",
+  "evidence": "text read: ANS text: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO H.R. 1922 OFFERED BY MR. NEAL\"; not the introduced bill"
+ },
+ {
   "body_sha": "e4e64309651ae9a5466a64a8dcaf9aaa41f867d992857a32e9ac5eb98d1d2fff",
   "decision": "committee",
   "official_name": "BILLS-116HR3398ih.pdf",
   "committee_name": "AINS TO HR 3398.pdf | AINS-TO-HR-3398.pdf",
   "evidence": "text read: ANS text: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO H.R.\""
+ },
+ {
+  "body_sha": "c4451cf3bde46934ecfb6bb3e818fd7af4a80be8b949830ea33053ecb9214e7d",
+  "decision": "committee",
+  "official_name": "BILLS-116HR3708ih.pdf",
+  "committee_name": "AINS TO HR 3708.pdf",
+  "evidence": "text read: ANS text: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO H.R. 3708 OFFERED BY MR. NEAL\"; not the introduced bill"
  },
  {
   "body_sha": "83b203f065bdf86c2bcf94c191f01e0a1a01a30be17cf205262d1cba12963df0",
@@ -166,6 +257,41 @@
   "official_name": "BILLS-116HR4650ih.pdf",
   "committee_name": "AINS TO HR 4650 DENTAL.pdf | AINS-TO-HR-4650-DENTAL.pdf",
   "evidence": "text read: ANS text: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO H.R.\""
+ },
+ {
+  "body_sha": "2cf0d9d93021f6eaac7a0802a599d067f72eab1c15c99bf39c13543688358e6a",
+  "decision": "committee",
+  "official_name": "BILLS-116HR4716ih.pdf",
+  "committee_name": "AINS TO HR 4716.pdf",
+  "evidence": "text read: ANS text: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO H.R. 4716 OFFERED BY MR. NEAL\"; not the introduced bill"
+ },
+ {
+  "body_sha": "9d6c36b2b726154cf746a79ad43cad6aa67bf1c80b53796c733f71aa1ff0f9ab",
+  "decision": "committee",
+  "official_name": "BILLS-116HR4742ih.pdf",
+  "committee_name": "AINS TO HR 4742.pdf",
+  "evidence": "text read: ANS text: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO H.R. 4742 OFFERED BY MR. NEAL\"; not the introduced bill"
+ },
+ {
+  "body_sha": "48e738504727194e4735e87124fc6a91c94f9a73ef08199ad3b18ab5710fde10",
+  "decision": "committee",
+  "official_name": "BILLS-116HR5306ih.pdf",
+  "committee_name": "AINS to HR 5306.pdf",
+  "evidence": "text read: ANS text: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO H.R. 5306\"; not the introduced bill; sponsor line left blank"
+ },
+ {
+  "body_sha": "f9791109037b7e30717797183d2e7552ae847415a555fc5fe9fe1d0d7f71d449",
+  "decision": "committee",
+  "official_name": "BILLS-116HR5826ih.pdf",
+  "committee_name": "AINS to HR 5826 Leg Text.pdf",
+  "evidence": "text read: ANS text: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO H.R. 5826 OFFERED BY MR. NEAL\"; not the introduced bill; 229 pages"
+ },
+ {
+  "body_sha": "6af16e8c9432b9505413028f13205000919879dee4667a0e7c056ae7272b5914",
+  "decision": "committee",
+  "official_name": "BILLS-116HRes746ih.pdf",
+  "committee_name": "NEAL_048_xml AINS TO H Res 746.pdf",
+  "evidence": "text read: ANS text: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO H. RES. 746 OFFERED BY MR. NEAL\"; not the introduced resolution"
  },
  {
   "body_sha": "e826996078c8df3583f074d9f29caff58077519c3df2f508a7738827012150f3",
@@ -453,181 +579,6 @@
   "official_name": "HRPT-118-HR4755.pdf",
   "committee_name": "63AFDBC6E8963B9B4D6A62AC97B8A1C0C1787ABD5A2EB1C12EEA6E9B2F8F52D7.h.r.-4755-amendment-016-sykes.pdf",
   "evidence": "text read: \"AMENDMENT TO H.R. 4755 OFFERED BY MRS. SYKES OF OHIO\""
- },
- {
-  "body_sha": "16d84087aaf6028ff9ca91eac460af60275d37a29ad068988021561a147a021b",
-  "decision": "undecided",
-  "official_name": "BILLS-113-2542-M001188-Amdt-2-U30.pdf",
-  "committee_name": "amendment_2_revised_final_recorded_vote.pdf",
-  "evidence": "not read: names and meeting only: not read; committee calls it the recorded vote, House filed it as the amendment; lean committee: the one read sibling (348798, same markup, 41 KB) is the roll call"
- },
- {
-  "body_sha": "a581a1a792ba4ae2ecfd4b89416492947236e7c8369d5aa7fa30a96bdda839d5",
-  "decision": "undecided",
-  "official_name": "BILLS-113-HR2542-A000055-Amdt-9-U9.pdf",
-  "committee_name": "amendment_9_final_recorded_vote_hr_2542.pdf",
-  "evidence": "not read: names and meeting only: not read; committee calls it the recorded vote, House filed it as the amendment; lean committee: the one read sibling (348798, same markup, 41 KB) is the roll call"
- },
- {
-  "body_sha": "d17c0ab24988f189ebb834206b8007a20246148e25b81dc3e795320cec1b5996",
-  "decision": "undecided",
-  "official_name": "BILLS-113-HR2542-M001188-Amdt-3-U3.pdf",
-  "committee_name": "amendment_3_final_recorded_vote_hr_2542.pdf",
-  "evidence": "not read: names and meeting only: not read; committee calls it the recorded vote, House filed it as the amendment; lean committee: the one read sibling (348798, same markup, 41 KB) is the roll call"
- },
- {
-  "body_sha": "44c4d8c14d527d73eb7d6a852eff859a78eb48efdce0ef1d66770a6537228f9d",
-  "decision": "undecided",
-  "official_name": "BILLS-113-HR2542-S001180-Amdt-11-U11.pdf",
-  "committee_name": "amendment_11_final_recorded_vote_hr_2542.pdf",
-  "evidence": "not read: names and meeting only: not read; committee calls it the recorded vote, House filed it as the amendment; lean committee: the one read sibling (348798, same markup, 41 KB) is the roll call"
- },
- {
-  "body_sha": "df314d4dc80e74a7dddba6444f21dea3450336582036738a169de481bcf48c9a",
-  "decision": "undecided",
-  "official_name": "BILLS-113-HR2542-V000081-Amdt-19-U19.pdf",
-  "committee_name": "amendment_19_final_recorded_vote_hr_2542..pdf",
-  "evidence": "not read: names and meeting only: not read; committee calls it the recorded vote, House filed it as the amendment; lean committee: the one read sibling (348798, same markup, 41 KB) is the roll call"
- },
- {
-  "body_sha": "3d1434b53900ce1090d10d7fbf56baac566116291ed02ccf2b3f2713ff9ab186",
-  "decision": "undecided",
-  "official_name": "BILLS-1145033ih.pdf",
-  "committee_name": "HR-5033-ANS.pdf",
-  "evidence": "not read: names and meeting only: not read; committee name says AINS/ANS, House filed it as the introduced bill; lean committee: 10 of 10 read ANS-named files in this family were ANS text"
- },
- {
-  "body_sha": "28d4b633704ba754504ded0a3891c63d2ada1be42284680633ec29a57a4447b9",
-  "decision": "undecided",
-  "official_name": "BILLS-114HR1481ih-SmallContractorsImproveCompetitionActof2015-U2.pdf",
-  "committee_name": "3-25-2015_revised_ans_to_hr_1481.pdf",
-  "evidence": "not read: names and meeting only: not read; committee name says AINS/ANS, House filed it as the introduced bill; lean committee: 10 of 10 read ANS-named files in this family were ANS text"
- },
- {
-  "body_sha": "f15c5a6f41b3b874d017e8caf322c24dd46086218dba8f1ab361e32d1c7d94dd",
-  "decision": "undecided",
-  "official_name": "BILLS-114HR1890ih.pdf",
-  "committee_name": "042315_Vote_Sheet_Final_Passage_HR_1890.pdf",
-  "evidence": "not read: names and meeting only: not read; House bill name against committee \"Vote_Sheet_Final_Passage_HR_1890\", 106 KB"
- },
- {
-  "body_sha": "4145bb0603dae3555f5573f3aa7ddb1b4f2a2fa107cb7623437ac00403f62d5c",
-  "decision": "undecided",
-  "official_name": "BILLS-114pih-FCCquarterlyreport-U1.pdf | BILLS-114pih-FCCquarterlyreport.pdf",
-  "committee_name": "Discussion-Draft-CT-FCC-Quarterly-Report-2015-5-15.pdf",
-  "evidence": "not read: names and meeting only: not read; committee name \"Discussion-Draft-CT-FCC-Quarterly-Report\" reads as a bill draft; lean official: 'Quarterly Report' looks like the bill's subject, not the kind"
- },
- {
-  "body_sha": "4b0650ec444f4cd7676ac0a319bb5d2f8fd930b94ea17f19fcbc2819efb5e431",
-  "decision": "undecided",
-  "official_name": "BILLS-116HR1922ih.pdf",
-  "committee_name": "AINS TO HR 1922.pdf",
-  "evidence": "not read: names and meeting only: not read; committee name says AINS/ANS, House filed it as the introduced bill; lean committee: 10 of 10 read ANS-named files in this family were ANS text"
- },
- {
-  "body_sha": "c4451cf3bde46934ecfb6bb3e818fd7af4a80be8b949830ea33053ecb9214e7d",
-  "decision": "undecided",
-  "official_name": "BILLS-116HR3708ih.pdf",
-  "committee_name": "AINS TO HR 3708.pdf",
-  "evidence": "not read: names and meeting only: not read; committee name says AINS/ANS, House filed it as the introduced bill; lean committee: 10 of 10 read ANS-named files in this family were ANS text"
- },
- {
-  "body_sha": "2cf0d9d93021f6eaac7a0802a599d067f72eab1c15c99bf39c13543688358e6a",
-  "decision": "undecided",
-  "official_name": "BILLS-116HR4716ih.pdf",
-  "committee_name": "AINS TO HR 4716.pdf",
-  "evidence": "not read: names and meeting only: not read; committee name says AINS/ANS, House filed it as the introduced bill; lean committee: 10 of 10 read ANS-named files in this family were ANS text"
- },
- {
-  "body_sha": "9d6c36b2b726154cf746a79ad43cad6aa67bf1c80b53796c733f71aa1ff0f9ab",
-  "decision": "undecided",
-  "official_name": "BILLS-116HR4742ih.pdf",
-  "committee_name": "AINS TO HR 4742.pdf",
-  "evidence": "not read: names and meeting only: not read; committee name says AINS/ANS, House filed it as the introduced bill; lean committee: 10 of 10 read ANS-named files in this family were ANS text"
- },
- {
-  "body_sha": "48e738504727194e4735e87124fc6a91c94f9a73ef08199ad3b18ab5710fde10",
-  "decision": "undecided",
-  "official_name": "BILLS-116HR5306ih.pdf",
-  "committee_name": "AINS to HR 5306.pdf",
-  "evidence": "not read: names and meeting only: not read; committee name says AINS/ANS, House filed it as the introduced bill; lean committee: 10 of 10 read ANS-named files in this family were ANS text"
- },
- {
-  "body_sha": "f9791109037b7e30717797183d2e7552ae847415a555fc5fe9fe1d0d7f71d449",
-  "decision": "undecided",
-  "official_name": "BILLS-116HR5826ih.pdf",
-  "committee_name": "AINS to HR 5826 Leg Text.pdf",
-  "evidence": "not read: names and meeting only: not read; committee name says AINS/ANS, House filed it as the introduced bill; lean committee: 10 of 10 read ANS-named files in this family were ANS text"
- },
- {
-  "body_sha": "6af16e8c9432b9505413028f13205000919879dee4667a0e7c056ae7272b5914",
-  "decision": "undecided",
-  "official_name": "BILLS-116HRes746ih.pdf",
-  "committee_name": "NEAL_048_xml AINS TO H Res 746.pdf",
-  "evidence": "not read: names and meeting only: not read; committee name says AINS/ANS, House filed it as the introduced bill; lean committee: 10 of 10 read ANS-named files in this family were ANS text"
- },
- {
-  "body_sha": "bfee601476123d5e2aaf7d6a3aca6baef2c6ce35c8a7736178eb02316e2a9cd1",
-  "decision": "undecided",
-  "official_name": "CRPT-115-II00-Vote002-20180411.pdf",
-  "committee_name": "fav_report_hr_3144.pdf",
-  "evidence": "not read: names and meeting only: not read; \"fav_report_hr_3144\" (24 KB) against House \"Vote002\"; lean official"
- },
- {
-  "body_sha": "f3751d0e9c63578d2987cb88b1b3084b2b7834363b057ad2407150009fe44f6e",
-  "decision": "undecided",
-  "official_name": "CRPT-115-WM00-Vote009-20180711.pdf",
-  "committee_name": "20180711-Doggett-Amendment-for-AINS-to-H.R.-6306-1.pdf",
-  "evidence": "not read: names and meeting only: not read; House \"Vote\" name against committee amendment name; lean official: 57 of 57 read in this family are vote tallies"
- },
- {
-  "body_sha": "b6fdd3c2ca84c08b672fbffab6b90568b23529f5531982756fd587eca5d3a4e9",
-  "decision": "undecided",
-  "official_name": "CRPT-115-WM00-Vote010-20180711.pdf",
-  "committee_name": "20180711-Chu-Amendment-for-AINS-to-H.R.-6306-1.pdf",
-  "evidence": "not read: names and meeting only: not read; House \"Vote\" name against committee amendment name; lean official: 57 of 57 read in this family are vote tallies"
- },
- {
-  "body_sha": "30b74ecbba7776c796e137f553c8997f6a3bb090ea656b36f4ed5ba9de52687d",
-  "decision": "undecided",
-  "official_name": "HHRG-114-GO24-Transcript-20150415.pdf",
-  "committee_name": "4-15-15-The-Taxpayer-Advocate-Annual-Report.pdf",
-  "evidence": "not read: names and meeting only: not read; committee name is the hearing title \"The Taxpayer Advocate Annual Report\"; lean official: 'Report' is the hearing's title; 4.3 MB could still be the report itself"
- },
- {
-  "body_sha": "6fd59770355f1da5c24205e433427614e99d32c260b4587237b4ec827d587f0a",
-  "decision": "undecided",
-  "official_name": "HHRG-115-SM00-20180117-CPg.pdf",
-  "committee_name": "1-17-18_hearing_notice.pdf",
-  "evidence": "not read: names and meeting only: not read; size atypical of this committee's one-page notices (38-41 KB); lean committee; official kind is generic"
- },
- {
-  "body_sha": "1f32175fb7baed1f680f53682be276f68e18a5c05b556ff5b52552f83eb0bfb9",
-  "decision": "undecided",
-  "official_name": "HHRG-115-SM00-20180226-CPg.pdf",
-  "committee_name": "2-26-18_hearing_notice.pdf",
-  "evidence": "not read: names and meeting only: not read; size atypical of this committee's one-page notices (38-41 KB); lean committee; official kind is generic"
- },
- {
-  "body_sha": "ba01836a29ffd20eebb806fbef62943f44055ed9c4e16f19db77b88b838d2237",
-  "decision": "undecided",
-  "official_name": "HHRG-115-SM23-20170330-CPg.pdf",
-  "committee_name": "3-30-17_hearing_notice.pdf",
-  "evidence": "not read: names and meeting only: not read; size atypical of this committee's one-page notices (38-41 KB); lean committee; official kind is generic"
- },
- {
-  "body_sha": "3c729952acf110f35c8d8c37b97ffebabbd8e0711fa6ff484ab436ef5cff78bb",
-  "decision": "undecided",
-  "official_name": "HHRG-115-SM27-20180614-TOC.pdf",
-  "committee_name": "6-14-18_witness_list.pdf",
-  "evidence": "not read: names and meeting only: not read; House \"TOC\" (generic) against committee \"witness_list\", 37 KB; lean committee; no read sibling of this template"
- },
- {
-  "body_sha": "1904823a021f1a1f98473572990449fd47790cf7ee3534019346ce9a94857d1c",
-  "decision": "undecided",
-  "official_name": "HMTG-115-SM00-20170201-CPg.pdf",
-  "committee_name": "2-1-17_organization_meeting_notice.pdf",
-  "evidence": "not read: names and meeting only: not read; size atypical of this committee's one-page notices (38-41 KB); lean committee; official kind is generic"
  },
  {
   "body_sha": "603783213c9b0603503cdc2934c4bcbcfcb8fd5e839a0718cd324cd6b514cc16",
