@@ -1387,6 +1387,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     if not prepared.get('include_entities'):
         # Meetings list caption tracks among their transcripts (ct-1i4q); without entities there are none.
         steps += [
+            dict(name='recording_video_links',sql="SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS VARCHAR) AS extracted_key WHERE false",materialize=True),
             dict(name='recordings_entity',sql=EMPTY_RECORDINGS_SQL,materialize=True),
             dict(name='recording_page_video_events',sql=EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL,materialize=True),
         ]
@@ -1557,6 +1558,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         'page_facts':['body_sha'],
         'valid_rendition_members':['group_kind','group_id','source_id','body_sha'],
         'publisher_links':['source_id','page_body','context','link_index','split_position','target_member_path'],
+        'recording_video_links':['page_body','extracted_key'],
         'current_recoveries':['id','original_url','recovered_filename'],
         'source_filename_readings':['source_id'],
         'source_annotation_publisher':['source_id'],

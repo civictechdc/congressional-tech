@@ -62,6 +62,7 @@ class Diff:
             self.view(name, f"SELECT * FROM read_parquet('{Path(directory) / 'links.parquet'}')")
             self.history.append(name)
         self.link_causes = False
+        self.recording_video_links = False
         self.witness_rekey = None  # set by rekeyed()
         self.meeting_update = None  # set by updated_meetings()
         self.subject_update = None  # set by updated_subjects()
@@ -212,6 +213,12 @@ def add_evidence(diff: Diff, base_path: str, candidate_path: str):
         ELSE 'unexplained' END
       FROM candidate_links l ANTI JOIN base_links p USING(link_key)""")
     diff.link_causes = True
+    rvl_path = Path(candidate_path).parent / 'recording_video_links.parquet'
+    if rvl_path.is_file():
+        diff.table('candidate_recording_video_links',
+                   f"SELECT upper(left(page_body,16)) k,extracted_key AS video_key FROM read_parquet('{rvl_path}') "
+                   "WHERE page_body IS NOT NULL AND extracted_key IS NOT NULL")
+        diff.recording_video_links = True
     flips = diff.rows("""SELECT a_real,b_real,member_path IS NOT NULL,count(*) FROM flips GROUP BY ALL ORDER BY 4 DESC""")
     return [dict(zip(('base_real', 'candidate_real', 'member', 'rows'), r)) for r in flips]
 
@@ -1350,7 +1357,9 @@ def recordings(d: Diff):
         added = d.one('SELECT count(*) FROM candidate_recordings ANTI JOIN base_recordings USING(video_key)')
         groups.append(group('added keys', 'event_ids unreadable', added))
     else:
-        flips = ("EXISTS (SELECT 1 FROM flips f WHERE f.b_real AND NOT f.a_real AND split_part(l.video_key,':',2)<>'' AND contains(f.address,split_part(l.video_key,':',2)))"
+        page_flips = (" OR EXISTS (SELECT 1 FROM candidate_recording_video_links rvl JOIN flips f USING(k) "
+                      "WHERE rvl.video_key=l.video_key AND f.b_real AND NOT f.a_real)") if d.recording_video_links else ''
+        flips = (f"(EXISTS (SELECT 1 FROM flips f WHERE f.b_real AND NOT f.a_real AND split_part(l.video_key,':',2)<>'' AND contains(f.address,split_part(l.video_key,':',2))){page_flips})"
                  if d.link_causes else 'false')
         for empty, tied, n in d.rows(f'''SELECT coalesce(len(event_ids),0)=0,{flips},count(*) FROM candidate_recordings l
           ANTI JOIN base_recordings USING(video_key) GROUP BY ALL ORDER BY ALL'''):
@@ -1372,7 +1381,9 @@ def recordings(d: Diff):
         def in_m_videos(side, ev_expr, vk_expr):
             return (f"EXISTS (SELECT 1 FROM (SELECT unnest(m.videos) AS v FROM {side}_meetings m "
                     f"WHERE m.event_id={ev_expr} AND m.videos IS NOT NULL) WHERE nullif(trim(v.video_key),'')={vk_expr})")
-        flips = ("EXISTS (SELECT 1 FROM flips f WHERE f.b_real AND NOT f.a_real AND split_part(l.video_key,':',2)<>'' AND contains(f.address,split_part(l.video_key,':',2)))"
+        page_flips = (" OR EXISTS (SELECT 1 FROM candidate_recording_video_links rvl JOIN flips f USING(k) "
+                      "WHERE rvl.video_key=l.video_key AND f.b_real AND NOT f.a_real)") if d.recording_video_links else ''
+        flips = (f"(EXISTS (SELECT 1 FROM flips f WHERE f.b_real AND NOT f.a_real AND split_part(l.video_key,':',2)<>'' AND contains(f.address,split_part(l.video_key,':',2))){page_flips})"
                  if d.link_causes else 'false')
         first_rec = d.one(f"""SELECT count(*) FROM (SELECT * FROM candidate_recordings ANTI JOIN base_recordings USING(video_key)) l
           WHERE NOT ({flips}) AND coalesce(len(l.tracks),0)=0 AND coalesce(len(l.event_ids),0)>0

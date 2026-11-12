@@ -1,6 +1,6 @@
 ---
 id: ct-zdj8
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-10T19:45:31Z
@@ -22,3 +22,9 @@ On candidate 77673bfb8fcf (2026-11-10), 83 of 118 new no-meeting YouTube recordi
 **2026-11-11T14:44:37Z**
 
 validated 2026-11-11, left open: not started; the 77673bfb8fcf gate group 'empty event_ids; source not traced' shipped with a hand cause, and no commit names ct-zdj8.
+
+**2026-11-12T05:40:00Z**
+
+Closed:
+- Root cause: `model/sql/publisher-links.sql` joins `resolved_links` targets only against `copy_url_keys` and `source_endpoints` (addresses with a fetched `capture_sources` copy). The 35 YouTube URLs present in `publisher_links` had HTTP fetch attempts in `captures`, whereas the 83 omitted YouTube watch/youtu.be/embed links were never HTTP-fetched themselves and entered `recordings` through `resolved_link_targets -> recording_link_candidates -> recording_video_links`.
+- Kept `recording_video_links.parquet` (`['page_body', 'extracted_key']`) in `archive-model/evidence/` (`archive_model.py`), wired `release_comparison.add_evidence` / `recordings` to verify newly eligible linking pages from `recording_video_links.parquet`, and wired `archive_publish.py` + `release_gate.automatic_causes` to trace added no-meeting recordings through `recording_video_links.parquet` (and caption track bodies) to newly captured receipts verified against raw JSONL lines on unattended nights.

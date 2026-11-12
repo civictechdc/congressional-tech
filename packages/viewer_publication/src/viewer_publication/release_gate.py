@@ -314,6 +314,7 @@ URL_STATE_COLUMNS = ('attempts', 'last_attempt', 'last_status', 'last_outcome', 
                      'recheck_meeting_date', 'linked_from')
 URL_STATE_GROUPS = {*(('changed ' + column, 'value differs on matched key') for column in URL_STATE_COLUMNS),
                     ('added URLs', ATTEMPTED_URLS), ('added URLs', QUEUED_URLS)}
+RECORDING_ADD_GROUP = ('recordings.parquet', 'added keys', 'empty event_ids; source not traced')
 AUTOMATIC_CAUSE = "addition traced to receipts absent from the live release's receipt set (automatic, ct-ud0b)"
 URL_STATE_CAUSE = ("every row is what the lines of receipts absent from the live release's receipt set imply "
                    "(automatic, ct-9j3z)")
@@ -1075,7 +1076,7 @@ def write_meeting_updates(report, base_dir, candidate_dir, folder, refused=()):
 
 
 def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work,
-                     candidate_receipt_keys=None):
+                     candidate_receipt_keys=None, evidence_dir=None):
     """Cause entries for a difference whose every row comes from receipts new to the release.
 
     Returns (entries, reasons); entries is empty unless every check passes: the proof is all or
@@ -1113,7 +1114,8 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     every = [dict(group, file=name) for name, facts in report['files'].items() for group in facts['groups']]
     differences = [g for g in every if not g.get('refetch_only')]
     url_state = [g for g in differences if g['file'] == 'url_state.parquet' and (g['group'], g['cause']) in URL_STATE_GROUPS]
-    other = [g for g in differences if g not in url_state and (
+    recording_adds = [g for g in differences if (g['file'], g['group'], g['cause']) == RECORDING_ADD_GROUP]
+    other = [g for g in differences if g not in url_state and g not in recording_adds and (
         g.get('value') or g['count'] <= 0 or (g['file'], g['group']) not in AUTOMATIC_GROUPS)]
     if other:
         return [], [f'automatic causes: {group_id(g)} ({g["count"]}) is not an addition that can be traced' for g in other]
@@ -1161,25 +1163,51 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     added_links = sum(g['count'] for g in differences if (g['file'], g['group']) == ('links.parquet', 'added keys'))
     if len(keys) != added_links:
         reasons.append(f'automatic causes: {added_links} added link keys, {len(keys)} attached to new documents')
-    if not keys and len(url_state) < len(differences):
+    recording_pages = set()
+    if recording_adds:
+        cand_rec_cols = set(d.columns('candidate', 'recordings')) if d.has('candidate', 'recordings') else set()
+        tracks_expr = "list_transform(coalesce(tracks,[]),t->left(lower(hex(t.body)),16))" if 'tracks' in cand_rec_cols else 'CAST([] AS VARCHAR[])'
+        base_rec_anti = 'ANTI JOIN base_recordings USING(video_key)' if d.has('base', 'recordings') else ''
+        added_recs = d.rows(f"SELECT video_key,{tracks_expr} FROM candidate_recordings {base_rec_anti} WHERE coalesce(len(event_ids),0)=0 ORDER BY 1")
+        reasons += over_cap(len(added_recs), 'added recordings', AUTOMATIC_ADDITION_CAP)
+        rvl_dir = Path(evidence_dir) if evidence_dir is not None else Path(candidate_dir).parent / 'evidence'
+        rvl_file = rvl_dir / 'recording_video_links.parquet'
+        pages_by_video = {}
+        if rvl_file.is_file():
+            for vk, pb in d.rows(f"SELECT extracted_key,left(lower(page_body),16) FROM read_parquet('{rvl_file}') WHERE extracted_key IS NOT NULL AND page_body IS NOT NULL"):
+                pages_by_video.setdefault(vk, set()).add(pb)
+        unlinked_recs = []
+        for vk, track_prefixes in added_recs:
+            linked_pages = pages_by_video.get(vk, set())
+            valid_tracks = {tp for tp in (track_prefixes or []) if tp}
+            if not linked_pages and not valid_tracks:
+                unlinked_recs.append(vk)
+            else:
+                recording_pages |= linked_pages | valid_tracks
+        if unlinked_recs:
+            reasons.append(f'automatic causes: {len(unlinked_recs)} added recordings have no linking page in kept evidence (first {unlinked_recs[:3]})')
+    if not keys and len(url_state) + len(recording_adds) < len(differences):
         reasons.append('automatic causes: no new document carries a key to trace')
     if reasons:
         return [], reasons
     # From here every check runs and every reason is kept, so a refused night names all it found.
     # One engine job for the trace and the url_state proof: one scan of the capture input.
     summary, pages, url_lines, lines = {}, set(), [], None
+    trace_keys = sorted(set(keys) | recording_pages)
     work = Path(work)
     if url_state and candidate_receipt_keys is None:
         reasons.append("automatic causes: url_state needs the candidate's receipt set")
     elif url_state:
         reasons, summary, pages, url_lines, lines = url_state_proof(
             d, candidate_dir, engine=engine, captures=captures, new_receipts=set(candidate_receipt_keys) - held,
-            held_receipts=held, updated_events=updated_events, work=work / 'url-state', keys=keys)
+            held_receipts=held, updated_events=updated_events, work=work / 'url-state', keys=trace_keys)
     if lines is None:
-        lines = capture_job(work / 'trace', engine, captures, keys=set(keys))['trace'] if keys else []
+        lines = capture_job(work / 'trace', engine, captures, keys=set(trace_keys))['trace'] if trace_keys else []
     work.mkdir(parents=True, exist_ok=True)
     traced = {row['prefix'] for row in lines}
-    for kind, missing in (('new document', [k for k in keys if k not in traced]), ('queued link page', sorted(pages - traced))):
+    for kind, missing in (('new document', [k for k in keys if k not in traced]),
+                          ('queued link page', sorted(pages - traced)),
+                          ('recording page', sorted(recording_pages - traced))):
         if missing:
             reasons.append(f'automatic causes: {len(missing)} {kind} keys have no capture to trace (first {missing[:3]})')
     raw, facts = {}, {}
@@ -1209,13 +1237,16 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
         return [], sorted(set(reasons))
     evidence = work / 'automatic-trace.json'
     evidence.write_text(json.dumps(dict(live_receipts=len(held), new_receipts=len(raw), lines=lines,
+                                        recording_pages=sorted(recording_pages),
                                         url_state=dict(groups=summary, lines=len(url_lines), queued_link_pages=sorted(pages))),
                                    indent=1, default=str) + '\n')
     from congress_api.retention.provenance import file_pin
     pin = dict(path=str(evidence), **file_pin(evidence))
     bookkeeping = {group_id(g) for g in url_state}
+    recording_ids = {group_id(g) for g in recording_adds}
     return [dict(id=group_id(g), count=g['count'], disposition='explained', evidence=[pin], automatic=True,
                  **(dict(cause=URL_STATE_CAUSE, tickets=['ct-9j3z']) if group_id(g) in bookkeeping else
+                    dict(cause=AUTOMATIC_CAUSE, tickets=['ct-zdj8']) if group_id(g) in recording_ids else
                     dict(cause=AUTOMATIC_CAUSE, tickets=['ct-ud0b']))) for g in groups], []
 
 

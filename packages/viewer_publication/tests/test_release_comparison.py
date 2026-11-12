@@ -907,3 +907,28 @@ def test_compare_with_missing_address_columns_reports_unchecked_without_crashing
                for g in result['files'][f'{table}.parquet']['groups'])
 
 
+def test_recording_linked_from_newly_eligible_page_is_verified_via_kept_evidence(tmp_path):
+    """ct-zdj8: YouTube anchor/embed links kept in recording_video_links.parquet trace new recordings to their page."""
+    prev = release(tmp_path / 'prev', documents=['A'])
+    rows = [{'video_key': 'youtube:embed1', 'event_ids': []}, {'video_key': 'youtube:untraced', 'event_ids': []}]
+    live = release(tmp_path / 'live', documents=['A', 'N'], recordings=rows)
+    ev_base = tmp_path / 'ev-base'
+    ev_cand = tmp_path / 'ev-cand'
+    ev_base.mkdir()
+    ev_cand.mkdir()
+    before = evidence(ev_base / 'capture_evidence.parquet', [('A', True, None), ('N', False, None, 'https://agriculture.house.gov/event/1')])
+    after = evidence(ev_cand / 'capture_evidence.parquet', [('A', True, None), ('N', True, None, 'https://agriculture.house.gov/event/1')])
+    page_sha = (key('N') + b'\0' * 24).hex()
+    pq.write_table(
+        pa.Table.from_pylist([{'page_body': page_sha, 'extracted_key': 'youtube:embed1'}],
+                             schema=pa.schema([('page_body', S), ('extracted_key', S)])),
+        ev_cand / 'recording_video_links.parquet',
+    )
+    code, result = run(tmp_path, prev, live, '--evidence-base', before, '--evidence-candidate', after)
+    assert code == 1
+    assert counts(result, 'recordings') == {
+        ('added keys', 'empty event_ids; capture newly real'): 1,
+        ('added keys', 'empty event_ids; source not traced'): 1,
+    }
+
+
