@@ -541,8 +541,8 @@ GENERIC_DOC_TITLE_RE = (
     r'(?i)^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement'
     r'|testimony|biography|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$'
 )
-DOC_UPDATE_COLS = {'meeting_keys', 'title', 'document_date', 'document_date_source', 'document_date_status',
-                   'committee_keys', 'chambers', 'congress'}
+DOC_UPDATE_COLS = {'meeting_keys', 'title', 'title_source', 'document_date', 'document_date_source',
+                   'document_date_status', 'committee_keys', 'chambers', 'congress'}
 
 
 def _document_meeting_updates(d: Diff, table, join, shared, compare, clean_w_rel, out):
@@ -673,7 +673,7 @@ def _document_meeting_updates(d: Diff, table, join, shared, compare, clean_w_rel
 
     w_both = d.has('base', 'witnesses') and d.has('candidate', 'witnesses')
     w_shared = set(d.columns('base', 'witnesses')) & set(d.columns('candidate', 'witnesses')) if w_both else set()
-    if 'title' in changed_cols and {'title', 'witness_keys'} <= shared and {'witness_key', 'name'} <= w_shared and updated_witnesses(d):
+    if (changed_cols & {'title', 'title_source'}) and {'title', 'witness_keys'} <= shared and {'witness_key', 'name'} <= w_shared and updated_witnesses(d):
         not_sup = lambda alias: f'{alias}.superseded_by IS NULL' if 'superseded_by' in w_shared else 'true'
         wname_sql = lambda side, wk_expr: f"""(SELECT CASE
             WHEN count(DISTINCT w.witness_key) FILTER (WHERE {not_sup('w')})=1 THEN min(w.name) FILTER (WHERE {not_sup('w')})
@@ -681,6 +681,15 @@ def _document_meeting_updates(d: Diff, table, join, shared, compare, clean_w_rel
           FROM {side}_witnesses w WHERE list_contains(coalesce({wk_expr},{empty}),w.witness_key))"""
         has_fn_p = "coalesce(p.filename,'')<>''" if 'filename' in shared else 'true'
         has_fn_l = "coalesce(l.filename,'')<>''" if 'filename' in shared else 'true'
+        title_join = join
+        if 'title_source' in shared:
+            pts_expr, lts_expr, has_ts = 'p.title_source', 'l.title_source', True
+        elif (d.has('base', 'detail') and d.has('candidate', 'detail')
+              and 'title_source' in set(d.columns('base', 'detail')) & set(d.columns('candidate', 'detail'))):
+            title_join += ' JOIN base_detail bd ON bd.file_row_number=p.file_row_number JOIN candidate_detail cd ON cd.file_row_number=l.file_row_number'
+            pts_expr, lts_expr, has_ts = 'bd.title_source', 'cd.title_source', True
+        else:
+            pts_expr, lts_expr, has_ts = 'CAST(NULL AS VARCHAR)', 'CAST(NULL AS VARCHAR)', False
         w_row_ok = [f'p.file_row_number IN (SELECT pr FROM {clean_w_rel})'] if clean_w_rel else []
         sup_touch = (" OR cw.superseded_by IN (SELECT witness_key FROM witness_update_candidate)"
                      if 'superseded_by' in w_shared else '')
@@ -690,21 +699,29 @@ def _document_meeting_updates(d: Diff, table, join, shared, compare, clean_w_rel
                 AND (cw.witness_key IN (SELECT witness_key FROM witness_update_candidate){sup_touch})))""")
         mk_guard = (f' AND p.file_row_number IN (SELECT pr FROM {table}_upd_docs)'
                     if 'meeting_keys' in shared and 'event_id' in m_shared else '')
-        counts['title'] = d.one(f"""WITH t AS (
-              SELECT p.title AS pt,l.title AS lt,{has_fn_p} AS pfn,{has_fn_l} AS lfn,
-                {wname_sql('base', 'p.witness_keys')} AS pw,{wname_sql('candidate', 'l.witness_keys')} AS lw
-              FROM {join} WHERE p.title IS DISTINCT FROM l.title AND ({' OR '.join(w_row_ok)}){mk_guard})
-            SELECT count(*) FROM t WHERE pw IS DISTINCT FROM lw AND (
+        ts_same = " AND pts='label_witness' AND lts='label_witness'" if has_ts else ''
+        ts_add_fn = " AND pts IS NULL AND lts='label_witness'" if has_ts else ''
+        ts_add_nofn = " AND pts IS NOT NULL AND pts<>'label_witness' AND lts='label_witness'" if has_ts else ''
+        ts_drop_fn = " AND pts='label_witness' AND lts IS NULL" if has_ts else ''
+        ts_drop_nofn = " AND pts='label_witness' AND lts IS NOT NULL AND lts<>'label_witness'" if has_ts else ''
+        valid_title_move = f"""pw IS DISTINCT FROM lw AND (
               (pw IS NOT NULL AND lw IS NOT NULL AND pt IS NOT NULL AND lt IS NOT NULL
                 AND ends_with(pt,' - '||pw) AND ends_with(lt,' - '||lw)
                 AND left(pt,length(pt)-length(' - '||pw))=left(lt,length(lt)-length(' - '||lw))
-                AND regexp_matches(trim(left(pt,length(pt)-length(' - '||pw))),'{GENERIC_DOC_TITLE_RE}'))
+                AND regexp_matches(trim(left(pt,length(pt)-length(' - '||pw))),'{GENERIC_DOC_TITLE_RE}'){ts_same})
               OR (pw IS NULL AND lw IS NOT NULL AND lt IS NOT NULL AND ends_with(lt,' - '||lw)
                 AND regexp_matches(trim(left(lt,length(lt)-length(' - '||lw))),'{GENERIC_DOC_TITLE_RE}')
-                AND ((pt IS NULL AND pfn) OR (pt=left(lt,length(lt)-length(' - '||lw)) AND NOT pfn)))
+                AND ((pt IS NULL AND pfn{ts_add_fn}) OR (pt=left(lt,length(lt)-length(' - '||lw)) AND NOT pfn{ts_add_nofn})))
               OR (pw IS NOT NULL AND lw IS NULL AND pt IS NOT NULL AND ends_with(pt,' - '||pw)
                 AND regexp_matches(trim(left(pt,length(pt)-length(' - '||pw))),'{GENERIC_DOC_TITLE_RE}')
-                AND ((lt IS NULL AND lfn) OR (lt=left(pt,length(pt)-length(' - '||pw)) AND NOT lfn))))""")
+                AND ((lt IS NULL AND lfn{ts_drop_fn}) OR (lt=left(pt,length(pt)-length(' - '||pw)) AND NOT lfn{ts_drop_nofn}))))"""
+        for col in ('title', 'title_source'):
+            if col in changed_cols and col in shared:
+                counts[col] = d.one(f"""WITH t AS (
+                      SELECT p.title AS pt,l.title AS lt,{pts_expr} AS pts,{lts_expr} AS lts,{has_fn_p} AS pfn,{has_fn_l} AS lfn,
+                        {wname_sql('base', 'p.witness_keys')} AS pw,{wname_sql('candidate', 'l.witness_keys')} AS lw
+                      FROM {title_join} WHERE p."{col}" IS DISTINCT FROM l."{col}" AND ({' OR '.join(w_row_ok)}){mk_guard})
+                    SELECT count(*) FROM t WHERE {valid_title_move}""")
 
     return refetch_split(out, counts, MEETING_UPDATE) if counts else out
 

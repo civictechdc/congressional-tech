@@ -43,7 +43,14 @@ Network failures produce capture results; process or disk failures stop the run.
 The worker drains its in-flight requests when stdin closes.
 
 Automatic redirects and retries are disabled. Python checks each redirect before
-sending the next request. All requests still share the concurrency limit. Known
+sending the next request. Direct requests send standard desktop browser
+navigation headers (`User-Agent`, `Accept`, `Accept-Language`,
+`Upgrade-Insecure-Requests`, and `Sec-Fetch-*`) unless the caller overrides a
+header name, sending JSON API defaults (`User-Agent` and
+`Accept: application/json`) on `api.congress.gov` and `api.govinfo.gov`, and
+upgrading the legacy partial `Chrome/120` Python user-agent string
+automatically while leaving Zyte API calls untouched. All requests still share
+the concurrency limit. Known
 HTTP links on `docs.house.gov` start directly at HTTPS: receipts preserve the
 original `requested_url`, record the upgraded `request_url`, and retain only
 redirects actually observed. Requests have a 15-second connect timeout, a

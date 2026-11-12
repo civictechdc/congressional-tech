@@ -1531,7 +1531,7 @@ def held_document_update_case(kind='date_title_meta_and_reorder'):
         ('meeting_keys', pa.list_(pa.string())), ('witness_keys', pa.list_(pa.string()))])
     detail_schema = pa.schema([
         ('link_key', pa.binary(8)), ('saved_body', pa.binary(32)), ('document_date_source', pa.string()),
-        ('document_date_status', pa.string()),
+        ('document_date_status', pa.string()), ('title_source', pa.string()),
         *list_schema])
 
     def doc_tables(rows):
@@ -1539,6 +1539,9 @@ def held_document_update_case(kind='date_title_meta_and_reorder'):
         detail_rows = [dict(link_key=K(r['key']), saved_body=K(r['key']) + bytes(24),
                             document_date_source=r['document_date_source'],
                             document_date_status=r['document_date_status'],
+                            title_source=r.get('title_source',
+                                               None if r['title'] is None
+                                               else ('page_title' if kind == 'non_generic_title' else 'label_witness')),
                             **{f.name: r[f.name] for f in list_schema}) for r in rows]
         urls = pa.table({'lookup_key': pa.array([K(r['key'].lower()) for r in rows], pa.binary(8)),
                          'list_row': pa.array(list(range(len(rows))), pa.int32())})
@@ -1549,18 +1552,21 @@ def held_document_update_case(kind='date_title_meta_and_reorder'):
                     detail=pa.Table.from_pylist(detail_rows, schema=detail_schema),
                     urls=urls, sources=sources, url_state=url_states(REQUEST, 1).slice(0, 0))
 
-    if kind == 'matched_meeting_links_witness_doc':
+    if kind in {'matched_meeting_links_witness_doc', 'wrong_title_source'}:
         base = base_tables()
         cand = cand_tables(keys=('n1', 'n2', 'n3'), panel=(*PANEL, CY), order=(1, 2, 3))
         base['meetings'] = with_meta(base['meetings'], [dict(chamber='house', congress=119,
                                                              committees=[dict(system_code='hsag00', role='primary')])])
         cand['meetings'] = with_meta(cand['meetings'], [dict(chamber='house', congress=119,
                                                              committees=[dict(system_code='hsag00', role='primary')])])
-        b_doc = dict(key='A', filename='statement.pdf', title=None, committee_keys=[], chambers=[], congress=None,
-                     document_date=None, document_date_source=None, document_date_status=None, meeting_keys=[], witness_keys=[])
-        c_doc = dict(key='A', filename='statement.pdf', title='Witness Statement - Cy Diaz', committee_keys=['hsag00'],
-                     chambers=['house'], congress=119, document_date=HEARD, document_date_source='meeting',
-                     document_date_status='accepted', meeting_keys=['118340'], witness_keys=['n3'])
+        b_doc = dict(key='A', filename='statement.pdf', title=None, title_source=None, committee_keys=[], chambers=[],
+                     congress=None, document_date=None, document_date_source=None, document_date_status=None,
+                     meeting_keys=[], witness_keys=[])
+        c_doc = dict(key='A', filename='statement.pdf', title='Witness Statement - Cy Diaz',
+                     title_source='override' if kind == 'wrong_title_source' else 'label_witness',
+                     committee_keys=['hsag00'], chambers=['house'], congress=119, document_date=HEARD,
+                     document_date_source='meeting', document_date_status='accepted', meeting_keys=['118340'],
+                     witness_keys=['n3'])
         return {**base, **doc_tables([b_doc])}, {**cand, **doc_tables([c_doc])}
 
     moved_date = HEARD + timedelta(days=7)
@@ -1934,6 +1940,7 @@ CASES = {
     'rescheduled_meeting_url_recheck_date_not_the_new_date': (lambda: rescheduled_url_state_case(kind='wrong_date'), 'recheck_meeting_date changed on an address'),
     'unrelated_meeting_rescheduled_to_changed_beside_an_update': (lambda: rescheduled_twin_case(kind='unrelated_pair'), 'meetings.parquet|changed rescheduled_to'),
     'held_document_non_generic_title_edited_on_an_update': (lambda: held_document_update_case(kind='non_generic_title'), 'changed title'),
+    'held_document_wrong_title_source_on_an_update': (lambda: held_document_update_case(kind='wrong_title_source'), 'changed title_source'),
     'held_document_filename_date_moved_on_an_update': (lambda: held_document_update_case(kind='filename_date'), 'changed document_date'),
     'held_document_gains_unrelated_committee_on_an_update': (lambda: held_document_update_case(kind='unrelated_committee'), 'changed committee_keys'),
     'held_document_unexplained_row_swap_on_unchanged_pair_beside_update': (
@@ -2324,3 +2331,10 @@ def test_url_state_checks_the_first_review_found_untested_refuse(tmp_path, plant
     report = unattended(tmp_path, **plant)
     assert report['reasons'] and 'automatic_causes' not in report
     assert any(f': {reason} (first' in r for r in report['automatic_reasons']), report['automatic_reasons']
+
+
+def test_generic_doc_title_regex_matches_title_rules_registry():
+    from viewer_publication.release_comparison import GENERIC_DOC_TITLE_RE
+    rules_path = Path(__file__).resolve().parents[3] / 'model/registries/title-rules.json'
+    label_patterns = [r['pattern'] for r in json.loads(rules_path.read_text()) if r['kind'] == 'label']
+    assert label_patterns == [GENERIC_DOC_TITLE_RE]

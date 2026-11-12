@@ -1,6 +1,6 @@
 ---
 id: ct-ucwm
-status: open
+status: closed
 deps: []
 links: [ct-w564, ct-arlk, ct-eav2]
 created: 2026-11-10T13:27:30Z
@@ -39,3 +39,7 @@ validated 2026-11-11, left open: .cache/archive-release/disk-budgets.json (read 
 **2026-11-12T01:12:28Z**
 
 Updated .cache/archive-release/disk-budgets.json (backup disk-budgets.json.before-20261112T010656Z) at revision 11595d599bc13fe86c1bc21ded439dd8dc796c96 (engine ae12bbd4) replacing all 'carried forward' and 'ESTIMATE' text on publish-fresh, publish-resume, and setup with measured figures and run folders: publish-fresh measured 78.80 -> 72.80 GiB (6.00 GiB max drawdown, 1,302 s, peak 9.77 GiB RSS) in nightly/20261112T002603.002845Z (timeline sha256 147db296...) and 62.2 -> 57.9 GiB (4.3 GiB) in refactor/pin-move/candidate-build-2; publish-resume measured 76.50 -> 76.50 GiB (< 0.1 GiB drawdown, 187 s, peak 4.64 GiB RSS) in nightly/20261112T005217.004021Z (timeline sha256 2e1c8b24...); setup measured 1.29 GiB total populated worktree dirs (.claude/worktrees/nightly du -sk: .venv 711,112 KiB, explorer_mcp/.venv 247,040 KiB, node_modules 306,040 KiB, dist 2,352 KiB, spicy-regs 85,940 KiB) and 0.014 GiB net admission-to-publish drawdown on 20261112T005217.004021Z. Also named all five literal RESOURCE_PATHS in docs/archive-disk-lifetimes.md. Remaining before closing: confirm import on ae12bbd during W22 (ct-yndj) and backfill-record-only on next replay.
+
+**2026-11-12T03:22:52Z**
+
+Confirmed and recorded live R2 import measurement on engine ae12bbd4 during W22 (ct-yndj, .cache/archive-release/maintenance/readings-move-20261112T0110Z, window.watchdog.timeline.jsonl sha256 35a04dd62dde0bfa2618428b53c87cada924ab61612da22e828738c7a351a0b1) in .cache/archive-release/disk-budgets.json at revision 882a5451886463e16f8dfbce2a26f89a7d938776: 1,654,201 rows (241.7 MB export -> 35 R2 data files across 9 partitions), 76 s, peak 10.31 GiB RSS / 9.53 GiB physical, shared-volume free disk 75.40 -> 75.30 GiB (0.10 GiB drawdown across 317 samples). All five budgets in disk-budgets.json state measured figures with run folders and timeline hashes, and docs/archive-disk-lifetimes.md documents all five literal RESOURCE_PATHS and re-qualification procedure.

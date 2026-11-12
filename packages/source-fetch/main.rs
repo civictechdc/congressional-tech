@@ -247,6 +247,99 @@ async fn save_response(
     Ok(metadata)
 }
 
+const LEGACY_PYTHON_UA: &str =
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 Chrome/120 Safari/537.36";
+
+const BROWSER_USER_AGENT: &str = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+const DIRECT_BROWSER_HEADERS: [(&str, &str); 8] = [
+    ("User-Agent", BROWSER_USER_AGENT),
+    (
+        "Accept",
+        "text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf;q=0.9,*/*;q=0.8",
+    ),
+    ("Accept-Language", "en-US,en;q=0.9"),
+    ("Upgrade-Insecure-Requests", "1"),
+    ("Sec-Fetch-Dest", "document"),
+    ("Sec-Fetch-Mode", "navigate"),
+    ("Sec-Fetch-Site", "none"),
+    ("Sec-Fetch-User", "?1"),
+];
+
+const DIRECT_JSON_API_HEADERS: [(&str, &str); 2] = [
+    ("User-Agent", BROWSER_USER_AGENT),
+    ("Accept", "application/json"),
+];
+
+fn is_json_api_url(url: &str) -> bool {
+    reqwest::Url::parse(url)
+        .ok()
+        .and_then(|parsed| {
+            parsed.host_str().map(|host| {
+                host.eq_ignore_ascii_case("api.congress.gov")
+                    || host.eq_ignore_ascii_case("api.govinfo.gov")
+            })
+        })
+        .unwrap_or(false)
+}
+
+fn apply_request_headers(
+    mut builder: reqwest::RequestBuilder,
+    request: &Request,
+) -> Result<reqwest::RequestBuilder> {
+    let mut headers = header::HeaderMap::new();
+    headers.insert(
+        header::ACCEPT_ENCODING,
+        header::HeaderValue::from_static("gzip, deflate, br"),
+    );
+    if matches!(request.transport, Transport::Direct) {
+        let defaults: &[(&str, &str)] = if is_json_api_url(&request.url) {
+            &DIRECT_JSON_API_HEADERS
+        } else {
+            &DIRECT_BROWSER_HEADERS
+        };
+        for &(name, value) in defaults {
+            headers.insert(
+                header::HeaderName::from_bytes(name.as_bytes())?,
+                header::HeaderValue::from_static(value),
+            );
+        }
+    }
+    let has_custom_ua = request
+        .headers
+        .iter()
+        .any(|(k, v)| k.eq_ignore_ascii_case("user-agent") && v != LEGACY_PYTHON_UA);
+    for (name, value) in &request.headers {
+        if matches!(request.transport, Transport::Zyte)
+            && (name.eq_ignore_ascii_case("authorization")
+                || name.eq_ignore_ascii_case("content-type"))
+        {
+            continue;
+        }
+        if matches!(request.transport, Transport::Direct)
+            && name.eq_ignore_ascii_case("user-agent")
+            && value == LEGACY_PYTHON_UA
+        {
+            if !has_custom_ua {
+                headers.insert(
+                    header::USER_AGENT,
+                    header::HeaderValue::from_static(BROWSER_USER_AGENT),
+                );
+            }
+            continue;
+        }
+        headers.insert(
+            header::HeaderName::from_bytes(name.as_bytes())
+                .context("Invalid request header name")?,
+            header::HeaderValue::from_str(value).context("Invalid request header value")?,
+        );
+    }
+    for (name, value) in &headers {
+        builder = builder.header(name, value);
+    }
+    Ok(builder)
+}
+
 /// Execute a single HTTP request using the specified transport, pacing, and limits.
 async fn fetch(
     client: &Client,
@@ -260,7 +353,7 @@ async fn fetch(
         (1..=900_000).contains(&request.timeout_ms),
         "Invalid request deadline"
     );
-    let mut builder = match request.transport {
+    let builder = match request.transport {
         Transport::Direct => client.get(&request.url),
         Transport::Zyte => client
             .post("https://api.zyte.com/v1/extract")
@@ -272,12 +365,8 @@ async fn fetch(
                 &json!({"url": request.url, "httpResponseBody": true, "httpResponseHeaders": true}),
             ),
     };
-    builder = builder
-        .header("Accept-Encoding", "gzip, deflate, br")
+    let builder = apply_request_headers(builder, request)?
         .timeout(Duration::from_millis(request.timeout_ms));
-    for (name, value) in &request.headers {
-        builder = builder.header(name, value);
-    }
     limit.wait_for_start(request.new_file).await;
     match builder.send().await {
         Ok(response) => save_response(response, request, output).await,
@@ -395,5 +484,176 @@ mod tests {
         let resumed = Instant::now();
         rate.wait().await;
         assert_eq!(Instant::now() - resumed, Duration::from_millis(25));
+    }
+
+    #[tokio::test]
+    async fn direct_requests_send_browser_profile_headers_and_preserve_caller_overrides() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let server = tokio::spawn(async move {
+            let mut captured = Vec::new();
+            for _ in 0..2 {
+                let (mut socket, _) = listener.accept().await.unwrap();
+                let mut reader = BufReader::new(&mut socket);
+                let mut req_headers: BTreeMap<String, Vec<String>> = BTreeMap::new();
+                let mut line = String::new();
+                reader.read_line(&mut line).await.unwrap();
+                loop {
+                    line.clear();
+                    reader.read_line(&mut line).await.unwrap();
+                    let trimmed = line.trim_end_matches(&['\r', '\n'][..]);
+                    if trimmed.is_empty() {
+                        break;
+                    }
+                    if let Some((k, v)) = trimmed.split_once(':') {
+                        req_headers
+                            .entry(k.trim().to_ascii_lowercase())
+                            .or_default()
+                            .push(v.trim().to_string());
+                    }
+                }
+                captured.push(req_headers);
+                socket
+                    .write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 2\r\n\r\nok")
+                    .await
+                    .unwrap();
+            }
+            captured
+        });
+
+        let dir = std::env::temp_dir().join(format!("sf-hdr-test-{}", std::process::id()));
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+        tokio::fs::create_dir_all(&dir).await.unwrap();
+        let client = Client::builder()
+            .no_gzip()
+            .no_brotli()
+            .no_deflate()
+            .redirect(reqwest::redirect::Policy::none())
+            .build()
+            .unwrap();
+        let limit = RateLimit::new(100);
+
+        let legacy_ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X) AppleWebKit/537.36 Chrome/120 Safari/537.36";
+        let req1: Request = serde_json::from_value(json!({
+            "id": 1,
+            "url": format!("http://{addr}/first"),
+            "transport": "direct",
+            "max_bytes": 1024,
+            "headers": {"User-Agent": legacy_ua}
+        }))
+        .unwrap();
+        let res1 = fetch(&client, &limit, &req1, &dir, None).await.unwrap();
+        assert_eq!(res1["http_status"], 200);
+
+        let req2: Request = serde_json::from_value(json!({
+            "id": 2,
+            "url": format!("http://{addr}/second"),
+            "transport": "direct",
+            "max_bytes": 1024,
+            "headers": {
+                "User-Agent": legacy_ua,
+                "user-agent": "custom-probe/1.0",
+                "accept": "application/pdf"
+            }
+        }))
+        .unwrap();
+        let res2 = fetch(&client, &limit, &req2, &dir, None).await.unwrap();
+        assert_eq!(res2["http_status"], 200);
+
+        let _ = tokio::fs::remove_dir_all(&dir).await;
+        let captured = server.await.unwrap();
+
+        for hdrs in &captured {
+            for (k, vals) in hdrs {
+                assert_eq!(vals.len(), 1, "duplicate wire header {k}: {vals:?}");
+            }
+        }
+
+        assert!(captured[0]["user-agent"][0].contains("Mac OS X 10_15_7"));
+        assert!(captured[0]["user-agent"][0].contains("(KHTML, like Gecko)"));
+        assert!(captured[0]["accept"][0].contains("application/pdf;q=0.9"));
+        assert_eq!(captured[0]["accept-language"][0], "en-US,en;q=0.9");
+        assert_eq!(captured[0]["upgrade-insecure-requests"][0], "1");
+        assert_eq!(captured[0]["sec-fetch-dest"][0], "document");
+        assert_eq!(captured[0]["sec-fetch-mode"][0], "navigate");
+        assert_eq!(captured[0]["sec-fetch-site"][0], "none");
+        assert_eq!(captured[0]["sec-fetch-user"][0], "?1");
+        assert_eq!(captured[0]["accept-encoding"][0], "gzip, deflate, br");
+
+        assert_eq!(captured[1]["user-agent"], vec!["custom-probe/1.0"]);
+        assert_eq!(captured[1]["accept"], vec!["application/pdf"]);
+        assert_eq!(captured[1]["accept-language"], vec!["en-US,en;q=0.9"]);
+    }
+
+    #[test]
+    fn zyte_and_json_api_requests_omit_document_navigation_headers() {
+        let client = Client::new();
+        let zyte_req: Request = serde_json::from_value(json!({
+            "id": 10,
+            "url": "https://www.energy.senate.gov/public/",
+            "transport": "zyte",
+            "max_bytes": 1024
+        }))
+        .unwrap();
+        let built_zyte = apply_request_headers(
+            client
+                .post("https://api.zyte.com/v1/extract")
+                .json(&json!({"url": zyte_req.url})),
+            &zyte_req,
+        )
+        .unwrap()
+        .build()
+        .unwrap();
+        assert_eq!(
+            built_zyte.headers().get("content-type").unwrap(),
+            "application/json"
+        );
+        assert!(built_zyte.headers().get("sec-fetch-mode").is_none());
+        assert!(built_zyte.headers().get("upgrade-insecure-requests").is_none());
+        assert!(built_zyte.headers().get("accept-language").is_none());
+        assert_eq!(
+            built_zyte.headers().get("accept-encoding").unwrap(),
+            "gzip, deflate, br"
+        );
+
+        let api_direct: Request = serde_json::from_value(json!({
+            "id": 11,
+            "url": "https://api.govinfo.gov/collections/CHRG/2026-01-01T00:00:00Z?pageSize=1000",
+            "transport": "direct",
+            "max_bytes": 1024,
+            "headers": {"X-Api-Key": "test-key"}
+        }))
+        .unwrap();
+        let built_api = apply_request_headers(client.get(&api_direct.url), &api_direct)
+            .unwrap()
+            .build()
+            .unwrap();
+        assert_eq!(
+            built_api.headers().get("accept").unwrap(),
+            "application/json"
+        );
+        assert!(built_api.headers().get("sec-fetch-dest").is_none());
+        assert!(built_api.headers().get("upgrade-insecure-requests").is_none());
+
+        let empty_direct: Request = serde_json::from_value(json!({
+            "id": 12,
+            "url": "https://www.energy.senate.gov/public/",
+            "transport": "direct",
+            "max_bytes": 1024
+        }))
+        .unwrap();
+        let built_direct =
+            apply_request_headers(client.get(&empty_direct.url), &empty_direct)
+                .unwrap()
+                .build()
+                .unwrap();
+        assert_eq!(
+            built_direct.headers().get("user-agent").unwrap(),
+            BROWSER_USER_AGENT
+        );
+        assert_eq!(
+            built_direct.headers().get("sec-fetch-dest").unwrap(),
+            "document"
+        );
     }
 }
