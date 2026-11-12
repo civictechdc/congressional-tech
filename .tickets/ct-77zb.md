@@ -1,6 +1,6 @@
 ---
 id: ct-77zb
-status: open
+status: closed
 deps: [ct-gi01, ct-t915, ct-m104, ct-5kto, cef-96wc, ct-sh4j, ct-30fp, ct-kw9b, ct-yymr, ct-vpo2, ct-aapl, ct-v51p, ct-jinw, ct-l9g0, ct-cov3, ct-vnkf, ct-h1nd, ct-wx65, ct-9wl3, ct-1l1h, ct-4jms]
 links: [cef-96wc, cef-jh7i, ct-t906, ct-8kl2, ct-98sm, ct-1mbc, ct-kw9b, ct-9gmr, ct-pocg, cef-nkzp, ct-h1nd, ct-d0o0, ct-sh4j, cefr-7sar, ct-kac4, ct-3vub, cef-zrhq, ct-a3le, ct-v967, ct-082q]
 created: 2026-10-30T14:32:30Z
@@ -161,3 +161,7 @@ Keep open for the already-owned preservation/reader dispositions, B8/Basin decis
 **2026-11-11T14:45:35Z**
 
 validated 2026-11-11, left open. Dependencies checked today: ct-gi01, ct-t915, ct-m104, ct-082q, cef-96wc, ct-5kto and ct-1l1h are all closed; the weekly 'Update committee data' collector ran on schedule and green on 2026-11-01 and 2026-11-08 (gh run list). Still open under it: scheduled capture (ct-4jms: workflow still disabled_manually, the two hosted secrets missing), unattended publication of a capture night (ct-9j3z: not yet exercised; the Mac nightly has only published nothing-changed nights unattended, e.g. 20261111T103005Z release_unchanged), and the 54 bodies of ct-gi01's paid recapture, which sit under receipts/owner/* that the daily never reads (ct-lft6).
+
+**2026-11-12T21:45:32Z**
+
+2026-11-12 owner decision (15:06-05:00): a forced workflow_dispatch capture plus a manual Mac nightly counts as Wave 7 acceptance; schedules (03:23 UTC capture, 05:30 local nightly) stay enabled. Evidence: hosted capture-archive.yml run 43302430173 (event workflow_dispatch, main 9924b385, environment archive-capture with ARCHIVE_CAPTURE_R2_* secrets set 14:50-05:00) green in 22m47s; meetings relist 20261112T204014Z-4f9efb076145 + budgeted capture 20261112T204110Z-fc2d35e98d37 from release 750a2a24d00a (2,000 requests, 1,085 captures, 152 MB). Nightly 20261112T210256Z ingested 1,142 new receipts and refused at the gate; cause record model/jobs/release-causes/750a2a24d00a-6c46b8f7a606.json (55 groups, evidence .cache/archive-release/investigations/capture-night-20261112/) committed 0695e4ba; resume 20261112T213624Z published 6c46b8f7a606 at 21:40Z (unpin + notes f5cbc687, docs/releases/2026-11-12-6c46b8f7a606.md). Hosted MCP pinned (ca808760), version 8b2ed383, smoke green on 6c46b8f7a606. Published release adds 21 meetings dated after Release 5 (e.g. 119589, 119594, 119596, 119597, 338823-338832; dated 2026-11-17..19). Remaining dependencies closed with this: ct-4jms (scheduled capture). Phase 2 live release + unattended capture/publish path proven end to end.

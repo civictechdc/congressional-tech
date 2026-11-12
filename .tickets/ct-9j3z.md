@@ -1,6 +1,6 @@
 ---
 id: ct-9j3z
-status: in_progress
+status: closed
 deps: []
 links: [ct-gc99, ct-ud0b]
 created: 2026-11-10T07:18:55Z
@@ -70,3 +70,7 @@ The reviewer's 23 cases rerun: W2b, W12, W12b and W10, W10b now refuse; W4, W4b 
 **2026-11-11T14:35:33Z**
 
 validated 2026-11-11, left open: waits on the first real capture night. The columns are live: DuckDB on 77673bfb8fcf's url_state.parquet today gives 1,200,936 rows, 405,960 with recheck_meeting_date, 41,175 with a non-empty linked_from. The automatic proof has not yet run on a pair where both releases carry them with new receipts: the 20261111T103005Z nightly (ef906694) read 0 new receipts and ended release_unchanged. Remains: one capture night through the gate, then the 15:49Z confirm list (join plan on the remote snapshot, raw requested_url equal to the lake's, multi-line receipts, the real first-schedule count against the 2,000 cap).
+
+**2026-11-12T21:45:32Z**
+
+2026-11-12 owner decision (15:06-05:00): a forced workflow_dispatch capture plus a manual Mac nightly counts as Wave 7 acceptance; schedules (03:23 UTC capture, 05:30 local nightly) stay enabled. Evidence: hosted capture-archive.yml run 43302430173 (event workflow_dispatch, main 9924b385, environment archive-capture with ARCHIVE_CAPTURE_R2_* secrets set 14:50-05:00) green in 22m47s; meetings relist 20261112T204014Z-4f9efb076145 + budgeted capture 20261112T204110Z-fc2d35e98d37 from release 750a2a24d00a (2,000 requests, 1,085 captures, 152 MB). Nightly 20261112T210256Z ingested 1,142 new receipts and refused at the gate; cause record model/jobs/release-causes/750a2a24d00a-6c46b8f7a606.json (55 groups, evidence .cache/archive-release/investigations/capture-night-20261112/) committed 0695e4ba; resume 20261112T213624Z published 6c46b8f7a606 at 21:40Z (unpin + notes f5cbc687, docs/releases/2026-11-12-6c46b8f7a606.md). Hosted MCP pinned (ca808760), version 8b2ed383, smoke green on 6c46b8f7a606. Published release adds 21 meetings dated after Release 5 (e.g. 119589, 119594, 119596, 119597, 338823-338832; dated 2026-11-17..19). First capture night through the gate: the automatic url_state proof accepted every changed/added url_state group (591 changed, 551 attempted + 520 queued additions; not named in automatic_reasons). It refused only url_state removed URLs (-527): never-attempted democrats-science.house.gov '&download=1' queued spellings whose repaired '?download=1' spelling was attempted that night (527/527). Proof stays all-or-nothing, so non-url_state groups (link text/titles from newly read pages, re-keyed recovered copies, recordings) still need a hand cause record on capture nights; follow-up worth filing: teach the proof the repaired-spelling removal and the additions-from-new-readings groups.

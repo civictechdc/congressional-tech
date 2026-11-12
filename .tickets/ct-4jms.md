@@ -1,6 +1,6 @@
 ---
 id: ct-4jms
-status: in_progress
+status: closed
 deps: []
 links: [cefr-xjsp, cef-96wc, ct-tk10, ct-ud0b, ct-1l1h, ct-98sm, ct-v967, ct-rie2, ct-5kto, ct-082q, ct-hiec, ct-q4e2, ct-0mqc]
 created: 2026-10-30T14:32:31Z
@@ -149,3 +149,7 @@ Independent review: APPROVE for the scoped work; remaining ticket acceptance is 
 **2026-11-11T14:40:09Z**
 
 validated 2026-11-11, left open: waits on the owner's two hosted secrets. Checked today with gh: workflow 'Capture archive sources' (399669501) is still disabled_manually, no ARCHIVE_CAPTURE_* secret is listed at repository level, and capture-archive.yml has no runs. The only captures so far are hand runs on the Mac (2026-11-10 14:03Z, published in 77673bfb8fcf). Remains: the owner runs the two 'gh secret set' commands, then 'gh workflow enable capture-archive.yml', then one scheduled run checked against this ticket's list. Related finding, recorded on ct-lft6: receipts under receipts/owner/* are not in publish-daily.json's receipt_families, so the nightly never reads them.
+
+**2026-11-12T21:45:32Z**
+
+2026-11-12 owner decision (15:06-05:00): a forced workflow_dispatch capture plus a manual Mac nightly counts as Wave 7 acceptance; schedules (03:23 UTC capture, 05:30 local nightly) stay enabled. Evidence: hosted capture-archive.yml run 43302430173 (event workflow_dispatch, main 9924b385, environment archive-capture with ARCHIVE_CAPTURE_R2_* secrets set 14:50-05:00) green in 22m47s; meetings relist 20261112T204014Z-4f9efb076145 + budgeted capture 20261112T204110Z-fc2d35e98d37 from release 750a2a24d00a (2,000 requests, 1,085 captures, 152 MB). Nightly 20261112T210256Z ingested 1,142 new receipts and refused at the gate; cause record model/jobs/release-causes/750a2a24d00a-6c46b8f7a606.json (55 groups, evidence .cache/archive-release/investigations/capture-night-20261112/) committed 0695e4ba; resume 20261112T213624Z published 6c46b8f7a606 at 21:40Z (unpin + notes f5cbc687, docs/releases/2026-11-12-6c46b8f7a606.md). Hosted MCP pinned (ca808760), version 8b2ed383, smoke green on 6c46b8f7a606. Published release adds 21 meetings dated after Release 5 (e.g. 119589, 119594, 119596, 119597, 338823-338832; dated 2026-11-17..19). Not yet observed: an event=schedule run; the first one is tonight 03:23 UTC.

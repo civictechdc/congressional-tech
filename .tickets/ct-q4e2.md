@@ -1,6 +1,6 @@
 ---
 id: ct-q4e2
-status: in_progress
+status: closed
 deps: []
 links: [ct-4jms, ct-0mqc]
 created: 2026-11-08T18:04:36Z
@@ -35,3 +35,7 @@ The public archive has no Congress.gov meeting update after 2026-10-30. Schedule
 **2026-11-11T14:40:09Z**
 
 validated 2026-11-11, left open: the code is on main (fetch_meetings --since-days 7 in capture-archive.yml) and a hand relist proved the path (release 77673bfb8fcf: 3 new meetings from run 20261110T140153Z-6b3c368e77f8). The done condition needs a scheduled run, which waits on ct-4jms's secrets.
+
+**2026-11-12T21:45:32Z**
+
+2026-11-12 owner decision (15:06-05:00): a forced workflow_dispatch capture plus a manual Mac nightly counts as Wave 7 acceptance; schedules (03:23 UTC capture, 05:30 local nightly) stay enabled. Evidence: hosted capture-archive.yml run 43302430173 (event workflow_dispatch, main 9924b385, environment archive-capture with ARCHIVE_CAPTURE_R2_* secrets set 14:50-05:00) green in 22m47s; meetings relist 20261112T204014Z-4f9efb076145 + budgeted capture 20261112T204110Z-fc2d35e98d37 from release 750a2a24d00a (2,000 requests, 1,085 captures, 152 MB). Nightly 20261112T210256Z ingested 1,142 new receipts and refused at the gate; cause record model/jobs/release-causes/750a2a24d00a-6c46b8f7a606.json (55 groups, evidence .cache/archive-release/investigations/capture-night-20261112/) committed 0695e4ba; resume 20261112T213624Z published 6c46b8f7a606 at 21:40Z (unpin + notes f5cbc687, docs/releases/2026-11-12-6c46b8f7a606.md). Hosted MCP pinned (ca808760), version 8b2ed383, smoke green on 6c46b8f7a606. Published release adds 21 meetings dated after Release 5 (e.g. 119589, 119594, 119596, 119597, 338823-338832; dated 2026-11-17..19). Done condition met: meetings dated after the previous release are in published release 6c46b8f7a606.
