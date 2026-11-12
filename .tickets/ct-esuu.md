@@ -1,6 +1,6 @@
 ---
 id: ct-esuu
-status: open
+status: closed
 deps: []
 links: [ct-fa2h, cat2-x47u, ct-jcnd, ct-lft6, ct-5q3g, ct-46f3, cat2-pkk1, ct-kt2o, ct-egoo]
 created: 2026-11-12T06:08:47Z
@@ -22,3 +22,12 @@ Recorded as an `accepted_defect` on `{detail,list}.parquet|changed {filename,doc
 
 - URL-derived filenames for HTML pages whose final path segment is a bare UUID (preceded by a descriptive `<slug>` segment, e.g. `/hearings/YYYY/M/<slug>/<uuid>`) retain or prefer the descriptive slug so `filename`, `facts`, `document_kind`, and `document_family` do not regress to a bare UUID.
 - Covered by unit/model regression tests on `business-meeting-pending-nominations/60bdf4d2-9524-4699-9553-caf33a0da8be` and `nomination-business-meeting/5c20db43-6834-46b2-b92f-40c4c719a379`.
+
+## Notes
+
+**2026-11-12T07:05:00Z**
+
+Fixed in `model/sql/html-uuid-slug-fills.sql` and `packages/viewer_publication/src/viewer_publication/archive_model.py` (`html_uuid_candidates` + `html_uuid_slug_fills` into `normalized`, keeping `model/sql/effective-filenames.sql` untouched so the pinned `filename_readings` `catalog_version` and producer proof stay unchanged):
+- HTML documents whose primary `base_normalized` filename is a bare UUID first take any non-UUID sibling HTML copy's `filename`, `document_kind`, `document_family`, and `facts` from `saved_files` + `source_annotations` on the same component (restoring `hearings-2021-11-business-meeting-pending-nominations-60bdf4d2-9524-4699-9553-caf33a0da8be` and `hearings-2021-5-nomination-business-meeting-5c20db43-6834-46b2-b92f-40c4c719a379` with `['business-meeting']` kind/family/facts on both `energy.senate.gov` rows when recaptured via `/<slug>/<uuid>`).
+- When no sibling non-UUID HTML copy exists, `html-uuid-slug-fills.sql` recovers the descriptive trailing-slash segment or `<slug>-<uuid>` stem from the document's URLs (`source_url` / `document_addresses`), excluding generic container path segments (`hearings`, `documents`, `files`, `services`, etc.), and derives matching event `document_kind`, `document_family`, and `facts`.
+- Verified end-to-end with `test_senate_html_urls_ending_in_bare_uuid_retain_slug_filename_kind_and_family` in `packages/viewer_publication/tests/test_phase1_document_metadata.py`, `test_producer_identities.py`, `test_archive_schema.py`, `test_phase1_model_lifetimes.py`, and `test_phase1_model_repeat_cost.py`.

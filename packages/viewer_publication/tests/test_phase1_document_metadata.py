@@ -814,3 +814,131 @@ def test_the_generic_title_gate_checks_the_titles_the_link_word_rule_keeps(tmp_p
                  dict(name='generic', sql=f'SELECT title FROM ({GENERIC_TITLES_SQL}) g')])
     assert [row['title'] for row in result['kept']] == [aging]
     assert result['generic'] == []
+
+
+def test_senate_html_urls_ending_in_bare_uuid_retain_slug_filename_kind_and_family(tmp_path):
+    """ct-esuu: Senate HTML pages whose final path segment is a bare UUID preceded by a descriptive
+    slug retain their slug-derived filename, document_kind, document_family, and facts both when an
+    earlier trailing-slash slug capture exists on the component and when fetched only at /<slug>/<uuid>,
+    without turning generic container paths like /services/files/<uuid> into slug filenames."""
+    import gzip
+    import hashlib
+    import json
+    import pyarrow.parquet as pq
+    from archive_job_fixture import rebuild_model_spec
+    from congress_api.lake import readings
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.archive_model import build_release
+
+    raw = tmp_path / 'raw'
+    raw.mkdir()
+    sniff_ver = readings.current_version('sniff')
+
+    def write_body(title, extra=b''):
+        html = (
+            b'<html><head><title>' + title.encode() + b'</title></head><body><main><p>'
+            + (title.encode() + b' substantive committee meeting record. ') * 40
+            + b'</p></main>' + extra + b'</body></html>'
+        )
+        digest = hashlib.sha256(html).hexdigest()
+        stored = gzip.compress(html, mtime=0)
+        dest = raw / 'bodies/sha256' / digest[:2] / f'{digest}.gz'
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(stored)
+        return digest, len(html), len(stored), hashlib.md5(stored).hexdigest()
+
+    b1_old = write_body('Business Meeting: Pending Nominations')
+    b1_new = write_body('Business Meeting: Pending Nominations', b'<!-- recapture 2026-11-12 -->')
+    b2_only = write_body('Nomination Business Meeting')
+    b3_container = write_body('Uploaded Committee Handout')
+
+    u1_canon = 'https://www.energy.senate.gov/hearings/2021/11/business-meeting-pending-nominations/60bdf4d2-9524-4699-9553-caf33a0da8be'
+    u1_slash = 'https://www.energy.senate.gov/hearings/hearings-2021-11-business-meeting-pending-nominations-60bdf4d2-9524-4699-9553-caf33a0da8be/'
+    u2_canon = 'https://www.energy.senate.gov/hearings/2021/5/nomination-business-meeting/5c20db43-6834-46b2-b92f-40c4c719a379'
+    u3_files = 'https://www.energy.senate.gov/hearings/deadbeef-1234-4567-89ab-cdef01234567'
+
+    def fetch_row(req_url, final_url, retrieved_at, body_tuple):
+        digest, raw_len, stored_len, md5_hex = body_tuple
+        return dict(
+            writer=dict(job='fixture', commit='a' * 40),
+            run_id='fixture',
+            mode='fetch',
+            family='documents',
+            outcome='stored',
+            requested_url=req_url,
+            url=final_url,
+            http_status=200,
+            complete=True,
+            retrieved_at=retrieved_at,
+            captures=[dict(
+                sha256=digest,
+                bytes=raw_len,
+                media_type='text/html',
+                fidelity='exact-bytes',
+                sniffed_format='html',
+                sniff_version=sniff_ver,
+                stored_suffix='.gz',
+                stored_bytes=stored_len,
+                stored_md5=md5_hex,
+            )],
+        )
+
+    receipt_rows = [
+        fetch_row(u1_slash, u1_slash, '2026-10-05T12:00:00Z', b1_old),
+        fetch_row(u1_canon, u1_slash, '2026-11-11T12:00:00Z', b1_new),
+        fetch_row(u2_canon, u2_canon, '2026-11-11T12:05:00Z', b2_only),
+        fetch_row(u3_files, u3_files, '2026-11-11T12:10:00Z', b3_container),
+    ]
+    receipt = raw / 'receipts/documents/2026-11-11/slice.jsonl.gz'
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    receipt.write_bytes(gzip.compress((''.join(json.dumps(r) + '\n' for r in receipt_rows)).encode(), mtime=0))
+    pin = tmp_path / 'receipt-pin.json'
+    pin.write_text(json.dumps(dict(path=str(receipt), **file_pin(receipt), producer='fixture creation')))
+
+    spec = rebuild_model_spec(
+        tmp_path,
+        raw=raw,
+        receipts=[('receipts/documents/2026-11-11/slice.jsonl.gz', pin)],
+    )
+    release = tmp_path / 'release'
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        build_release(
+            captures=spec['captures']['path'],
+            readings=spec['readings']['path'],
+            filename_readings=spec['filename_readings']['path'],
+            parser_versions=spec['parser_versions'],
+            catalog_version=spec['catalog_version'],
+            engine=engine,
+            output=release,
+            scratch=tmp_path / 'model',
+        )
+
+    list_rows = pq.read_table(release / 'list.parquet').to_pylist()
+    detail_rows = pq.read_table(release / 'detail.parquet').to_pylist()
+    by_title = {
+        l_row['title']: (l_row, d_row)
+        for l_row, d_row in zip(list_rows, detail_rows)
+    }
+    expected_facts = [
+        {'field': 'document_family', 'value': 'business-meeting'},
+        {'field': 'document_kind', 'value': 'business-meeting'},
+    ]
+
+    l1, d1 = by_title['Business Meeting: Pending Nominations']
+    assert l1['filename'] == 'hearings-2021-11-business-meeting-pending-nominations-60bdf4d2-9524-4699-9553-caf33a0da8be'
+    assert l1['document_kind'] == ['business-meeting']
+    assert l1['document_family'] == ['business-meeting']
+    assert d1['facts'] == expected_facts
+
+    l2, d2 = by_title['Nomination Business Meeting']
+    assert l2['filename'] == 'nomination-business-meeting-5c20db43-6834-46b2-b92f-40c4c719a379'
+    assert l2['document_kind'] == ['business-meeting']
+    assert l2['document_family'] == ['business-meeting']
+    assert d2['facts'] == expected_facts
+
+    l3, d3 = by_title['Uploaded Committee Handout']
+    assert l3['filename'] == 'deadbeef-1234-4567-89ab-cdef01234567'
+    assert l3['document_kind'] == []
+    assert l3['document_family'] == []
+    assert d3['facts'] == []
+
