@@ -1063,9 +1063,20 @@ def appearance_steps(*,root=ROOT):
         ['witness-member-committees','witness-members'],root=root)
 
 
+def senate_page_prelim_links_sql(*,root=ROOT):
+    """Score senate_page_candidates before package_meeting_links exists so Senate witness rosters corroborate prints (ct-uul8)."""
+    text=(Path(root)/'model/sql/senate-page-meeting-links.sql').read_text()
+    target='WITH meeting_known_people AS ('
+    if target not in text:raise ValueError('senate-page-meeting-links.sql missing expected WITH meeting_known_people AS ( header')
+    return text.replace(target,"WITH package_meeting_links AS (SELECT cast(NULL AS VARCHAR) AS package_id,"
+        "cast(NULL AS BIGINT) AS event_id,false AS witness_eligible WHERE false), meeting_known_people AS (",1)
+
+
 def package_link_steps(*,root=ROOT):
-    """Packages to meetings: the jacket and MODS links, then the ones a raw record justifies (ct-dx22)."""
-    return _sql_steps(['appearance-people','package-mods-facts','print-meeting-agreement','meeting-mods-links','meeting-transcript-links','package-meeting-links'],root=root)
+    """Packages to meetings: the jacket and MODS links, then the ones a raw record justifies (ct-dx22, ct-uul8)."""
+    return _sql_steps(['appearance-people','package-mods-facts','senate-page-candidates'],root=root)+[
+        dict(name='senate_page_prelim_links',sql=senate_page_prelim_links_sql(root=root),materialize=True)]+_sql_steps(
+        ['print-meeting-agreement','meeting-mods-links','meeting-transcript-links','package-meeting-links'],root=root)
 
 
 def admission_steps(*,prelude=(),root=ROOT):

@@ -282,6 +282,7 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
         json_input(tmp_path, 'selected_meeting_records', [], record_sha_hex='Utf8', status='Utf8', meetings=list_of(struct(updated='Utf8'))),
         json_input(tmp_path, 'page_inputs', list(pages), body_hex='Utf8', status='Utf8', title='Utf8', heading='Utf8', text_head='Utf8', content_date='Utf8'),
     ]
+    from viewer_publication.archive_model import senate_page_prelim_links_sql
     senate_links_path = ROOT / 'model/sql/senate-page-meeting-links.sql'
     senate_step = [dict(name='senate_page_meeting_links', sql=senate_links_path.read_text(), materialize=True)] if senate_links_path.exists() else []
     steps = [dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
@@ -306,6 +307,8 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
                  for sha, url, member_path in capture_contexts) + " UNION ALL SELECT mode,complete,outcome,http_status,"
                  "arrow_cast(decode(sha_hex,'hex'),'FixedSizeBinary(32)'),family,url,requested_url,context_url,member_path,"
                  "sniffed_format,media_type,retrieved_at,original_path,receipt_key,receipt_line,capture_index,run_id,fidelity FROM capture_inputs", materialize=True),
+             dict(name='senate_page_candidates', sql=sql('senate-page-candidates'), materialize=True),
+             dict(name='senate_page_prelim_links', sql=senate_page_prelim_links_sql(), materialize=True),
              dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
              dict(name='package_meeting_links', sql=sql('package-meeting-links'), materialize=True),
              *senate_step,
@@ -759,8 +762,9 @@ def test_a_package_mods_names_its_meeting_as_a_transcript_link(tmp_path):
              dict(name='document_packages', sql=empty, materialize=True),
              dict(name='selected_appearance_records', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS VARCHAR) AS status WHERE false", materialize=True),
              dict(name='captures', sql=CAPTURES, materialize=True),
-             dict(name='appearance_people', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source,"
+             dict(name='appearance_people', sql="SELECT cast(NULL AS VARCHAR) AS record_sha_hex,cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source,"
                   "false AS statement,cast(NULL AS VARCHAR) AS family,cast(NULL AS VARCHAR) AS given,cast(NULL AS VARCHAR) AS given_canon WHERE false", materialize=True),
+             dict(name='senate_page_prelim_links', sql="SELECT cast(NULL AS VARCHAR) AS record_sha_hex,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS banking_hearing_url WHERE false", materialize=True),
              dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
              dict(name='meeting_mods_links', sql=sql('meeting-mods-links'), materialize=True),
              dict(name='meeting_transcript_links', sql=sql('meeting-transcript-links'), materialize=True)]
@@ -794,6 +798,72 @@ def test_senate_page_links_to_meeting_and_outranks_mods_while_preserving_stateme
     assert by_src_name[('mods', 'Jane Doe')] == ('meeting:9001', 'The Honorable Jane Doe')
     assert by_src_name[('mods', 'Chris Harrison')] == ('meeting:9001', None)
     assert by_src_name[('mods', 'American Bankers Association')] == ('meeting:9001', None)
+
+
+def test_senate_print_with_short_bill_title_agrees_by_senate_page_witnesses(tmp_path):
+    # ct-uul8: Congress.gov lists no witnesses for Senate hearings and uses long statutory bill titles,
+    # while GPO prints short titles ("LEGISLATIVE HEARING TO REVIEW S. 1462, FIX OUR FORESTS ACT").
+    # Resolved senate_page witnesses corroborate CHRG-119shrg60341 -> 336927, keep wrong <eventId>
+    # CHRG-117shrg52109 off 330128, and do not veto title agreement on nomination prints whose MODS
+    # lists only introducers (CHRG-118shrg61980 -> 335048).
+    forest_panel = ['Christopher French', 'Bill Imbergamo', 'Mark Lance',
+                    'Tyson Bertone-Riggs', 'Bill Tripp', 'Luke Russell']
+    sp_forest = record('sp_forest', 'senate_page', [witness(w) for w in forest_panel],
+                       context_url='https://www.agriculture.senate.gov/hearings/legislative-hearing-to-review-s1462-fix-our-forests-act')
+    print_forest = record('m_forest', 'mods', [witness(w) for w in forest_panel], package_id='CHRG-119shrg60341')
+
+    sp_bank = record('sp_bank', 'senate_page', [witness('Alice Borrower'), witness('Bob Saver'), witness('Carol Lender')],
+                     context_url='https://www.banking.senate.gov/hearings/04/28/2021/student-loan-debt-relief')
+    print_wrong = record('m_wrong', 'mods', [witness('Dan Other'), witness('Eve Stranger'), witness('Frank Different')],
+                         package_id='CHRG-117shrg52109')
+
+    sp_nom = record('sp_nom', 'senate_page', [witness("Martin O'Malley")],
+                    context_url='https://www.finance.senate.gov/hearings/nomination-of-martin-omalley')
+    print_nom = record('m_nom', 'mods', [witness('Barbara Mikulski')], package_id='CHRG-118shrg61980')
+
+    meetings = (
+        (336927, '2025-05-06',
+         'Hearings to examine S.1462, to improve forest management activities on National Forest System land, '
+         'public land under the jurisdiction of the Bureau of Land Management, and Tribal land to reduce the risk of wildfire.',
+         False, 'senate', 'ssaf00'),
+        (330128, '2021-04-28', TITLE, False, 'senate', 'ssbk00'),
+        (335048, '2023-11-02',
+         "Hearings to examine the nomination of Martin O'Malley, of Maryland, to be Commissioner of Social Security.",
+         False, 'senate', 'ssfi00'),
+    )
+    prints = {
+        'CHRG-119shrg60341': facts(named=[336927], held=['2025-05-06'],
+                                   title='LEGISLATIVE HEARING TO REVIEW S. 1462, FIX OUR FORESTS ACT'),
+        'CHRG-117shrg52109': facts(named=[330128], held=['2021-04-28'],
+                                   title='NOMINATIONS OF SEC COMMISSIONERS'),
+        'CHRG-118shrg61980': facts(held=['2023-11-02'],
+                                   title="NOMINATION OF MARTIN O'MALLEY, OF MARYLAND, TO BE COMMISSIONER OF SOCIAL SECURITY"),
+    }
+    pages = [
+        dict(body_hex=sp_forest['record_sha_hex'], status='completed',
+             title='Legislative Hearing to Review S. 1462, Fix Our Forests Act',
+             heading='Legislative Hearing to Review S. 1462, Fix Our Forests Act', text_head='', content_date='2025-05-06'),
+        dict(body_hex=sp_bank['record_sha_hex'], status='completed',
+             title=TITLE, heading=TITLE, text_head='', content_date='2021-04-28'),
+        dict(body_hex=sp_nom['record_sha_hex'], status='completed',
+             title="Nomination of Martin O'Malley", heading="Nomination of Martin O'Malley", text_head='', content_date='2023-11-02'),
+    ]
+    # Note: CHRG-119shrg60341 and CHRG-117shrg52109 propose links via meeting_mods_links (named_meetings),
+    # while CHRG-118shrg61980 has a jacket link. Run meeting_mods_links + meeting_transcript_links via print_links:
+    rows, links = resolve(
+        tmp_path,
+        [sp_forest, print_forest, sp_bank, print_wrong, sp_nom, print_nom],
+        [('CHRG-119shrg60341', 336927), ('CHRG-117shrg52109', 330128), ('CHRG-118shrg61980', 335048)],
+        prints, meetings=meetings, pages=pages, print_links=True,
+    )
+    assert links == [
+        dict(package_id='CHRG-118shrg61980', event_id=335048),
+        dict(package_id='CHRG-119shrg60341', event_id=336927),
+    ]
+    by_src_name = {(r['source'], r['name']): (r['occasion'], r['superseded_by']) for r in rows}
+    assert by_src_name[('mods', 'Christopher French')] == ('meeting:336927', 'Christopher French')
+    assert by_src_name[('mods', 'Dan Other')] == ('package:CHRG-117shrg52109', None)
+    assert by_src_name[('mods', 'Barbara Mikulski')] == ('meeting:335048', None)
 
 
 @pytest.mark.parametrize('text_head,date_in_url,with_alias,expected', [
@@ -1194,15 +1264,17 @@ def test_senate_page_plan_is_linear_and_coverage_codes_and_generic_titles_hold(t
         dict(name='page_facts', sql="SELECT arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha,status,title,heading,text_head,content_date FROM page_inputs", materialize=True),
         dict(name='spicy_committees', sql="SELECT cast(NULL AS VARCHAR) AS system_code,cast(NULL AS VARCHAR) AS parent_system_code,cast(NULL AS VARCHAR) AS website_url WHERE false", materialize=True),
         dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
+        dict(name='senate_page_candidates', sql=sql('senate-page-candidates'), materialize=True),
         dict(name='package_meeting_links', sql='SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id,false AS witness_eligible WHERE false', materialize=True),
     ]
     explained = run_job(tmp_path / 'plan', engine, inputs=inputs, steps=steps, outputs=[],
-                        queries=[dict(name='plan', sql='EXPLAIN ' + sql('senate-page-meeting-links'))])['plan']
-    phys = next(r['plan'] for r in explained if r['plan_type'] == 'physical_plan')
-    assert 'Decimal128' not in phys
-    assert not any(line.lstrip().startswith('WindowAggExec:') for line in phys.splitlines())
-    # Only 1 scan of selected_appearance_records (the materialized memory table) in the physical plan:
-    assert phys.count('MemoryExec:') <= 6
+                        queries=[dict(name='candidates_plan', sql='EXPLAIN ' + sql('senate-page-candidates')),
+                                 dict(name='plan', sql='EXPLAIN ' + sql('senate-page-meeting-links'))])
+    for key in ('candidates_plan', 'plan'):
+        phys = next(r['plan'] for r in explained[key] if r['plan_type'] == 'physical_plan')
+        assert 'Decimal128' not in phys
+        assert not any(line.lstrip().startswith('WindowAggExec:') for line in phys.splitlines())
+        assert phys.count('MemoryExec:') <= 6
 
     # Check source-annotations-codes.sql with host aliases:
     code_inputs = [
