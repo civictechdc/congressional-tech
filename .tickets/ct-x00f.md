@@ -1,6 +1,6 @@
 ---
 id: ct-x00f
-status: in_progress
+status: closed
 deps: []
 links: [ct-w564, ct-64t4, ct-i5u3, ct-0jgy, ct-exlx, ct-nild, ct-twfj, ct-68e1, ct-8m0e, ct-auhc, ct-nu3x]
 created: 2026-11-10T16:38:56Z
@@ -47,3 +47,7 @@ The engine's full check is green on the merged line (one line plus the final mem
 **2026-11-12T00:18:56Z**
 
 Run-2 post-MODS qualification complete on claude/dx-pin-one-line (rebased onto 5e88c452 as f81c9cf1): 6-shard production-offline + storage-loopback exit 0 (lanes-dx-pin-one-line-7312dd9b); PIN-STEP4-build.sh (refactor/pin-move/candidate-build-2, bound to MODS gate clone 46ebbdf8dcaf) exit 0 in 488 s, peak 9.31 GiB RSS / 10.78 GiB physical (under 12.5 GiB cap), candidate release 21fc049940bbe4ef75ab774b3cc74a5e746fb9f023afb9a896059d595f5fa381, 0 compaction_refused_copies across all steps, disk drawdown 62.20 -> 57.90 GiB (4.30 GiB); ol_pin_step5-2 verified 46/46 Parquet outputs value-equal (31 byte-identical), 34/34 newly required columns with 0 nulls, 31/31 queries equal, 77/77 row counts equal, and settled recording_matches.parquet.{event_id,subject_id} field_id=8 from nested meeting_records.meetings.element.event_id in real-lake-metadata-2/meeting_records.metadata.json (confirmed with nested flat_ids + planted fid=999 negative check); step_memory.py (sm-candidate-2.json, sm-compare-2.txt) measured statement wall 1,145.6 s -> 481.5 s (2.38x) and top pool_peak_gb 5.921 GiB (recording_matches_export); Linux runtime artifact cce355a3... uploaded and verified in congressional-tech-runtime.
+
+**2026-11-12T00:56:36Z**
+
+Published live in archive release 21fc049940bbe4ef75ab774b3cc74a5e746fb9f023afb9a896059d595f5fa381 (2026-11-12T00:55:34Z, previous 46ebbdf8dcaf): nightly/20261112T002603.002845Z built identical release_id 21fc049940bb (peak 9.77 GiB RSS / 10.67 GiB physical in 1,302 s), Gate 1 passed with cause record model/jobs/release-causes/46ebbdf8dcaf-21fc049940bb.json (11 count-0 footer/engine_revision groups, 0 row/value/key differences), resume nightly/20261112T005217.004021Z flipped pointer and passed public verify-archive canary; both docspec-rs (42994498288) and congressional-tech (43126643564) hosted CI runs 7/7 green.
