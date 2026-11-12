@@ -69,6 +69,9 @@ class Diff:
         self.witness_update = None  # set by updated_witnesses()
         self.meeting_refetch = None  # set by refetched_meetings()
         self.refetched = None  # set by refetched_files()
+        self.dirty_rm = None  # set by _dirty_rm_events()
+        self.dirty_captions = None  # set by _dirty_caption_videos()
+        self.caption_tx = None  # set by _caption_tx_moves()
 
     def has(self, side, table):
         return bool(self.rows(f"SELECT 1 FROM duckdb_views() WHERE view_name='{side}_{table}'"))
@@ -471,7 +474,7 @@ def updated_subjects(d: Diff):
         if 'subject_keys' not in shared:
             return False
         document_subjects(d)
-        same_tx = _same_transcripts(d)
+        same_tx = _same_transcripts(d, non_captions=True)
         empty = 'CAST([] AS VARCHAR[])'
         d.table('clean_subject_meetings', f"""SELECT u.event_id,u.added FROM meeting_update u
           JOIN candidate_meetings l USING(event_id) LEFT JOIN base_meetings p USING(event_id)
@@ -684,18 +687,20 @@ def key_file(table, key):
     return run
 
 
-def _transcript_compare_expr(d: Diff, alias='X', col='{c}'):
+def _transcript_compare_expr(d: Diff, alias='X', col='{c}', *, non_captions=False):
     """Compare `meetings.transcripts` across all non-`list_row` struct fields (`list_row` is release-local)."""
     import pyarrow as pa
     bt = d.arrow_types('base', 'meetings').get('transcripts') if d.has('base', 'meetings') else None
     ct = d.arrow_types('candidate', 'meetings').get('transcripts') if d.has('candidate', 'meetings') else None
     if (bt is not None and bt == ct and (pa.types.is_list(bt) or pa.types.is_large_list(bt))
             and pa.types.is_struct(bt.value_type)):
+        names = {f.name for f in bt.value_type}
+        src = f"list_filter({alias}.{col},t->t.source IS DISTINCT FROM 'captions')" if non_captions and 'source' in names else f'{alias}.{col}'
         fields = [f.name for f in bt.value_type if f.name != 'list_row']
         if not fields:
-            return f'coalesce(len({alias}.{col}),0)'
+            return f'coalesce(len({src}),0)'
         packed = ','.join(f'"{name}":=t."{name}"' for name in fields)
-        return f'list_transform({alias}.{col},t->struct_pack({packed}))'
+        return f'list_transform({src},t->struct_pack({packed}))'
     return None
 
 
@@ -704,15 +709,66 @@ def _meeting_compare(d: Diff):
     return {'transcripts': expr} if expr is not None else {}
 
 
-def _same_transcripts(d: Diff, left='p', right='l'):
+def _same_transcripts(d: Diff, left='p', right='l', *, non_captions=False):
     if not (d.has('base', 'meetings') and d.has('candidate', 'meetings')):
         return 'true'
     if 'transcripts' not in set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings')):
         return 'true'
-    lp, rp = _transcript_compare_expr(d, left, 'transcripts'), _transcript_compare_expr(d, right, 'transcripts')
+    lp = _transcript_compare_expr(d, left, 'transcripts', non_captions=non_captions)
+    rp = _transcript_compare_expr(d, right, 'transcripts', non_captions=non_captions)
     if lp is None or rp is None:
-        return f'{left}.transcripts IS NOT DISTINCT FROM {right}.transcripts' if d.arrow_types('base', 'meetings').get('transcripts') == d.arrow_types('candidate', 'meetings').get('transcripts') else 'false'
+        return (f'{left}.transcripts IS NOT DISTINCT FROM {right}.transcripts'
+                if d.arrow_types('base', 'meetings').get('transcripts') == d.arrow_types('candidate', 'meetings').get('transcripts')
+                else 'false')
     return f'{lp} IS NOT DISTINCT FROM {rp}'
+
+
+def _caption_tx_moves(d: Diff):
+    """Table `caption_tx_moves(event_id)`: matched `meeting_update` events whose `transcripts` differ solely
+    because `videos` linked or unlinked a recording already held in `base_recordings` and `candidate_recordings`
+    with unchanged non-empty caption `tracks` (ct-rhqw)."""
+    import pyarrow as pa
+    if d.caption_tx is None:
+        d.caption_tx = False
+        if (updated_meetings(d) and d.has('base', 'meetings') and d.has('candidate', 'meetings')
+                and d.has('base', 'recordings') and d.has('candidate', 'recordings')):
+            m_shared = set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings'))
+            r_shared = set(d.columns('base', 'recordings')) & set(d.columns('candidate', 'recordings'))
+            bt = d.arrow_types('base', 'meetings').get('transcripts')
+            if ({'transcripts', 'videos'} <= m_shared and {'video_key', 'tracks'} <= r_shared
+                    and bt is not None and bt == d.arrow_types('candidate', 'meetings').get('transcripts')
+                    and (pa.types.is_list(bt) or pa.types.is_large_list(bt)) and pa.types.is_struct(bt.value_type)
+                    and {'source', 'package_id', 'video_key'} <= {f.name for f in bt.value_type}):
+                dirty_rm = _dirty_rm_events(d, alias='pm')
+                dirty_cap = _dirty_caption_videos(d, pm='pm', lm='lm')
+                same_non_cap = _same_transcripts(d, 'pm', 'lm', non_captions=True)
+                cap_keys = lambda s: (f"list_distinct(list_transform(list_filter(coalesce({s}.transcripts,[]),"
+                                      f"lambda t: t.source='captions' AND t.package_id IS NULL),lambda t: t.video_key))")
+                bad_cap = lambda s: (f"len(list_filter(coalesce({s}.transcripts,[]),"
+                                     f"lambda t: t.source='captions' AND (t.package_id IS NOT NULL OR t.video_key IS NULL)))=0")
+                vid_keys = lambda s: (f"list_distinct(list_filter(list_transform(coalesce({s}.videos,[]),"
+                                      f"lambda v: v.video_key),lambda vk: vk IS NOT NULL))")
+                d.table('caption_tx_moves', f"""WITH held AS (
+                      SELECT p.video_key FROM base_recordings p JOIN candidate_recordings l USING(video_key)
+                      WHERE coalesce(len(p.tracks),0)>0
+                        AND list_transform(p.tracks,lambda t: t.body) IS NOT DISTINCT FROM list_transform(l.tracks,lambda t: t.body)),
+                    cand AS (
+                      SELECT pm.event_id,{cap_keys('pm')} AS pck,{cap_keys('lm')} AS lck,
+                        {vid_keys('pm')} AS pvk,{vid_keys('lm')} AS lvk
+                      FROM meeting_update u JOIN base_meetings pm USING(event_id) JOIN candidate_meetings lm USING(event_id)
+                      WHERE NOT u.added AND pm.videos IS DISTINCT FROM lm.videos AND {same_non_cap}
+                        AND {bad_cap('pm')} AND {bad_cap('lm')} AND NOT ({dirty_rm}) AND NOT ({dirty_cap})),
+                    added_bad AS (
+                      SELECT event_id FROM (SELECT event_id,pck,lvk,unnest(lck) AS k FROM cand)
+                      WHERE NOT list_contains(pck,k) AND (k NOT IN (SELECT video_key FROM held) OR NOT list_contains(lvk,k))),
+                    removed_bad AS (
+                      SELECT event_id FROM (SELECT event_id,lck,pvk,lvk,unnest(pck) AS k FROM cand)
+                      WHERE NOT list_contains(lck,k) AND (k NOT IN (SELECT video_key FROM held)
+                        OR NOT list_contains(pvk,k) OR list_contains(lvk,k)))
+                    SELECT event_id FROM cand
+                    WHERE event_id NOT IN (SELECT event_id FROM added_bad UNION SELECT event_id FROM removed_bad)""")
+                d.caption_tx = d.one('SELECT count(*) FROM caption_tx_moves') > 0
+    return d.caption_tx
 
 
 # ct-uywf: the columns a new read of a meeting's Congress.gov detail record moves on an unchanged
@@ -825,12 +881,25 @@ def meetings(d: Diff):
                 d, join, [g for g in groups if g['group'] == 'changed subject_keys'],
                 'event_id IN (SELECT event_id FROM clean_subject_meetings WHERE NOT added)', m_cmp).get('subject_keys', 0)
         shared = set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings'))
-        outcome, resched = {}, {}
+        outcome, resched, cap_tx = {}, {}, {}
         if {'outcome_basis', 'outcome_source_reference'} <= shared:
             publisher = "','".join(PUBLISHER_OUTCOMES)
+            uncanceled_extra = []
+            if 'outcome' in shared:
+                uncanceled_extra.append("c.outcome='unknown'")
+            if 'not_held' in shared:
+                uncanceled_extra.append('c.not_held IS NOT TRUE')
+            uncanceled_ok = (' AND ' + ' AND '.join(uncanceled_extra)) if uncanceled_extra else ''
+            same_tx_out = _same_transcripts(d, 'p', 'c', non_captions=True)
             outcome = changed_counts(d, join, [g for g in groups if g['group'].removeprefix('changed ') in OUTCOME], f"""event_id IN (
-                SELECT u.event_id FROM meeting_update u JOIN candidate_meetings c
-                USING(event_id) WHERE NOT u.added AND lower(c.outcome_source_reference)=u.body) AND p.outcome_basis IN ('{publisher}')""")
+                SELECT u.event_id FROM meeting_update u JOIN candidate_meetings c USING(event_id) JOIN base_meetings p USING(event_id)
+                WHERE NOT u.added AND p.outcome_basis IN ('{publisher}') AND {same_tx_out}
+                  AND (lower(c.outcome_source_reference)=u.body
+                       OR (p.outcome_basis='publisher_cancellation' AND c.outcome_basis='no_outcome_evidence'
+                           AND c.outcome_source_reference IS NULL{uncanceled_ok})))""")
+        tx_groups = [g for g in groups if g['group'] == 'changed transcripts']
+        if tx_groups and _caption_tx_moves(d):
+            cap_tx = changed_counts(d, join, tx_groups, 'event_id IN (SELECT event_id FROM caption_tx_moves)', m_cmp)
         resched_groups = [g for g in groups if g['group'].removeprefix('changed ') in RESCHEDULED]
         if resched_groups and set(RESCHEDULED) <= shared:
             refetched_meetings(d)
@@ -841,7 +910,7 @@ def meetings(d: Diff):
                 d.table('unchanged_twins', f"""SELECT event_id FROM base_meetings p JOIN candidate_meetings l USING(event_id)
                   WHERE ({same_strict}) OR ({in_refetch} AND ({same_refetch}))""")
                 twin_ok = '(SELECT event_id FROM meeting_update UNION SELECT event_id FROM unchanged_twins)'
-                same_tx = _same_transcripts(d)
+                same_tx = _same_transcripts(d, non_captions=True)
                 bases = "','".join(RESCHEDULED_BASES)
                 resched = changed_counts(d, join, resched_groups, f"""(p.rescheduled_basis IS NULL OR p.rescheduled_basis IN ('{bases}'))
                   AND (l.rescheduled_basis IS NULL OR l.rescheduled_basis IN ('{bases}'))
@@ -851,7 +920,7 @@ def meetings(d: Diff):
                     OR (event_id IN (SELECT event_id FROM unchanged_twins)
                         AND (p.rescheduled_to IN (SELECT event_id FROM meeting_update)
                              OR l.rescheduled_to IN (SELECT event_id FROM meeting_update))))""", m_cmp)
-        counts = {**{c: n for c, n in counts.items() if c in UPDATE_COLUMNS}, **outcome, **resched}
+        counts = {**{c: n for c, n in counts.items() if c in UPDATE_COLUMNS}, **outcome, **resched, **cap_tx}
         groups = refetch_split(groups, counts, MEETING_UPDATE)
         groups = split_group(groups, 'added keys', 'unexplained', d.one('SELECT count(*) FROM meeting_update WHERE added'), FIRST_STATED)
         notes['congress_gov_updates'] = [r[0] for r in d.rows('SELECT event_id FROM meeting_update ORDER BY 1')]
@@ -877,61 +946,85 @@ def nominations(d: Diff):
     return groups, notes
 
 
-def _dirty_rm_events(d: Diff):
+def _stated_event_resolved_where(d: Diff):
+    """SQL predicate on `base_recording_matches p` and `candidate_recording_matches l` (joined on `match_id`)
+    for a held `video_states_event_id` claim resolved when its `first_stated` meeting appears (ct-rhqw)."""
+    if not (updated_meetings(d) and d.has('base', 'recording_matches') and d.has('candidate', 'recording_matches')):
+        return 'false'
+    rm_shared = set(d.columns('base', 'recording_matches')) & set(d.columns('candidate', 'recording_matches'))
+    if not PUBLISHER_MATCH_COLS <= rm_shared:
+        return 'false'
+    skip = {'match_id', 'event_id', 'score', 'note', *({'meeting_links'} if 'meeting_links' in rm_shared else set())}
+    same_rest = _equal_except(d, 'recording_matches', skip)
+    if not same_rest:
+        return 'false'
+    links_ok = (" AND coalesce(len(p.meeting_links),0)=0 AND len(l.meeting_links)=1 "
+                "AND l.meeting_links[1].event_id=l.event_id AND l.meeting_links[1].basis='direct_event' "
+                "AND l.meeting_links[1].scope='event'" if 'meeting_links' in rm_shared else '')
+    return (f"({same_rest} AND p.basis='video_states_event_id' AND p.subject_kind='event' "
+            f"AND p.event_id IS NULL AND l.event_id IN (SELECT event_id FROM meeting_update WHERE added) "
+            f"AND p.subject_id=CAST(l.event_id AS VARCHAR) AND p.decision='linked' AND p.status='claimed' "
+            f"AND p.score IS NULL AND l.score=95 "
+            f"AND p.note='stated event id '||p.subject_id||' has no meeting' AND l.note IS NULL{links_ok})")
+
+
+def _dirty_rm_events(d: Diff, alias='pm'):
     """Events touched by any non-`publisher_link` recording_matches addition, removal or content change."""
-    if not (d.has('base', 'recording_matches') and d.has('candidate', 'recording_matches')):
-        return 'false'
-    shared = set(d.columns('base', 'recording_matches')) & set(d.columns('candidate', 'recording_matches'))
-    if not {'match_id', 'basis', 'event_id'} <= shared:
-        return 'false'
-    same = _equal_except(d, 'recording_matches', {'match_id', 'source_ref'}) or 'false'
-    parts = [
-        "SELECT event_id FROM candidate_recording_matches ANTI JOIN base_recording_matches USING(match_id) WHERE basis IS DISTINCT FROM 'publisher_link'",
-        "SELECT event_id FROM base_recording_matches ANTI JOIN candidate_recording_matches USING(match_id) WHERE basis IS DISTINCT FROM 'publisher_link'",
-        f"""SELECT p.event_id FROM base_recording_matches p JOIN candidate_recording_matches l USING(match_id)
-            WHERE (p.basis IS DISTINCT FROM 'publisher_link' OR l.basis IS DISTINCT FROM 'publisher_link') AND NOT ({same})""",
-        f"""SELECT l.event_id FROM base_recording_matches p JOIN candidate_recording_matches l USING(match_id)
-            WHERE (p.basis IS DISTINCT FROM 'publisher_link' OR l.basis IS DISTINCT FROM 'publisher_link') AND NOT ({same})"""]
-    if 'meeting_links' in shared:
-        parts += [
-            """SELECT unnest(meeting_links).event_id FROM candidate_recording_matches ANTI JOIN base_recording_matches USING(match_id)
-               WHERE basis IS DISTINCT FROM 'publisher_link' AND meeting_links IS NOT NULL""",
-            """SELECT unnest(meeting_links).event_id FROM base_recording_matches ANTI JOIN candidate_recording_matches USING(match_id)
-               WHERE basis IS DISTINCT FROM 'publisher_link' AND meeting_links IS NOT NULL""",
-            f"""SELECT unnest(p.meeting_links).event_id FROM base_recording_matches p JOIN candidate_recording_matches l USING(match_id)
-                WHERE (p.basis IS DISTINCT FROM 'publisher_link' OR l.basis IS DISTINCT FROM 'publisher_link') AND NOT ({same}) AND p.meeting_links IS NOT NULL""",
-            f"""SELECT unnest(l.meeting_links).event_id FROM base_recording_matches p JOIN candidate_recording_matches l USING(match_id)
-                WHERE (p.basis IS DISTINCT FROM 'publisher_link' OR l.basis IS DISTINCT FROM 'publisher_link') AND NOT ({same}) AND l.meeting_links IS NOT NULL"""]
-    d.table('dirty_rm_events', f"SELECT DISTINCT event_id FROM ({' UNION ALL '.join(parts)}) WHERE event_id IS NOT NULL")
-    return 'pm.event_id IN (SELECT event_id FROM dirty_rm_events)'
+    if d.dirty_rm is None:
+        d.dirty_rm = False
+        if d.has('base', 'recording_matches') and d.has('candidate', 'recording_matches'):
+            shared = set(d.columns('base', 'recording_matches')) & set(d.columns('candidate', 'recording_matches'))
+            if {'match_id', 'basis', 'event_id'} <= shared:
+                same = _equal_except(d, 'recording_matches', {'match_id', 'source_ref'}) or 'false'
+                stated_ok = _stated_event_resolved_where(d)
+                changed_rm = f"(p.basis IS DISTINCT FROM 'publisher_link' OR l.basis IS DISTINCT FROM 'publisher_link') AND NOT ({same}) AND NOT ({stated_ok})"
+                parts = [
+                    "SELECT event_id FROM candidate_recording_matches ANTI JOIN base_recording_matches USING(match_id) WHERE basis IS DISTINCT FROM 'publisher_link'",
+                    "SELECT event_id FROM base_recording_matches ANTI JOIN candidate_recording_matches USING(match_id) WHERE basis IS DISTINCT FROM 'publisher_link'",
+                    f'SELECT p.event_id FROM base_recording_matches p JOIN candidate_recording_matches l USING(match_id) WHERE {changed_rm}',
+                    f'SELECT l.event_id FROM base_recording_matches p JOIN candidate_recording_matches l USING(match_id) WHERE {changed_rm}']
+                if 'meeting_links' in shared:
+                    parts += [
+                        """SELECT unnest(meeting_links).event_id FROM candidate_recording_matches ANTI JOIN base_recording_matches USING(match_id)
+                           WHERE basis IS DISTINCT FROM 'publisher_link' AND meeting_links IS NOT NULL""",
+                        """SELECT unnest(meeting_links).event_id FROM base_recording_matches ANTI JOIN candidate_recording_matches USING(match_id)
+                           WHERE basis IS DISTINCT FROM 'publisher_link' AND meeting_links IS NOT NULL""",
+                        f'SELECT unnest(p.meeting_links).event_id FROM base_recording_matches p JOIN candidate_recording_matches l USING(match_id) WHERE {changed_rm} AND p.meeting_links IS NOT NULL',
+                        f'SELECT unnest(l.meeting_links).event_id FROM base_recording_matches p JOIN candidate_recording_matches l USING(match_id) WHERE {changed_rm} AND l.meeting_links IS NOT NULL']
+                d.table('dirty_rm_events', f"SELECT DISTINCT event_id FROM ({' UNION ALL '.join(parts)}) WHERE event_id IS NOT NULL")
+                d.dirty_rm = d.one('SELECT count(*) FROM dirty_rm_events') > 0
+    return f'{alias}.event_id IN (SELECT event_id FROM dirty_rm_events)' if d.dirty_rm else 'false'
 
 
-def _dirty_caption_videos(d: Diff):
-    """SQL condition true when any video on `pm.videos` or `lm.videos` changed caption state or tracks."""
-    parts = []
-    if d.has('base', 'videos') and d.has('candidate', 'videos'):
-        v_shared = set(d.columns('base', 'videos')) & set(d.columns('candidate', 'videos'))
-        if {'video_key', 'has_caption'} <= v_shared:
-            parts += [
-                'SELECT video_key FROM candidate_videos ANTI JOIN base_videos USING(video_key) WHERE coalesce(has_caption,false)',
-                'SELECT video_key FROM base_videos ANTI JOIN candidate_videos USING(video_key) WHERE coalesce(has_caption,false)',
-                'SELECT p.video_key FROM base_videos p JOIN candidate_videos l USING(video_key) WHERE p.has_caption IS DISTINCT FROM l.has_caption']
-    if d.has('base', 'recordings') and d.has('candidate', 'recordings'):
-        r_shared = set(d.columns('base', 'recordings')) & set(d.columns('candidate', 'recordings'))
-        if {'video_key', 'tracks'} <= r_shared:
-            parts += [
-                'SELECT video_key FROM candidate_recordings ANTI JOIN base_recordings USING(video_key) WHERE coalesce(len(tracks),0)>0',
-                'SELECT video_key FROM base_recordings ANTI JOIN candidate_recordings USING(video_key) WHERE coalesce(len(tracks),0)>0',
-                """SELECT p.video_key FROM base_recordings p JOIN candidate_recordings l USING(video_key)
-                   WHERE list_transform(p.tracks,t->t.body) IS DISTINCT FROM list_transform(l.tracks,t->t.body)"""]
-    if not parts:
-        return 'false'
-    d.table('dirty_caption_videos', f"SELECT DISTINCT video_key FROM ({' UNION ALL '.join(parts)}) WHERE video_key IS NOT NULL")
-    if not d.one('SELECT count(*) FROM dirty_caption_videos'):
+def _dirty_caption_videos(d: Diff, pm='pm', lm='lm'):
+    """SQL condition true when any video on `{pm}.videos` or `{lm}.videos` changed caption state or tracks."""
+    if d.dirty_captions is None:
+        parts = []
+        if d.has('base', 'videos') and d.has('candidate', 'videos'):
+            v_shared = set(d.columns('base', 'videos')) & set(d.columns('candidate', 'videos'))
+            if {'video_key', 'has_caption'} <= v_shared:
+                parts += [
+                    'SELECT video_key FROM candidate_videos ANTI JOIN base_videos USING(video_key) WHERE coalesce(has_caption,false)',
+                    'SELECT video_key FROM base_videos ANTI JOIN candidate_videos USING(video_key) WHERE coalesce(has_caption,false)',
+                    'SELECT p.video_key FROM base_videos p JOIN candidate_videos l USING(video_key) WHERE p.has_caption IS DISTINCT FROM l.has_caption']
+        if d.has('base', 'recordings') and d.has('candidate', 'recordings'):
+            r_shared = set(d.columns('base', 'recordings')) & set(d.columns('candidate', 'recordings'))
+            if {'video_key', 'tracks'} <= r_shared:
+                parts += [
+                    'SELECT video_key FROM candidate_recordings ANTI JOIN base_recordings USING(video_key) WHERE coalesce(len(tracks),0)>0',
+                    'SELECT video_key FROM base_recordings ANTI JOIN candidate_recordings USING(video_key) WHERE coalesce(len(tracks),0)>0',
+                    """SELECT p.video_key FROM base_recordings p JOIN candidate_recordings l USING(video_key)
+                       WHERE list_transform(p.tracks,t->t.body) IS DISTINCT FROM list_transform(l.tracks,t->t.body)"""]
+        if not parts:
+            d.dirty_captions = False
+        else:
+            d.table('dirty_caption_videos', f"SELECT DISTINCT video_key FROM ({' UNION ALL '.join(parts)}) WHERE video_key IS NOT NULL")
+            d.dirty_captions = d.one('SELECT count(*) FROM dirty_caption_videos') > 0
+    if not d.dirty_captions:
         return 'false'
     empty = 'CAST([] AS VARCHAR[])'
-    return f"""list_has_any(list_concat(coalesce(list_transform(pm.videos,v->v.video_key),{empty}),
-        coalesce(list_transform(lm.videos,v->v.video_key),{empty})),
+    return f"""list_has_any(list_concat(coalesce(list_transform({pm}.videos,v->v.video_key),{empty}),
+        coalesce(list_transform({lm}.videos,v->v.video_key),{empty})),
         (SELECT list(video_key) FROM dirty_caption_videos))"""
 
 
@@ -952,8 +1045,9 @@ def meeting_coverage(d: Diff):
         m_shared = (set(d.columns('base', 'meetings')) & set(d.columns('candidate', 'meetings'))
                     if d.has('base', 'meetings') and d.has('candidate', 'meetings') else set())
         same_tx = _same_transcripts(d, 'pm', 'lm')
+        same_non_cap_tx = _same_transcripts(d, 'pm', 'lm', non_captions=True)
         w_basis = " AND p.basis='appearance_records' AND l.basis='appearance_records'" if 'basis' in cov_shared else ''
-        arms = [f"(p.aspect='witnesses'{w_basis} AND {same_tx})"]
+        arms = [f"(p.aspect='witnesses'{w_basis} AND {same_non_cap_tx})"]
         if {'state', 'basis', 'count', 'reason'} <= cov_shared:
             dirty_rm = _dirty_rm_events(d)
             if 'videos' in m_shared:
@@ -962,14 +1056,20 @@ def meeting_coverage(d: Diff):
                     AND p.basis IN ('recording_matches','none') AND l.basis IN ('recording_matches','none')
                     AND p.state NOT IN ('confirmed_absent','not_public') AND l.state NOT IN ('confirmed_absent','not_public')
                     AND NOT ({dirty_rm}))""")
-                arms.append(f"""(p.aspect='captions' AND pm.videos IS DISTINCT FROM lm.videos AND {same_tx}
+                arms.append(f"""(p.aspect='captions' AND pm.videos IS DISTINCT FROM lm.videos AND {same_non_cap_tx}
                     AND p.basis='videos.has_caption,recordings.tracks' AND l.basis='videos.has_caption,recordings.tracks'
                     AND p.state<>'not_stated' AND l.state<>'not_stated' AND NOT ({dirty_rm}) AND NOT ({dirty_cap}))""")
             valid_tx = lambda s: (f"(({s}.state='unresolved' AND {s}.reason IS NULL) OR ({s}.state='not_stated' AND {s}.reason IS NULL) "
                                   f"OR ({s}.state='unknown' AND {s}.reason='package_names_meeting_unlinked'))")
-            arms.append(f"""(p.aspect='transcript' AND {same_tx} AND p.basis='meetings.transcripts' AND l.basis='meetings.transcripts'
-                AND p.count=0 AND l.count=0 AND {valid_tx('p')} AND {valid_tx('l')}
-                AND (p.state='unresolved' OR l.state='unresolved'))""")
+            cap_tx_or = (
+                ' OR (pm.event_id IN (SELECT event_id FROM caption_tx_moves)'
+                ' AND p.count=coalesce(len(pm.transcripts),0) AND l.count=coalesce(len(lm.transcripts),0))'
+                if _caption_tx_moves(d)
+                else ''
+            )
+            arms.append(f"""(p.aspect='transcript' AND p.basis='meetings.transcripts' AND l.basis='meetings.transcripts'
+                AND (({same_tx} AND p.count=0 AND l.count=0 AND {valid_tx('p')} AND {valid_tx('l')}
+                      AND (p.state='unresolved' OR l.state='unresolved')){cap_tx_or}))""")
             if 'document_references' in m_shared:
                 valid_doc = lambda s: (f"(({s}.state='unresolved' AND {s}.reason='stated_documents_not_held') "
                                        f"OR ({s}.state='unknown' AND {s}.reason='senate_page_links_pending') "
@@ -986,6 +1086,7 @@ def meeting_coverage(d: Diff):
 
 
 def bills(d: Diff):
+    import pyarrow as pa
     removed = d.one('SELECT count(*) FROM base_bills ANTI JOIN candidate_bills USING(bill_id)')
     d.table('bill_refs', """SELECT DISTINCT lower(unnest(subject_keys)) k,'new meeting subject' cause FROM candidate_meetings
       EXCEPT SELECT DISTINCT lower(unnest(subject_keys)),'new meeting subject' FROM base_meetings""")
@@ -996,6 +1097,21 @@ def bills(d: Diff):
         n = d.one("""SELECT count(*) FROM candidate_bills ANTI JOIN base_bills USING(bill_id)
           WHERE lower(bill_id) IN (SELECT k FROM new_update_subjects)""")
         out = split_group(out, 'added bills', 'new meeting subject', n, NEW_SUBJECT)
+        rel_type = d.arrow_types('candidate', 'bills').get('related_bills')
+        if (rel_type is not None and (pa.types.is_list(rel_type) or pa.types.is_large_list(rel_type))
+                and pa.types.is_struct(rel_type.value_type) and rel_type.value_type.get_field_index('bill_id') >= 0):
+            d.table('update_related_bills', """SELECT DISTINCT lower(r.bill_id) AS k
+              FROM (SELECT bill_id,unnest(related_bills) AS r FROM candidate_bills WHERE related_bills IS NOT NULL)
+              WHERE lower(bill_id) IN (SELECT k FROM new_update_subjects) AND r.bill_id IS NOT NULL
+              UNION
+              SELECT DISTINCT lower(bill_id) AS k
+              FROM (SELECT bill_id,unnest(related_bills) AS r FROM candidate_bills WHERE related_bills IS NOT NULL)
+              WHERE lower(r.bill_id) IN (SELECT k FROM new_update_subjects) AND bill_id IS NOT NULL""")
+            n_rel = d.one("""SELECT count(*) FROM candidate_bills ANTI JOIN base_bills USING(bill_id)
+              WHERE lower(bill_id) NOT IN (SELECT k FROM bill_refs)
+                AND lower(bill_id) NOT IN (SELECT k FROM new_doc_subjects)
+                AND lower(bill_id) IN (SELECT k FROM update_related_bills)""")
+            out = split_group(out, 'added bills', 'unexplained', n_rel, NEW_SUBJECT)
     if removed:
         out.append(group('removed bills', 'unexplained', -removed))
     return out + d.changed('bills', 'base_bills p JOIN candidate_bills l USING(bill_id)', exclude=set()), {}
@@ -1004,7 +1120,8 @@ def bills(d: Diff):
 def recordings(d: Diff):
     groups, _ = key_file('recordings', 'video_key')(d)
     groups = [g for g in groups if g['group'] != 'added keys']
-    if 'event_ids' not in {r[0] for r in d.rows('DESCRIBE candidate_recordings')}:
+    cand_cols = set(d.columns('candidate', 'recordings'))
+    if 'event_ids' not in cand_cols:
         groups.append(flag('event_ids column missing', 'unexplained'))
         added = d.one('SELECT count(*) FROM candidate_recordings ANTI JOIN base_recordings USING(video_key)')
         groups.append(group('added keys', 'event_ids unreadable', added))
@@ -1017,7 +1134,37 @@ def recordings(d: Diff):
             groups.append(group('added keys', f"{events}; {'capture newly real' if tied else 'source not traced'}", n,
                                 'verified' if tied else 'unverified'))
     tracks = {'tracks': 'list_transform(X.{c},t->t.body)'}
-    return groups + d.changed('recordings', 'base_recordings p JOIN candidate_recordings l USING(video_key)', tracks, set()), {}
+    join = 'base_recordings p JOIN candidate_recordings l USING(video_key)'
+    groups += d.changed('recordings', join, tracks, set())
+    r_shared = set(d.columns('base', 'recordings')) & cand_cols if updated_meetings(d) else set()
+    if {'video_key', 'event_ids', 'tracks'} <= r_shared:
+        flips = ("EXISTS (SELECT 1 FROM flips f WHERE f.b_real AND NOT f.a_real AND split_part(l.video_key,':',2)<>'' AND contains(f.address,split_part(l.video_key,':',2)))"
+                 if d.link_causes else 'false')
+        first_rec = d.one(f"""SELECT count(*) FROM (SELECT * FROM candidate_recordings ANTI JOIN base_recordings USING(video_key)) l
+          WHERE NOT ({flips}) AND coalesce(len(l.tracks),0)=0 AND coalesce(len(l.event_ids),0)>0
+            AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(l.event_ids) AS e) WHERE e NOT IN (SELECT event_id FROM meeting_update WHERE added))""")
+        upd_rec = d.one(f"""SELECT count(*) FROM (SELECT * FROM candidate_recordings ANTI JOIN base_recordings USING(video_key)) l
+          WHERE NOT ({flips}) AND coalesce(len(l.tracks),0)=0 AND coalesce(len(l.event_ids),0)>0
+            AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(l.event_ids) AS e) WHERE e NOT IN (SELECT event_id FROM meeting_update))
+            AND EXISTS (SELECT 1 FROM (SELECT unnest(l.event_ids) AS e) WHERE e IN (SELECT event_id FROM meeting_update WHERE NOT added))""")
+        rem_rec = d.one("""SELECT count(*) FROM (SELECT * FROM base_recordings ANTI JOIN candidate_recordings USING(video_key)) p
+          WHERE coalesce(len(p.tracks),0)=0 AND coalesce(len(p.event_ids),0)>0
+            AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(p.event_ids) AS e) WHERE e NOT IN (SELECT event_id FROM meeting_update WHERE NOT added))""")
+        groups = split_group(groups, 'added keys', 'with event_ids; source not traced', first_rec, f'with event_ids; {FIRST_STATED}')
+        groups = split_group(groups, 'added keys', 'with event_ids; source not traced', upd_rec, f'with event_ids; {MEETING_UPDATE}')
+        groups = split_group(groups, 'removed keys', 'unexplained', rem_rec, MEETING_UPDATE)
+        ev_groups = [g for g in groups if g['group'] == 'changed event_ids']
+        if ev_groups:
+            ev_where = """list_transform(p.tracks,t->t.body) IS NOT DISTINCT FROM list_transform(l.tracks,t->t.body)
+              AND (coalesce(len(l.event_ids),0)>0 OR coalesce(len(p.tracks),0)>0)
+              AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(coalesce(l.event_ids,CAST([] AS BIGINT[]))) AS e
+                  EXCEPT SELECT unnest(coalesce(p.event_ids,CAST([] AS BIGINT[]))))
+                WHERE e NOT IN (SELECT event_id FROM meeting_update))
+              AND NOT EXISTS (SELECT 1 FROM (SELECT unnest(coalesce(p.event_ids,CAST([] AS BIGINT[]))) AS e
+                  EXCEPT SELECT unnest(coalesce(l.event_ids,CAST([] AS BIGINT[]))))
+                WHERE e NOT IN (SELECT event_id FROM meeting_update WHERE NOT added))"""
+            groups = refetch_split(groups, changed_counts(d, join, ev_groups, ev_where, tracks), MEETING_UPDATE)
+    return groups, {}
 
 
 OCCURRENCE = {'witness_key', 'record_sha', 'source_locator', 'context_key'}  # what witness_key hashes, besides occasion and source
@@ -1083,6 +1230,18 @@ def witnesses(d: Diff):
         where = ("witness_key IN (SELECT witness_key FROM witness_update_candidate) AND p.source='congress_gov' AND p.occasion=l.occasion "
                  "AND p.occasion IN (SELECT 'meeting:'||event_id FROM meeting_update WHERE NOT added)")
         out = refetch_split(out, changed_counts(d, join, out, where), MEETING_UPDATE)
+        sup_groups = [g for g in out if g['group'] == 'changed superseded_by']
+        same_other = _equal_except(d, 'witnesses', {'witness_key', 'superseded_by'}) if sup_groups else None
+        if sup_groups and same_other:
+            sup_n = d.one(f"""SELECT count(*) FROM base_witnesses_paired bp JOIN candidate_witnesses_paired lp USING(witness_key)
+              WHERE bp.superseded_by IS DISTINCT FROM lp.superseded_by
+                AND bp.source IN ('senate_page','mods') AND bp.source=lp.source AND bp.occasion=lp.occasion
+                AND lp.occasion IN (SELECT 'meeting:'||event_id FROM meeting_update)
+                AND EXISTS (SELECT 1 FROM base_witnesses p JOIN candidate_witnesses l USING(witness_key)
+                  WHERE p.witness_key=bp.witness_key AND {same_other}
+                    AND (l.superseded_by IN (SELECT witness_key FROM witness_update_candidate wc WHERE wc.occasion=l.occasion)
+                         OR p.superseded_by IN (SELECT witness_key FROM witness_update_base wb WHERE wb.occasion=p.occasion)))""")
+            out = refetch_split(out, {'superseded_by': sup_n}, MEETING_UPDATE)
     return out, {}
 
 
@@ -1106,11 +1265,12 @@ def witness_key_map(d: Diff):
     rekeyed(d)
     update = (updated_witnesses(d) and bool(d.witness_rekey)
               and {'source', 'occasion', 'status', 'witness_key'} <= set(d.columns('base', 'witness_key_map')) & set(d.columns('candidate', 'witness_key_map')))
+    on_any_update = "{x}source='congress_gov' AND {x}occasion IN (SELECT 'meeting:'||event_id FROM meeting_update)"
     on_meeting = "{x}source='congress_gov' AND {x}occasion IN (SELECT 'meeting:'||event_id FROM meeting_update WHERE NOT added)"
     resolves = ("{x}status='unambiguous' AND EXISTS (SELECT 1 FROM witness_rekey r "
                 "JOIN witness_update_candidate w USING(witness_key) "
                 "WHERE r.old_key={x}old_key AND r.witness_key={x}witness_key AND w.occasion={x}occasion)")
-    added = (f"coalesce({on_meeting.format(x='m.')} AND {resolves.format(x='m.')} "
+    added = (f"coalesce({on_any_update.format(x='m.')} AND {resolves.format(x='m.')} "
              "AND (NOT EXISTS (SELECT 1 FROM base_witnesses b WHERE b.witness_key=m.old_key) "
              "OR EXISTS (SELECT 1 FROM witness_update_base b WHERE b.witness_key=m.old_key AND b.occasion=m.occasion)),false)")
     out = []
@@ -1353,6 +1513,10 @@ def recording_matches(d: Diff):
                  f"AND {pub_row('p', 'base')} AND {pub_row('l', 'candidate')}")
         rm_groups = [g for g in groups if g['group'].removeprefix('changed ') in ('video_key', 'url')]
         groups = refetch_split(groups, changed_counts(d, join, rm_groups, where), MEETING_UPDATE)
+        stated_ok = _stated_event_resolved_where(d)
+        stated_groups = [g for g in groups if g['group'].removeprefix('changed ') in ('event_id', 'score', 'note', 'meeting_links')]
+        if stated_groups and stated_ok != 'false':
+            groups = refetch_split(groups, changed_counts(d, join, stated_groups, stated_ok), FIRST_STATED)
     return groups, notes
 
 
