@@ -13,7 +13,7 @@
     "id": "youtube-embed-or-live",
     "kind": "video_url",
     "provider": "youtube",
-    "pattern": "(?i)^https?://(?:www[.])?youtube(?:-nocookie)?[.]com/(?:embed|live|shorts|v)/([A-Za-z0-9_-]{11})(?:[/?#]|$)",
+    "pattern": "(?i)^https?://(?:www[.])?youtube(?:-nocookie)?[.]com/(?:embed/https?://(?:www[.]|m[.])?youtube(?:-nocookie)?[.]com/)?(?:embed|live|shorts|v)/([A-Za-z0-9_-]{11})(?:[/?&#]|$)",
     "key_template": "youtube:$1",
     "format": null,
     "default_language": "en",

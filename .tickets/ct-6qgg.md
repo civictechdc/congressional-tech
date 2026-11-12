@@ -1,6 +1,6 @@
 ---
 id: ct-6qgg
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-10T03:26:30Z
@@ -23,3 +23,10 @@ The seven links resolve to their recordings; a looser-pattern scan over all read
 **2026-11-11T14:41:00Z**
 
 validated 2026-11-11, left open: not fixed. model/registries/recording-sources.json youtube-embed-or-live still requires [/?#] or the end right after the 11-character id, so /embed/FySkoDtoxp8&list=... does not match; the file is unchanged since 959c23ee.
+
+**2026-11-12T04:37:00Z**
+
+Closed: updated `youtube-embed-or-live` in `model/registries/recording-sources.json` to accept `&` immediately after the 11-character video ID (`[/?&#]|$`) as well as double-wrapped `/embed/https://youtube.com/live/<11-char-id>` CMS embeds. All seven `democrats-veterans.house.gov` embeds (`FySkoDtoxp8`, `YzFFXeDonIg`, `jJj2qoIj-sc`, `VCiH6kOEEEk`, `3v8I_Oxrwv8`, `xtkwFNmQuUc`, `UnAZvMF-b3g`) resolve through native `recording_url_sources` SQL.
+
+Looser-pattern scan over all 14,540 distinct retained YouTube URLs (after `url_resolve` protocol-relative expansion) leaves exactly 1 non-matching `/embed/` URL:
+- `https://www.youtube.com/embed/1bxY6pFimYg021424?rel=0&wmode=opaque`: author concatenated a 6-digit MMDDYY hearing date (`021424`) directly onto the 11-character video ID `1bxY6pFimYg` (`@HouseBudgetGOP`) with no delimiter, producing a broken 17-character path segment that YouTube itself rejects and that cannot be safely matched without guessing arbitrary trailing digits on valid path segments.
