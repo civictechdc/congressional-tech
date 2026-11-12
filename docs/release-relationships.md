@@ -507,10 +507,10 @@ Coverage: Printed directory entries that are not seats (vacancies, party organiz
 | `system_code` | `dict` | no | Lowercase committee or subcommittee system code |
 | `bioguide_id` | `dict` | no | Assigned member Bioguide identifier |
 | `title` | `dict` | yes | Committee leadership or seat position title |
-| `rank` | `int16` | yes | Numeric party rank on the committee |
+| `rank` | `int16` | yes | Numeric party rank on the committee when printed by the source |
 | `party` | `dict` | yes | Party caucus for the committee assignment |
 | `congress_basis` | `dict` | yes | Where the seat's Congress comes from: file (the House roster file states it), caller (the Senate file states none), directory (a Congressional Directory edition's package metadata) or directory-manual (a reviewed one-off reading of an edition's PDF) |
-| `edition_date` | `date32` | yes | For a directory seat, the edition's dateIssued: the date the printed roster describes |
+| `edition_date` | `date32` | yes | Snapshot date the roster describes: a directory edition's dateIssued, or an archived chamber file's Internet Archive capture date |
 | `source_granule` | `string` | yes | The GovInfo directory granule (or, for a manual reading, package; for an archived chamber file, its Internet Archive URL) that states the seat |
 | `source_line` | `string` | yes | The granule text line where the printed entry starts; for a manual reading, PDF page:line |
 | `position_basis` | `dict` | yes | For a directory seat with a title: printed, or inferred for a Ranking Member taken from print position (the first minority-column entry) |
@@ -521,7 +521,7 @@ Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plan
 
 - `congress`: Keyed by (congress, system_code, bioguide_id); populated from the pinned upstream committee_assignments snapshot, whose populated Congresses the coverage congress_start and congress_end bound. Earlier Congresses appear only after an upstream backfill is pinned.
 - `party`: Preserves the supplied assignment party; missing or blank values stay null. Service-term party assertions do not establish party or caucus at a roster observation, and the input does not supply qualified dated affiliation history.
-- `congress_basis`: Earlier Congresses' seats come from one Congressional Directory edition per Congress (directory). A Congress whose edition serves no committee granules combines a reviewed reading of the edition's PDF (directory-manual) with Internet Archive captures of the House file (file) and the Senate file (caller); a seat both list is the chamber file's. The current Congress comes from the current chamber files.
+- `congress_basis`: Earlier Congresses' seats come from one Congressional Directory edition per Congress (directory). A Congress whose edition serves no committee granules takes each committee from Internet Archive captures of the House file (file) and the Senate file (caller) when present, and falls back to a reviewed reading of the edition's PDF (directory-manual) for committees and subcommittees absent from those files. The current Congress comes from the current chamber files.
 - `title`: Chamber-file titles are verbatim (Chairman, Ranking Member); directory titles are normalized (Chair, Vice Chair, Ranking Member).
 - `system_code`: hsba00-tf-terrorism-financing is directory-defined: that House Financial Services task force has no Congress.gov code; its committees row is synthesized with parent hsba00.
 
@@ -1612,7 +1612,7 @@ Parameters, in order: `system_code` (example `hsif00`), `congress` (example `119
 ```sql
 SELECT r.congress,r.system_code,c.name AS committee,r.bioguide_id,m.name,r.title,r.rank,r.party
 FROM rosters r LEFT JOIN committees c USING (system_code) LEFT JOIN members m USING (bioguide_id)
-WHERE r.system_code=? AND r.congress=? ORDER BY r.rank,r.bioguide_id LIMIT 100
+WHERE r.system_code=? AND r.congress=? ORDER BY r.rank,r.title IS NULL,r.bioguide_id LIMIT 100
 ```
 
 An empty historical result does not establish that the committee had no members.

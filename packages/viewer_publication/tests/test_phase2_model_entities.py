@@ -3371,7 +3371,7 @@ def test_subject_key_reconciliation_and_historical_rosters(tmp_path):
         dict(congress=113, system_code='hlig01', bioguide_id='A000001', title='Member', rank=1, party='Democrat'),
         dict(congress=115, system_code='ssbk00', bioguide_id='C000003', title='Member', rank=1, party=None),
         dict(congress=117, system_code='hsvr09', bioguide_id='C000003', title='Chair', rank=1, party='Republican'),
-        dict(congress=117, system_code='hsvr09', bioguide_id='B000002', title='Ranking Member', rank=2, party='Republican'),
+        dict(congress=117, system_code='hsvr09', bioguide_id='B000002', title='Ranking Member', rank=None, party='Republican'),
         dict(congress=119, system_code='ssbk00', bioguide_id='A000001', title='Member', rank=1, party='Democrat'),
     )]
     files_by_name = {f['name']: f for f in manifest['files']}

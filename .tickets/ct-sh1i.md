@@ -1,6 +1,6 @@
 ---
 id: ct-sh1i
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-10T03:26:29Z
@@ -27,3 +27,7 @@ Each of the three counts is re-measured at zero or explained row by row; a rank 
 **2026-11-11T14:43:34Z**
 
 validated 2026-11-11, left open: no change to model/sql/entity-rosters.sql or the roster inputs since the 2026-11-10 recount (the three counts stand: 19 unlabelled departed seats, 697 archive-made ranks, the 118th joined from three sources). Also stale, from closing ct-8cno: docs/congress-explorer-personas.md:21 and :217 still say rosters are 119th only (2,973 rows), and docs/engine-first-architecture.md:308 says roster history before the 119th waits on spicy-regs; the live release has 25,190 rows over 113-119.
+
+**2026-11-12T06:00:00Z**
+
+Fixed and re-measured on the pinned 25,190-row `committee-rosters` generation (`32ac9696`): (1) `model/sql/entity-rosters.sql` labels dated seats whose member's recorded service terms ended before `edition_date` with `entry_label = 'after_departure'` (unlabelled departed seats: `19 -> 0`; all 19 115th Congress seats of McCain 6, DeSantis 9, and Evan Jenkins 4 on `2018-10-29` are now labelled alongside the 2 upstream-labelled seats); (2) unprinted source ranks stay `NULL` rather than synthesizing sequential integers (`1,147` archive-made ranks `-> 0`: 254 Directory seats in 113th–117th, 441 archived 118th Senate seats, 2 118th `directory-manual` seats, and 450 119th Senate seats; `committee_roster` recipe and `apps/site` sort leadership ahead of untitled `rank IS NULL` seats); (3) 118th Congress committees covered by archived chamber files (`file` dated `2024-05-01` and `caller` dated `2024-09-11` extracted from their Internet Archive URLs) drop the 25 stale `directory-manual` (`2024-04-25`) seats across the 24 mixed non-joint committees (`25,190 -> 25,165` rows, `0` mixed non-joint snapshots, `0` double chairs, `0` duplicate party ranks, while preserving `820` `directory-manual`-only seats with `6` `entry_label = 'corrected'` rows keeping `printed_entry`, plus `6` `corrected` rows in 114th–117th). Updated `release-schema.json`, `docs/release-relationships.md`, `docs/congress-explorer-personas.md`, and `docs/engine-first-architecture.md`.

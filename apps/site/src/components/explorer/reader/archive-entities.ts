@@ -726,6 +726,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       (Number(b.congress ?? 0) - Number(a.congress ?? 0))
       || ((a.majority === true ? 0 : a.majority === false ? 1 : 2) - (b.majority === true ? 0 : b.majority === false ? 1 : 2))
       || ((a.rank_in_party ?? 999) - (b.rank_in_party ?? 999))
+      || ((a.title ? 0 : 1) - (b.title ? 0 : 1))
       || String(a.name ?? '').localeCompare(String(b.name ?? '')));
     const congresses = [...new Set(normRosters.map((r: any) => r.congress).filter((c: any) => c != null))].sort((a: any, b: any) => b - a);
     const activeCongress = options?.congress != null && options.congress !== '' ? Number(options.congress) : (congresses[0] ?? null);

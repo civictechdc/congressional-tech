@@ -1460,7 +1460,7 @@
         {
           "name": "rank",
           "type": "int16",
-          "meaning": "Numeric party rank on the committee",
+          "meaning": "Numeric party rank on the committee when printed by the source",
           "nullable": true
         },
         {
@@ -1478,7 +1478,7 @@
         {
           "name": "edition_date",
           "type": "date32",
-          "meaning": "For a directory seat, the edition's dateIssued: the date the printed roster describes",
+          "meaning": "Snapshot date the roster describes: a directory edition's dateIssued, or an archived chamber file's Internet Archive capture date",
           "nullable": true
         },
         {
@@ -1533,7 +1533,7 @@
       "notes": {
         "congress": "Keyed by (congress, system_code, bioguide_id); populated from the pinned upstream committee_assignments snapshot, whose populated Congresses the coverage congress_start and congress_end bound. Earlier Congresses appear only after an upstream backfill is pinned.",
         "party": "Preserves the supplied assignment party; missing or blank values stay null. Service-term party assertions do not establish party or caucus at a roster observation, and the input does not supply qualified dated affiliation history.",
-        "congress_basis": "Earlier Congresses' seats come from one Congressional Directory edition per Congress (directory). A Congress whose edition serves no committee granules combines a reviewed reading of the edition's PDF (directory-manual) with Internet Archive captures of the House file (file) and the Senate file (caller); a seat both list is the chamber file's. The current Congress comes from the current chamber files.",
+        "congress_basis": "Earlier Congresses' seats come from one Congressional Directory edition per Congress (directory). A Congress whose edition serves no committee granules takes each committee from Internet Archive captures of the House file (file) and the Senate file (caller) when present, and falls back to a reviewed reading of the edition's PDF (directory-manual) for committees and subcommittees absent from those files. The current Congress comes from the current chamber files.",
         "title": "Chamber-file titles are verbatim (Chairman, Ranking Member); directory titles are normalized (Chair, Vice Chair, Ranking Member).",
         "system_code": "hsba00-tf-terrorism-financing is directory-defined: that House Financial Services task force has no Congress.gov code; its committees row is synthesized with parent hsba00."
       },
@@ -4649,7 +4649,7 @@
           "example": 119
         }
       ],
-      "sql": "SELECT r.congress,r.system_code,c.name AS committee,r.bioguide_id,m.name,r.title,r.rank,r.party\nFROM rosters r LEFT JOIN committees c USING (system_code) LEFT JOIN members m USING (bioguide_id)\nWHERE r.system_code=? AND r.congress=? ORDER BY r.rank,r.bioguide_id LIMIT 100",
+      "sql": "SELECT r.congress,r.system_code,c.name AS committee,r.bioguide_id,m.name,r.title,r.rank,r.party\nFROM rosters r LEFT JOIN committees c USING (system_code) LEFT JOIN members m USING (bioguide_id)\nWHERE r.system_code=? AND r.congress=? ORDER BY r.rank,r.title IS NULL,r.bioguide_id LIMIT 100",
       "result_row": "One committee or subcommittee assignment for the selected Congress",
       "notes": [
         "An empty historical result does not establish that the committee had no members."

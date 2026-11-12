@@ -169,3 +169,125 @@ def test_a_directory_defined_task_force_resolves_under_its_committee(tmp_path):
     assert {r['system_code'] for r in rosters} <= committees.keys()
     assert {r['system_code']: r['entry_label'] for r in rosters} == {
         'hsba00': None, 'hsba00-tf-terrorism-financing': 'no_congress_gov_code'}
+
+
+def test_departed_before_edition_seat_is_labelled_after_departure(tmp_path):
+    """ct-sh1i: Directory seats printed after a member's service ended carry entry_label='after_departure'."""
+    directory = tmp_path / 'departed'
+    directory.mkdir()
+    terms = [
+        # Departed before 2018-10-29 edition (e.g. McCain 2018-08-25)
+        dict(bioguide_id='M000303', term_party='Republican', term_start='2017-01-03', term_end='2018-08-25'),
+        # Serving on 2018-10-29 edition
+        dict(bioguide_id='I000024', term_party='Republican', term_start='2015-01-06', term_end='2021-01-03'),
+        # Unreadable term_end must not invent after_departure
+        dict(bioguide_id='J000010', term_party='Democrat', term_start='2017-01-03', term_end='unreadable'),
+        # Departed in 115th, returned in 117th -> still departed on 2018-10-29
+        dict(bioguide_id='R000001', term_party='Republican', term_start='2017-01-03', term_end='2018-05-01'),
+        dict(bioguide_id='R000001', term_party='Republican', term_start='2021-01-03', term_end='2023-01-03'),
+    ]
+    members = [dict(bioguide_id=k, name_first='Fixture', name_last=k)
+               for k in ('M000303', 'I000024', 'J000010', 'R000001')]
+    committees = [dict(system_code='SSAS00', name='Armed Services', chamber='Senate',
+                       committee_type='Standing', is_current=True)]
+    ed_labels = dict(LABELS, edition_date='2018-10-29', source_granule='CDIR-2018-10-29-SENATECOMMITTEES')
+    assignments = [
+        dict(congress=115, session='2', system_code='SSAS00', bioguide_id='M000303', position='Chair', rank=1,
+             party='Republican', chamber='Senate', **ed_labels),
+        dict(congress=115, session='2', system_code='SSAS00', bioguide_id='I000024', position=None, rank=2,
+             party='Republican', chamber='Senate', **ed_labels),
+        dict(congress=115, session='2', system_code='SSAS00', bioguide_id='J000010', position=None, rank=1,
+             party='Democrat', chamber='Senate', **ed_labels),
+        dict(congress=115, session='2', system_code='SSAS00', bioguide_id='R000001', position=None, rank=3,
+             party='Republican', chamber='Senate', **dict(ed_labels, entry_label='corrected', printed_entry='R (XX)')),
+        dict(congress=115, session='2', system_code='SSAS01', bioguide_id='R000001', position=None, rank=2,
+             party='Republican', chamber='Senate', is_subcommittee=True, parent_system_code='SSAS00',
+             committee_name='Airland', **ed_labels),
+    ]
+    tables = dict(spicy_committee_assignments=assignments, spicy_member_terms=terms,
+                  spicy_members=members, spicy_committees=committees)
+    inputs = registry_inputs(directory / 'registries') + [
+        json_input(directory, name, rows, **SPICY_SCHEMAS[name]) for name, rows in tables.items()]
+    outputs = [parquet_output(directory, 'rosters', 'SELECT * FROM entity_rosters',
+                              ['congress', 'system_code', 'bioguide_id'])]
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        run_job(directory, engine, inputs=inputs, outputs=outputs,
+                steps=model_steps(['entity-rosters'], root=ROOT, materialize=True))
+    rows = {(r['system_code'], r['bioguide_id']): r for r in pq.read_table(directory / 'rosters.parquet').to_pylist()}
+    assert rows[('ssas00', 'M000303')]['entry_label'] == 'after_departure'
+    assert rows[('ssas00', 'I000024')]['entry_label'] is None
+    assert rows[('ssas00', 'J000010')]['entry_label'] is None
+    assert rows[('ssas00', 'R000001')]['entry_label'] == 'corrected'
+    assert rows[('ssas01', 'R000001')]['entry_label'] == 'after_departure'
+
+
+def test_unprinted_source_rank_stays_absent_and_mixed_118th_uses_single_dated_snapshot(tmp_path):
+    """ct-sh1i: unprinted ranks stay None; mixed 118th committees keep one dated chamber-file snapshot."""
+    import datetime
+    import duckdb
+    assignments = [
+        # Mixed 118th House Rules: stale 2024-04-25 directory-manual Chair + complete 2024-05-01 archived file
+        dict(congress=118, session='2', system_code='HSRU00', bioguide_id='A000001', position='Chair', rank=1,
+             party='Republican', chamber='House', congress_basis='directory-manual', edition_date='2024-04-25',
+             source_granule='CDIR-2024-04-25', source_line='10:1', position_basis='printed', printed_entry=None, entry_label=None),
+        dict(congress=118, session='2', system_code='HSRU00', bioguide_id='D000004', position='Chair', rank=1,
+             party='Republican', chamber='House', congress_basis='file', edition_date=None,
+             source_granule='https://web.archive.org/web/20240501161500id_/https://clerk.house.gov/xml/lists/MemberData.xml',
+             source_line=None, position_basis=None, printed_entry=None, entry_label=None),
+        # Directory-manual-only Senate subcommittee stays published with its 2024-04-25 edition_date
+        dict(congress=118, session='2', system_code='SSFI01', bioguide_id='C000003', position='Chair', rank=1,
+             party='Democrat', chamber='Senate', is_subcommittee=True, parent_system_code='SSFI00',
+             committee_name='Health Care', congress_basis='directory-manual', edition_date='2024-04-25',
+             source_granule='CDIR-2024-04-25', source_line='20:1', position_basis='printed', printed_entry=None, entry_label=None),
+        # Archived Senate standing committee has unprinted ranks (None) and Wayback capture date 2024-09-11
+        dict(congress=118, session='2', system_code='SSFI00', bioguide_id='A000001', position=None, rank=None,
+             party='Democrat', chamber='Senate', congress_basis='caller', edition_date=None,
+             source_granule='https://web.archive.org/web/20240911154349id_/https://www.senate.gov/legislative/LIS_MEMBER/cvc_member_data.xml',
+             source_line=None, position_basis=None, printed_entry=None, entry_label=None),
+        dict(congress=118, session='2', system_code='SSFI00', bioguide_id='C000003', position='Chairman', rank=None,
+             party='Democrat', chamber='Senate', congress_basis='caller', edition_date=None,
+             source_granule='https://web.archive.org/web/20240911154349id_/https://www.senate.gov/legislative/LIS_MEMBER/cvc_member_data.xml',
+             source_line=None, position_basis=None, printed_entry=None, entry_label=None),
+        # Joint committee keeps both House (file) and Senate (caller) halves
+        dict(congress=118, session='2', system_code='JSEC00', bioguide_id='B000002', position='Vice Chair', rank=1,
+             party='Independent', chamber='House', committee_name='Joint Economic', congress_basis='file', edition_date=None,
+             source_granule='https://web.archive.org/web/20240501161500id_/https://clerk.house.gov/xml/lists/MemberData.xml',
+             source_line=None, position_basis=None, printed_entry=None, entry_label=None),
+        dict(congress=118, session='2', system_code='JSEC00', bioguide_id='D000004', position='Chairman', rank=None,
+             party='Republican', chamber='Senate', committee_name='Joint Economic', congress_basis='caller', edition_date=None,
+             source_granule='https://web.archive.org/web/20240911154349id_/https://www.senate.gov/legislative/LIS_MEMBER/cvc_member_data.xml',
+             source_line=None, position_basis=None, printed_entry=None, entry_label=None),
+    ]
+    directory = _build(tmp_path / 'mixed-118', assignments)
+    rows = pq.read_table(directory / 'rosters.parquet').to_pylist()
+    by_comm = {}
+    for r in rows:
+        by_comm.setdefault(r['system_code'], []).append(r)
+
+    # hsru00 dropped stale directory-manual A000001 and dated D000004 from Wayback URL
+    assert [(r['bioguide_id'], r['congress_basis'], r['edition_date'], r['rank']) for r in by_comm['hsru00']] == [
+        ('D000004', 'file', datetime.date(2024, 5, 1), 1),
+    ]
+    # ssfi01 kept directory-manual snapshot
+    assert [(r['bioguide_id'], r['congress_basis'], r['edition_date'], r['rank']) for r in by_comm['ssfi01']] == [
+        ('C000003', 'directory-manual', datetime.date(2024, 4, 25), 1),
+    ]
+    # ssfi00 kept unprinted ranks as None and dated 2024-09-11
+    assert [(r['bioguide_id'], r['title'], r['rank'], r['edition_date']) for r in by_comm['ssfi00']] == [
+        ('A000001', None, None, datetime.date(2024, 9, 11)),
+        ('C000003', 'Chairman', None, datetime.date(2024, 9, 11)),
+    ]
+    # jsec00 kept both House and Senate halves
+    assert [(r['bioguide_id'], r['congress_basis'], r['edition_date'], r['rank']) for r in by_comm['jsec00']] == [
+        ('B000002', 'file', datetime.date(2024, 5, 1), 1),
+        ('D000004', 'caller', datetime.date(2024, 9, 11), None),
+    ]
+
+    schema = json.loads((ROOT / 'model/registries/release-schema.json').read_text())
+    recipe = next(r for r in schema['recipes'] if r['id'] == 'committee_roster')
+    with duckdb.connect() as connection:
+        for table in recipe['requires']:
+            connection.read_parquet(str(directory / (table + '.parquet'))).create_view(table)
+        ssfi = connection.execute(recipe['sql'], ['ssfi00', 118]).fetchall()
+        # Leadership (C000003 Chairman) sorts ahead of untitled member (A000001) when rank is NULL
+        assert [(r[3], r[5], r[6]) for r in ssfi] == [('C000003', 'Chairman', None), ('A000001', None, None)]

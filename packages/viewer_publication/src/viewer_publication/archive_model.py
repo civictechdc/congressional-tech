@@ -1516,7 +1516,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             ('caption_resources','SELECT * FROM caption_resources',['video_key','track_body','ordinal'],['suffix','format','status']),
             ('committees',(Path(root)/'model/sql/entity-committees.sql').read_text(),['system_code'],['chamber','committee_type','parent_system_code']),
             ('members',(Path(root)/'model/sql/entity-members.sql').read_text(),['bioguide_id'],['terms.list.item.chamber','terms.list.item.state','terms.list.item.party']),
-            ('rosters','SELECT * FROM roster_seats',['congress','system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party']),
+            ('rosters','SELECT * FROM roster_seats',['congress','system_code','rank','bioguide_id'],['system_code','bioguide_id','title','party','congress_basis','position_basis','entry_label']),
             ('bills',(Path(root)/'model/sql/entity-bills.sql').read_text(),['bill_id'],['sponsor_bioguide_id','stage','policy_area','committees.list.item','floor_votes.list.item.basis','floor_votes.list.item.chamber','amendments.list.item.sponsor_bioguide_id','committee_activities.list.item.system_code','committee_activities.list.item.activity']),
             ('nominations',(Path(root)/'model/sql/entity-nominations.sql').read_text(),['nomination_id'],['committees.list.item']),
         ]

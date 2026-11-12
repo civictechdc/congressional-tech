@@ -18,7 +18,7 @@ estimates; shapes are firm because they follow from the server's design.
 | Bills | 52,279 | 106th–119th, 2007–2026 |
 | Nominations | 747 | 119th only |
 | Committees / members | 818 / 12,770 | back to 1789 |
-| Rosters | 2,973 | 119th only |
+| Rosters | 25,165 (2,973 in `e4538f00`) | 113th–119th |
 | Recordings / videos / matches | 12,283 / 67,391 / 32,086 | committee channels |
 | Recoveries | 12,618 | ~3.5% of documents |
 | Tracked URLs | 1,198,586 | capture state |
@@ -214,7 +214,7 @@ distinction matters: the same name three times is three records.
 4. **Which of our subcommittee members also sit on committees hearing this
    bill?** (`rosters`)
    *Expected:* ~5–20 members × committee arrays; 2–3 assignments each is
-   typical. 119th rosters only.
+   typical across the 113th–119th Congresses.
 5. **What did the minority side ask this same witness last time?**
    *Expected:* snippets from questioning sections of the earlier transcript;
    thematic clusters (oversight letters, funding) rather than surprises.
