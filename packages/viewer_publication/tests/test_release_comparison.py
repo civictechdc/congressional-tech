@@ -846,3 +846,64 @@ def test_non_package_transcript_changes_are_detected_while_list_row_shifts_are_i
     assert code == 1
     assert counts(result, 'meetings') == {('changed transcripts', 'value differs on matched key'): 1}
 
+
+def test_link_rule_refuses_a_key_that_is_both_published_and_retired(tmp_path):
+    """ct-xyo9 (4), plant R3: a candidate whose links and retired_links both carry a key fails the link rule."""
+    schemas = {**SCHEMAS, 'retired_links': [('link_key', B), ('successor_key', B), ('last_release_id', S), ('last_filename', S)]}
+    prev = release(tmp_path / 'prev', schemas=schemas, documents=['A'])
+    live = release(tmp_path / 'live', schemas=schemas, documents=['A', 'N'],
+                   retired_links=[{'link_key': key('N'), 'successor_key': None,
+                                   'last_release_id': '0' * 64, 'last_filename': 'N'}])
+    code, result = run(tmp_path, prev, live)
+    assert code == 1 and not result['ok']
+    rule = result['link_rule']
+    assert not rule['ok']
+    assert rule['published_and_retired'] == 1
+    assert rule['published_and_retired_keys'] == [key('N').hex()]
+
+
+def test_split_document_address_sent_to_sibling_half_counts_in_shared_key_group(tmp_path):
+    """ct-xyo9 (2), plant W1s characterization: sources and urls carry no body hash, so changed_addresses
+    passes whichever half of a split live row an address reaches, while moved() counts every address of
+    the split row in `documents changed for a shared key` and `split rows` stays unverified."""
+    prev = dict(rows=[('AB', 'A', '', 'a b')])
+    right_half = dict(rows=[('A', 'A', '', 'a'), ('B', 'B', '', 'b')])
+    wrong_half = dict(rows=[('A', 'A', '', 'b'), ('B', 'B', '', 'a')])
+    for idx, cand in enumerate((right_half, wrong_half)):
+        sub = tmp_path / f'case-{idx}'
+        sub.mkdir()
+        code, result = run(sub, addressed(sub / 'prev', **prev), addressed(sub / 'live', **cand))
+        assert code == 1
+        assert result['link_rule']['lookup_changed'] == 0 and result['link_rule']['address_changed'] == 0
+        assert counts(result, 'sources') == {('documents changed for a shared key', 'the key now answers other documents'): 2}
+        assert counts(result, 'urls') == {('documents changed for a shared key', 'the key now answers other documents'): 2}
+        assert counts(result, 'list') == {('split rows', 'previous row had no member source'): 1}
+
+
+@pytest.mark.parametrize('drop_side,table,kept_schema,expected_unchecked', [
+    ('candidate', 'urls', [('list_row', I)], 'a release has no urls with lookup_key'),
+    ('candidate', 'sources', [('list_row', I)], 'a release has no sources with url, member_path'),
+    ('base', 'sources', [('list_row', I), ('url', S)], 'a release has no sources with url, member_path'),
+])
+def test_compare_with_missing_address_columns_reports_unchecked_without_crashing(
+        tmp_path, drop_side, table, kept_schema, expected_unchecked):
+    """ct-dagf (4): missing lookup_key, url or member_path must fail closed in link_rule, not crash in account()."""
+    base_schemas = {**LINK_SCHEMAS, **(dict({table: kept_schema}) if drop_side == 'base' else {})}
+    cand_schemas = {**LINK_SCHEMAS, **(dict({table: kept_schema}) if drop_side == 'candidate' else {})}
+    row_for = lambda sch, r, u: [{name: (r if name == 'list_row' else f'u/{u}' if name == 'url' else None if name == 'member_path' else key(u))
+                                  for name, _ in sch}]
+    prev = release(tmp_path / 'prev', documents=['A'], schemas=base_schemas,
+                   detail=[{'saved_body': body('A'), 'alternates': []}],
+                   sources=row_for(base_schemas['sources'], 0, 'a'),
+                   urls=row_for(base_schemas['urls'], 0, 'a'))
+    live = release(tmp_path / 'live', documents=['A'], schemas=cand_schemas,
+                   detail=[{'saved_body': body('A'), 'alternates': []}],
+                   sources=row_for(cand_schemas['sources'], 0, 'b'),
+                   urls=row_for(cand_schemas['urls'], 0, 'b'))
+    code, result = run(tmp_path, prev, live)
+    assert code == 1 and not result['ok'] and not result['link_rule']['ok']
+    assert any(expected_unchecked in msg for msg in result['link_rule']['unchecked'])
+    assert any('column missing' in g['group'] and g['status'] == 'unexplained'
+               for g in result['files'][f'{table}.parquet']['groups'])
+
+

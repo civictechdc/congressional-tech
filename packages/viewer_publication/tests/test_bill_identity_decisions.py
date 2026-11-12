@@ -135,7 +135,7 @@ def test_reviewed_bill_reaches_final_export_and_recovery_fill_cannot_restore_it(
     assert {(g['file'], g['group'], g['count']) for g in report['failing']} == {
         ('list.parquet', 'changed measure_keys', 1), ('detail.parquet', 'changed measure_keys', 1),
         ('detail.parquet', 'changed package_id', 1), ('meetings.parquet', 'changed subject_keys', 1)}
-    assert verdict(report, None)  # Changes need a stated, counted cause.
+    assert verdict(report, None)[0]  # Changes need a stated, counted cause.
     evidence = [dict(path=str(p), **file_pin(p)) for p in
                 (PDF, ROOT/'model/registries/bill-package-evidence.json',
                  tmp_path/'candidate-model/evidence/document_bill_decisions.parquet',
@@ -144,7 +144,7 @@ def test_reviewed_bill_reaches_final_export_and_recovery_fill_cannot_restore_it(
         dict(id=group_id(g), count=g['count'], disposition='explained',
              cause='Exact PDF cover adjudication '+decisions[0]['id']+' corrects direct bill metadata and its derived meeting subject; independent meeting context stays.',
              evidence=evidence, tickets=['ct-yci9']) for g in report['failing']])
-    assert verdict(report, causes) == []
+    assert verdict(report, causes)[0] == []
     (tmp_path/'comparison.json').write_text(json.dumps(report, indent=2)+'\n')
     (tmp_path/'causes.json').write_text(json.dumps(causes, indent=2)+'\n')
     checked = load_causes(dict(path=str(tmp_path/'causes.json'), **file_pin(tmp_path/'causes.json')))

@@ -1246,3 +1246,54 @@ def test_the_shipped_daily_writes_every_capture_record_table_the_shipped_model_r
     for name in read:
         target='/'+'/'.join([*tables[name]['namespace'],tables[name]['name']])+'/metadata/'
         assert target in model[name]['metadata_location'],name
+
+
+def test_execute_wires_retrying_receipt_client_when_automatic_causes_is_enabled(tmp_path,monkeypatch):
+    """ct-xyo9 (6): archive_publish_job.execute passes a configure_read_retries-wrapped receipt_client to
+    run_publish when automatic_causes=True (whether or not _daily built one first), while keeping single-attempt writes."""
+    from congress_api.retention import r2 as r2_mod
+    from docspec_client.client import NativeDatasets
+    from viewer_publication import archive_controller,archive_publish_job,producer_proof
+    from viewer_publication.archive_publish_job import execute,load_spec
+    from archive_job_fixture import real_model_spec
+    from test_archive_controller import Runtime as NativeTransport
+    from test_archive_publish import Store
+    value=publish_spec(tmp_path);model,_,_=real_model_spec(tmp_path)
+    remote=remote_config(tmp_path);store=Store()
+    runtime=tmp_path/'public-runtime.json';settings=json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
+    original=Path(os.environ['DOCSPEC_JOB_CONFIG']).parent
+    for field in ['binary','limits','workspace']:
+        if field in settings:settings[field]=str((original/settings[field]).resolve())
+    settings.update(remote=str(remote),credentials='/unopened/fake-credentials.json')
+    runtime.write_text(json.dumps(settings));model['engine_config']=str(runtime)
+    path=Path(value['model_spec']['path']);path.write_text(json.dumps(model));value['model_spec']=dict(path=str(path),**file_pin(path))
+    value.update(receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],automatic_causes=True)
+    specpath=tmp_path/'publish.json';specpath.write_text(json.dumps(value))
+    class Runtime(NativeTransport):
+        def __init__(self,native,configuration):super().__init__(native,store);self.remote=Path(configuration['remote'])
+        def __enter__(self):return self
+        def __exit__(self,*_):self.native.close()
+    def runtime_factory(cfg_path):
+        return Runtime(NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),json.loads(Path(cfg_path).read_text()))
+    storage_calls,wrapped=[],[]
+    def storage_factory(**kwargs):
+        client=object()
+        storage_calls.append((client,kwargs))
+        return client
+    monkeypatch.setattr(r2_mod,'configure_read_retries',lambda c:(wrapped.append(c) or ('retrying',c)))
+    monkeypatch.setattr(producer_proof,'find_records',lambda *a,**k:{})
+    monkeypatch.setattr(producer_proof,'require_producers',lambda *a,**k:None)
+    captured={}
+    def fake_run_publish(*args,**kwargs):
+        captured.update(kwargs)
+        return dict(status='published')
+    monkeypatch.setattr(archive_controller,'run_publish',fake_run_publish)
+    result=execute(load_spec(specpath),runtime_factory=runtime_factory,storage_factory=storage_factory,
+                   end_to_end_runner=END_TO_END_PASSED)
+    assert result==dict(status='published')
+    assert len(storage_calls)==2
+    assert all(k['retries']=={'total_max_attempts':1} for _,k in storage_calls)
+    assert captured['client'] is storage_calls[0][0]
+    assert captured['receipt_client']==('retrying',storage_calls[1][0])
+    assert wrapped==[storage_calls[1][0]]
+

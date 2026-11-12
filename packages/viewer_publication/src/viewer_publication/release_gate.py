@@ -216,6 +216,9 @@ def _tickets(entry, name, *, needed_by=None):
         raise ValueError(f'Cause entry tickets must be ticket ids: {name}')
     if needed_by and not tickets:
         raise ValueError(f'{needed_by} needs a ticket: {name}')
+    missing = [t for t in tickets if not (TICKETS / f'{t}.md').is_file()]
+    if missing:
+        raise ValueError(f'Tickets have no file in {TICKETS}: {", ".join(missing)} ({name})')
     return tickets
 
 
@@ -258,9 +261,7 @@ def _corrections(record):
             _sha(cand, f'Correction candidate_body of {name}')
         if not isinstance(entry['decision'], str) or not entry['decision'].strip():
             raise ValueError(f'A correction needs its decision: {name}')
-        missing = [t for t in _tickets(entry, name, needed_by='A correction') if not (TICKETS / f'{t}.md').is_file()]
-        if missing:
-            raise ValueError(f'Correction tickets have no file in {TICKETS}: {", ".join(missing)} ({name})')
+        _tickets(entry, name, needed_by='A correction')
         if (kind, key, entry['live_body']) in seen:
             raise ValueError(f'Duplicate correction: {name} from {entry["live_body"]}')
         seen.add((kind, key, entry['live_body']))
@@ -322,6 +323,14 @@ URL_STATE_CAUSE = ("every row is what the lines of receipts absent from the live
 # measured (ct-gc99): the one capture day in release 619db5f9e08e added 151, its week-old backlog
 # 567 more (731 with recoveries). 250 passes the first with room and stops the second.
 AUTOMATIC_ADDITION_CAP = 250
+# Per-document and nightly total caps on link keys, source rows and lookup rows attached to added
+# documents (ct-xyo9). Measured across the 442,109-document archive (max 7 link keys, 38 source
+# rows, 45 lookup rows on one document; p99.9 = 4, 6, 7) and on 2026-11-10's 731 added documents
+# (max 2, 2, 3 per document; 1.02, 0.98, 1.44 per document overall).
+AUTOMATIC_LINK_KEYS_PER_DOCUMENT_CAP = 10
+AUTOMATIC_ADDED_LINK_KEYS_CAP = 500
+AUTOMATIC_ADDRESSES_PER_DOCUMENT_CAP = 50
+AUTOMATIC_ADDED_ADDRESSES_CAP = 1000
 # First schedules with a meeting date (ct-9j3z): an address fetched for the first time has no live
 # meeting date to keep, so the band's date is taken as published. The scheduled capture is budgeted
 # at 2,000 requests a night (repository variable ARCHIVE_CAPTURE_REQUEST_BUDGET, read by
@@ -333,9 +342,9 @@ AUTOMATIC_ADDITION_CAP = 250
 AUTOMATIC_FIRST_SCHEDULE_CAP = 2000
 
 
-def over_cap(count, what, cap):
+def over_cap(count, what, cap, scope='one unattended night may add'):
     """The one refusal for an unattended cap: empty while `count` is within `cap`."""
-    return [f'automatic causes: {count} {what}, more than the {cap} one unattended night may add'] if count > cap else []
+    return [f'automatic causes: {count} {what}, more than the {cap} {scope}'] if count > cap else []
 
 
 def _raw_line_facts(line):
@@ -375,6 +384,7 @@ _HOUSE_XML_EVENT_PATTERNS = (
     re.compile(r'(?i)^https?://docs[.]house[.]gov/meetings/[^/?#]+/[^/?#]+/[0-9]{8}/(?:hhrg|hmkp|hmtg)?([0-9]+)(?:/|$|[?#])'),
     re.compile(r'(?i)[?&]eventid=([0-9]+)(?=$|[^0-9])'),
 )
+_YOUTUBE_CACHE_PATH = re.compile(r'/(youtube/youtube_[0-9]+[.]json)$')
 
 
 def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work, updated_events=(),
@@ -383,10 +393,14 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
 
     The comparison shows only that the candidate is consistent with itself. Here every body the
     candidate cites for the first time (`release_comparison.new_citations`: cache files, witness
-    records, meeting detail bodies) is looked up in `captures`, which the candidate does not
-    control: it must be the SHA-256 of a captured body, and every receipt holding that body must
-    be absent from the live release's receipt set. So a made-up hash, and a body the live release
-    could already have cited, both refuse. Every detail read a meeting names for the first time
+    records, meeting detail bodies) is looked up in `captures` (the candidate build's pinned lake
+    input, written by ingest rather than the archive model; raw receipts are not read here): it
+    must be the SHA-256 of a captured body, and every receipt holding that body must be absent from
+    the live release's receipt set. Newly cited video/channel cache hashes (`new_video_citations`)
+    must also be `pipeline-data` YouTube cache JSON captures, and each moved channel must stay on
+    the same `youtube/youtube_NN.json` cache path as its live hash (ct-xyo9). So a made-up hash, a
+    non-cache body, two new channel files swapped, and a body the live release could already have
+    cited all refuse. Every detail read a meeting names for the first time
     (`release_comparison.new_reads`) must be a capture line at that receipt, line and capture
     index, in a receipt outside the live set, requesting the read's address, holding its body (a
     byte-identical re-fetch names an old body in a new line) and fetched at the read's time. The
@@ -397,14 +411,15 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
     unchanged-stamp House XML leaves no trace in `meetings.parquet`, yet leads title, date and
     videos). One engine job; the evidence file lists each hash's receipts and each read's line.
     Cannot see: whether the body holds the published values, or the raw receipt line (the capture
-    mapping is trusted for hash and address; documents are checked against raw).
+    mapping is trusted for hash, family and address; documents are checked against raw).
     """
     from congress_api.lake.tables import table_input
     from congress_api.retention.provenance import run_job
-    from viewer_publication.release_comparison import new_citations, new_reads
+    from viewer_publication.release_comparison import new_citations, new_reads, new_video_citations
     cited, reads = new_citations(base_dir, candidate_dir), new_reads(base_dir, candidate_dir)
     if not cited and not reads:
         return ['automatic causes: citations moved, but the candidate cites no file or read the live release does not']
+    video_shas, channel_pairs = new_video_citations(base_dir, candidate_dir)
     work = Path(work)
     work.mkdir(parents=True, exist_ok=True)
     cited_hex = [s for s in cited if re.fullmatch('[0-9a-f]{64}', s)]
@@ -423,6 +438,19 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
                dict(name='reads', sql="""SELECT k.receipt_key,k.receipt_line,k.capture_index,lower(encode(c.sha256,'hex')) AS sha,
             c.requested_url,arrow_cast(c.retrieved_at,'Int64') AS t FROM cited_reads k JOIN captures c ON c.receipt_key=k.receipt_key AND c.receipt_line=k.receipt_line
             AND c.capture_index=k.capture_index ORDER BY 1,2,3""")]
+    video_check_hex = sorted({s for s in (*video_shas, *(o for o, _ in channel_pairs), *(n for _, n in channel_pairs))
+                              if re.fullmatch('[0-9a-f]{64}', s)})
+    if video_check_hex:
+        pq.write_table(pa.table({'sha': pa.array(video_check_hex, pa.string()),
+                                 'sha_bin': pa.array([bytes.fromhex(s) for s in video_check_hex], pa.binary(32))}),
+                       work / 'video-check-files.parquet')
+        inputs.append(dict(name='video_check_files', kind='parquet', path=str(work / 'video-check-files.parquet')))
+        has_url = captures.get('kind') != 'parquet' or 'url' in pq.read_schema(captures['path']).names
+        yt_addr = "coalesce(c.url,c.requested_url,'')" if has_url else "coalesce(c.requested_url,'')"
+        queries.append(dict(name='video_cache', sql=f"""SELECT DISTINCT v.sha,{yt_addr} AS addr
+            FROM video_check_files v JOIN captures c ON c.sha256=v.sha_bin
+            WHERE c.family='pipeline-data' AND c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged')
+            ORDER BY 1,2"""))
     if updated_events:
         pq.write_table(pa.table({'receipt_key': pa.array(sorted(held), pa.string())}), work / 'held-receipts.parquet')
         inputs.append(dict(name='held_receipts', kind='parquet', path=str(work / 'held-receipts.parquet')))
@@ -454,6 +482,11 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
     receipts = {}
     for row in found['files']:
         receipts.setdefault(row['sha'], []).append(row['receipt_key'])
+    video_paths = {}
+    for row in found.get('video_cache', ()):
+        m = _YOUTUBE_CACHE_PATH.search(row['addr'] or '')
+        if m:
+            video_paths.setdefault(row['sha'], set()).add(m.group(1))
     reasons = []
     for sha in cited:
         if sha not in receipts:
@@ -461,6 +494,13 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
         for key in receipts.get(sha, []):
             if key in held:
                 reasons.append(f'automatic causes: cited file {sha[:16]} was already read by the live release ({key})')
+    for sha in video_shas:
+        if sha in receipts and not video_paths.get(sha):
+            reasons.append(f'automatic causes: cited video cache file {sha[:16]} has no pipeline-data YouTube cache capture')
+    for old_sha, new_sha in channel_pairs:
+        if video_paths.get(new_sha) and not (video_paths.get(old_sha, set()) & video_paths[new_sha]):
+            reasons.append(
+                f'automatic causes: cited video cache file {new_sha[:16]} is not from the same channel cache path as {old_sha[:16]}')
     lines = {(r['receipt_key'], r['receipt_line'], r['capture_index']): r for r in found['reads']}
     for read in reads:
         where = f"{read['receipt_key']}:{read['receipt_line']}:{read['capture_index']}"
@@ -746,9 +786,10 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, k
     band steps (archive_url_state) then give each address's newest new line and its interval, fed
     the candidate's published recheck_meeting_date. So the gate keeps no second copy of the fold or
     of the band rule; what makes this a check is its inputs: lines, times, statuses and families
-    come from the capture table, which the candidate does not control, every line is confirmed in
-    raw by the caller, and a meeting date the live release published must be kept unless a
-    Congress.gov meeting update in `updated_events` moved that meeting's date (`_mark_moved_meeting_dates`),
+    come from the candidate build's pinned capture table (written by ingest rather than the archive
+    model), every line is confirmed in raw by the caller, and a meeting date the live release
+    published must be kept unless a Congress.gov meeting update in `updated_events` moved that
+    meeting's date (`_mark_moved_meeting_dates`),
     in which case `capture_job` also verifies the recomputed band against `held_receipts` (ct-rhqw).
     Per address (`_url_state_rules`):
       fetched, before or now: at least one new line (unless its meeting date moved under `updated_events`);
@@ -1102,6 +1143,19 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
             if stray:
                 reasons.append(f'automatic causes: {stray} {table} rows were added to existing documents')
     keys = [r[0] for r in d.rows("SELECT DISTINCT lower(hex(link_key)) FROM candidate_links WHERE list_row IN (SELECT r FROM added_documents) ORDER BY 1")]
+    if added:
+        max_links = d.one("""SELECT coalesce(max(n),0) FROM (
+            SELECT count(DISTINCT link_key) n FROM candidate_links WHERE list_row IN (SELECT r FROM added_documents) GROUP BY list_row)""")
+        reasons += over_cap(max_links, 'link keys on one added document', AUTOMATIC_LINK_KEYS_PER_DOCUMENT_CAP,
+                            'one added document may carry')
+        reasons += over_cap(len(keys), 'added link keys', AUTOMATIC_ADDED_LINK_KEYS_CAP)
+        for table, noun in (('sources', 'source rows'), ('urls', 'lookup rows')):
+            if d.has('candidate', table):
+                total_rows, max_rows = d.rows(f"""SELECT coalesce(sum(n),0), coalesce(max(n),0) FROM (
+                    SELECT count(*) n FROM candidate_{table} WHERE list_row IN (SELECT r FROM added_documents) GROUP BY list_row)""")[0]
+                reasons += over_cap(max_rows, f'{noun} on one added document', AUTOMATIC_ADDRESSES_PER_DOCUMENT_CAP,
+                                    'one added document may carry')
+                reasons += over_cap(total_rows, f'added {noun}', AUTOMATIC_ADDED_ADDRESSES_CAP)
     # A new document has no link key in the base. Its keys must account for
     # every added link key already counted by the comparison.
     added_links = sum(g['count'] for g in differences if (g['file'], g['group']) == ('links.parquet', 'added keys'))
@@ -1216,24 +1270,28 @@ def named_corrections(rule, corrections):
 
 
 def verdict(report, causes):
-    """Every reason the gates refuse, each naming the rule it broke.
+    """Every reason the gates refuse, each naming the rule it broke, plus the named-correction summary.
 
-    A vanished key (missing), a successor that is not a published key (dangling) and a check that
-    could not run (unchecked) refuse whatever the record says: no record field touches them. A
-    link key, lookup key or address that answers another file refuses unless the record, bound to
-    this base and candidate, names it as a correction (`named_corrections`, ct-4nax). Also records
-    in report['named_corrections'] how many keys of each kind a correction let through, and which.
+    Returns `(reasons, named_corrections)` without mutating `report`.
+    A vanished key (missing), a successor that is not a published key (dangling), a key both
+    published and retired (`published_and_retired`) and a check that could not run (unchecked)
+    refuse whatever the record says: no record field touches them. A link key, lookup key or
+    address that answers another file refuses unless the record, bound to this base and candidate,
+    names it as a correction (`named_corrections`, ct-4nax).
     """
     reasons = []
     rule = report['link_rule']
     bound = causes is not None and (causes['base_release_id'], causes['candidate_release_id']) == (
         report['base_release'], report['candidate_release'])
     waived, refused, stale = named_corrections(rule, causes.get('corrections', []) if bound else [])
-    report['named_corrections'] = {kind: dict(waived=len(keys), keys=keys) for kind, keys in waived.items()}
+    named_summary = {kind: dict(waived=len(keys), keys=keys) for kind, keys in waived.items()}
     if rule['missing']:
         reasons.append(f'link rule: {rule["missing"]} base link keys vanish (first {rule["missing_keys"][:5]})')
     if rule['dangling']:
         reasons.append(f'link rule: {rule["dangling"]} successors are not published keys (first {rule["dangling_keys"][:5]})')
+    if rule.get('published_and_retired'):
+        reasons.append(f'link rule: {rule["published_and_retired"]} candidate link keys are both published and retired '
+                       f'(first {rule["published_and_retired_keys"][:5]})')
     reasons += refused['link_key']
     for missing_input in rule['unchecked']:
         reasons.append(f'link rule: not checked: {missing_input}')
@@ -1252,7 +1310,7 @@ def verdict(report, causes):
             reasons.append(f'comparison: recorded count {entries[gid]["count"]} differs from {count} for {gid}')
     for gid in sorted(set(entries) - set(actual)):
         reasons.append(f'cause record: stale entry with no actual group: {gid}')
-    return reasons
+    return reasons, named_summary
 
 
 def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evidence_base=None, evidence_candidate=None, history=(),
@@ -1277,10 +1335,18 @@ def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evide
                                           candidate_release_id=report['candidate_release'], groups=[]))
             causes['groups'] = [*causes['groups'], *(e for e in entries if e['id'] not in named)]
             report['automatic_causes'] = entries
-    report['reasons'] = verdict(report, causes)
+    report['reasons'], report['named_corrections'] = verdict(report, causes)
     if causes is None and not report['reasons']:
-        # A verified comparison group can still be outside the unattended policy.
-        report['reasons'] = report.get('automatic_reasons', [])
+        # A verified comparison group can still be outside the unattended policy, and a re-fetch
+        # group with neither automatic capture verification nor a cause record must not pass (ct-xyo9).
+        if automatic is not None:
+            report['reasons'] = report.get('automatic_reasons', [])
+        else:
+            refetch = [dict(g, file=name) for name, facts in report['files'].items()
+                       for g in facts['groups'] if g.get('refetch_only')]
+            report['reasons'] = [
+                f'comparison: re-fetch group {group_id(g)} ({g["count"]}) requires automatic capture verification or a cause record'
+                for g in refetch]
     report_path.write_text(json.dumps(report, indent=1, default=str) + '\n')
     # ct-rhqw: the morning report, written once the night's outcome is known.
     write_meeting_updates(report, base_dir, candidate_dir, report_path.parent, refused=report['reasons'])
@@ -1309,8 +1375,8 @@ def render_notes(causes, base_dir, candidate_dir):
               f'{removed} show a removal notice. 0 vanish.', '']
     corrections = causes.get('corrections', [])
     if corrections:
-        lines += [f'{len(corrections)} keys and addresses now answer another file on purpose, each named in the reviewed '
-                  'cause record with both files (ct-4nax):', '',
+        lines += [f'{len(corrections)} corrections (keys and addresses that now answer another file on purpose), '
+                  'each named in the reviewed cause record with both files (ct-4nax):', '',
                   '| Kind | Key | Live file | Now | Decision | Tickets |', '| --- | --- | --- | --- | --- | --- |']
         lines += [f'| {c["kind"]} | `{c["key"]}` | `{c["live_body"][:12]}` | '
                   f'{", ".join(f"`{b[:12]}`" for b in _wanted_bodies(c))} | {c["decision"]} | '

@@ -60,7 +60,8 @@ putting them in the release would force a second model run.
   and the release note lists each entry. The gate checks that the record names exactly what
   changed, not that the new file is the right document: that is the record's claim (ct-faan
   would prove it from the published rejection records). A vanished key, a successor that is
-  not a published key and a check that could not run (a column the rule reads is missing
+  not a published key, a key both published and retired (`published_and_retired`) and a check
+  that could not run (a column the rule reads is missing
   from either release) refuse whatever the record says. The rule cannot tell whether an
   alternate or recovery recorded on a row is truly the same document (ct-u9y4). So a key whose live file is now
   only an alternate of a row that shows another body passes the rule but is listed
@@ -76,7 +77,9 @@ putting them in the release would force a second model run.
   are reported as their own comparison groups. A correction for one names the file
   every row it reaches now shows (or, when it reaches rows showing distinct files, the sorted
   list of every such file's SHA-256). It cannot tell which file of a wrongly joined live document
-  an address named.
+  an address named (published `sources` and `urls` carry no body hash); `documents changed
+  for a shared key` counts every address of a split row regardless of which sibling half it
+  reaches, while `split rows` sends the split to a reviewed publish.
 
 ## Nightly publication (ct-ud0b)
 
@@ -93,8 +96,12 @@ new document must qualify, so a body the live release also read is not new. Any 
 removed value, a split or merge, a new key or address on a document the live release has, a
 recovered document (its key is a link, not a body), or a row that cannot be traced still
 needs a reviewed cause record. So does a night that adds more than 250 documents
-(`AUTOMATIC_ADDITION_CAP`): the proof shows where an added document came from, never that
-its title, date or meeting are right, so a large batch waits for a person.
+(`AUTOMATIC_ADDITION_CAP`), more than 10 link keys on one added document or 500 across the
+night (`AUTOMATIC_LINK_KEYS_PER_DOCUMENT_CAP`, `AUTOMATIC_ADDED_LINK_KEYS_CAP`), or more
+than 50 source or lookup rows on one added document or 1,000 across the night
+(`AUTOMATIC_ADDRESSES_PER_DOCUMENT_CAP`, `AUTOMATIC_ADDED_ADDRESSES_CAP`): the proof shows
+where an added document came from, never that its title, date or meeting are right, so a
+large batch or fan-out waits for a person.
 
 A capture night always changes `url_state` (attempt counts and times on fetched addresses, newly
 queued links). Since ct-9j3z each changed, added or removed row must be exactly what the lines
@@ -144,14 +151,19 @@ of the cache file a row was read from, `videos.details_checked_at` is when it wa
 embeds fetch times, so the weekly refresh rewrites all of them with no content change:
 
 - a channel: every other column equal, its old file went to one new file that came from that
-  old file only, over all channels, and the live release cites the new hash nowhere;
+  old file only, over all channels, the live release cites the new hash nowhere, and in
+  `captures` both files are `pipeline-data` YouTube cache JSON captures at the same
+  `youtube/youtube_NN.json` cache path (ct-xyo9);
 - a video: every column but those two equal, the row cites its own channel's file in both
   releases, that channel passed the check above, and the check time is equal, or later than
   the live value and not later than the moment of comparison;
 - a match: every column but `source_ref` equal, and the citation is that video's
   `record_sha` in each release.
 
-Everything else in these tables still needs a reviewed cause: a changed title, duration,
+Because the weekly refresh rewrites all 52 cache files at once (119/119 channels and 99.6% of
+videos), no sub-100% row-count cap applies to citation-only rows; without `automatic_causes`,
+any `refetch_only` group requires a reviewed cause record. Everything else in these tables
+still needs a reviewed cause: a changed title, duration,
 description or any other column, an added or removed row, and the citation change on a row
 that changed anything else.
 

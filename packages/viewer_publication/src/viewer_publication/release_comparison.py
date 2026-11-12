@@ -231,7 +231,9 @@ def documents(d: Diff):
     d.table('pairs', 'SELECT DISTINCT pr,lr FROM key_pairs')
     d.table('pn', 'SELECT pr,count(*) n FROM pairs GROUP BY 1')
     d.table('ln', 'SELECT lr,count(*) n FROM pairs GROUP BY 1')
-    d.table('member_rows', 'SELECT DISTINCT list_row FROM base_sources WHERE member_path IS NOT NULL')
+    has_member = d.has('base', 'sources') and {'list_row', 'member_path'} <= set(d.columns('base', 'sources'))
+    d.table('member_rows', 'SELECT DISTINCT list_row FROM base_sources WHERE member_path IS NOT NULL'
+            if has_member else 'SELECT CAST(NULL AS INT) AS list_row WHERE false')
     out = [group('split rows', 'previous row had a member source' if m else 'previous row had no member source', n)
            for m, n in d.rows("""SELECT pr IN (SELECT list_row FROM member_rows),sum(n-1) FROM pn WHERE n>1 GROUP BY 1""")]
     merged = d.one('SELECT sum(n-1) FROM ln WHERE n>1')
@@ -790,6 +792,10 @@ def counted(d: Diff, table, key):
 
 
 def urls(d: Diff):
+    if not all(d.has(s, 'urls') and 'lookup_key' in d.columns(s, 'urls') for s in d.dirs):
+        delta = d.one('SELECT count(*) FROM candidate_urls') - d.one('SELECT count(*) FROM base_urls')
+        return [flag('lookup_key column missing', 'unexplained'),
+                *([group('row delta', 'lookup_key unreadable', delta)] if delta else [])], {}
     counted(d, 'urls', 'lookup_key')
     gone, new, fewer, more = d.rows("""SELECT sum(ln-pn) FILTER(ln=0),sum(ln-pn) FILTER(pn=0),
       sum(ln-pn) FILTER(pn>0 AND ln>0 AND ln<pn),sum(ln-pn) FILTER(pn>0 AND ln>pn) FROM urls_diff""")[0]
@@ -803,6 +809,12 @@ def urls(d: Diff):
 
 
 def sources(d: Diff):
+    missing = [c for c in ('url', 'member_path') if not all(d.has(s, 'sources') and c in d.columns(s, 'sources') for s in d.dirs)]
+    if missing:
+        delta = d.one('SELECT count(*) FROM candidate_sources') - d.one('SELECT count(*) FROM base_sources')
+        label = ', '.join(missing)
+        return [flag(f'{label} column missing', 'unexplained'),
+                *([group('row delta', f'{label} unreadable', delta)] if delta else [])], {}
     counted(d, 'sources', 'url,member_path')
     q = lambda where: d.one(f'SELECT sum(ln-pn) FROM sources_diff WHERE {where}')
     out = [group('member rows removed', 'archive member no longer a real file', q('member_path IS NOT NULL AND ln<pn')),
@@ -812,11 +824,13 @@ def sources(d: Diff):
            group('new URLs', 'no previous row has this address', q('url IS NOT NULL AND member_path IS NULL AND pn=0')),
            group('same-URL rows removed', 'fewer documents list the address', q('url IS NOT NULL AND member_path IS NULL AND pn>0 AND ln>0 AND ln<pn')),
            group('same-URL rows added', 'more documents list the address', q('url IS NOT NULL AND member_path IS NULL AND pn>0 AND ln>pn'))]
+    on_removed = (d.one("""SELECT count(*) FROM base_sources s JOIN sources_diff x
+               ON s.url=x.url AND x.member_path IS NULL AND x.pn>x.ln AND x.ln>0 WHERE s.member_path IS NULL
+               AND s.list_row IN (SELECT r FROM removed_rows)""")
+                  if 'list_row' in d.columns('base', 'sources') else 0)
     notes = {'null_url_rows': {s: d.one(f'SELECT count(*) FROM {s}_sources WHERE url IS NULL') for s in d.dirs},
              'member_rows': {s: d.one(f'SELECT count(*) FROM {s}_sources WHERE member_path IS NOT NULL') for s in d.dirs},
-             'same_url_rows_on_removed_documents': (on_removed := d.one("""SELECT count(*) FROM base_sources s JOIN sources_diff x
-               ON s.url=x.url AND x.member_path IS NULL AND x.pn>x.ln AND x.ln>0 WHERE s.member_path IS NULL
-               AND s.list_row IN (SELECT r FROM removed_rows)"""))}
+             'same_url_rows_on_removed_documents': on_removed}
     for g in out:
         if g['group'] == 'same-URL rows removed' and on_removed == -g['count']:
             g.update(status='verified', cause='every such row sat on a removed document')
@@ -838,7 +852,9 @@ def moved(d: Diff, table, fields):
 
     Catches a source address, lookup key or recovery that now answers another document at
     the same multiplicity. A key on a removed or added document counts too: its answer
-    changed. Set operations compare NULL fields as equal.
+    changed. Because a split base row maps through `pairs` to every sibling half while a
+    candidate address sits on one half, every address of a split row counts here regardless
+    of which sibling half it reaches (ct-xyo9). Set operations compare NULL fields as equal.
     """
     if not {'list_row', *fields} <= set(d.columns('base', table)) & set(d.columns('candidate', table)):
         return []
@@ -1577,8 +1593,10 @@ def refetched_files(d: Diff):
     A channel row qualifies when its content is equal, both hashes are present and differ, over
     all matched channels its old hash went to that one new hash and the new hash came from that
     one old hash, and the base release cites the new hash nowhere (not for a channel, not for a
-    video). So one row re-pointed, two files folded into one, two files swapped, and a row that
-    now cites another channel's old file each qualify nothing they touch.
+    video). So one row re-pointed, two files folded into one, two live files swapped, and a row
+    that now cites another channel's old file each qualify nothing they touch; two new files
+    swapped between channels are checked against the channel cache path in
+    `release_gate.cited_files_are_new`.
     False when the check cannot run. One pass over channels (119 rows), built once.
     """
     if d.refetched is None:
@@ -1646,6 +1664,35 @@ def new_reads(base_dir, candidate_dir):
     return [dict(zip(READ_FIELDS, read)) for read in sorted(_detail_reads(candidate_dir) - _detail_reads(base_dir), key=str)]
 
 
+def new_video_citations(base_dir, candidate_dir):
+    """Newly cited video/channel cache SHA-256 hex digests, plus matched `(old_hex, new_hex)` channel pairs.
+
+    Used by `release_gate.cited_files_are_new` (ct-xyo9) to verify that every newly cited video or
+    channel `record_sha` was captured as a `pipeline-data` YouTube cache JSON file, and that each
+    moved channel's new file came from the same `youtube/youtube_NN.json` cache path as its old file.
+    """
+    import pyarrow.parquet as pq
+    def table_shas(directory, tables):
+        found = set()
+        for table in tables:
+            path = Path(directory) / f'{table}.parquet'
+            if path.exists() and 'record_sha' in pq.read_schema(path).names:
+                found.update(v.hex() if isinstance(v, bytes) else v.lower()
+                             for v in pq.read_table(path, columns=['record_sha'])['record_sha'].to_pylist() if v)
+        return found
+    def channels_by_handle(directory):
+        path = Path(directory) / 'channels.parquet'
+        if not path.exists() or not ({'handle', 'record_sha'} <= set(pq.read_schema(path).names)):
+            return {}
+        return {r['handle']: (r['record_sha'].hex() if isinstance(r['record_sha'], bytes) else r['record_sha'].lower())
+                for r in pq.read_table(path, columns=['handle', 'record_sha']).to_pylist()
+                if r.get('handle') and r.get('record_sha')}
+    video_shas = sorted(table_shas(candidate_dir, ('channels', 'videos')) - table_shas(base_dir, ('channels', 'videos')))
+    base_ch, cand_ch = channels_by_handle(base_dir), channels_by_handle(candidate_dir)
+    channel_pairs = sorted({(base_ch[h], cand_ch[h]) for h in base_ch.keys() & cand_ch.keys() if base_ch[h] != cand_ch[h]})
+    return video_shas, channel_pairs
+
+
 def cache_churn(table):
     """The registry comparison, with the rows of a citation group on which nothing else moved set
     apart as `verified` (ct-syp1).
@@ -1662,15 +1709,18 @@ def cache_churn(table):
     changed rows stay in the unverified `value differs on matched key` group and still need a
     recorded cause, as does every content column, added key and removed key. A row with any
     content change qualifies for nothing, so its citation change is counted with the
-    unverified rows. Each check is one more aggregate over the matched rows the registry
-    comparison already joins: O(rows), hash joins on the keys.
+    unverified rows. Because a weekly refresh rewrites all 52 cache files at once (119/119
+    channels and 99.6% of videos), no sub-100% row-count cap applies here; joining on matched
+    base keys bounds the count by the base table size. Each check is one more aggregate over
+    the matched rows the registry comparison already joins: O(rows), hash joins on the keys.
     The limit, stated plainly: this is self-consistency of what the candidate says about
     itself. A made-up hash applied consistently to every row of one old file is `verified`
     here, because the comparison reads two releases and no file. It does not show that a
     refresh happened, that the new hash is any file's, or that the file holds the published
-    values. The unattended gate closes the first two against the capture table, which the
-    candidate does not control (`release_gate.cited_files_are_new`); a reviewed publish has
-    this check and a person.
+    values. The unattended gate checks the first two against the candidate build's pinned
+    capture table, written by ingest rather than the archive model (`release_gate.cited_files_are_new`;
+    raw receipts are not read here); without `automatic_causes`, `require_release_gates`
+    requires a reviewed cause record for any `refetch_only` group.
     """
     def run(d: Diff):
         groups, notes = generic(table)(d)
@@ -1780,7 +1830,7 @@ def account(d: Diff):
             path = d.dirs[side] / name
             if entry and path.exists() and digest(path)['sha256'] != entry['sha256']:
                 groups.append(flag(f'{side} manifest digest disagrees with file', 'unexplained'))
-        if stem == 'sources' and candidate:
+        if stem == 'sources' and candidate and 'url' in d.columns('candidate', 'sources'):
             # The 'NULL url' group is net (candidate minus base): only a positive part is new NULLs.
             # Subtracting a negative net (NULLs removed) used to report removed NULLs as persisting.
             persisting = d.one('SELECT count(*) FROM candidate_sources WHERE url IS NULL') - max(
@@ -1935,7 +1985,8 @@ def changed_addresses(d: Diff, table):
     Hash anti-joins over the rows of both tables and `served`: O(rows + served bodies + link keys).
     Cannot see: which of a wrongly joined live document's files an address named (the capture
     table knows, the release does not), so after a split an address sent to the wrong half
-    passes; nor whether a recorded alternate or recovery is the same document.
+    passes here while `moved` counts every address of the split row regardless of which half
+    it reaches; nor whether a recorded alternate or recovery is the same document.
     Returns a reason, and builds nothing, when either release lacks the table's columns:
     `link_rule` fails closed.
     """
@@ -1958,11 +2009,12 @@ def changed_addresses(d: Diff, table):
 
 def link_rule(d: Diff, sample=100):
     """Gate 2's publish check: no key published by the base or its ledger may vanish, and no
-    live link key, lookup key or address may answer another file.
+    live link key, lookup key or address may answer another file unless a reviewed correction names it.
 
     missing: (base links ∪ base retired_links ∪ every named history release's links) minus
     (candidate links ∪ candidate retired_links).
     dangling: a candidate successor_key that is not a candidate link.
+    published_and_retired: a candidate link_key present in both candidate links and candidate retired_links.
     changed: a live key the candidate answers with another file (`changed_answers`); each is
     listed with the live and candidate file and body.
     lookup_changed, address_changed: the same for lookup keys and addresses (`changed_addresses`),
@@ -1971,13 +2023,13 @@ def link_rule(d: Diff, sample=100):
     keys listed means some were not listed.
     unchecked: why one of those three could not run (a column the rule reads is missing). The
     rule then fails: a check that did not run is never a pass.
-    No record overrides missing, dangling or unchecked. A changed, lookup_changed or
-    address_changed key passes only where the reviewed cause record names it, with both bodies,
-    as a correction (`release_gate.verdict`, ct-4nax); `ok` here still reports it.
+    No record overrides missing, dangling, published_and_retired or unchecked. A changed,
+    lookup_changed or address_changed key passes only where the reviewed cause record names it,
+    with both bodies, as a correction (`release_gate.verdict`, ct-4nax); `ok` here still reports it.
     demoted: keys whose live file is now only an alternate of the row. Not a refusal of the
     rule; `compare` turns the count into a comparison group that needs a recorded cause.
-    Cannot see whether a successor is the right document, or keys outside links (lookup keys,
-    event IDs, witness keys, bill IDs), which value groups and release notes cover.
+    Cannot see whether a successor is the right document, or keys outside links, lookups and
+    addresses (event IDs, witness keys, bill IDs), which value groups and release notes cover.
     """
     def keys(side):
         parts = [f'SELECT link_key FROM {side}_links']
@@ -1991,8 +2043,12 @@ def link_rule(d: Diff, sample=100):
                     "EXCEPT SELECT lower(hex(link_key)) FROM candidate_links") if d.has('candidate', 'retired_links') else \
                    "SELECT cast(NULL AS VARCHAR) k WHERE false"
     d.table('rule_dangling', dangling_sql)
+    pub_and_ret_sql = ("SELECT lower(hex(link_key)) k FROM candidate_links "
+                       "INTERSECT SELECT lower(hex(link_key)) FROM candidate_retired_links") if d.has('candidate', 'retired_links') else \
+                      "SELECT cast(NULL AS VARCHAR) k WHERE false"
+    d.table('rule_published_and_retired', pub_and_ret_sql)
     out = {}
-    for name in ('missing', 'dangling'):
+    for name in ('missing', 'dangling', 'published_and_retired'):
         out[name] = d.one(f'SELECT count(*) FROM rule_{name}')
         out[name + '_keys'] = [r[0] for r in d.rows(f'SELECT k FROM rule_{name} ORDER BY k LIMIT {int(sample)}')]
     for label in ('', 'lookup_', 'address_'):
@@ -2032,7 +2088,8 @@ def link_rule(d: Diff, sample=100):
               WHERE {shown} IN (SELECT DISTINCT {shown} FROM rule_changed_{table} c ORDER BY 1 LIMIT {int(sample)})
               GROUP BY 1,2,4 ORDER BY 1,2""")]
             out[f'{label}_changed_keys'] = sorted({a['key'] for a in out[f'{label}_changed_answers']})
-    out['ok'] = not any(out[name] for name in ('missing', 'dangling', 'changed', 'lookup_changed', 'address_changed', 'unchecked'))
+    out['ok'] = not any(out[name] for name in (
+        'missing', 'dangling', 'published_and_retired', 'changed', 'lookup_changed', 'address_changed', 'unchecked'))
     return out
 
 
@@ -2085,8 +2142,10 @@ def main(argv=None):
         print(f'cannot see: {limit}', file=sys.stderr)
     rule = result['link_rule']
     if not rule['ok']:
-        print(f"link rule: {rule['missing']} missing, {rule['dangling']} dangling; answering another file: {rule['changed']} link keys, "
-              f"{rule['lookup_changed']} lookup keys, {rule['address_changed']} addresses; not checked: {rule['unchecked']}", file=sys.stderr)
+        print(f"link rule: {rule['missing']} missing, {rule['dangling']} dangling, "
+              f"{rule['published_and_retired']} published_and_retired; answering another file: "
+              f"{rule['changed']} link keys, {rule['lookup_changed']} lookup keys, {rule['address_changed']} addresses; "
+              f"not checked: {rule['unchecked']}", file=sys.stderr)
     return 0 if result['ok'] else 1
 
 

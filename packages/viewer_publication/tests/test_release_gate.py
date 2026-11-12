@@ -258,7 +258,9 @@ def test_link_rule_passes_documents_that_keep_their_files(tmp_path):
     causes = record_for(*ids((base, candidate)), tmp_path, groups=[
         *((name, 'split rows', 'previous row had no member source', 1) for name in ('detail.parquet', 'list.parquet')), MOVED_LINKS])
     report = require_release_gates(base, candidate, causes, report_path=tmp_path / 'r.json')
-    assert report['link_rule'] == dict(missing=0, missing_keys=[], dangling=0, dangling_keys=[], changed=0, changed_keys=[],
+    assert report['link_rule'] == dict(missing=0, missing_keys=[], dangling=0, dangling_keys=[],
+                                       published_and_retired=0, published_and_retired_keys=[],
+                                       changed=0, changed_keys=[],
                                        changed_answers=[], lookup_changed=0, lookup_changed_keys=[], lookup_changed_answers=[],
                                        address_changed=0, address_changed_keys=[], address_changed_answers=[],
                                        demoted=0, demoted_keys=[], demoted_answers=[], unchecked=[], ok=True)
@@ -460,6 +462,87 @@ def test_no_correction_touches_a_vanished_key_a_dangling_successor_or_an_uncheck
                     unchecked='link rule: not checked: a release has no detail.saved_body')[case]
     assert report['reasons'][0].startswith(expected)
     assert unmatched('link_key', K('B').hex(), 'B', 'A') in report['reasons']
+
+
+def test_a_waiver_in_force_never_quiets_a_vanished_key(tmp_path):
+    """Reviewer (5950bb11): the six fused keys are named and let through while a seventh key vanishes.
+    A waiver that works must not reach the vanish reason; the absoluteness test above only uses a
+    correction that waives nothing, so it cannot see one leak."""
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(base, [*'ABCDEFG', 'H'])
+    release_dir(candidate, ['ABCDEFG'], saved='G')
+    report, _ = corrected_gate(tmp_path, (base, candidate), FUSED_GROUPS, FUSED_CORRECTIONS)
+    assert report['named_corrections']['link_key']['waived'] == 6
+    assert any(reason.startswith('link rule: 1 base link keys vanish') for reason in report['reasons'])
+
+
+def test_a_key_that_also_reaches_a_row_with_no_saved_file_cannot_be_named(tmp_path):
+    """Reviewer (5950bb11): K(a) now reaches B's row and a row that shows no file. No single file is
+    shown on every row it reaches, so naming B must not let it through (candidate_bodies keeps the null)."""
+    pair = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(pair[0], list('ABC'), **addresses(['a', 'b', 'c']))
+    detail = pa.table({'link_key': pa.array([K(x) for x in 'ABC'], pa.binary(8)),
+                       'saved_body': pa.array([K('A') + bytes(24), K('B') + bytes(24), None], pa.binary(32))})
+    release_dir(pair[1], list('ABC'), detail=detail, **addresses(['', 'ab', 'ac']))
+    report, _ = corrected_gate(tmp_path, pair, REPOINTED_GROUPS, [correction('lookup_key', K('a').hex(), 'A', 'B')])
+    answer = next(a for a in report['link_rule']['lookup_changed_answers'] if a['key'] == K('a').hex())
+    assert sorted(answer['candidate_bodies'], key=str) == sorted([body('B'), None], key=str)
+    assert K('a').hex() not in report['named_corrections']['lookup_key']['keys']
+    assert unmatched('lookup_key', K('a').hex(), 'A', 'B') in report['reasons']
+
+
+def test_render_notes_calls_corrected_entries_corrections(tmp_path):
+    """ct-dagf (2): the prose above the corrections table names them corrections."""
+    report, causes = corrected_gate(tmp_path, fused(tmp_path), FUSED_GROUPS, FUSED_CORRECTIONS)
+    assert report['reasons'] == []
+    notes = render_notes(causes, tmp_path / 'base', tmp_path / 'candidate')
+    assert '6 corrections (keys and addresses that now answer another file on purpose), each named in the reviewed cause record with both files (ct-4nax):' in notes
+
+
+@pytest.mark.parametrize('disposition', ['explained', 'accepted_defect'])
+def test_load_causes_refuses_a_group_entry_whose_ticket_has_no_file(tmp_path, disposition):
+    """ct-dagf (5): group entries check ticket existence in .tickets just like corrections."""
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.release_gate import load_causes
+    ev = tmp_path / 'ev.txt'
+    ev.write_text('evidence\n')
+    record = dict(
+        version=1, base_release_id='a' * 64, candidate_release_id='b' * 64,
+        groups=[dict(id='list.parquet|added rows|unexplained', count=1, disposition=disposition,
+                     cause='test cause', tickets=['ct-zzzz'],
+                     evidence=[dict(path=str(ev), **file_pin(ev))])])
+    path = tmp_path / 'causes.json'
+    path.write_text(json.dumps(record))
+    with pytest.raises(ValueError, match='no file in .*: ct-zzzz'):
+        load_causes(dict(path=str(path), **file_pin(path)))
+
+
+def test_verdict_returns_named_corrections_without_mutating_report(tmp_path):
+    """ct-dagf (6): verdict is pure on its input report."""
+    from viewer_publication.release_comparison import compare
+    from viewer_publication.release_gate import verdict
+    pair = fused(tmp_path)
+    causes = record_for(*ids(pair), tmp_path, groups=FUSED_GROUPS, corrections=FUSED_CORRECTIONS)
+    report = compare(*pair)
+    snapshot = json.loads(json.dumps(report, default=str))
+    reasons, named = verdict(report, causes)
+    assert reasons == []
+    assert named['link_key']['waived'] == 6
+    assert report == snapshot and 'named_corrections' not in report
+
+
+def test_gate_refuses_a_candidate_key_both_published_and_retired(tmp_path):
+    """ct-xyo9 (4), plant R3: a key in both candidate links and candidate retired_links refuses even with a record."""
+    notice = [dict(link_key=K('N'), successor_key=None, last_release_id='b' * 64, last_filename='N.pdf')]
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(base, ['A'], retired=notice)
+    release_dir(candidate, ['A', 'N'], retired=notice)
+    causes = record_for(*ids((base, candidate)), tmp_path, groups=[
+        ('list.parquet', 'added rows', 'no surviving link key', 1),
+        ('detail.parquet', 'added rows', 'no surviving link key', 1),
+        ('links.parquet', 'added keys', 'no evidence given', 1)])
+    with pytest.raises(ValueError, match='1 candidate link keys are both published and retired'):
+        require_release_gates(base, candidate, causes, report_path=tmp_path / 'r.json')
 
 
 MISSING = object()
@@ -671,9 +754,19 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     if also_held:
         # The same body was also captured by a receipt the live release read.
         capture_rows.append(dict(capture_rows[0], receipt_key=also_held, receipt_line=7))
-    # Cache files the pipeline captured: (file hash, receipt key).
-    capture_rows += [dict(receipt_key=key, receipt_line=1, sha256=file_sha, requested_url=None, mode='fetch', complete=True,
-                          attempt=0, outcome='stored', http_status=200) for file_sha, key in cache_files]
+    # Cache files the pipeline captured: (file hash, receipt key), defaulting to pipeline-data YouTube cache paths.
+    yt_default = lambda idx: f'https://github.com/civictechdc/congressional-tech/raw/pipeline-data/youtube/youtube_{idx:02d}.json'
+    explicit_shas = {row.get('sha256') for row in capture_lines} | {item[0] for item in cache_files}
+    if base_tables and 'channels' in base_tables and live_receipts:
+        live_key = sorted(live_receipts)[0]
+        for idx, ch in enumerate(base_tables['channels'].to_pylist()):
+            if ch.get('record_sha') and ch['record_sha'] not in explicit_shas:
+                capture_rows.append(dict(receipt_key=live_key, receipt_line=100 + idx, sha256=ch['record_sha'],
+                                         requested_url=None, url=yt_default(idx), family='pipeline-data', mode='fetch',
+                                         complete=True, attempt=0, outcome='stored', http_status=None))
+    capture_rows += [dict(receipt_key=item[1], receipt_line=1 + idx, sha256=item[0], requested_url=None, url=yt_default(idx),
+                          family='pipeline-data', mode='fetch', complete=True, attempt=0, outcome='stored', http_status=None,
+                          **(item[2] if len(item) > 2 else {})) for idx, item in enumerate(cache_files)]
     capture_rows += [dict(dict(receipt_line=1, mode='fetch', complete=True, attempt=0, outcome='stored', http_status=200), **row)
                      for row in capture_lines]
     write_captures(capture_rows, tmp_path / 'captures.parquet')
@@ -704,7 +797,7 @@ def nightly(tmp_path, base_docs, candidate_docs, *, receipt=NEW_RECEIPT, raw_nam
     def automatic(report):
         return automatic_causes(report, base, candidate, engine=engine, captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
                                 live_receipt_keys=live_receipts, read_receipt=raw.__getitem__, work=tmp_path / 'auto',
-                                candidate_receipt_keys={*live_receipts, receipt, *(key for _, key in cache_files),
+                                candidate_receipt_keys={*live_receipts, receipt, *(item[1] for item in cache_files),
                                                         *(row['receipt_key'] for row in capture_lines)})
     return base, candidate, automatic
 
@@ -2373,3 +2466,80 @@ def test_generic_doc_title_regex_matches_title_rules_registry():
     rules_path = Path(__file__).resolve().parents[3] / 'model/registries/title-rules.json'
     label_patterns = [r['pattern'] for r in json.loads(rules_path.read_text()) if r['kind'] == 'label']
     assert label_patterns == [GENERIC_DOC_TITLE_RE]
+
+
+def test_cache_refresh_refuses_non_youtube_cache_body_and_swapped_channel_caches(tmp_path):
+    """ct-xyo9 (1), plants S_OTHERBODY and S_SWAPNEW: a newly cited video cache hash must come from a
+    pipeline-data YouTube cache capture at the same channel cache path as the channel's live hash."""
+    # S_OTHERBODY: new hash captured as a committee HTML document rather than pipeline-data youtube_NN.json.
+    sub1 = tmp_path / 'other-body'
+    base, candidate, automatic = nightly(
+        sub1, ['A'], ['A'], base_tables=video_tables('fetch-1', 1), candidate_tables=video_tables('fetch-2', 8),
+        capture_lines=[
+            dict(receipt_key=sorted(LIVE_RECEIPTS)[0], sha256=cache_file('fetch-1'), family='pipeline-data',
+                 requested_url='https://github.com/civictechdc/congressional-tech/raw/pipeline-data/youtube/youtube_00.json'),
+            dict(receipt_key=CACHE_RECEIPT, sha256=cache_file('fetch-2'), family='documents',
+                 requested_url='https://docs.house.gov/committee/page.html'),
+        ])
+    with pytest.raises(ValueError):
+        require_release_gates(base, candidate, None, report_path=sub1 / 'r.json', automatic=automatic)
+    r1 = json.loads((sub1 / 'r.json').read_text())
+    assert any('has no pipeline-data YouTube cache capture' in msg for msg in r1['automatic_reasons'])
+
+    # S_SWAPNEW: two channels swap their new pipeline-data cache files (youtube_00.json vs youtube_01.json).
+    sub2 = tmp_path / 'swap-new'
+    old0, old1 = cache_file('ch0-old'), cache_file('ch1-old')
+    new0, new1 = cache_file('ch0-new'), cache_file('ch1-new')
+    two_ch = lambda s0, s1, day: dict(
+        channels=pa.table({'handle': ['@c0', '@c1'], 'title': ['C0', 'C1'], 'record_sha': pa.array([s0, s1], pa.binary())}),
+        videos=pa.table({'video_key': ['youtube:v0', 'youtube:v1'], 'handle': ['@c0', '@c1'], 'title': ['V0', 'V1'],
+                         'details_checked_at': pa.array([datetime(2026, 11, day, tzinfo=timezone.utc)] * 2, TS),
+                         'record_sha': pa.array([s0, s1], pa.binary())}))
+    yt_url = lambda idx: f'https://github.com/civictechdc/congressional-tech/raw/pipeline-data/youtube/youtube_{idx:02d}.json'
+    base2, cand2, auto2 = nightly(
+        sub2, ['A'], ['A'], base_tables=two_ch(old0, old1, 1),
+        candidate_tables=two_ch(new1, new0, 8),  # swapped!
+        capture_lines=[
+            dict(receipt_key=sorted(LIVE_RECEIPTS)[0], sha256=old0, family='pipeline-data', requested_url=yt_url(0)),
+            dict(receipt_key=sorted(LIVE_RECEIPTS)[0], receipt_line=2, sha256=old1, family='pipeline-data', requested_url=yt_url(1)),
+            dict(receipt_key=CACHE_RECEIPT, sha256=new0, family='pipeline-data', requested_url=yt_url(0)),
+            dict(receipt_key=CACHE_RECEIPT, receipt_line=2, sha256=new1, family='pipeline-data', requested_url=yt_url(1)),
+        ])
+    with pytest.raises(ValueError):
+        require_release_gates(base2, cand2, None, report_path=sub2 / 'r.json', automatic=auto2)
+    r2 = json.loads((sub2 / 'r.json').read_text())
+    assert any('is not from the same channel cache path' in msg for msg in r2['automatic_reasons'])
+
+
+def test_refetch_only_groups_refuse_when_both_automatic_and_cause_record_are_absent(tmp_path):
+    """ct-xyo9 (1), plant S_ABSENT: turning automatic_causes off with no cause record cannot pass made-up citations."""
+    base, candidate, _ = refreshed(tmp_path, captured=())
+    with pytest.raises(ValueError, match='requires automatic capture verification or a cause record'):
+        require_release_gates(base, candidate, None, report_path=tmp_path / 'absent.json', automatic=None)
+    # A reviewed publish with a bound cause record (a person) passes without automatic_causes.
+    causes = record_for(*ids((base, candidate)), tmp_path, groups=[])
+    assert require_release_gates(base, candidate, causes, report_path=tmp_path / 'reviewed.json', automatic=None)['reasons'] == []
+
+
+@pytest.mark.parametrize('attr,cap_val,expected', [
+    ('AUTOMATIC_LINK_KEYS_PER_DOCUMENT_CAP', 1, '2 link keys on one added document, more than the 1 one added document may carry'),
+    ('AUTOMATIC_ADDED_LINK_KEYS_CAP', 1, '2 added link keys, more than the 1 one unattended night may add'),
+    ('AUTOMATIC_ADDRESSES_PER_DOCUMENT_CAP', 1, '2 source rows on one added document, more than the 1 one added document may carry'),
+    ('AUTOMATIC_ADDED_ADDRESSES_CAP', 1, '2 added source rows, more than the 1 one unattended night may add'),
+])
+def test_added_link_key_and_address_caps_refuse_before_any_engine_job(tmp_path, monkeypatch, attr, cap_val, expected):
+    """ct-xyo9 (3), plants C1 and C250: per-document and nightly total caps on added link keys, source rows
+    and lookup rows stop oversized additions before starting any engine job."""
+    from viewer_publication import release_gate
+    from viewer_publication.release_comparison import compare
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    release_dir(base, ['A'], **addresses(['a']))
+    release_dir(candidate, ['A', 'MN'], **addresses(['a', 'mn']))  # 1 added doc with 2 link keys, 2 sources, 2 urls
+    report = compare(base, candidate)
+    monkeypatch.setattr(release_gate, attr, cap_val)
+    entries, reasons = release_gate.automatic_causes(
+        report, base, candidate, engine=None, captures=None, live_receipt_keys=LIVE_RECEIPTS,
+        read_receipt=lambda _: (_ for _ in ()).throw(AssertionError('engine or receipt read must not run')),
+        work=tmp_path / 'auto')
+    assert entries == []
+    assert any(expected in r for r in reasons), reasons
