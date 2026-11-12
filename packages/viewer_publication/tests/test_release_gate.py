@@ -426,6 +426,27 @@ def test_a_key_that_reaches_two_files_cannot_be_named_by_one(tmp_path):
     assert unmatched('lookup_key', K('a').hex(), 'A', 'B') in report['reasons']
 
 
+def test_a_key_that_reaches_two_files_passes_when_correction_names_both_sorted_bodies(tmp_path):
+    pair = repointed(tmp_path, 'ABC', base=('a', 'b', 'c'), candidate=('', 'ab', 'ac'))
+    multi = dict(correction('lookup_key', K('a').hex(), 'A', 'B'), candidate_body=sorted([body('B'), body('C')]))
+    addr_multi = dict(correction('address', 'https://example.test/a', 'A', 'B'), candidate_body=sorted([body('B'), body('C')]))
+    groups = [*REPOINTED_GROUPS,
+              ('urls.parquet', 'keys with more rows', 'more documents answer the key', 1),
+              ('sources.parquet', 'same-URL rows added', 'more documents list the address', 1)]
+    report, causes = corrected_gate(tmp_path, pair, groups, [multi, addr_multi])
+    assert report['reasons'] == []
+    assert report['named_corrections']['lookup_key'] == dict(waived=1, keys=[K('a').hex()])
+    assert report['named_corrections']['address'] == dict(waived=1, keys=['https://example.test/a'])
+    notes = render_notes(causes, *pair)
+    assert f'`{body("B")[:12]}`, `{body("C")[:12]}`' in notes
+    # Naming a third body that the key does not reach refuses and reports all named bodies.
+    extra = dict(multi, candidate_body=sorted([body('B'), body('C'), body('D')]))
+    refused, _ = corrected_gate(tmp_path, pair, groups, [extra, addr_multi])
+    assert f'link rule: 1 live lookup keys answer another file ({K("a").hex()})' in refused['reasons']
+    assert (f'cause record: correction lookup_key {K("a").hex()} from {body("A")} to '
+            f'{", ".join(sorted([body("B"), body("C"), body("D")]))} matches no finding of the link rule') in refused['reasons']
+
+
 @pytest.mark.parametrize('case', ['missing', 'dangling', 'unchecked'])
 def test_no_correction_touches_a_vanished_key_a_dangling_successor_or_an_unchecked_rule(tmp_path, case):
     successor = dict(dangling=K('Z')).get(case)
@@ -456,9 +477,23 @@ MISSING = object()
     ('tickets', [], 'A correction needs a ticket'),
     ('tickets', ['CT-4NAX'], 'tickets must be ticket ids'),
     ('tickets', ['ct-4nax', 'ct-zzzz'], 'no file in .*: ct-zzzz'),
+    ('candidate_body', [body('B'), body('C')], 'candidate_body of link_key'),
 ])
 def test_load_causes_refuses_a_malformed_correction(tmp_path, field, value, message):
     entry = {k: v for k, v in dict(FUSED_CORRECTIONS[0], **{field: value}).items() if v is not MISSING}
+    with pytest.raises(ValueError, match=message):
+        record_for('a' * 64, 'b' * 64, tmp_path, corrections=[entry])
+
+
+@pytest.mark.parametrize('bad_bodies, message', [
+    ([], 'sorted list of at least two distinct'),
+    ([body('B')], 'sorted list of at least two distinct'),
+    ([body('C'), body('B')], 'sorted list of at least two distinct'),
+    ([body('B'), body('B')], 'sorted list of at least two distinct'),
+    ([body('B'), 'G' * 64], 'candidate_body of lookup_key'),
+])
+def test_load_causes_refuses_malformed_multi_body_lookup_correction(tmp_path, bad_bodies, message):
+    entry = dict(correction('lookup_key', K('a').hex(), 'A', 'B'), candidate_body=bad_bodies)
     with pytest.raises(ValueError, match=message):
         record_for('a' * 64, 'b' * 64, tmp_path, corrections=[entry])
 

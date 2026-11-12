@@ -73,8 +73,9 @@ putting them in the release would force a second model run.
   live row's saved body or a body one of the live row's own link keys names. An address may
   hold several editions, and after a wrong join is split it may reach any of the live
   document's own files. A key or address the candidate dropped, and a document it removed,
-  are reported as their own comparison groups. A correction for one names the single file
-  every row it reaches now shows. It cannot tell which file of a wrongly joined live document
+  are reported as their own comparison groups. A correction for one names the file
+  every row it reaches now shows (or, when it reaches rows showing distinct files, the sorted
+  list of every such file's SHA-256). It cannot tell which file of a wrongly joined live document
   an address named.
 
 ## Nightly publication (ct-ud0b)

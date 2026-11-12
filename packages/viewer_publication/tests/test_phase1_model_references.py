@@ -75,6 +75,7 @@ def test_native_references_preserve_occurrences_without_inventing_acquisitions(t
         dict(name='source_endpoints',sql=(ROOT/'model/sql/source-endpoints.sql').read_text(),materialize=True),
         dict(name='document_members',sql='SELECT *,source_id AS component FROM source_files',materialize=True),
         dict(name='recovered_copy_members',sql='SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS VARCHAR) AS component WHERE false'),
+        dict(name='final_recovery_attachments',sql='SELECT cast(NULL AS VARCHAR) AS component,cast(NULL AS VARCHAR) AS original_url,cast(NULL AS VARCHAR) AS role WHERE false'),
         *model_steps(['landing-pages'],provided={'document_members','publisher_links','page_signals','formats'},materialize=True),
         dict(name='document_addresses',sql=(ROOT/'model/sql/document-addresses.sql').read_text(),materialize=True)]
     for name in ('addresses','meetings'):

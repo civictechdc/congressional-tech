@@ -36,8 +36,8 @@ test('one reader opens native releases, searches arrays and resolves indexed key
   assert.equal(await reader.resolve('ff'.repeat(8)),null);
   const entry = await reader.entry(0);
   assert.equal(entry.detail.alternates[0].format,'xml');
-  // The committed fixture has 23 detail-only columns, including six page metadata columns.
-  assert.equal(reader.metrics.detailColumns,23);
+  // The committed fixture has 24 detail-only columns, including title_source and five projected page metadata columns.
+  assert.equal(reader.metrics.detailColumns,24);
   assert.equal(entry.detail.filename,undefined);
   assert.equal(entry.document.filename,'Agenda.pdf');
   assert.equal(entry.sources.length,1);

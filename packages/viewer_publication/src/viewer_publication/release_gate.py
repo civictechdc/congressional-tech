@@ -219,14 +219,20 @@ def _tickets(entry, name, *, needed_by=None):
     return tickets
 
 
+def _wanted_bodies(entry):
+    value = entry['candidate_body']
+    return [value] if isinstance(value, str) else value
+
+
 def _corrections(record):
     """Validate the record's `corrections` (ct-4nax): each names one link-rule finding exactly.
 
     An entry is {kind, key, live_body, candidate_body, decision, tickets} and nothing else: kind is
     one of CORRECTED, key is printed as the report prints it (16 hex for a link or lookup key, the
-    address otherwise), both bodies are SHA-256s, the decision says what was corrected and by which
-    permanent record, and every ticket is a file in this checkout's .tickets. One entry per
-    (kind, key, live body).
+    address otherwise), live_body is a SHA-256, candidate_body is a SHA-256 (or, for a lookup_key
+    or address reaching multiple candidate files, a sorted list of at least two distinct SHA-256s),
+    the decision says what was corrected and by which permanent record, and every ticket is a file
+    in this checkout's .tickets. One entry per (kind, key, live body).
     """
     corrections = record.get('corrections', [])
     if not isinstance(corrections, list):
@@ -241,8 +247,15 @@ def _corrections(record):
             raise ValueError(f'Correction kind must be one of {", ".join(CORRECTED)}: {name}')
         if not isinstance(key, str) or (re.fullmatch('[0-9a-f]{16}', key) is None if kind != 'address' else not key.strip()):
             raise ValueError(f'Correction key must be printed as the report prints it: {name}')
-        for side in ('live_body', 'candidate_body'):
-            _sha(entry[side], f'Correction {side} of {name}')
+        _sha(entry['live_body'], f'Correction live_body of {name}')
+        cand = entry['candidate_body']
+        if kind != 'link_key' and isinstance(cand, list):
+            for item in cand:
+                _sha(item, f'Correction candidate_body of {name}')
+            if len(cand) < 2 or cand != sorted(set(cand)):
+                raise ValueError(f'Correction candidate_body of {name} must be a SHA-256 or a sorted list of at least two distinct SHA-256s')
+        else:
+            _sha(cand, f'Correction candidate_body of {name}')
         if not isinstance(entry['decision'], str) or not entry['decision'].strip():
             raise ValueError(f'A correction needs its decision: {name}')
         missing = [t for t in _tickets(entry, name, needed_by='A correction') if not (TICKETS / f'{t}.md').is_file()]
@@ -1161,8 +1174,9 @@ def named_corrections(rule, corrections):
 
     Owner decision 2026-11-10, "Accept named corrections": a live link key, lookup key or address
     that answers another file passes only where the reviewed record names it as a correction: same
-    kind, same key, and both bodies equal to the report's (for a lookup key or address, every
-    candidate row it reaches shows that one file). Returns ({kind: waived keys}, {kind: refusal
+    kind, same key, and bodies equal to the report's (for a lookup key or address, either the one
+    file every candidate row shows or the exact sorted list of distinct files its candidate rows show).
+    Returns ({kind: waived keys}, {kind: refusal
     reasons}, reasons for corrections that match nothing). A key with any unnamed answer is
     refused; so is every key beyond the report's sample, which no entry can be matched against;
     and an entry that waives nothing refuses the record, so a stale or padded list cannot pass.
@@ -1173,14 +1187,14 @@ def named_corrections(rule, corrections):
     the reviewed record's claim; ct-faan is the form that proves it from the published rejection
     records.
     """
-    named = {(c['kind'], c['key'], c['live_body']): c['candidate_body'] for c in corrections}
+    named = {(c['kind'], c['key'], c['live_body']): _wanted_bodies(c) for c in corrections}
     used, waived, refused = set(), {}, {}
     for kind, (prefix, what) in CORRECTED.items():
         answers, unnamed = rule[f'{prefix}changed_answers'], set()
         for answer in answers:
             name = (kind, answer['key'], answer['live_body'])
             shown = [answer['candidate_body']] if kind == 'link_key' else answer['candidate_bodies']
-            if name in named and shown == [named[name]]:
+            if name in named and shown == named[name]:
                 used.add(name)
             else:
                 unnamed.add(answer['key'])
@@ -1196,7 +1210,7 @@ def named_corrections(rule, corrections):
             refused[kind].append(f'link rule: {beyond} live {what} that answer another file are beyond the '
                                  f"report's sample, so no correction can name them")
     # Whole bodies: a correction one character off must be told apart from the report's.
-    stale = [f'cause record: correction {kind} {key} from {live} to {named[kind, key, live]} matches no finding of the link rule'
+    stale = [f'cause record: correction {kind} {key} from {live} to {", ".join(named[kind, key, live])} matches no finding of the link rule'
              for kind, key, live in sorted(set(named) - used)]
     return waived, refused, stale
 
@@ -1298,7 +1312,8 @@ def render_notes(causes, base_dir, candidate_dir):
         lines += [f'{len(corrections)} keys and addresses now answer another file on purpose, each named in the reviewed '
                   'cause record with both files (ct-4nax):', '',
                   '| Kind | Key | Live file | Now | Decision | Tickets |', '| --- | --- | --- | --- | --- | --- |']
-        lines += [f'| {c["kind"]} | `{c["key"]}` | `{c["live_body"][:12]}` | `{c["candidate_body"][:12]}` | {c["decision"]} | '
+        lines += [f'| {c["kind"]} | `{c["key"]}` | `{c["live_body"][:12]}` | '
+                  f'{", ".join(f"`{b[:12]}`" for b in _wanted_bodies(c))} | {c["decision"]} | '
                   f'{", ".join(c["tickets"])} |' for c in corrections]
         lines.append('')
     lines += ['## Row changes', '', '| File | Group | Cause | Count | Disposition | Tickets |', '| --- | --- | --- | --- | --- | --- |']
