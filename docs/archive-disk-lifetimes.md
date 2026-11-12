@@ -67,8 +67,10 @@ Do not convert a sampled shared-volume drawdown into an isolated allocation clai
 
 A record's `revision` is the measured revision. Admission accepts it for that
 revision and for any descendant that leaves `RESOURCE_PATHS` in
-`scripts/archive_disk.py` unchanged: the engine pin, its local limits, the job
-bindings, `uv.lock` and the site lockfile. Ticket, documentation and model commits
+`scripts/archive_disk.py` unchanged: `model/docspec-runtime-pin.json` (the engine
+pin), `.github/docspec-local-limits.json` (its local limits),
+`.github/archive-jobs.json` (the job bindings), `uv.lock`, and
+`apps/site/package-lock.json` (the site lockfile). Ticket, documentation and model commits
 therefore keep the nightly admitted; the 15 GiB headroom and the runtime disk floor
 cover model drift. The admission report records both `revision` and
 `budget_revision`.

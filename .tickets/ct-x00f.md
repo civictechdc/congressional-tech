@@ -51,3 +51,7 @@ Run-2 post-MODS qualification complete on claude/dx-pin-one-line (rebased onto 5
 **2026-11-12T00:56:36Z**
 
 Published live in archive release 21fc049940bbe4ef75ab774b3cc74a5e746fb9f023afb9a896059d595f5fa381 (2026-11-12T00:55:34Z, previous 46ebbdf8dcaf): nightly/20261112T002603.002845Z built identical release_id 21fc049940bb (peak 9.77 GiB RSS / 10.67 GiB physical in 1,302 s), Gate 1 passed with cause record model/jobs/release-causes/46ebbdf8dcaf-21fc049940bb.json (11 count-0 footer/engine_revision groups, 0 row/value/key differences), resume nightly/20261112T005217.004021Z flipped pointer and passed public verify-archive canary; both docspec-rs (42994498288) and congressional-tech (43126643564) hosted CI runs 7/7 green.
+
+**2026-11-12T01:12:28Z**
+
+Post-publish step_memory check on supervised nightly/20261112T002603.002845Z (.cache/archive-release/release-20261112-pin/sm-nightly-fresh.json): run peak 9.772 GiB RSS / 10.671 GiB physical during output member_votes.parquet; top statement pool peaks publisher_links (5.932 GiB), resolved_link_targets (5.589 GiB), appearance_url_inputs (5.292 GiB), link_inputs (5.147 GiB), source_annotation_facts (4.974 GiB); 0 new receipts appended to readings during the pin release (snapshot 4472402246940841528 unchanged).
