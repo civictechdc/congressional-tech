@@ -2,7 +2,7 @@
 id: ct-fk4w
 status: open
 deps: [ct-m704]
-links: [ct-h8dr, ct-29n4, ct-yuf0]
+links: [ct-h8dr, ct-29n4, ct-yuf0, ct-5q3g]
 created: 2026-11-10T10:16:58Z
 type: feature
 priority: 2

@@ -246,6 +246,8 @@
   "spicy_nominations": 2287,
   "spicy_roll_call_votes": 30702,
   "storage_verifications": 0,
+  "title_overrides": 0,
+  "title_rules": 9,
   "unreadable_records": 152,
   "url_inputs": 1662689,
   "url_normalized": 1662689,

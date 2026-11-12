@@ -23,6 +23,8 @@ SELECT s.source_id,
  CASE WHEN p.status='completed' AND nullif(trim(p.heading),'') IS NOT NULL THEN p.heading END,k.listing_title) AS title,
  coalesce(CASE WHEN p.status='completed' AND nullif(trim(p.title),'') IS NOT NULL THEN p.title END,
  CASE WHEN p.status='completed' AND nullif(trim(p.heading),'') IS NOT NULL THEN p.heading END) AS reading_title,
+ CASE WHEN p.status='completed' AND nullif(trim(p.title),'') IS NOT NULL THEN 'page_title'
+  WHEN p.status='completed' AND nullif(trim(p.heading),'') IS NOT NULL THEN 'page_heading' END AS reading_source,
  k.listing_title,
  coalesce(m.meeting_keys,{{EMPTY_STRINGS}}) AS meeting_keys,
  coalesce(CASE WHEN f.status='completed' THEN array_sort(array_distinct(f.measure_keys)) END,{{EMPTY_STRINGS}}) AS measure_keys,

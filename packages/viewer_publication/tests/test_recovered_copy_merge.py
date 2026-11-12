@@ -408,11 +408,13 @@ def test_a_page_capture_is_the_source_of_its_file_and_an_edition_is_its_own_docu
     assert lookup(VETS) == [vets]
     # It showed the page, so the page's title stays: the transcript PDF has none of its own.
     assert details[vets]['title'] == title_before(VETS) == 'Between Peril and Promise | House Committee on Veterans Affairs'
+    assert details[vets]['title_source'] == 'page_title'
 
     # The submission: the link's row shows the hearing record now, under the page's title, not the hearing's.
     dav = links[_url_key(DAV)]
     assert (details[dav]['saved_body'], served(dav)) == (sha('dav_print'), [sha('dav_print')])
     assert details[dav]['title'] == title_before(DAV) == 'Disabled American Veterans | House Committee on Veterans Affairs'
+    assert details[dav]['title_source'] == 'page_title'
 
     # The report: the link keeps part 1; part 2 is its own document under its body key, and the dead
     # address finds both.

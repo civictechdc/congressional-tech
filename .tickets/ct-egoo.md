@@ -2,7 +2,7 @@
 id: ct-egoo
 status: in_progress
 deps: []
-links: []
+links: [ct-5q3g]
 created: 2026-11-10T20:37:59Z
 type: task
 priority: 3

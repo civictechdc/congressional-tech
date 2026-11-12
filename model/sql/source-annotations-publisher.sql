@@ -11,7 +11,7 @@ WITH kinds AS (
  FROM (SELECT DISTINCT source_id,document_kind FROM chosen_kinds) GROUP BY source_id
 ), titled AS (
  -- Link text says what a link does; a link word ("ZIP", "here", "Download PDF") is never a title.
- SELECT l.* FROM (SELECT pattern FROM page_signals WHERE kind='link_word') g
+ SELECT l.* FROM (SELECT pattern FROM title_rules WHERE kind='link_word') g
  RIGHT ANTI JOIN (SELECT * FROM publisher_links WHERE nullif(trim(text),'') IS NOT NULL) l
  ON regexp_like(regexp_replace(trim(l.text),'\s+',' ','g'),g.pattern)
 ), labels AS (

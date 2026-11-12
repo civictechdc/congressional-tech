@@ -28,6 +28,8 @@ def test_phase1_registry_samples_run_through_native_policy_relations(tmp_path):
       dict(name='page-signals',sql="""SELECT c.id,regexp_like(c.value,r.pattern) AS actual_bool,r.number AS actual_number
         FROM cases c JOIN page_signals r ON c.entry=r.id
         WHERE c.registry='page-signals' ORDER BY c.id"""),
+      dict(name='title-rules',sql="""SELECT c.id,regexp_like(c.value,r.pattern) AS actual
+        FROM cases c JOIN title_rules r ON c.entry=r.id WHERE c.registry='title-rules' ORDER BY c.id"""),
       dict(name='formats',sql="SELECT c.id,r.rank AS actual FROM cases c JOIN formats r ON c.entry=r.id WHERE c.registry='formats' ORDER BY c.id"),
       dict(name='publisher-kinds',sql="""SELECT c.id,min(r.document_kind) AS actual FROM cases c
         LEFT JOIN publisher_kinds r ON (c.entry IS NULL OR c.entry=r.id) AND regexp_like(c.value,r.pattern)
@@ -54,7 +56,7 @@ def test_phase1_registry_samples_run_through_native_policy_relations(tmp_path):
     result=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
         inputs=inputs,steps=steps,outputs=[],queries=queries)
     seen=set()
-    for registry in ['file-shapes','page-signals','formats','publisher-kinds','display-facts','committee-codes','recheck-intervals','archive-layouts']:
+    for registry in ['file-shapes','page-signals','title-rules','formats','publisher-kinds','display-facts','committee-codes','recheck-intervals','archive-layouts']:
         for row in result[registry]:
             case=expected[row['id']];seen.add(row['id'])
             value=(row['actual_number'] if type(case['expected']) is int else row['actual_bool']) if registry=='page-signals' else row['actual']
@@ -69,7 +71,7 @@ def test_every_seed_entry_has_a_separate_sample_with_its_evidence():
     cases=json.loads((ROOT/'model/fixtures/registry-samples.json').read_text())['cases']
     by_id={x['id']:x for x in cases}
     assert len(by_id)==len(cases)
-    for name in ['file-shapes','page-signals','formats','publisher-kinds','display-facts','committee-codes','recheck-intervals','archive-layouts']:
+    for name in ['file-shapes','page-signals','title-rules','formats','publisher-kinds','display-facts','committee-codes','recheck-intervals','archive-layouts']:
         rows=json.loads((ROOT/'model/registries'/(name+'.json')).read_text())
         assert len({x['id'] for x in rows})==len(rows)
         assert name.replace('-','_') in REGISTRIES
