@@ -1,6 +1,6 @@
 ---
 id: ct-b7bv
-status: open
+status: closed
 deps: []
 links: [ct-arlk]
 created: 2026-11-10T13:27:30Z
@@ -43,3 +43,12 @@ Each of the four items is done or declined with a reason.
 **2026-11-11T14:29:02Z**
 
 validated 2026-11-11: (1) done: the driver replaces resume_publish.py; docs/releases/2026-11-10-procedure.md 'Next time' names only_cause_records (scripts/nightly_publish.py:234), and release 77673bfb8fcf was resumed by the driver itself (run nightly/20261110T202340.237447Z). (2) done except two worktrees still legitimately in use today: wt/ct-chc4-html-reader (the OCR body-text run, chunk-0085 running at 14:29Z) and wt/ct-thread1-unattended (limactl/Colima processes hold it, checked with lsof). (3) done: .cache/archive-release/heavy-slot.lock no longer exists (retired 2026-11-10 14:52Z). (4) still open: nothing durable watches the 05:30 nightly; scripts/nightly_publish.py has no notification path (rg for notify/mail/webhook finds none). (5) new, from ct-zlj6 (closed): engine.log files now land in job work folders and count toward the byte sums in lake/daily.py:1363 (activation max_output_bytes) and archive_house_xml_dispositions.py:126; check the configured limits against a worst-case engine.log before the next hand-run activation, or exclude engine.log from those sums. Remains: items 2 (prune those two when their users finish), 4 and 5.
+
+**2026-11-12T05:32:00Z**
+
+closed 2026-11-12 on `claude/ct-wave-1ab-safety`:
+- (1) Done (validated 2026-11-11): `scripts/nightly_publish.py` (`only_cause_records`) replaced `resume_publish.py`.
+- (2) Declined/deferred with active-process evidence (verified 2026-11-12 05:22Z): `wt/ct-chc4-html-reader` is actively running the live body-text OCR driver (`PID 55948`, `bt_full_driver.py`), and `wt/ct-thread1-unattended` is still held as working directory by live Colima processes (`limactl` PIDs `75196`, `75235` and `ssh` PID `75892` via `lsof +d`; ticket rule forbids restarting Colima for this). `scripts/dev.py prune-worktree` already enforces `lsof` blocker safety when their owners finish.
+- (3) Done (validated 2026-11-11): `heavy-slot.lock` retired in favor of `scripts/archive_watchdog.py` memory admission.
+- (4) Done: `scripts/nightly_publish.py` now persists atomic `latest-summary.json` and `last-failure.json` pointers (clearing `last-failure.json` only on a non-prepare `exit == 0` run), runs `notify_failure(...)` on failed runs (supporting `<main>/.cache/archive-release/remote-runtime/notify.json` + `ARCHIVE_NIGHTLY_WEBHOOK_URL` + `ARCHIVE_NIGHTLY_NOTIFY_COMMAND` + safe `argv`-passed macOS Notification Center alerts), and provides `--status [--max-age-hours 30] [--notify]` plus `--install-watch` (`ai.spicygov.archive-nightly-watch`) so post-run failure and staleness checks survive app restarts and reboots. Covered by `scripts/tests/test_nightly_publish_watch.py`.
+- (5) Done: excluded `path.name == 'engine.log'` from work-folder `max_output_bytes` sums in `packages/congress_api/src/congress_api/lake/daily.py` (`_activate_record_transition`) and `packages/viewer_publication/src/viewer_publication/archive_house_xml_dispositions.py` (`_space`), covered by `test_work_output_byte_limits_ignore_engine_logs` in `packages/viewer_publication/tests/test_house_xml_dispositions.py`.

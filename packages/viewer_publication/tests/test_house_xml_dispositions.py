@@ -708,3 +708,49 @@ activation.execute_activation(dict(work={str(tmp_path / 'activation')!r},
                     os.kill(pid, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
+
+
+def test_work_output_byte_limits_ignore_engine_logs(tmp_path, writer, monkeypatch):
+    """ct-b7bv item 5: engine.log files in job work folders do not count against max_output_bytes."""
+    work = tmp_path / 'space-check'
+    (work / 'subjob').mkdir(parents=True)
+    (work / 'subjob/engine.log').write_bytes(b'e' * 2048)
+    (work / 'subjob/result.json').write_bytes(b'{}')
+    transition._space(work, dict(min_disk_bytes=1, max_output_bytes=64))
+    (work / 'subjob/payload.bin').write_bytes(b'p' * 128)
+    with pytest.raises(ValueError, match='exceeded its output byte limit'):
+        transition._space(work, dict(min_disk_bytes=1, max_output_bytes=64))
+
+    case_ok = tmp_path / 'activation-tight'
+    case_ok.mkdir()
+    spec2, _ = activation_fixture(case_ok, writer, monkeypatch)
+    spec2['house_xml_activation']['max_output_bytes'] = 256 << 10
+    from congress_api.lake import tables
+    real_resolve = tables.resolve_tables
+
+    def resolve_leaving_large_engine_log(*args, **kwargs):
+        out = real_resolve(*args, **kwargs)
+        log_dir = Path(kwargs['work'])
+        log_dir.mkdir(parents=True, exist_ok=True)
+        (log_dir / 'engine.log').write_bytes(b'x' * (512 << 10))
+        return out
+
+    monkeypatch.setattr(tables, 'resolve_tables', resolve_leaving_large_engine_log)
+    assert activate(spec2)['status'] == 'activated'
+
+    case_bad = tmp_path / 'activation-overflow'
+    case_bad.mkdir()
+    spec3, _ = activation_fixture(case_bad, writer, monkeypatch)
+    spec3['house_xml_activation']['max_output_bytes'] = 256 << 10
+
+    def resolve_leaving_large_artifact(*args, **kwargs):
+        out = real_resolve(*args, **kwargs)
+        out_dir = Path(kwargs['work'])
+        out_dir.mkdir(parents=True, exist_ok=True)
+        (out_dir / 'unexpected.bin').write_bytes(b'y' * (512 << 10))
+        return out
+
+    monkeypatch.setattr(tables, 'resolve_tables', resolve_leaving_large_artifact)
+    with pytest.raises(ValueError, match='exceeded its output byte limit'):
+        activate(spec3)
+

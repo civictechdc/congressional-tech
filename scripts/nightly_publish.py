@@ -18,8 +18,10 @@ or refusal. Completed and superseded candidates leave their evidence in the run 
 A directory ending in `-retiring` contains detached work from an interrupted archive or cleanup.
 It stays outside automatic reuse. An operator can reclaim it after confirming its evidence is retained.
 
-    python3 scripts/nightly_publish.py --install   # write and load the launchd agent
-    python3 scripts/nightly_publish.py              # one run now (what launchd calls)
+    python3 scripts/nightly_publish.py --install        # write and load the launchd agent
+    python3 scripts/nightly_publish.py --install-watch  # write and load the durable post-run watch agent
+    python3 scripts/nightly_publish.py --status         # check durable status/freshness (exit 1 on failed/stale)
+    python3 scripts/nightly_publish.py                  # one run now (what launchd calls)
 """
 import argparse
 import datetime
@@ -31,14 +33,18 @@ import plistlib
 import re
 import resource
 import runpy
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
 import time
+import urllib.request
 from pathlib import Path
 
 LABEL = 'ai.spicygov.archive-nightly'
+WATCH_LABEL = 'ai.spicygov.archive-nightly-watch'
+DEFAULT_MAX_AGE_HOURS = 30.0
 EVIDENCE_MAX_BYTES = 5 * 1024 * 1024
 # launchd starts an agent with 256 open files. The model's engine holds scratch files for retained step
 # results, its spill directory, the release's output files and the lake readers at once, and the first
@@ -509,9 +515,178 @@ def run(worktree, prepare_only, *, lock_fd=None):
                 except (OSError, ValueError) as error:
                     summary['daily_summary_error'] = str(error)
             summary['finished'] = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%SZ')
-            (evidence / 'summary.json').write_text(json.dumps(summary, indent=2, sort_keys=True) + '\n')
+            summary_path = evidence / 'summary.json'
+            summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + '\n')
+            record_run_state(nightly, summary, summary_path=summary_path, prepare_only=prepare_only)
+            if not prepare_only and summary.get('exit', 1) != 0:
+                notify_failure(main, summary)
     print(json.dumps(summary, sort_keys=True))
     return summary['exit']
+
+
+def _atomic_json(path, payload):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f'.{path.name}.{os.getpid()}.tmp')
+    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + '\n', encoding='utf-8')
+    temporary.replace(path)
+
+
+def record_run_state(nightly_dir, summary, *, summary_path, prepare_only=False):
+    """Persist durable latest-summary and last-failure pointers across restarts (ct-b7bv)."""
+    if prepare_only:
+        return
+    try:
+        entry = dict(summary, summary_path=str(summary_path))
+        _atomic_json(nightly_dir / 'latest-summary.json', entry)
+        failure_path = nightly_dir / 'last-failure.json'
+        if summary.get('exit', 1) != 0:
+            _atomic_json(failure_path, entry)
+        else:
+            failure_path.unlink(missing_ok=True)
+    except OSError as error:
+        print(f'nightly: run state not recorded: {error!r}', file=sys.stderr)
+
+
+def _parse_utc_stamp(text):
+    for fmt in ('%Y%m%dT%H%M%S.%fZ', '%Y%m%dT%H%M%SZ'):
+        try:
+            return datetime.datetime.strptime(text, fmt).replace(tzinfo=datetime.timezone.utc)
+        except ValueError:
+            continue
+    raise ValueError(f'Invalid nightly UTC stamp: {text!r}')
+
+
+def _lock_is_held(lock_path):
+    if not lock_path.is_file():
+        return False
+    with lock_path.open('a') as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(lock, fcntl.LOCK_UN)
+        return False
+
+
+def _latest_recorded_summary(nightly_dir):
+    pointer = nightly_dir / 'latest-summary.json'
+    if pointer.is_file():
+        return json.loads(pointer.read_text(encoding='utf-8'))
+    if not nightly_dir.is_dir():
+        return None
+    stamp_re = re.compile(r'^\d{8}T\d{6}(?:\.\d+)?Z$')
+    candidates = sorted(
+        (child for child in nightly_dir.iterdir()
+         if child.is_dir() and stamp_re.match(child.name) and (child / 'summary.json').is_file()),
+        key=lambda path: path.name,
+        reverse=True,
+    )
+    if not candidates:
+        return None
+    summary_path = candidates[0] / 'summary.json'
+    return dict(json.loads(summary_path.read_text(encoding='utf-8')), summary_path=str(summary_path))
+
+
+def notify_failure(main, summary, *, reason=None):
+    """Best-effort failure/staleness notification across webhook, command, and macOS alert (ct-b7bv)."""
+    delivered = {}
+    config = {}
+    config_path = main / '.cache/archive-release/remote-runtime/notify.json'
+    try:
+        if config_path.is_file():
+            loaded = json.loads(config_path.read_text(encoding='utf-8'))
+            if isinstance(loaded, dict):
+                config = loaded
+    except (OSError, ValueError) as error:
+        delivered['config_error'] = f'{type(error).__name__}: {error}'
+
+    message = reason or summary.get('reason') or f"step {summary.get('step', 'nightly')} exited {summary.get('exit', 1)}"
+    payload = dict(summary, reason=message)
+    webhook_url = os.environ.get('ARCHIVE_NIGHTLY_WEBHOOK_URL') or config.get('webhook_url')
+    command = os.environ.get('ARCHIVE_NIGHTLY_NOTIFY_COMMAND') or config.get('command')
+    macos_enabled = config.get('macos_notification', sys.platform == 'darwin')
+    if os.environ.get('ARCHIVE_NIGHTLY_NO_MACOS_NOTIFY') == '1':
+        macos_enabled = False
+
+    if webhook_url:
+        try:
+            body = json.dumps(payload, sort_keys=True).encode('utf-8')
+            request = urllib.request.Request(
+                webhook_url, data=body, headers={'Content-Type': 'application/json'}, method='POST')
+            with urllib.request.urlopen(request, timeout=15):
+                delivered['webhook'] = 'sent'
+        except Exception as error:
+            delivered['webhook_error'] = f'{type(error).__name__}: {error}'
+            print(f'nightly: webhook notification failed: {error!r}', file=sys.stderr)
+
+    if command:
+        try:
+            argv = shlex.split(command) if isinstance(command, str) else list(map(str, command))
+            subprocess.run(argv, input=json.dumps(payload, sort_keys=True) + '\n',
+                           text=True, capture_output=True, timeout=30, check=True)
+            delivered['command'] = 'sent'
+        except Exception as error:
+            delivered['command_error'] = f'{type(error).__name__}: {error}'
+            print(f'nightly: command notification failed: {error!r}', file=sys.stderr)
+
+    if macos_enabled and shutil.which('osascript'):
+        try:
+            subprocess.run(
+                ['osascript', '-e',
+                 'on run argv\ndisplay notification (item 1 of argv) with title "Archive nightly publish"\nend run',
+                 message],
+                capture_output=True, text=True, timeout=10, check=True)
+            delivered['macos'] = 'sent'
+        except Exception as error:
+            delivered['macos_error'] = f'{type(error).__name__}: {error}'
+    return delivered
+
+
+def check_status(main, *, max_age_hours=DEFAULT_MAX_AGE_HOURS, notify=False, now=None):
+    """Inspect durable nightly state; return (report, exit_code) where exit_code != 0 needs attention."""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    nightly_dir = main / '.cache/archive-release/nightly'
+    running = _lock_is_held(nightly_dir / 'lock')
+    try:
+        latest = _latest_recorded_summary(nightly_dir)
+        last_failure_path = nightly_dir / 'last-failure.json'
+        last_failure = json.loads(last_failure_path.read_text(encoding='utf-8')) if last_failure_path.is_file() else None
+    except (OSError, ValueError) as error:
+        reason = f'corrupt nightly state: {type(error).__name__}: {error}'
+        report = dict(status='failed', running=running, max_age_hours=max_age_hours, reason=reason)
+        if notify:
+            report['notified'] = notify_failure(main, report, reason=reason)
+        return report, 1
+
+    if running:
+        return dict(status='running', running=True, latest=latest), 0
+    if latest is None:
+        report = dict(status='missing', running=False, max_age_hours=max_age_hours,
+                      reason='no nightly summary recorded')
+        if notify:
+            report['notified'] = notify_failure(main, report, reason=report['reason'])
+        return report, 1
+
+    stamp = latest.get('finished') or latest.get('started')
+    age_hours = round((now - _parse_utc_stamp(stamp)).total_seconds() / 3600.0, 2) if stamp else None
+    if last_failure is not None or latest.get('exit', 1) != 0 or latest.get('status') not in ('ok', 'prepared'):
+        failed = last_failure or latest
+        reason = f"last nightly failed at step {failed.get('step', 'unknown')} (exit {failed.get('exit', 1)})"
+        report = dict(status='failed', running=False, age_hours=age_hours, max_age_hours=max_age_hours,
+                      latest=latest, last_failure=failed, reason=reason)
+        if notify:
+            report['notified'] = notify_failure(main, failed, reason=reason)
+        return report, 1
+
+    if age_hours is None or age_hours > max_age_hours:
+        reason = f'last nightly ok summary is {age_hours}h old (max {max_age_hours}h)'
+        report = dict(status='stale', running=False, age_hours=age_hours, max_age_hours=max_age_hours,
+                      latest=latest, reason=reason)
+        if notify:
+            report['notified'] = notify_failure(main, latest, reason=reason)
+        return report, 1
+
+    return dict(status='ok', running=False, age_hours=age_hours, max_age_hours=max_age_hours, latest=latest), 0
 
 
 def real_tool(name):
@@ -551,11 +726,51 @@ def install(main, hour, minute):
     return 0
 
 
+def install_watch(main, hour, minute, max_age_hours=DEFAULT_MAX_AGE_HOURS):
+    """Install a durable launchd watcher that checks nightly freshness/outcome across app restarts."""
+    git_tool = real_tool('git')
+    if not git_tool:
+        raise SystemExit('nightly watch install refused: git must be on PATH')
+    path = list(dict.fromkeys([str(Path(git_tool).parent), '/usr/bin', '/bin', '/usr/sbin', '/sbin']))
+    logs = main / '.cache/archive-release/nightly'
+    logs.mkdir(parents=True, exist_ok=True)
+    agent = dict(
+        Label=WATCH_LABEL,
+        ProgramArguments=[
+            '/usr/bin/python3', str(main / 'scripts/nightly_publish.py'),
+            '--status', '--notify', '--max-age-hours', str(max_age_hours),
+        ],
+        WorkingDirectory=str(main),
+        EnvironmentVariables=dict(PATH=':'.join(path), HOME=str(Path.home())),
+        StartCalendarInterval=dict(Hour=hour, Minute=minute),
+        StandardOutPath=str(logs / 'watch.out.log'),
+        StandardErrorPath=str(logs / 'watch.err.log'),
+        ProcessType='Standard',
+    )
+    target = Path.home() / 'Library/LaunchAgents' / f'{WATCH_LABEL}.plist'
+    target.write_bytes(plistlib.dumps(agent))
+    domain = f'gui/{os.getuid()}'
+    subprocess.run(['launchctl', 'bootout', f'{domain}/{WATCH_LABEL}'], stderr=subprocess.DEVNULL)
+    subprocess.run(['launchctl', 'bootstrap', domain, str(target)], check=True)
+    print(json.dumps(dict(installed=str(target), schedule=f'{hour:02d}:{minute:02d} local', max_age_hours=max_age_hours)))
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--install', action='store_true', help='Write and load the launchd agent, then exit')
+    parser.add_argument('--install-watch', action='store_true',
+                        help='Write and load the durable launchd post-run watcher agent, then exit')
+    parser.add_argument('--status', action='store_true',
+                        help='Check durable nightly status and freshness (exit 0 when healthy/running, 1 otherwise)')
+    parser.add_argument('--notify', action='store_true',
+                        help='With --status, send a failure/staleness notification when attention is required')
+    parser.add_argument('--max-age-hours', type=float, default=DEFAULT_MAX_AGE_HOURS,
+                        help='Maximum hours since the last ok summary before --status reports stale')
     parser.add_argument('--hour', type=int, default=5)
     parser.add_argument('--minute', type=int, default=30)
+    parser.add_argument('--watch-hour', type=int, default=8)
+    parser.add_argument('--watch-minute', type=int, default=30)
     parser.add_argument('--prepare', action='store_true', help='Run every setup step but not the publish')
     parser.add_argument('--in-worktree', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--lock-fd', type=int, help=argparse.SUPPRESS)
@@ -564,6 +779,12 @@ def main(argv=None):
     main_root = main_checkout(here)
     if args.install:
         return install(main_root, args.hour, args.minute)
+    if args.install_watch:
+        return install_watch(main_root, args.watch_hour, args.watch_minute, args.max_age_hours)
+    if args.status:
+        report, code = check_status(main_root, max_age_hours=args.max_age_hours, notify=args.notify)
+        print(json.dumps(report, sort_keys=True))
+        return code
     before, after = raise_file_limit()
     if before != after:
         print(f'nightly: open-file limit raised from {before} to {after}', file=sys.stderr)

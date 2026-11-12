@@ -1529,7 +1529,7 @@ def _activate_record_transition(prepared,*,engine,raw_store,producer_records,cat
 
     def save():
         if disk_usage(work).free<min_disk_bytes:raise ValueError(f'{label} activation reached its disk floor')
-        if sum(path.stat().st_size for path in work.rglob('*') if path.is_file())>max_output_bytes:
+        if sum(path.stat().st_size for path in work.rglob('*') if path.is_file() and path.name!='engine.log')>max_output_bytes:
             raise ValueError(f'{label} activation exceeded its output byte limit')
         durable_json(state_path,state)
 

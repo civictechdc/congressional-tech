@@ -123,7 +123,7 @@ def _strict_success(name, row):
 def _space(work, limits):
     if shutil.disk_usage(work).free < limits['min_disk_bytes']:
         raise ValueError('House XML transition reached its free disk floor')
-    if sum(path.stat().st_size for path in work.rglob('*') if path.is_file()) > limits['max_output_bytes']:
+    if sum(path.stat().st_size for path in work.rglob('*') if path.is_file() and path.name != 'engine.log') > limits['max_output_bytes']:
         raise ValueError('House XML transition exceeded its output byte limit')
 
 
