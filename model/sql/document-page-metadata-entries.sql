@@ -39,7 +39,7 @@ sized AS (
  SELECT *,
   128+octet_length(json_array(field,value,format,path,cast(date AS VARCHAR),precision,cast(selected AS VARCHAR))) AS literal_bytes,
   octet_length(json_array(context_url,resolved)) AS address_bytes,
-  row_number() OVER (PARTITION BY doc_key,field,path ORDER BY context_url) AS literal_position
+  row_number() OVER (PARTITION BY doc_key,field,path ORDER BY context_url,value,format) AS literal_position
  FROM entries
 )
 SELECT * FROM sized

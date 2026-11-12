@@ -377,3 +377,90 @@ def test_shared_html_reader_fixture(tmp_path):
     assert testimony['selected_text'] == expected
     assert testimony['main_content']['text_sha256'] == hashlib.sha256(expected.encode()).hexdigest()
     assert testimony['main_content']['text_available']
+
+
+def test_repeated_pointer_picks_do_not_depend_on_reading_field_order(tmp_path):
+    body = page(title='Tie check')
+    digest = hashlib.sha256(body).hexdigest()
+    tied_fields = [
+        dict(field='main_content:outcome', value='none'),
+        dict(field='fact:published_time /formats/opengraph/items/0/properties/0/1', value='2025-04-02'),
+        dict(field='fact:published_time /formats/opengraph/items/0/properties/0/1', value='2025-04-01'),
+        dict(field='fact:modified_time /formats/opengraph/items/0/properties/1/1', value='2025-05-03'),
+        dict(field='fact:modified_time /formats/opengraph/items/0/properties/1/1', value='2025-05-01'),
+        dict(field='fact:declared_url /head_links/0/href', value='/z-target'),
+        dict(field='fact:declared_url /head_links/0/href', value='/a-target'),
+        dict(field='fact:section /formats/opengraph/items/0/properties/2/1', value='Zebra'),
+        dict(field='fact:section /formats/opengraph/items/0/properties/2/1', value='Alpha'),
+    ]
+
+    def execute_order(label, ordered_fields):
+        from viewer_publication.archive_model import registry_inputs
+        sub = tmp_path / label
+        docs = [dict(doc_key='doc', format='html', source_url='https://tie.test/page', body_hex=digest)]
+        contexts = [dict(source_id='doc', body_sha=digest, context_url='https://tie.test/page', outcome='stored', is_real_file=True)]
+        readings = [dict(body_hex=digest, parser='html_metadata', parser_version='test-pin', status='completed',
+                         error_type=None, title='Tie check', base_href=None, text_bytes=10, text_head='Body',
+                         fields=ordered_fields)]
+        inputs = registry_inputs(sub / 'registries') + [
+            json_input(sub, 'document_identities', [dict(document_id='doc', component='doc')], document_id='Utf8', component='Utf8'),
+            json_input(sub, 'document_members', [dict(component='doc', source_id='doc', body_sha=digest)], component='Utf8', source_id='Utf8', body_sha='Utf8'),
+            json_input(sub, 'capture_sources', contexts, source_id='Utf8', body_sha='Utf8', context_url='Utf8', outcome='Utf8', is_real_file='Boolean'),
+            json_input(sub, 'base_normalized', docs, doc_key='Utf8', format='Utf8', source_url='Utf8', body_hex='Utf8'),
+            json_input(sub, 'parser_versions', [dict(parser='html_metadata', version='test-pin')], parser='Utf8', version='Utf8'),
+            json_input(sub, 'accepted_versions', [dict(parser='html_metadata', version='test-pin')], parser='Utf8', version='Utf8'),
+            json_input(sub, 'active_unreadable', [], id='Utf8', body_sha256='Utf8', parser='Utf8', parser_version='Utf8', reason='Utf8', decided_at='Utf8'),
+            json_input(sub, 'readings_json', readings, body_hex='Utf8', parser='Utf8', parser_version='Utf8', status='Utf8', error_type='Utf8',
+                       title='Utf8', base_href='Utf8', text_bytes='Int64', text_head='Utf8', fields=list_of(struct(field='Utf8', value='Utf8'))),
+        ]
+        steps = [dict(name='selected_readings', sql="""SELECT arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha,
+                     * EXCLUDE(body_hex,text_bytes),cast(text_bytes AS INT) AS text_bytes FROM readings_json""")]
+        steps += [dict(name=name.replace('-', '_'), sql=(ROOT / 'model/sql' / (name + '.sql')).read_text(), materialize=True)
+                  for name in PAGE_METADATA_STEPS]
+        query = dict(name='out', sql="""SELECT cast(published_on AS VARCHAR) AS published_on,
+            cast(modified_on AS VARCHAR) AS modified_on, publisher_labels, page_metadata
+            FROM document_page_metadata WHERE doc_key='doc'""")
+        with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+            return run_job(sub / 'job', engine, inputs=inputs, steps=steps, outputs=[], queries=[query])['out'][0]
+
+    forward = execute_order('forward', tied_fields)
+    backward = execute_order('backward', list(reversed(tied_fields)))
+    assert forward == backward
+    assert (forward['published_on'], forward['modified_on']) == ('2025-04-01', '2025-05-01')
+    assert forward['publisher_labels'] == ['Alpha', 'Zebra']
+    assert [e['value'] for e in forward['page_metadata'] if e['field'] == 'declared_url'] == ['/a-target', '/z-target']
+
+
+def test_release_invariant_refuses_duplicate_page_metadata_pointers(tmp_path):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from viewer_publication.archive_model import build_release
+
+    _release(tmp_path / 'base', with_metadata=True)
+    readings_path = tmp_path / 'base/readings/readings.parquet'
+    table = pq.read_table(readings_path)
+    rows = table.to_pylist()
+    for row in rows:
+        if row['parser'] == 'html_metadata':
+            fact = next(f for f in row['fields'] if f['field'].startswith('fact:'))
+            row['fields'] = list(row['fields']) + [dict(field=fact['field'], value=fact['value'] + '-dup')]
+    dup_readings = tmp_path / 'dup-readings.parquet'
+    pq.write_table(pa.Table.from_pylist(rows, schema=table.schema), dup_readings)
+    record = json.loads((tmp_path / 'base/model/profile.json').read_text())
+    profile = record['profile']
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    with pytest.raises(ValueError, match='Release key invariant failed'):
+        build_release(
+            captures=record['snapshots']['captures']['path'],
+            readings=dup_readings,
+            filename_readings=record['snapshots']['filename_readings']['path'],
+            parser_versions=profile['parser_versions'],
+            catalog_version=profile['catalog_version'],
+            engine=engine,
+            output=tmp_path / 'bad-release',
+            scratch=tmp_path / 'bad-model',
+        )
+    retained = json.loads((tmp_path / 'bad-model/result.json').read_text())
+    reports = {q['name']: q['data'] for q in retained['queries']}
+    assert reports['model_invariants'][0]['duplicate_page_metadata_pointers'] == 1
+

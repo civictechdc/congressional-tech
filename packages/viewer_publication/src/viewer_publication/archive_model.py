@@ -1339,6 +1339,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     from viewer_publication.archive_model_profile import completeness_checks
     steps += application_steps(root=root)
     steps += _sql_steps(PAGE_METADATA_STEPS,root=root)
+    steps += [dict(name='page_metadata_pointer_repeats',sql="""SELECT count(*) AS n FROM (
+        SELECT body_sha,field,path FROM page_metadata_values GROUP BY body_sha,field,path HAVING count(*)>1)""",materialize=True)]
     from viewer_publication.archive_format import PAGE_COLUMNS,PAGE_DEFAULTS
     page=','.join(f'coalesce(pm.{c},{PAGE_DEFAULTS[c]}) AS {c}' if c in ('publisher_labels','page_metadata') else f'pm.{c}' for c in PAGE_COLUMNS)
     # hidden is IS TRUE, not coalesce(..., false): same values, and the column stays required when an
@@ -1650,6 +1652,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             (SELECT count(*) FROM saved_files s JOIN saved_files n ON n.component=s.component AND n.body_sha=s.body_sha
                 AND coalesce(n.filename,'')<>'' WHERE s.saved_rank=1 AND coalesce(s.filename,'')='') AS saved_unnamed_with_named_sibling,
             ({CONTRADICTED_OFFICIAL_SAVED_NAMES_SQL}) AS contradicted_official_saved_names,
+            (SELECT n FROM page_metadata_pointer_repeats) AS duplicate_page_metadata_pointers,
             (SELECT count(*) FROM (SELECT unnest(alternates) AS alt FROM document_alternates) WHERE alt['size'] IS NULL) AS missing_alternate_sizes,
             (SELECT count(*) FROM (
                 SELECT cast(m['event_id'] AS BIGINT) AS event_id

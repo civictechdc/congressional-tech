@@ -1,7 +1,7 @@
--- A page's declared dates, per body: the first valid value by registry format rank, then pointer.
+-- A page's declared dates, per body: the first valid value by registry format rank, then pointer, then value.
 WITH ranked AS (
  SELECT v.body_sha,v.field,v.date,row_number() OVER(PARTITION BY v.body_sha,v.field
-   ORDER BY coalesce(r.number,99),v.path) AS choice,v.path
+   ORDER BY coalesce(r.number,99),v.path,v.date,v.value) AS choice,v.path
  FROM page_metadata_values v LEFT JOIN page_signals r ON r.kind='date_format' AND regexp_like(v.format,r.pattern)
  WHERE v.field IN ('published_time','modified_time') AND v.date IS NOT NULL
 )

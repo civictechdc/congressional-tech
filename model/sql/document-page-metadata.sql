@@ -36,7 +36,7 @@ listed AS (
  SELECT doc_key,
   array_agg(named_struct('field',field,'value',value,'format',format,'path',path,'date',date,'precision',precision,
    'resolved',CASE WHEN expanded_bytes<=65536 THEN resolved END,'selected',coalesce(selected,false),
-   'context_url',CASE WHEN expanded_bytes<=65536 THEN context_url END) ORDER BY field,rank,path,context_url)
+   'context_url',CASE WHEN expanded_bytes<=65536 THEN context_url END) ORDER BY field,rank,path,context_url,value,format)
    -- Keep the exact pointers for summaries before spending the budget on alternatives.
    FILTER (WHERE expanded_bytes<=65536 OR (literal_position=1 AND
     (base_bytes<=65536 OR (selected AND selected_bytes<=65536)))) AS page_metadata,
@@ -44,7 +44,7 @@ listed AS (
  FROM measured GROUP BY doc_key
 ),
 labels AS (
- SELECT body_sha,array_agg(value ORDER BY path) AS publisher_labels
+ SELECT body_sha,array_agg(value ORDER BY path,value) AS publisher_labels
  FROM (SELECT body_sha,trim(value) AS value,min(path) AS path FROM page_metadata_values
        WHERE field='section' AND trim(value)<>'' GROUP BY body_sha,trim(value))
  GROUP BY body_sha
