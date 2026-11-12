@@ -214,7 +214,7 @@
         {
           "name": "title_source",
           "type": "dict",
-          "meaning": "Which candidate gave the title: correction, page_title, page_heading (including a dead source page the document showed), link_text, other_format_page_title, other_format_page_heading, copy_link_text, recovered_copy, or label_witness (a label with the witness name); null when untitled",
+          "meaning": "Which candidate gave the title: correction, page_title, page_heading (including a dead source page the document showed), link_text, other_format_page_title, other_format_page_heading, copy_link_text, recovered_copy, mods_title, or label_witness (a label with the witness name); null when untitled",
           "nullable": true
         },
         {

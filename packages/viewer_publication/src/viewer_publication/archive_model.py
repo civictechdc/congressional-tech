@@ -1369,10 +1369,12 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     # kind and family published-hearing; a review override still wins for the kind.
     slug_list=lambda column:f"CASE WHEN coalesce(array_length(n.{column}),0)>0 OR uf.doc_key IS NULL THEN n.{column} ELSE uf.{column} END"
     printed=lambda column:f"CASE WHEN pc.doc_key IS NULL THEN {slug_list(column)} ELSE array_sort(array_distinct(array_replace_all({slug_list(column)},'transcript','published-hearing'))) END"
-    steps += [dict(name='normalized',sql=f"""SELECT n.* EXCLUDE(filename,own_title,own_title_source,link_title,component,document_kind,document_family,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source,facts),
+    steps += [dict(name='normalized',sql=f"""SELECT n.* EXCLUDE(filename,own_title,own_title_source,link_title,mods_title,component,document_kind,document_family,congress,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source,facts),
         CASE WHEN uf.doc_key IS NULL THEN n.filename ELSE uf.filename END AS filename,
         t.title,t.title_source,coalesce(r.kind_override,{printed('document_kind')}) AS document_kind,
         {printed('document_family')} AS document_family,
+        coalesce(n.congress,CASE WHEN h.document_date>=DATE '1789-03-04' AND date_part('year',h.document_date)<=2028
+         THEN cast((cast(date_part('year',h.document_date) AS INT)-CASE WHEN substr(cast(h.document_date AS VARCHAR),6,5)<'01-03' THEN 1 ELSE 0 END-1789)/2+1 AS SMALLINT) END) AS congress,
         r.hidden IS TRUE AS hidden,r.note AS review_note,r.decided_at AS review_decided_at,x.removed_on,
         CASE WHEN h.doc_key IS NULL THEN n.document_date ELSE h.document_date END AS document_date,
         CASE WHEN h.doc_key IS NULL THEN n.document_date_source ELSE h.document_date_source END AS document_date_source,

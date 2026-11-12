@@ -50,7 +50,21 @@ WITH hhrg_slugs AS (
  FROM hhrg_slugs h
  JOIN unambiguous_slug_witness u ON u.event_id=h.event_id AND u.norm_slug=h.norm_slug
  WHERE h.norm_slug<>''
+), chrg_packages AS (
+ SELECT DISTINCT component,package_id FROM document_packages WHERE regexp_like(package_id,'(?i)^CHRG-')
+ UNION
+ SELECT DISTINCT r.component,a.package_id
+ FROM saved_recoveries r
+ JOIN effective_filenames n ON n.input_id='recovery:'||r.id
+ JOIN source_files f ON f.body_sha IS NULL AND f.source_url=r.original_url AND f.filename=n.filename
+ JOIN source_annotations a ON f.source_id=a.source_id
+ WHERE regexp_like(a.package_id,'(?i)^CHRG-')
 )
 SELECT component,witness_key FROM document_witness_url_matches
 UNION
 SELECT component,witness_key FROM slug_matched_members
+UNION
+SELECT DISTINCT p.component,w.witness_key
+FROM chrg_packages p
+JOIN appearance_records_resolved w ON w.package_id=p.package_id
+WHERE w.package_id IS NOT NULL

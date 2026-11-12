@@ -759,7 +759,8 @@ def test_a_package_mods_names_its_meeting_as_a_transcript_link(tmp_path):
     empty = "SELECT cast(NULL AS VARCHAR) AS package_id WHERE false"
     steps = [dict(name='meetings_resolved', sql=' UNION ALL '.join(MEETINGS), materialize=True),
              dict(name='source_annotations', sql=empty, materialize=True),
-             dict(name='document_packages', sql=empty, materialize=True),
+             dict(name='document_packages', sql="SELECT cast(NULL AS VARCHAR) AS component,cast(NULL AS VARCHAR) AS package_id WHERE false", materialize=True),
+             dict(name='document_metadata', sql="SELECT cast(NULL AS VARCHAR) AS component,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS meeting_keys WHERE false", materialize=True),
              dict(name='selected_appearance_records', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS VARCHAR) AS status WHERE false", materialize=True),
              dict(name='captures', sql=CAPTURES, materialize=True),
              dict(name='appearance_people', sql="SELECT cast(NULL AS VARCHAR) AS record_sha_hex,cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source,"
@@ -1041,7 +1042,7 @@ def test_two_way_witness_precedence_and_hmtg_sha_prefixed_slugs_in_document_witn
                  record_sha_hex='44' * 32, ordinal=0, event_id=327161, name='Jerome H. Powell',
                  page_url=banking.replace('/hearings/', '/'), document_urls=[banking + '/testimony']),
         ], witness_key='Utf8', occasion='Utf8', source='Utf8', record_sha_hex='Utf8',
-           ordinal='Int64', event_id='Int64', name='Utf8', page_url='Utf8', document_urls=list_of('Utf8')),
+           ordinal='Int64', event_id='Int64', package_id='Utf8', name='Utf8', page_url='Utf8', document_urls=list_of('Utf8')),
         json_input(tmp_path, 'senate_page_meeting_links', [
             dict(record_sha_hex='44' * 32, event_id=327161, banking_hearing_url=banking),
         ], record_sha_hex='Utf8', event_id='Int64', banking_hearing_url='Utf8'),

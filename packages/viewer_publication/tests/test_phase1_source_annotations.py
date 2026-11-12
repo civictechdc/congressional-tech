@@ -64,7 +64,7 @@ def test_source_annotations_keep_pins_names_keys_and_publisher_priority(tmp_path
            dict(source_id='s3',doc_type=None,text='Later label',page_body='other',context='https://publisher.test/later',first_good_at='2026-10-22T12:00:00Z',link_index=0,split_position=0)]
     for row in links:row['context_url']=row['context'];row['context']='endpoint:'+row['context']
     inputs.append(json_input(tmp_path,'publisher_links',links,source_id='Utf8',doc_type='Utf8',text='Utf8',page_body='Utf8',context='Utf8',context_url='Utf8',first_good_at='Utf8',link_index='Int64',split_position='Int64'))
-    steps=[dict(name='capture_source_contexts',sql='SELECT * FROM capture_sources'),dict(name='page_facts',sql="SELECT decode(body_hex,'hex') AS body_sha,* EXCLUDE(body_hex),cast(content_date AS DATE) AS day FROM page_inputs"),
+    steps=[dict(name='capture_source_contexts',sql='SELECT * FROM capture_sources'),dict(name='page_facts',sql="SELECT decode(body_hex,'hex') AS body_sha,* EXCLUDE(body_hex),cast(content_date AS DATE) AS day,cast(NULL AS VARCHAR) AS xml_root,cast(NULL AS VARCHAR) AS text_head FROM page_inputs"),
            dict(name='spicy_committees',sql="SELECT 'SSBK00' AS system_code,cast(NULL AS VARCHAR) AS parent_system_code,'https://www.banking.senate.gov/' AS website_url"),
            dict(name='meeting_document_urls',sql='SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS url WHERE false'),
            dict(name='model_url_keys',sql='SELECT cast(NULL AS VARCHAR) AS url,cast(NULL AS VARCHAR) AS url_key,cast(NULL AS VARCHAR) AS error WHERE false'),
@@ -136,7 +136,7 @@ def test_a_filename_names_only_a_govinfo_package_and_an_act_title_year_dates_not
             context_url='Utf8',first_good_at='Utf8',link_index='Int64',split_position='Int64'),
         json_input(tmp_path,'page_inputs',[],body_hex='Utf8',status='Utf8',title='Utf8',heading='Utf8',content_date='Utf8',named_meetings=list_of('Int64'))]
     steps=[dict(name='capture_source_contexts',sql='SELECT * FROM capture_sources WHERE context_url IS NOT NULL'),
-           dict(name='page_facts',sql="SELECT decode(body_hex,'hex') AS body_sha,* EXCLUDE(body_hex),cast(content_date AS DATE) AS day FROM page_inputs"),
+           dict(name='page_facts',sql="SELECT decode(body_hex,'hex') AS body_sha,* EXCLUDE(body_hex),cast(content_date AS DATE) AS day,cast(NULL AS VARCHAR) AS xml_root,cast(NULL AS VARCHAR) AS text_head FROM page_inputs"),
            dict(name='spicy_committees',sql="SELECT cast(NULL AS VARCHAR) AS system_code,cast(NULL AS VARCHAR) AS parent_system_code,cast(NULL AS VARCHAR) AS website_url WHERE false"),
            dict(name='meeting_document_urls',sql='SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS url WHERE false'),
            dict(name='model_url_keys',sql='SELECT cast(NULL AS VARCHAR) AS url,cast(NULL AS VARCHAR) AS url_key,cast(NULL AS VARCHAR) AS error WHERE false'),

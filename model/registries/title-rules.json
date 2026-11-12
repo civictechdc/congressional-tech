@@ -8,7 +8,7 @@
   {
     "id": "link_word_actions",
     "kind": "link_word",
-    "pattern": "(?i)^(click here|please click here|here|link|document|file|download|download file|download pdf|download testimony|download witness testimony|download executive business meeting results|view|view pdf|view testimony|open|read more|more|email|print|share|website|webpage|untitled|attachment)[.!:]*$",
+    "pattern": "(?i)^(click here|please click here|here|link|document|file|download|download file|download pdf|download testimony|download witness testimony|download executive business meeting results|view|view pdf|view testimony|open|read more|more|email|print|share|website|webpage|untitled|attachment|hearings?)[.!:]*$",
     "sample_id": "title-rules:link_word_actions"
   },
   {
@@ -38,7 +38,7 @@
   {
     "id": "link_word_no_name",
     "kind": "link_word",
-    "pattern": "(?i)^(?:[^\\p{L}]*|(?:nos?|number)[.]?[^\\p{L}]*[0-9][^\\p{L}]*)$",
+    "pattern": "(?i)^(?:[^\\p{L}]*|(?:nos?|number)[.]?[^\\p{L}]*[0-9][^\\p{L}]*|_[0-9]+(?:\\s*\\([^)]*\\)?[,;.!:]*)?)$",
     "sample_id": "title-rules:link_word_no_name"
   },
   {

@@ -25,6 +25,13 @@ WITH meeting_jackets AS (
   try_cast((regexp_match(package_id,'(?i)^CHRG-([0-9]+)([hsj])hrg0*([0-9]+)$'))[3] AS BIGINT) AS jacket
  FROM named_packages
  WHERE regexp_like(package_id,'(?i)^CHRG-[0-9]+[hsj]hrg[0-9]+$')
+), linked_print_meetings AS (
+ SELECT DISTINCT dp.package_id,try_cast(mk.meeting_key AS BIGINT) AS event_id,
+  lower((regexp_match(dp.package_id,'(?i)^CHRG-[0-9]+([hsj])hrg[0-9]+$'))[1]) AS chamber_letter
+ FROM document_packages dp
+ JOIN (SELECT component,unnest(meeting_keys) AS meeting_key FROM document_metadata WHERE coalesce(cardinality(meeting_keys),0)>0) mk
+  ON mk.component=dp.component
+ WHERE regexp_like(dp.package_id,'(?i)^CHRG-[0-9]+[hsj]hrg[0-9]+$')
 )
 SELECT DISTINCT p.package_id,m.event_id,m.meeting_date,m.chamber
 FROM parsed_packages p
@@ -35,3 +42,12 @@ WHERE m.chamber IS NULL
    OR (m.chamber='joint' AND p.chamber_letter='j')
 UNION
 SELECT package_id,event_id,meeting_date,chamber FROM meeting_mods_links
+UNION
+SELECT DISTINCT l.package_id,m.event_id,m.meeting_date,m.chamber
+FROM linked_print_meetings l
+JOIN print_meeting_agreement a ON a.package_id=l.package_id AND a.event_id=l.event_id
+JOIN meetings_resolved m ON m.event_id=l.event_id
+WHERE m.chamber IS NULL
+   OR (m.chamber='house' AND l.chamber_letter='h')
+   OR (m.chamber='senate' AND l.chamber_letter='s')
+   OR (m.chamber='joint' AND l.chamber_letter='j')

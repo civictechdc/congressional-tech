@@ -12,15 +12,17 @@ ROOT = Path(__file__).parents[3]
 
 
 def test_titles_keep_each_rule_and_name_the_winning_candidate(tmp_path):
-    def doc(component, own=None, own_source='page_title', link=None, filename='file.pdf'):
+    def doc(component, own=None, own_source='page_title', link=None, mods=None, filename='file.pdf'):
         return dict(doc_key='doc:' + component, component=component, filename=filename, own_title=own,
-                    own_title_source=own if own is None else own_source, link_title=link)
-    docs = [doc('own', own='Hearing on Rural Lands', link='Committee link'),
+                    own_title_source=own if own is None else own_source, link_title=link, mods_title=mods)
+    docs = [doc('own', own='Hearing on Rural Lands', link='Committee link', mods='MODS fallback ignored'),
             doc('heading', own='Opening Statement of Chairman Smith', own_source='page_heading'),
             doc('label_then_link', own='Testimony', link='Statement of Dr. Lee'),
             doc('label_witness', own='Biography'),
             doc('label_named_file', own='Prepared Statement'),
             doc('label_no_file', own='Testimony', filename=''),
+            doc('mods_only', mods='IMPLEMENTATION OF THE FARM BILL'),
+            doc('mods_strip_dash', mods='- CLEAN ENERGY DEPLOYMENT'),
             doc('official'), doc('formats'), doc('both'), doc('edition'), doc('rendition_label'),
             doc('copy'), doc('copy_label', link='Witness Testimony'),
             doc('corrected', own='Hearing as listed')]
@@ -41,7 +43,7 @@ def test_titles_keep_each_rule_and_name_the_winning_candidate(tmp_path):
     rules = json.loads((ROOT / 'model/registries/title-rules.json').read_text())
     inputs = [
         json_input(tmp_path, 'base_normalized', docs, doc_key='Utf8', component='Utf8', filename='Utf8', own_title='Utf8',
-                   own_title_source='Utf8', link_title='Utf8'),
+                   own_title_source='Utf8', link_title='Utf8', mods_title='Utf8'),
         json_input(tmp_path, 'saved_files', files, component='Utf8', source_id='Utf8', body_sha='Utf8', format='Utf8', saved_rank='Int64'),
         json_input(tmp_path, 'source_annotations', annotations, source_id='Utf8', reading_title='Utf8', reading_source='Utf8', listing_title='Utf8'),
         json_input(tmp_path, 'recovered_copy_fills', [dict(component='copy', title='Recovered copy title'), dict(component='copy_label', title='Biography')],
@@ -64,9 +66,11 @@ def test_titles_keep_each_rule_and_name_the_winning_candidate(tmp_path):
         'label_then_link': ('Statement of Dr. Lee', 'link_text'),             # ct-ccsi: a label alone names nothing
         'label_witness': ('Biography - Hon. Jane Doe', 'label_witness'),      # the recovery copy lacked bare "biography"
         'label_no_file': ('Testimony', 'page_title'),                         # kept only with no filename to show
+        'mods_only': ('IMPLEMENTATION OF THE FARM BILL', 'mods_title'),
+        'mods_strip_dash': ('CLEAN ENERGY DEPLOYMENT', 'mods_title'),
         'official': ('Mr. Steve Mathison', 'copy_link_text'),
         'formats': ('H.R. 5376', 'other_format_page_title'),
-        'both': ('- HEARING ON PENDING NOMINATIONS', 'other_format_page_title'),
+        'both': ('HEARING ON PENDING NOMINATIONS', 'other_format_page_title'),
         'copy': ('Recovered copy title', 'recovered_copy'),
         'copy_label': ('Witness Testimony - Ms. Ada Park', 'label_witness'),  # the first label takes the name
         'corrected': ('Hearing on Rural Lands, Part 2', 'correction')}

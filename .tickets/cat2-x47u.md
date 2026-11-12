@@ -1,6 +1,6 @@
 ---
 id: cat2-x47u
-status: open
+status: closed
 deps: []
 links: [ct-jcnd, ct-lft6, ct-esuu, ct-5q3g]
 created: 2026-11-12T12:20:24Z
@@ -16,4 +16,12 @@ From the 22-slice horizontal raw-data audit (P0-1 SQL, F3, P2-9 SQL, F4 SQL): (1
 ## Acceptance Criteria
 
 All 4 SQL/registry gaps fixed with unit & model regressions: CHRG-* rows inherit MODS date/committees/chamber/congress/title/canonical witness_keys and unambiguous package_id->event_id witness link; 0 published titles start with GPO leading '- '; <h1> beats generic/truncated <title> and split/stopword anchors drop; BILLS-*-RCP* rows classify as committee-print / print.
+
+## Notes
+
+**2026-11-12:** Closed on `claude/ct-wave-4-model`:
+- Joined `package_mods_facts` (mapped through `committee_codes`) in `document-normalized.sql` and `document-recovery-normalized.sql`, backfilling `document_date`, `committee_keys`, `chambers` (from `committee_keys` `^h`/`^s`/`^j` + `CHRG-[0-9]{1,3}([hsj])hrg`, fixing `jcse00`/`jjec00` Joint Commission rows and `CHRG-*` prints), `congress` fallback from accepted `document_date`, rank-5 `mods_title` (`titles.sql`), package `witness_keys` (`document-witness-raw-matches.sql`), and vetted single-day `CHRG-*` print->`event_id` links (`meeting-transcript-links.sql`).
+- Stripped GPO leading `^\s*[-–—]+\s+` prefixes in `source-annotations-pages.sql` and `titles.sql` (`rank > 0`).
+- Preferred clean `<h1>` (`page_heading`, stripping Senate ColdFusion SR-only `'Hearing status...: Hearing title...'`) over generic (`hearing | Hearings | ...`, bare committee banner) or `... |`-truncated `<title>` in `source-annotations-final.sql`, `document-recovery-normalized.sql`, and `recovered-copy-fills.sql`; added `hearings?` and split `^_[0-9]+` anchors to `model/registries/title-rules.json`.
+- Classified `BILLS-*-RCP*` as `document_kind = ['committee-print']`, `document_family = ['print']` (`source-annotations-final.sql`) and extracted `'Rules Committee Print ...'` titles from `<amendment-doc>` XML `text_head` (`source-annotations-pages.sql`).
 

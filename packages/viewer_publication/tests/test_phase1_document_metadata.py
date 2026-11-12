@@ -684,7 +684,7 @@ def test_recovery_only_document_reads_the_recovered_page_title_and_the_original_
         json_input(tmp_path, 'source_annotations', [dict(annotation, source_id='s:read', listing_title='Original label'),
                    dict(annotation, source_id='s:label', listing_title='Hearing on Rural Lands')], source_id='Utf8', listing_title='Utf8',
                    document_kind=strings, document_family=strings, committee_keys=strings, chambers=strings, congress='Int32',
-                   filename_date='Utf8', meeting_keys=strings, measure_keys=strings, bioguide_ids=strings, package_id='Utf8',
+                   filename_date='Date32', meeting_keys=strings, measure_keys=strings, bioguide_ids=strings, package_id='Utf8',
                    facts=list_of(struct(field='Utf8', value='Utf8'))),
         json_input(tmp_path, 'evidence', [dict(body_sha=b, format='html', suffix='') for b in ('a' * 64, 'b' * 64)],
                    body_sha='Utf8', format='Utf8', suffix='Utf8'),
@@ -692,10 +692,11 @@ def test_recovery_only_document_reads_the_recovered_page_title_and_the_original_
                                        dict(body_hex='b' * 64, status='completed', title='Untitled', heading=None)],
                    body_hex='Utf8', status='Utf8', title='Utf8', heading='Utf8'),
         json_input(tmp_path, 'capture_rows', [dict(body_hex='a' * 64, media_type='text/html')], body_hex='Utf8', media_type='Utf8'),
-        json_input(tmp_path, 'component_meeting_links', [], component='Utf8', meeting_date='Utf8', meeting_keys=strings, committee_keys=strings, chambers=strings, congress='Int16'),
-        json_input(tmp_path, 'document_witness_keys', [], component='Utf8', witness_keys=strings, witness_name='Utf8')]
+        json_input(tmp_path, 'component_meeting_links', [], component='Utf8', meeting_date='Date32', meeting_keys=strings, committee_keys=strings, chambers=strings, congress='Int16'),
+        json_input(tmp_path, 'document_witness_keys', [], component='Utf8', witness_keys=strings, witness_name='Utf8'),
+        json_input(tmp_path, 'package_mods_facts', [], package_id='Utf8', held_dates=strings, title='Utf8', committees=strings)]
     steps = [dict(name='body_evidence', sql='SELECT * FROM evidence'),
-             dict(name='page_facts', sql="SELECT decode(body_hex,'hex') AS body_sha,status,title,heading,cast(NULL AS DATE) AS content_date FROM pages"),
+             dict(name='page_facts', sql="SELECT decode(body_hex,'hex') AS body_sha,status,title,heading,cast(NULL AS DATE) AS content_date,cast(NULL AS VARCHAR) AS xml_root,cast(NULL AS VARCHAR) AS text_head FROM pages"),
              dict(name='source_annotation_pages', sql=(ROOT / 'model/sql/source-annotations-pages.sql').read_text()),
              dict(name='captures', sql="SELECT decode(body_hex,'hex') AS sha256,media_type FROM capture_rows"),
              dict(name='recovery_rows', sql=(ROOT / 'model/sql/document-recovery-normalized.sql').read_text())]
@@ -869,7 +870,7 @@ def test_the_generic_title_gate_checks_the_titles_the_link_word_rule_keeps(tmp_p
              for i, t in enumerate([aging, 'Click here', 'Download testimony'])]
     inputs = registry_inputs(tmp_path / 'registries') + [json_input(tmp_path, 'pages', pages,
         body_hex='Utf8', status='Utf8', title='Utf8', heading='Utf8')]
-    steps = [dict(name='page_facts', sql="SELECT decode(body_hex,'hex') AS body_sha,status,title,heading,cast(NULL AS DATE) AS content_date FROM pages"),
+    steps = [dict(name='page_facts', sql="SELECT decode(body_hex,'hex') AS body_sha,status,title,heading,cast(NULL AS DATE) AS content_date,cast(NULL AS VARCHAR) AS xml_root,cast(NULL AS VARCHAR) AS text_head FROM pages"),
              dict(name='source_annotation_pages', sql=(ROOT / 'model/sql/source-annotations-pages.sql').read_text()),
              dict(name='ordered', sql="SELECT encode(body_sha,'hex') AS doc_key,title FROM source_annotation_pages")]
     result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps, outputs=[],
