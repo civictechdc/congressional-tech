@@ -10,10 +10,10 @@
   },
   "readings": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/readings/metadata/00031-01a1b1dc-7227-7f82-a1f6-ee10565c8073.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/readings_compact_20261112/metadata/00001-01a1cd81-4240-70f3-be49-119697abc612.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 6716458164553576424,
-    "table_uuid": "01a1a35e-550f-79f2-81a2-b7412fd72bc6"
+    "snapshot": 5394364687916217001,
+    "table_uuid": "01a1cd80-8888-7632-9a00-2f51f88af451"
   },
   "filename_readings": {
     "kind": "native_table",

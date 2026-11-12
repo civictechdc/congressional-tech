@@ -1,0 +1,56 @@
+{
+ "commit": "9d58857c76dda0f78e41d78e0c1f02ec778d98ca",
+ "input": "readings",
+ "job": "packages/viewer_publication/src/viewer_publication/archive_import_job.py",
+ "lockfile_digest": "eecafb7ee62ca6d8c2aee8e9e4e0fe415b020ad8942769d770c7ced9a45c1768",
+ "origin": {
+  "pin": {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/maintenance/readings-move-20261112T0110Z/spec/readings-head-record.json",
+   "sha256": "e66d0a462f90c9e2b06b3c0b38506ddf777df5a3d87dff34d421bfcfd46c642a",
+   "size": 1171
+  },
+  "record": {
+   "base": {
+    "record": {
+     "key": "lake/producers/01a1a35e-550f-79f2-81a2-b7412fd72bc6/7722393312775740574.json",
+     "sha256": "4b2018d7dc4eb28e0f826303234c4dc5408d1a66edf9db8ad330b65bbb6dc6f5",
+     "size": 1171
+    },
+    "selector": {
+     "kind": "native_table",
+     "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/readings/metadata/01294-01a1c1f2-2fd2-7630-a580-97bbf0f2d556.gz.metadata.json",
+     "schema_id": 0,
+     "snapshot": 7722393312775740574,
+     "table_uuid": "01a1a35e-550f-79f2-81a2-b7412fd72bc6"
+    }
+   },
+   "commit": "aef93461758c511fd859d248b8b4718dc9f97489",
+   "decided_at": "2026-10-30T00:00:00Z",
+   "input": "readings",
+   "job": "packages/congress_api/src/congress_api/lake/daily.py",
+   "lockfile_digest": "eecafb7ee62ca6d8c2aee8e9e4e0fe415b020ad8942769d770c7ced9a45c1768",
+   "selector": {
+    "kind": "native_table",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/readings/metadata/01296-01a1c6dd-d252-7a93-9e5d-fa506119d884.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 4472402246940841528,
+    "table_uuid": "01a1a35e-550f-79f2-81a2-b7412fd72bc6"
+   },
+   "version": 1
+  }
+ },
+ "selector": {
+  "kind": "native_table",
+  "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/readings_compact_20261112/metadata/00001-01a1cd81-4240-70f3-be49-119697abc612.gz.metadata.json",
+  "schema_id": 0,
+  "snapshot": 5394364687916217001,
+  "table_uuid": "01a1cd80-8888-7632-9a00-2f51f88af451"
+ },
+ "source": {
+  "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/maintenance/readings-move-20261112T0110Z/export/readings.parquet",
+  "sha256": "59bdfa95ab16554e5681ff31e06ead6cbd01f89fa4ccf435e0b3b86f63b69ad6",
+  "size": 241726756
+ },
+ "verified": "EXCEPT ALL both ways against the source file",
+ "version": 1
+}
