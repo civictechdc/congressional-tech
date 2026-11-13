@@ -210,6 +210,16 @@ def test_missing_extracted_page_remains_pending_and_keeps_completed_page(tmp_pat
     assert list(tmp_path.glob('**/failure-*.json'))
 
 
+def test_producer_refuses_unidentified_replacement_before_any_worker_or_source(tmp_path, monkeypatch):
+    baseline = derivation.native_only()
+    rule = derivation.PageRule(baseline.strategy, checkpoint_identity=baseline.checkpoint_identity,
+        page_overrides={'0' * 64: {1: derivation.PageRule(baseline.strategy)}})
+    monkeypatch.setattr(derivation, 'load_page_rule', lambda spec: rule)
+    with pytest.raises(ValueError, match='reproducible identity'):
+        body_text.stage({}, [], engine=None, work=tmp_path / 'stage', page_checkpoints=tmp_path / 'pages')
+    assert not (tmp_path / 'stage').exists()
+
+
 WORKER_RUNNER = '''
 import json, os
 from hashlib import sha256

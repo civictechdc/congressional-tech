@@ -616,7 +616,9 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
         raise ValueError('Unlimited body reads require the explicit recovery reading versions')
     strategy = strategy or DEFAULT_STRATEGY
     rule = load_page_rule(strategy)  # an engine this host lacks refuses before any body is read
-    if page_checkpoints is not None and rule.checkpoint_identity is None:
+    if page_checkpoints is not None and (rule.checkpoint_identity is None or any(
+            replacement.checkpoint_identity is None
+            for pages in rule.page_overrides.values() for replacement in pages.values())):
         raise ValueError('Page checkpoints require a strategy with reproducible identity')
     work = Path(work).resolve()
     if page_checkpoints is not None:
