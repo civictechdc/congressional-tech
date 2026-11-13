@@ -129,6 +129,43 @@ def test_stored_size_limit_settles_without_opening_the_body(tmp_path):
     assert report['batches'][0]['body_text_rows'] == 0
 
 
+def test_explicit_recovery_reads_above_both_byte_exclusions_and_preserves_old_policy(tmp_path):
+    """A real padded PDF crosses both limits; its text is unchanged and separately identified."""
+    body = two_page_pdf() + b'\n' * (body_text.MAX_STORED_BYTES + 1)
+    args, _ = lake(tmp_path, dict(large=(body, 'pdf')))
+    plan = body_text.plan(captures=args['captures'], engine=args['engine'], work=tmp_path / 'plan',
+                          decided_at=STAMP, local_root=args['local_root'])
+    items = pq.read_table(plan['work_list']).to_pylist()
+    with pytest.raises(ValueError, match='recovery reading versions'):
+        body_text.stage(plan, items, engine=args['engine'], work=tmp_path / 'refused', recovery=True)
+    versions = body_text.recovery_versions()
+    plan['versions'] = versions
+    for item in items:
+        item['parser_version'] = versions[item['parser']]
+    staged = body_text.stage(plan, items, engine=args['engine'], work=tmp_path / 'recovered', recovery=True)
+    [row] = pq.read_table(staged['body_text']).to_pylist()
+    assert row['text'] == PAGE_ONE + '\n' + PAGE_TWO
+    assert row['parser_version'] == versions['pdf_text'] != body_text.current_versions()['pdf_text']
+    [outcome] = [json.loads(line) for line in (tmp_path / 'recovered/body-outcomes.jsonl').read_text().splitlines()]
+    assert outcome['reading_status'] == 'completed'
+    # The remote path decodes gzip through the same hash rule, with the exclusion removed explicitly.
+    import gzip
+    from contextlib import nullcontext
+    from unittest.mock import patch
+    stored = gzip.compress(body)
+    class Source:
+        size = len(stored)
+        def read(self, *_): return stored
+        def close(self): pass
+    request = dict(body_sha=hashlib.sha256(body).hexdigest(), stored_bytes=len(stored), cache=str(tmp_path),
+                   remote=dict(origin='https://example.invalid', key='unused', bucket='unused', etag='"pin"', md5=None))
+    with patch.object(body_text.readings, '_ReadOnceBody', return_value=Source()), \
+            patch.object(body_text, '_origin_store', return_value=None), \
+            patch('congress_api.lake.readings.reading_input', nullcontext):
+        assert body_text._read_remote(request) is None
+        assert body_text._read_remote(dict(request, unlimited_body_bytes=True)) == body
+
+
 def test_batches_are_sized_by_an_upper_bound_on_their_text():
     item = lambda decoded, stored=10: dict(decoded_bytes=decoded, stored_bytes=stored)
     budget = body_text.MAX_DECODED_BYTES

@@ -124,6 +124,7 @@ def test_a_failed_page_is_an_error_with_no_text():
     assert (reading.status, reading.error_type, reading.text) == ('error', 'failed_pages', None)
     assert reading.fields['failed_pages'] == [2] and reading.fields['page_count'] == 2
     assert reading.row()['text_bytes'] is None and reading.row()['fingerprint'] is None
+    assert 'Page 2:' in reading.diagnostic and 'render exceeds max_pixels' in reading.diagnostic
 
 
 class BusyCpu:

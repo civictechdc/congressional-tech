@@ -35,6 +35,7 @@ import resource
 import signal
 import subprocess
 import threading
+import traceback
 import zlib
 
 from congress_api.parsers.archive_readings import fingerprint
@@ -70,6 +71,7 @@ class Reading:
     ocr_pages: tuple[int, ...] = ()
     macos_build: str | None = None
     fields: dict = field(default_factory=dict)
+    diagnostic: str | None = None
 
     def row(self):
         """The readings columns §6.2 lets a body-text parser fill, with ``fields`` as strings."""
@@ -99,7 +101,7 @@ def markup_text(data, parser):
     try:
         text = rendition_text(data, rendition=MARKUP_RENDITIONS[parser]).text
     except (ValueError, UnicodeError, RecursionError) as error:  # BodyTextError and MarkupReadError are ValueErrors
-        return Reading('error', type(error).__name__)
+        return Reading('error', type(error).__name__, diagnostic=traceback.format_exc(limit=8))
     return Reading('completed', text=text, page_offsets=(0,), fields=dict(page_count=1))
 
 
@@ -201,6 +203,7 @@ class _PageRun:
     def __init__(self, strategy, deadline_seconds):
         self.strategy, self.deadline = strategy, deadline_seconds
         self.ocr, self.failed, self.errors, self.builds = [], [], {}, set()
+        self.diagnostics = {}
 
     def extract(self, page):
         from spicy_docs.extraction import PageContent
@@ -212,6 +215,7 @@ class _PageRun:
         except Exception as error:  # one page's own failure; the reading records it
             self.failed.append(page.number)
             self.errors[page.number] = type(error).__name__
+            self.diagnostics[page.number] = traceback.format_exc(limit=8)
             return PageContent((), ())
         replaced = [o for o in content.observations if o.id != 'native'
                     or any(issue.code == REPLACED_ISSUE for issue in o.issues)]
@@ -238,12 +242,13 @@ def pdf_text(data, *, strategy, page_deadline_seconds):
     except (OcrRequired, PageDeadline, MemoryError):
         raise
     except Exception as error:  # an unopenable, encrypted or pageless document
-        return Reading('error', type(error).__name__)
+        return Reading('error', type(error).__name__, diagnostic=traceback.format_exc(limit=8))
     pages = len(body.pages)
     if run.failed:
         return Reading('error', 'failed_pages', fields=dict(
             page_count=pages, failed_pages=run.failed,
-            failed_page_errors=sorted(set(run.errors.values()))))
+            failed_page_errors=sorted(set(run.errors.values()))), diagnostic='\n'.join(
+                f'Page {page}: {error}' for page, error in run.diagnostics.items()))
     if len(run.builds) > 1:
         raise ValueError('OCR in one document ran on more than one macOS build')
     # The build the OCR backend states (AppleVision's configuration), else this host's.
@@ -292,11 +297,11 @@ def warc_payload(data, *, max_bytes):
 def _decoded(payload, encoding, max_bytes):
     if encoding == 'deflate':
         stream = zlib.decompressobj()
-        data = stream.decompress(payload, max_bytes + 1)
+        data = stream.decompress(payload, 0 if max_bytes is None else max_bytes + 1)
     else:
         with gzip.GzipFile(fileobj=io.BytesIO(payload)) as stream:
-            data = stream.read(max_bytes + 1)
-    return None if len(data) > max_bytes else data
+            data = stream.read() if max_bytes is None else stream.read(max_bytes + 1)
+    return None if max_bytes is not None and len(data) > max_bytes else data
 
 
 def derive(data, parser, *, strategy, page_deadline_seconds, sniff_format, max_bytes):
@@ -319,4 +324,4 @@ def derive(data, parser, *, strategy, page_deadline_seconds, sniff_format, max_b
                      sniff_format=sniff_format, max_bytes=max_bytes)
     return Reading(reading.status, reading.error_type, reading.text, reading.page_offsets, reading.ocr_pages,
                    reading.macos_build, dict(reading.fields, **envelope, payload_format=kind,
-                        payload_sha256=hashlib.sha256(payload).hexdigest()))
+                        payload_sha256=hashlib.sha256(payload).hexdigest()), reading.diagnostic)
