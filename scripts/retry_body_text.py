@@ -148,6 +148,8 @@ def main():
     ap.add_argument('--pilot', action='store_true', help='One smallest body per original failure reason before the full pass')
     ap.add_argument('--max-batches', type=int)
     ap.add_argument('--reuse-completed',type=Path)
+    ap.add_argument('--page-checkpoints', type=Path,
+                    help='Durable page checkpoint directory outside batch stages; does not resume a paused run')
     args = ap.parse_args()
     work = args.work_dir.resolve()
     targets = json.loads((work / 'targets.json').read_text())
@@ -213,6 +215,7 @@ def main():
             staged = body_text.stage(planned,items,engine=engine,work=batch/'stage',unreadable_store=store,
                                      parser_workers=workers,parser_memory_bytes=workers*memory,
                                      strategy='congress_api.parsers.body_text:recovery_apple_vision',origin=args.origin,
+                                     page_checkpoints=args.page_checkpoints,
                                      recovery=True,worker_memory_bytes=memory)
             staged['append'] = body_text.append(staged,engine=engine,work=batch/'commit',catalog_root=catalog,tables=table_ids)
             write_json(batch/'result.json',staged)

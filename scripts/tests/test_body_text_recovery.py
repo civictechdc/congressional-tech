@@ -49,14 +49,19 @@ def test_copy_probe_never_accepts_a_weak_etag(monkeypatch):
     assert sum(r['status']=='refused' for r in result['copy_observations'])==3
 
 
-def test_recovery_lifts_pixel_exclusion_without_changing_resolution(monkeypatch):
+@pytest.mark.parametrize('identity', [None, {'backend': 'scripted'}])
+def test_recovery_lifts_pixel_exclusion_without_changing_resolution(monkeypatch, identity):
     from congress_api.parsers import body_text
     from spicy_docs.extraction import DefaultReader, ExtractionError
     reader=DefaultReader(dpi=200,raw_rgb=True)
     strategy=object()
-    monkeypatch.setattr(body_text,'apple_vision',lambda:body_text.PageRule(strategy,reader))
+    monkeypatch.setattr(body_text,'apple_vision',lambda:body_text.PageRule(strategy,reader,identity))
     with pytest.raises(ExtractionError,match='max_pixels'):
         reader.check_pixels(5000,5000)
     rule=body_text.recovery_apple_vision()
     rule.reader.check_pixels(5000,5000)
     assert rule.strategy is strategy and rule.reader.dpi==200 and rule.reader.raw_rgb
+    if identity is None:
+        assert rule.checkpoint_identity is None  # A missing policy cannot become reusable by lifting a bound.
+    else:
+        assert rule.checkpoint_identity == dict(identity, max_pixels=(1 << 63) - 1)

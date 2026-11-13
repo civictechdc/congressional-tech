@@ -2,7 +2,7 @@
 id: ct-hz8y
 status: open
 deps: []
-links: [ct-kfsd, ct-n3ik, ct-a73a, ct-yy07]
+links: [ct-kfsd, ct-n3ik, ct-a73a, ct-yy07, ct-55qo, ct-aitp]
 created: 2026-11-13T17:46:16Z
 type: bug
 priority: 1
@@ -15,7 +15,7 @@ A native-text count of at least 50 can suppress OCR even when it consists only o
 
 ## Design
 
-Spicy-docs owns reusable page evidence and routing hooks; CT owns the versioned congressional policy. Reuse the completed corpus feature pass and maintained native/region/OCR capabilities. Consider X and Y coverage, orientation, repeated furniture, vector/raster content and source role. The central 80%-height proxy already misclassifies Q010. Keep incomplete accurate native fragments distinct from corrupt native text and new OCR errors; qualify composition order and overlap before combining native answers with OCR questions.
+Spicy-docs owns reusable page evidence and routing hooks; CT owns the versioned congressional policy. Reuse the retained text/offset census for candidate ranking and maintained native/region/OCR capabilities. The census has no image/font/vector features and is not a completeness or typeset classifier. Consider X and Y coverage, orientation, repeated furniture, vector/raster content and source role. The central 80%-height proxy already misclassifies Q010. Keep incomplete accurate native fragments distinct from corrupt native text and new OCR errors; qualify composition order and overlap before combining native answers with OCR questions.
 
 ## Acceptance Criteria
 
@@ -30,3 +30,7 @@ Spicy-docs owns reusable page evidence and routing hooks; CT owns the versioned 
 **2026-11-13T17:46:16Z**
 
 Evidence: <main checkout>/.cache/archive-release/ocr-recovery-20261113/coordination/text-quality-audit-20261113/repair-plan.md; source review under .cache/archive-release/investigations/text-quantity-review-20261113/research-followups/. These durable local artifacts contain source identities, review limits and retained failures. See docs/plans/ocr-text-quality-remaining-20261113.md for plan ownership and sequencing.
+
+**2026-11-13T18:48:44Z**
+
+The audit visually rechecked S167 page 1 and Q007 page 6. Count >=50 is not a coverage test. Reuse upstream region/override APIs, but qualify reading order (unanchored regions append). ct-aitp owns page persistence; ct-55qo owns final selection. The 18,777-body triage inventory is a candidate inventory, not 18,777 confirmed failures. Audit: .cache/archive-release/ocr-recovery-20261113/coordination/greybeard-root-cause-20261113/review.md; cohort and page inventory: inventory/README.md.

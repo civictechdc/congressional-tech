@@ -1,7 +1,7 @@
 ---
 id: ct-f6hr
 status: open
-deps: []
+deps: [ct-55qo]
 links: [ct-cbkz]
 created: 2026-11-13T17:46:16Z
 type: bug
@@ -30,3 +30,7 @@ Spicy-docs owns explicit decoding, safe XML parsing and bounded/streaming markup
 **2026-11-13T17:46:16Z**
 
 Evidence: <main checkout>/.cache/archive-release/ocr-recovery-20261113/coordination/text-quality-audit-20261113/repair-plan.md; source review under .cache/archive-release/investigations/text-quantity-review-20261113/research-followups/. These durable local artifacts contain source identities, review limits and retained failures. See docs/plans/ocr-text-quality-remaining-20261113.md for plan ownership and sequencing.
+
+**2026-11-13T18:48:44Z**
+
+Upstream normalization exists, but the audited reader still enforces UTF-8 and rejects internal XML subsets. The retained max_events example is 38.9 MB and appears cut off; do not call it a proven memory failure or rewrite streaming without a source-completeness check and measurement. Audit: .cache/archive-release/ocr-recovery-20261113/coordination/greybeard-root-cause-20261113/review.md; cohort and page inventory: inventory/README.md.

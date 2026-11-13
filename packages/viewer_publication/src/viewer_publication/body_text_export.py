@@ -22,9 +22,9 @@ import json
 from pathlib import Path
 import re
 
-from congress_api.lake import readings
+from congress_api.lake import readings, body_text_selection
 from congress_api.lake.tables import table_input
-from congress_api.retention.provenance import durable_json, run_job
+from congress_api.retention.provenance import durable_json, run_job, json_input, active_unreadable_where
 
 ROOT = Path(__file__).resolve().parents[4]
 DEFINITION = ROOT / 'model/jobs/body-text-export.json'
@@ -43,16 +43,6 @@ def load_definition(path=DEFINITION):
     return value
 
 
-def _quote(value):
-    return "'" + value.replace("'", "''") + "'"
-
-
-def _at_versions(versions, alias=''):
-    """The declared (parser, version) partitions as a literal predicate the scan can prune on."""
-    return '(' + ' OR '.join(f'({alias}parser={_quote(p)} AND {alias}parser_version={_quote(v)})'
-                             for p, v in sorted(versions.items())) + ')'
-
-
 # Regex classes (Rust syntax, in SQL literals that keep backslashes as written).
 QUOTED = r'["\\]'
 SHORT_ESCAPES = r'[\x08\x09\x0a\x0c\x0d]'
@@ -67,24 +57,26 @@ def json_bytes_sql(x):
     return f'(octet_length({x})+2+{count(QUOTED)}+{count(SHORT_ESCAPES)}+5*{count(LONG_ESCAPES)})'
 
 
-def export_steps(versions, *, max_json_bytes):
+def export_steps(versions, *, max_json_bytes, selection=None):
     """Saved bodies, then narrow chosen keys, then the text rows with any cut applied."""
     bound = int(max_json_bytes)
     # Worst case six bytes per character (a \\u00XX escape), so this prefix always fits.
     floor_chars = (bound - 2) // 6
     proportional = f'cast(floor(character_length(text)*{bound - 2}/json_bytes) AS BIGINT)'
     cut = f'substr(text,1,{proportional})'
+    selected = selection or body_text_selection.load(None, versions)
     return [
+        dict(name='selected_body_text', sql=body_text_selection.selected_sql('body_text', selected)),
         dict(name='saved', materialize=True,
              sql='SELECT DISTINCT saved_body FROM detail WHERE saved_body IS NOT NULL'),
-        dict(name='text_keys', materialize=True, sql=f'''SELECT b.body_sha,b.parser FROM saved s RIGHT SEMI JOIN
-            (SELECT body_sha,parser FROM body_text WHERE {_at_versions(versions)}) b ON s.saved_body=b.body_sha'''),
+        dict(name='text_keys', materialize=True, sql='''SELECT b.body_sha,b.parser FROM saved s RIGHT SEMI JOIN
+            (SELECT body_sha,parser FROM selected_body_text) b ON s.saved_body=b.body_sha'''),
         # A body has one sniffed format, so one parser; min() keeps the export single-row anyway.
         dict(name='chosen', materialize=True, sql='''SELECT body_sha,min(parser) AS parser,count(*) AS parsers
             FROM text_keys GROUP BY body_sha'''),
         dict(name='measured', sql=f'''SELECT t.body_sha,t.parser,t.text,t.page_offsets,t.ocr_pages,t.text_sha256,
             {json_bytes_sql('t.text')} AS json_bytes FROM chosen c RIGHT SEMI JOIN
-            (SELECT * FROM body_text WHERE {_at_versions(versions)}) t ON c.body_sha=t.body_sha AND c.parser=t.parser'''),
+            selected_body_text t ON c.body_sha=t.body_sha AND c.parser=t.parser'''),
         dict(name='exported', materialize=True, sql=f'''SELECT body_sha AS saved_body,parser,page_offsets,
             cardinality(ocr_pages) AS ocr_page_count,json_bytes>{bound} AS truncated,json_bytes,
             CASE WHEN json_bytes<={bound} THEN text
@@ -106,14 +98,12 @@ def coverage_queries(versions, *, with_readings, with_unreadable):
         dict(name='parser_conflicts', sql='SELECT count(*) AS n FROM chosen WHERE parsers>1'),
     ]
     if with_readings:
-        queries.append(dict(name='readings', sql=f'''SELECT r.parser,r.status,count(*) AS n FROM saved s RIGHT SEMI JOIN
-            (SELECT body_sha,parser,status FROM readings WHERE {_at_versions(versions)}) r ON s.saved_body=r.body_sha
+        queries.append(dict(name='readings', sql='''SELECT r.parser,r.status,count(*) AS n FROM saved s RIGHT SEMI JOIN
+            (SELECT body_sha,parser,status FROM selected_body_readings) r ON s.saved_body=r.body_sha
             GROUP BY r.parser,r.status ORDER BY r.parser,r.status'''))
     if with_unreadable:
-        from congress_api.retention.provenance import active_unreadable_where
-        queries.append(dict(name='unreadable', sql=f'''SELECT u.parser,count(*) AS n FROM saved s RIGHT SEMI JOIN
-            (SELECT decode(body_sha256,'hex') AS body_sha,parser FROM unreadable a
-             WHERE {_at_versions(versions, 'a.')} AND {active_unreadable_where('unreadable', 'a')}) u
+        queries.append(dict(name='unreadable', sql='''SELECT u.parser,count(*) AS n FROM saved s RIGHT SEMI JOIN
+            (SELECT decode(body_sha256,'hex') AS body_sha,parser FROM selected_body_unreadable) u
             ON s.saved_body=u.body_sha GROUP BY u.parser ORDER BY u.parser'''))
     return queries
 
@@ -142,7 +132,7 @@ def footer_sha256(path):
 
 
 def export(*, engine, work, body_text, detail, readings_table=None, unreadable_files=(), versions=None,
-           definition=None, release_id=None):
+           definition=None, release_id=None, selection=None):
     """Run the export job into ``work`` and write the pointer it would publish beside it.
 
     ``body_text`` and ``readings_table`` are exact native pins (or Parquet stages in tests);
@@ -151,24 +141,41 @@ def export(*, engine, work, body_text, detail, readings_table=None, unreadable_f
     from congress_api.retention.provenance import field
     definition = load_definition() if definition is None else definition
     versions = versions or {p: readings.current_version(p) for p in definition['parsers']}
+    accepted = body_text_selection.load(selection, versions)
+    if accepted['overrides'] and readings_table is None:
+        raise ValueError('Explicit selections require retained readings')
+    versions = accepted['versions']
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
-    inputs = [table_input('body_text', body_text), dict(name='detail', kind='parquet', path=str(Path(detail).resolve()))]
+    inputs = [table_input('body_text', body_text), dict(name='detail', kind='parquet', path=str(Path(detail).resolve())),
+              body_text_selection.selection_input(work, accepted)]
+    selection_steps = []
     if readings_table is not None:
         inputs.append(table_input('readings', readings_table))
+        selection_steps.append(dict(name='selected_body_readings', materialize=True,
+                                    sql=body_text_selection.selected_sql('readings', accepted,
+                                        columns=('body_sha', 'parser', 'parser_version', 'status'))))
+    schema = dict(id='Utf8', body_sha256='Utf8', parser='Utf8', parser_version='Utf8',
+                  reason='Utf8', supersedes='Utf8')
     if unreadable_files:
-        schema = dict(id='Utf8', body_sha256='Utf8', parser='Utf8', parser_version='Utf8',
-                      reason='Utf8', supersedes='Utf8')
         inputs.append(dict(name='unreadable', kind='json_lines', files=list(unreadable_files),
                            schema=dict(fields=[field(k, v) for k, v in schema.items()], metadata={})))
+    else:
+        inputs.append(json_input(work, 'unreadable', [], **schema))
+    selection_steps += [
+        dict(name='active_body_unreadable', sql=f'SELECT u.* FROM unreadable u WHERE {active_unreadable_where()}'),
+        dict(name='selected_body_unreadable', materialize=True, sql=body_text_selection.selected_sql(
+            'active_body_unreadable', accepted, body="decode(r.body_sha256,'hex')"))]
     settings = dict(definition['settings'], order_by=[dict(field=k) for k in definition['settings']['order_by']],
                     dictionary_columns=[], delta_columns=[], key_column=None)
     output = work / 'export.parquet'
     counts = run_job(work / 'job', engine, inputs=inputs,
-        steps=export_steps(versions, max_json_bytes=definition['max_text_json_bytes']),
+        steps=selection_steps + export_steps(versions, max_json_bytes=definition['max_text_json_bytes'], selection=accepted),
         outputs=[dict(name='export.parquet', path=str(output), sql='SELECT * FROM exported', settings=settings)],
         queries=coverage_queries(versions, with_readings=readings_table is not None,
-                                 with_unreadable=bool(unreadable_files)))
+                                 with_unreadable=bool(unreadable_files))
+                + body_text_selection.validation_queries(accepted, text_table='body_text'))
+    body_text_selection.validate_counts(counts)
     if counts['parser_conflicts'][0]['n']:
         raise ValueError('A saved body has body text under more than one parser')
     facts = file_facts(output)
@@ -179,6 +186,7 @@ def export(*, engine, work, body_text, detail, readings_table=None, unreadable_f
         row_group_rows=definition['settings']['row_group_rows'], max_text_json_bytes=definition['max_text_json_bytes'],
         body_text=body_text if isinstance(body_text, dict) else None, release_id=release_id,
         parser_versions=dict(sorted(versions.items())),
+        selection=accepted['identity'],
         coverage=dict(saved_bodies=counts['saved'][0]['n'],
             bodies_with_text={p: r['rows'] for p, r in by_parser.items()},
             ocr_pages=sum(r['ocr_pages'] for r in by_parser.values()),
@@ -257,7 +265,7 @@ def retire_unnamed(client, *, bucket, prefix, pointer_key):
 
 
 SPEC_REQUIRED = {'body_text', 'detail', 'work'}
-SPEC_OPTIONAL = {'readings', 'unreadable_files', 'release_id'}
+SPEC_OPTIONAL = {'readings', 'unreadable_files', 'release_id', 'selection'}
 
 
 def _pointer_etag(client, *, bucket, key):
@@ -308,7 +316,7 @@ def main(argv=None, *, client=None):
             parser.error('The body-text export runs on a local-only engine configuration')
         pointer = export(engine=engine, work=work, body_text=spec['body_text'], detail=spec['detail'],
                          readings_table=spec.get('readings'), unreadable_files=spec.get('unreadable_files', ()),
-                         definition=definition, release_id=spec.get('release_id'))
+                         definition=definition, release_id=spec.get('release_id'), selection=spec.get('selection'))
     result = dict(status='exported', executed=True, work=str(work), pointer=pointer)
     if args.publish:
         from congress_shared.storage import connect_r2

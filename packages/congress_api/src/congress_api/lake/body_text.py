@@ -42,7 +42,7 @@ from uuid import uuid4
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from congress_api.lake import readings
+from congress_api.lake import readings, body_text_selection
 from congress_api.lake.tables import table_input
 from congress_api.retention.body_keys import body_object_digest
 from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_key
@@ -195,7 +195,7 @@ def copy_selection_steps(*, with_listing=False):
 
 
 def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, unreadable_files=(),
-         registry=None, filename_readings=None, body_listing=None):
+         registry=None, filename_readings=None, body_listing=None, selection=None, existing_text=None):
     """Materialize the ordered work list in one native job, opening no body.
 
     Newest Congress first (plan §1), each body taking the highest Congress any of its captures'
@@ -210,6 +210,9 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
     versions = current_versions()
+    accepted = body_text_selection.load(selection, versions)
+    if accepted['overrides'] and (existing is None or existing_text is None):
+        raise ValueError('Explicit selections require both retained readings and body_text')
     pins = compatible_versions.current_pins()
     entries = compatible_versions.load_registry(current=pins, **({} if registry is None else dict(path=registry)))
     sniff_entries = [e for e in entries if e['parser'] == 'sniff']
@@ -221,7 +224,9 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
               json_input(work, 'format_parsers', [dict(format=f, parser=p) for f, p in FORMAT_PARSERS.items()],
                          format='Utf8', parser='Utf8'),
               compatible_versions.accepted_versions_input(work, sniff_entries, pins={'sniff': pins['sniff']}),
-              table_input('captures', captures)]
+              table_input('captures', captures), body_text_selection.selection_input(work, accepted)]
+    if existing_text is not None:
+        inputs.append(table_input('body_text', existing_text))
     if body_listing is not None:
         inputs.append(_register_body_listing(body_listing))
     if unreadable_files:
@@ -249,9 +254,18 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
         *[dict(name=name.replace('-', '_'), sql=(ROOT / 'model/sql' / (name + '.sql')).read_text())
           for name in ['pinned-readings', 'sniff-observations', 'sniff-conflicts', 'sniff-facts']],
         dict(name='active_unreadable', sql=f'SELECT u.* FROM unreadable u WHERE {active_unreadable_where()}'),
-        # Body-text rows at their declared versions: the three (parser, version) partitions only.
-        dict(name='settled', materialize=True, sql='''SELECT r.body_sha,r.parser FROM parser_versions v
-            JOIN readings r ON r.parser=v.parser AND r.parser_version=v.version WHERE v.parser<>'sniff' '''),
+        dict(name='selected_body_readings', materialize=True,
+             sql=body_text_selection.selected_sql('readings', accepted,
+                 columns=('body_sha', 'parser', 'parser_version', 'status'))),
+        dict(name='selected_body_unreadable', materialize=True,
+             sql=body_text_selection.selected_sql('active_unreadable', accepted, body="decode(r.body_sha256,'hex')")),
+        # Extraction completion and publication acceptance are different. A new current
+        # attempt awaiting qualification must not be extracted again on every resume.
+        dict(name='current_body_attempts', materialize=True,
+             sql=f'SELECT body_sha,parser,parser_version FROM readings WHERE {body_text_selection.at_versions(versions)}'),
+        dict(name='settled', materialize=True, sql='''SELECT body_sha,parser FROM selected_body_readings
+            UNION ALL SELECT decode(body_sha256,'hex') AS body_sha,parser FROM selected_body_unreadable
+            UNION ALL SELECT body_sha,parser FROM current_body_attempts'''),
         dict(name='candidates', materialize=True, sql='''SELECT f.body_sha,f.format,p.parser,v.version AS parser_version
             FROM sniff_facts f JOIN format_parsers p ON f.format=p.format JOIN parser_versions v ON v.parser=p.parser
             WHERE NOT EXISTS (SELECT 1 FROM settled s WHERE s.body_sha=f.body_sha AND s.parser=p.parser)
@@ -286,6 +300,9 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
             AS position
         FROM candidates k LEFT JOIN body_copies s ON k.body_sha=s.body_sha{congress[1]}'''))
     queries = [dict(name='work_items', sql='SELECT count(*) AS n,count(congress) AS with_congress FROM pending_bodies'),
+               dict(name='unselected_current_attempts', sql='''SELECT count(*) AS n FROM selected_body_readings s
+                   RIGHT ANTI JOIN current_body_attempts r ON s.body_sha=r.body_sha AND s.parser=r.parser
+                       AND s.parser_version=r.parser_version'''),
                dict(name='by_parser', sql='''SELECT parser,count(*) AS n,coalesce(sum(stored_bytes),0) AS stored_bytes
                   FROM pending_bodies GROUP BY parser ORDER BY parser'''),
                dict(name='conflicts', sql='''SELECT count(*) AS n FROM (SELECT body_sha FROM sniff_conflicts
@@ -295,11 +312,13 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
         queries.append(dict(name='listing_conflicts', sql='''SELECT count(*) AS n FROM (
             SELECT key FROM body_listing WHERE key IS NULL OR size IS NULL OR size<0
             UNION ALL SELECT key FROM body_listing GROUP BY key HAVING count(*)>1)'''))
+    queries += body_text_selection.validation_queries(accepted, text_table='body_text' if existing_text else None)
     staged_work_list = work / 'work-list.staged.parquet'
     checks = run_job(work, engine, inputs=inputs, steps=steps,
         outputs=[parquet_output(work, 'work-list.staged', 'SELECT * FROM pending_bodies', ['position'])],
         queries=queries)
     try:
+        body_text_selection.validate_counts(checks)
         if checks['conflicts'][0]['n']:
             raise ValueError('Conflicting sniff facts or captured copies for body-text work')
         if body_listing is not None and checks['listing_conflicts'][0]['n']:
@@ -310,7 +329,8 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
         raise
     return dict(status='planned', work=work, work_list=work / 'work-list.parquet', versions=versions,
                 work_items=checks['work_items'][0]['n'], with_congress=checks['work_items'][0]['with_congress'],
-                by_parser=checks['by_parser'],
+                by_parser=checks['by_parser'], selection=accepted['identity'],
+                unselected_current_attempts=checks['unselected_current_attempts'][0]['n'],
                 local_root=None if local_root is None else Path(local_root).resolve(), decided_at=decided_at)
 
 
@@ -505,6 +525,7 @@ def _parse_payload(payload):
     outlived its deadline) or a ``row`` with ``text`` naming the file, its bytes and SHA-256.
     """
     from congress_api.parsers import body_text as derivation
+    from congress_api.retention.page_checkpoints import CheckpointError, adapter
     request = json.loads(payload)
     try:
         data = _read_decoded(request)
@@ -521,7 +542,10 @@ def _parse_payload(payload):
             reading = derivation.derive(data, request['parser'], strategy=_STRATEGIES[spec],
                 page_deadline_seconds=request['page_deadline_seconds'], sniff_format=_sniff_format,
                 max_bytes=None if request.get('unlimited_body_bytes') else MAX_DECODED_BYTES,
-                evidence=evidence.emit if evidence.path else None)
+                evidence=evidence.emit if evidence.path else None, checkpoint=adapter(request.get('page_checkpoints')))
+        except CheckpointError as error:
+            evidence.emit(dict(event='checkpoint_failed', error=str(error)))
+            return dict(read_error='page_checkpoint', error=str(error), peak_rss_bytes=_child_peak_rss_bytes())
         except derivation.OcrRequired:
             evidence.emit(dict(event='attempt_pending', reason='ocr_required'))
             return dict(pending='ocr_required', peak_rss_bytes=_child_peak_rss_bytes())
@@ -594,7 +618,7 @@ def _write_texts(path, texts):
 def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unreadable_store=None,
           parser_workers=1, parser_memory_bytes=PARSER_MEMORY_BYTES,
           strategy=None, page_deadline_seconds=PAGE_DEADLINE_SECONDS, origin=None,
-          recovery=False, worker_memory_bytes=WORKER_MEMORY_BYTES, retain_quality_evidence=False):
+          recovery=False, worker_memory_bytes=WORKER_MEMORY_BYTES, retain_quality_evidence=False, page_checkpoints=None):
     """Read one batch with bounded workers; stage its texts, readings rows and decisions.
 
     ``origin`` reads bodies from the archive origin rather than the plan's local raw root.
@@ -604,8 +628,14 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
     if recovery and any(recovery_versions().get(p) != v for p, v in planned['versions'].items()):
         raise ValueError('Unlimited body reads require the explicit recovery reading versions')
     strategy = strategy or DEFAULT_STRATEGY
-    load_page_rule(strategy)  # an engine this host lacks refuses here, before any body is read
+    rule = load_page_rule(strategy)  # an engine this host lacks refuses before any body is read
+    if page_checkpoints is not None and rule.checkpoint_identity is None:
+        raise ValueError('Page checkpoints require a strategy with reproducible identity')
     work = Path(work).resolve()
+    if page_checkpoints is not None:
+        page_checkpoints = Path(page_checkpoints).resolve()
+        if page_checkpoints.is_relative_to(work):
+            raise ValueError('Page checkpoints must live outside the transient batch stage')
     work.mkdir(parents=True, exist_ok=False)
     texts_dir = work / 'texts'
     texts_dir.mkdir()
@@ -659,6 +689,8 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
             request = dict(body_sha=body_hex, parser=parser, stored_bytes=item['stored_bytes'],
                            texts=str(texts_dir), strategy=strategy, page_deadline_seconds=page_deadline_seconds,
                            unlimited_body_bytes=recovery, diagnostics=str(diagnostics_dir / (body_hex + '.txt')))
+            if page_checkpoints is not None:
+                request['page_checkpoints'] = str(page_checkpoints)
             if retain_quality_evidence:
                 request.update(parser_version=version,
                                quality_evidence=str(diagnostics_dir / (body_hex + '.quality.jsonl')))
@@ -827,7 +859,7 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
         max_batches=None, worker_factory=_MeasuredWorker, parser_workers=1,
         parser_memory_bytes=PARSER_MEMORY_BYTES, strategy=None,
         page_deadline_seconds=PAGE_DEADLINE_SECONDS, registry=None, filename_readings=None, body_listing=None,
-        retain_quality_evidence=False):
+        retain_quality_evidence=False, selection=None, page_checkpoints=None):
     """Plan once against current `readings`, then stage and commit batches in work-list order.
 
     Bodies come from ``local_root`` or ``origin`` (exactly one); ``body_listing`` pins MD5-less
@@ -848,7 +880,7 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
         raise ValueError('max_batches must be a positive integer')
     work = Path(work).resolve()
     current = resolve_tables(engine=engine, work=work / 'current', catalog_root=catalog_root,
-                             tables={'readings': tables['readings']})['readings']
+                             tables=tables if selection else {'readings': tables['readings']})
     files = list(unreadable_files)
     if execute:
         from congress_api.retention.provenance_inventory import unreadable_inventory
@@ -856,11 +888,14 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
         files += [r for r in unreadable_inventory(unreadable_store, work=work / 'unreadable-inventory').files()
                   if r['key'] not in known]
     planned = plan(captures=captures, engine=engine, work=work / 'plan', decided_at=decided_at,
-                   local_root=local_root, existing=current, unreadable_files=files, registry=registry,
-                   filename_readings=filename_readings, body_listing=body_listing)
+                   local_root=local_root, existing=current['readings'], unreadable_files=files, registry=registry,
+                   filename_readings=filename_readings, body_listing=body_listing, selection=selection,
+                   existing_text=current.get('body_text'))
     report = dict(status='planned', work_items=planned['work_items'], with_congress=planned['with_congress'],
                   by_parser=planned['by_parser'],
-                  versions=planned['versions'], batches=[], pending_read_reasons={}, applied=False)
+                  versions=planned['versions'], selection=planned['selection'],
+                  unselected_current_attempts=planned['unselected_current_attempts'],
+                  batches=[], pending_read_reasons={}, applied=False)
     if not execute:
         return report
     report['status'] = 'completed'
@@ -874,7 +909,7 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
                        unreadable_store=unreadable_store, parser_workers=parser_workers,
                        parser_memory_bytes=parser_memory_bytes, strategy=strategy,
                        page_deadline_seconds=page_deadline_seconds, origin=origin,
-                       retain_quality_evidence=retain_quality_evidence)
+                       retain_quality_evidence=retain_quality_evidence, page_checkpoints=page_checkpoints)
         staged['append'] = append(staged, engine=engine, work=batch_work, catalog_root=catalog_root, tables=tables)
         report['applied'] |= any(value is not None for value in staged['append'].values())
         staged['body_text'].unlink()  # committed (or empty): the staged text copy is the batch's disk cost

@@ -34,3 +34,7 @@ Evidence: <main checkout>/.cache/archive-release/ocr-recovery-20261113/coordinat
 **2026-11-13T17:46:56Z**
 
 Retained-input triage also owns classification of the 345 select-at-least-one-distinct-page errors; do not turn a zero-page parser view into valid-empty text. Raw specimen 04a74549a18e2de5103e79c99714af3ad9b9ccea7cc0d6c62ddc419af5abbe30 is 1,553 bytes while its PDF linearization header declares 43,652 bytes / 4 pages; pdfinfo reports a missing/null top-level pages object. Distinguish damaged/truncated sources from legitimate containers and inspect the remaining members before assigning one cause to the whole bucket. Evidence: .cache/archive-release/ocr-recovery-20261113/raw-review/inspection.json.
+
+**2026-11-13T18:48:44Z**
+
+The 345 zero-page failures require classification; they are not all proven corrupt sources. Ordinary WARC exclusion is intentional (ct-0hay): no envelope was selected as saved_body. Qualify source role and saved-body reachability before restoring any WARC processing/publication. Broad phrase matches are review candidates, not error verdicts. Audit: .cache/archive-release/ocr-recovery-20261113/coordination/greybeard-root-cause-20261113/review.md; cohort and page inventory: inventory/README.md.
