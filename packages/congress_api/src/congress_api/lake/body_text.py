@@ -84,8 +84,9 @@ def recovery_versions():
     original text rule and the relaxed resource policy; it cannot collide with an old failure.
     """
     from congress_api.lake.reading_versions import BODY_TEXT_DECLARATIONS
-    return {parser: sha256((declaration + '\nRecovery policy 2026-11-13: no stored or decoded byte '
-            'exclusion; supervised worker memory and time limits still apply.').encode()).hexdigest()
+    return {parser: sha256((declaration + '\nRecovery policy 2026-11-13: no stored, decoded, or page-render '
+            'size exclusion; original OCR resolution and routing retained; supervised worker memory and '
+            'time limits still apply.').encode()).hexdigest()
             for parser, declaration in BODY_TEXT_DECLARATIONS.items()}
 
 
@@ -489,7 +490,11 @@ def _parse_payload(payload):
     del data
     value = dict(row=reading.row(), peak_rss_bytes=child_rss)
     if reading.diagnostic:
-        value['error'] = reading.diagnostic
+        if request.get('diagnostics'):
+            Path(request['diagnostics']).write_text(reading.diagnostic)
+            value['diagnostic_path'] = request['diagnostics']
+        # Detailed page failures stay in a file rather than filling the supervisor's output pipe.
+        value['error'] = reading.diagnostic[-32768:]
     if reading.text is not None:
         encoded = reading.text.encode()
         target = Path(request['texts']) / (request['body_sha'] + '.txt')
@@ -584,6 +589,9 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
             error=error,
             peak_rss_bytes=peak_rss_bytes,
         ))
+        diagnostic = diagnostics_dir / (body_hex + '.txt')
+        if diagnostic.is_file():
+            body_outcomes[-1]['diagnostic_path'] = str(diagnostic)
         with (work / 'body-outcomes.jsonl').open('a') as progress:
             progress.write(json.dumps(body_outcomes[-1], sort_keys=True) + '\n')
 
@@ -676,7 +684,7 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
                 )
                 diagnostic = Path(request['diagnostics'])
                 if diagnostic.is_file():
-                    err_msg = diagnostic.read_text()
+                    err_msg = diagnostic.read_text()[-32768:]
                 record_outcome(body_hex, parser, version, 'unreadable', reason=outcome['reason'],
                                error=err_msg, peak_rss_bytes=peak_rss)
                 continue

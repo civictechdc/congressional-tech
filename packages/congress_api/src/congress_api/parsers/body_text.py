@@ -141,6 +141,13 @@ def native_only():
     return page_rule(NoEngine())
 
 
+def recovery_apple_vision():
+    """The same 200 DPI Vision rule, admitted by worker memory rather than a pixel exclusion."""
+    rule = apple_vision()
+    rule.reader.max_pixels = (1 << 63) - 1
+    return rule
+
+
 def apple_vision():
     """The declared engine: Apple Vision, accurate, correction off, three bands, raw RGB at 200 dpi.
 
