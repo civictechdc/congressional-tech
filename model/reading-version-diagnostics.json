@@ -56,7 +56,7 @@
       "version": "0.85.0+gpo.20261113"
     },
     "version": "e1928f25e2803cd6bc8546d1673ff7ba01a11ae861c322165c78af9d32380941",
-    "workspace_sha256": "aa22bbdfc3df54f5e98552d5e369db8f5fb72402bea3ecc9774c98b85a026b8c"
+    "workspace_sha256": "ae0b05e296ed0c29e2971cb25ac2ff7c175158b0d862fbd23415272fa09e7dbe"
   },
   "json": {
     "limits": {
@@ -101,7 +101,7 @@
       "version": "0.85.0+gpo.20261113"
     },
     "version": "4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8",
-    "workspace_sha256": "aa22bbdfc3df54f5e98552d5e369db8f5fb72402bea3ecc9774c98b85a026b8c"
+    "workspace_sha256": "ae0b05e296ed0c29e2971cb25ac2ff7c175158b0d862fbd23415272fa09e7dbe"
   },
   "readings": {
     "limits": {
@@ -162,6 +162,6 @@
       "version": "0.85.0+gpo.20261113"
     },
     "version": "ed9eb0e2908729e728b02380f50ae994e395a03da5ae50caa21c9e80d378a6db",
-    "workspace_sha256": "aa22bbdfc3df54f5e98552d5e369db8f5fb72402bea3ecc9774c98b85a026b8c"
+    "workspace_sha256": "ae0b05e296ed0c29e2971cb25ac2ff7c175158b0d862fbd23415272fa09e7dbe"
   }
 }

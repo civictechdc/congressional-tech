@@ -6,15 +6,32 @@ One writer owns a source/policy directory. Files survive transient batch cleanup
 """
 from dataclasses import asdict
 from hashlib import sha256
+from importlib.metadata import version
 import json
 import os
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from uuid import uuid4
 
+from congress_api.parsers import body_text
+from congress_api.parsers.body_text import CheckpointError
 
-class CheckpointError(RuntimeError):
-    """Checkpoint storage or integrity failed; this is not a source-reading verdict."""
+
+def adapter(root):
+    """The producer supplies durable storage; parsers only call this extraction adapter."""
+    if root is None:
+        return None
+
+    def wrap(extractor, rule, run):
+        if rule.checkpoint_identity is None:
+            raise ValueError('Page checkpointing requires an explicit reproducible rule identity')
+        identity = dict(rule=rule.checkpoint_identity, strategy=type(rule.strategy).__qualname__,
+            code=sha256(Path(body_text.__file__).read_bytes()).hexdigest(),
+            adapter=sha256(Path(__file__).read_bytes()).hexdigest(),
+            dependencies={name: version(name) for name in ('spicy-docs', 'pymupdf', 'pillow')})
+        return CheckpointedExtractor(extractor, root=root, identity=identity, run=run)
+
+    return wrap
 
 
 def encoded(value):

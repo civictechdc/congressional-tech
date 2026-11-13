@@ -12,13 +12,14 @@ import pyarrow.parquet as pq
 from body_text_fixtures import PAGE_ONE, PAGE_TWO, two_page_pdf, lake, committed
 from congress_api.lake import body_text
 from congress_api.parsers import body_text as derivation
-from congress_api.retention.page_checkpoints import CheckpointError, encoded
+from congress_api.retention.page_checkpoints import CheckpointError, adapter, encoded
 
 
 RUNNER = '''
 import json, os, sys
 from pathlib import Path
 from congress_api.parsers import body_text as bt
+from congress_api.retention.page_checkpoints import adapter
 from spicy_docs.extraction import NativeText
 from spicy_docs.extraction.model import PageContent, Observation
 class Scripted:
@@ -33,7 +34,7 @@ class Scripted:
         return PageContent(content.blocks, content.observations + (marker,))
 rule = bt.PageRule(Scripted(), checkpoint_identity={'backend':'scripted-test', 'reader':'default-200'})
 r = bt.pdf_text(Path(sys.argv[1]).read_bytes(), strategy=rule, page_deadline_seconds=0,
-                checkpoint_root=sys.argv[2])
+                checkpoint=adapter(sys.argv[2]))
 print(json.dumps(dict(status=r.status, text=r.text, offsets=r.page_offsets, ocr=r.ocr_pages, build=r.macos_build)))
 '''
 
@@ -59,7 +60,7 @@ def test_a_new_process_reuses_pages_after_late_worker_death(tmp_path):
 @pytest.mark.parametrize('damage', ['text', 'metadata'])
 def test_corrupt_checkpoint_is_not_a_source_reading(tmp_path, damage):
     source = two_page_pdf()
-    kwargs = dict(strategy=derivation.native_only(), page_deadline_seconds=0, checkpoint_root=tmp_path)
+    kwargs = dict(strategy=derivation.native_only(), page_deadline_seconds=0, checkpoint=adapter(tmp_path))
     first = derivation.pdf_text(source, **kwargs)
     assert first.status == 'completed'
     page = next(tmp_path.glob('**/page-*.json'))
@@ -84,9 +85,9 @@ def test_real_native_cover_and_valid_blank_replay_without_changed_cleanup(tmp_pa
         kwargs = dict(strategy=derivation.native_only(), page_deadline_seconds=0)
         direct = derivation.pdf_text(source, **kwargs)
         events = []
-        first = derivation.pdf_text(source, **kwargs, checkpoint_root=tmp_path, evidence=events.append)
+        first = derivation.pdf_text(source, **kwargs, checkpoint=adapter(tmp_path), evidence=events.append)
         replay_events = []
-        replay = derivation.pdf_text(source, **kwargs, checkpoint_root=tmp_path, evidence=replay_events.append)
+        replay = derivation.pdf_text(source, **kwargs, checkpoint=adapter(tmp_path), evidence=replay_events.append)
         assert direct == first == replay
         assert [e for e in events if e['event'] == 'document_cleanup'] == [
             e for e in replay_events if e['event'] == 'document_cleanup']
@@ -97,7 +98,7 @@ def test_real_native_cover_and_valid_blank_replay_without_changed_cleanup(tmp_pa
 def test_checkpoint_identity_change_does_not_reuse_old_pages(tmp_path):
     source = two_page_pdf()
     rule = derivation.native_only()
-    kwargs = dict(page_deadline_seconds=0, checkpoint_root=tmp_path)
+    kwargs = dict(page_deadline_seconds=0, checkpoint=adapter(tmp_path))
     assert derivation.pdf_text(source, strategy=rule, **kwargs).status == 'completed'
     changed = derivation.PageRule(rule.strategy, rule.reader, dict(rule.checkpoint_identity, policy='new'))
     assert derivation.pdf_text(source, strategy=changed, **kwargs).status == 'completed'

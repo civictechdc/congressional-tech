@@ -126,3 +126,11 @@ Evidence is under the main checkout's
 `final-focused.xml`, `final-verified-memory.json`, its timeline, and
 `final-fixtures/`. The independent audit reviewer also compared one real native
 cover through serialization and ordinary cleanup with identical results.
+
+The producer owns checkpoint storage and supplies an extraction adapter to the
+parser. The parser does not import retention code. Reading-version evidence
+explicitly includes that adapter and its imports. Recovery rules without a
+reproducible identity remain unqualified for checkpoint reuse after lifting a
+pixel bound. These boundaries are covered by the import-fence, worker restart,
+corruption, recovery and execution-trace tests; extraction meanings remain
+unchanged by this dependency correction.

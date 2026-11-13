@@ -525,7 +525,7 @@ def _parse_payload(payload):
     outlived its deadline) or a ``row`` with ``text`` naming the file, its bytes and SHA-256.
     """
     from congress_api.parsers import body_text as derivation
-    from congress_api.retention.page_checkpoints import CheckpointError
+    from congress_api.retention.page_checkpoints import CheckpointError, adapter
     request = json.loads(payload)
     try:
         data = _read_decoded(request)
@@ -542,7 +542,7 @@ def _parse_payload(payload):
             reading = derivation.derive(data, request['parser'], strategy=_STRATEGIES[spec],
                 page_deadline_seconds=request['page_deadline_seconds'], sniff_format=_sniff_format,
                 max_bytes=None if request.get('unlimited_body_bytes') else MAX_DECODED_BYTES,
-                evidence=evidence.emit if evidence.path else None, checkpoint_root=request.get('page_checkpoints'))
+                evidence=evidence.emit if evidence.path else None, checkpoint=adapter(request.get('page_checkpoints')))
         except CheckpointError as error:
             evidence.emit(dict(event='checkpoint_failed', error=str(error)))
             return dict(read_error='page_checkpoint', error=str(error), peak_rss_bytes=_child_peak_rss_bytes())
