@@ -17,3 +17,9 @@ Owner decisions 2026-11-11 (session congress-1, questions dialog): 'Hybrid: meas
 
 The typeset/scanned split is counted over all OCR'd pages with the classifier's precision checked on a hand-read sample; the owner decides on the re-read with its measured cost; if adopted, typeset pages carry Tesseract readings under their own version, scans keep Vision, and a raw check against native text layers where they exist shows the gain.
 
+
+## Notes
+
+**2026-11-13T15:00:26Z**
+
+2026-11-13: The full body-text run (body-text-full-20261110, PID 55948, resumed 2026-11-12 21:32Z after the publish yield) finished 2026-11-13T07:44Z at chunk-0173 with status pending: the work list is exhausted except 411 bodies blocked on missing copy metadata. The 2026-11-13 OCR recovery (codex/ocr-recovery-20261113 @ 56421715, .cache/archive-release/ocr-recovery-20261113, separate recovery catalogs) is retrying all 2,632 leftover bodies; at 14:37Z 2,164 had committed outcomes (1,058 completed, 1,083 parser errors, 23 unreadable) and all 411 missing-pin bodies completed. The typeset/scanned page count can now run over the complete OCR set.

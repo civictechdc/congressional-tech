@@ -31,3 +31,7 @@ pdf_text is a pinned model input with an empty work list. saved-name-standing.sq
 **2026-11-11T14:41:23Z**
 
 validated 2026-11-11, left open: pdf_text is not a model input yet (model/jobs/publish-model.json binds no body-text table; release 77673bfb8fcf's saved_name_kinds still shows 602 unsettled official pairs per the 2026-11-10 note), and the full body-text run is still in progress. The reading step and the owner's decision on single-name kind correction remain.
+
+**2026-11-13T15:00:26Z**
+
+2026-11-13: The full body-text run (body-text-full-20261110, PID 55948, resumed 2026-11-12 21:32Z after the publish yield) finished 2026-11-13T07:44Z at chunk-0173 with status pending: the work list is exhausted except 411 bodies blocked on missing copy metadata. The 2026-11-13 OCR recovery (codex/ocr-recovery-20261113 @ 56421715, .cache/archive-release/ocr-recovery-20261113, separate recovery catalogs) is retrying all 2,632 leftover bodies; at 14:37Z 2,164 had committed outcomes (1,058 completed, 1,083 parser errors, 23 unreadable) and all 411 missing-pin bodies completed. Still waits on ct-m704 (pdf_text is not a model input yet) and the owner's decision on single-name kind correction.
