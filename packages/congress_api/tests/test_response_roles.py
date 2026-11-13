@@ -3,7 +3,7 @@ from hashlib import sha256
 
 import pytest
 
-from congress_api.parsers.response_roles import assess_response
+from congress_api.parsers.response_roles import MAX_EVIDENCE_FIELDS, MAX_EVIDENCE_TEXT_CHARS, assess_response
 
 
 def test_storage_error_requires_root_code_and_request_identity():
@@ -82,3 +82,31 @@ def test_cli_displays_original_identity_and_observation(tmp_path, capsys):
     assert row['body_sha256'] == sha256(source.read_bytes()).hexdigest()
     assert row['role'] == 'error_response'
     assert row['evidence'][0]['text'] == 'NoSuchKey'
+
+
+def test_closed_ancestor_and_empty_headings_cannot_capture_later_text():
+    source = (b'<html><title>Ordinary source</title>' + b'<div><h1></div>' * 100
+              + b'<h2/>' + b'x' * 10_000 + b'</html>')
+    row = assess_response(source, format='html')
+    assert row.role == 'unassessed'
+    assert sum(len(item['text']) for item in row.evidence) == len('ordinary source')
+    assert all(not item['text'] for item in row.evidence if item['field'] != 'title')
+
+
+def test_heading_evidence_has_its_own_text_and_field_bounds():
+    for source in [b'<title>source</title>' + b'<h1>x</h1>' * MAX_EVIDENCE_FIELDS,
+                   b'<h1>' * 10 + b'x' * (MAX_EVIDENCE_TEXT_CHARS // 10 + 1) + b'</h1>' * 10]:
+        row = assess_response(source, format='html')
+        assert (row.role, row.reason) == ('unassessed', 'evidence_exceeds_assessment_bound')
+
+
+@pytest.mark.parametrize('source', [
+    b'<Error>Substantive source text<Code>NoSuchKey</Code><RequestId>x</RequestId></Error>',
+    b'<Error><Code>NoSuchKey</Code><Message/>Substantive source text<RequestId>x</RequestId></Error>',
+    b'<Error><Code xmlns="urn:hearing-example">NoSuchKey</Code><RequestId>x</RequestId></Error>',
+    b'<Error><Code>NoSuchKey</Code><RequestId xmlns="urn:hearing-example">x</RequestId></Error>',
+    b'<Error xmlns:q="urn:hearing-example"><q:Code>NoSuchKey</q:Code><q:RequestId>x</q:RequestId></Error>',
+])
+def test_storage_role_rejects_mixed_root_content_and_foreign_fields(source):
+    row = assess_response(source, format='xml')
+    assert (row.role, row.reason) == ('unassessed', 'unqualified_error_structure')

@@ -13,6 +13,8 @@ from spicy_docs.reading.markup import HTML_VOID_TAGS, MarkupReadError, read_html
 
 POLICY_VERSION = 'ct-response-roles-v1'
 MAX_BYTES = 1 << 20
+MAX_EVIDENCE_FIELDS = 512
+MAX_EVIDENCE_TEXT_CHARS = 64 << 10
 _HEADINGS = {'h1', 'h2', 'h3'}
 _HIDDEN = {'script', 'style', 'template', 'noscript'}
 
@@ -30,33 +32,50 @@ def _normal(text):
     return ' '.join(text.split()).casefold()
 
 
+class _EvidenceLimit(ValueError):
+    """A role observation must stay bounded even for malformed nested headings."""
+
+
 def _html_fields(events):
     stack, fields, visible = [], [], []
-    active = []
+    evidence_chars = 0
+
+    def append_active(value):
+        nonlocal evidence_chars
+        active = [item for _, item in stack if item is not None]
+        evidence_chars += len(value) * len(active)
+        if evidence_chars > MAX_EVIDENCE_TEXT_CHARS:
+            raise _EvidenceLimit('title and heading text exceeds the evidence bound')
+        for item in active:
+            item['parts'].append(value)
+
     for event in events:
         if event.kind in {'start', 'empty', 'end'} and event.name in HTM_BLOCK_ELEMENTS:
             visible.append('\n')
         if event.kind in {'start', 'empty'}:
             if event.name == 'br':
-                for item in active:
-                    item['parts'].append('\n')
+                append_active('\n')
+            item = None
             if event.name in {'title', *_HEADINGS}:
+                if len(fields) >= MAX_EVIDENCE_FIELDS:
+                    raise _EvidenceLimit('title and heading count exceeds the evidence bound')
                 item = dict(field=event.name, byte_start=event.byte_start, byte_end=None, parts=[])
                 fields.append(item)
-                active.append(item)
             if event.kind == 'start' and event.name not in HTML_VOID_TAGS:
-                stack.append(event.name)
+                stack.append((event.name, item))
         elif event.kind == 'end':
-            for item in active:
-                if item['field'] == event.name:
-                    item['byte_end'] = event.byte_start
-            active = [item for item in active if item['field'] != event.name]
-            if event.name in stack:
-                stack = stack[:len(stack) - 1 - stack[::-1].index(event.name)]
-        elif event.kind == 'text' and not (_HIDDEN & set(stack)):
-            for item in active:
-                item['parts'].append(event.text or '')
-            if 'head' not in stack:
+            names = [name for name, _ in stack]
+            if event.name in names:
+                close_at = len(names) - 1 - names[::-1].index(event.name)
+                # Closing an ancestor also ends every heading inside it. An
+                # unclosed heading cannot accumulate later sibling content.
+                for _, item in stack[close_at:]:
+                    if item is not None:
+                        item['byte_end'] = event.byte_start
+                del stack[close_at:]
+        elif event.kind == 'text' and not (_HIDDEN & {name for name, _ in stack}):
+            append_active(event.text or '')
+            if not any(name == 'head' for name, _ in stack):
                 visible.append(event.text or '')
     for item in fields:
         item['text'] = _normal(''.join(item.pop('parts')))
@@ -98,34 +117,47 @@ def assess_response(body: bytes, *, format: str, max_bytes=MAX_BYTES):
             return result('feed', 'atom_root', [dict(root=read.root_expanded_name)])
         if read.root_expanded_name != 'Error':
             return result('unassessed', 'no_qualified_response_structure', [dict(root=read.root_expanded_name)])
-        stack, children, current, nested = [], [], None, False
+        stack, children = [], []
+        nested = mixed_root = foreign_child = False
         for event in read.events:
             if event.kind in {'start', 'empty'}:
+                scope = (stack[-1][0] if stack else {}) | dict(event.namespace_declarations)
                 nested |= len(stack) > 1
+                child = None
                 if len(stack) == 1:
-                    current = dict(field=event.name, byte_start=event.byte_start, parts=[])
-                    children.append(current)
+                    child = dict(field=event.name, byte_start=event.byte_start, parts=[])
+                    prefix, _, local = (event.name or '').rpartition(':')
+                    namespace = scope.get(prefix, '' if not prefix else None)
+                    if namespace != '':
+                        foreign_child = True
+                        child['expanded_name'] = f'{{{namespace}}}{local}'
+                    children.append(child)
                 if event.kind == 'start':
-                    stack.append(event.name)
+                    stack.append((scope, child))
             elif event.kind == 'end':
                 if stack:
                     stack.pop()
-                if len(stack) == 1:
-                    current = None
-            elif event.kind == 'text' and current is not None:
-                current['parts'].append(event.text or '')
+            elif event.kind == 'text':
+                if len(stack) == 1 and (event.text or '').strip():
+                    mixed_root = True
+                    children.append(dict(field='#root_text', byte_start=event.byte_start, parts=[event.text]))
+                elif len(stack) >= 2:
+                    stack[1][1]['parts'].append(event.text or '')
         for item in children:
             item['text'] = ''.join(item.pop('parts')).strip()
         codes = [item['text'] for item in children if item['field'] == 'Code']
         # These are root-level storage responses, not phrase hits inside a report.
         allowed = {'Code', 'Message', 'BucketName', 'RequestId', 'HostId', 'Key', 'Resource', 'Region', 'Endpoint'}
-        if (not nested and {item['field'] for item in children} <= allowed
+        if (not nested and not mixed_root and not foreign_child and {item['field'] for item in children} <= allowed
                 and len(codes) == 1 and codes[0] in {'NoSuchKey', 'AccessDenied'} and any(
                     item['field'] == 'RequestId' and item['text'] for item in children)):
             return result('error_response', 'storage_' + codes[0], children)
         return result('unassessed', 'unqualified_error_structure', children)
 
-    fields, visible = _html_fields(read.events)
+    try:
+        fields, visible = _html_fields(read.events)
+    except _EvidenceLimit as error:
+        return result('unassessed', 'evidence_exceeds_assessment_bound', [dict(error=str(error))])
     titles = [item['text'] for item in fields if item['field'] == 'title']
     headings = {item['text'] for item in fields if item['field'] in _HEADINGS}
     if len(titles) != 1:

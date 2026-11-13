@@ -14,11 +14,16 @@ The command accepts at most 1 MiB and uses spicy-docs' maintained markup readers
 with bounded event/depth limits and original-byte positions. Large feeds use
 their dedicated structured reader. The role policy is independent of historical
 parser completion: a completed text extraction can still contain an error page.
+HTML title/heading evidence has separate limits of 512 fields and 65,536
+accumulated text characters. Ancestor closure ends descendant fields; exceeding either
+evidence limit leaves the source unassessed instead of emitting a partial role.
 
 The initial policy recognizes two complete root-level storage error structures
 (`NoSuchKey` and `AccessDenied`) and narrow combinations of publisher titles,
 headings and explanations for observed HTML error/wait families. A quoted phrase
-alone is insufficient. It distinguishes Senate maintenance from missing content.
+alone is insufficient. Storage-error children must use the unnamespaced response
+vocabulary, and non-whitespace mixed text under the root keeps it unassessed.
+It distinguishes Senate maintenance from missing content.
 The Atom root is a source-role observation, not proof that all entries were read.
 Zero bytes are an empty response, not a qualified empty document. Unsupported,
 over-bound, malformed, undecodable and unmatched inputs remain `unassessed`.
