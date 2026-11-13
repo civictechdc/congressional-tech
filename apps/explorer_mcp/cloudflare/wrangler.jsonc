@@ -28,7 +28,7 @@
     "CongressExplorer": { "type": "durable-object", "storage": "sqlite" }
   },
   "vars": {
-    "PUBLICATION": "https://congressional-data.spicygov.ai/viewer-publications/releases/6c46b8f7a606191bbe52d281cf8d8eb4ec4c3d25867f4ecfd0ef6638841c350e/manifest.json"
+    "PUBLICATION": "https://congressional-data.spicygov.ai/viewer-publications/releases/55c14dcda87ae954583bf518050b3bd45db6aed49c88c53413260c1d092ef105/manifest.json"
   },
   "ratelimits": [
     {
