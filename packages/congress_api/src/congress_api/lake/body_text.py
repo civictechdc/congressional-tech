@@ -37,6 +37,7 @@ import shutil
 import stat
 import traceback
 from tempfile import NamedTemporaryFile
+from uuid import uuid4
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -460,6 +461,43 @@ def parse_payload(payload):
         raise
 
 
+class _QualityEvidence:
+    """Optional page evidence, streamed outside the bounded worker response."""
+
+    def __init__(self, request):
+        self.path = request.get('quality_evidence')
+        self.identity = {key: request.get(key) for key in ('body_sha', 'parser', 'parser_version')}
+        self.stream, self.digest, self.bytes = None, sha256(), 0
+
+    def __enter__(self):
+        if self.path:
+            requested = Path(self.path)
+            # A retry must not overwrite the failed attempt's page evidence.
+            self.path = str(requested.with_name(requested.stem + '.' + uuid4().hex + requested.suffix))
+            self.stream = Path(self.path).open('wb')
+            self.emit(dict(event='attempt_started', schema='ct-body-text-quality-v1', **self.identity))
+        return self
+
+    def emit(self, event):
+        if self.stream is not None:
+            encoded = (json.dumps(event, ensure_ascii=False, separators=(',', ':')) + '\n').encode()
+            self.stream.write(encoded)
+            self.stream.flush()  # completed page evidence survives a later worker crash
+            self.digest.update(encoded)
+            self.bytes += len(encoded)
+
+    def __exit__(self, kind, error, trace):
+        if self.stream is not None:
+            try:
+                if kind is not None:
+                    self.emit(dict(event='attempt_interrupted', error_type=kind.__name__))
+            finally:
+                self.stream.close()
+
+    def reference(self):
+        return dict(path=self.path, bytes=self.bytes, sha256=self.digest.hexdigest())
+
+
 def _parse_payload(payload):
     """Worker callable: read one body, derive its reading, write its text to the named directory.
 
@@ -478,17 +516,24 @@ def _parse_payload(payload):
     spec = request['strategy']
     if spec not in _STRATEGIES:  # one strategy object per worker process, reused across bodies
         _STRATEGIES[spec] = derivation.load_page_rule(spec)
-    try:
-        reading = derivation.derive(data, request['parser'], strategy=_STRATEGIES[spec],
-            page_deadline_seconds=request['page_deadline_seconds'], sniff_format=_sniff_format,
-            max_bytes=None if request.get('unlimited_body_bytes') else MAX_DECODED_BYTES)
-    except derivation.OcrRequired:
-        return dict(pending='ocr_required', peak_rss_bytes=_child_peak_rss_bytes())
-    except derivation.PageDeadline:
-        return dict(retry='page_deadline', peak_rss_bytes=_child_peak_rss_bytes())
+    with _QualityEvidence(request) as evidence:
+        try:
+            reading = derivation.derive(data, request['parser'], strategy=_STRATEGIES[spec],
+                page_deadline_seconds=request['page_deadline_seconds'], sniff_format=_sniff_format,
+                max_bytes=None if request.get('unlimited_body_bytes') else MAX_DECODED_BYTES,
+                evidence=evidence.emit if evidence.path else None)
+        except derivation.OcrRequired:
+            evidence.emit(dict(event='attempt_pending', reason='ocr_required'))
+            return dict(pending='ocr_required', peak_rss_bytes=_child_peak_rss_bytes())
+        except derivation.PageDeadline:
+            evidence.emit(dict(event='attempt_pending', reason='page_deadline'))
+            return dict(retry='page_deadline', peak_rss_bytes=_child_peak_rss_bytes())
+        evidence.emit(dict(event='derivation_finished', reading_status=reading.status, error_type=reading.error_type))
     child_rss = _child_peak_rss_bytes()
     del data
     value = dict(row=reading.row(), peak_rss_bytes=child_rss)
+    if evidence.path:
+        value['quality_evidence'] = evidence.reference()
     if reading.diagnostic:
         if request.get('diagnostics'):
             Path(request['diagnostics']).write_text(reading.diagnostic)
@@ -549,7 +594,7 @@ def _write_texts(path, texts):
 def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unreadable_store=None,
           parser_workers=1, parser_memory_bytes=PARSER_MEMORY_BYTES,
           strategy=None, page_deadline_seconds=PAGE_DEADLINE_SECONDS, origin=None,
-          recovery=False, worker_memory_bytes=WORKER_MEMORY_BYTES):
+          recovery=False, worker_memory_bytes=WORKER_MEMORY_BYTES, retain_quality_evidence=False):
     """Read one batch with bounded workers; stage its texts, readings rows and decisions.
 
     ``origin`` reads bodies from the archive origin rather than the plan's local raw root.
@@ -592,6 +637,9 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
         diagnostic = diagnostics_dir / (body_hex + '.txt')
         if diagnostic.is_file():
             body_outcomes[-1]['diagnostic_path'] = str(diagnostic)
+        quality = sorted(diagnostics_dir.glob(body_hex + '.quality.*.jsonl'))
+        if quality:
+            body_outcomes[-1]['quality_evidence_paths'] = [str(path) for path in quality]
         with (work / 'body-outcomes.jsonl').open('a') as progress:
             progress.write(json.dumps(body_outcomes[-1], sort_keys=True) + '\n')
 
@@ -611,6 +659,9 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
             request = dict(body_sha=body_hex, parser=parser, stored_bytes=item['stored_bytes'],
                            texts=str(texts_dir), strategy=strategy, page_deadline_seconds=page_deadline_seconds,
                            unlimited_body_bytes=recovery, diagnostics=str(diagnostics_dir / (body_hex + '.txt')))
+            if retain_quality_evidence:
+                request.update(parser_version=version,
+                               quality_evidence=str(diagnostics_dir / (body_hex + '.quality.jsonl')))
             if origin is not None:
                 oversize = not recovery and item['stored_bytes'] is not None and item['stored_bytes'] > MAX_STORED_BYTES
                 if not oversize and item['stored_bytes'] is None:
@@ -775,7 +826,8 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
         unreadable_store=None, unreadable_files=(), max_cache_bytes=MAX_CACHE_BYTES, max_batch_items=MAX_BATCH_ITEMS,
         max_batches=None, worker_factory=_MeasuredWorker, parser_workers=1,
         parser_memory_bytes=PARSER_MEMORY_BYTES, strategy=None,
-        page_deadline_seconds=PAGE_DEADLINE_SECONDS, registry=None, filename_readings=None, body_listing=None):
+        page_deadline_seconds=PAGE_DEADLINE_SECONDS, registry=None, filename_readings=None, body_listing=None,
+        retain_quality_evidence=False):
     """Plan once against current `readings`, then stage and commit batches in work-list order.
 
     Bodies come from ``local_root`` or ``origin`` (exactly one); ``body_listing`` pins MD5-less
@@ -821,7 +873,8 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
         staged = stage(planned, items, engine=engine, work=batch_work / 'stage', worker_factory=worker_factory,
                        unreadable_store=unreadable_store, parser_workers=parser_workers,
                        parser_memory_bytes=parser_memory_bytes, strategy=strategy,
-                       page_deadline_seconds=page_deadline_seconds, origin=origin)
+                       page_deadline_seconds=page_deadline_seconds, origin=origin,
+                       retain_quality_evidence=retain_quality_evidence)
         staged['append'] = append(staged, engine=engine, work=batch_work, catalog_root=catalog_root, tables=tables)
         report['applied'] |= any(value is not None for value in staged['append'].values())
         staged['body_text'].unlink()  # committed (or empty): the staged text copy is the batch's disk cost

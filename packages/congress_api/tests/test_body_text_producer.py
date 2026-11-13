@@ -5,6 +5,7 @@ about the tables a later run plans against, not about the producer's own report.
 """
 import hashlib
 import json
+from pathlib import Path
 
 import pyarrow.parquet as pq
 import pytest
@@ -79,6 +80,23 @@ def test_worker_returns_text_larger_than_the_supervisor_pipe_by_file(tmp_path):
     assert row['text'].encode() == body[len(b'<html><body><pre>'):-len(b'</pre></body></html>')]
     assert pq.read_table(staged['readings']).to_pylist()[0]['text_bytes'] > 8 << 20
     assert not (tmp_path / 'stage/texts').exists()  # staged text files leave with the stage
+
+
+def test_committed_batch_retains_opt_in_page_evidence_after_staged_text_cleanup(tmp_path):
+    args, _ = lake(tmp_path, dict(pdf=(two_page_pdf(), 'pdf')))
+    report = body_text.run(**args, work=tmp_path / 'run', execute=True, retain_quality_evidence=True)
+    [batch] = report['batches']
+    [outcome] = batch['body_outcomes']
+    [evidence] = outcome['quality_evidence_paths']
+    events = [json.loads(line) for line in Path(evidence).read_text().splitlines()]
+    assert events[0]['body_sha'] == outcome['body_sha256']
+    assert events[0]['parser_version'] == outcome['parser_version']
+    assert events[-1]['reading_status'] == 'completed'
+    assert [event['page'] for event in events if event['event'] == 'page_extracted'] == [1, 2]
+    [row] = committed(args, tmp_path / 'selected-text', 'body_text', 'text')
+    assert row['text'] == PAGE_ONE + '\n' + PAGE_TWO
+    assert not Path(batch['body_text']).exists()
+    assert Path(evidence).exists()
 
 
 class Scripted:
