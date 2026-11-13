@@ -86,15 +86,9 @@ WITH cg_current AS (
  UNION ALL
  SELECT * FROM retained_dref_rows
 ), drefs_agg AS (
- -- A full-frame window preserves reference order without merging nested aggregate states.
- -- DataFusion 55 charges shared struct buffers repeatedly during that merge.
- SELECT event_id,
-  array_agg(item) OVER (
-   PARTITION BY event_id ORDER BY grp,last_rn,idx
-   ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
-  ) AS document_references
+ SELECT event_id,array_agg(item ORDER BY grp ASC,last_rn ASC,idx ASC) AS document_references
  FROM all_dref_rows
- QUALIFY row_number() OVER (PARTITION BY event_id ORDER BY grp,last_rn,idx)=1
+ GROUP BY event_id
 ), hist_doc_urls_unnested AS (
  SELECT event_id,unnest(document_urls) AS url FROM congress_gov_meeting_history
  WHERE hist_rn>1 AND coalesce(array_length(document_urls),0)>0
