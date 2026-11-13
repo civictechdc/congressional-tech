@@ -661,6 +661,10 @@ def mapping_steps(mapping_version=None):
     locator='arrow_cast(named_struct(\'key\',receipt_key,\'line\',cast(receipt_line AS INT),\n        \'index\',cast(CASE WHEN is_placeholder THEN primary_count+appended_index-1 ELSE capture_index END AS INT)), \'Struct("key": Utf8, "line": Int32, "index": Int32)\')'
     for name,member in zip(PK,['key','line','index']):
         final[name]=f"get_field({locator},'{member}')"
+    # DataFusion 55 simplifies the struct access and can infer required direct-input locators.
+    # Keep the staged Parquet fields nullable for both sources. The position check rejects null values.
+    for name in ('receipt_key','receipt_line'):
+        final[name]=f"nullif({final[name]},NULL)"
     for name in ('retrieved_at','imported_at'):
         final[name]=f"arrow_cast({final[name]}, 'Timestamp(Microsecond, Some(\"UTC\"))')"
     public_diagnostics=['reference_kind','pointer_json','body_key','unknown_mode','unknown_outcome',*witnesses]

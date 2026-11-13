@@ -25,8 +25,9 @@ def test_counter_and_direct_have_equal_rows_and_pinned_inputs(tmp_path):
         work=tmp_path/'fused',validated_counter=counter,source_qualifications=created_qualifications(counter))
     for name in ('capture-evidence.parquet','captures.parquet'):
         expected=pq.read_table(direct/name)
-        assert pq.read_table(direct/name).equals(expected)
-        assert pq.read_table(fused/name).equals(expected)
+        assert expected.schema.field('receipt_key') == pa.field('receipt_key', pa.string())
+        assert expected.schema.field('receipt_line') == pa.field('receipt_line', pa.int32())
+        assert pq.read_table(fused/name).equals(expected, check_metadata=True)
     job=json.loads((fused/'job.json').read_text())
     assert [item for item in job['inputs'] if item['kind']=='parquet']==[
         dict(name='source',kind='parquet',path=str(counter))]
