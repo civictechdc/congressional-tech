@@ -1,6 +1,6 @@
 ---
 id: ct-f6hr
-status: open
+status: in_progress
 deps: [ct-55qo]
 links: [ct-cbkz, ct-en4n]
 created: 2026-11-13T17:46:16Z
@@ -38,3 +38,23 @@ Upstream normalization exists, but the audited reader still enforces UTF-8 and r
 **2026-11-13T19:48:19Z**
 
 Correction to the tentative truncation finding: c90e782a00651261a9ac21ae8d30df88757b3b66ae99a5ff794f0dc8ca65336e is a complete, well-formed 38,854,265-byte Atom feed from https://docs.house.gov/BillsThisWeek-RSS.xml (retained HTTP 200, complete=true). It contains 2,226 entries, 15,590 elements and 4,721,751 Expat text callbacks, largely from escaped HTML. Current CT refuses at max_events after 1.25 s / 0.26 GiB peak RSS. A temporary in-process six-million-event measurement completed in 7.03 s / 1.34 GiB RSS, yielding 29,888,608 text bytes. No production limit changed. This belongs to feed-role/routing under ct-en4n; it is not a truncation or out-of-memory verdict. Exact archived original, input pin and measurements: repairs/ct-f6hr-event-limit-20261113/ under the durable OCR recovery root. Encoding/empty-subset work remains open. No publisher refetch or OCR ran.
+
+**2026-11-13T21:30:08Z**
+
+Implemented shared compatibility and a separate retained-XML recovery inspection path; acceptance remains open.
+
+Shared commits, based on CT-qualified ce38a3db: d2ad8df3cf2e069ec218e83ae0a46cca85e4c5d7 (explicit HTML decoding and empty XML subsets), 1712fa199a878bb7d41c92e4fdab8d4704ae3cd5 (bounded partial XML recovery candidates), b064f96aa8d5b0d93dcd2cb10237b1063af64b94 (qualified amendment routing and indentation punctuation). CT operator commit: 697132ee9aa01878f9d6c2a4518d498c59a573c2. Final wheel/version composition belongs to the integration owner; this work changed no CT package pins.
+
+Exact retained originals a8b5d817aa436ffdadafec57b1b2f61d1dce2a9af335a9d47eb4488ca737c1d5 (undeclared Windows-1252 HTML) and 289eef3d0a85ae8fd610f49c70642d0d36502a5089bfa19cb88717ae39f9d3e3 (UTF-8 BOM plus empty DOCTYPE subset) now complete. Original byte positions remain valid; the cleanup record states HTML source_encoding/encoding_basis. Conflicting/unsupported encoding declarations, undecodable bytes, entity declarations, external-resource expansion, nonempty internal subsets and malformed XML remain explicit strict-reader refusals. Generic event limits were not lifted; the complete House Atom source remains ct-en4n's feed route.
+
+The malformed resolution 4cad751b9ec4c7584d60e1d5059b70d29672853056fd789766b9decad7092498 was investigated and a repair attempted. Direct raw reading establishes that it ends mid-idref attribute after TITLE II in its table of contents. Maintained lxml recovery closes the open elements and drops that unfinished attribute. The CT offline command produces candidate 59e0ad5cad7682e8a69667ce74fadae8660840ab85328411ce674eace459d94f and text 1b134876c4e9a8e624ba9c9697b2c61e101655cdc6900d770dc70ce59eb7d1eb, explicitly partial/not_qualified_for_selection. Candidate coordinates never claim original-byte positions. Missing legislation remains unavailable; no inference or OCR can establish its absent bytes.
+
+Evidence root: /Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ocr-recovery-20261113/repairs/ct-markup-compatibility-20261113. Direct-review chains, input/intermediate/output paths and hashes are in data-review-final/manifest.json. Actual CT operator artifacts are ct-operator-final/{original.raw,repair.json,candidate.xml,candidate.events.jsonl,candidate.txt,output.json}. The prior data-review packet is retained to show the metadata/inline-spacing issue and its correction. The independent named reviewer is the coordinating agent; its final review must be attached before acceptance, rather than treating tests as data review.
+
+Validation: 288 shared focused tests passed (two deselections: existing live test and root-owned derivation pin reconciliation), Ruff and diff checks passed; CT production-offline focused operator file passed six tests, explicitly a partial lane. Ten real CT consumer inputs produced nine completed readings and one preserved malformed-source error; native PDF control text stayed identical and no OCR ran. Private CT probe used lxml 6.0.2/libxml2 2.14.6; shared helper tests used lxml 6.1.3 with the same libxml2.
+
+Remaining gates: final composed CT package/declarations and decoding-evidence propagation; direct review of that final consumer output; qualify the unreviewed members of the encoding/DOCTYPE cohorts before selective CPU adoption; retain the truncated-resolution missing-source gap. OCR stays paused, refetch deferred, historical readings/refusals and production selection unchanged.
+
+**2026-11-13T21:33:15Z**
+
+Independent direct data review completed by /root/ocr_ticket_completion on the final bounded shared and actual CT chains. Signed review: /Users/mikewolfd/Work/congressional-tech/.cache/archive-release/ocr-recovery-20261113/repairs/ct-markup-compatibility-20261113/data-review-final/independent-content-review.md. It confirms the unchanged original-byte evidence, corrected qualified amendment/bill output, actual CT Windows-1252 result, and separate partial recovery without invented missing legislation. This supersedes the earlier pending-review note for these specimens; final composed-package, unreviewed-cohort and production-selection gates remain open.
