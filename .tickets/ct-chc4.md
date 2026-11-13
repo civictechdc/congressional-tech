@@ -1,6 +1,6 @@
 ---
 id: ct-chc4
-status: open
+status: closed
 deps: []
 links: [ct-0hay, ct-m878, ct-jnjv, ct-m704, ct-cbkz]
 created: 2026-11-09T23:14:53Z
@@ -47,3 +47,8 @@ Related, not the same: the model already selects a page's main content (`detail.
 **2026-11-11T14:41:23Z**
 
 validated 2026-11-11, left open: the reader fix and the version bump are on main (spicy-docs 0.84.0, 0fad483d; html_text e1928f25, warc e835fb81), and the 12:15Z nightly on af1da283 reproduced 619db5f9e08e after the bump. Remains: the html/warc re-read is part of the full body-text run, which is still running (OCR chunk-0085 at 14:29Z; body text is not a published table yet), then acceptance line 3, the script/CSS re-measure over saved HTML texts, and the list of bodies whose text became far shorter.
+
+**2026-11-13T03:25:21Z**
+
+Accepted the HTML reader and fixed-input reread. Spicy-docs 0.84.0 removed script, style, noscript and template content and shipped the original Ways and Means opening statement as a regression fixture. The current 0.85.0 wheel retains the same readers. At CT 1c3e9c6d, the maintained private export reproduced all 2,929 saved HTML texts with zero detected script/CSS and preserved normalized visible text in order. Independent review reproduced the planted script, CSS and lost repeated-text failures. The fixed 192,959 HTML bodies yielded 192,728 texts and 231 individually named invalid UTF-8 errors, with zero pending. All 96 historical slice WARC envelopes passed direct reread. The maintained export excludes all 1,768 envelopes because no saved-body selection names an envelope. See docs/measurements/ct-chc4-html-body-text-20261112.md for exact evidence. Full body-text and search index publication remains tracked by ct-m704.
+
