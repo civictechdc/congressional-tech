@@ -716,7 +716,9 @@ def test_congress_gov_retained_items_across_witnesses_documents_subjects_and_gat
     assert frank_cg['superseded_by'] == frank_mods['witness_key']
 
     # Meeting 800 retained document_references + meeting_keys on dropped PDF + subject_keys + unlisted_subjects
-    drefs = { r['url']: r for r in m_cg2[800]['document_references'] }
+    refs = m_cg2[800]['document_references']
+    assert [ref['url'] for ref in refs] == [url_keep, url_drop]
+    drefs = {r['url']: r for r in refs}
     assert drefs[url_keep]['listing_status'] == 'listed' and drefs[url_keep]['unlisted_since'] is None
     assert drefs[url_drop]['listing_status'] == 'no_longer_listed'
     assert drefs[url_drop]['last_listed_on'] == date(2026, 10, 20)
