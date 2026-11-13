@@ -5,7 +5,7 @@
       "command": "sh",
       "args": [
         "-c",
-        "PATH=\"$PATH:$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.pyenv/shims:/opt/homebrew/bin:/usr/local/bin\" exec uvx --python 3.12 --from congressional-explorer-mcp==0.6.6 congress-explorer-mcp serve --prepare-if-missing \"$@\"",
+        "PATH=\"$PATH:$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.pyenv/shims:/opt/homebrew/bin:/usr/local/bin\" exec uvx --python 3.12 --from congressional-explorer-mcp==0.6.7 congress-explorer-mcp serve --prepare-if-missing \"$@\"",
         "congress-explorer-mcp"
       ]
     }
