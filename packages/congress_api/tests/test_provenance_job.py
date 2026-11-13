@@ -154,8 +154,9 @@ def test_the_memory_limit_reaches_the_engine(tmp_path):
     from docspec_client.models import DocSpecFailure
     from congress_api.retention.provenance import query
     pq.write_table(pa.table({'k':[f'key-{i:06d}-'+'x'*40 for i in range(20000)]}),tmp_path/'big.parquet')
-    sql='SELECT count(*) AS n FROM (SELECT k FROM big ORDER BY k DESC LIMIT 5000)'
-    assert query(native(),sql,dict(big=tmp_path/'big.parquet'))==[dict(n=5000)]
+    # DataFusion 55 folds a bare count(*) to 5000. min(k) keeps the TopK in the plan.
+    sql='SELECT count(*) AS n, min(k) AS low FROM (SELECT k FROM big ORDER BY k DESC LIMIT 5000)'
+    assert query(native(),sql,dict(big=tmp_path/'big.parquet'))==[dict(n=5000,low='key-015000-'+'x'*40)]
     with pytest.raises(DocSpecFailure) as raised:
         query(native(),sql,dict(big=tmp_path/'big.parquet'),memory_bytes=1<<20)
     assert re.match(r'(?:capacity|query): '+QUERY_STATEMENT+  # a memory refusal; not a disk one
@@ -187,7 +188,7 @@ def test_a_failing_statement_raises_the_engines_own_error_first(tmp_path):
     from congress_api.retention.provenance import query
     with pytest.raises(DocSpecFailure) as raised:
         query(native(),'SELECT nope FROM cited',capture_files(tmp_path))
-    assert re.fullmatch('query: '+QUERY_STATEMENT+r'Schema error: No field named nope\. Valid fields are cited\.sha\.',
+    assert re.fullmatch('query: '+QUERY_STATEMENT+r'Schema error: No field named nope\.(?: Valid fields are cited\.sha\.)?',
                         str(raised.value).splitlines()[0]),str(raised.value)
     assert '[docspec-metric]' not in str(raised.value)
 

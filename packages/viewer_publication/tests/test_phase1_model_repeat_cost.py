@@ -170,6 +170,38 @@ SEMI_ANTI_MARK_BUILD_TRACKED = {
     'unresolved_meeting_document_urls': 1,
 }
 
+# DataFusion 55's optimized logical plans decorrelate more subqueries and prune
+# more outer joins. These exact deltas are from the same eight local lake tables
+# and row estimates as the DataFusion 53 baseline above.
+REPEAT_COST_TRACKED_DF55 = {
+    **{name: cost for name, cost in REPEAT_COST_TRACKED.items() if name != 'merged_recovery_fields'},
+    'model_invariants': 51_167_706,
+    'retired_links_export': 18_825_048,
+}
+OUTER_BUILD_TRACKED_DF55 = {**OUTER_BUILD_TRACKED, 'retired_links_export': 7}
+SEMI_ANTI_MARK_BUILD_TRACKED_DF55 = {
+    **SEMI_ANTI_MARK_BUILD_TRACKED,
+    'selected_appearance_records': 1,
+    'body_admissions': 1,
+    'placeholders': 1,
+    'meeting_records_observed': 1,
+    'landing_page_picks': 1,
+    'document_identities': 1,
+    'recovered_copy_fills': 2,
+    'appearance_url_inputs': 3,
+    'appearance_records_resolved': 4,
+    'witness_key_map': 1,
+    'witness_member_committees': 6,
+    'document_witness_chrg_components': 1,
+    'url_state_page_contexts': 1,
+    'url_state_queue_links': 2,
+    'bills_export': 23,
+    'retired_links_export': 12,
+    'model_invariants': 6,
+    'entity_profile_completeness': 13,
+    'coverage': 4,
+}
+
 # New offenders the lint must catch, and ones it must let through.
 PLANTED = {
     'planted_cte_read_three_times': """WITH targets AS (
@@ -207,16 +239,21 @@ PLANTED = {
 # A second direct read of the lake table. Its SQL names the job's own input, so the fixture builds it.
 PLANTED_LAKE_READ = 'planted_second_read_of_the_lake_captures'
 
-# A lake-only refusal: saved_name_conflicts' shape before f8541b6d, over the lake's filename readings. The
-# CTE is read twice, so NOT o.official becomes a common expression below the aggregate, and coalesce carries
-# the flag's Iceberg field id into it. Explained, never run as a step; the fixture names the job's input.
-PLANTED_LAKE_REFUSAL = 'planted_saved_name_conflicts_before_f8541b6d'
-LAKE_REFUSAL_SQL = """WITH said AS (SELECT f.filename AS component, f.congress AS saved_rank,
+# The old saved_name_conflicts shape fails with DataFusion 53's common subexpression
+# field metadata and plans on DataFusion 55. Both versions still refuse the correlated
+# LATERAL plan over lake-tagged columns. These queries are explained, never run as steps.
+OLD_SAVED_NAME_CONFLICTS = 'saved_name_conflicts_before_f8541b6d'
+OLD_SAVED_NAME_CONFLICTS_SQL = """WITH said AS (SELECT f.filename AS component, f.congress AS saved_rank,
     coalesce(f.valid,false) AS official, f.document_family AS family FROM {filename_readings} f WHERE f.status='completed')
     SELECT l.component, bool_or(l.official) AS official_leads, bool_or(NOT o.official) AS committee_speaks,
     bool_or(NOT o.official AND array_has_any(l.family,o.family)) AS committee_agrees
     FROM (SELECT * FROM said WHERE saved_rank=1) l JOIN said o ON o.component=l.component AND o.saved_rank>1
     GROUP BY l.component"""
+PLANTED_LAKE_REFUSAL = 'planted_lake_physical_plan_error'
+LAKE_REFUSAL_SQL = (
+    "SELECT f.filename, s.x FROM {filename_readings} f, "
+    "LATERAL (SELECT g.congress AS x FROM {filename_readings} g WHERE g.filename = f.filename LIMIT 1) s"
+)
 
 
 SCAN = re.compile(r'^\s*TableScan: (\S+)', re.M)
@@ -302,8 +339,12 @@ def explained(tmp_path_factory):
         steps += [dict(name=name, sql=sql, materialize=True) for name, sql in PLANTED.items()]
         steps += [dict(name=PLANTED_LAKE_READ, sql='SELECT receipt_key FROM ' + lake_input(job, 'captures'), materialize=True)]
         job = dict(job, steps=steps)
-        refusal = LAKE_REFUSAL_SQL.format(filename_readings=lake_input(job, 'filename_readings'))
-        named = [*readers(job), (PLANTED_LAKE_REFUSAL, refusal)]
+        filename_input = lake_input(job, 'filename_readings')
+        named = [
+            *readers(job),
+            (OLD_SAVED_NAME_CONFLICTS, OLD_SAVED_NAME_CONFLICTS_SQL.format(filename_readings=filename_input)),
+            (PLANTED_LAKE_REFUSAL, LAKE_REFUSAL_SQL.format(filename_readings=filename_input)),
+        ]
         data = run_job(root/'explain', engine, inputs=job['inputs'], steps=steps, outputs=[],
                        queries=[dict(name=f'reader_{i}', sql='EXPLAIN '+sql) for i, (_name, sql) in enumerate(named)])
     explains = {name: {row['plan_type']: row['plan'] for row in data[f'reader_{i}']} for i, (name, _sql) in enumerate(named)}
@@ -411,10 +452,10 @@ def large_semi_anti_mark_builds(job, plan):
 
 
 def recovery_subquery_large_builds(physical_plan):
-    """Any leaf Inner HashJoinExec whose build side scans `captures` or `source_annotation_pages` directly (ct-i5u3)."""
+    """Leaf hash joins building on captures or page facts, including a rewritten semi-join (ct-i5u3)."""
     from test_phase1_model_join_audit import build_children
     return [
-        build for build in build_children(physical_plan, join_types={'Inner'})
+        build for build in build_children(physical_plan, join_types={'Inner', 'LeftSemi', 'RightSemi'})
         if 'HashJoinExec:' not in build
         and ('step=captures,' in build or 'step=source_annotation_pages,' in build)
     ]
@@ -422,7 +463,17 @@ def recovery_subquery_large_builds(physical_plan):
 
 def model_plans(plans):
     return {name: plan for name, plan in plans.items()
-            if name not in PLANTED and name not in (PLANTED_LAKE_READ, PLANTED_LAKE_REFUSAL)}
+            if name not in PLANTED and name not in (PLANTED_LAKE_READ, PLANTED_LAKE_REFUSAL, OLD_SAVED_NAME_CONFLICTS)}
+
+
+def uses_datafusion_55_lake_planner(explains):
+    # The migration also replaces iceberg-datafusion's IcebergTableScan with
+    # datafusion-iceberg's DataSourceExec. Read the scan from a real lake input.
+    scan = explains['captures']['physical_plan']
+    if 'DataSourceExec: format=iceberg' in scan:
+        return True
+    assert 'IcebergTableScan' in scan, scan
+    return False
 
 
 def refused(explains):
@@ -440,13 +491,19 @@ def test_every_reader_builds_its_physical_plan_on_lake_backed_inputs(explained):
     assert all('physical_plan' in rows for rows in model.values())
 
 
-def test_the_pass_refuses_the_spelling_that_failed_26_lane_tests(explained):
-    # f8541b6d (ct-h8dr): refused only where filename readings came from the lake. Parquet stand-ins plan
-    # it (the pinned engine strips their field metadata, def-9ise), so this test fails on them.
+def test_the_pass_checks_a_lake_physical_plan_refusal(explained):
     _job, explains = explained
-    assert set(refused(explains)) == {PLANTED_LAKE_REFUSAL}
-    reason = refused(explains)[PLANTED_LAKE_REFUSAL]
-    assert 'field metadata' in reason and '"PARQUET:field_id"' in reason, reason
+    errors = refused(explains)
+    if uses_datafusion_55_lake_planner(explains):
+        old_plan = explains[OLD_SAVED_NAME_CONFLICTS]['physical_plan']
+        assert 'DataSourceExec: format=iceberg' in old_plan, old_plan
+        assert set(errors) == {PLANTED_LAKE_REFUSAL}
+    else:
+        assert set(errors) == {OLD_SAVED_NAME_CONFLICTS, PLANTED_LAKE_REFUSAL}
+        old_reason = errors[OLD_SAVED_NAME_CONFLICTS]
+        assert 'field metadata' in old_reason and '"PARQUET:field_id"' in old_reason, old_reason
+    reason = errors[PLANTED_LAKE_REFUSAL]
+    assert 'OuterReferenceColumn' in reason and '"PARQUET:field_id"' in reason, reason
 
 
 def test_the_lake_captures_table_is_read_by_one_statement_the_first_retained_step(planned):
@@ -469,17 +526,13 @@ def test_views_are_planned_inside_their_readers(planned):
     assert not {name for plan in plans.values() for name in scans(plan)} & views
 
 
-def test_no_untracked_reader_reruns_work_over_a_large_relation(planned):
-    job, plans = planned
-    flagged, _regex = offenders(job, model_plans(plans))
-    assert {name: value for name, value in flagged.items() if name not in REPEAT_COST_TRACKED} == {}
-
-
-def test_tracked_repeat_costs_match_their_recorded_scores(planned):
-    job, plans = planned
-    current = {name: score(job, plans[name])[0] for name in REPEAT_COST_TRACKED}
-    assert current == REPEAT_COST_TRACKED, 'a fixed reader leaves the list; a changed one records its new score'
-    assert all(value >= THRESHOLD for value in current.values())
+def test_tracked_repeat_costs_match_their_recorded_scores(explained):
+    job, explains = explained
+    plans = {name: rows['logical_plan'] for name, rows in model_plans(explains).items()}
+    expected = REPEAT_COST_TRACKED_DF55 if uses_datafusion_55_lake_planner(explains) else REPEAT_COST_TRACKED
+    flagged, _regex = offenders(job, plans)
+    current = {name: score for name, (score, _repeated) in flagged.items()}
+    assert current == expected, 'a fixed reader leaves the list; a changed one records its new score'
 
 
 def test_regex_joins_run_once_outside_the_tracked_readers(planned):
@@ -524,15 +577,18 @@ def test_only_tracked_readers_build_an_outer_join_on_a_large_preserved_relation(
     job, explains = explained
     plans = {name: rows['logical_plan'] for name, rows in model_plans(explains).items()}
     current = {name: len(builds) for name, plan in plans.items() if (builds := large_outer_builds(job, plan))}
-    assert current == OUTER_BUILD_TRACKED, 'a fixed reader leaves the list; a new one names its small relation first'
-    # Independent physical-plan cross-check: every tracked reader executes an outer HashJoinExec, while
-    # pure scalar-subquery readers (`filename_both_names`, `invariants`, `url_state_invariants_step`) use NestedLoopJoinExec.
+    expected = OUTER_BUILD_TRACKED_DF55 if uses_datafusion_55_lake_planner(explains) else OUTER_BUILD_TRACKED
+    assert current == expected, 'a fixed reader leaves the list; a new one names its small relation first'
+    # Every tracked reader executes an outer join. These scalar-subquery readers
+    # use a separate physical operator, even when the logical plan has a keyless left join.
     for name in current:
         phys = explains[name]['physical_plan']
         assert any(tag in phys for tag in ('join_type=Left,', 'join_type=Left\n', 'join_type=Right', 'join_type=Full')), name
+    scalar_operator = ('ScalarSubqueryExec:' if uses_datafusion_55_lake_planner(explains)
+                       else 'NestedLoopJoinExec: join_type=Left')
     for scalar_only in ('filename_both_names', 'invariants', 'url_state_invariants_step'):
         assert scalar_only not in current
-        assert 'NestedLoopJoinExec: join_type=Left' in explains[scalar_only]['physical_plan']
+        assert scalar_operator in explains[scalar_only]['physical_plan']
 
 
 def test_only_tracked_readers_build_a_semi_anti_or_mark_join_on_a_large_left_relation(explained):
@@ -543,7 +599,9 @@ def test_only_tracked_readers_build_a_semi_anti_or_mark_join_on_a_large_left_rel
         for name, plan in plans.items()
         if (builds := large_semi_anti_mark_builds(job, plan))
     }
-    assert current == SEMI_ANTI_MARK_BUILD_TRACKED, 'semi/anti/mark joins with large left inputs are tracked'
+    expected = (SEMI_ANTI_MARK_BUILD_TRACKED_DF55 if uses_datafusion_55_lake_planner(explains)
+                else SEMI_ANTI_MARK_BUILD_TRACKED)
+    assert current == expected, 'semi/anti/mark joins with large left inputs are tracked'
     for name in current:
         phys = explains[name]['physical_plan']
         assert any(tag in phys for tag in ('join_type=LeftSemi', 'join_type=LeftAnti', 'join_type=LeftMark')), name
