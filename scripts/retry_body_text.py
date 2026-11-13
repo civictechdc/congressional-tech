@@ -18,12 +18,9 @@ import os
 from pathlib import Path
 import re
 import time
-import sqlite3
 
 import pyarrow.parquet as pq
-import pyarrow as pa
 from docspec_client import NativeDatasets
-from pyiceberg.table import StaticTable
 
 from congress_api.lake import body_text, readings, tables
 from congress_api.retention.body_store import BodyStore, LocalAdapter
@@ -120,16 +117,19 @@ def reuse_completed(source, work, engine, catalog, table_ids, versions):
     outcomes = [o for p in sorted((source/'batches').glob('*/result.json'))
                 for o in json.loads(p.read_text())['body_outcomes'] if o.get('reading_status')=='completed']
     wanted = {o['body_sha256'] for o in outcomes}
-    with sqlite3.connect('file:'+str(source/'catalog/catalog.sqlite')+'?mode=ro',uri=True) as db:
-        pins = dict(db.execute("SELECT table_name,metadata_location FROM iceberg_tables WHERE table_namespace='archive'"))
+    pins = tables.resolve_tables(engine=engine,work=work/'resolve-reuse',catalog_root=source/'catalog',tables=table_ids)
     stage = work/'carried-stage'
     stage.mkdir(exist_ok=True)
     for name in ('body_text','readings'):
-        table = StaticTable.from_metadata(pins[name]).scan().to_arrow()
-        rows = [dict(r,parser_version=versions[r['parser']]) for r in table.to_pylist() if r['body_sha'].hex() in wanted]
-        assert len(rows)==len(wanted)
-        path=stage/(name+'.parquet')
-        pq.write_table(pa.Table.from_pylist(rows,schema=table.schema),path,compression='zstd')
+        schema = json.loads(body_text.SCHEMA.read_text()) if name=='body_text' else tables.load_schema(name)
+        version = 'CASE s.parser ' + ' '.join(f"WHEN '{p}' THEN '{v}'" for p,v in versions.items()) + ' ELSE s.parser_version END AS parser_version'
+        columns = ','.join(version if f['name']=='parser_version' else 's."'+f['name']+'"' for f in schema['fields'])
+        selected = ','.join("'"+s+"'" for s in sorted(wanted))
+        out = stage/name
+        run_job(out,engine,inputs=[tables.table_input('source',pins[name])],steps=[],
+                outputs=[parquet_output(out,'rows',f"SELECT {columns} FROM source s WHERE encode(s.body_sha,'hex') IN ({selected})",body_text.PK)])
+        path=out/'rows.parquet'
+        assert pq.ParquetFile(path).metadata.num_rows==len(wanted)
         tables.append_rows(path,engine=engine,work=stage/('append-'+name),catalog_root=catalog,
                            table=table_ids[name],keys=body_text.PK,definition='reuse completed recovery: pixel exclusion removed')
     for o in outcomes:
