@@ -2,7 +2,6 @@
 import json
 from pathlib import Path
 import re
-import sys
 
 from congress_api.lake._record_producer import (
     CURRENT_PAGE_READINGS_SQL,
@@ -10,14 +9,14 @@ from congress_api.lake._record_producer import (
     expected_records_sql,
 )
 from congress_api.lake.readings import bundle_version,worker_limits
-from congress_api.lake.versions import ImportClosure,_PLUMBING,_module_imports,version_digest
+from congress_api.lake.versions import ImportClosure,_PLUMBING,version_digest
 from congress_api.models.archive_profile import build_capture_profile
 from congress_api.retention.provenance import file_pin
 
 ROOT=Path(__file__).parents[4]
 PARSERS=('sniff','html','xml','json')
-# Derived readings parsers a release may pin; html_metadata is required only to publish page metadata.
-OPTIONAL_PARSERS=('html_metadata',)
+# Derived readings parsers a release may pin for page metadata or retained feed links.
+OPTIONAL_PARSERS=('html_metadata','house_floor_feed')
 MEETING_SOURCES=('congress_gov','house_xml')
 APPEARANCE_SOURCES=('house_xml','congress_gov','senate_page','mods')
 ENTITY_SOURCES={'meeting_records':MEETING_SOURCES,'appearance_records':APPEARANCE_SOURCES}

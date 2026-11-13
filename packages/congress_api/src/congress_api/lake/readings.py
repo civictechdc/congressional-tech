@@ -43,7 +43,7 @@ WORKER_TIMEOUT_SECONDS=15
 LINK_FIELDS=('href','text','tag','basis','group_path','doc_type','add_date','publish_date','remove_date')
 # A derived parser reads bodies another leaf already classified, in its own pass and
 # partition, outside the combined bundle: its failure never erases a leaf's reading.
-READ_AS={'html_metadata':'html'}
+READ_AS={'html_metadata':'html','house_floor_feed':'xml'}
 STRINGS=('parser','parser_version','status','error_type','format','xml_root','title','heading',
          'text_head','content_date','base_href')
 INTEGERS=('text_bytes','link_count','link_text_bytes')
@@ -106,6 +106,9 @@ def read_body(data,parser):
     if parser=='html_metadata':
         from congress_api.parsers.html_metadata import reading_row
         return reading_row(data)
+    if parser=='house_floor_feed':
+        from congress_api.parsers.house_floor_feed import reading_row
+        return reading_row(data)
     from congress_api.parsers.archive_readings import read_page
     return read_page(data,parser)
 
@@ -147,7 +150,7 @@ def parse_payload(payload):
                         if entity is not stream:entity.close()
                 if len(data)>MAX_DECODED_BYTES:
                     return dict(row=dict(status='error',error_type='decoded_size_limit'),read_bytes=count)
-                _bound_page_parse(data)
+                _bound_page_parse(data,source['parser'])
         if source['parser']!='sniff':
             row=read_body(data,source['parser'])
         return dict(row=row,read_bytes=count)
@@ -155,13 +158,16 @@ def parse_payload(payload):
         return dict(read_error=type(exc).__name__,read_bytes=count)
 
 
-def _bound_page_parse(data):
+def _bound_page_parse(data,parser=None):
     """Refuse a page body too large to parse within the worker cap, before parsing.
 
     Raised as MemoryError, so the worker reports memory_limit exactly as an exhausted parse
     would, but from the decoded size alone: the same body always gets the same outcome.
     """
-    if len(data)>PAGE_PARSE_MAX_BYTES:
+    # The structured feed route avoids the generic XML event list. Its retained
+    # 37 MiB original measured 0.36 GiB peak RSS; other parsers keep their bound.
+    bound=MAX_DECODED_BYTES if parser=='house_floor_feed' else PAGE_PARSE_MAX_BYTES
+    if len(data)>bound:
         raise MemoryError('decoded page body exceeds the parse bound')
 
 
@@ -194,8 +200,9 @@ def worker_limits(parser=None):
     if parser=='html_metadata':
         from congress_api.parsers.html_metadata import FORMAT_TIMEOUT_SECONDS,FORMATS
         timeout=int(len(FORMATS)*FORMAT_TIMEOUT_SECONDS)+WORKER_TIMEOUT_SECONDS
+    if parser=='house_floor_feed':timeout=60
     return dict(timeout_seconds=timeout,memory_bytes=WORKER_MEMORY_BYTES,
-                max_input_bytes=65536,max_output_bytes=8<<20)
+                max_input_bytes=65536,max_output_bytes=(64 if parser=='house_floor_feed' else 8)<<20)
 
 
 def bundle_version(versions,*,policy):
@@ -298,7 +305,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     inputs=[json_input(work,'parser_versions',[dict(parser=p,version=v) for p,v in selected.items()],parser='Utf8',version='Utf8'),
             compatible_versions.accepted_versions_input(work,[e for e in entries if e['parser'] in covered+['readings']],
                 pins={**selected,'readings':pins['readings']}),
-            table_input('captures',captures)]
+            table_input('feed_capture_inputs' if parser=='house_floor_feed' else 'captures',captures)]
     if body_inventory is not None:
         inputs.append(dict(name='body_inventory',kind='parquet',path=str(Path(body_inventory).resolve())))
     if body_listing is not None:
@@ -315,6 +322,13 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
         empty['name']='existing_json';inputs.append(empty)
     quote=lambda value:"'"+value.replace("'","''")+"'"
     steps=[]
+    if parser=='house_floor_feed':
+        # Scope captures before every downstream aggregate. This derived route
+        # reads only retained House feed responses, never all XML or any PDF.
+        steps.append(dict(name='captures',sql="""SELECT * FROM feed_capture_inputs
+            WHERE complete AND http_status BETWEEN 200 AND 299 AND http_status<>202 AND sha256 IS NOT NULL
+            AND (lower(url) IN ('https://docs.house.gov/billsthisweek-rss.xml','http://docs.house.gov/billsthisweek-rss.xml')
+              OR lower(requested_url) IN ('https://docs.house.gov/billsthisweek-rss.xml','http://docs.house.gov/billsthisweek-rss.xml'))""",materialize=True))
     if raw_ranges or captured_copies:
         steps.append(dict(name='body_storage',sql="""SELECT sha256 AS body_sha,coalesce(stored_suffix,'.gz') AS stored_suffix,
             concat('bodies/sha256/',substr(encode(sha256,'hex'),1,2),'/',encode(sha256,'hex'),
@@ -1019,7 +1033,7 @@ def parse_once_payload(payload,*,body_store=None):
                 if source is None:source=open_source()
                 if not request.get('prefetched') and data is None:
                     data,source.stored_gzip=_page_entity(source.read(0,source.size),request['body_sha'])
-                if data is not None:_bound_page_parse(data)
+                if data is not None:_bound_page_parse(data,parser)
                 row=(dict(status='error',error_type='decoded_size_limit') if data is None else read_body(data,parser))
             rows.append(dict(row,parser=parser,parser_version=versions[parser]))
         return result(rows=rows,gzip_rule=gzip_rule,read_bytes=0 if source is None else source.read_bytes)

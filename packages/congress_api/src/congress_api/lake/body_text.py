@@ -447,27 +447,13 @@ def _read_reason(error):
 _STRATEGIES = {}
 
 
-def _child_peak_rss_bytes():
+def _worker_lifetime_peak_rss_bytes():
+    """Historical high-water mark; never attribute this to one request."""
     import resource
     import sys
     ru = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     ru_bytes = int(ru) if sys.platform == 'darwin' else int(ru) * 1024
     return max(resident_bytes(os.getpid()), ru_bytes)
-
-
-class _MeasuredWorker(ParserWorker):
-    last_peak_rss_bytes = None
-
-    def parse(self, input_id, payload):
-        self.last_peak_rss_bytes = None
-        return super().parse(input_id, payload)
-
-    def _stop(self):
-        if self._process is not None and self._process.poll() is None:
-            rss = resident_bytes(self._process.pid)
-            if rss > 0:
-                self.last_peak_rss_bytes = max(self.last_peak_rss_bytes or 0, rss)
-        super()._stop()
 
 
 def parse_payload(payload):
@@ -533,7 +519,7 @@ def _parse_payload(payload):
         return dict(read_error=_read_reason(error), error=f'{type(error).__name__}: {error}')
     if data is None:
         return dict(row=dict(status='error', error_type='decoded_size_limit'),
-                    peak_rss_bytes=resident_bytes(os.getpid()))
+                    worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
     spec = request['strategy']
     if spec not in _STRATEGIES:  # one strategy object per worker process, reused across bodies
         _STRATEGIES[spec] = derivation.load_page_rule(spec)
@@ -545,17 +531,18 @@ def _parse_payload(payload):
                 evidence=evidence.emit if evidence.path else None, checkpoint=adapter(request.get('page_checkpoints')))
         except CheckpointError as error:
             evidence.emit(dict(event='checkpoint_failed', error=str(error)))
-            return dict(read_error='page_checkpoint', error=str(error), peak_rss_bytes=_child_peak_rss_bytes())
+            return dict(read_error='page_checkpoint', error=str(error),
+                        worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
         except derivation.OcrRequired:
             evidence.emit(dict(event='attempt_pending', reason='ocr_required'))
-            return dict(pending='ocr_required', peak_rss_bytes=_child_peak_rss_bytes())
+            return dict(pending='ocr_required', worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
         except derivation.PageDeadline:
             evidence.emit(dict(event='attempt_pending', reason='page_deadline'))
-            return dict(retry='page_deadline', peak_rss_bytes=_child_peak_rss_bytes())
+            return dict(retry='page_deadline', worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
         evidence.emit(dict(event='derivation_finished', reading_status=reading.status, error_type=reading.error_type))
-    child_rss = _child_peak_rss_bytes()
+    child_rss = _worker_lifetime_peak_rss_bytes()
     del data
-    value = dict(row=reading.row(), peak_rss_bytes=child_rss)
+    value = dict(row=reading.row(), worker_lifetime_peak_rss_bytes=child_rss)
     if evidence.path:
         value['quality_evidence'] = evidence.reference()
     if reading.diagnostic:
@@ -615,7 +602,7 @@ def _write_texts(path, texts):
     return len(texts)
 
 
-def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unreadable_store=None,
+def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadable_store=None,
           parser_workers=1, parser_memory_bytes=PARSER_MEMORY_BYTES,
           strategy=None, page_deadline_seconds=PAGE_DEADLINE_SECONDS, origin=None,
           recovery=False, worker_memory_bytes=WORKER_MEMORY_BYTES, retain_quality_evidence=False, page_checkpoints=None):
@@ -629,7 +616,9 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
         raise ValueError('Unlimited body reads require the explicit recovery reading versions')
     strategy = strategy or DEFAULT_STRATEGY
     rule = load_page_rule(strategy)  # an engine this host lacks refuses before any body is read
-    if page_checkpoints is not None and rule.checkpoint_identity is None:
+    if page_checkpoints is not None and (rule.checkpoint_identity is None or any(
+            replacement.checkpoint_identity is None
+            for pages in rule.page_overrides.values() for replacement in pages.values())):
         raise ValueError('Page checkpoints require a strategy with reproducible identity')
     work = Path(work).resolve()
     if page_checkpoints is not None:
@@ -653,7 +642,8 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
         reasons[reason] = reasons.get(reason, 0) + 1
 
     def record_outcome(body_hex, parser, version, status, *, reading_status=None, reason=None,
-                       error=None, peak_rss_bytes=None):
+                       error=None, peak_rss_bytes=None, worker_lifetime_peak_rss_bytes=None,
+                       rss_samples=0):
         body_outcomes.append(dict(
             body_sha256=body_hex,
             parser=parser,
@@ -663,6 +653,10 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
             reason=reason,
             error=error,
             peak_rss_bytes=peak_rss_bytes,
+            peak_rss_scope='request_sampled_worker_rss' if peak_rss_bytes is not None else None,
+            rss_sample_interval_seconds=ParserWorker.rss_sample_interval_seconds if rss_samples else None,
+            rss_samples=rss_samples,
+            worker_lifetime_peak_rss_bytes=worker_lifetime_peak_rss_bytes,
         ))
         diagnostic = diagnostics_dir / (body_hex + '.txt')
         if diagnostic.is_file():
@@ -727,22 +721,21 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
         item, request = job
         if not recovery and request['stored_bytes'] > MAX_STORED_BYTES:
             return item, request, dict(status='completed', value=dict(
-                row=dict(status='size_limit', error_type='stored_size_limit'))), None
-        peak = 0
+                row=dict(status='size_limit', error_type='stored_size_limit'))), {}
+        resources = dict(peak_rss_bytes=None, worker_lifetime_peak_rss_bytes=None, rss_samples=0)
         try:
             for attempt in range(2):  # §6: a page past its deadline is a resource failure, retried once
                 outcome = worker.parse(request['body_sha'], json.dumps(request, separators=(',', ':')).encode())
-                sup_rss = outcome.get('peak_rss_bytes') if isinstance(outcome, dict) else None
-                if sup_rss is None:
-                    sup_rss = getattr(worker, 'last_peak_rss_bytes', None)
-                child_rss = (outcome.get('value', {}).get('peak_rss_bytes')
+                sup_rss = getattr(worker, 'last_peak_rss_bytes', None)
+                child_rss = (outcome.get('value', {}).get('worker_lifetime_peak_rss_bytes')
                              if isinstance(outcome, dict) and isinstance(outcome.get('value'), dict) else None)
-                for candidate in (sup_rss, child_rss):
-                    if isinstance(candidate, int) and candidate > peak:
-                        peak = candidate
+                for key, candidate in (('peak_rss_bytes', sup_rss), ('worker_lifetime_peak_rss_bytes', child_rss)):
+                    if type(candidate) is int and candidate > (resources[key] or 0):
+                        resources[key] = candidate
+                resources['rss_samples'] += getattr(worker, 'last_rss_samples', 0)
                 if outcome['status'] != 'completed' or 'retry' not in outcome['value']:
-                    return item, request, outcome, (peak or None)
-            return item, request, dict(status='unreadable', reason=outcome['value']['retry']), (peak or None)
+                    return item, request, outcome, resources
+            return item, request, dict(status='unreadable', reason=outcome['value']['retry']), resources
         finally:
             if 'cache' in request:
                 shutil.rmtree(request['cache'], ignore_errors=True)
@@ -750,12 +743,13 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
     with ParserWorkerPool('body_text', json.dumps(planned['versions'], sort_keys=True),
             'congress_api.lake.body_text:parse_payload', workers=parser_workers,
             memory_budget=parser_memory_bytes, worker_factory=worker_factory, **worker_limits(worker_memory_bytes)) as pool:
-        for item, request, outcome, peak_rss in pool.map(invoke, jobs()):
+        for item, request, outcome, resources in pool.map(invoke, jobs()):
             body_hex, parser, version = request['body_sha'], item['parser'], item['parser_version']
+            peak_rss = resources.get('peak_rss_bytes')
             if outcome['status'] == 'read_error':
                 pending_read(outcome['reason'])
                 record_outcome(body_hex, parser, version, 'pending', reason=outcome['reason'],
-                               error=outcome.get('error') or outcome['reason'], peak_rss_bytes=peak_rss)
+                               error=outcome.get('error') or outcome['reason'], **resources)
                 continue
             if outcome['status'] == 'unreadable':
                 identity = json.dumps([body_hex, parser, version, decided_at], separators=(',', ':'))
@@ -769,7 +763,7 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
                 if diagnostic.is_file():
                     err_msg = diagnostic.read_text()[-32768:]
                 record_outcome(body_hex, parser, version, 'unreadable', reason=outcome['reason'],
-                               error=err_msg, peak_rss_bytes=peak_rss)
+                               error=err_msg, **resources)
                 continue
             if outcome['status'] != 'completed':
                 raise ValueError('Invalid body-text worker outcome')
@@ -777,12 +771,12 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
             if value.get('read_error'):
                 pending_read(value['read_error'])
                 record_outcome(body_hex, parser, version, 'pending', reason=value['read_error'],
-                               error=value.get('error') or value['read_error'], peak_rss_bytes=peak_rss)
+                               error=value.get('error') or value['read_error'], **resources)
                 continue
             if value.get('pending'):
                 counters['ocr_pending'] += 1
                 record_outcome(body_hex, parser, version, 'pending', reason=value['pending'],
-                               error=value.get('error') or value['pending'], peak_rss_bytes=peak_rss)
+                               error=value.get('error') or value['pending'], **resources)
                 continue
             if value['row']['status'] == 'completed':
                 if 'text' not in value:
@@ -792,7 +786,7 @@ def stage(planned, items, *, engine, work, worker_factory=_MeasuredWorker, unrea
             row_status = value['row']['status']
             row_err = value['row'].get('error_type')
             record_outcome(body_hex, parser, version, 'read', reading_status=row_status,
-                           reason=row_err, error=value.get('error') or row_err, peak_rss_bytes=peak_rss)
+                           reason=row_err, error=value.get('error') or row_err, **resources)
             row = dict(value['row'], body_hex=body_hex, parser=parser, parser_version=version,
                        named_meetings=[], links=[])
             row['fingerprint_hex'] = row.pop('fingerprint', None)
@@ -856,7 +850,7 @@ def create_table(*, engine, work, catalog_root, table, location, create_namespac
 
 def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=None, origin=None, execute=False,
         unreadable_store=None, unreadable_files=(), max_cache_bytes=MAX_CACHE_BYTES, max_batch_items=MAX_BATCH_ITEMS,
-        max_batches=None, worker_factory=_MeasuredWorker, parser_workers=1,
+        max_batches=None, worker_factory=ParserWorker, parser_workers=1,
         parser_memory_bytes=PARSER_MEMORY_BYTES, strategy=None,
         page_deadline_seconds=PAGE_DEADLINE_SECONDS, registry=None, filename_readings=None, body_listing=None,
         retain_quality_evidence=False, selection=None, page_checkpoints=None):

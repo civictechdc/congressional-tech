@@ -38,3 +38,7 @@ Additional confirmed damaged-source candidates: 04a74549a18e2de5103e79c99714af3a
 **2026-11-13T18:48:44Z**
 
 Deferral remains in force. Neither inventory creation, source classification nor a corrected parser authorizes publisher refetching. OCR is also paused independently. Audit: .cache/archive-release/ocr-recovery-20261113/coordination/greybeard-root-cause-20261113/review.md; cohort and page inventory: inventory/README.md.
+
+**2026-11-13T21:31:52Z**
+
+Deferral preserved. Added a retained-history proposal under repairs/response-roles-offline-20261113/deferred-source-proposal.json:2 unresolved landing targets (P001 exact target unattempted,P005 exact target HTTP410),6 already-selected targets explicitly excluded; additional prefix/zero-payload/damaged-PDF/zero-page cases remain unreconciled rather than queued. Reviewer /root/ocr_ticket_completion directly read raw P001/P005/P002 landing links,stored capture/selection trace objects and actual proposal; paths/hashes and scope are in data-review.md and artifact-hashes.json. This reconciles the existing8-target snapshot,not all damaged sources or current publisher state. No acquisition requests ran. The user must lift refetch deferral before requests; source completeness,selection and publication criteria remain open.

@@ -158,6 +158,34 @@ def test_page_evidence_keeps_ocr_output_and_routing_reason_without_raster_bytes(
     assert reading.ocr_pages == (2,) and reading.macos_build == '25Y111'
 
 
+def test_geometry_fallback_evidence_preserves_refused_line_without_changing_reading(monkeypatch):
+    import json
+    from spicy_docs.extraction import NativeGeometryError, NativeOrOcr, NativeText
+
+    details = dict(page=1, line=dict(spans=[dict(text='TX ', bbox=[12, 18, 12, 30])]),
+                   display_bbox=[12, 18, 12, 30], geometry=dict(rotation=0, dpi=72))
+    original = NativeText.extract
+
+    def refused_line(self, page):
+        if page.number == 1:
+            raise NativeGeometryError('zero_area', details={**details, 'unrelated': b'not retained'})
+        return original(self, page)
+
+    monkeypatch.setattr(NativeText, 'extract', refused_line)
+    data = two_page_pdf()
+    strategy = NativeOrOcr(FixedBackend(), native_geometry_fallback=('zero_area',))
+    plain = derive(data, 'pdf_text', strategy=strategy)
+    events = []
+    measured = derive(data, 'pdf_text', strategy=strategy, evidence=events.append)
+    assert measured == plain
+    assert measured.text == 'VISION TEXT\n' + PAGE_TWO and measured.ocr_pages == (1,)
+    [page] = [event for event in events if event['event'] == 'page_extracted' and event['page'] == 1]
+    [native] = [observation for observation in page['observations'] if observation['id'] == 'native']
+    assert native['native_geometry_details'] == details
+    assert any(issue['code'] == 'native-geometry-refused' for issue in native['issues'])
+    json.dumps(events)  # The diagnostic keeps geometry facts, never opaque raw objects.
+
+
 def test_failed_page_evidence_does_not_claim_a_complete_document():
     events = []
     reading = derive(two_page_pdf(), 'pdf_text', strategy=FailsPageTwo(), evidence=events.append)
@@ -317,7 +345,10 @@ def test_not_a_pdf_is_an_error_reading():
 def test_html_pre_transcript_keeps_its_layout_and_drops_the_title():
     reading = derive(HTML, 'html_text')
     assert reading.text == 'STATEMENT OF THE WITNESS\n\n    Mr. Chairman, thank you.\n'
-    assert reading.page_offsets == (0,) and reading.fields == {'page_count': 1}
+    assert reading.page_offsets == (0,) and reading.fields['page_count'] == 1
+    assert reading.fields['source_sha256'] == hashlib.sha256(HTML).hexdigest()
+    assert reading.fields['source_encoding'] == 'utf-8'
+    assert reading.fields['encoding_basis'] == 'utf-8'
 
 
 def test_web_page_text_has_no_script_or_css_and_block_elements_do_not_glue_words():

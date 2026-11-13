@@ -10,7 +10,7 @@ from congress_api.retention.parser_worker import ParserWorker
 @pytest.fixture
 def parser(tmp_path):
     path = tmp_path / 'fixture_parser.py'
-    path.write_text('''import os, time, weakref
+    path.write_text('''import mmap, os, resource, sys, time, weakref
 count = 0
 previous = None
 class Reading(dict): pass
@@ -34,6 +34,13 @@ def parse(body):
     if body == b"memory":
         data = bytearray(180 * 1024**2)
         time.sleep(30)
+    if body == b"large_then_release":
+        with mmap.mmap(-1, 64 * 1024**2) as memory:
+            for offset in range(0, len(memory), 4096): memory[offset] = 1
+            time.sleep(.15)
+    if body in (b"large_then_release", b"small_after_large"):
+        peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        return {"pid": os.getpid(), "lifetime_peak": int(peak) * (1 if sys.platform == "darwin" else 1024)}
     if body == b"output": return {"data": "x" * 100000}
     if body.startswith(b"once:"):
         path = body[5:].decode()
@@ -86,6 +93,20 @@ def test_input_bound_refuses_before_invocation(parser):
         assert run.parse('one', b'ok')['value']['count'] == 1
 
 
+def test_rss_observation_preserves_already_buffered_result_precedence(parser, monkeypatch):
+    from congress_api.retention import parser_worker
+    with worker(parser) as run:
+        assert run.parse('first', b'valid')['status'] == 'completed'
+        # A result already delivered by the child keeps the established policy:
+        # record the new measurement, but accept it before timeout/memory checks.
+        run._buffer.extend(b'{"completed":"before-the-next-poll"}\n')
+        monkeypatch.setattr(parser_worker, 'resident_bytes', lambda pid: 512 << 20)
+        assert run._response(time.monotonic() - 1) == {'completed': 'before-the-next-poll'}
+        assert run.last_peak_rss_bytes == 512 << 20
+        with pytest.raises(parser_worker._Failure, match='timeout'):
+            run._response(time.monotonic() - 1)
+
+
 def test_startup_error_is_not_an_unreadable_input(tmp_path):
     with pytest.raises(RuntimeError, match='startup'):
         with worker(str(tmp_path / 'missing.py') + ':parse'):
@@ -108,6 +129,25 @@ def test_completed_large_result_is_released_before_the_next_invocation(parser):
         assert first['status'] == second['status'] == 'completed'
         assert first['value']['pid'] == second['value']['pid']
         assert second['value']['count'] == 2
+
+
+def test_request_peak_does_not_inherit_previous_worker_high_water_mark(parser, tmp_path):
+    import json
+    with worker(parser, memory_bytes=256 << 20, timeout_seconds=2) as run:
+        large = run.parse('large', b'large_then_release')
+        large_peak = run.last_peak_rss_bytes
+        assert run.last_rss_samples >= 3
+        small = run.parse('small', b'small_after_large')
+        assert large['value']['pid'] == small['value']['pid']
+        assert small['value']['lifetime_peak'] >= large_peak
+        assert run.last_peak_rss_bytes < large_peak - (32 << 20)
+        assert run.last_rss_samples >= 1
+        (tmp_path / 'request-memory.json').write_text(json.dumps(dict(
+            input_order=['large_then_release', 'small_after_large'], large=large, small=small,
+            large_request_peak_rss_bytes=large_peak, small_request_peak_rss_bytes=run.last_peak_rss_bytes,
+            small_request_samples=run.last_rss_samples), indent=2))
+        run.parse('too_large', b'x' * 4097)
+        assert run.last_peak_rss_bytes is None and run.last_rss_samples == 0
 
 
 def test_hung_raw_read_remains_pending_instead_of_becoming_unreadable(parser):

@@ -214,9 +214,12 @@ def _final_provenance(initial,raw_store,imported,identities,*,acknowledgements=N
 def derived_parsers(spec):
     """Derived readings passes a run asks for; default none, so a first run never demands a backfill."""
     value=spec.get('derived_parsers',[])
-    if (not isinstance(value,list) or any(not isinstance(p,str) or p not in readings.READ_AS for p in value)
+    # The scoped daily path below currently implements HTML metadata admission.
+    # Other derived readers run explicitly until their daily baseline is qualified.
+    supported=('html_metadata',)
+    if (not isinstance(value,list) or any(not isinstance(p,str) or p not in supported for p in value)
             or len(set(value))!=len(value)):
-        raise ValueError('derived_parsers must list distinct derived readings parsers: '+', '.join(readings.READ_AS))
+        raise ValueError('derived_parsers must list distinct supported daily parsers: '+', '.join(supported))
     return value
 
 
@@ -228,7 +231,7 @@ def derived_scopes(spec):
     retain unfinished pairs admitted after it. A version move needs a newly qualified
     baseline; it must not silently turn a daily pass into a historical replay.
     """
-    from congress_api.lake.compatible_versions import current_pins
+    from congress_api.lake.compatible_versions import LEAF_PARSERS,current_pins
     requested=derived_parsers(spec)
     scopes=spec.get('derived_scopes',{})
     if not isinstance(scopes,dict) or set(scopes)!=set(requested):
@@ -238,7 +241,13 @@ def derived_scopes(spec):
                 or not isinstance(scope['captures'],dict)):
             raise ValueError('Derived scopes require a qualified captures baseline, versions and budgets')
         tables.table_input('derived_baseline',scope['captures'])
-        if scope['versions']!=current_pins():
+        # A newly available optional reader does not invalidate an existing
+        # baseline. Require the active reader and all of its classification pins;
+        # every additional declared pin must still name a known current version.
+        pins=current_pins();versions=scope['versions']
+        required={*LEAF_PARSERS,name,'readings'}
+        if (not isinstance(versions,dict) or not required<=versions.keys()
+                or not versions.keys()<=pins.keys() or any(pins[k]!=v for k,v in versions.items())):
             raise ValueError('Derived scope reading versions changed; qualify a new baseline')
         readings._positive(scope['max_stored_bytes'],'max_stored_bytes')
     return scopes

@@ -34,3 +34,7 @@ Evidence: <main checkout>/.cache/archive-release/ocr-recovery-20261113/coordinat
 **2026-11-13T18:48:44Z**
 
 Checkpoint implementation and its generic acceptance have been consolidated into ct-aitp; this ticket remains open for real page-125 fallback quality and scoped worker isolation. No real OCR probes while paused. Audit: .cache/archive-release/ocr-recovery-20261113/coordination/greybeard-root-cause-20261113/review.md; cohort and page inventory: inventory/README.md.
+
+**2026-11-13T21:16:53Z**
+
+Exact-page override/checkpoint support now allows candidate backend settings on page125 without discarding unchanged matching pages. No alternate real backend ran. Direct reviewer /root/ocr_ticket_completion/pdf_recovery read the original crash-page125.png, native/intermediate trace, and completed one-page-whole.log/one-page-four-bands.log under recovery/raw-review. One-band omits the officer roster and changes the printed footer telephone202-872-8688 to202-372-8688; four-band still mangles names/labels and misses officers. Both retained candidate outputs are rejected for source quality despite successful exits. The three-band trace still records a first-strip segmentation fault. Real accurate page125 replacement and complete244-page consumer/resume acceptance remain blocked by the OCR pause, not declared passed by the scripted crash fixture.

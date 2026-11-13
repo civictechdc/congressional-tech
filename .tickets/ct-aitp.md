@@ -1,6 +1,6 @@
 ---
 id: ct-aitp
-status: in_progress
+status: closed
 deps: []
 links: [ct-a73a, ct-n3ik, ct-hz8y, ct-yy07]
 created: 2026-11-13T18:46:40Z
@@ -30,3 +30,15 @@ Reuse spicy-docs DocumentExtractor selected pages and streamed PageResult values
 **2026-11-13T19:05:14Z**
 
 Implementation started in codex/reading-selection-checkpoints-20261113: opt-in durable page records reuse installed spicy-docs selected-page extraction and existing rendition cleanup. Fresh-process late-exit proof skips the completed page; source-order text, offsets and scripted OCR provenance match a fresh run. Corruption/metadata/storage faults remain pending rather than becoming source failures. Native hearing-cover and blank-page controls pass. This is same-policy restart; cross-policy page repair and real Vision resume remain unqualified while OCR is paused. Combined focused run: 79 passed, partial lane; peak process-tree RSS 0.685 GiB. Usage/evidence: docs/body-text-selection-checkpoints.md.
+
+**2026-11-13T21:16:53Z**
+
+Offline extension prepared: exact decoded-source SHA/page overrides reuse matched unchanged pages, retain prior default and replacement checkpoints separately, and preserve the complete override plan in attempt records. Leaf replacements inherit the reader and require reproducible identities. A real supervised parser fixture exits twice on page two, then reuses page one and writes only a scripted replacement page; no partial body completes. Source mismatch, policy drift, out-of-range pages, missing pages and damaged retained data have explicit controls. Source input/intermediate/final fixtures and direct review observations are in .cache/archive-release/ocr-recovery-20261113/repairs/pdf-offline-20261113/. This proves routing, resume, ordering, byte offsets and failure handling with native/scripted data; real OCR recovery and source-quality acceptance are still paused. No frozen recovery checkpoint was modified.
+
+**2026-11-13T21:20:54Z**
+
+Final exact-commit checks:124 passed,1 Vision declaration test deselected across six focused files (partial lane). Actual supervised fresh and resumed outputs match text, offsets, scripted recognition provenance and GPO cleanup diagnostics; source/policy corruption, absent last page and out-of-range override controls pass. Direct input/intermediary/output author review is retained at repairs/pdf-offline-20261113/data-review.md with artifact-hashes.json; parent has the exact chains for independent review. Final process-tree measurement:0.75 GiB RSS/0.78 GiB physical. No real recognition or recovery ran.
+
+**2026-11-13T21:52:35Z**
+
+Offline acceptance complete on the composed candidate. An author-independent reviewer read the source fixture page, full checkpoint and worker-failure records, and actual fresh/resumed output: page one survives two page-two exits, only the exact scripted replacement runs, offsets remain 0/86, and no partial document completes. Retained checkpoint storage is 6,044 bytes. See repairs/pdf-offline-20261113/checkpoint-independent-review.md and its hash inventory. The final composed run passed the producer/checkpoint cases; a follow-up 26-test worker/daily run also passed after correcting a test harness method name. These are focused partial-lane results, not a full-lane claim. Real recognition, missing-source content and corpus quality remain in ct-hz8y/ct-yy07/ct-t4p3/ct-n3ik/ct-kfsd. OCR remains paused and all five frozen recovery source hashes still match.

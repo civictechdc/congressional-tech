@@ -28,6 +28,7 @@ READERS = {
     'sniff': ((SOURCE / 'retention/sniff.py',), (*SHARED_READING_FILES, SCHEMA)),
     'page': ((SOURCE / 'parsers/archive_readings.py',), (*SHARED_READING_FILES, SCHEMA)),
     'html_metadata': ((SOURCE / 'parsers/html_metadata.py',), (*SHARED_READING_FILES, SCHEMA)),
+    'house_floor_feed': ((SOURCE / 'parsers/house_floor_feed.py',), (*SHARED_READING_FILES, SCHEMA)),
     # parse_once_payload runs the sniff and the page reader. compatible_versions builds the
     # selected_readings that pinned-readings.sql reads; by bytes, since it imports job plumbing.
     'readings': ((SOURCE / 'retention/sniff.py', SOURCE / 'parsers/archive_readings.py'),
@@ -95,6 +96,9 @@ def snapshot(root=ROOT):
         'html_metadata': dict(version=pins['html_metadata'], **metadata, limits=limits,
                               policy=readings.worker_limits('html_metadata'),
                               formats=list(FORMATS), format_timeout_seconds=FORMAT_TIMEOUT_SECONDS),
+        'house_floor_feed': dict(version=pins['house_floor_feed'], **_fingerprints(closure, 'house_floor_feed'),
+                                limits=dict(stored_bytes=readings.MAX_STORED_BYTES, decoded_bytes=readings.MAX_DECODED_BYTES),
+                                policy=readings.worker_limits('house_floor_feed')),
         'readings': dict(version=pins['readings'], **bundle, limits=limits, policy=readings.worker_limits()),
         **body_text_evidence(closure),
     }
@@ -176,6 +180,9 @@ def sample_digest(parser, *, root=ROOT):
         values = dict(reading.row(), page_offsets=list(reading.page_offsets), ocr_pages=list(reading.ocr_pages))
     elif parser == 'html_metadata':
         fixture = root / 'packages/congress_api/tests/fixtures/html_metadata/marked-no-statement.html'
+        values = readings.read_body(fixture.read_bytes(), parser)
+    elif parser == 'house_floor_feed':
+        fixture = root / 'packages/congress_api/tests/fixtures/house_floor/retained-entries.xml'
         values = readings.read_body(fixture.read_bytes(), parser)
     else:
         cases = json.loads((root / 'model/fixtures/parser-cases.json').read_text())
