@@ -80,7 +80,9 @@ def footer_over_scan():
 def test_the_rule_counts_text_after_gpo_normalization_so_a_footer_alone_goes_to_ocr():
     from spicy_docs.extraction import NativeText
     data = footer_over_scan()
-    assert derive(data, 'pdf_text', strategy=NativeText()).text == ''  # GPO normalization drops the footer
+    # The preservation repair keeps an ambiguous operator label, but strips the
+    # known printing fields; this sparse native layer must still yield to OCR.
+    assert derive(data, 'pdf_text', strategy=NativeText()).text == 'WILDA'
     backend = FixedBackend()
     reading = derive(data, 'pdf_text', strategy=bt.page_rule(backend))
     assert backend.pages == 1 and reading.ocr_pages == (1,) and reading.text == 'VISION TEXT'

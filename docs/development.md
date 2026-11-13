@@ -209,6 +209,24 @@ corpus-wide quality or storage capacity. The refreshed source fingerprints in
 `model/reading-version-diagnostics.json` record that decision. The separate
 cleanup repair deliberately changes text and needs its own reading version.
 
+The isolated cleanup integration candidate pins the reproducible vendored wheel
+`spicy-docs==0.85.0+gpo.20261113`. Its receipt names the exact source commit and
+both changed package members. PDF readings declare the corrected cleanup and
+page-routing meaning; composed WARC readings name that new PDF rule. HTML/XML
+declarations remain the same, and their fixed fixtures replay unchanged.
+The PDF fixture now retains the ambiguous `LEN` and `VACREP180 with DISTILLER`
+printing labels. Its changed fingerprint is intentional, as with the retained
+`WILDA` and `JACKIE` controls: those labels are not recovered substantive text.
+
+The bounded consumer qualification reads archived originals through the installed
+wheel and actual CT workers, commits to a private native catalog, and reads back
+text, source/version identity, hashes, offsets and OCR provenance. Its page
+strings equal the independently source-reviewed candidate outputs. This proves
+the consumer uses the repair; it does not prove that historical readings outside
+that cohort are unchanged. Corpus exposure and selective compatibility remain
+required before production cutover. No historical readings are restamped by this
+candidate, and the running recovery keeps its original source and dependency pins.
+
 The lake keys reading rows by body digest, parser, and the declared version in
 `congress_api.lake.reading_versions`. The combined unreadable-decision version
 also depends on the four leaf versions and the combined worker limits.
