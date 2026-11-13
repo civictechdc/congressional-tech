@@ -37,3 +37,7 @@ The retained all-PDF census reads text, offsets and OCR page lists, not source r
 **2026-11-13T18:48:44Z**
 
 Rewritten from the independent ETL/greybeard/evolutionary audit. Prior notes and evidence remain below; old running-job and automatic reread assumptions are superseded. Audit: .cache/archive-release/ocr-recovery-20261113/coordination/greybeard-root-cause-20261113/review.md; cohort and page inventory: inventory/README.md.
+
+**2026-11-13T21:16:53Z**
+
+Selective page policy/checkpoint composition is prepared; source review still governs backend choice and accepted selection. Direct reviewer /root/ocr_ticket_completion/pdf_recovery viewed S149 page1 and read sources/S149.native.txt plus texts/S149.txt under investigations/text-quantity-review-20261113. Native output is empty. Retained OCR keeps Ashli Watts/title/entity but corrupts question4, loses its visible No/X, and emits date ': 5 | 28/24' where the handwritten source reads5/28/26. This does not qualify any new backend. Q007 missing chart/table content and page125 alternate-setting failures remain cause-specific controls. Parent's C015 review found missing handwriting/date-order limits, so that page is only a cleanup-equivalence control. Tesseract/model/cost/classifier precision and any LLM comparison still require source-qualified output; no recognition/provider calls ran while paused.

@@ -1,7 +1,7 @@
 # Qualified reading selection and page checkpoints
 
 `ct-55qo` and `ct-aitp` add opt-in support for mixed accepted readings and
-same-policy PDF restart. The default extraction and cleanup rules are unchanged.
+PDF restart and exact-page repair candidates. The default extraction and cleanup rules are unchanged.
 No production manifest has been adopted by this change. OCR remains paused;
 these options do not lift the pause or change the frozen recovery checkout.
 
@@ -79,10 +79,9 @@ objects do not enter the checkpoint. Valid empty pages remain completed pages.
 The namespace pins source bytes, page rule/backend settings, reader/render
 policy, CT implementation bytes and installed dependency versions. Built-in
 native/Vision factories provide their identities; custom factories must declare
-a reproducible `PageRule.checkpoint_identity`. A changed policy creates another
-namespace. This first slice supports same-policy restart, not mixing alternate
-recognizer policies within one document. That extension and its source-quality
-qualification remain in the PDF routing/fallback tickets.
+a reproducible `PageRule.checkpoint_identity`. A changed default policy creates
+another namespace. Explicit page replacements have separate policy identities
+within that namespace, so replacing one page preserves matched work on the rest.
 
 Each page is checksummed and written atomically with file/directory fsync. A
 directory lock excludes another writer. Started/finished attempt records and
@@ -92,6 +91,52 @@ metadata, lock contention or storage failures leave the body pending with
 `page_checkpoint`; they do not declare the source unreadable. Preserve those
 files for diagnosis. Partial writes are ignored; automatic deletion or eviction
 is not implemented.
+
+## Prepare a selective page repair
+
+A custom strategy factory may return a `PageRule` with `page_overrides`, keyed
+first by the exact decoded source SHA-256 and then by positive page number.
+Each value is a leaf `PageRule` containing the maintained spicy-docs strategy
+and its reproducible `checkpoint_identity`. Replacements inherit the document
+reader; they cannot change render settings or contain nested overrides. Pin the
+backend/model/build, configuration and qualification evidence in the identity.
+Use a separate default policy when a different reader/render is needed.
+
+```python
+replacement = PageRule(
+    FullPage(qualified_backend),
+    checkpoint_identity={"backend": backend_identity, "qualification": report_sha256},
+)
+candidate = PageRule(
+    baseline.strategy, baseline.reader, baseline.checkpoint_identity,
+    page_overrides={source_sha256: {125: replacement}},
+)
+```
+
+The example illustrates composition; it does not authorize recognition or
+declare page 125 qualified. The same hook can use `NativeOrOcr` with a scoped
+native-geometry fallback or a qualified `NativeWithRegions` strategy. CT does
+not substitute a density threshold for source review. Source mismatches use
+the baseline policy; out-of-range page numbers fail. Missing page results do
+not complete a document. Changed replacement identities rerun only the selected
+page, and original checkpoints remain available. New output still needs the
+accepted-reading manifest before replacing accepted body text.
+
+The source/policy directory lock covers both default and replacement pages.
+Every selected record is checked against its expected page identity before
+reuse. This implementation does not migrate older code/dependency namespaces or
+accept incomplete diagnostic logs as page checkpoints.
+
+## Interpret request memory measurements
+
+The persistent parser supervisor samples worker RSS every 50 ms and resets the
+sample window per request, including its bounded retries. Body outcomes label
+this `peak_rss_scope=request_sampled_worker_rss`, with sample count and interval.
+The sample includes allocations still live from earlier requests and can miss
+short-lived peaks. It measures worker residency, not incremental allocation or
+the entire process tree. The separate `worker_lifetime_peak_rss_bytes` preserves
+the child high-water mark without attributing it to this body. Historical
+outcomes retain their original meaning and are not rewritten.
 
 ## Qualification and remaining limits
 

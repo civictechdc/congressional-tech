@@ -117,7 +117,8 @@ def test_completed_large_result_is_released_before_the_next_invocation(parser):
         assert second['value']['count'] == 2
 
 
-def test_request_peak_does_not_inherit_previous_worker_high_water_mark(parser):
+def test_request_peak_does_not_inherit_previous_worker_high_water_mark(parser, tmp_path):
+    import json
     with worker(parser, memory_bytes=256 << 20, timeout_seconds=2) as run:
         large = run.parse('large', b'large_then_release')
         large_peak = run.last_peak_rss_bytes
@@ -127,6 +128,10 @@ def test_request_peak_does_not_inherit_previous_worker_high_water_mark(parser):
         assert small['value']['lifetime_peak'] >= large_peak
         assert run.last_peak_rss_bytes < large_peak - (32 << 20)
         assert run.last_rss_samples >= 1
+        (tmp_path / 'request-memory.json').write_text(json.dumps(dict(
+            input_order=['large_then_release', 'small_after_large'], large=large, small=small,
+            large_request_peak_rss_bytes=large_peak, small_request_peak_rss_bytes=run.last_peak_rss_bytes,
+            small_request_samples=run.last_rss_samples), indent=2))
         run.parse('too_large', b'x' * 4097)
         assert run.last_peak_rss_bytes is None and run.last_rss_samples == 0
 

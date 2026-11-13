@@ -117,10 +117,30 @@ def markup_text(data, parser):
 
 @dataclass(frozen=True)
 class PageRule:
-    """The page strategy and the reader that renders for it (None: DocumentExtractor's default)."""
+    """A page policy with optional exact-source/page replacements.
+
+    Overrides inherit this rule's reader. They are candidate extraction policies,
+    not quality acceptance; the caller still qualifies the resulting body.
+    """
     strategy: object
     reader: object = None
     checkpoint_identity: dict | None = None
+    page_overrides: dict = field(default_factory=dict)
+
+    def __post_init__(self):
+        for source, pages in self.page_overrides.items():
+            if not isinstance(source, str) or len(source) != 64 or any(c not in '0123456789abcdef' for c in source):
+                raise ValueError('Page overrides require an exact lowercase source SHA-256')
+            if not pages:
+                raise ValueError('Page overrides require explicit page replacements')
+            for number, replacement in pages.items():
+                if type(number) is not int or number < 1:
+                    raise ValueError('Page override numbers must be positive integers')
+                if not isinstance(replacement, PageRule) or replacement.reader is not None or replacement.page_overrides:
+                    raise ValueError('Page replacements must be leaf PageRules inheriting the document reader')
+
+    def overrides_for(self, source_sha256):
+        return self.page_overrides.get(source_sha256, {})
 
 
 class NoEngine:
@@ -223,8 +243,9 @@ class _PageRun:
     11 MB) goes straight back to the extractor and is not held.
     """
 
-    def __init__(self, strategy, deadline_seconds, evidence=None):
+    def __init__(self, strategy, deadline_seconds, evidence=None, *, overrides=None, source_sha256=None):
         self.strategy, self.deadline = strategy, deadline_seconds
+        self.overrides, self.source_sha256 = overrides or {}, source_sha256
         self.evidence = evidence
         self.ocr, self.failed, self.errors, self.builds = [], [], {}, set()
         self.diagnostics = {}
@@ -235,7 +256,11 @@ class _PageRun:
             self.evidence(dict(event='page_started', page=page.number))
         try:
             with page_deadline(self.deadline, page.number):
-                content = self.strategy.extract(page)
+                replacement = self.overrides.get(page.number)
+                if replacement is not None and self.evidence:
+                    self.evidence(dict(event='page_override', page=page.number, source_sha256=self.source_sha256,
+                                       policy=replacement.checkpoint_identity))
+                content = (replacement.strategy if replacement is not None else self.strategy).extract(page)
         except (OcrRequired, PageDeadline, MemoryError):
             raise
         except Exception as error:  # one page's own failure; the reading records it
@@ -274,6 +299,17 @@ class _PageRun:
                 ocr=bool(replaced), observations=observations))
 
 
+class _PageOverrideExtractor:
+    """Use the maintained extractor's range validation with CT's shared page accounting."""
+
+    def __init__(self, extractor, run):
+        self.extractor, self.run = extractor, run
+
+    def extract(self, source, *, media_type, pages=None):
+        overrides = {number: self.run for number in self.run.overrides if pages is None or number in pages}
+        return self.extractor.extract(source, media_type=media_type, pages=pages, overrides=overrides)
+
+
 def pdf_text(data, *, strategy, page_deadline_seconds, evidence=None, checkpoint=None):
     """``pdf_text``: one open of the PDF, each page through the rule, then GPO normalization.
 
@@ -283,8 +319,12 @@ def pdf_text(data, *, strategy, page_deadline_seconds, evidence=None, checkpoint
     from spicy_docs.extraction import DocumentExtractor
     from spicy_docs.extraction.body_text import rendition_text
     rule = strategy if isinstance(strategy, PageRule) else PageRule(strategy)
-    run = _PageRun(rule.strategy, page_deadline_seconds, evidence)
+    source_sha256 = hashlib.sha256(data).hexdigest() if rule.page_overrides or checkpoint is not None else None
+    run = _PageRun(rule.strategy, page_deadline_seconds, evidence,
+                   overrides=rule.overrides_for(source_sha256), source_sha256=source_sha256)
     extractor = DocumentExtractor(run, reader=rule.reader, max_input_bytes=max(1, len(data)))
+    if run.overrides:
+        extractor = _PageOverrideExtractor(extractor, run)
     if checkpoint is not None:
         extractor = checkpoint(extractor, rule, run)
     try:
