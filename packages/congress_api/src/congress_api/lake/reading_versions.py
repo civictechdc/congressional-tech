@@ -9,18 +9,21 @@ READING_VERSIONS = {
     # Body-text parsers (data model §6.6), declared 2026-11-08: each ID is the SHA-256 of its
     # declaration below, computed once and never recomputed; warc's names the IDs it routes to.
     # html_text and warc were redeclared 2026-11-10 for the spicy-docs 0.84.0 htm rule (ct-chc4).
+    # pdf_text and composed warc change for the 2026-11-13 cleanup-preservation candidate.
     # PyMuPDF, spicy-docs and the macOS build are drift evidence in
     # model/reading-version-diagnostics.json, never inputs.
-    'pdf_text': '2980a4db41cbe1f559532557c5ad59f86691527c2569e8b3746c9d32c6f8fdfd',
+    'pdf_text': '4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8',
     'html_text': 'e1928f25e2803cd6bc8546d1673ff7ba01a11ae861c322165c78af9d32380941',
     'xml_text': 'ed9eb0e2908729e728b02380f50ae994e395a03da5ae50caa21c9e80d378a6db',
-    'warc': 'e835fb8116a0ed204706c7cbed136cab4f7e49885e773369c663232672d5e397',
+    'warc': '74403ab720b5cbbe72115d0825d928d492eff61ba27db03d01312ee7fc43c630',
 }
 
 # What each body-text ID declares. A change to what one of these says is a new ID.
 BODY_TEXT_DECLARATIONS = {
-    'pdf_text': ('body_text pdf_text 2026-11-08: spicy-docs body_text pdf derivation (DocumentExtractor, '
-                 'normalize_gpo_pages, pages joined by one newline); page rule spicy-docs NativeOrOcr over each '
+    'pdf_text': ('body_text pdf_text 2026-11-13: spicy-docs body_text pdf derivation 004+gpo.20261113 '
+                 '(DocumentExtractor, normalize_gpo_pages, pages joined by one newline); printing continuation '
+                 'ends at the first unknown line; prose bullets survive; whole bill/stage footer labels require '
+                 'printing or numbered-layout evidence; page rule spicy-docs NativeOrOcr over each '
                  "page's native text as normalize_gpo_pages leaves it, the page alone: recognize a page whole when "
                  'it has no text layer, when its normalized text carries a control character other than tab and '
                  'line breaks or U+FFFD, or when it has under 50 non-whitespace characters and draws an image; OCR '
@@ -33,9 +36,9 @@ BODY_TEXT_DECLARATIONS = {
                   'event bound); one page; 64 MiB stored bound'),
     'xml_text': ('body_text xml_text 2026-11-08: spicy-docs body_text xml markup reader (element boundaries '
                  'as line breaks, whitespace-only lines dropped); one page; 64 MiB stored bound'),
-    'warc': ('body_text warc 2026-11-10: spicy-docs read_warc_response (one response record, payload SHA-1 '
+    'warc': ('body_text warc 2026-11-13: spicy-docs read_warc_response (one response record, payload SHA-1 '
              'checked), HTTP gzip/deflate content encoding decoded within 64 MiB, payload sniffed and read by '
-             'pdf_text 2980a4db41cbe1f559532557c5ad59f86691527c2569e8b3746c9d32c6f8fdfd, html_text '
+             'pdf_text 4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8, html_text '
              'e1928f25e2803cd6bc8546d1673ff7ba01a11ae861c322165c78af9d32380941 or xml_text '
              'ed9eb0e2908729e728b02380f50ae994e395a03da5ae50caa21c9e80d378a6db'),
 }

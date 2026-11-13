@@ -5,6 +5,7 @@ about the tables a later run plans against, not about the producer's own report.
 """
 import hashlib
 import json
+from pathlib import Path
 
 import pyarrow.parquet as pq
 import pytest
@@ -81,6 +82,23 @@ def test_worker_returns_text_larger_than_the_supervisor_pipe_by_file(tmp_path):
     assert not (tmp_path / 'stage/texts').exists()  # staged text files leave with the stage
 
 
+def test_committed_batch_retains_opt_in_page_evidence_after_staged_text_cleanup(tmp_path):
+    args, _ = lake(tmp_path, dict(pdf=(two_page_pdf(), 'pdf')))
+    report = body_text.run(**args, work=tmp_path / 'run', execute=True, retain_quality_evidence=True)
+    [batch] = report['batches']
+    [outcome] = batch['body_outcomes']
+    [evidence] = outcome['quality_evidence_paths']
+    events = [json.loads(line) for line in Path(evidence).read_text().splitlines()]
+    assert events[0]['body_sha'] == outcome['body_sha256']
+    assert events[0]['parser_version'] == outcome['parser_version']
+    assert events[-1]['reading_status'] == 'completed'
+    assert [event['page'] for event in events if event['event'] == 'page_extracted'] == [1, 2]
+    [row] = committed(args, tmp_path / 'selected-text', 'body_text', 'text')
+    assert row['text'] == PAGE_ONE + '\n' + PAGE_TWO
+    assert not Path(batch['body_text']).exists()
+    assert Path(evidence).exists()
+
+
 class Scripted:
     """An in-process worker answering each parse with the next scripted outcome."""
     script, calls = [], []
@@ -127,6 +145,43 @@ def test_stored_size_limit_settles_without_opening_the_body(tmp_path):
     [row] = committed(args, tmp_path / 'readings', 'readings', 'status,error_type')
     assert (row['status'], row['error_type']) == ('size_limit', 'stored_size_limit')
     assert report['batches'][0]['body_text_rows'] == 0
+
+
+def test_explicit_recovery_reads_above_both_byte_exclusions_and_preserves_old_policy(tmp_path):
+    """A real padded PDF crosses both limits; its text is unchanged and separately identified."""
+    body = two_page_pdf() + b'\n' * (body_text.MAX_STORED_BYTES + 1)
+    args, _ = lake(tmp_path, dict(large=(body, 'pdf')))
+    plan = body_text.plan(captures=args['captures'], engine=args['engine'], work=tmp_path / 'plan',
+                          decided_at=STAMP, local_root=args['local_root'])
+    items = pq.read_table(plan['work_list']).to_pylist()
+    with pytest.raises(ValueError, match='recovery reading versions'):
+        body_text.stage(plan, items, engine=args['engine'], work=tmp_path / 'refused', recovery=True)
+    versions = body_text.recovery_versions()
+    plan['versions'] = versions
+    for item in items:
+        item['parser_version'] = versions[item['parser']]
+    staged = body_text.stage(plan, items, engine=args['engine'], work=tmp_path / 'recovered', recovery=True)
+    [row] = pq.read_table(staged['body_text']).to_pylist()
+    assert row['text'] == PAGE_ONE + '\n' + PAGE_TWO
+    assert row['parser_version'] == versions['pdf_text'] != body_text.current_versions()['pdf_text']
+    [outcome] = [json.loads(line) for line in (tmp_path / 'recovered/body-outcomes.jsonl').read_text().splitlines()]
+    assert outcome['reading_status'] == 'completed'
+    # The remote path decodes gzip through the same hash rule, with the exclusion removed explicitly.
+    import gzip
+    from contextlib import nullcontext
+    from unittest.mock import patch
+    stored = gzip.compress(body)
+    class Source:
+        size = len(stored)
+        def read(self, *_): return stored
+        def close(self): pass
+    request = dict(body_sha=hashlib.sha256(body).hexdigest(), stored_bytes=len(stored), cache=str(tmp_path),
+                   remote=dict(origin='https://example.invalid', key='unused', bucket='unused', etag='"pin"', md5=None))
+    with patch.object(body_text.readings, '_ReadOnceBody', return_value=Source()), \
+            patch.object(body_text, '_origin_store', return_value=None), \
+            patch('congress_api.lake.readings.reading_input', nullcontext):
+        assert body_text._read_remote(request) is None
+        assert body_text._read_remote(dict(request, unlimited_body_bytes=True)) == body
 
 
 def test_batches_are_sized_by_an_upper_bound_on_their_text():

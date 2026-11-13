@@ -179,6 +179,54 @@ engine actually applies.
 
 ## Reading version changes
 
+For bounded text-quality investigations, `lake.body_text.stage` and
+`lake.body_text.run` accept `retain_quality_evidence=True`. Each worker attempt
+writes its own JSONL file beside the batch diagnostics; retries preserve earlier
+attempts. The file records source and parser identity, page starts, extracted
+text before cleanup, observation geometry and routing reasons, the existing GPO
+cleanup record, retained-text hashes, and the derivation outcome. Raster bytes
+are excluded. A worker returns a small file reference rather than putting this
+evidence in its control response. Evidence for completed pages survives a later
+page failure, and the batch receipt names those files after staged text cleanup.
+
+Retention is opt-in until its storage cost is qualified on the intended inputs.
+It changes neither the text nor the reading status. The JSONL schema has its own
+identity (`ct-body-text-quality-v1`); it supplies diagnostic observations, not a
+claim that a completed reading contains every visible word. A cleanup-policy
+change still needs a distinct reading meaning and affected-scope proof before
+old rows can be replaced or reused under that meaning.
+
+The November 2026 diagnostic-retention change keeps the existing reading
+versions. Review found that the default path changes no extraction, cleanup,
+routing, limits or status decisions. All fixed reader-fixture hashes remain
+unchanged. A bounded original-backed worker comparison on S017, S055 and S150
+also preserves the complete reading, text hash, page offsets and OCR identity
+with retention enabled; a fresh S138 OCR attempt verifies actual recognizer
+evidence serialization. The 43 focused derivation/producer checks include
+failed-page retention, interrupted attempts, distinct retry files and a real
+committed batch. This establishes diagnostic equivalence on those cases, not
+corpus-wide quality or storage capacity. The refreshed source fingerprints in
+`model/reading-version-diagnostics.json` record that decision. The separate
+cleanup repair deliberately changes text and needs its own reading version.
+
+The isolated cleanup integration candidate pins the reproducible vendored wheel
+`spicy-docs==0.85.0+gpo.20261113`. Its receipt names the exact source commit and
+both changed package members. PDF readings declare the corrected cleanup and
+page-routing meaning; composed WARC readings name that new PDF rule. HTML/XML
+declarations remain the same, and their fixed fixtures replay unchanged.
+The PDF fixture now retains the ambiguous `LEN` and `VACREP180 with DISTILLER`
+printing labels. Its changed fingerprint is intentional, as with the retained
+`WILDA` and `JACKIE` controls: those labels are not recovered substantive text.
+
+The bounded consumer qualification reads archived originals through the installed
+wheel and actual CT workers, commits to a private native catalog, and reads back
+text, source/version identity, hashes, offsets and OCR provenance. Its page
+strings equal the independently source-reviewed candidate outputs. This proves
+the consumer uses the repair; it does not prove that historical readings outside
+that cohort are unchanged. Corpus exposure and selective compatibility remain
+required before production cutover. No historical readings are restamped by this
+candidate, and the running recovery keeps its original source and dependency pins.
+
 The lake keys reading rows by body digest, parser, and the declared version in
 `congress_api.lake.reading_versions`. The combined unreadable-decision version
 also depends on the four leaf versions and the combined worker limits.

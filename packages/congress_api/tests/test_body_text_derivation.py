@@ -19,9 +19,9 @@ def sniff(payload):
     return read_sniff(lambda start, length: payload[start:start + length], stored_size=len(payload))['format']
 
 
-def derive(data, parser, strategy=None, deadline=30.0):
+def derive(data, parser, strategy=None, deadline=30.0, evidence=None):
     return bt.derive(data, parser, strategy=strategy or bt.native_only(), page_deadline_seconds=deadline,
-                     sniff_format=sniff, max_bytes=64 << 20)
+                     sniff_format=sniff, max_bytes=64 << 20, evidence=evidence)
 
 
 def test_two_page_pdf_keeps_page_starts_as_utf8_offsets():
@@ -80,7 +80,9 @@ def footer_over_scan():
 def test_the_rule_counts_text_after_gpo_normalization_so_a_footer_alone_goes_to_ocr():
     from spicy_docs.extraction import NativeText
     data = footer_over_scan()
-    assert derive(data, 'pdf_text', strategy=NativeText()).text == ''  # GPO normalization drops the footer
+    # The preservation repair keeps an ambiguous operator label, but strips the
+    # known printing fields; this sparse native layer must still yield to OCR.
+    assert derive(data, 'pdf_text', strategy=NativeText()).text == 'WILDA'
     backend = FixedBackend()
     reading = derive(data, 'pdf_text', strategy=bt.page_rule(backend))
     assert backend.pages == 1 and reading.ocr_pages == (1,) and reading.text == 'VISION TEXT'
@@ -124,6 +126,86 @@ def test_a_failed_page_is_an_error_with_no_text():
     assert (reading.status, reading.error_type, reading.text) == ('error', 'failed_pages', None)
     assert reading.fields['failed_pages'] == [2] and reading.fields['page_count'] == 2
     assert reading.row()['text_bytes'] is None and reading.row()['fingerprint'] is None
+    assert 'Page 2:' in reading.diagnostic and 'render exceeds max_pixels' in reading.diagnostic
+
+
+def test_optional_page_evidence_preserves_output_and_captures_pre_cleanup_text():
+    events = []
+    data = footer_over_scan()
+    from spicy_docs.extraction import NativeText
+    plain = derive(data, 'pdf_text', strategy=NativeText())
+    measured = derive(data, 'pdf_text', strategy=NativeText(), evidence=events.append)
+    assert measured == plain
+    [extracted] = [e for e in events if e['event'] == 'page_extracted']
+    [normalized] = [e for e in events if e['event'] == 'page_normalized']
+    assert 'VerDate Nov 24 2008' in extracted['pre_cleanup_text']
+    assert extracted['observations'][0]['blocks']
+    assert extracted['pre_cleanup_nonspace_chars'] > normalized['retained_nonspace_chars']
+    assert normalized['cleanup']['verdate_footer_lines'] == 1
+    assert normalized['retained_text_sha256'] == hashlib.sha256(measured.text.encode()).hexdigest()
+    assert [e for e in events if e['event'] == 'document_cleanup'][0]['gpo_footers']
+
+
+def test_page_evidence_keeps_ocr_output_and_routing_reason_without_raster_bytes():
+    events = []
+    reading = derive(scanned_pdf(), 'pdf_text', strategy=bt.page_rule(FixedBackend()), evidence=events.append)
+    [page] = [e for e in events if e['event'] == 'page_extracted' and e['page'] == 2]
+    assert page['pre_cleanup_text'] == 'VISION TEXT' and page['ocr']
+    observation = next(o for o in page['observations'] if o['id'] != 'native')
+    assert observation['text'] == 'VISION TEXT'
+    assert any(i['code'] == 'native-text-replaced' for i in observation['issues'])
+    assert 'images' not in observation and 'raw' not in observation
+    assert reading.ocr_pages == (2,) and reading.macos_build == '25Y111'
+
+
+def test_failed_page_evidence_does_not_claim_a_complete_document():
+    events = []
+    reading = derive(two_page_pdf(), 'pdf_text', strategy=FailsPageTwo(), evidence=events.append)
+    assert reading.status == 'error' and reading.text is None
+    assert any(e['event'] == 'page_extracted' and e['page'] == 1 for e in events)
+    assert any(e['event'] == 'page_failed' and e['page'] == 2 for e in events)
+    assert not any(e['event'] == 'page_extracted' and e['page'] == 2 for e in events)
+
+
+def test_worker_streams_evidence_by_file_and_preserves_prior_attempts(tmp_path, monkeypatch):
+    import json
+    from congress_api.lake import body_text as producer
+    monkeypatch.setenv('DOCSPEC_PARSER_IO_MARKER', str(tmp_path / 'raw-io-marker'))
+    data = two_page_pdf()
+    body = tmp_path / 'body.pdf'
+    body.write_bytes(data)
+    texts = tmp_path / 'texts'
+    texts.mkdir()
+    request = dict(path=str(body), stored_bytes=len(data), body_sha=hashlib.sha256(data).hexdigest(),
+                   parser='pdf_text', parser_version='qualification-version', strategy=bt.DEFAULT_STRATEGY,
+                   page_deadline_seconds=30, texts=str(texts), quality_evidence=str(tmp_path / 'body.quality.jsonl'))
+    first = producer.parse_payload(json.dumps(request))
+    second = producer.parse_payload(json.dumps(request))
+    assert first['row'] == second['row']
+    assert first['quality_evidence']['path'] != second['quality_evidence']['path']
+    for result in (first, second):
+        reference = result['quality_evidence']
+        raw = Path(reference['path']).read_bytes()
+        assert reference['bytes'] == len(raw) and reference['sha256'] == hashlib.sha256(raw).hexdigest()
+        events = [json.loads(line) for line in raw.splitlines()]
+        assert events[0]['body_sha'] == request['body_sha']
+        assert events[0]['parser_version'] == request['parser_version']
+        assert events[-1]['event'] == 'derivation_finished' and events[-1]['reading_status'] == 'completed'
+        assert 'observations' not in json.dumps(result)
+        assert len(json.dumps(result)) < 8192
+
+
+def test_interrupted_evidence_file_keeps_finished_page_records(tmp_path):
+    import json
+    from congress_api.lake.body_text import _QualityEvidence
+    with pytest.raises(MemoryError):
+        with _QualityEvidence(dict(quality_evidence=str(tmp_path / 'body.quality.jsonl'))) as log:
+            log.emit(dict(event='page_extracted', page=1, pre_cleanup_text='finished first page'))
+            raise MemoryError('next page exceeded memory')
+    events = [json.loads(line) for line in Path(log.path).read_text().splitlines()]
+    assert events[1]['pre_cleanup_text'] == 'finished first page'
+    assert events[-1] == dict(event='attempt_interrupted', error_type='MemoryError')
+    assert not any(e['event'] == 'derivation_finished' for e in events)
 
 
 class BusyCpu:

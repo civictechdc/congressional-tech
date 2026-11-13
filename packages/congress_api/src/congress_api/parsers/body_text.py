@@ -25,7 +25,7 @@ Cost: O(B) in the body's bytes per rule; the PDF branch holds the body and one p
 objects at a time, plus the page texts (O(T)) that GPO normalization reads as a whole.
 """
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 import gzip
 import hashlib
 import importlib
@@ -35,6 +35,7 @@ import resource
 import signal
 import subprocess
 import threading
+import traceback
 import zlib
 
 from congress_api.parsers.archive_readings import fingerprint
@@ -70,6 +71,7 @@ class Reading:
     ocr_pages: tuple[int, ...] = ()
     macos_build: str | None = None
     fields: dict = field(default_factory=dict)
+    diagnostic: str | None = None
 
     def row(self):
         """The readings columns §6.2 lets a body-text parser fill, with ``fields`` as strings."""
@@ -99,7 +101,7 @@ def markup_text(data, parser):
     try:
         text = rendition_text(data, rendition=MARKUP_RENDITIONS[parser]).text
     except (ValueError, UnicodeError, RecursionError) as error:  # BodyTextError and MarkupReadError are ValueErrors
-        return Reading('error', type(error).__name__)
+        return Reading('error', type(error).__name__, diagnostic=traceback.format_exc(limit=8))
     return Reading('completed', text=text, page_offsets=(0,), fields=dict(page_count=1))
 
 
@@ -137,6 +139,13 @@ def page_rule(backend, reader=None):
 def native_only():
     """The default page rule: the declared routing with no OCR engine."""
     return page_rule(NoEngine())
+
+
+def recovery_apple_vision():
+    """The same 200 DPI Vision rule, admitted by worker memory rather than a pixel exclusion."""
+    rule = apple_vision()
+    rule.reader.max_pixels = (1 << 63) - 1
+    return rule
 
 
 def apple_vision():
@@ -198,12 +207,16 @@ class _PageRun:
     11 MB) goes straight back to the extractor and is not held.
     """
 
-    def __init__(self, strategy, deadline_seconds):
+    def __init__(self, strategy, deadline_seconds, evidence=None):
         self.strategy, self.deadline = strategy, deadline_seconds
+        self.evidence = evidence
         self.ocr, self.failed, self.errors, self.builds = [], [], {}, set()
+        self.diagnostics = {}
 
     def extract(self, page):
         from spicy_docs.extraction import PageContent
+        if self.evidence:
+            self.evidence(dict(event='page_started', page=page.number))
         try:
             with page_deadline(self.deadline, page.number):
                 content = self.strategy.extract(page)
@@ -212,6 +225,10 @@ class _PageRun:
         except Exception as error:  # one page's own failure; the reading records it
             self.failed.append(page.number)
             self.errors[page.number] = type(error).__name__
+            self.diagnostics[page.number] = traceback.format_exc(limit=8)
+            if self.evidence:
+                self.evidence(dict(event='page_failed', page=page.number, error_type=type(error).__name__,
+                                   error=str(error)))
             return PageContent((), ())
         replaced = [o for o in content.observations if o.id != 'native'
                     or any(issue.code == REPLACED_ISSUE for issue in o.issues)]
@@ -219,10 +236,25 @@ class _PageRun:
             self.ocr.append(page.number)
             self.builds.update(o.configuration.get('macos_build') for o in replaced
                                if isinstance(o.configuration, dict) and o.configuration.get('macos_build'))
+        if self.evidence:
+            observations = []
+            for observation in content.observations:
+                # Raw recognizer objects can contain rasters or provider objects.
+                # Preserve text, geometry and reasons without retaining image bytes.
+                geometry = None
+                if observation.id == 'native' and isinstance(observation.raw, dict):
+                    geometry = [dict(box=line.get('bbox'), direction=line.get('dir'), writing_mode=line.get('wmode'))
+                                for block in observation.raw.get('blocks', []) for line in block.get('lines', [])]
+                observations.append(dict(id=observation.id, text=observation.text,
+                    configuration=observation.configuration, blocks=[asdict(b) for b in observation.blocks],
+                    issues=[asdict(issue) for issue in observation.issues], native_reader_line_geometry=geometry))
+            self.evidence(dict(event='page_extracted', page=page.number, pre_cleanup_text=content.text,
+                pre_cleanup_nonspace_chars=sum(not c.isspace() for c in content.text),
+                ocr=bool(replaced), observations=observations))
         return content
 
 
-def pdf_text(data, *, strategy, page_deadline_seconds):
+def pdf_text(data, *, strategy, page_deadline_seconds, evidence=None):
     """``pdf_text``: one open of the PDF, each page through the rule, then GPO normalization.
 
     ``strategy`` is a :class:`PageRule` or a bare page strategy (rendered by the default reader).
@@ -231,19 +263,30 @@ def pdf_text(data, *, strategy, page_deadline_seconds):
     from spicy_docs.extraction import DocumentExtractor
     from spicy_docs.extraction.body_text import rendition_text
     rule = strategy if isinstance(strategy, PageRule) else PageRule(strategy)
-    run = _PageRun(rule.strategy, page_deadline_seconds)
+    run = _PageRun(rule.strategy, page_deadline_seconds, evidence)
     try:
         body = rendition_text(data, rendition='pdf', extractor=DocumentExtractor(
             run, reader=rule.reader, max_input_bytes=max(1, len(data))))
     except (OcrRequired, PageDeadline, MemoryError):
         raise
     except Exception as error:  # an unopenable, encrypted or pageless document
-        return Reading('error', type(error).__name__)
+        return Reading('error', type(error).__name__, diagnostic=traceback.format_exc(limit=8))
     pages = len(body.pages)
+    if evidence:
+        for page, (text, cleanup) in enumerate(zip(body.pages, body.record.pages), start=1):
+            evidence(dict(event='page_normalized', page=page, cleanup=asdict(cleanup),
+                retained_nonspace_chars=sum(not c.isspace() for c in text), retained_utf8_bytes=len(text.encode()),
+                retained_text_sha256=hashlib.sha256(text.encode()).hexdigest()))
+        evidence(dict(event='document_cleanup', line_numbers=body.record.line_numbers,
+            gpo_footers=body.record.gpo_footers, spacing_normalized=body.record.spacing_normalized,
+            running_footer_lines=body.record.running_footer_lines, small_caps_merges=body.record.small_caps_merges,
+            hyphen_rejoin_count=body.record.hyphen_rejoin_count,
+            font_glyphs=[asdict(glyph) for glyph in body.record.font_glyphs]))
     if run.failed:
         return Reading('error', 'failed_pages', fields=dict(
             page_count=pages, failed_pages=run.failed,
-            failed_page_errors=sorted(set(run.errors.values()))))
+            failed_page_errors=sorted(set(run.errors.values()))), diagnostic='\n'.join(
+                f'Page {page}: {error}' for page, error in run.diagnostics.items()))
     if len(run.builds) > 1:
         raise ValueError('OCR in one document ran on more than one macOS build')
     # The build the OCR backend states (AppleVision's configuration), else this host's.
@@ -292,19 +335,19 @@ def warc_payload(data, *, max_bytes):
 def _decoded(payload, encoding, max_bytes):
     if encoding == 'deflate':
         stream = zlib.decompressobj()
-        data = stream.decompress(payload, max_bytes + 1)
+        data = stream.decompress(payload, 0 if max_bytes is None else max_bytes + 1)
     else:
         with gzip.GzipFile(fileobj=io.BytesIO(payload)) as stream:
-            data = stream.read(max_bytes + 1)
-    return None if len(data) > max_bytes else data
+            data = stream.read() if max_bytes is None else stream.read(max_bytes + 1)
+    return None if max_bytes is not None and len(data) > max_bytes else data
 
 
-def derive(data, parser, *, strategy, page_deadline_seconds, sniff_format, max_bytes):
+def derive(data, parser, *, strategy, page_deadline_seconds, sniff_format, max_bytes, evidence=None):
     """One body's reading under ``parser``. ``sniff_format(bytes)`` names a WARC payload's format."""
     if parser in MARKUP_RENDITIONS:
         return markup_text(data, parser)
     if parser == 'pdf_text':
-        return pdf_text(data, strategy=strategy, page_deadline_seconds=page_deadline_seconds)
+        return pdf_text(data, strategy=strategy, page_deadline_seconds=page_deadline_seconds, evidence=evidence)
     if parser != 'warc':
         raise ValueError('Unsupported body-text parser')
     try:
@@ -315,8 +358,10 @@ def derive(data, parser, *, strategy, page_deadline_seconds, sniff_format, max_b
     inner = PAYLOAD_PARSERS.get(kind)
     if inner is None:
         return Reading('error', 'unsupported_payload', fields=dict(envelope, payload_format=kind))
+    if evidence:
+        evidence(dict(event='warc_payload', parser=inner, payload_sha256=hashlib.sha256(payload).hexdigest()))
     reading = derive(payload, inner, strategy=strategy, page_deadline_seconds=page_deadline_seconds,
-                     sniff_format=sniff_format, max_bytes=max_bytes)
+                     sniff_format=sniff_format, max_bytes=max_bytes, evidence=evidence)
     return Reading(reading.status, reading.error_type, reading.text, reading.page_offsets, reading.ocr_pages,
                    reading.macos_build, dict(reading.fields, **envelope, payload_format=kind,
-                        payload_sha256=hashlib.sha256(payload).hexdigest()))
+                        payload_sha256=hashlib.sha256(payload).hexdigest()), reading.diagnostic)
