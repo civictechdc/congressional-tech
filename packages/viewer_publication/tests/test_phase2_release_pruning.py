@@ -365,7 +365,9 @@ def test_prunable_release_ids_and_maintenance_job_spec_sections():
     assert spec['external_pins_source'] == 'https://data.spicygov.ai/pins/archive-releases.json'
     raw = spec['raw_verification']
     assert raw['captures']['kind'] == 'native_table'
-    assert '/archive_r1b/captures/' in raw['captures']['metadata_location']
+    target = spec['tables']['captures']
+    metadata_path = '/' + '/'.join([*target['namespace'], target['name'], 'metadata']) + '/'
+    assert metadata_path in raw['captures']['metadata_location']
     assert raw['apply_staged'] is True
     assert not raw.keys() & {'receipt_inventory', 'verification_inventory'}
     assert 'lake_maintenance' in spec
