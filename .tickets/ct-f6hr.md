@@ -2,7 +2,7 @@
 id: ct-f6hr
 status: open
 deps: [ct-55qo]
-links: [ct-cbkz]
+links: [ct-cbkz, ct-en4n]
 created: 2026-11-13T17:46:16Z
 type: bug
 priority: 1
@@ -11,17 +11,17 @@ tags: [body_text, html, xml, spicy-docs, compatibility]
 ---
 # Handle retained HTML encoding and XML compatibility failures under explicit policies
 
-The retained recovery checkpoint contains 231 HTML UTF-8-only refusals, 284 XML DOCTYPE-policy refusals and one markup max_events refusal. Reviewed specimens establish Windows-1252 HTML and an empty internal XML subset as recoverable compatibility cases. Confirm remaining members before generalizing. One malformed-XML refusal stays separate. Existing ct-cbkz / upstream ss-mkxe cover text normalization, not these encoding, XML policy or resource acceptance gaps.
+The retained recovery checkpoint contains 231 HTML UTF-8-only refusals, 284 XML DOCTYPE-policy refusals and one markup max_events refusal. The latter is now identified as a valid House floor Atom feed; ct-en4n owns its feed role and routing. Reviewed specimens establish Windows-1252 HTML and an empty internal XML subset as recoverable compatibility cases. Confirm remaining members before generalizing. One malformed-XML refusal stays separate. Existing ct-cbkz / upstream ss-mkxe cover text normalization, not these encoding, XML policy or resource acceptance gaps.
 
 ## Design
 
-Spicy-docs owns explicit decoding, safe XML parsing and bounded/streaming markup consumption; CT owns declared reading policies, measured worker admission and selective CPU-only rereads. Reuse maintained readers and verify current shared-reader work before implementing overlapping fixes. Record the selected encoding and original byte identity; do not silently insert replacement characters. Permit qualified empty subsets without entity expansion or external resource loading. Measure the actual event-limit specimen before increasing limits. Keep unrelated PDF output unchanged by this markup change.
+Spicy-docs owns explicit decoding, safe XML parsing and bounded/streaming markup consumption; CT owns declared reading policies, measured worker admission and selective CPU-only rereads. Reuse maintained readers and verify current shared-reader work before implementing overlapping fixes. Record the selected encoding and original byte identity; do not silently insert replacement characters. Permit qualified empty subsets without entity expansion or external resource loading. The event-limit specimen is a complete Atom feed with escaped HTML, not a damaged legislative document. Reuse entry-level feed parsing through a qualified shared adapter before proposing any generic markup limit increase. Keep unrelated PDF output unchanged by this markup change.
 
 ## Acceptance Criteria
 
 1. Read the retained legacy-encoding, empty-subset and max_events specimens through the actual CT consumer, preserving source-confirmed text. Report exact affected predicates and unreviewed members.
 2. Cover conflicting/missing encoding declarations, UTF-8, preformatted HTML, empty subsets, entity declarations, malformed/truncated XML and large valid input. Prove no external XML fetch or entity expansion; preserve original byte locations where the API exposes them.
-3. Measure peak memory and time on the largest retained examples under worker supervision. Named malformed/unsupported inputs remain explicit refusals.
+3. Preserve the measured event-limit finding and route the valid Atom-feed case through ct-en4n. Measure actual compatibility specimens under worker supervision; malformed/unsupported inputs remain explicit refusals.
 4. Integrate with ct-cbkz without conflating normalization and compatibility. Declare versions, reread affected CPU markup cohorts and reconcile current selection, active refusals and historical evidence.
 
 
@@ -34,3 +34,7 @@ Evidence: <main checkout>/.cache/archive-release/ocr-recovery-20261113/coordinat
 **2026-11-13T18:48:44Z**
 
 Upstream normalization exists, but the audited reader still enforces UTF-8 and rejects internal XML subsets. The retained max_events example is 38.9 MB and appears cut off; do not call it a proven memory failure or rewrite streaming without a source-completeness check and measurement. Audit: .cache/archive-release/ocr-recovery-20261113/coordination/greybeard-root-cause-20261113/review.md; cohort and page inventory: inventory/README.md.
+
+**2026-11-13T19:48:19Z**
+
+Correction to the tentative truncation finding: c90e782a00651261a9ac21ae8d30df88757b3b66ae99a5ff794f0dc8ca65336e is a complete, well-formed 38,854,265-byte Atom feed from https://docs.house.gov/BillsThisWeek-RSS.xml (retained HTTP 200, complete=true). It contains 2,226 entries, 15,590 elements and 4,721,751 Expat text callbacks, largely from escaped HTML. Current CT refuses at max_events after 1.25 s / 0.26 GiB peak RSS. A temporary in-process six-million-event measurement completed in 7.03 s / 1.34 GiB RSS, yielding 29,888,608 text bytes. No production limit changed. This belongs to feed-role/routing under ct-en4n; it is not a truncation or out-of-memory verdict. Exact archived original, input pin and measurements: repairs/ct-f6hr-event-limit-20261113/ under the durable OCR recovery root. Encoding/empty-subset work remains open. No publisher refetch or OCR ran.
