@@ -11,7 +11,7 @@ The GPO cleanup and optional diagnostic evidence are merged in [PR #151](https:/
 | Reconcile resource failures and paused recovery | [ct-a73a](../../.tickets/ct-a73a.md) | Request memory attribution fixed; 31 retained outcomes reconciled. Qualify candidate text, resolve three outstanding cases and eventually resume only the remaining 210 targets. |
 | Publish corrected historical GPO readings | [ct-kfsd](../../.tickets/ct-kfsd.md) | New; qualify affected scope, selective reread and current selection. Code integration is already complete. |
 | Incomplete native layers and vector text | [ct-hz8y](../../.tickets/ct-hz8y.md) | New; source-qualified page coverage and OCR routing. |
-| Native geometry failures | [ct-yy07](../../.tickets/ct-yy07.md) | Typed reasons and opt-in fallback implemented; old persisted failure classification preserved. Remaining geometry cohort and accurate replacement text still require qualification. |
+| Native geometry failures | [ct-yy07](../../.tickets/ct-yy07.md) | Reconciled 208 affected bodies / 1,350 failed-page records. Numeric source evidence now covers four bodies / six pages; 204 bodies / 1,344 pages remain unresolved. Typed diagnostics preserve original geometry; replacement text still requires qualification. |
 | Page-local recognizer crashes | [ct-t4p3](../../.tickets/ct-t4p3.md) | Qualify alternate settings on the exact failing page; shared checkpoints belong to ct-aitp. |
 | Hybrid OCR and transcription quality | [ct-n3ik](../../.tickets/ct-n3ik.md) | Exact-page routing and [bounded offline proposals](../retained-text-assessment.md) implemented. The [assessment plan](corpus-text-assessment-20261113.md) reuses retained page features and Keeplist evaluation findings. Current inventory reconciliation and independent held-out calibration remain. Scores rank review; they do not qualify text. |
 | HTML/XML text normalization | [ct-cbkz](../../.tickets/ct-cbkz.md), upstream `ss-mkxe` | Composed shared wheel adds amendment and inline punctuation fixes with direct source/output review. Representative/largest-input capacity, corpus reparse and selected adoption remain. |
@@ -23,7 +23,7 @@ The GPO cleanup and optional diagnostic evidence are merged in [PR #151](https:/
 
 1. Keep OCR paused. The frozen recovery and follow-up OCR jobs remain stopped; the paused-resume guard stays in force. Code, tickets, retained-data analysis and native/scripted fixtures can progress.
 2. Reuse the qualified mixed-version selection and interrupted-page mechanisms. Source-reviewed corrected candidates still need exposure/selection/publication qualification. A completed current attempt awaiting qualification must not be repeatedly extracted.
-3. Use the composed spicy-docs candidate for ct-cbkz/ss-mkxe and ct-f6hr, retaining the merged GPO repair. The frozen non-OCR candidate inventory contains 310,964 HTML/XML bodies, 24.53 GB of original bytes and about 11.92 GB of existing text. Capture families nominate 69,609 MODS/PREMIS bodies and 9,568 meeting/witness XML bodies; resolve their roles separately from document prose before dispatch. Three larger native cases totaling 12.75 MB parsed in 1.0072 seconds at 0.26 GiB watchdog peak; independently reviewed passages retain substantive text, with table structure and source graphics still limited. This does not measure cold retrieval, actual producer batches, the largest eligible inputs or corpus throughput. Reconcile custody separately, preserving the 400 identities with `copy_usable=false`. Candidate and successful-text census populations differ. WARC requires separate payload/reachability qualification.
+3. Use the composed spicy-docs candidate for ct-cbkz/ss-mkxe and ct-f6hr, retaining the merged GPO repair. The frozen non-OCR inventory contains 310,964 HTML/XML bodies, 24.53 GB of original bytes and about 11.92 GB of existing text. Its disjoint proposal preserves 400 custody refusals, one dedicated feed, 80,276 metadata-family candidates, 37,568 native-document candidates and 192,719 unresolved roles. These are nominations, not source qualification; 86 conflicting MODS/transcript labels remain unresolved. Three larger native cases totaling 12.75 MB parsed in 1.0072 seconds at 0.26 GiB watchdog peak, with independently reviewed passages. This does not measure cold retrieval, actual producer batches, the largest inputs or corpus throughput. Use exact keys through the existing explicit-item staging interface for a bounded producer probe; filtering captures alone does not restrict the work list. Preserve captured storage pins and all held identities. WARC requires separate payload/reachability qualification.
 4. Diagnose and repair only identified bad PDF pages/bodies. Reuse qualified pre-cleanup observations where identity permits; do not re-OCR all PDFs. The 18,777-body triage set contains candidates, not that many confirmed failures. Its 146 reviewed body/page actions include controls and unresolved candidates. Do not repeat the text census or interpret it as source completeness.
 5. Use maintained region, Tesseract or LLM/VLM capabilities for justified complex cases with exact settings and independent omission/value/order checks. The five conditional LLM candidate bodies have no qualified LLM results.
 6. Publish qualified selections through existing gates after cohort acceptance. Retain prior readings/refusals; defer compaction. Keep publisher refetch deferred under ct-z4w5.
@@ -40,6 +40,17 @@ passes its structural check while dropping testimony pages and blanking a
 partially readable disclosure form. Named reviewers rejected that candidate.
 No selection, checkpoint reuse, recognition or refetch follows from these
 repairs. Evidence is under `repairs/native-pdf-repair-20261113/`.
+
+Further geometry review retrieved three exact originals from the retained
+archive, without contacting publishers. All five nominated pages contain finite,
+in-page zero-width lines, but two PDFs also have truncated streams, missing-font
+repairs and garbled output. The third has an invisible native span and a graphic
+header missing from text. The alternate maintained PypdfReader also omits the
+upper-right address on the c848 control. Native salvage must preserve original
+text and diagnostic facts without inventing geometry or accepting those coverage
+losses. The source-backed findings and exact unresolved identities are under
+`repairs/geometry-reconciliation-20261113/`; the role proposal and producer
+boundary are under `repairs/ct-markup-compatibility-20261113/role-partition/`.
 
 ## The large XML case is a feed
 
