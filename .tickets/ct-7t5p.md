@@ -1,6 +1,6 @@
 ---
 id: ct-7t5p
-status: open
+status: closed
 deps: []
 links: [ct-deg8, ct-wsu7]
 created: 2026-11-08T13:44:49Z
@@ -24,3 +24,11 @@ Branch df55-types (backed up to GitHub at 30ba6655) holds the casts DataFusion 5
 **2026-11-11T14:30:07Z**
 
 validated 2026-11-11, left open: still not needed today. main pins b0342a7 (DataFusion 53.1) and the pin candidate is the one line (also DataFusion 53.1); branch df55-types is unchanged at 30ba6655 and was not rebased. Waits on a DataFusion 55 engine pin, which nobody has scheduled.
+
+**2026-11-13T06:06:16Z**
+
+2026-11-13 release acceptance complete. Main and the shared Mac runtime now select DocSpec 98a2d54077390a70703af0277a9ac2df9ce14cef (DataFusion 55.2): Darwin SHA-256 4c4a94c8638f7fcb7a0ca086e310cbe383df69518c24ab70143d1f6aa9512f28 and Linux ae75bb55e932d9ed156766499ef756e59a23498324cb59f54a7187b892657da9. The Linux binary was uploaded create-only to the private runtime bucket, read back byte-for-byte, and selected in DOCSPEC_RUNTIME_ARTIFACT. Main runtime doctor and scheduled disk admission passed.
+
+All six native Linux production-offline shards passed: 13,433 tests, 31 subtests, 3 expected skips and 47 deselections. Five unchanged shards ran at 6cf02972; the full shard5 rerun at 4cba90b8 corrected one stale maintenance-table assertion and used the same original Linux binary. All 547 file assignments match the integrated source. Final Darwin qualification includes both original failed aggregate queries byte-identical to the DF53 predecessor, planted ordering-error detection, the full DocSpec gate and the full frozen production model.
+
+The capture rebuild and remote readback preserve all 4,181,852 rows from 35,897 receipts except mapping_version. The guarded publisher released 55c14dcda87ae954583bf518050b3bd45db6aed49c88c53413260c1d092ef105; all six required invariant suites (nine invariant/completeness reports in total) passed. Engine metadata changes were independently reviewed, the public manifest matched the sealed candidate, and browser/citation consumers passed. See docs/measurements/ct-7t5p-datafusion-55-20261113.md and .cache/archive-release/implementation/ct-release-20261112T2215/release/cutover/cutover-result.json.
