@@ -46,3 +46,7 @@ Add the complete House BillsThisWeek-RSS.xml Atom feed as a positive feed/contai
 **2026-11-13T19:50:10Z**
 
 Additional current-code limit: ordinary lake/readings.py uses PAGE_PARSE_MAX_BYTES = 24 << 20 and explicitly names c90e782a as an over-bound XML case. Generic href-reading capability does not establish that this 38.9 MB feed has contributed links. Dedicated entry-level routing and a retained-table comparison are required before claiming active feed use.
+
+**2026-11-13T19:51:47Z**
+
+Retained feed shape: 2,226 unique Atom entry IDs point to 198 distinct weekly-page links, with up to 40 entries for one link. Preserve entry identity/update/content versions; URL-only deduplication would discard observations. These are retained-snapshot counts, not complete historical coverage or current freshness. The latest retained entry is dated 2026-09-15. Evidence: repairs/ct-f6hr-event-limit-20261113/feed-shape.json.
