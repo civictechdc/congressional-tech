@@ -2,7 +2,7 @@
 id: ct-a73a
 status: open
 deps: []
-links: [ct-m704]
+links: [ct-m704, ct-kfsd, ct-n3ik, ct-hz8y, ct-yy07, ct-t4p3]
 created: 2026-11-10T05:38:12Z
 type: bug
 priority: 2
@@ -40,3 +40,7 @@ Wave 6 prep landed on `claude/ct-wave-6-bodytext-prep` (left open solely for the
 **2026-11-13T15:00:26Z**
 
 2026-11-13: The full body-text run (body-text-full-20261110, PID 55948, resumed 2026-11-12 21:32Z after the publish yield) finished 2026-11-13T07:44Z at chunk-0173 with status pending: the work list is exhausted except 411 bodies blocked on missing copy metadata. The 2026-11-13 OCR recovery (codex/ocr-recovery-20261113 @ 56421715, .cache/archive-release/ocr-recovery-20261113, separate recovery catalogs) is retrying all 2,632 leftover bodies; at 14:37Z 2,164 had committed outcomes (1,058 completed, 1,083 parser errors, 23 unreadable) and all 411 missing-pin bodies completed. For this ticket's bodies the recovery so far gives memory_limit 56 completed and 3 unreadable, page_deadline 6 completed and 1 error (progress.json by_previous). Close once the recovery's follow-up writes final-summary.json and its outcomes are published.
+
+**2026-11-13T17:46:16Z**
+
+2026-11-13 restart: checkpoint integrity passed for 2,356 outcomes, 2,333 readings and 1,250 texts, preserving the original catalog. At 17:38Z committed outcomes were 1,250 completed / 1,083 errors / 23 unreadable, with 276 targets remaining and batch 198 active. Detached supervisor resumed the frozen 56421715 extraction policy at 17:28:54Z; it schedules final integrity verification and serial 6 GiB resource retries. The interruption cause remains undetermined. Keep this ticket open until final outcomes reconcile its exact original body hashes and are published; aggregate recovery successes do not prove that every original deadline/memory case passed. Evidence: .cache/archive-release/ocr-recovery-20261113/{resume-state.json,restart-investigation.json,full/verification.json,final-summary.json}; final-summary.json is pending.

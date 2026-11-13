@@ -2,7 +2,7 @@
 id: ct-cbkz
 status: open
 deps: []
-links: [ct-chc4, ct-m704]
+links: [ct-chc4, ct-m704, ct-f6hr]
 created: 2026-11-12T15:38:26Z
 type: task
 priority: 2
@@ -26,3 +26,9 @@ Deferred post-Wave-6 follow-up paired with spicy-stack ticket ss-mkxe (Owner dec
 2. CPU-only re-read completes across xml_text, html_text, and warc cohorts; sample Shas (bill XML ecec5e8dc421f8bd..., non-<pre> HTML ea2dedd3feb3dd99... and 0990bcfcbafa0dff...) show no Dublin Core header leakage, intact inline XML sentences, collapsed template blank-line cliffs, and separated adjacent inline link/button tokens.
 3. Superseded (parser, parser_version) rows are compacted from body_text Parquet with row-count and uniqueness verification.
 
+
+## Notes
+
+**2026-11-13T17:46:16Z**
+
+2026-11-13 reconciliation: retain this ticket's CPU markup-normalization scope with upstream ss-mkxe. New compatibility work (legacy HTML encodings, empty XML internal subsets and max_events) is tracked separately in ct-f6hr. The earlier statement that PDF text was clean was limited to that sample and is superseded by source-confirmed GPO loss: PR #151 fixed cleanup, and ct-kfsd owns its historical reread/publication. For this markup-only change, preserve PDF output relative to the chosen current baseline; do not restore an obsolete PDF pin. Before compaction, retain replayable prior readings/refusals and verify one current selection per body/parser. Verify current shared-reader implementation and qualification before duplicating it.
