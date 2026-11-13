@@ -59,6 +59,8 @@ def reading_input():
 class ParserWorker:
     """Own one persistent subprocess for one explicit parser/version pair."""
 
+    rss_sample_interval_seconds = .05
+
     def __init__(self, parser, version, callable_path, *, timeout_seconds,
                  memory_bytes, max_input_bytes, max_output_bytes=8 * 1024**2):
         if (not parser or not version or not callable_path or
@@ -71,6 +73,8 @@ class ParserWorker:
         self.max_input_bytes, self.max_output_bytes = max_input_bytes, max_output_bytes
         self._directory = self._process = None
         self._buffer = bytearray()
+        self.last_peak_rss_bytes = None
+        self.last_rss_samples = 0
 
     def __enter__(self):
         if self._directory is not None:
@@ -99,6 +103,18 @@ class ParserWorker:
             self._process = None
         self._buffer.clear()
 
+    def _sample_rss(self):
+        """Sample this request's worker residency, including retained allocations.
+
+        This is a sampled peak, not incremental allocation or process-lifetime
+        ru_maxrss. Short-lived allocations between samples can be missed.
+        """
+        rss = resident_bytes(self._process.pid)
+        self.last_rss_samples += 1
+        self.last_peak_rss_bytes = max(self.last_peak_rss_bytes or 0, rss)
+        if rss > self.memory_bytes:
+            raise _Failure('memory_limit')
+
     def _start(self):
         command = [sys.executable, '-I', str(Path(__file__).resolve()),
                    self.callable_path, self._directory.name,
@@ -119,6 +135,8 @@ class ParserWorker:
         with selectors.DefaultSelector() as selector:
             selector.register(self._process.stdout, selectors.EVENT_READ)
             while True:
+                # Sample before accepting even an immediately buffered result.
+                self._sample_rss()
                 if b'\n' in self._buffer:
                     line, _, rest = self._buffer.partition(b'\n')
                     self._buffer = bytearray(rest)
@@ -129,9 +147,7 @@ class ParserWorker:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise _Failure('timeout')
-                if resident_bytes(self._process.pid) > self.memory_bytes:
-                    raise _Failure('memory_limit')
-                for key, _ in selector.select(min(remaining, .05)):
+                for key, _ in selector.select(min(remaining, self.rss_sample_interval_seconds)):
                     chunk = os.read(key.fd, min(65536, self.max_output_bytes + 1 - len(self._buffer)))
                     if not chunk:
                         raise _Failure('parser_crash')
@@ -141,6 +157,8 @@ class ParserWorker:
 
     def parse(self, input_id, payload):
         """Return parser results; propagate transport refusals without replay."""
+        self.last_peak_rss_bytes = None
+        self.last_rss_samples = 0
         if self._directory is None:
             raise RuntimeError('Parser worker requires an open context')
         if not input_id or not isinstance(payload, bytes):

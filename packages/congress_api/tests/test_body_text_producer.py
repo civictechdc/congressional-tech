@@ -350,6 +350,10 @@ def test_stage_records_per_body_peak_rss_and_error_outcomes(tmp_path):
     assert set(by_name) == {'pdf', 'broken'}
     assert by_name['pdf']['status'] == 'read' and by_name['pdf']['reading_status'] == 'completed'
     assert isinstance(by_name['pdf']['peak_rss_bytes'], int) and by_name['pdf']['peak_rss_bytes'] > 0
+    assert by_name['pdf']['peak_rss_scope'] == 'request_sampled_worker_rss'
+    assert by_name['pdf']['rss_sample_interval_seconds'] == .05
+    assert by_name['pdf']['rss_samples'] > 0
+    assert by_name['pdf']['worker_lifetime_peak_rss_bytes'] > 0
     assert by_name['broken']['status'] == 'read' and by_name['broken']['reading_status'] == 'error'
     assert by_name['broken']['error'] is not None
     assert isinstance(by_name['broken']['peak_rss_bytes'], int) and by_name['broken']['peak_rss_bytes'] > 0

@@ -54,3 +54,7 @@ Wave 6 prep landed on `claude/ct-wave-6-bodytext-prep` (left open solely for the
 **2026-11-13T18:48:44Z**
 
 Rewritten from the independent ETL/greybeard/evolutionary audit. Prior notes and evidence remain below; old running-job and automatic reread assumptions are superseded. Audit: .cache/archive-release/ocr-recovery-20261113/coordination/greybeard-root-cause-20261113/review.md; cohort and page inventory: inventory/README.md.
+
+**2026-11-13T21:06:57Z**
+
+Offline completion 2026-11-13: ParserWorker now owns request-local RSS sampling (50 ms response loop; reset per parse, bounded retry included). Body outcomes label peak_rss_scope=request_sampled_worker_rss and retain worker_lifetime_peak_rss_bytes separately; historical outcomes remain unchanged. A real reused-process 64 MiB mmap request followed by a small request proves the second sample does not inherit ru_maxrss. The sample includes live retained allocations and may miss sub-50 ms peaks; it does not claim allocated-byte cost or process-tree memory. Removed the duplicate _MeasuredWorker sampler. Focused producer/worker regression: 30 passed (partial production-offline lane), measured 0.74 GiB peak RSS / 0.65 GiB physical. Evidence: .cache/archive-release/ocr-recovery-20261113/repairs/pdf-offline-20261113/resource-tests-memory.json. Original identity reconciliation, remaining 210 OCR outcomes and publication acceptance remain open; OCR was not resumed.
