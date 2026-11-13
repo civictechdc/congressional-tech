@@ -6,17 +6,17 @@ The GPO cleanup and optional diagnostic evidence are merged in [PR #151](https:/
 
 | Work | Ticket | State and completion boundary |
 | --- | --- | --- |
-| Shared accepted-reading selection | [ct-55qo](../../.tickets/ct-55qo.md) | In progress; qualified baseline and per-body exceptions across planning, export and refusal counts. |
-| Durable page checkpoints | [ct-aitp](../../.tickets/ct-aitp.md) | In progress; spicy-docs selected pages and streamed observations, then existing document cleanup. |
+| Shared accepted-reading selection | [ct-55qo](../../.tickets/ct-55qo.md) | Initial implementation in PR153; real-cohort qualification and rollout remain. |
+| Durable page checkpoints | [ct-aitp](../../.tickets/ct-aitp.md) | Initial implementation in PR153; process-death/native/scripted checks pass, real Vision fidelity and cross-policy reuse remain. |
 | Reconcile resource failures and paused recovery | [ct-a73a](../../.tickets/ct-a73a.md) | Paused after batch 205; fix request memory attribution and reconcile original identities. |
 | Publish corrected historical GPO readings | [ct-kfsd](../../.tickets/ct-kfsd.md) | New; qualify affected scope, selective reread and current selection. Code integration is already complete. |
 | Incomplete native layers and vector text | [ct-hz8y](../../.tickets/ct-hz8y.md) | New; source-qualified page coverage and OCR routing. |
 | Native geometry failures | [ct-yy07](../../.tickets/ct-yy07.md) | New; classify failures and qualify narrow OCR fallback. |
 | Page-local recognizer crashes | [ct-t4p3](../../.tickets/ct-t4p3.md) | Qualify alternate settings on the exact failing page; shared checkpoints belong to ct-aitp. |
 | Hybrid OCR and transcription quality | [ct-n3ik](../../.tickets/ct-n3ik.md) | Text census ranks candidates; source features and independent classification are still needed. |
-| HTML/XML text normalization | [ct-cbkz](../../.tickets/ct-cbkz.md), upstream `ss-mkxe` | Credit upstream commits; finish contextual HTML gaps, compose one wheel and measure CPU-only rereads. |
-| HTML encoding, XML subsets and event limits | [ct-f6hr](../../.tickets/ct-f6hr.md) | New; separate compatibility acceptance from normalization. |
-| Error/empty/landing roles and capture history | [ct-en4n](../../.tickets/ct-en4n.md) | New; qualify detection and identify genuinely unresolved sources using retained evidence. |
+| HTML/XML text normalization | [ct-cbkz](../../.tickets/ct-cbkz.md), upstream `ss-mkxe` | Qualified wheel in PR154; seven originals independently checked, small CPU pilot measured; representative/largest-input pilot and cohort selection remain. |
+| HTML encoding and XML subsets | [ct-f6hr](../../.tickets/ct-f6hr.md) | Compatibility work remains; the event-limit specimen is a complete Atom feed, routed to ct-en4n. |
+| Document/feed/error/landing roles and capture history | [ct-en4n](../../.tickets/ct-en4n.md) | Qualify roles and identify unresolved sources. Preserve valid feeds as structured source data. |
 | Publisher refetch | [ct-z4w5](../../.tickets/ct-z4w5.md) | Deferred by the user; depends on detection/history qualification and a later decision to resume. |
 
 ## Sequence and limits
@@ -29,6 +29,37 @@ The GPO cleanup and optional diagnostic evidence are merged in [PR #151](https:/
 6. Publish qualified selections through existing gates after cohort acceptance. Retain prior readings/refusals; defer compaction. Keep publisher refetch deferred under ct-z4w5.
 
 Operational completion and source completeness remain separate. Preserve valid empty results, old refusals and recovery evidence. Carry forward only readings proved unaffected, and declare semantic changes rather than restamping old rows. The current recovery does not silently adopt the new cleanup policy.
+
+## The large XML case is a feed
+
+The retained `https://docs.house.gov/BillsThisWeek-RSS.xml` body is Atom despite
+the filename. The hash-pinned 13 November inspection found a complete feed with
+2,226 entries describing weekly House floor consideration, update times and
+links to bill documents. Escaped HTML inside entries produces millions of text
+callbacks. The ordinary CT page reader also refuses this body at its 24 MiB
+bound; the body-text reader reaches its event bound. Neither outcome establishes
+an error response or a truncated source.
+
+The current body-text consumer refused after 1.25 seconds at 0.26 GiB peak RSS.
+A temporary six-million-event measurement completed in 7.03 seconds at 1.34 GiB
+RSS. No production bound changed. These measurements identify the cost of the
+generic event representation; they do not justify treating the feed as one
+legislative document. The prior tentative truncation interpretation is superseded.
+
+Use a shared source reader in spicy-docs for entry identities, timestamps, weekly
+links and embedded document links. Current source inspection found no dedicated
+consumer in CT, spicy-docs or spicy-regs. CT's separate `news_lake` package has an
+offline Atom-capable `feedparser` adapter; spicy-docs' existing shared feed helper
+supports RSS 2.0. Reuse maintained parsing and capture primitives when adding the
+Atom source adapter. Compare its links with existing discovery and verify source
+freshness before recurring acquisition. Scheduled consideration remains distinct
+from enacted status, votes or completed actions. This is a proposed integration,
+not a newly running source.
+
+Exact archived bytes, input identity and measurements are retained under
+`repairs/ct-f6hr-event-limit-20261113/`. Retrieval used the retained raw archive;
+no publisher refetch or OCR ran. The markup pilot and independent consumer
+review are under `repairs/ct-markup-readers-20261113/`.
 
 ## Evidence and follow-on consumers
 
