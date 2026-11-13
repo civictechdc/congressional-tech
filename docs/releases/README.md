@@ -1,8 +1,8 @@
 # Release notes
 
-Latest: [November 12, 2026 — archive ede659a056c0](2026-11-12-ede659a056c0.md).
+Latest: [November 13, 2026 — archive 55c14dcda87a](2026-11-13-55c14dcda87a.md).
 
-Previous: [November 12, 2026 — archive 21fc049940bb](2026-11-12-21fc049940bb.md).
+Previous: [November 12, 2026 — archive 6c46b8f7a606](2026-11-12-6c46b8f7a606.md).
 
 Each published archive release that changes keys or values against the live release gets
 a note here, named `<YYYY-MM-DD>-<release id, first 12>.md`. The publisher's gates write
