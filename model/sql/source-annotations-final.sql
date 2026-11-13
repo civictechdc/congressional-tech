@@ -3,7 +3,7 @@ WITH packages AS (
  WHERE package_id IS NOT NULL AND NOT publisher GROUP BY source_id
 )
 SELECT s.source_id,
- -- Keep the published document_kind.list.item type for the filename branch.
+ -- Keep published list leaves as item. DataFusion 55 can preserve Iceberg element metadata.
  CASE
   WHEN regexp_like(coalesce(s.filename,''),'(?i)^bills-\s*[0-9]+.*-rcp\s*[0-9]') THEN make_array('committee-print')
   WHEN f.document_kind_status='completed' AND coalesce(array_length(f.document_kind),0)>0
@@ -12,7 +12,7 @@ SELECT s.source_id,
  END AS document_kind,
  CASE
   WHEN regexp_like(coalesce(s.filename,''),'(?i)^bills-\s*[0-9]+.*-rcp\s*[0-9]') THEN make_array('print')
-  ELSE coalesce(CASE WHEN f.document_family_status='completed' THEN array_sort(array_distinct(f.document_family)) END,{{EMPTY_STRINGS}})
+  ELSE coalesce(CASE WHEN f.document_family_status='completed' THEN arrow_cast(array_sort(array_distinct(f.document_family)),'List(Utf8)') END,{{EMPTY_STRINGS}})
  END AS document_family,
  CASE WHEN f.congress_status='completed' THEN f.congress END AS congress,
  -- A filename names a package only in GovInfo's own form (govinfo.gov/help/{bills,chrg,crpt,cprt,cdoc});
@@ -32,8 +32,8 @@ SELECT s.source_id,
  p.reading_source,
  k.listing_title,
  coalesce(m.meeting_keys,{{EMPTY_STRINGS}}) AS meeting_keys,
- coalesce(CASE WHEN f.status='completed' THEN array_sort(array_distinct(f.measure_keys)) END,{{EMPTY_STRINGS}}) AS measure_keys,
- coalesce(CASE WHEN f.status='completed' THEN array_sort(array_distinct(f.bioguide_ids)) END,{{EMPTY_STRINGS}}) AS bioguide_ids,
+ coalesce(CASE WHEN f.status='completed' THEN arrow_cast(array_sort(array_distinct(f.measure_keys)),'List(Utf8)') END,{{EMPTY_STRINGS}}) AS measure_keys,
+ coalesce(CASE WHEN f.status='completed' THEN arrow_cast(array_sort(array_distinct(f.bioguide_ids)),'List(Utf8)') END,{{EMPTY_STRINGS}}) AS bioguide_ids,
  coalesce(c.committee_keys,{{EMPTY_STRINGS}}) AS committee_keys,
  array_sort(array_distinct(array_concat(coalesce(c.chambers,{{EMPTY_STRINGS}}),coalesce(m.chambers,{{EMPTY_STRINGS}})))) AS chambers,
  coalesce(d.facts,{{EMPTY_FACTS}}) AS facts,f.status AS filename_status

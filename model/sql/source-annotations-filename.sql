@@ -4,12 +4,14 @@
 -- keeps that supplier's name and URL. Dates eligible for selection rank before opaque aliases. Shown status/error stay separate from the per-field suppliers.
 WITH own AS (
  SELECT s.source_id,
-  f.* EXCLUDE(document_kind,document_family,committee_code,filename_date),
+  f.* EXCLUDE(document_kind,document_family,committee_code,measure_keys,bioguide_ids,filename_date),
   {{FILENAME_DATE}} AS filename_date,{{FILENAME_DATE_ELIGIBLE}} AS date_eligible,
-  -- Normalize Iceberg element field ids before these values meet the aggregated linked choices.
+  -- Normalize Iceberg element field ids before these values meet aggregated choices or published list exports.
   arrow_cast(f.document_kind,'List(Utf8)') AS document_kind,
   arrow_cast(f.document_family,'List(Utf8)') AS document_family,
-  arrow_cast(f.committee_code,'List(Utf8)') AS committee_code
+  arrow_cast(f.committee_code,'List(Utf8)') AS committee_code,
+  arrow_cast(f.measure_keys,'List(Utf8)') AS measure_keys,
+  arrow_cast(f.bioguide_ids,'List(Utf8)') AS bioguide_ids
  FROM source_files s JOIN filename_readings f
   ON s.filename=f.filename AND coalesce(s.source_url,'')=f.source_url
  WHERE f.catalog_version={{CATALOG_VERSION}}
