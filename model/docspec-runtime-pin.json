@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "source_revision": "be5cf342c50dc938f2e41cbd9a0ed76bd4302a10",
+  "source_revision": "98a2d54077390a70703af0277a9ac2df9ce14cef",
   "build_features": [
     "remote"
   ],
@@ -10,10 +10,10 @@
   ],
   "platforms": {
     "darwin-arm64": {
-      "sha256": "422baffeefd86d7d425f0106740850294660b72039a7838a3f2b144ed44e052c"
+      "sha256": "4c4a94c8638f7fcb7a0ca086e310cbe383df69518c24ab70143d1f6aa9512f28"
     },
     "linux-amd64": {
-      "sha256": "9639b14a7d110a8506e7e947dc62702832dfdc94738dc8c1b3d902fd483a434b"
+      "sha256": "ae75bb55e932d9ed156766499ef756e59a23498324cb59f54a7187b892657da9"
     }
   }
 }
