@@ -33,7 +33,7 @@ REGISTRIES={
         package_disposition='Utf8',rejected_package_ids=list_of('Utf8'),excluded_measure_keys=list_of('Utf8'),
         supported_measure_keys=list_of('Utf8'),evidence='Utf8'),
     'saved_name_decisions':dict(body_sha='Utf8',decision='Utf8',official_name='Utf8',committee_name='Utf8',evidence='Utf8'),
-    'recovered_file_roles':dict(original_url='Utf8',body_sha='Utf8',role='Utf8',evidence='Utf8'),
+    'recovered_file_roles':dict(original_url='Utf8',body_sha='Utf8',role='Utf8',evidence='Utf8',equivalent_body_sha='Utf8'),
     'recording_sources':dict(id='Utf8',kind='Utf8',provider='Utf8',pattern='Utf8',key_template='Utf8',format='Utf8',default_language='Utf8',default_production='Utf8'),
     'congressional_commissions':dict(id='Utf8',name='Utf8',pattern='Utf8',created_by='Utf8',members_serve='Utf8',citation_status='Utf8'),
     'historical_witness_keys':dict(old_key='Utf8',status='Utf8',basis='Utf8',occasion='Utf8',source='Utf8',record_sha='Utf8',source_locator='Utf8',target_occasion='Utf8',evidence='Utf8'),
@@ -533,13 +533,23 @@ RECOVERED_FILE_ROLES=('source_page','edition','same_document','undecided')
 def _validate_recovered_file_roles(rows):
     """One reviewed role per (dead link, recovered body), the key of a provenance recovery decision (ct-u9y4):
     a misspelled role would act as no review, and a repeated pair would make the role ambiguous."""
-    pairs=set()
+    roles={}
     for row in rows:
         pair=(row.get('original_url'),row.get('body_sha'))
         if (not isinstance(pair[0],str) or not pair[0] or not isinstance(pair[1],str) or re.fullmatch('[0-9a-f]{64}',pair[1]) is None
-                or pair in pairs or row.get('role') not in RECOVERED_FILE_ROLES or not row.get('evidence')):
+                or pair in roles or row.get('role') not in RECOVERED_FILE_ROLES or not row.get('evidence')):
             raise ValueError('Invalid or duplicate reviewed recovered file role: '+str(pair))
-        pairs.add(pair)
+        roles[pair]=row['role']
+    paired=set()
+    for row in rows:
+        if 'equivalent_body_sha' not in row:
+            continue
+        original,body,peer=row['original_url'],row['body_sha'],row['equivalent_body_sha']
+        pair,other=(original,body),(original,peer)
+        if (not isinstance(peer,str) or body==peer or roles[pair]!='same_document'
+                or roles.get(other)!='same_document' or pair in paired or other in paired):
+            raise ValueError('Invalid or duplicate reviewed recovery equivalence: '+str(pair))
+        paired.update((pair,other))
 
 
 def _validate_title_overrides(rows):
@@ -601,6 +611,13 @@ def grouping_steps(*,node_limit=10_000_000,root=ROOT,review_edges=False,recovere
         steps.append(dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True))
     if review_edges:
         steps[-1]['sql']+=' UNION SELECT left_node,right_node FROM body_review_edges'
+    if recovered_copies:
+        # A verified equivalent copy can later become a real file. Join the two body nodes only
+        # when both are eligible recovered-copy matches for this exact original source.
+        steps[-1]['sql']+=""" UNION SELECT 'b:'||e.body_sha,'b:'||s.body_sha
+          FROM recovered_copy_links e JOIN recovered_copy_links s
+          ON e.source_id=s.source_id AND e.equivalent_shown_body_sha=s.body_sha
+          WHERE e.equivalent_shown_body_sha IS NOT NULL"""
     steps.append(dict(name='source_components',components=dict(sql='SELECT left_node,right_node FROM source_edges',
         left='left_node',right='right_node',node_limit=node_limit)))
     labels="SELECT f.source_id,c.component FROM source_files f JOIN source_components c ON c.node='s:'||f.source_id"

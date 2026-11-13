@@ -97,9 +97,11 @@ def attachment_steps(*,root=ROOT):
 def recovered_copy_steps(*,root=ROOT):
     """Name each original link a recovered copy makes another address of a published body.
 
-    Inputs: model_recovery_rows, effective_filenames, source_files, body_evidence, body_fingerprints.
+    Inputs: model_recovery_rows, effective_filenames, source_files, body_evidence, body_fingerprints,
+    recovered_file_roles.
     A link names only the published body its own row would show (its first recovered copy in the
-    recovery order) or another of its copies with that copy's text (ct-u9y4).
+    recovery order) or another of its copies with that copy's text (ct-u9y4) or a reviewed
+    byte equivalence for that pair at that original URL (ct-m3h3).
     grouping_steps(recovered_copies=True) moves each such link into the body's one document.
     """
     return _steps(['recovered-copy-links'],root)

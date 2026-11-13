@@ -74,15 +74,21 @@ def _recovered(raw, original, content, category, copy_url, imported_at='2026-10-
         captures=[_entry(raw, content, fmt)])
 
 
-def _root(tmp_path, name, roles):
+def _root(tmp_path, name, roles, equivalents=()):
     """The model definitions with a recovered-file-roles registry of (original_url, content, role) entries."""
     from viewer_publication.archive_model_profile import ROOT, _definition_hashes
     root = tmp_path / name
     for relative in _definition_hashes(ROOT):
         (root / relative).parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(ROOT / relative, root / relative)
-    (root / 'model/registries/recovered-file-roles.json').write_text(json.dumps([dict(original_url=original,
-        body_sha=hashlib.sha256(content).hexdigest(), role=role, evidence='fixture') for original, content, role in roles], indent=2))
+    peers = {(original, content): hashlib.sha256(peer).hexdigest() for original, content, peer in equivalents}
+    entries = []
+    for original, content, role in roles:
+        row = dict(original_url=original, body_sha=hashlib.sha256(content).hexdigest(), role=role, evidence='fixture')
+        if (original, content) in peers:
+            row['equivalent_body_sha'] = peers[original, content]
+        entries.append(row)
+    (root / 'model/registries/recovered-file-roles.json').write_text(json.dumps(entries, indent=2))
     return root
 
 
@@ -287,7 +293,8 @@ def test_a_link_moves_through_its_shown_copy_or_one_with_the_same_text(tmp_path)
         json_input(tmp_path, 'source_files', files, source_id='Utf8', body_sha='Utf8', source_url='Utf8', filename='Utf8', is_real_file='Boolean'),
         json_input(tmp_path, 'body_evidence', [dict(body_sha=r['body_sha'], original_size=10) for r in recoveries], body_sha='Utf8', original_size='Int64'),
         json_input(tmp_path, 'body_fingerprints', [dict(body_sha=body(name), fingerprint=mark) for rows, _ in cases.values()
-            for name, _kind, _at, _published, mark in rows if mark], body_sha='Utf8', fingerprint='Utf8')]
+            for name, _kind, _at, _published, mark in rows if mark], body_sha='Utf8', fingerprint='Utf8'),
+        json_input(tmp_path, 'recovered_file_roles', [], original_url='Utf8', body_sha='Utf8', equivalent_body_sha='Utf8')]
     steps = [
         dict(name='archive_bodies', sql=f"SELECT arrow_cast(decode('{body('z1')}','hex'),'Binary') AS sha256"),
         dict(name='good_archive_containers', sql=f"SELECT 'receipts/documents/2026-10-15/slice.jsonl.gz' AS receipt_key,{zc1_line} AS receipt_line"),
@@ -302,6 +309,56 @@ def test_a_link_moves_through_its_shown_copy_or_one_with_the_same_text(tmp_path)
     shown = {r['component']: r['body_sha'] for r in result['shown']}
     assert shown['zip-body-beside-copy'] == body('z2')
     assert shown['zip-container-beside-copy'] == body('zc2')
+
+
+@pytest.mark.parametrize('both_live', [False, True])
+def test_reviewed_recovery_equivalence_keeps_pdf_copies_and_the_original_link_together(tmp_path, both_live):
+    raw = tmp_path / 'raw'
+    original = DEM + 'older/report.pdf'
+    unrelated = DEM + 'another/report.pdf'
+    latest = DEM + 'newer/report.pdf'
+    mirror = DOCS + 'report.pdf'
+    short = b'%PDF-1.7\nCommittee report part 1\n%%EOF\r'
+    long = short + b'\n'
+    edition = b'%PDF-1.7\nCommittee report part 2\n%%EOF\r'
+    copies = [(original, long, 'http://docs.house.gov/report.pdf', LATER),
+              (original, short, mirror, EARLIER),
+              (unrelated, long, 'http://docs.house.gov/report.pdf', LATER),
+              (unrelated, short, mirror, EARLIER),
+              (latest, edition, DEM + 'edition/report.pdf', LATER),
+              (latest, short, mirror, EARLIER)]
+    lines = [_fetch(raw, mirror, short, 'pdf'),
+             *(_fetch(raw, url, status=410) for url in (original, unrelated, latest)),
+             *(_recovered(raw, url, content, 'recovered_document', copy, date) for url, content, copy, date in copies)]
+    if both_live:
+        lines.append(_fetch(raw, DOCS + 'harvest/report.pdf', long, 'pdf'))
+    staged = _stage(tmp_path, lines, [])
+    roles = [(url, content, 'same_document') for url, content, _, _ in copies if url != latest]
+    roles.extend([(latest, edition, 'same_document'), (latest, short, 'edition')])
+    root = _root(tmp_path, 'root', roles, equivalents=[(original, short, long)])
+    files, result = _release_from(tmp_path, staged, root)
+
+    sha = lambda content: hashlib.sha256(content).digest()
+    keys = {r['link_key']: r['list_row'] for r in files['links']}
+    row = keys[sha(short)[:8]]
+    assert keys[_url_key(original)] == row
+    if both_live:
+        assert keys[sha(long)[:8]] == row
+    assert files['detail'][row]['saved_body'] in (sha(short), sha(long))
+    assert {r['body'] for r in files['recoveries'] if r['list_row'] == row} == {sha(short), sha(long)}
+    sources = {r['url']: r for r in files['sources'] if r['list_row'] == row}
+    assert not sources[original]['is_saved']
+    assert latest not in sources
+    for url, expected in [(original, row), (unrelated, keys[_url_key(unrelated)]), (latest, keys[_url_key(latest)])]:
+        lookup = hashlib.sha256(('lookup:' + url.removeprefix('https://')).encode()).digest()[:8]
+        assert expected in {r['list_row'] for r in files['urls'] if r['lookup_key'] == lookup}
+    if not both_live:
+        assert unrelated not in sources
+        assert keys[_url_key(unrelated)] != row
+    assert keys[_url_key(latest)] != row
+    assert files['detail'][keys[_url_key(latest)]]['saved_body'] == sha(edition)
+    reports = {q['name']: q['data'] for q in result['queries']}
+    assert reports['model_invariants'][0]['unaccounted_merged_signal'] == 0
 
 
 @pytest.mark.parametrize('adjudicated', [False, True])
@@ -494,6 +551,16 @@ def test_the_reviewed_roles_registry_refuses_an_unknown_role_or_a_repeated_file(
     for bad in [[good, dict(good, role='edition')], [dict(good, role='hidden')], [dict(good, evidence='')],
                 [dict(good, body_sha='A' * 64)], [dict(good, original_url='')]]:
         with pytest.raises(ValueError):
+            check(bad)
+
+    first = dict(good, role='same_document', equivalent_body_sha='b' * 64)
+    peer = dict(good, role='same_document', body_sha='b' * 64)
+    check([first, peer])
+    for bad in [[first], [first, dict(peer, original_url=REPORT)], [first, dict(peer, role='edition')],
+                [dict(first, role='edition'), peer], [dict(first, equivalent_body_sha='a' * 64), peer],
+                [dict(first, equivalent_body_sha=[]), peer], [first, dict(peer, equivalent_body_sha='a' * 64)],
+                [first, peer, dict(first, body_sha='c' * 64)]]:
+        with pytest.raises(ValueError, match='recovery equivalence'):
             check(bad)
 
 

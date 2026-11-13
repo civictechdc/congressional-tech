@@ -620,10 +620,11 @@ recovered copy := (owner, 2026-11-02) an original link whose recovered copy (dis
                   copying bodies of two documents never bridges them; it stays its own.
                   A link accepted with several recovered copies moves only through the copy
                   its own row would show (the first in the recovery order), or through
-                  another of its copies whose text fingerprint equals that copy's; any other
-                  copy says nothing about where the link belongs, so the link's key always
-                  reaches a row holding the file the link shows, whatever else is fetched
-                  live (ct-u9y4)
+                  another of its copies whose text fingerprint equals that copy's (ct-u9y4),
+                  or an exact SHA-256 pair verified equivalent at this original URL (ct-m3h3).
+                  If both members of a verified pair become real files, their body nodes join
+                  while both qualify for the same original link.
+                  The link's key reaches a row that also holds its first recovered copy.
 listed         := components with at least one real file or at least one recovery
 
 saved-file order := (format preference, unlisted formats after listed by name;
@@ -817,7 +818,8 @@ One row per recovery row: `document_id`, `original_url`, `kind` dict, `body_sha`
 - **One dead address, several recovered files** (ct-u9y4). Every recovery row of a link belongs to that link's document, which shows the first in the recovery order, so one document could hold files that are not the same document. In release 619db5f9e08e 215 documents held two or more different recovered bodies, 209 of them one link accepted twice: by their text 56 unrelated documents and 10 scans that OCR showed unrelated (rejected in the recovery records, 2026-11-10), 83 a page capture beside the file it carried or an official record offered as containing it, 18 editions or parts of one document, 45 the same content, 3 recordings never fetched. The recovered-copy rule (§7.5) no longer lets a lower-ranked copy move the link. The recovered-file-roles registry decides the rest (owner, 2026-11-11):
   - `source_page`, "one document, file shown": the capture of the dead page itself is no recovered file of the document, which shows the file the page carried; the dead address is an unsaved `sources` row of it with the page that listed it (§7.10), as a landing page is of its hearing (§7.3). The capture stays in raw. 81 veterans.house.gov hearing, testimony and submission pages. A document that showed the page (the page first in the recovery order) keeps the page's title on the file ("keep the page's old title", owner, 2026-11-11): 27 in 77673bfb8fcf, whose file is the official hearing record, which would otherwise give the hearing's title (20) or none (7).
   - `edition`, "split into separate documents": another edition of the file the link shows moves to the document holding that body as a real file, else to a recovery-only document of its own, whose identity and link key are its body's (§8.2); the link keeps its key and the file it shows, and its lookup key names both. 17 of the 18; the eighteenth is a GovInfo hearing's PDF and HTML, already one document by the rendition rule, so it is `same_document`.
-  - `same_document` and `undecided` change nothing. A document holding several recovered files whose text is unread or differs refuses the build unless every one is reviewed (`recovered_file_invariants.several_files_unreviewed`; equal text is one document, §7.5), and no review may leave a link without a file of its own (`links_without_a_file`). Metadata `recovery_documents_with_several_files` counts them by what their text says; `recovered_file_roles_unused` counts entries that match no recovery.
+  - `same_document` and `undecided` keep the file on its link's document. A `same_document` entry may also name one `equivalent_body_sha` when the archived bytes establish equivalence. Both full SHA-256 values must have `same_document` entries for the same original URL, and each file may be in only one pair for that URL. This lets the link use either member of the pair in the recovered-copy rule (§7.5). Both body identities remain available through their recovery records.
+  - A document holding several recovered files whose text is unread or differs refuses the build unless every one is reviewed (`recovered_file_invariants.several_files_unreviewed`; equal text is one document, §7.5). A review that leaves a link without a file of its own also refuses the build (`links_without_a_file`). Metadata `recovery_documents_with_several_files` counts documents by text agreement. `recovered_file_roles_unused` counts entries that match no recovery.
   Measurement: `.cache/archive-release/investigations/recovery-identity-20261110/`, `doc-roles-2-20261111/`.
 - 3,690 of 11,792 recovery bodies today are also real bodies ([[ARCHITECTURE]] §3).
 

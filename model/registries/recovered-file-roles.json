@@ -783,7 +783,8 @@
     "original_url": "https://waysandmeans.house.gov/event/bak_h-r-3210-the-terrorism-risk-protection-act-2/fullcomm/107cong/hr3210/hr3210rptlegtext.pdf",
     "body_sha": "403de81dde2a593bb35280336f1cd54d3d5dceea83065067e56c94b0cff2cbf4",
     "role": "same_document",
-    "evidence": "Several recovered files of one document, the same content (equal or near-equal text, read by hand). hand classification of release 619db5f9e08e list row 334942, recovery-identity-20261110, re-read 2026-11-10 (recovery-records-20261110)"
+    "equivalent_body_sha": "b2fbb697844bff0e97da982d9729a6acc7d87373fc3546ce7166a0ce27224b84",
+    "evidence": "H.R. 3210 legislative text, 31 pages. The two archived files have the same bytes through the PDF end marker and its carriage return. The HTTP copy adds one line feed. Poppler layout text SHA-256 f558dddd93a6559ac3b817bf6308c832a7f65d2c403a3cf97a705f859e28556a for both. Verified 2026-11-12 against release 6c46b8f7a606 (ct-m3h3)."
   },
   {
     "original_url": "https://waysandmeans.house.gov/event/bak_h-r-3210-the-terrorism-risk-protection-act-2/fullcomm/107cong/hr3210/hr3210rptlegtext.pdf",
@@ -831,7 +832,8 @@
     "original_url": "https://waysandmeans.house.gov/event/h-r-4954-the-medicare-modernization-and-prescription-drug-act-of-2002/fullcomm/107cong/hr4954/hr4954commrptpt1.pdf",
     "body_sha": "3e90d8f497a9a6661af6491c0cc5e4bd06fe67fa97c1533e37c3cdc12f4d7662",
     "role": "same_document",
-    "evidence": "Several recovered files of one document, the same content (equal or near-equal text, read by hand). hand classification of release 619db5f9e08e list row 335064, recovery-identity-20261110, re-read 2026-11-10 (recovery-records-20261110)"
+    "equivalent_body_sha": "30107fd6c7a7c55e25af308e02d2067a0cd772e4417f9c2985a57440cc55571f",
+    "evidence": "H.R. 4954 committee report part 1, 109 pages. The two archived files have the same bytes through the PDF end marker and its carriage return. The HTTP copy adds one line feed. Poppler layout text SHA-256 9bb6dcf502d9f909713d483cc42719ce2005eccf5ba49f9d2d30c3973af4f32c for both. Verified 2026-11-12 against release 6c46b8f7a606 (ct-m3h3)."
   },
   {
     "original_url": "https://waysandmeans.house.gov/event/h-r-5005-the-homeland-security-act-of-2002/fullcomm/107cong/hr5005/hr5005amdtrecomm.pdf",

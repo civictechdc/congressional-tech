@@ -4,8 +4,9 @@
 -- (grouping_steps: recovered_copy_members). One row per (link source file, body); other recovery
 -- kinds keep their own documents.
 -- ct-u9y4: a link accepted with several recovered copies moves only through the copy its own row
--- would show, the first in the recovery order (DM 7.5), or through another of its copies whose text
--- fingerprint equals that copy's. A lower-ranked copy with other text says nothing about the link:
+-- would show, the first in the recovery order (DM 7.5), or through another copy whose text fingerprint
+-- equals that copy's or whose full SHA pair was verified equivalent at this original URL (ct-m3h3).
+-- A lower-ranked copy with other text says nothing about the link:
 -- 18 dead links sat in unrelated documents because a same-name file from another hearing was
 -- fetched live ("Bowman Testimony.pdf", cae8e4ea34ec603a). One pass: the copies are ranked in a
 -- window, and each relation is read once outside the two candidate lookups.
@@ -24,7 +25,12 @@ WITH copies AS (
   AND {{NON_ARCHIVE_RECOVERY_FILTER}}
  WINDOW w AS (PARTITION BY f.source_id ORDER BY {{RECOVERY_ORDER}})
 )
-SELECT DISTINCT c.source_id,c.original_url,c.body_sha
-FROM copies c JOIN body_evidence b ON b.body_sha=c.body_sha AND b.original_size=c.bytes
-WHERE (c.body_sha=c.shown_body OR c.fingerprint=c.shown_fingerprint)
+SELECT DISTINCT c.source_id,c.original_url,c.body_sha,
+ CASE WHEN e.body_sha IS NOT NULL THEN c.shown_body END AS equivalent_shown_body_sha
+FROM (SELECT original_url,body_sha,equivalent_body_sha FROM recovered_file_roles WHERE equivalent_body_sha IS NOT NULL) e
+RIGHT JOIN (copies c JOIN body_evidence b ON b.body_sha=c.body_sha AND b.original_size=c.bytes)
+ ON e.original_url=c.original_url
+ AND ((e.body_sha=c.body_sha AND e.equivalent_body_sha=c.shown_body)
+      OR (e.body_sha=c.shown_body AND e.equivalent_body_sha=c.body_sha))
+WHERE (c.body_sha=c.shown_body OR c.fingerprint=c.shown_fingerprint OR e.body_sha IS NOT NULL)
  AND EXISTS (SELECT 1 FROM source_files s WHERE s.body_sha=c.body_sha AND s.is_real_file)
