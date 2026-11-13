@@ -20,7 +20,12 @@ on:
       - 'test-suites.toml'
       - '.python-version'
       - '.github/workflows/validate-congress-mcp.yml'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      export_container_image:
+        description: Retain the validated Linux/amd64 image for a hosted release
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -70,7 +75,53 @@ jobs:
       - run: npm ci --workspaces=false
       - run: npm run types && git diff --exit-code -- worker-configuration.d.ts
       - run: npm run typecheck && npm test
-      - run: npx wrangler deploy --dry-run --outdir dist
+      - name: Validate the Worker bundle and container image
+        env:
+          EXPORT_IMAGE: ${{ inputs.export_container_image }}
+        run: |
+          if [ "$EXPORT_IMAGE" = true ]; then
+            # Wrangler removes its temporary tag after the dry run. Add a second
+            # tag to the same Docker build so the validated image can be saved.
+            export CONGRESS_MCP_IMAGE="congress-explorer-mcp:git-$GITHUB_SHA"
+            export WRANGLER_DOCKER_BIN="$RUNNER_TEMP/export-congress-mcp-docker"
+            cat > "$WRANGLER_DOCKER_BIN" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if [ "$1" = build ]; then
+            exec docker build --tag "$CONGRESS_MCP_IMAGE" "${@:2}"
+          fi
+          exec docker "$@"
+          SH
+            chmod +x "$WRANGLER_DOCKER_BIN"
+          fi
+          npx wrangler deploy --dry-run --outdir dist
+      - name: Verify and export the validated image
+        if: inputs.export_container_image
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          image="congress-explorer-mcp:git-$GITHUB_SHA"
+          platform=$(docker image inspect --format '{{.Os}}/{{.Architecture}}' "$image")
+          test "$platform" = linux/amd64
+          image_id=$(docker image inspect --format '{{.Id}}' "$image")
+          version=$(jq -er '.version' ../server.json)
+          test "$(docker run --rm --network none --entrypoint congress-explorer-mcp "$image" --version)" = "congress-explorer-mcp $version"
+          publication=$(jq -er '.vars.PUBLICATION' wrangler.jsonc)
+          mkdir "$RUNNER_TEMP/congress-mcp-container"
+          cd "$RUNNER_TEMP/congress-mcp-container"
+          docker image save "$image" | gzip > image.tar.gz
+          jq -n --arg source_sha "$GITHUB_SHA" --arg publication "$publication" \
+            --arg version "$version" --arg image "$image" --arg image_id "$image_id" \
+            --arg platform "$platform" '{source_sha:$source_sha, publication:$publication,
+            version:$version, image:$image, image_id:$image_id, platform:$platform}' > image.json
+          sha256sum image.tar.gz image.json > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        if: inputs.export_container_image
+        with:
+          name: congress-mcp-container-linux-amd64
+          path: ${{ runner.temp }}/congress-mcp-container/
+          if-no-files-found: error
+          compression-level: 0
 
   native-consumer:
     name: Native producer to MCP stdio
