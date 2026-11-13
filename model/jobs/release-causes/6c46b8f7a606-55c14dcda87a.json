@@ -1,0 +1,267 @@
+{
+  "version": 1,
+  "base_release_id": "6c46b8f7a606191bbe52d281cf8d8eb4ec4c3d25867f4ecfd0ef6638841c350e",
+  "candidate_release_id": "55c14dcda87ae954583bf518050b3bd45db6aed49c88c53413260c1d092ef105",
+  "groups": [
+    {
+      "id": "capture_profile.json|changed file without a comparison|unexplained",
+      "count": 0,
+      "disposition": "explained",
+      "cause": "The capture profile identifies the new DataFusion 55 DocSpec revision. The URL normalization and key SQL, URL rules, recovery policy, and URL-variant reference are unchanged.",
+      "tickets": [
+        "ct-7t5p"
+      ],
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/darwin-engine-qualification/verified-capture-and-entity-values.json",
+          "sha256": "cb3db0e43096a99fb9469ab5d9fa3e8436015aaa6bf809abb1d47d7e4681c3db",
+          "size": 7959
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/darwin-engine-qualification/changed-parquet-field-ids.json",
+          "sha256": "5264a8e73eed86de4c960c43642d6b2ad6e9bbc31126d5570803dd64b5939ce4",
+          "size": 2348
+        }
+      ]
+    },
+    {
+      "id": "committee_records.parquet|changed bytes, no key or value difference found|unexplained",
+      "count": 0,
+      "disposition": "explained",
+      "cause": "The DataFusion 55 export changed physical Parquet field identifiers. All 21,110 published keys, logical types and row values agree with the previous release.",
+      "tickets": [
+        "ct-7t5p"
+      ],
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/darwin-engine-qualification/verified-capture-and-entity-values.json",
+          "sha256": "cb3db0e43096a99fb9469ab5d9fa3e8436015aaa6bf809abb1d47d7e4681c3db",
+          "size": 7959
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/darwin-engine-qualification/changed-parquet-field-ids.json",
+          "sha256": "5264a8e73eed86de4c960c43642d6b2ad6e9bbc31126d5570803dd64b5939ce4",
+          "size": 2348
+        }
+      ]
+    },
+    {
+      "id": "detail.parquet|merged rows|previous rows now share one document",
+      "count": -2,
+      "disposition": "explained",
+      "cause": "Each Ways and Means report now occupies one document with both original link keys and both recovered files. Within each pair the archived PDFs differ only by a newline after the PDF end marker.",
+      "tickets": [
+        "ct-m3h3"
+      ],
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/candidate-df55-final/verified-relation-changes.json",
+          "sha256": "e20e8a2d55ec0f6224f409f7f32f99ca2e98b91393c621a12fedde7ebe547e16",
+          "size": 4182
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-finish-20261112T2054/ct-m3h3/independent-source-review.json",
+          "sha256": "1355f5fb7d54a752182d01df367c723d9bcbbd6d42b3c8b17bf299c101c8ef36",
+          "size": 1539
+        }
+      ]
+    },
+    {
+      "id": "links.parquet|changed bytes, no key or value difference found|unexplained",
+      "count": 0,
+      "disposition": "explained",
+      "cause": "Stable-key comparison reproduces every row after remapping release-local document positions and ignoring per-document ordinals. The two Ways and Means documents share their respective original link and body key after the merge.",
+      "tickets": [
+        "ct-m3h3"
+      ],
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/candidate-df55-final/verified-relation-changes.json",
+          "sha256": "e20e8a2d55ec0f6224f409f7f32f99ca2e98b91393c621a12fedde7ebe547e16",
+          "size": 4182
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-finish-20261112T2054/ct-m3h3/independent-source-review.json",
+          "sha256": "1355f5fb7d54a752182d01df367c723d9bcbbd6d42b3c8b17bf299c101c8ef36",
+          "size": 1539
+        }
+      ]
+    },
+    {
+      "id": "list.parquet|merged rows|previous rows now share one document",
+      "count": -2,
+      "disposition": "explained",
+      "cause": "Each Ways and Means report now occupies one document with both original link keys. The published files differ only by a newline after the PDF end marker.",
+      "tickets": [
+        "ct-m3h3"
+      ],
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/candidate-df55-final/verified-relation-changes.json",
+          "sha256": "e20e8a2d55ec0f6224f409f7f32f99ca2e98b91393c621a12fedde7ebe547e16",
+          "size": 4182
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-finish-20261112T2054/ct-m3h3/independent-source-review.json",
+          "sha256": "1355f5fb7d54a752182d01df367c723d9bcbbd6d42b3c8b17bf299c101c8ef36",
+          "size": 1539
+        }
+      ]
+    },
+    {
+      "id": "meeting_coverage.parquet|changed bytes, no key or value difference found|unexplained",
+      "count": 0,
+      "disposition": "explained",
+      "cause": "The DataFusion 55 export changed physical Parquet field identifiers. All 93,645 published keys, logical types and row values agree with the previous release.",
+      "tickets": [
+        "ct-7t5p"
+      ],
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/darwin-engine-qualification/verified-capture-and-entity-values.json",
+          "sha256": "cb3db0e43096a99fb9469ab5d9fa3e8436015aaa6bf809abb1d47d7e4681c3db",
+          "size": 7959
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/darwin-engine-qualification/changed-parquet-field-ids.json",
+          "sha256": "5264a8e73eed86de4c960c43642d6b2ad6e9bbc31126d5570803dd64b5939ce4",
+          "size": 2348
+        }
+      ]
+    },
+    {
+      "id": "meetings.parquet|changed bytes, no key or value difference found|unexplained",
+      "count": 0,
+      "disposition": "explained",
+      "cause": "The DataFusion 55 export changed physical Parquet field identifiers. All 18,729 published keys, logical types and row values agree with the previous release.",
+      "tickets": [
+        "ct-7t5p"
+      ],
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/darwin-engine-qualification/verified-capture-and-entity-values.json",
+          "sha256": "cb3db0e43096a99fb9469ab5d9fa3e8436015aaa6bf809abb1d47d7e4681c3db",
+          "size": 7959
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/darwin-engine-qualification/changed-parquet-field-ids.json",
+          "sha256": "5264a8e73eed86de4c960c43642d6b2ad6e9bbc31126d5570803dd64b5939ce4",
+          "size": 2348
+        }
+      ]
+    },
+    {
+      "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+      "count": 0,
+      "disposition": "explained",
+      "cause": "Stable-key comparison reproduces every row after remapping release-local document positions and ignoring per-document ordinals. The two Ways and Means documents share their respective original link and body key after the merge.",
+      "tickets": [
+        "ct-m3h3"
+      ],
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/candidate-df55-final/verified-relation-changes.json",
+          "sha256": "e20e8a2d55ec0f6224f409f7f32f99ca2e98b91393c621a12fedde7ebe547e16",
+          "size": 4182
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-finish-20261112T2054/ct-m3h3/independent-source-review.json",
+          "sha256": "1355f5fb7d54a752182d01df367c723d9bcbbd6d42b3c8b17bf299c101c8ef36",
+          "size": 1539
+        }
+      ]
+    },
+    {
+      "id": "sources.parquet|new URLs|no previous row has this address",
+      "count": 2,
+      "disposition": "explained",
+      "cause": "The two original Ways and Means event URLs are now unsaved source addresses of the corresponding documents.",
+      "tickets": [
+        "ct-m3h3"
+      ],
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/candidate-df55-final/verified-relation-changes.json",
+          "sha256": "e20e8a2d55ec0f6224f409f7f32f99ca2e98b91393c621a12fedde7ebe547e16",
+          "size": 4182
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-finish-20261112T2054/ct-m3h3/independent-source-review.json",
+          "sha256": "1355f5fb7d54a752182d01df367c723d9bcbbd6d42b3c8b17bf299c101c8ef36",
+          "size": 1539
+        }
+      ]
+    },
+    {
+      "id": "url_state.parquet|changed bytes, no key or value difference found|unexplained",
+      "count": 0,
+      "disposition": "explained",
+      "cause": "The DataFusion 55 export changed physical Parquet field identifiers. All 1,204,295 published keys, logical types and row values agree with the previous release.",
+      "tickets": [
+        "ct-7t5p"
+      ],
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/darwin-engine-qualification/verified-capture-and-entity-values.json",
+          "sha256": "cb3db0e43096a99fb9469ab5d9fa3e8436015aaa6bf809abb1d47d7e4681c3db",
+          "size": 7959
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/darwin-engine-qualification/changed-parquet-field-ids.json",
+          "sha256": "5264a8e73eed86de4c960c43642d6b2ad6e9bbc31126d5570803dd64b5939ce4",
+          "size": 2348
+        }
+      ]
+    },
+    {
+      "id": "urls.parquet|changed bytes, no key or value difference found|unexplained",
+      "count": 0,
+      "disposition": "explained",
+      "cause": "Stable-key comparison reproduces every row after remapping release-local document positions and ignoring per-document ordinals. The two Ways and Means documents share their respective original link and body key after the merge.",
+      "tickets": [
+        "ct-m3h3"
+      ],
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/candidate-df55-final/verified-relation-changes.json",
+          "sha256": "e20e8a2d55ec0f6224f409f7f32f99ca2e98b91393c621a12fedde7ebe547e16",
+          "size": 4182
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-finish-20261112T2054/ct-m3h3/independent-source-review.json",
+          "sha256": "1355f5fb7d54a752182d01df367c723d9bcbbd6d42b3c8b17bf299c101c8ef36",
+          "size": 1539
+        }
+      ]
+    },
+    {
+      "id": "videos.parquet|changed bytes, no key or value difference found|unexplained",
+      "count": 0,
+      "disposition": "explained",
+      "cause": "The DataFusion 55 export changed physical Parquet field identifiers. All 67,424 published keys, logical types and row values agree with the previous release.",
+      "tickets": [
+        "ct-7t5p"
+      ],
+      "evidence": [
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/darwin-engine-qualification/verified-capture-and-entity-values.json",
+          "sha256": "cb3db0e43096a99fb9469ab5d9fa3e8436015aaa6bf809abb1d47d7e4681c3db",
+          "size": 7959
+        },
+        {
+          "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/release/darwin-engine-qualification/changed-parquet-field-ids.json",
+          "sha256": "5264a8e73eed86de4c960c43642d6b2ad6e9bbc31126d5570803dd64b5939ce4",
+          "size": 2348
+        }
+      ]
+    }
+  ],
+  "notes": {
+    "identifiers": [
+      {
+        "statement": "H.R. 3210 legislative text and H.R. 4954 committee report part 1 each now occupy one document and retain both original link keys and archived PDF renditions.",
+        "decision": "The archived copies differ only by one final newline after the PDF end marker."
+      }
+    ]
+  }
+}
