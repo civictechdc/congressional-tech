@@ -174,3 +174,15 @@ def test_cli_refuses_oversized_records_and_conflicting_reading_outputs(tmp_path,
         assert error.value.code == 2
         assert len(out.out.splitlines()) == 1
         assert 'duplicates' in out.err and 'partial' in out.err
+
+
+def test_cli_marks_output_partial_when_json_nesting_exceeds_decoder_limit(tmp_path, capsys):
+    from congress_api.cli.text_assessment import main
+    source = tmp_path / 'nested.jsonl'
+    source.write_text(json.dumps(facts()) + '\n' + '[' * 10_000 + '0' + ']' * 10_000 + '\n')
+    with pytest.raises(SystemExit) as error:
+        main([str(source)])
+    out = capsys.readouterr()
+    assert error.value.code == 2
+    assert len(out.out.splitlines()) == 1
+    assert 'record 2' in out.err and 'earlier output is partial' in out.err

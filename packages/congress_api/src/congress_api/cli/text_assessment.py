@@ -24,7 +24,7 @@ def main(argv=None):
                 parser.error(f'record {count + 1} exceeds the byte bound; earlier output is partial')
             try:
                 result = assess_text(json.loads(line))
-            except (ValueError, TypeError, KeyError) as error:
+            except (ValueError, TypeError, KeyError, RecursionError) as error:
                 parser.error(f'record {count + 1}: {error}; earlier output is partial')
             key = (result['facts']['body_sha256'], result['facts']['parser'],
                    result['facts']['parser_version'], result['facts']['page_number'])
