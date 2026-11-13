@@ -18,7 +18,7 @@ def inspect_xml_repair(input_path, *, expected_sha256, output_dir, max_bytes=64 
     """Retain an inspectable candidate and its evidence without accepting it as a reading."""
     from spicy_docs.extraction.body_text import rendition_text
     from spicy_docs.reading.markup import read_xml_events
-    from spicy_docs.reading.xml_recovery import recover_xml_candidate
+    from spicy_docs.reading.xml_recovery import XmlRecoveryCandidate, recover_xml_candidate
 
     for name, value in (('max_bytes', max_bytes), ('max_candidate_bytes', max_candidate_bytes)):
         if type(value) is not int or value <= 0:
@@ -41,26 +41,47 @@ def inspect_xml_repair(input_path, *, expected_sha256, output_dir, max_bytes=64 
         return dict(path=name, sha256=sha256(data).hexdigest(), bytes=len(data))
 
     files = {'original': write('original.raw', original)}
-    repair = recover_xml_candidate(original, max_bytes=max_bytes, max_candidate_bytes=max_candidate_bytes)
+    try:
+        repair = recover_xml_candidate(original, max_bytes=max_bytes, max_candidate_bytes=max_candidate_bytes)
+    except (ValueError, UnicodeError) as error:
+        repair = XmlRecoveryCandidate(source_sha256=expected_sha256, source_bytes=len(original), status='refused',
+                                      reason='recovery_input_refused', source_error=str(error))
     metadata = asdict(repair)
     metadata.pop('candidate_body')
+    # The candidate cap bounds what this operator writes or rereads, including
+    # unchanged bytes. It is independent of the input cap: recovery may shrink
+    # a larger malformed input into a smaller candidate.
+    oversized = repair.candidate_body is not None and len(repair.candidate_body) > max_candidate_bytes
+    if oversized:
+        metadata['operator_refusal'] = dict(reason='candidate_exceeds_byte_bound',
+                                            observed_candidate_bytes=len(repair.candidate_body),
+                                            max_candidate_bytes=max_candidate_bytes)
     files['repair'] = write('repair.json', (json.dumps(metadata, indent=2) + '\n').encode())
     output = dict(schema='ct-markup-repair-inspection-v1', source_path=str(input_path.resolve()),
-                  source_sha256=repair.source_sha256, status=repair.status, reason=repair.reason,
+                  source_sha256=repair.source_sha256, status='refused' if oversized else repair.status,
+                  reason='candidate_exceeds_byte_bound' if oversized else repair.reason,
                   content_completeness='unestablished' if repair.status == 'partial' else repair.status,
                   source_gap_note=source_gap_note, qualification='not_qualified_for_selection',
                   selected_for_publication=False, ocr_invoked=False, publisher_requests=0,
-                  byte_positions_address=repair.byte_positions_address, files=files)
-    if repair.candidate_body is not None:
+                  byte_positions_address=repair.byte_positions_address,
+                  limits=dict(max_bytes=max_bytes, max_candidate_bytes=max_candidate_bytes), files=files)
+    if oversized:
+        output['content_completeness'] = 'unestablished'
+        output['operator_refusal'] = metadata['operator_refusal']
+    if repair.candidate_body is not None and not oversized:
         files['candidate'] = write('candidate.xml', repair.candidate_body)
         if repair.status in {'partial', 'unchanged'}:
-            read = read_xml_events(repair.candidate_body, max_bytes=max_candidate_bytes,
-                                   allow_external_doctype=True, allow_empty_internal_subset=True)
-            events = ''.join(json.dumps(asdict(event), ensure_ascii=False) + '\n' for event in read.events)
-            files['events'] = write('candidate.events.jsonl', events.encode())
-            derived = rendition_text(repair.candidate_body, rendition='xml')
-            files['text'] = write('candidate.txt', derived.text.encode())
-            output['cleanup'] = asdict(derived.record)
+            try:
+                read = read_xml_events(repair.candidate_body, max_bytes=max_candidate_bytes,
+                                       allow_external_doctype=True, allow_empty_internal_subset=True)
+                events = ''.join(json.dumps(asdict(event), ensure_ascii=False) + '\n' for event in read.events)
+                files['events'] = write('candidate.events.jsonl', events.encode())
+                derived = rendition_text(repair.candidate_body, rendition='xml')
+                files['text'] = write('candidate.txt', derived.text.encode())
+                output['cleanup'] = asdict(derived.record)
+            except (ValueError, UnicodeError) as error:
+                output.update(status='refused', reason='candidate_consumer_refused', content_completeness='unestablished',
+                              consumer_error=dict(error_type=type(error).__name__, message=str(error)))
     write('output.json', (json.dumps(output, indent=2) + '\n').encode())
     return output
 

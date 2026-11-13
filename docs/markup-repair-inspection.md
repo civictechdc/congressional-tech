@@ -16,6 +16,13 @@ tables, selection manifests or publication state.
 
 Run the command under the repository watchdog for large inputs. `--max-bytes`
 and `--max-candidate-bytes` bound the selected input and candidate separately.
+The operator checks the candidate cap before writing or rereading it, including
+an unchanged original returned by the shared helper. A candidate-cap refusal
+retains `original.raw`, the shared helper's observation in `repair.json`, and
+the final operator refusal in `output.json`; it writes no oversized candidate.
+Expected recovery-input or candidate-consumer refusals also retain a final
+output record. The candidate cap does not reduce the input cap: recovery may
+produce a smaller candidate from a larger malformed source.
 An existing output directory refuses rather than overwriting earlier evidence.
 Keep the review directory under the main checkout's `.cache/archive-release/`.
 

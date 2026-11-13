@@ -1,5 +1,6 @@
 """Retained raw bytes become inspectable partial artifacts, never selected readings."""
 from hashlib import sha256
+from importlib import import_module
 import json
 from pathlib import Path
 import subprocess
@@ -85,3 +86,61 @@ def test_valid_original_is_observed_without_automatic_selection(tmp_path):
     assert result['status'] == 'unchanged' and not result['selected_for_publication']
     assert (out / 'candidate.xml').read_bytes() == body
     assert (out / 'candidate.txt').read_text() == 'source'
+
+
+def test_actual_cli_retains_refusal_when_unchanged_candidate_exceeds_its_bound(tmp_path):
+    source = tmp_path / 'valid.xml'
+    original = b'<r>A short valid input</r>'
+    source.write_bytes(original)
+    out = tmp_path / 'bounded'
+    result = subprocess.run([sys.executable, '-m', 'congress_api.retention.markup_repair', '--input', str(source),
+                             '--sha256', sha256(original).hexdigest(), '--output-dir', str(out),
+                             '--max-candidate-bytes', '8'], capture_output=True, text=True)
+    assert result.returncode == 2, result.stderr
+    assert json.loads(result.stdout)['status'] == 'refused'
+    output = json.loads((out / 'output.json').read_text())
+    assert output['status'] == 'refused' and output['reason'] == 'candidate_exceeds_byte_bound'
+    assert output['limits']['max_candidate_bytes'] == 8
+    assert (out / 'original.raw').read_bytes() == original
+    assert (out / 'repair.json').is_file()
+    assert not (out / 'candidate.xml').exists() and not (out / 'candidate.txt').exists()
+    assert not output['selected_for_publication']
+
+
+def test_candidate_consumer_refusal_retains_its_final_record(tmp_path, monkeypatch):
+    def refuse(*args, **kwargs):
+        raise ValueError('planted candidate normalization refusal')
+
+    monkeypatch.setattr(import_module('spicy_docs.extraction.body_text'), 'rendition_text', refuse)
+    source = tmp_path / 'valid.xml'
+    source.write_bytes(b'<r>source</r>')
+    out = tmp_path / 'review'
+    result = inspect_xml_repair(source, expected_sha256=sha256(source.read_bytes()).hexdigest(), output_dir=out)
+    assert result['status'] == 'refused' and result['reason'] == 'candidate_consumer_refused'
+    assert result['consumer_error']['message'] == 'planted candidate normalization refusal'
+    assert json.loads((out / 'output.json').read_text()) == result
+    assert (out / 'original.raw').is_file() and (out / 'candidate.xml').is_file()
+    assert not (out / 'candidate.txt').exists()
+
+
+def test_empty_retained_xml_keeps_an_explicit_refusal_packet(tmp_path):
+    source = tmp_path / 'empty.xml'
+    source.write_bytes(b'')
+    out = tmp_path / 'review'
+    result = inspect_xml_repair(source, expected_sha256=sha256(b'').hexdigest(), output_dir=out)
+    assert result['status'] == 'refused' and result['reason'] == 'recovery_input_refused'
+    assert (out / 'original.raw').read_bytes() == b''
+    assert json.loads((out / 'output.json').read_text()) == result
+    assert not (out / 'candidate.xml').exists()
+
+
+def test_candidate_bound_does_not_reduce_the_separate_input_bound(tmp_path):
+    source = tmp_path / 'malformed.xml'
+    body = b'<r>source</r>' + b' ' * 1024 + b'outside-root'
+    source.write_bytes(body)
+    out = tmp_path / 'review'
+    result = inspect_xml_repair(source, expected_sha256=sha256(body).hexdigest(), output_dir=out,
+                               max_bytes=2048, max_candidate_bytes=64)
+    assert result['status'] == 'partial'
+    assert (out / 'original.raw').read_bytes() == body
+    assert (out / 'candidate.xml').stat().st_size <= 64
