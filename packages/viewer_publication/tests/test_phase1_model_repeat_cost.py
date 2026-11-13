@@ -177,6 +177,11 @@ REPEAT_COST_TRACKED_DF55 = {
     **{name: cost for name, cost in REPEAT_COST_TRACKED.items() if name != 'merged_recovery_fields'},
     'model_invariants': 51_167_706,
     'retired_links_export': 18_825_048,
+    # The materialized feed rows are read twice: body exclusion, then link union.
+    # Their unmeasured size falls back to readings (1,654,201), adding that estimate
+    # once. The 11 lake readings scans are unchanged; the native plan check below
+    # guards that distinction. This is not a measured full-feed population.
+    'link_inputs': 18_207_061,
 }
 OUTER_BUILD_TRACKED_DF55 = {**OUTER_BUILD_TRACKED, 'retired_links_export': 7}
 SEMI_ANTI_MARK_BUILD_TRACKED_DF55 = {
@@ -533,6 +538,17 @@ def test_tracked_repeat_costs_match_their_recorded_scores(explained):
     flagged, _regex = offenders(job, plans)
     current = {name: score for name, (score, _repeated) in flagged.items()}
     assert current == expected, 'a fixed reader leaves the list; a changed one records its new score'
+
+
+def test_feed_link_selection_reuses_materialized_feed_rows(planned):
+    job, plans = planned
+    feed = next(step for step in job['steps'] if step['name'] == 'house_floor_feed_readings')
+    assert feed.get('materialize') is True
+    # The feed anti-join and union add retained-table scans, not two more
+    # expansions of the selected_readings compatibility branches.
+    assert scans(plans['link_inputs']) == scans(plans['pinned_readings']) + collections.Counter({
+        'house_floor_feed_readings': 2, 'page_contexts': 1,
+    })
 
 
 def test_regex_joins_run_once_outside_the_tracked_readers(planned):

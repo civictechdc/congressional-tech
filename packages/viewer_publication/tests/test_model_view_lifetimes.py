@@ -41,13 +41,25 @@ def test_source_annotation_addresses_single_union_no_hash_join():
     )
 
 
-def test_page_facts_excludes_links_and_recomputes_for_export():
-    sql = (Path(__file__).parents[3] / 'model/sql/pinned-readings.sql').read_text()
-    assert 'EXCLUDE(links)' in sql, "pinned-readings.sql must exclude links column"
+def test_page_facts_excludes_links_and_link_inputs_read_selected_rows():
+    from viewer_publication.archive_model import evidence_steps
+    from viewer_publication.archive_model_lifetimes import sql_dependencies
 
-    link_sql = (Path(__file__).parents[3] / 'model/sql/link-inputs.sql').read_text()
-    # links is read from the one readings selection, never through pinned_readings, which drops it.
-    assert 'FROM selected_readings r' in link_sql and 'pinned_readings' not in link_sql, "link-inputs.sql must read links from selected_readings"
+    root = Path(__file__).parents[3] / 'model/sql'
+    sql = (root / 'pinned-readings.sql').read_text()
+    assert 'EXCLUDE(links)' in sql, "pinned-readings.sql must exclude links column"
+    assert sql_dependencies(sql) == {'selected_readings'}
+
+    # Ordinary links and dedicated feed links both originate in the accepted
+    # selection. Neither route may read through pinned_readings, which drops links.
+    assert sql_dependencies((root / 'link-inputs.sql').read_text()) == {
+        'page_contexts', 'selected_readings', 'house_floor_feed_readings',
+    }
+    assert sql_dependencies((root / 'house-floor-feed-readings.sql').read_text()) == {'selected_readings'}
+    steps = {step['name']: step for step in evidence_steps()}
+    assert steps['house_floor_feed_readings']['materialize'] is True, (
+        "the feed body exclusion and link union must reuse retained feed rows"
+    )
 
 
 def test_capture_source_contexts_is_strictly_narrow():
@@ -82,6 +94,9 @@ def test_dead_tables_released_early(tmp_path):
     )
     assert releases.get('resolved_links') == 'resolved_link_targets', (
         "resolved_links must be released by resolved_link_targets"
+    )
+    assert releases.get('house_floor_feed_readings') == 'link_inputs', (
+        "retained feed rows must release after link expansion, before URL resolution"
     )
     assert releases.get('initial_document_link_keys') == 'duplicate_component_edges', (
         "initial_document_link_keys must be released by duplicate_component_edges"
