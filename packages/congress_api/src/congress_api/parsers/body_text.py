@@ -300,9 +300,15 @@ class _PageRun:
                 if observation.id == 'native' and isinstance(observation.raw, dict):
                     geometry = [dict(box=line.get('bbox'), direction=line.get('dir'), writing_mode=line.get('wmode'))
                                 for block in observation.raw.get('blocks', []) for line in block.get('lines', [])]
-                observations.append(dict(id=observation.id, text=observation.text,
+                retained = dict(id=observation.id, text=observation.text,
                     configuration=observation.configuration, blocks=[asdict(b) for b in observation.blocks],
-                    issues=[asdict(issue) for issue in observation.issues], native_reader_line_geometry=geometry))
+                    issues=[asdict(issue) for issue in observation.issues], native_reader_line_geometry=geometry)
+                if observation.id == 'native' and isinstance(observation.raw, dict) and any(
+                        issue.code == 'native-geometry-refused' for issue in observation.issues):
+                    retained['native_geometry_details'] = {
+                        key: observation.raw[key] for key in ('page', 'line', 'display_bbox', 'geometry')
+                        if key in observation.raw}
+                observations.append(retained)
             self.evidence(dict(event='page_extracted', page=number, pre_cleanup_text=content.text,
                 pre_cleanup_nonspace_chars=sum(not c.isspace() for c in content.text),
                 ocr=bool(replaced), observations=observations))

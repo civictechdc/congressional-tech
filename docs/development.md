@@ -209,6 +209,19 @@ corpus-wide quality or storage capacity. The refreshed source fingerprints in
 `model/reading-version-diagnostics.json` record that decision. The separate
 cleanup repair deliberately changes text and needs its own reading version.
 
+The later geometry-diagnostic correction also keeps these declarations. When
+an explicitly allowed native-geometry fallback succeeds, CT now retains the
+shared reader's offending line, displayed bounds, page number and page geometry
+in `native_geometry_details`. These facts previously survived an unrecovered
+page failure but were lost after fallback. The source-backed c848 page-one
+probe uses a scripted backend and preserves the complete reading with evidence
+off and on; it now retains the zero-width `TX ` line and its original coordinates.
+All fixed reader-fixture hashes and declared versions remain unchanged; only
+the source fingerprints move. The focused regression also excludes unrelated
+opaque raw objects. Evidence and independent direct review are under
+`repairs/geometry-reconciliation-20261113/` in the main recovery evidence root.
+This diagnostic equivalence does not qualify the scripted text or enable OCR.
+
 The isolated cleanup integration candidate pins the reproducible vendored wheel
 `spicy-docs==0.85.0+gpo.20261113`. Its receipt names the exact source commit and
 both changed package members. PDF readings declare the corrected cleanup and

@@ -72,7 +72,7 @@
       "version": "0.85.0+ctreaders.20261113.2"
     },
     "version": "f1cefe442182dc8e4c456359aebdb37e5c50db6b0abb669b303e05763feb94a3",
-    "workspace_sha256": "ee4c715618d33c0d1a88d0e70f4e0607c84d8e2a2f3bc3181eab3b175aa99844"
+    "workspace_sha256": "0ce7fa13262994ccda94ee7178e33050ace49f471282b84f1c06151cb5d70fd5"
   },
   "json": {
     "limits": {
@@ -117,7 +117,7 @@
       "version": "0.85.0+ctreaders.20261113.2"
     },
     "version": "4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8",
-    "workspace_sha256": "ee4c715618d33c0d1a88d0e70f4e0607c84d8e2a2f3bc3181eab3b175aa99844"
+    "workspace_sha256": "0ce7fa13262994ccda94ee7178e33050ace49f471282b84f1c06151cb5d70fd5"
   },
   "readings": {
     "limits": {
@@ -178,6 +178,6 @@
       "version": "0.85.0+ctreaders.20261113.2"
     },
     "version": "5a0768bcbaaaf7f67e29e2ff989689b62356579780f99e518d137f7b222c798c",
-    "workspace_sha256": "ee4c715618d33c0d1a88d0e70f4e0607c84d8e2a2f3bc3181eab3b175aa99844"
+    "workspace_sha256": "0ce7fa13262994ccda94ee7178e33050ace49f471282b84f1c06151cb5d70fd5"
   }
 }
