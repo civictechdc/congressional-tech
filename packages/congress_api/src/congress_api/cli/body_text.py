@@ -26,7 +26,8 @@ from congress_api.retention.body_store import BodyStore, LocalAdapter
 
 REQUIRED = {'captures', 'work', 'decided_at', 'catalog_root', 'tables'}
 OPTIONAL = {'local_root', 'origin', 'body_listing', 'write_body_listing', 'filename_readings',
-            'unreadable_files', 'max_cache_bytes', 'max_batch_items', 'parser_memory_bytes'}
+            'unreadable_files', 'max_cache_bytes', 'max_batch_items', 'parser_memory_bytes',
+            'selection', 'page_checkpoints'}
 
 
 def _connect_listing_client(bucket, r2_client):

@@ -29,7 +29,9 @@ from dataclasses import asdict, dataclass, field
 import gzip
 import hashlib
 import importlib
+from importlib.metadata import version
 import io
+from pathlib import Path
 import platform
 import resource
 import signal
@@ -110,6 +112,7 @@ class PageRule:
     """The page strategy and the reader that renders for it (None: DocumentExtractor's default)."""
     strategy: object
     reader: object = None
+    checkpoint_identity: dict | None = None
 
 
 class NoEngine:
@@ -130,22 +133,23 @@ def gpo_page(text):
     return normalize_gpo_pages([text])[0][0]
 
 
-def page_rule(backend, reader=None):
+def page_rule(backend, reader=None, *, checkpoint_identity=None):
     """The declared routing over ``backend``: spicy-docs ``NativeOrOcr`` on GPO-normalized text."""
     from spicy_docs.extraction import NativeOrOcr
-    return PageRule(NativeOrOcr(backend, min_chars=OCR_MIN_CHARS, normalize=gpo_page), reader)
+    return PageRule(NativeOrOcr(backend, min_chars=OCR_MIN_CHARS, normalize=gpo_page), reader, checkpoint_identity)
 
 
 def native_only():
     """The default page rule: the declared routing with no OCR engine."""
-    return page_rule(NoEngine())
+    return page_rule(NoEngine(), checkpoint_identity=dict(backend='none', reader='DefaultReader', dpi=200,
+                                                         raw_rgb=False))
 
 
 def recovery_apple_vision():
     """The same 200 DPI Vision rule, admitted by worker memory rather than a pixel exclusion."""
     rule = apple_vision()
     rule.reader.max_pixels = (1 << 63) - 1
-    return rule
+    return PageRule(rule.strategy, rule.reader, dict(rule.checkpoint_identity, max_pixels=rule.reader.max_pixels))
 
 
 def apple_vision():
@@ -157,8 +161,10 @@ def apple_vision():
     from spicy_docs.extraction import DefaultReader
     from spicy_docs.extraction.ocr import AppleVision
     backend = AppleVision(recognition_level='accurate', language_correction=False, bands=OCR_BANDS)
-    backend.require_reproducible_identity()
-    return page_rule(backend, DefaultReader(dpi=OCR_DPI, raw_rgb=True))
+    identity = backend.require_reproducible_identity()
+    reader = DefaultReader(dpi=OCR_DPI, raw_rgb=True)
+    return page_rule(backend, reader, checkpoint_identity=dict(backend=identity, reader='DefaultReader',
+        dpi=OCR_DPI, raw_rgb=True, max_pixels=reader.max_pixels))
 
 
 def load_page_rule(spec):
@@ -230,10 +236,15 @@ class _PageRun:
                 self.evidence(dict(event='page_failed', page=page.number, error_type=type(error).__name__,
                                    error=str(error)))
             return PageContent((), ())
+        self.observe(content, page.number)
+        return content
+
+    def observe(self, content, number):
+        """Apply the same OCR accounting to newly extracted and matched retained pages."""
         replaced = [o for o in content.observations if o.id != 'native'
                     or any(issue.code == REPLACED_ISSUE for issue in o.issues)]
         if replaced:
-            self.ocr.append(page.number)
+            self.ocr.append(number)
             self.builds.update(o.configuration.get('macos_build') for o in replaced
                                if isinstance(o.configuration, dict) and o.configuration.get('macos_build'))
         if self.evidence:
@@ -248,13 +259,12 @@ class _PageRun:
                 observations.append(dict(id=observation.id, text=observation.text,
                     configuration=observation.configuration, blocks=[asdict(b) for b in observation.blocks],
                     issues=[asdict(issue) for issue in observation.issues], native_reader_line_geometry=geometry))
-            self.evidence(dict(event='page_extracted', page=page.number, pre_cleanup_text=content.text,
+            self.evidence(dict(event='page_extracted', page=number, pre_cleanup_text=content.text,
                 pre_cleanup_nonspace_chars=sum(not c.isspace() for c in content.text),
                 ocr=bool(replaced), observations=observations))
-        return content
 
 
-def pdf_text(data, *, strategy, page_deadline_seconds, evidence=None):
+def pdf_text(data, *, strategy, page_deadline_seconds, evidence=None, checkpoint_root=None):
     """``pdf_text``: one open of the PDF, each page through the rule, then GPO normalization.
 
     ``strategy`` is a :class:`PageRule` or a bare page strategy (rendered by the default reader).
@@ -262,12 +272,23 @@ def pdf_text(data, *, strategy, page_deadline_seconds, evidence=None):
     """
     from spicy_docs.extraction import DocumentExtractor
     from spicy_docs.extraction.body_text import rendition_text
+    from congress_api.retention import page_checkpoints
     rule = strategy if isinstance(strategy, PageRule) else PageRule(strategy)
     run = _PageRun(rule.strategy, page_deadline_seconds, evidence)
+    extractor = DocumentExtractor(run, reader=rule.reader, max_input_bytes=max(1, len(data)))
+    if checkpoint_root is not None:
+        if rule.checkpoint_identity is None:
+            raise ValueError('Page checkpointing requires an explicit reproducible rule identity')
+        # Conservative code/dependency identity: a change creates another namespace, never
+        # silently reuses an earlier policy. Native geometry and routing are part of this rule.
+        identity = dict(rule=rule.checkpoint_identity, strategy=type(rule.strategy).__qualname__,
+            code=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+            adapter=hashlib.sha256(Path(page_checkpoints.__file__).read_bytes()).hexdigest(),
+            dependencies={name: version(name) for name in ('spicy-docs', 'pymupdf', 'pillow')})
+        extractor = page_checkpoints.CheckpointedExtractor(extractor, root=checkpoint_root, identity=identity, run=run)
     try:
-        body = rendition_text(data, rendition='pdf', extractor=DocumentExtractor(
-            run, reader=rule.reader, max_input_bytes=max(1, len(data))))
-    except (OcrRequired, PageDeadline, MemoryError):
+        body = rendition_text(data, rendition='pdf', extractor=extractor)
+    except (OcrRequired, PageDeadline, MemoryError, page_checkpoints.CheckpointError):
         raise
     except Exception as error:  # an unopenable, encrypted or pageless document
         return Reading('error', type(error).__name__, diagnostic=traceback.format_exc(limit=8))
@@ -342,12 +363,13 @@ def _decoded(payload, encoding, max_bytes):
     return None if max_bytes is not None and len(data) > max_bytes else data
 
 
-def derive(data, parser, *, strategy, page_deadline_seconds, sniff_format, max_bytes, evidence=None):
+def derive(data, parser, *, strategy, page_deadline_seconds, sniff_format, max_bytes, evidence=None, checkpoint_root=None):
     """One body's reading under ``parser``. ``sniff_format(bytes)`` names a WARC payload's format."""
     if parser in MARKUP_RENDITIONS:
         return markup_text(data, parser)
     if parser == 'pdf_text':
-        return pdf_text(data, strategy=strategy, page_deadline_seconds=page_deadline_seconds, evidence=evidence)
+        return pdf_text(data, strategy=strategy, page_deadline_seconds=page_deadline_seconds, evidence=evidence,
+                        checkpoint_root=checkpoint_root)
     if parser != 'warc':
         raise ValueError('Unsupported body-text parser')
     try:
@@ -361,7 +383,7 @@ def derive(data, parser, *, strategy, page_deadline_seconds, sniff_format, max_b
     if evidence:
         evidence(dict(event='warc_payload', parser=inner, payload_sha256=hashlib.sha256(payload).hexdigest()))
     reading = derive(payload, inner, strategy=strategy, page_deadline_seconds=page_deadline_seconds,
-                     sniff_format=sniff_format, max_bytes=max_bytes, evidence=evidence)
+                     sniff_format=sniff_format, max_bytes=max_bytes, evidence=evidence, checkpoint_root=checkpoint_root)
     return Reading(reading.status, reading.error_type, reading.text, reading.page_offsets, reading.ocr_pages,
                    reading.macos_build, dict(reading.fields, **envelope, payload_format=kind,
                         payload_sha256=hashlib.sha256(payload).hexdigest()), reading.diagnostic)

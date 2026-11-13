@@ -1,7 +1,7 @@
 ---
 id: ct-kfsd
 status: open
-deps: []
+deps: [ct-55qo]
 links: [ct-a73a, ct-n3ik, ct-hz8y]
 created: 2026-11-13T17:46:15Z
 type: task
@@ -11,7 +11,7 @@ tags: [body_text, pdf, ocr, publication]
 ---
 # Publish corrected historical PDF readings after GPO cleanup qualification
 
-PR #151 is merged at 2cef1dbde71f842d527b6a9cfb8893ff8c16dc25: it preserves substantive text after printing footers and ordinary prose bullets, and adds optional per-attempt diagnostic evidence. The real CT consumer passed 14 archived PDFs / 281 pages, with exact agreement to reviewed candidate outputs. This proves bounded integration, not that historical body_text has been corrected or published. The active 2,632-body recovery deliberately retains its older frozen parser policy. Identify historical exposure, reread the affected bodies under the new declared versions, and publish qualified selections.
+PR #151 is merged at 2cef1dbde71f842d527b6a9cfb8893ff8c16dc25: it preserves substantive text after printing footers and ordinary prose bullets, and adds optional per-attempt diagnostic evidence. The real CT consumer passed 14 archived PDFs / 281 pages, with exact agreement to reviewed candidate outputs. This proves bounded integration, not that historical body_text has been corrected or published. The paused 2,632-body recovery retains its older frozen parser policy; do not restart it for this work. Identify historical exposure, reread the affected bodies under the new declared versions, and publish qualified selections.
 
 ## Design
 
@@ -30,3 +30,7 @@ Reuse spicy-docs 0.85.0+gpo.20261113 and the existing CT reader, native tables a
 **2026-11-13T17:46:15Z**
 
 Evidence: <main checkout>/.cache/archive-release/ocr-recovery-20261113/coordination/text-quality-audit-20261113/repair-plan.md; source review under .cache/archive-release/investigations/text-quantity-review-20261113/research-followups/. These durable local artifacts contain source identities, review limits and retained failures. See docs/plans/ocr-text-quality-remaining-20261113.md for plan ownership and sequencing.
+
+**2026-11-13T18:48:44Z**
+
+Use ct-55qo for one qualified actual reading key per body/parser, including unaffected baseline and recovery results. Use ct-aitp only when new page work is necessary. Prefer reassembling qualified retained pre-cleanup pages to OCR; existing diagnostic logs are not automatically reusable checkpoints. Audit: .cache/archive-release/ocr-recovery-20261113/coordination/greybeard-root-cause-20261113/review.md; cohort and page inventory: inventory/README.md.

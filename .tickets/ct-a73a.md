@@ -2,21 +2,27 @@
 id: ct-a73a
 status: open
 deps: []
-links: [ct-m704, ct-kfsd, ct-n3ik, ct-hz8y, ct-yy07, ct-t4p3]
+links: [ct-m704, ct-kfsd, ct-n3ik, ct-hz8y, ct-yy07, ct-t4p3, ct-55qo, ct-aitp]
 created: 2026-11-10T05:38:12Z
 type: bug
 priority: 2
 assignee: mikewolfd
 tags: [congress_api, body_text, ocr]
 ---
-# Body-text run: 14 bodies wrongly decided unreadable (7 page_deadline after pauses, 7 memory_limit at 1 GiB)
+# Reconcile resource-failure recovery and measure memory per request
 
-Found by the OCR throughput investigation 2026-11-10 (.cache/archive-release/investigations/ocr-throughput-20261110/README.md, sections 'Worker restarts' and the page-deadline section, with the body hashes). (1) page_deadline (parsers/body_text.py) uses ITIMER_REAL, a wall-clock timer that keeps running while a job is stopped; the full run's driver paused batches with SIGSTOP for release work, so after any pause over 60 s every in-flight page raised PageDeadline on resume, and a body hit twice was recorded unreadable: page_deadline. Seven bodies in chunk-0014. The driver no longer pauses (it ends the open batch instead, since 05:36Z), but the timer is still exposed to a laptop sleep or a debugger stop, and the 1,800 s document deadline (time.monotonic) the same way. (2) The supervisor kills a worker at WORKER_MEMORY_BYTES = 1 GiB; a second kill records unreadable: memory_limit. pdf_text over 32 test documents peaked at 1,060 MB, so ordinary large PDFs cross it: seven bodies so far, about 14 kills an hour. The limit is tied to workers x 1 GiB inside the engine's 14 GiB limit.
+The original defect affected seven paused page deadlines and seven 1 GiB memory-limit decisions. The source fixes have landed: page deadlines use user CPU time and the producer has a separate worker budget. Data acceptance remains open until those original identities are reconciled. The broader recovery is paused after batch 205: 2,422/2,632 committed outcomes (1,316 completed, 1,083 errors, 23 unreadable), with 210 remaining. Do not resume it as part of code work.
+
+## Design
+
+Retain the original cohort and all superseded decisions. ct-55qo owns qualified selection and ct-aitp owns page reuse. The audit found _child_peak_rss_bytes uses process-lifetime ru_maxrss in reused workers: resetting the supervisor sample does not reset that peak. Measure request-scoped memory before ranking individual bodies or raising admission limits; preserve old observations as lifetime measurements. Keep extraction errors separate from resource failures and unreadable decisions.
 
 ## Acceptance Criteria
 
-The 7 page_deadline decisions are superseded and the bodies read; the 7 memory_limit bodies are re-read with a 2 GiB worker limit and each is either read or kept unreadable with its measured peak; the page deadline counts running time, not wall time across a stop, with a test; the body-text pool has its own memory budget so a 2 GiB per-worker limit does not shrink the worker count.
-
+1. Reconcile every original deadline/memory identity to a qualified completed reading or explicit measured unresolved outcome; supersede decisions with provenance only where justified.
+2. Preserve the running-time deadline and independent pool-budget regression checks.
+3. Request memory measurements are not contaminated by an earlier large request in the same worker; report measurement limitations and worker policy.
+4. After the user resumes OCR, finish only the explicit remaining recovery inventory under resource supervision, using ct-aitp checkpoints and ct-55qo selection. A source fix alone does not close this ticket.
 
 ## Notes
 
@@ -44,3 +50,7 @@ Wave 6 prep landed on `claude/ct-wave-6-bodytext-prep` (left open solely for the
 **2026-11-13T17:46:16Z**
 
 2026-11-13 restart: checkpoint integrity passed for 2,356 outcomes, 2,333 readings and 1,250 texts, preserving the original catalog. At 17:38Z committed outcomes were 1,250 completed / 1,083 errors / 23 unreadable, with 276 targets remaining and batch 198 active. Detached supervisor resumed the frozen 56421715 extraction policy at 17:28:54Z; it schedules final integrity verification and serial 6 GiB resource retries. The interruption cause remains undetermined. Keep this ticket open until final outcomes reconcile its exact original body hashes and are published; aggregate recovery successes do not prove that every original deadline/memory case passed. Evidence: .cache/archive-release/ocr-recovery-20261113/{resume-state.json,restart-investigation.json,full/verification.json,final-summary.json}; final-summary.json is pending.
+
+**2026-11-13T18:48:44Z**
+
+Rewritten from the independent ETL/greybeard/evolutionary audit. Prior notes and evidence remain below; old running-job and automatic reread assumptions are superseded. Audit: .cache/archive-release/ocr-recovery-20261113/coordination/greybeard-root-cause-20261113/review.md; cohort and page inventory: inventory/README.md.

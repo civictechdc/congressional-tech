@@ -2,7 +2,7 @@
 id: ct-yy07
 status: open
 deps: []
-links: [ct-a73a, ct-hz8y]
+links: [ct-a73a, ct-hz8y, ct-55qo, ct-aitp]
 created: 2026-11-13T17:46:16Z
 type: bug
 priority: 1
@@ -30,3 +30,7 @@ Keep the shared native geometry validation meaningful. Distinguish degenerate ze
 **2026-11-13T17:46:16Z**
 
 Evidence: <main checkout>/.cache/archive-release/ocr-recovery-20261113/coordination/text-quality-audit-20261113/repair-plan.md; source review under .cache/archive-release/investigations/text-quantity-review-20261113/research-followups/. These durable local artifacts contain source identities, review limits and retained failures. See docs/plans/ocr-text-quality-remaining-20261113.md for plan ownership and sequencing.
+
+**2026-11-13T18:48:44Z**
+
+The native geometry refusal occurs in the shared reader before the current routing strategy can recover it. Fix or expose this boundary upstream; do not weaken all geometry validation or catch every parser error as OCR. The 208 count is the retained audited snapshot, not a new classification of all current errors. Audit: .cache/archive-release/ocr-recovery-20261113/coordination/greybeard-root-cause-20261113/review.md; cohort and page inventory: inventory/README.md.
