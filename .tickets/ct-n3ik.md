@@ -1,6 +1,6 @@
 ---
 id: ct-n3ik
-status: open
+status: in_progress
 deps: []
 links: [ct-a73a, ct-kfsd, ct-hz8y, ct-t4p3, ct-55qo, ct-aitp]
 created: 2026-11-11T15:40:45Z
@@ -9,20 +9,28 @@ priority: 2
 assignee: mikewolfd
 tags: [ocr, pdf_text, readings, tesseract]
 ---
-# Qualify selective PDF backend routing and measure the typeset/scanned split
+# Assess retained text quality and qualify selective PDF repair
 
 Preserve the owner's decisions: measure the hybrid split first and use Tesseract fast as the default candidate. Earlier bounded comparisons favored Tesseract fast for missing/garbled typeset layers and Vision for scans; they do not authorize corpus-wide OCR. OCR remains paused. Reprocess only independently identified bad PDFs/pages after policy and cost qualification.
 
+Assess the entire retained population using existing metadata/page features, then inspect source and intermediate contents for omissions despite successful extraction. The user estimates about 2.7 billion tokens; the frozen census has 607,584 completed bodies, 295,770 PDF bodies and 7,764,694 recorded PDF page slots. Logical document rows, body identities, recorded pages and tokens have different denominators. See docs/plans/corpus-text-assessment-20261113.md for counts, multi-stage assessment, Keeplist reuse, held-out calibration and measured-cost boundaries.
+
 ## Design
+
+Keep coverage, recognition, cleanup loss, response role and missing evidence separate. Priority scores rank review and never become acceptance probabilities. A thin offline assessor consumes identity-bound observations and emits keep/reparse/renormalize/native-reread/selective-OCR/manual/deferred-refetch recommendations; it never reads source content, changes selection, or dispatches recognition/acquisition. Reuse the existing complete PDF page-feature pass and the 376-case Keeplist applicability study, adding only changed reading keys and genuinely missing measurements. ct-hz8y owns native/vector repair, ct-kfsd cleanup exposure/publication, ct-cbkz/ct-f6hr markup reparse/compatibility, and ct-en4n/ct-z4w5 source roles/deferred acquisition; this ticket coordinates assessment without duplicating their acceptance.
 
 The retained all-PDF census reads text, offsets and OCR page lists, not source raster/font/vector features. It ranks review candidates but cannot count typeset versus scanned pages. Reuse spicy-docs NativeOrOcr, FullPage, NativeWithRegions and per-page overrides; qualify composition order and overlaps before adopting region extraction. Upstream commits 5e298abe and 6792cb44 already implement Tesseract model/build identity: coordinate one wheel with ct-cbkz rather than rebuilding backend support in CT. ct-hz8y owns incomplete native-layer detection, ct-yy07 geometry recovery, ct-t4p3 crash settings, ct-aitp page persistence, ct-55qo accepted body selection.
 
 ## Acceptance Criteria
 
-1. Obtain source-qualified features for the selected sample and independently measure classifier precision, including mixed pages, vector lettering, sidebars, short and blank controls; name unassessed records.
-2. Measure accuracy, omissions, numeric values, runtime and memory for the affected cohort and bring the reread cost to the owner before OCR resumes.
-3. Pin backend/model/render/routing identities; demonstrate that unchanged pages are reused and only qualified bad pages are replaced, with original evidence retained.
-4. Complex pages may enter an explicit LLM/VLM comparison only when ordinary maintained paths are inadequate; retain source alignment, uncertainty, provider/model identity and cost. No LLM result is accepted from plausible prose alone.
+1. Reconcile every frozen body/reading into an assessed, missing-evidence, unsupported, pending or refused state with exact source/output/version identity; do not add snapshot counts without deduplication. Preserve page scope and alternative attempts.
+2. Independently calibrate review priorities and action proposals on source-disjoint held-out originals, including long/completed/no-trigger false-negative controls, legitimate short/empty/container/feed controls and planted omissions/wrong values. Record per-stratum precision, missed defects, unknowns and review scope; no corpus accuracy claim from the current exploratory sample.
+3. Measure representative and largest eligible source/input costs separately from already-measured text-feature costs. Freeze token/render/provider costs and bounded budgets only for selectively escalated reviewed pages; preserve the OCR pause and refetch deferral. Proposal-only output cannot close source qualification or publication criteria.
+
+4. Obtain source-qualified features for the selected sample and independently measure classifier precision, including mixed pages, vector lettering, sidebars, short and blank controls; name unassessed records.
+5. Measure accuracy, omissions, numeric values, runtime and memory for the affected cohort and bring the reread cost to the owner before OCR resumes.
+6. Pin backend/model/render/routing identities; demonstrate that unchanged pages are reused and only qualified bad pages are replaced, with original evidence retained.
+7. Complex pages may enter an explicit LLM/VLM comparison only when ordinary maintained paths are inadequate; retain source alignment, uncertainty, provider/model identity and cost. No LLM result is accepted from plausible prose alone.
 
 ## Notes
 
@@ -41,3 +49,7 @@ Rewritten from the independent ETL/greybeard/evolutionary audit. Prior notes and
 **2026-11-13T21:16:53Z**
 
 Selective page policy/checkpoint composition is prepared; source review still governs backend choice and accepted selection. Direct reviewer /root/ocr_ticket_completion/pdf_recovery viewed S149 page1 and read sources/S149.native.txt plus texts/S149.txt under investigations/text-quantity-review-20261113. Native output is empty. Retained OCR keeps Ashli Watts/title/entity but corrupts question4, loses its visible No/X, and emits date ': 5 | 28/24' where the handwritten source reads5/28/26. This does not qualify any new backend. Q007 missing chart/table content and page125 alternate-setting failures remain cause-specific controls. Parent's C015 review found missing handwriting/date-order limits, so that page is only a cleanup-equivalence control. Tesseract/model/cost/classifier precision and any LLM comparison still require source-qualified output; no recognition/provider calls ran while paused.
+
+**2026-11-13T21:49:06Z**
+
+2026-11-13 assessment scope consolidated here after the user requested corpus-wide scoring and Keeplist inspiration. Reused the existing all-PDF feature pass (295,770 bodies / 7,764,694 recorded pages, 169.5 seconds remaining pass, 1.12 GiB peak RSS) and prior 376-case Keeplist comparison at current Keeplist commit fb1245c2. Two corrupted forms and S150 missing bullets passed that scorer, while 10/18 legitimate short originals failed: no web threshold is adopted. New plan docs/plans/corpus-text-assessment-20261113.md defines per-body/page provenance, explicit missing evidence, review priority separate from confidence, source-disjoint independent calibration, source/intermediary/output comparisons, selective repair routes and token/cost limits. Durable verified counts and plan: repairs/corpus-assessment-20261113/. User estimate is about 2.7 billion tokens; no full corpus run, OCR/provider recognition, publisher refetch or selection/publication change occurred.
