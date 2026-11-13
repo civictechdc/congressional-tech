@@ -1,11 +1,17 @@
 -- Reduce repeated fetches before unnesting a page's links.
+WITH discovery_bodies AS (
+ SELECT body_sha,bool_or(is_feed) AS is_feed FROM (
+  SELECT body_sha,false AS is_feed FROM page_facts WHERE status='completed'
+  UNION ALL SELECT body_sha,true AS is_feed FROM house_floor_feed_readings
+ ) GROUP BY body_sha
+)
 SELECT encode(c.sha256,'hex') AS page_body,c.context_url,c.member_path,
  min(arrow_cast(cast(c.retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS first_good_at,
  max(arrow_cast(cast(c.retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS last_good_at
 FROM record_roles r RIGHT JOIN (
  placeholders h RIGHT JOIN (
-  page_facts p JOIN good_fetches c ON c.sha256=p.body_sha AND p.status='completed'
+  discovery_bodies p JOIN good_fetches c ON c.sha256=p.body_sha
  ) ON c.sha256=h.sha256
 ) USING(receipt_key,receipt_line,capture_index)
-WHERE h.sha256 IS NULL AND NOT coalesce(r.format='xml' AND r.record_role='listing',false)
+WHERE h.sha256 IS NULL AND (p.is_feed OR NOT coalesce(r.format='xml' AND r.record_role='listing',false))
 GROUP BY c.sha256,c.context_url,c.member_path

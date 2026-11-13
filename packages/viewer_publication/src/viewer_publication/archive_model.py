@@ -664,7 +664,7 @@ def evidence_steps(*,root=ROOT):
     from congress_api.lake.readings import writer_admission_step
     names=['pinned-readings','sniff-observations','sniff-conflicts','sniff-facts','page-facts','verification-conflicts','storage-verifications','copy-verifications','body-evidence','capture-evidence',
         'good-archive-containers','good-fetches','good-fetch-keys','capture-locators','body-signals','locator-signals','placeholders','archive-bodies','segment-captures','record-roles',
-        'page-contexts','link-inputs']
+        'house-floor-feed-readings','page-contexts','link-inputs']
     # good_fetches is a filter over retained capture_evidence; a second copy costs 1.3 GB of scratch.
     steps=[writer_admission_step(root=root)]+[dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=name!='good-fetches')
         for name in names]

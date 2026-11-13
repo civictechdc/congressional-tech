@@ -38,7 +38,7 @@ LEAF_PARSERS = ('sniff', 'html', 'xml', 'json')
 # (ct-61ys): a body above it is refused under the current rule. Every page entry therefore
 # recomputes those bodies, by rule, sized from captures (`bytes` is the decoded size).
 PAGE_PARSERS = ('html', 'xml', 'json')
-DERIVED_PARSERS = ('html_metadata',)
+DERIVED_PARSERS = ('html_metadata','house_floor_feed')
 PARSERS = (*LEAF_PARSERS, *DERIVED_PARSERS, 'readings')
 ENTRY = {'parser', 'version', 'current', 'basis', 'recompute_sql', 'reason', 'proof'}
 BINDING = {'scope', 'version', 'current', 'recompute_sha256', 'old_input_sha256', 'new_input_sha256'}

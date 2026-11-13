@@ -30,6 +30,7 @@ import gzip
 import hashlib
 import importlib
 import io
+import json
 import platform
 import resource
 import signal
@@ -103,10 +104,15 @@ def markup_text(data, parser):
     """``html_text``/``xml_text``: spicy-docs' markup reader, ``<pre>`` layout kept; one page."""
     from spicy_docs.extraction.body_text import rendition_text
     try:
-        text = rendition_text(data, rendition=MARKUP_RENDITIONS[parser]).text
+        rendition = rendition_text(data, rendition=MARKUP_RENDITIONS[parser])
     except (ValueError, UnicodeError, RecursionError) as error:  # BodyTextError and MarkupReadError are ValueErrors
         return Reading('error', type(error).__name__, diagnostic=traceback.format_exc(limit=8))
-    return Reading('completed', text=text, page_offsets=(0,), fields=dict(page_count=1))
+    fields = dict(page_count=1, source_sha256=hashlib.sha256(data).hexdigest(),
+                  markup_cleanup=json.dumps(asdict(rendition.record), sort_keys=True, separators=(',', ':')))
+    for name in ('source_encoding', 'encoding_basis'):
+        value = getattr(rendition.record, name, None)
+        if value is not None: fields[name] = value
+    return Reading('completed', text=rendition.text, page_offsets=(0,), fields=fields)
 
 
 @dataclass(frozen=True)
