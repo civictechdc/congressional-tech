@@ -1,6 +1,6 @@
 ---
 id: ct-m3h3
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-10T19:23:54Z
@@ -22,3 +22,9 @@ The recovered-copy rule (ct-u9y4) keeps a recovered file on a document only when
 **2026-11-11T14:42:31Z**
 
 validated 2026-11-11, left open: still an accepted defect in 77673bfb8fcf (rows 334942 and 335064 each reachable as 2 documents, per the 2026-11-10 note). No join for same-text renditions exists yet; the candidate is the body-text reading (ct-fk4w), which is not a model input.
+
+**2026-11-13T05:41:52Z**
+
+2026-11-13 release acceptance complete. Published archive 55c14dcda87ae954583bf518050b3bd45db6aed49c88c53413260c1d092ef105 reunites the two exact reviewed Ways and Means PDF pairs. Both original URL/body key pairs, both archived renditions per report, legacy lookups and recovery rows survive. The PDFs differ only by one trailing line feed after EOF; this is a bounded exception, not a broad text-similarity merge. All seven unrelated controls remain unchanged.
+
+The full model used the frozen 35,897 receipts; all six invariant suites passed. The release comparison found no vanished/dangling keys or changed file answers. Twelve exact reviewed groups account for the two merges, two source URLs and DataFusion 55 metadata changes. The normal controller reused its completed model and passed the site contract, public canary and conditional pointer update. Independent public readback verified the manifest and target tables; the actual MCP reader fetched all 34 files, resolved both old keys per report, confirmed 31/109 pages, round-tripped citations and rejected a wrong body hash. See docs/releases/2026-11-13-55c14dcda87a.md and durable evidence .cache/archive-release/implementation/ct-release-20261112T2215/ct-m3h3/RELEASE-ACCEPTANCE.md.
