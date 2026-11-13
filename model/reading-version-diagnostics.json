@@ -41,7 +41,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "87b54de6fe73abc65980959d3898f81cd8892da02ad929889183c52784b976ae",
+    "locked_sha256": "0572241f06128655378b2ceef7832ec85552b7652c5376bc4ef9db9ee1a7b0d3",
     "page_deadline_seconds": 60,
     "policy": {
       "max_input_bytes": 65536,
@@ -51,11 +51,11 @@
     },
     "sample_sha256": "c6b897f1d6633d28e841110c8583f849b3e40f6f5f4ec3dde856f0115fd38909",
     "spicy_docs": {
-      "derivation": "004+gpo.20261113",
-      "digest": "sha256:65c03ee82e1fa7ac8ce1f2a7265ea176b243ad109d95f9dcc5fbb872c6d5720f",
-      "version": "0.85.0+gpo.20261113"
+      "derivation": "005+ctmarkup.20261113",
+      "digest": "sha256:6710e3ecdf58597d2a95006583e30300eae5aca20841865a87a79ff0da67ee01",
+      "version": "0.85.0+markup.20261113"
     },
-    "version": "e1928f25e2803cd6bc8546d1673ff7ba01a11ae861c322165c78af9d32380941",
+    "version": "d94ae28a12425256aeec1cf1200f761d803d80f4e7762b9b80abfa0b675d516c",
     "workspace_sha256": "ae0b05e296ed0c29e2971cb25ac2ff7c175158b0d862fbd23415272fa09e7dbe"
   },
   "json": {
@@ -74,7 +74,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "87b54de6fe73abc65980959d3898f81cd8892da02ad929889183c52784b976ae",
+    "locked_sha256": "0572241f06128655378b2ceef7832ec85552b7652c5376bc4ef9db9ee1a7b0d3",
     "macos_build": "25G5057c",
     "ocr_rule": {
       "bands": 3,
@@ -96,9 +96,9 @@
     "pymupdf": "1.28.2",
     "sample_sha256": "df43e60b0033473753db33b675c4d5fd2f94405374833c9ae1fd7705a7ce3f6f",
     "spicy_docs": {
-      "derivation": "004+gpo.20261113",
-      "digest": "sha256:65c03ee82e1fa7ac8ce1f2a7265ea176b243ad109d95f9dcc5fbb872c6d5720f",
-      "version": "0.85.0+gpo.20261113"
+      "derivation": "005+ctmarkup.20261113",
+      "digest": "sha256:6710e3ecdf58597d2a95006583e30300eae5aca20841865a87a79ff0da67ee01",
+      "version": "0.85.0+markup.20261113"
     },
     "version": "4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8",
     "workspace_sha256": "ae0b05e296ed0c29e2971cb25ac2ff7c175158b0d862fbd23415272fa09e7dbe"
@@ -147,7 +147,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "87b54de6fe73abc65980959d3898f81cd8892da02ad929889183c52784b976ae",
+    "locked_sha256": "0572241f06128655378b2ceef7832ec85552b7652c5376bc4ef9db9ee1a7b0d3",
     "page_deadline_seconds": 60,
     "policy": {
       "max_input_bytes": 65536,
@@ -157,11 +157,11 @@
     },
     "sample_sha256": "c97558482f050dcc25737267a2e0053310bd8e477646335934420c5694b924b7",
     "spicy_docs": {
-      "derivation": "004+gpo.20261113",
-      "digest": "sha256:65c03ee82e1fa7ac8ce1f2a7265ea176b243ad109d95f9dcc5fbb872c6d5720f",
-      "version": "0.85.0+gpo.20261113"
+      "derivation": "005+ctmarkup.20261113",
+      "digest": "sha256:6710e3ecdf58597d2a95006583e30300eae5aca20841865a87a79ff0da67ee01",
+      "version": "0.85.0+markup.20261113"
     },
-    "version": "ed9eb0e2908729e728b02380f50ae994e395a03da5ae50caa21c9e80d378a6db",
+    "version": "98efdf43b03ff4d157daef312658428fc10193643bd704d91d90c908df2b8714",
     "workspace_sha256": "ae0b05e296ed0c29e2971cb25ac2ff7c175158b0d862fbd23415272fa09e7dbe"
   }
 }

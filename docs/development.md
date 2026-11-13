@@ -225,7 +225,24 @@ strings equal the independently source-reviewed candidate outputs. This proves
 the consumer uses the repair; it does not prove that historical readings outside
 that cohort are unchanged. Corpus exposure and selective compatibility remain
 required before production cutover. No historical readings are restamped by this
-candidate, and the running recovery keeps its original source and dependency pins.
+candidate, and the paused recovery keeps its original source and dependency pins.
+
+The subsequent markup candidate pins `spicy-docs==0.85.0+markup.20261113`, built
+from `ce38a3db` on the retained GPO base. Its receipt verifies every wheel member
+against that source and two byte-identical builds. It normalizes ordinary HTML
+around local preformatted blocks and qualifies legislative XML by the native
+bill DTD or GPO USLM namespace. Generic XML keeps all fields and metadata;
+foreign and unknown fields keep boundaries. Raw reconstruction evidence retains
+its source whitespace and byte spans.
+
+HTML/XML and their composed WARC declarations deliberately change. PDF's
+declaration stays unchanged: its extraction function is AST-identical, the GPO
+cleanup module is byte-identical, and the retained native cover reproduces text,
+offsets and cleanup records. The six retained markup controls include two
+unchanged GovInfo preformatted bodies and four intended prose/metadata changes.
+The small local sample does not establish corpus throughput or qualify the
+complete non-OCR cohort. Existing readings remain retained; ct-cbkz owns that
+measured reparse and selection work. OCR stays paused and refetch stays deferred.
 
 The lake keys reading rows by body digest, parser, and the declared version in
 `congress_api.lake.reading_versions`. The combined unreadable-decision version

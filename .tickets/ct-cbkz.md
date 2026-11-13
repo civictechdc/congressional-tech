@@ -1,6 +1,6 @@
 ---
 id: ct-cbkz
-status: open
+status: in_progress
 deps: [ct-55qo]
 links: [ct-chc4, ct-m704, ct-f6hr]
 created: 2026-11-12T15:38:26Z
@@ -36,3 +36,7 @@ The retained inventory names 310,964 unique HTML/XML bodies (310,047 completed b
 **2026-11-13T18:48:44Z**
 
 Rewritten from the independent ETL/greybeard/evolutionary audit. Prior notes and evidence remain below; old running-job and automatic reread assumptions are superseded. Audit: .cache/archive-release/ocr-recovery-20261113/coordination/greybeard-root-cause-20261113/review.md; cohort and page inventory: inventory/README.md.
+
+**2026-11-13T19:34:05Z**
+
+Packaged the qualified markup slice from spicy-docs ce38a3db87438f247262fe9485fda5efaa95e3a6 as 0.85.0+markup.20261113 (wheel SHA-256 3b8fd70132cee1f3c64aaefa251fcec3fff9b22d1eb323d1242c06778dc6ae56). Reuses 847a32fd/e247fc9b while retaining GPO cleanup. Independent review caught and fixed generic-XML field concatenation/metadata loss, namespace alias/rebinding errors, hidden pre state and cross-event spaces. Only the Congressional native bill DTD or GPO USLM namespace qualify legislative metadata/inline rules; other XML and unknown/foreign fields retain boundaries. Raw evidence spans remain literal. Two builds are byte-identical and every wheel RECORD/source member verifies. Shared focused suite: 326 passed, 3 skipped, 2 deselected. CT focused suite: 73 passed (partial lane), watchdog peak 0.85 GiB RSS. Seven retained actual-CT native-only consumer cases cover six markup bodies and one native PDF: GPO pre controls and PDF text/offsets/cleanup unchanged; all four HTML bodies conserve non-whitespace text. HTML/XML and composed WARC receive explicit new declarations; PDF identity remains 4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8. Evidence: .cache/archive-release/ocr-recovery-20261113/repairs/ct-markup-readers-20261113/. This small local sample is not a corpus throughput estimate. Keep this ticket in progress for representative/largest-input pilot, source reachability and the 310,964-body reparse/qualified-selection acceptance. ct-f6hr compatibility remains separate. OCR paused; publisher refetch deferred.
