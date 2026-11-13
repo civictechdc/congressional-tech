@@ -344,6 +344,21 @@ def test_xml_elements_become_lines():
     assert derive(b'<hearing><unclosed>', 'xml_text').status == 'error'
 
 
+@pytest.mark.parametrize(('parser', 'source', 'expected'), [
+    ('html_text', b'<nav><a>About</a><a>Chair</a></nav><p>The <b> Act </b> applies.</p>'
+     b'<pre>  A    B\n  1    2\n</pre><p>anti<a>discrimination</a>.</p>',
+     'About Chair\nThe Act applies.\n  A    B\n  1    2\nantidiscrimination.'),
+    ('xml_text', b'<record><metadata>Provenance</metadata><name>Alice</name><amount>100</amount></record>',
+     'Provenance\nAlice\n100'),
+    ('xml_text', b'<u:resolution xmlns:u="http://schemas.gpo.gov/xml/uslm"><u:meta>Catalog</u:meta>'
+     b'<u:p>The <u:term>Act</u:term>.</u:p><u:p>Next.</u:p></u:resolution>', 'The Act.\nNext.'),
+])
+def test_installed_markup_reader_preserves_layout_and_qualifies_xml(parser, source, expected):
+    reading = derive(source, parser)
+    assert reading.status == 'completed' and reading.text == expected
+    assert reading.page_offsets == (0,) and reading.ocr_pages == ()
+
+
 def test_warc_unwraps_its_payload_and_reads_it_by_sniffed_format():
     reading = derive(warc_member(HTML), 'warc')
     assert reading.status == 'completed' and reading.text == derive(HTML, 'html_text').text
