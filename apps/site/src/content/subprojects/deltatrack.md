@@ -4,8 +4,8 @@ title: "DeltaTrack"
 tagline: "Structural bill-version diffs for Hill staffers"
 repo: "https://github.com/civictechdc/DeltaTrack"
 upstream: "https://github.com/AgoraDMV/DeltaTrack"
-liveUrl: "https://agoradmv.github.io/DeltaTrack/hr4366_committee_vs_floor.html"
-liveLabel: "Live example — HR 4366, committee vs. floor"
+liveUrl: "https://civictechdc.github.io/DeltaTrack/"
+liveLabel: "Live example reports"
 status: "live"
 proposal: "I.4"
 order: 1
@@ -35,4 +35,4 @@ DeltaTrack is a concrete piece of proposal I.4, the Appropriations Data Pipeline
 
 - [civictechdc fork](https://github.com/civictechdc/DeltaTrack) — the Congressional Tech copy, kept in sync with upstream daily.
 - [AgoraDMV upstream](https://github.com/AgoraDMV/DeltaTrack) — the original project this is forked from.
-- [Live example — HR 4366, committee vs. floor](https://agoradmv.github.io/DeltaTrack/hr4366_committee_vs_floor.html) — a rendered diff you can open right now.
+- [Live example reports](https://civictechdc.github.io/DeltaTrack/) — rendered diffs you can open right now.
