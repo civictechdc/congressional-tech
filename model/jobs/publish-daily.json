@@ -4,7 +4,7 @@
   "catalog_root": null,
   "tables": {
     "captures": {
-      "name": "captures",
+      "name": "captures_df55_20261113",
       "namespace": [
         "archive_r1b"
       ]
@@ -95,10 +95,10 @@
   "derived_scopes": {
     "html_metadata": {
       "captures": {
-        "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures/metadata/00006-01a1adbe-8f3b-72d1-b2a8-d6a598eb6f12.gz.metadata.json",
+        "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures_df55_20261113/metadata/00001-01a1d311-d1af-7e82-b24c-e98d1157f3c0.gz.metadata.json",
         "schema_id": 0,
-        "snapshot": 3719403341459182653,
-        "table_uuid": "01a1a35c-8940-77f2-a48f-c52881d2ccb2"
+        "snapshot": 4841796116729777945,
+        "table_uuid": "01a1d311-21a3-7110-8a99-a7632a7b93c9"
       },
       "versions": {
         "html": "61d7904883f042f48d3732d0518adaa5cf5084790ebc9d5411aad7a6ab605969",

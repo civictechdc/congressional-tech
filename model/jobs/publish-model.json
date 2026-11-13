@@ -2,44 +2,44 @@
   "version": 1,
   "captures": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures/metadata/00007-01a1b85f-b34d-7163-ade0-2e363f634c24.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures_df55_20261113/metadata/00001-01a1d311-d1af-7e82-b24c-e98d1157f3c0.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 3703623901182761760,
-    "table_uuid": "01a1a35c-8940-77f2-a48f-c52881d2ccb2"
+    "snapshot": 4841796116729777945,
+    "table_uuid": "01a1d311-21a3-7110-8a99-a7632a7b93c9"
   },
   "readings": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/readings_compact_20261112/metadata/00001-01a1cd81-4240-70f3-be49-119697abc612.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/readings_compact_20261112/metadata/00007-01a1d197-1b91-7ac0-9eaf-2120c9e2d45b.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 5394364687916217001,
+    "snapshot": 4894608704494665716,
     "table_uuid": "01a1cd80-8888-7632-9a00-2f51f88af451"
   },
   "filename_readings": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/filename_readings_20261112/metadata/00001-01a1d14d-1230-77c0-ba55-f533233b5cb9.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/filename_readings_20261112/metadata/00002-01a1d198-0884-7983-a7fa-133efc025e22.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 5941740380136230381,
+    "snapshot": 5220748622748664927,
     "table_uuid": "01a1d14c-e368-7b22-bd83-299b59435a37"
   },
   "meeting_records": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/meeting_records_mvp_20261105/metadata/00003-01a1b2aa-a7cd-7811-8a68-43b81679830c.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/meeting_records_mvp_20261105/metadata/00006-01a1d198-d91f-77f2-b46c-c7d1b558a488.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 5994237278205563894,
+    "snapshot": 9087938519056721929,
     "table_uuid": "01a1adb0-549d-7611-b73c-43123b27949b"
   },
   "appearance_records": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/appearance_records_rank_20261112/metadata/00001-01a1d14c-b093-7f80-b8bb-57cf83d45279.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/appearance_records_rank_20261112/metadata/00002-01a1d199-a0d6-70e0-a1e9-9b2a0f8a7c32.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 7505565958227071448,
+    "snapshot": 1653839521165885844,
     "table_uuid": "01a1d14c-9b33-7950-9d0c-3e0a0bfcc881"
   },
   "video_records": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/video_records/metadata/00001-01a1a36c-e9e1-7913-8205-3c42a3649aa2.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/video_records/metadata/00002-01a1c28a-2e7e-74d3-9692-00ab3a5d4d72.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 5595115807617726608,
+    "snapshot": 1117509191451879334,
     "table_uuid": "01a1a36c-dac3-70d3-94aa-f571c0017da8"
   },
   "committee_records": {
@@ -97,9 +97,9 @@
   ],
   "playlist_records": {
     "kind": "native_table",
-    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/playlist_records_mvp_20261105/metadata/00001-01a1adb1-29a6-77a3-aab0-2acb3a77b509.gz.metadata.json",
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/playlist_records_mvp_20261105/metadata/00002-01a1c1f7-63d2-71b0-b04b-19a890cb6d87.gz.metadata.json",
     "schema_id": 0,
-    "snapshot": 387616457107628486,
+    "snapshot": 3020372319786105918,
     "table_uuid": "01a1adb1-19bb-7421-901b-f03c541a3c01"
   },
   "historical_recording_matcher": {

@@ -1,0 +1,41 @@
+{
+ "commit": "b7163765e857670783a520d0c39107c7d1175fff",
+ "input": "captures",
+ "job": "packages/viewer_publication/src/viewer_publication/archive_import_job.py",
+ "lockfile_digest": "2f7f2579d08f497610f8df35c84f01a84a534362a92588c8fb4b11599884da5c",
+ "origin": {
+  "pin": {
+   "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/captures/local-captures-producer.json",
+   "sha256": "f7af91015384a45d6185e6132c0e0db125888fdadc8124187836104b83ff85fa",
+   "size": 639
+  },
+  "record": {
+   "commit": "4729e1cfb1666a6817ee449e6eb8f5261351818d",
+   "input": "captures",
+   "job": "packages/congress_api/src/congress_api/cli/captures_ingest.py",
+   "lockfile_digest": "2f7f2579d08f497610f8df35c84f01a84a534362a92588c8fb4b11599884da5c",
+   "selector": {
+    "kind": "native_table",
+    "metadata_location": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/captures/generation/lake/captures/metadata/00035-7eec9917-b718-4a1f-8871-f2505af1cb17.metadata.json",
+    "schema_id": 0,
+    "snapshot": 1601006186493124785,
+    "table_uuid": "01a1d2fb-5838-705d-9e5f-094fb3198b50"
+   },
+   "version": 1
+  }
+ },
+ "selector": {
+  "kind": "native_table",
+  "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures_df55_20261113/metadata/00001-01a1d311-d1af-7e82-b24c-e98d1157f3c0.gz.metadata.json",
+  "schema_id": 0,
+  "snapshot": 4841796116729777945,
+  "table_uuid": "01a1d311-21a3-7110-8a99-a7632a7b93c9"
+ },
+ "source": {
+  "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/implementation/ct-release-20261112T2215/captures/export-v2/captures.parquet",
+  "sha256": "3ea7cb9ad22dd7be2fa5f377cbbbef8486b43273bb48c25022a02c5de296611a",
+  "size": 166325208
+ },
+ "verified": "EXCEPT ALL both ways against the source file",
+ "version": 1
+}

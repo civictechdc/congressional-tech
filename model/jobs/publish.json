@@ -2,13 +2,13 @@
   "version": 1,
   "model_spec": {
     "path": "publish-model.json",
-    "sha256": "4102c1ff64422690c9638cbaca48c542fdc106f5d343a8afaa2bed9f55074291",
-    "size": 6002
+    "sha256": "40c34897cf84166c037347588381fb94c03bbb55d1e5b8a9ff658635267d2178",
+    "size": 6017
   },
   "daily": {
     "path": "publish-daily.json",
-    "sha256": "2b8f8bcd08f541606b7524a0019ba4241634cf6e53df32506341aa2542f9b019",
-    "size": 2960
+    "sha256": "13c194f071ea57ace594666ed7f213b4326b7c158fa57fd7e0259acc68281644",
+    "size": 2988
   },
   "bucket": "congressional-tech-raw",
   "work": "../../output/archive-publish",
@@ -32,9 +32,9 @@
       "size": 2147
     },
     "captures": {
-      "path": "producers/captures.json",
-      "sha256": "5f1b11c58b3fdffb3458e3953697da231e659a8eb01fab68add2cb59ca786865",
-      "size": 2084
+      "path": "producers/captures-df55-20261113.json",
+      "sha256": "de6441afaf40884642d52064043481b56d33824ebf9748490775062f0bdde7d3",
+      "size": 1903
     },
     "committee_records": {
       "path": "producers/committee_records-bill-20261112.json",

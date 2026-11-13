@@ -5,7 +5,7 @@
   "work": "../../output/archive-backfill",
   "tables": {
     "captures": {
-      "name": "captures",
+      "name": "captures_df55_20261113",
       "namespace": [
         "archive_r1b"
       ]
@@ -56,9 +56,9 @@
       "size": 2147
     },
     "captures": {
-      "path": "producers/captures.json",
-      "sha256": "5f1b11c58b3fdffb3458e3953697da231e659a8eb01fab68add2cb59ca786865",
-      "size": 2084
+      "path": "producers/captures-df55-20261113.json",
+      "sha256": "de6441afaf40884642d52064043481b56d33824ebf9748490775062f0bdde7d3",
+      "size": 1903
     },
     "committee_records": {
       "path": "producers/committee_records-bill-20261112.json",
