@@ -112,8 +112,7 @@ class ParserWorker:
         rss = resident_bytes(self._process.pid)
         self.last_rss_samples += 1
         self.last_peak_rss_bytes = max(self.last_peak_rss_bytes or 0, rss)
-        if rss > self.memory_bytes:
-            raise _Failure('memory_limit')
+        return rss
 
     def _start(self):
         command = [sys.executable, '-I', str(Path(__file__).resolve()),
@@ -136,7 +135,7 @@ class ParserWorker:
             selector.register(self._process.stdout, selectors.EVENT_READ)
             while True:
                 # Sample before accepting even an immediately buffered result.
-                self._sample_rss()
+                rss = self._sample_rss()
                 if b'\n' in self._buffer:
                     line, _, rest = self._buffer.partition(b'\n')
                     self._buffer = bytearray(rest)
@@ -147,6 +146,8 @@ class ParserWorker:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise _Failure('timeout')
+                if rss > self.memory_bytes:
+                    raise _Failure('memory_limit')
                 for key, _ in selector.select(min(remaining, self.rss_sample_interval_seconds)):
                     chunk = os.read(key.fd, min(65536, self.max_output_bytes + 1 - len(self._buffer)))
                     if not chunk:

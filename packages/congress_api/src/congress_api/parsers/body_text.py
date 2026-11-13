@@ -100,6 +100,12 @@ def page_offsets(pages):
     return tuple(offsets)
 
 
+def _persisted_extraction_error(error):
+    """Keep the declared PDF failure family while diagnostics gain a typed reason."""
+    from spicy_docs.extraction import NativeGeometryError
+    return 'ExtractionError' if isinstance(error, NativeGeometryError) else type(error).__name__
+
+
 def markup_text(data, parser):
     """``html_text``/``xml_text``: spicy-docs' markup reader, ``<pre>`` layout kept; one page."""
     from spicy_docs.extraction.body_text import rendition_text
@@ -265,11 +271,14 @@ class _PageRun:
             raise
         except Exception as error:  # one page's own failure; the reading records it
             self.failed.append(page.number)
-            self.errors[page.number] = type(error).__name__
+            self.errors[page.number] = _persisted_extraction_error(error)
             self.diagnostics[page.number] = traceback.format_exc(limit=8)
             if self.evidence:
-                self.evidence(dict(event='page_failed', page=page.number, error_type=type(error).__name__,
-                                   error=str(error)))
+                event=dict(event='page_failed', page=page.number, error_type=type(error).__name__, error=str(error))
+                from spicy_docs.extraction import NativeGeometryError
+                if isinstance(error,NativeGeometryError):
+                    event.update(native_geometry_reason=error.reason,native_geometry_details=error.details)
+                self.evidence(event)
             return PageContent((), ())
         self.observe(content, page.number)
         return content
@@ -332,7 +341,7 @@ def pdf_text(data, *, strategy, page_deadline_seconds, evidence=None, checkpoint
     except (OcrRequired, PageDeadline, MemoryError, CheckpointError):
         raise
     except Exception as error:  # an unopenable, encrypted or pageless document
-        return Reading('error', type(error).__name__, diagnostic=traceback.format_exc(limit=8))
+        return Reading('error', _persisted_extraction_error(error), diagnostic=traceback.format_exc(limit=8))
     pages = len(body.pages)
     if evidence:
         for page, (text, cleanup) in enumerate(zip(body.pages, body.record.pages), start=1):

@@ -317,7 +317,10 @@ def test_not_a_pdf_is_an_error_reading():
 def test_html_pre_transcript_keeps_its_layout_and_drops_the_title():
     reading = derive(HTML, 'html_text')
     assert reading.text == 'STATEMENT OF THE WITNESS\n\n    Mr. Chairman, thank you.\n'
-    assert reading.page_offsets == (0,) and reading.fields == {'page_count': 1}
+    assert reading.page_offsets == (0,) and reading.fields['page_count'] == 1
+    assert reading.fields['source_sha256'] == hashlib.sha256(HTML).hexdigest()
+    assert reading.fields['source_encoding'] == 'utf-8'
+    assert reading.fields['encoding_basis'] == 'utf-8'
 
 
 def test_web_page_text_has_no_script_or_css_and_block_elements_do_not_glue_words():

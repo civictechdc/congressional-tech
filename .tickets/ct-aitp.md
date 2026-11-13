@@ -1,6 +1,6 @@
 ---
 id: ct-aitp
-status: in_progress
+status: closed
 deps: []
 links: [ct-a73a, ct-n3ik, ct-hz8y, ct-yy07]
 created: 2026-11-13T18:46:40Z
@@ -38,3 +38,7 @@ Offline extension prepared: exact decoded-source SHA/page overrides reuse matche
 **2026-11-13T21:20:54Z**
 
 Final exact-commit checks:124 passed,1 Vision declaration test deselected across six focused files (partial lane). Actual supervised fresh and resumed outputs match text, offsets, scripted recognition provenance and GPO cleanup diagnostics; source/policy corruption, absent last page and out-of-range override controls pass. Direct input/intermediary/output author review is retained at repairs/pdf-offline-20261113/data-review.md with artifact-hashes.json; parent has the exact chains for independent review. Final process-tree measurement:0.75 GiB RSS/0.78 GiB physical. No real recognition or recovery ran.
+
+**2026-11-13T21:52:35Z**
+
+Offline acceptance complete on the composed candidate. An author-independent reviewer read the source fixture page, full checkpoint and worker-failure records, and actual fresh/resumed output: page one survives two page-two exits, only the exact scripted replacement runs, offsets remain 0/86, and no partial document completes. Retained checkpoint storage is 6,044 bytes. See repairs/pdf-offline-20261113/checkpoint-independent-review.md and its hash inventory. The final composed run passed the producer/checkpoint cases; a follow-up 26-test worker/daily run also passed after correcting a test harness method name. These are focused partial-lane results, not a full-lane claim. Real recognition, missing-source content and corpus quality remain in ct-hz8y/ct-yy07/ct-t4p3/ct-n3ik/ct-kfsd. OCR remains paused and all five frozen recovery source hashes still match.

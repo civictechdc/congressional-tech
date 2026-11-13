@@ -244,6 +244,56 @@ The small local sample does not establish corpus throughput or qualify the
 complete non-OCR cohort. Existing readings remain retained; ct-cbkz owns that
 measured reparse and selection work. OCR stays paused and refetch stays deferred.
 
+The composed offline recovery candidate now pins
+`spicy-docs==0.85.0+ctreaders.20261113.2`, source commit
+`cc5baaca34e5da24d35040611da4e26bcd3a936c`. Its vendored receipt verifies the
+source and reproducible wheel. HTML/XML and composed WARC declarations change
+for explicit encoding evidence, empty internal DTD compatibility, qualified
+House amendment cleanup and inline punctuation. Markup readings also retain the
+original digest, encoding decision and cleanup record. Existing readings remain
+retained; this change does not select the repaired historical cohort.
+
+The PDF declaration stays unchanged. Exact-page overrides are opt-in and bind
+source, page and replacement identity; they do not change default extraction.
+Request memory samples no longer inherit a previous request's lifetime peak.
+Native geometry diagnostics now distinguish `zero_area` and `outside_page`,
+while persisted failures retain the established `ExtractionError` family. A
+direct comparison of the retained c848 failure confirms every persisted field
+matches; diagnostics retain the precise cause. Native/scripted checkpoint
+fixtures prove resume mechanics, not real recognition quality. The fixed PDF
+sample and existing generic page-reader samples also remain unchanged. These
+bounded checks support the unchanged declarations, not whole-corpus equivalence.
+
+The filename producer also hashes the worker source. Its fingerprint
+`43a8bbff5938d1d880f5d599e0d53ce06978e57c963917c1eac83b044ed70295`
+maps explicitly to the existing catalog version `e6e2699343ebae7fd149702114d58360a3bd62a7331d19db58215edc042aba70`.
+The filename parser package, inputs, schema and imported dependency versions are
+unchanged. RSS sampling records per-request measurements, while buffered-result,
+output-limit, timeout and memory-refusal precedence remain as before. A native
+three-filename replay using the original and current worker preserves the actual
+worker and staged rows for the introduced/reported H.R. 535 versions and House
+Print 52431. Independent direct review and focused worker/failure checks support
+this exact equivalence decision. Evidence is under the feed repair directory's
+`filename-compatibility/`; this does not establish new filename quality or
+requalify old source content.
+
+The new `house_floor_feed` declaration reads retained House Atom feeds as
+structured discovery observations. It has its own 64 MiB decoded bound; ordinary
+page readers keep their 24 MiB bound. The model preserves each entry/link
+occurrence and uses successful feed readings instead of duplicate flattened
+generic links. The explicit `lake.readings.stage`/`run` parser is available for
+bounded offline work. It is not enabled in the daily job: that path currently
+supports only the qualified HTML metadata scope. Adding an optional reader does
+not invalidate the existing daily baseline. See [House feed reader](house-floor-feed.md).
+
+An XML recovery candidate is a separate inspection artifact, never an accepted
+reading. `python -m congress_api.retention.markup_repair --input ORIGINAL
+--sha256 SHA256 --output-dir FRESH_DIRECTORY` preserves original and candidate
+bytes, diagnostics, ordered events and text. Altered candidates remain partial
+and unqualified even if their XML is well formed. A missing ending is a source
+gap; closing tags cannot recover its words. See the exact per-ticket direct
+reviews in the retained `coordination/ocr-offline-ticket-matrix-20261113.md`.
+
 The lake keys reading rows by body digest, parser, and the declared version in
 `congress_api.lake.reading_versions`. The combined unreadable-decision version
 also depends on the four leaf versions and the combined worker limits.

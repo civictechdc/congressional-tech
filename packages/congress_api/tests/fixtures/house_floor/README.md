@@ -16,3 +16,10 @@ request was made to prepare this fixture; it reuses the CT retained raw archive.
 
 Original-source screenshots and the extraction receipt are retained under the
 CT main checkout's `.cache/archive-release/ocr-recovery-20261113/repairs/house-floor-feed-20261113/`.
+
+`retained-link-repair.xml` retains exact entries 1047 and 1048 under the original
+feed header. SHA-256: `efee78bb99aa719c8c77d58659def76859cb0845e0f8bf3829a5bea406596626`. Entry 1047
+states a PDF href with an extra leading slash; entry 1048 states the exact intended
+absolute GovInfo URL. Original XML at lines 411074-411115 and 411424 was read
+directly alongside the actual Regs/CT link outputs. The reader retains both
+literal observations and offers a separately explained repair candidate.

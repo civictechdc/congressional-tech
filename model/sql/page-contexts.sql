@@ -1,9 +1,7 @@
 -- Reduce repeated fetches before unnesting a page's links.
 WITH discovery_bodies AS (
- SELECT body_sha,bool_or(is_feed) AS is_feed FROM (
-  SELECT body_sha,false AS is_feed FROM page_facts WHERE status='completed'
-  UNION ALL SELECT body_sha,true AS is_feed FROM house_floor_feed_readings
- ) GROUP BY body_sha
+ SELECT body_sha,false AS is_feed FROM page_facts WHERE status='completed'
+ UNION ALL SELECT body_sha,true AS is_feed FROM house_floor_feed_readings
 )
 SELECT encode(c.sha256,'hex') AS page_body,c.context_url,c.member_path,
  min(arrow_cast(cast(c.retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))')) AS first_good_at,

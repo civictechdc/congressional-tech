@@ -93,6 +93,20 @@ def test_input_bound_refuses_before_invocation(parser):
         assert run.parse('one', b'ok')['value']['count'] == 1
 
 
+def test_rss_observation_preserves_already_buffered_result_precedence(parser, monkeypatch):
+    from congress_api.retention import parser_worker
+    with worker(parser) as run:
+        assert run.parse('first', b'valid')['status'] == 'completed'
+        # A result already delivered by the child keeps the established policy:
+        # record the new measurement, but accept it before timeout/memory checks.
+        run._buffer.extend(b'{"completed":"before-the-next-poll"}\n')
+        monkeypatch.setattr(parser_worker, 'resident_bytes', lambda pid: 512 << 20)
+        assert run._response(time.monotonic() - 1) == {'completed': 'before-the-next-poll'}
+        assert run.last_peak_rss_bytes == 512 << 20
+        with pytest.raises(parser_worker._Failure, match='timeout'):
+            run._response(time.monotonic() - 1)
+
+
 def test_startup_error_is_not_an_unreadable_input(tmp_path):
     with pytest.raises(RuntimeError, match='startup'):
         with worker(str(tmp_path / 'missing.py') + ':parse'):

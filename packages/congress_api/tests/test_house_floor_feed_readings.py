@@ -80,6 +80,26 @@ def test_large_route_bound_does_not_relax_generic_xml():
     with pytest.raises(MemoryError): readings._bound_page_parse(data, 'xml')
 
 
+def test_corroborated_link_repair_keeps_literal_and_reason():
+    row = reading_row((FIXTURE.parent / 'retained-link-repair.xml').read_bytes())
+    target = 'https://www.govinfo.gov/content/pkg/CPRT-118HPRT52431/pdf/CPRT-118HPRT52431.pdf'
+    assert row['links'][20]['href'] == target
+    entry = json.loads(next(item['value'] for item in row['fields'] if item['field'] == 'entry:0'))
+    detail = next(item for item in entry['link_details'] if item['index'] == 20)
+    assert detail['href'] == '/' + target
+    assert detail['resolved_url'] == 'http://docs.house.gov/' + target
+    assert detail['repair_url'] == target
+    assert detail['repair_basis'] == 'remove_leading_slash_exact_target_stated_in_feed'
+
+
+def test_new_feed_reader_preserves_existing_daily_baseline_and_requires_explicit_run():
+    from congress_api.lake.daily import derived_parsers, derived_scopes
+    spec = json.loads((ROOT / 'model/jobs/publish-daily.json').read_text())
+    assert set(derived_scopes(spec)) == {'html_metadata'}
+    with pytest.raises(ValueError, match='supported daily parsers'):
+        derived_parsers(dict(spec, derived_parsers=['house_floor_feed']))
+
+
 def test_model_discovers_embedded_links_and_preserves_revision_attribution(tmp_path):
     from viewer_publication.archive_model import link_steps, registry_inputs
     body = FIXTURE.read_bytes(); digest = hashlib.sha256(body).digest()

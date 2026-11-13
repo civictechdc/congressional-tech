@@ -29,6 +29,12 @@ import tomllib
 # entries are removed; meeting_records, playlist_records, and video_records keep
 # their published IDs under reviewed equivalence.
 _REVIEWED_PRODUCER_VERSIONS = {
+    # 2026-11-13: request RSS observation changes parser_worker bytes only.
+    # Filename source, SQL, schema, dependencies and rejection precedence stay
+    # unchanged; completed buffered output still precedes timeout/memory checks.
+    # Bounded native filename/worker checks and the decision are in development.md.
+    "43a8bbff5938d1d880f5d599e0d53ce06978e57c963917c1eac83b044ed70295":
+        "e6e2699343ebae7fd149702114d58360a3bd62a7331d19db58215edc042aba70",
     # meeting_records.congress_gov
     "d3ffb805e7de5cf81e785b401dbd35d43579287644c4edb2c15cd9ebbcede3e6":
         "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
