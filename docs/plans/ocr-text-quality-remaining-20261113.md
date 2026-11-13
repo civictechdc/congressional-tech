@@ -23,12 +23,23 @@ The GPO cleanup and optional diagnostic evidence are merged in [PR #151](https:/
 
 1. Keep OCR paused. The frozen recovery and follow-up OCR jobs remain stopped; the paused-resume guard stays in force. Code, tickets, retained-data analysis and native/scripted fixtures can progress.
 2. Reuse the qualified mixed-version selection and interrupted-page mechanisms. Source-reviewed corrected candidates still need exposure/selection/publication qualification. A completed current attempt awaiting qualification must not be repeatedly extracted.
-3. Use the composed spicy-docs candidate for ct-cbkz/ss-mkxe and ct-f6hr, retaining the merged GPO repair. The frozen non-OCR candidate inventory contains 310,964 HTML/XML bodies and about 11.92 GB of existing text; measure representative and largest-input CPU cases before estimating or running bulk parsing. Candidate and successful-text census populations differ. WARC requires separate payload/reachability qualification.
+3. Use the composed spicy-docs candidate for ct-cbkz/ss-mkxe and ct-f6hr, retaining the merged GPO repair. The frozen non-OCR candidate inventory contains 310,964 HTML/XML bodies, 24.53 GB of original bytes and about 11.92 GB of existing text. Capture families nominate 69,609 MODS/PREMIS bodies and 9,568 meeting/witness XML bodies; resolve their roles separately from document prose before dispatch. Three larger native cases totaling 12.75 MB parsed in 1.0072 seconds at 0.26 GiB watchdog peak; independently reviewed passages retain substantive text, with table structure and source graphics still limited. This does not measure cold retrieval, actual producer batches, the largest eligible inputs or corpus throughput. Reconcile custody separately, preserving the 400 identities with `copy_usable=false`. Candidate and successful-text census populations differ. WARC requires separate payload/reachability qualification.
 4. Diagnose and repair only identified bad PDF pages/bodies. Reuse qualified pre-cleanup observations where identity permits; do not re-OCR all PDFs. The 18,777-body triage set contains candidates, not that many confirmed failures. Its 146 reviewed body/page actions include controls and unresolved candidates. Do not repeat the text census or interpret it as source completeness.
 5. Use maintained region, Tesseract or LLM/VLM capabilities for justified complex cases with exact settings and independent omission/value/order checks. The five conditional LLM candidate bodies have no qualified LLM results.
 6. Publish qualified selections through existing gates after cohort acceptance. Retain prior readings/refusals; defer compaction. Keep publisher refetch deferred under ct-z4w5.
 
 Operational completion and source completeness remain separate. Preserve valid empty results, old refusals and recovery evidence. Carry forward only readings proved unaffected, and declare semantic changes rather than restamping old rows. The current recovery does not silently adopt the new cleanup policy.
+
+Two damaged-PDF source reviews also show why repair success needs content
+review. One retained body contains only 1,553 bytes of a declared four-page PDF
+and exposes no recoverable pages. The Walling body contains an intact earlier
+nine-page revision before a truncated fourteen-page update. Its exact original
+prefix `[0:336711]` is retained as a separately hashed inspection candidate;
+it is not a complete replacement for the later document. A generic qpdf rewrite
+passes its structural check while dropping testimony pages and blanking a
+partially readable disclosure form. Named reviewers rejected that candidate.
+No selection, checkpoint reuse, recognition or refetch follows from these
+repairs. Evidence is under `repairs/native-pdf-repair-20261113/`.
 
 ## The large XML case is a feed
 
