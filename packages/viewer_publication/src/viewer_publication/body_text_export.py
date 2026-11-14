@@ -67,8 +67,12 @@ def export_steps(versions, *, max_json_bytes, selection=None):
     selected = selection or body_text_selection.load(None, versions)
     return [
         dict(name='selected_body_text', sql=body_text_selection.selected_sql('body_text', selected)),
-        dict(name='saved', materialize=True,
+        dict(name='release_saved', materialize=True,
              sql='SELECT DISTINCT saved_body FROM detail WHERE saved_body IS NOT NULL'),
+        dict(name='saved', materialize=True, sql='''SELECT s.saved_body FROM body_text_exclusions e
+            RIGHT ANTI JOIN release_saved s ON decode(e.body_sha256,'hex')=s.saved_body'''),
+        dict(name='excluded_saved', materialize=True, sql='''SELECT s.saved_body,e.source_role
+            FROM body_text_exclusions e JOIN release_saved s ON decode(e.body_sha256,'hex')=s.saved_body'''),
         dict(name='text_keys', materialize=True, sql='''SELECT b.body_sha,b.parser FROM saved s RIGHT SEMI JOIN
             (SELECT body_sha,parser FROM selected_body_text) b ON s.saved_body=b.body_sha'''),
         # A body has one sniffed format, so one parser; min() keeps the export single-row anyway.
@@ -91,18 +95,21 @@ def export_steps(versions, *, max_json_bytes, selection=None):
 
 def coverage_queries(versions, *, with_readings, with_unreadable):
     queries = [
-        dict(name='saved', sql='SELECT count(*) AS n FROM saved'),
+        dict(name='saved', sql='SELECT count(*) AS n FROM release_saved'),
+        dict(name='eligible_saved', sql='SELECT count(*) AS n FROM saved'),
+        dict(name='excluded_saved', sql='''SELECT source_role,count(*) AS n FROM excluded_saved
+            GROUP BY source_role ORDER BY source_role'''),
         dict(name='rows', sql='''SELECT parser,count(*) AS rows,coalesce(sum(ocr_page_count),0) AS ocr_pages,
             count(*) FILTER (WHERE ocr_page_count>0) AS ocr_bodies,count(*) FILTER (WHERE truncated) AS truncated,
             max(json_bytes) AS max_json_bytes FROM exported GROUP BY parser ORDER BY parser'''),
         dict(name='parser_conflicts', sql='SELECT count(*) AS n FROM chosen WHERE parsers>1'),
     ]
     if with_readings:
-        queries.append(dict(name='readings', sql='''SELECT r.parser,r.status,count(*) AS n FROM saved s RIGHT SEMI JOIN
+        queries.append(dict(name='readings', sql='''SELECT r.parser,r.status,count(*) AS n FROM release_saved s RIGHT SEMI JOIN
             (SELECT body_sha,parser,status FROM selected_body_readings) r ON s.saved_body=r.body_sha
             GROUP BY r.parser,r.status ORDER BY r.parser,r.status'''))
     if with_unreadable:
-        queries.append(dict(name='unreadable', sql='''SELECT u.parser,count(*) AS n FROM saved s RIGHT SEMI JOIN
+        queries.append(dict(name='unreadable', sql='''SELECT u.parser,count(*) AS n FROM release_saved s RIGHT SEMI JOIN
             (SELECT decode(body_sha256,'hex') AS body_sha,parser FROM selected_body_unreadable) u
             ON s.saved_body=u.body_sha GROUP BY u.parser ORDER BY u.parser'''))
     return queries
@@ -148,7 +155,8 @@ def export(*, engine, work, body_text, detail, readings_table=None, unreadable_f
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
     inputs = [table_input('body_text', body_text), dict(name='detail', kind='parquet', path=str(Path(detail).resolve())),
-              body_text_selection.selection_input(work, accepted)]
+              body_text_selection.selection_input(work, accepted),
+              body_text_selection.publication_exclusions_input(work, accepted)]
     selection_steps = []
     if readings_table is not None:
         inputs.append(table_input('readings', readings_table))
@@ -188,6 +196,9 @@ def export(*, engine, work, body_text, detail, readings_table=None, unreadable_f
         parser_versions=dict(sorted(versions.items())),
         selection=accepted['identity'],
         coverage=dict(saved_bodies=counts['saved'][0]['n'],
+            eligible_saved_bodies=counts['eligible_saved'][0]['n'],
+            excluded_by_source_role={r['source_role']: r['n'] for r in counts['excluded_saved']},
+            unmatched_exclusions=len(accepted['excluded_bodies']) - sum(r['n'] for r in counts['excluded_saved']),
             bodies_with_text={p: r['rows'] for p, r in by_parser.items()},
             ocr_pages=sum(r['ocr_pages'] for r in by_parser.values()),
             ocr_bodies=sum(r['ocr_bodies'] for r in by_parser.values()),

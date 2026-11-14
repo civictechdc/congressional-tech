@@ -62,6 +62,41 @@ plan and export pointer. Historical rows retain their actual version. Physical
 compaction, corpus-wide equivalence and production publication remain separate
 acceptance work.
 
+### Exclude reviewed response bodies from document-text publication
+
+Manifest version 2 retains the same actual-key selection and qualification
+report, and requires an additional `excluded_bodies` list:
+
+```json
+"excluded_bodies": [
+  {
+    "body_sha256": "<reviewed raw response SHA-256>",
+    "source_role": "error_response",
+    "reason": "Qualification report T001: retained source is an error response."
+  }
+]
+```
+
+Allowed roles are `error_response`, `wait_response` and `feed`. The pinned
+qualification report must justify each source-body classification from raw
+evidence, including quotation and ordinary-document controls. An empty reading,
+a short result or a parser failure cannot justify a body-level exclusion: a
+useful older reading may exist. This mechanism does not run a detector or
+automatically copy review-priority labels into a manifest.
+
+The export removes only those exact bodies from document prose, including an
+otherwise accepted override. Actual-key validation still runs: exclusion cannot
+hide a wrong digest or a missing selected row. It preserves
+their completed reading rows, retained text, capture history and the planner's
+settled work. A feed exclusion concerns prose publication; its structured
+entries and links remain available through their dedicated reader. The pointer
+retains total saved-body coverage and separately reports eligible bodies,
+excluded bodies by source role, and listed exclusions absent from this release.
+Its manifest digest pins every reason and the review report. Version 1 retains
+its existing selection behavior, and an empty version-2 list excludes nothing.
+Actual index publication must consume this eligible export and be checked
+through ct-0a35; this option alone does not change a hosted search index.
+
 ## Retain completed pages across process or batch failure
 
 Set `page_checkpoints` in the producer spec to an explicit durable directory
