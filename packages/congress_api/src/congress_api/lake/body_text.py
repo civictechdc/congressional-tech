@@ -511,7 +511,7 @@ def _parse_payload(payload):
     outlived its deadline) or a ``row`` with ``text`` naming the file, its bytes and SHA-256.
     """
     from congress_api.parsers import body_text as derivation
-    from congress_api.parsers.markup_recovery import RecoveryInputError, read_reviewed_markup
+    from congress_api.lake.markup_recovery import RecoveryInputError, read_reviewed_markup
     from congress_api.retention.page_checkpoints import CheckpointError, adapter
     request = json.loads(payload)
     try:
@@ -636,7 +636,7 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
     recovery_cases = {}
     if markup_recovery is not None:
         from itertools import islice
-        from congress_api.parsers.markup_recovery import stage_cases
+        from congress_api.lake.markup_recovery import stage_cases
         if recovery or origin is not None or strategy != DEFAULT_STRATEGY or page_checkpoints is not None:
             raise ValueError('Reviewed markup recovery requires bounded local originals and the default no-OCR strategy')
         items = list(islice(items, MAX_BATCH_ITEMS + 1))

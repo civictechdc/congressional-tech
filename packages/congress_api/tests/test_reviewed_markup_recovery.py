@@ -8,7 +8,7 @@ import pytest
 from body_text_fixtures import STAMP, committed, lake
 from congress_api.lake import body_text
 from congress_api.lake.reading_versions import MARKUP_RECOVERY_DECLARATIONS, MARKUP_RECOVERY_VERSIONS
-from congress_api.parsers import markup_recovery as recovery
+from congress_api.lake import markup_recovery as recovery
 
 HTML = b'<meta charset="utf-8"><p>Jos\xe9 requested the hearing on March 31.</p>'
 HTML_CANDIDATE = '<meta charset="utf-8"><p>José requested the hearing on March 31.</p>'.encode()
