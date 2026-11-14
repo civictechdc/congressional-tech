@@ -5,8 +5,9 @@ text is useful for full-text search (FTS). The owner clarified on 14 November th
 perfect transcription and LLM review of every document are not required. Start
 with retained status and page/text statistics, then spot-check a small sample of
 suspected problems and ordinary outputs. Missing measurements are not defects.
-A review band never discards a source or authorizes OCR. OCR remains paused and
-publisher refetch remains deferred.
+A review band never discards a source or authorizes execution. On 14 November
+the user separately authorized targeted OCR and refetch in the background. The
+assessment remains non-dispatching and retains the original paused-run evidence.
 
 `ct-n3ik` owns this cheap triage. Selective backend comparison and actual repair
 acceptance remain separate work. This extends the existing inventory rather than
@@ -57,7 +58,7 @@ frozen after batch 205 by actual reading and output identities. It accounts for
 overlap. Historical refusals and alternative versions remain separate records.
 These are retained extraction states, not source-quality or accepted-text counts.
 
-The combined PDF metadata records 296,686 bodies and 8,141,096 page-offset slots.
+That frozen batch-205 PDF metadata records 296,686 bodies and 8,141,096 page-offset slots.
 This larger figure includes 376,402 recovery slots absent from the earlier
 7,764,694-slot census. Physical page completeness still needs source evidence.
 No new token total was calculated. Document-body exposure remains explicitly
@@ -101,12 +102,14 @@ An external recovery process subsequently resumed at 05:34/05:40 UTC on
 14 November. The coordinator restored the pause guard and stopped recovery at
 the batch-207 boundary at 05:50 UTC. Four additional outputs committed before
 shutdown, leaving 206 targets pending and 1,320 completed recovery outputs.
-They remain outside the reviewed batch-205 reconciliation and PDF features;
-neither quality, integrity nor accepted selection follows from their completion.
+They remain outside the original batch-205 reconciliation and feature generation;
+their later additive integrity and feature evidence is recorded below. Neither
+quality nor accepted selection follows from their completion.
 The five frozen extraction source pins still match, and all seven identified
 recovery processes have exited. The separate operational evidence is
 `ocr-recovery-20261113/coordination/pause-conflict-20261114/` and
-`pause-preserved-final-20261114.json` in its parent directory. OCR remains paused.
+`pause-preserved-final-20261114.json` in its parent directory. The old run remains
+frozen; the later authorized resume uses a separate checkpointed recovery lane.
 
 The separate `late-batch207-20261114/` packet preserves the four new metadata
 chains and the original pause record's replacement locator. The later
@@ -114,8 +117,54 @@ chains and the original pause record's replacement locator. The later
 hashes, UTF-8 byte counts, offsets and OCR provenance. Together with the prior
 receipts, stored-output integrity now covers all 1,320 completed recovery
 results. The staged text file is absent, so staged-to-committed parity remains
-unknown; source accuracy, current-version compatibility, page features and
-accepted selection remain unqualified for the four late results.
+unknown; source accuracy, current-version compatibility and accepted selection
+remain unqualified for the four late results.
+
+### Current incremental features and exception queue
+
+The separate `late-batch207-features-20261114/` packet now adds the four missing
+PDF feature rows under the unchanged `pdf-page-features-20261113-1` definition.
+It reads only 4,394,643 retained text bytes, takes 0.301 seconds at 0.116 GiB
+peak RSS, and reuses every prior feature partition. Combined coverage is
+**296,690 PDF bodies / 8,143,043 recorded page-offset slots**. All four additions
+have only weak possible-blank signals and rank `review_later`; that is not a
+source defect or an instruction to repeat OCR. No original PDF was opened.
+
+`exception-queue-20261114/checkpoint-v2/` combines those features, recovery
+states, the frozen markup checkpoint, response examples and existing direct
+review findings by exact identities. It contains **45,102 candidate/control
+rows**, of which **1,166** have priority 0–2. The metadata-only build takes
+1.432 seconds at 0.889 GiB peak RSS. It accounts for all 2,632 recovery targets,
+all 400 examples, the four late outputs and the valid dedicated feed. These are
+review priorities, not 45,102 defective documents. Historical source-review
+findings without a matching current output remain explicitly unbound. All rows
+leave selection unverified and dispatch disabled. Independent review approved
+the identity/state accounting. The later `exception-queue-20261114/final/`
+generation reuses that builder with all 310,963 final markup attempts: 310,928
+completed and 35 refused, plus one separate valid feed. It has 45,106
+candidate/control rows and 1,182 priority 0–2 rows, built in 1.515 seconds at
+0.91 GiB with no payload read. The old recovery snapshot still contributes 206
+pending targets; its stored pause labels are historical inputs, not current
+dispatch authorization. The final folder README records that distinction.
+
+`publication-state-20261114/` adds current document associations without
+rewriting that frozen queue. The checked release
+`4b9a7bd126cc17e39dfbe7f8fabafbdb7251dcd32576277f308916f469c9bab1`
+contains 324,013 document rows. Exactly 823 priority 0–2 queue rows have an
+unhidden document association; all 400 examples have none. Two other known
+error-page bodies and all 14 privately qualified PDF correction/control bodies
+each have one unhidden document association. The hash-verified metadata check
+and independent review do not establish accepted text selection or search
+coverage. The additive `publication-state-final-20261114/` overlay binds the
+final queue to the same release: 834 priority 0–2 rows have unhidden document
+references, with the same two error bodies and zero of the 400 examples.
+The observed publication manifest has no text index and the checked
+body-text export pointer returns 404. ct-en4n owns error-response eligibility;
+ct-m704 and ct-0a35 own publication and actual search readback.
+
+Any further bulk manual PDF/page audit uses `gpt-6.1-terra` agents with medium
+reasoning. Reuse exact earlier direct reviews and limit new reading to the
+remaining evidence gap; metadata accounting does not require a PDF audit.
 
 ## Reuse the work already retained
 
@@ -174,7 +223,7 @@ deduplicating equal prose must not collapse their identities or links.
    a document. Distinguish error, waiting, zero-payload, feed, manifest/metadata,
    portfolio/container, legitimate empty and unassessed. A saved error body can
    coexist with a successful retained copy; reconcile that copy before adding
-   an unresolved source to the deferred refetch list.
+   an unresolved source to the reviewed refetch list.
 
 4. **Read original structure for nominated pages and a random control sample.**
    Use spicy-docs' selected-page/native observation APIs for PDF bounds, crop,
@@ -314,8 +363,8 @@ predicate, followed by combined-generation invariants.
 Deliver the cheap FTS triage queue and a small independent spot check first,
 with major misses, false alarms and missing evidence recorded. Keep source-feature
 expansion, native/backend and cost comparisons, qualified repairs, and
-selection/publication as separately scoped follow-ups. OCR remains paused and
-publisher refetch remains deferred.
+selection/publication as separately scoped follow-ups. Targeted OCR and refetch
+are now separately authorized; this measurement command never dispatches them.
 
 ## Existing ticket ownership and remaining gates
 
@@ -325,11 +374,11 @@ publisher refetch remains deferred.
 | `ct-hz8y` | Incomplete-native/vector detection and source-confirmed page recovery, including held-out omission controls. |
 | `ct-kfsd` | Historical cleanup exposure, retained-intermediate reuse, corrected selection/publication and composed-WARC qualification. |
 | `ct-cbkz`, `ct-f6hr` | Qualified non-OCR cohort/pilot, markup normalization, encoding/DOCTYPE compatibility and reparse acceptance. |
-| `ct-en4n`, `ct-z4w5` | Qualified response/container/feed roles, retained source reconciliation and deferred acquisition list. |
+| `ct-en4n`, `ct-z4w5` | Qualified response/container/feed roles, retained source reconciliation and reviewed acquisition list. |
 | `ct-55qo`, `ct-aitp`, `ct-a73a` | Actual reading selection, durable page reuse, and supervised request resource/recovery evidence. |
-| `ct-yy07`, `ct-t4p3` | Typed geometry fallback and page-local recognition crash policy; real recovered output remains gated by the OCR pause. |
+| `ct-yy07`, `ct-t4p3` | Typed geometry fallback and page-local recognition crash policy; qualify real recovered output in a separately scoped targeted run. |
 
 The cheap FTS screen and its small spot check may finish with documented blind
 spots and missing evidence. Source-feature expansion, native/backend comparison,
 qualified repairs and selection/publication require separately scoped work and
-evidence. OCR remains paused and publisher refetch remains deferred.
+evidence. The separately authorized recovery/refetch coordinators own execution.

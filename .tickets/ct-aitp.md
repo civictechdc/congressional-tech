@@ -42,3 +42,7 @@ Final exact-commit checks:124 passed,1 Vision declaration test deselected across
 **2026-11-13T21:52:35Z**
 
 Offline acceptance complete on the composed candidate. An author-independent reviewer read the source fixture page, full checkpoint and worker-failure records, and actual fresh/resumed output: page one survives two page-two exits, only the exact scripted replacement runs, offsets remain 0/86, and no partial document completes. Retained checkpoint storage is 6,044 bytes. See repairs/pdf-offline-20261113/checkpoint-independent-review.md and its hash inventory. The final composed run passed the producer/checkpoint cases; a follow-up 26-test worker/daily run also passed after correcting a test harness method name. These are focused partial-lane results, not a full-lane claim. Real recognition, missing-source content and corpus quality remain in ct-hz8y/ct-yy07/ct-t4p3/ct-n3ik/ct-kfsd. OCR remains paused and all five frozen recovery source hashes still match.
+
+**2026-11-14T15:08:53Z**
+
+The newly authorized targeted recovery lane is exercising the merged page-checkpoint implementation on a real1158-page retained PDF; checkpoints are being written before whole-body completion. Exact policy/source/tool pins and durable path are in repairs/ocr-checkpoint-resume-20261114/manifest.json and pilot-launch.json. This operational reuse does not reopen the already reviewed checkpoint mechanism or claim semantic acceptance of the new body. The old frozen worker lacks checkpoints and remains stopped.

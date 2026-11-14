@@ -3,6 +3,8 @@
 A manifest pins baseline versions and exceptions qualified by a retained report. The
 same predicate selects text, reading outcomes and active unreadable decisions. It does
 not change historical rows or authorize execution with a historical parser version.
+Version 2 can also exclude reviewed source bodies from document-text publication,
+without changing the reading keys used by the planner or their completion status.
 """
 from hashlib import sha256
 import json
@@ -22,11 +24,17 @@ def at_versions(versions, prefix=''):
 def load(path, versions):
     """Read a frozen manifest and verify its qualification report before using any key."""
     if path is None:
-        return dict(versions=dict(versions), overrides=[], identity=None)
+        return dict(versions=dict(versions), overrides=[], excluded_bodies=[], identity=None)
     path = Path(path).resolve()
     raw = path.read_bytes()
     value = json.loads(raw)
-    if set(value) != {'version', 'baseline_versions', 'qualification', 'overrides'} or value['version'] != 1:
+    fields = {'version', 'baseline_versions', 'qualification', 'overrides'}
+    if (not isinstance(value, dict) or not isinstance(value.get('version'), int)
+            or isinstance(value['version'], bool) or value['version'] not in (1, 2)):
+        raise ValueError('Invalid body-text selection manifest')
+    if value['version'] == 2:
+        fields.add('excluded_bodies')
+    if set(value) != fields:
         raise ValueError('Invalid body-text selection manifest')
     baseline = value['baseline_versions']
     if not isinstance(baseline, dict) or set(baseline) != set(versions):
@@ -54,14 +62,34 @@ def load(path, versions):
         if key in seen:
             raise ValueError('Duplicate body/parser selection')
         seen.add(key)
-    return dict(versions=baseline, overrides=value['overrides'],
-                identity=dict(sha256=sha256(raw).hexdigest(), qualification=proof,
-                              overrides=len(seen)))
+    excluded = value.get('excluded_bodies', [])
+    if not isinstance(excluded, list):
+        raise ValueError('Excluded bodies must be a list of reviewed source roles')
+    excluded_keys = set()
+    for row in excluded:
+        if (not isinstance(row, dict) or set(row) != {'body_sha256', 'source_role', 'reason'}
+                or not digest(row['body_sha256'])
+                or row['source_role'] not in {'error_response', 'wait_response', 'feed'}
+                or not isinstance(row['reason'], str) or not row['reason'].strip()):
+            raise ValueError('Invalid reviewed body publication exclusion')
+        if row['body_sha256'] in excluded_keys:
+            raise ValueError('Duplicate body publication exclusion')
+        excluded_keys.add(row['body_sha256'])
+    identity = dict(sha256=sha256(raw).hexdigest(), qualification=proof, overrides=len(seen))
+    if value['version'] == 2:
+        identity['excluded_bodies'] = len(excluded)
+    return dict(versions=baseline, overrides=value['overrides'], excluded_bodies=excluded, identity=identity)
 
 
 def selection_input(work, selection):
     return json_input(work, 'body_text_choices', selection['overrides'],
                       body_sha256='Utf8', parser='Utf8', parser_version='Utf8', status='Utf8', text_sha256='Utf8')
+
+
+def publication_exclusions_input(work, selection):
+    """Only the publication consumer uses these reviewed body roles; readers stay settled."""
+    return json_input(work, 'body_text_exclusions', selection['excluded_bodies'],
+                      body_sha256='Utf8', source_role='Utf8', reason='Utf8')
 
 
 def exception_versions(selection):

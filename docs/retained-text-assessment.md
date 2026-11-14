@@ -151,10 +151,33 @@ Example membership neither selects document text nor initiates refetch or OCR.
 
 This is the bounded recommendation layer of
 [the corpus assessment plan](plans/corpus-text-assessment-20261113.md).
-The frozen batch-205 inventory is reconciled, and retained PDF text features
-cover 296,686 bodies and 8,141,096 stored page-offset slots. Four later batch-207
-outputs have separate integrity evidence and are outside that feature generation.
-These results establish inventory and measurements, not source accuracy.
+The frozen batch-205 inventory is reconciled. Its 296,686 PDF feature rows are
+reused in place, and the additive `late-batch207-features-20261114/` packet now
+covers the four later outputs. Combined coverage is **296,690 bodies and
+8,143,043 stored page-offset slots**. The delta reads 4,394,643 retained text
+bytes in 0.301 seconds at 0.116 GiB peak RSS; it opens no PDF. These results
+establish inventory and measurements, not source accuracy.
+
+The independently reviewed `exception-queue-20261114/checkpoint-v2/` packet
+combines retained features, actual recovery/reparse outcomes, response roles
+and existing direct-review findings. It has 45,102 candidate/control rows and
+1,166 priority 0–2 rows; these are not defect counts. Its metadata-only build
+takes 1.432 seconds at 0.889 GiB peak RSS. All 2,632 recovery targets, all 400
+response examples and all four late PDF outputs are represented. The final markup
+generation now lives in `exception-queue-20261114/final/`: 45,106 candidate/control
+rows and 1,182 priority 0–2 rows, built in 1.515 seconds at 0.91 GiB. The original
+checkpoint is preserved. Its inherited pause labels describe frozen input states;
+they do not override the later user authorization for separate targeted recovery.
+
+`publication-state-20261114/` separately binds document associations to release
+`4b9a7bd126cc17e39dfbe7f8fabafbdb7251dcd32576277f308916f469c9bab1`.
+Exactly 823 priority 0–2 rows have unhidden document references; the 400 examples
+have none. Two other known error-response bodies do have unhidden references,
+so explicit source-role/search-eligibility handling remains necessary. These
+associations neither select readings nor establish indexed search coverage. The
+final-queue overlay at `publication-state-final-20261114/` finds 834 priority 0–2
+rows with unhidden references; the two known error bodies and zero-of-400 example
+counts are unchanged.
 
 The current goal is cheap FTS triage: discover failed, empty, badly garbled or
 substantially incomplete extraction, then directly spot-check a small sample.
@@ -163,5 +186,6 @@ The Keeplist applicability study is complete; its web-text threshold is
 unsuitable for accepting CT documents. Keep coverage, recognition, cleanup loss
 and response role separate, and reuse retained features rather than rereading the
 baseline text. Unknown source fidelity does not block useful review priorities.
-Actual repairs and publication remain separate. OCR stays paused and publisher
-refetch stays deferred.
+Actual repairs and publication remain separate. The user authorized targeted OCR
+and refetch on 14 November; their separate coordinators preserve checkpoints and
+new capture receipts. This assessment command does not dispatch either job.

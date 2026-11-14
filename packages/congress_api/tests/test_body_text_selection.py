@@ -2,6 +2,7 @@
 from hashlib import sha256
 import json
 import os
+from pathlib import Path
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -126,3 +127,75 @@ def test_bad_selection_cannot_publish_or_settle(tmp_path, mixed, damage):
 def test_missing_qualification_and_duplicate_keys_refuse_before_sql(tmp_path):
     with pytest.raises(FileNotFoundError):
         body_text_selection.load(tmp_path / 'absent.json', body_text.current_versions())
+
+
+@pytest.mark.parametrize('excluded', ['baseline', 'corrected'])
+def test_reviewed_source_exclusion_filters_publication_without_changing_readings_or_plan(tmp_path, mixed, excluded):
+    args, detail, shas, manifest = mixed
+    before = body_text.plan(**args, work=tmp_path / 'before')
+    originals = {str(p): sha256(p.read_bytes()).hexdigest() for p in
+                 (args['existing'], args['existing_text'], detail)}
+    manifest.update(version=2, excluded_bodies=[
+        dict(body_sha256=shas[excluded].hex(), source_role='error_response',
+             reason='Fixture source review identifies an error response, despite completed extraction.'),
+        dict(body_sha256=identity('feed absent from this release'), source_role='feed',
+             reason='Fixture source review identifies a structured feed with no document association.')])
+    args['selection'].write_text(json.dumps(manifest))
+    planned = body_text.plan(**args, work=tmp_path / 'after')
+    assert pq.read_table(before['work_list']).equals(pq.read_table(planned['work_list']))
+    assert planned['unselected_current_attempts'] == before['unselected_current_attempts']
+    pointer = body_text_export.export(**export_args(args, detail, tmp_path / 'export'))
+    selected = {r['saved_body']: r['text'] for r in pq.read_table(tmp_path / 'export/export.parquet').to_pylist()}
+    expected = {shas['baseline']: 'Keep this unchanged.', shas['recovered']: 'Recovered text.',
+                shas['corrected']: 'Restored tail and bullet.', shas['rejected']: 'Previously accepted testimony.'}
+    expected.pop(shas[excluded])
+    assert selected == expected
+    assert pointer['coverage']['saved_bodies'] == 7
+    assert pointer['coverage']['eligible_saved_bodies'] == 6
+    assert pointer['coverage']['excluded_by_source_role'] == {'error_response': 1}
+    assert pointer['coverage']['unmatched_exclusions'] == 1
+    # The excluded response still has a completed reading, not a fabricated failure.
+    assert pointer['coverage']['readings'] == {'pdf_text:completed': 4}
+    assert pointer['coverage']['unreadable'] == {'pdf_text': 1}
+    assert pointer['selection'] == planned['selection']
+    assert pointer['selection']['excluded_bodies'] == 2
+    assert originals == {p: sha256(Path(p).read_bytes()).hexdigest() for p in originals}
+
+
+def test_exclusion_does_not_bypass_actual_accepted_key_validation(tmp_path, mixed):
+    args, detail, shas, manifest = mixed
+    manifest.update(version=2, excluded_bodies=[
+        dict(body_sha256=shas['corrected'].hex(), source_role='error_response', reason='Fixture source review.')])
+    next(r for r in manifest['overrides'] if r['body_sha256'] == shas['corrected'].hex())['text_sha256'] = '0' * 64
+    args['selection'].write_text(json.dumps(manifest))
+    with pytest.raises(ValueError, match='invalid_selected_text'):
+        body_text_export.export(**export_args(args, detail, tmp_path / 'export'))
+    assert not (tmp_path / 'export/current.json').exists()
+
+
+@pytest.mark.parametrize('damage', ['empty_role', 'unknown_role', 'duplicate', 'reason', 'body', 'v1', 'proof'])
+def test_unqualified_or_ambiguous_publication_exclusions_refuse(tmp_path, damage):
+    report = tmp_path / 'qualification.md'
+    report.write_text('Fixture raw-source review, not an empty-text heuristic.')
+    row = dict(body_sha256=identity('source'), source_role='error_response', reason='Reviewed source template.')
+    manifest = dict(version=2, baseline_versions=body_text.current_versions(), overrides=[],
+                    qualification=dict(path=report.name, sha256=sha256(report.read_bytes()).hexdigest()),
+                    excluded_bodies=[row])
+    if damage == 'empty_role':
+        row['source_role'] = 'empty'
+    elif damage == 'unknown_role':
+        row['source_role'] = 'unassessed'
+    elif damage == 'duplicate':
+        manifest['excluded_bodies'].append(dict(row))
+    elif damage == 'reason':
+        row['reason'] = ' '
+    elif damage == 'body':
+        row['body_sha256'] = 'missing-source'
+    elif damage == 'v1':
+        manifest['version'] = 1
+    else:
+        report.write_text('Changed review evidence.')
+    path = tmp_path / 'selection.json'
+    path.write_text(json.dumps(manifest))
+    with pytest.raises(ValueError):
+        body_text_selection.load(path, body_text.current_versions())

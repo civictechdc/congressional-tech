@@ -1,6 +1,6 @@
 ---
 id: ct-a73a
-status: open
+status: in_progress
 deps: []
 links: [ct-m704, ct-kfsd, ct-n3ik, ct-hz8y, ct-yy07, ct-t4p3, ct-55qo, ct-aitp]
 created: 2026-11-10T05:38:12Z
@@ -11,7 +11,7 @@ tags: [congress_api, body_text, ocr]
 ---
 # Reconcile resource-failure recovery and measure memory per request
 
-The original defect affected seven paused page deadlines and seven 1 GiB memory-limit decisions. The source fixes have landed: page deadlines use user CPU time and the producer has a separate worker budget. Data acceptance remains open until those original identities are reconciled. The broader recovery is paused after batch 205: 2,422/2,632 committed outcomes (1,316 completed, 1,083 errors, 23 unreadable), with 210 remaining. Do not resume it as part of code work.
+The original defect affected seven paused page deadlines and seven 1 GiB memory-limit decisions. The source fixes have landed: page deadlines use user CPU time and the producer has a separate worker budget. Data acceptance remains open until those original identities are reconciled. The old recovery remains frozen after 2,426/2,632 committed outcomes, including four later completed bodies beyond the original pause. On 14 November the user authorized background OCR/refetch. Its 206 remaining PDF keys are running in a separate current-policy lane with durable page checkpoints; the old worker lacks these checkpoints and stays stopped. The new unlimited-size PDF policy is e7af136c37deb9d3bab5a3e9f3d4c79a4f5b38bd8b8f820aba5ec175672826dc, distinct from old d6250c3c… outcomes.
 
 ## Design
 
@@ -22,7 +22,7 @@ Retain the original cohort and all superseded decisions. ct-55qo owns qualified 
 1. Reconcile every original deadline/memory identity to a qualified completed reading or explicit measured unresolved outcome; supersede decisions with provenance only where justified.
 2. Preserve the running-time deadline and independent pool-budget regression checks.
 3. Request memory measurements are not contaminated by an earlier large request in the same worker; report measurement limitations and worker policy.
-4. After the user resumes OCR, finish only the explicit remaining recovery inventory under resource supervision, using ct-aitp checkpoints and ct-55qo selection. A source fix alone does not close this ticket.
+4. Under the 14 November authorization, finish only the explicit remaining recovery inventory under resource supervision, using ct-aitp checkpoints and ct-55qo selection. A source fix alone does not close this ticket.
 
 ## Notes
 
@@ -84,3 +84,11 @@ The earlier 1,316-output integrity receipt and census remain valid at their froz
 Separate batch207 metadata and committed-output integrity packets are now frozen. All four exact PDF reading/text pairs pass hash, UTF-8 byte-count, ordered/in-range offset and unique/in-range OCR-provenance checks: 4,394,643 text bytes, 1,947 stored page slots and 1,772 OCR entries, at the original d6250c3c… recovery version and macOS build 25G5057c. The existing verifier semantics were reused on one 1,428,124-byte immutable Parquet file with one-row batches; peak 0.064 GiB RSS, 0.6 seconds, unchanged 6 GiB admission floor. Together with the earlier receipts, all 1,320 completed recovery outputs now have stored-output integrity coverage.
 
 Root read all four receipt records and the actual first 400 output characters of 2b0e1e4d…, a FY2026 Labor/HHS/Education appropriations hearing opening. This is output inspection only, not source comparison or an accuracy judgment. The staged body-text file is absent, so staged-to-committed parity remains unknown. The original batch205 pause record is preserved at its exact pinned hash; the frozen input manifest remains unchanged and a separate relocation record names its preserved path. Evidence: repairs/corpus-assessment-20261113/{late-batch207-20261114,late-batch207-integrity-20261114}/. The four new outputs remain outside the prior feature generation and source reviews; no reading qualification, selection or publication followed. OCR remains paused with 206 targets pending.
+
+**2026-11-14T15:08:53Z**
+
+Targeted OCR resumed at 2026-11-14T14:59:23Z in repairs/ocr-checkpoint-resume-20261114/, using clean pinned checkout09fdca797bc5428af7eaec9cfdfd32bb824f7fad and exact206-key manifest SHA66f5254222ddbd4f112709b34c51154a80738d972fe038c7716a4446df4513a1. New PDF recovery version e7af136c37deb9d3bab5a3e9f3d4c79a4f5b38bd8b8f820aba5ec175672826dc has unlimited input-size policy and actual page checkpoints. First1158-page target dbaa560cf220b77d9ea839faaf6485675a5e38b92f2d6fa31c6068a48a20ceab is writing durable pages under one4GiB worker and6GiB watchdog; final outcome still pending at this note. Old206pending keys and oldpause receipts stay frozen. Agent /root/regs_local_boundary_review supervises measured one-body acceptance before serial background continuation. Runtime completion is separate from useful-text qualification.
+
+**2026-11-14T15:11:06Z**
+
+First checkpointed body committed and verified at 2026-11-14T15:07:24Z: 1,158 pages / 1,106 OCR pages, 2,653,819 UTF-8 bytes, exact native/staged text SHA d105d199bb5cf5ee7f05dce60d06133737d8cb3add0f8cee556c2bb078e9780e. All1,158 page digests and source-page identities validated; checkpoints occupy41,926,040 bytes. Measured pilot481.9seconds /1.229GiB RSS, verification2.9seconds /.162GiB. Evidence: repairs/ocr-checkpoint-resume-20261114/pilot-verification/receipt.json. Remaining205 will run serially with one-body watchdogs, releasing shared nightly lock between documents. This is operational integrity, not manual transcription qualification.
