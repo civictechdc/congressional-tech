@@ -1,6 +1,6 @@
 ---
 id: ct-fb7k
-status: open
+status: in_progress
 deps: []
 links: [ct-f6hr, ct-n3ik]
 created: 2026-11-14T12:27:35Z
@@ -28,3 +28,15 @@ Extend congress_api.parsers.response_roles.assess_response and its existing text
 4. A named independent reviewer directly reads a small raw input -> parsed evidence -> final observation sample. Preserve review scope and source/output hashes; automated tests supplement this reading.
 5. Record time, memory, payload bytes read and policy identity. No per-document LLM calls, OCR, publisher refetch or selected-text changes.
 
+
+## Notes
+
+**2026-11-14T13:48:31Z**
+
+Implemented the bounded House meeting/file response observations in response_roles, reused by the actual text-quality consumer. Policies move to ct-response-roles-v2 and ct-text-quality-measures-v2; extraction versions, capture/refusal history and selection stay unchanged.
+
+The exact retained 400-key replay read all inputs: 173 House meeting errors, 14 file errors and 197 storage errors matched; both reviewed ordinary controls remained unassessed, as did the 14 records without a good/bad label. The old policy missed all 187 House cases. Planted M005 false-positive and M004 missed-template observations were caught. These are three template families and development controls, not a held-out accuracy estimate.
+
+67 focused tests passed (partial production-offline lane, 2/555 files). Replay: 7,988,904 decoded bytes, 22.97 s, 0.152 GiB peak RSS, normal 6 GiB admission; five originals reused and only exact retained archive keys read. No publisher refetch, OCR/provider job, catalog or selection change.
+
+Evidence: .cache/archive-release/ocr-recovery-20261113/repairs/corpus-assessment-20261113/house-response-detection-20261114/README.md, run-02/summary.json, run-02/outcomes.jsonl, run-02/review-cases.jsonl, and run-02/review-cli/. Raw, parsed evidence and current output locators/hashes are retained for all five representative cases. Awaiting named independent root review and integration; ticket remains in_progress.

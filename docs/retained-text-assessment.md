@@ -110,6 +110,16 @@ dispatch. Limits bound cases, files and comparisons; unsupported or unavailable
 comparisons remain explicit. Use these observations to find substantial search
 content loss, not to reject harmless formatting differences or every OCR typo.
 
+When original markup is supplied, `ct-response-roles-v2` also recognizes the
+House repository's meeting-not-found and file-not-found templates. It requires
+the House title, primary meeting area, direct error panel and combined
+diagnostics. A file-error page can retain a real meeting title and identifiers;
+its completed extraction stays separate from the `review_first` response signal.
+Quoted examples, explicitly hidden panels, mixed meeting content and incomplete
+diagnostics remain unassessed by these rules. Evidence retains source byte
+anchors and the observed diagnostic text. The measurement policy is
+`ct-text-quality-measures-v2`; extraction versions and selection are unchanged.
+
 ## Retained demonstration and remaining work
 
 The durable directory is

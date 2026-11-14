@@ -1,4 +1,5 @@
 from hashlib import sha256
+from pathlib import Path
 
 import pytest
 
@@ -118,6 +119,33 @@ def test_role_reuses_raw_structure_and_preserves_quoted_prose():
     article = b'<html><title>Hearing on network access</title><h1>Evidence</h1><p>The phrase Access Denied appeared in the report.</p></html>'
     ident['body_sha256'] = sha256(article).hexdigest()
     assert measure_quality(ident, text=text, raw_markup=article)['axes']['role']['role'] == 'unassessed'
+
+
+@pytest.mark.parametrize('kind', ['meeting', 'file'])
+def test_house_response_cli_keeps_extraction_status_separate_from_review(kind, tmp_path):
+    import json
+    from congress_api.cli.text_quality import measure_cases
+    raw = Path(__file__).parent / 'fixtures/response_roles' / f'house-{kind}-not-found.html'
+    text = 'Error Encountered. The requested '+kind+' was not found.'
+    output = tmp_path/'text.txt'
+    output.write_text(text)
+    ident = identity(text)
+    ident.update(body_sha256=sha256(raw.read_bytes()).hexdigest(), parser='html_text', source_format='html')
+    case = {**ident, 'case_id': kind, 'output_path': str(output), 'raw_markup_path': str(raw),
+            'raw_markup_sha256': ident['body_sha256']}
+    cases = tmp_path/'cases.jsonl'
+    cases.write_text(json.dumps(case)+'\n')
+    measure_cases(cases, tmp_path/'result')
+    measured = json.loads((tmp_path/'result/measurements.jsonl').read_text())
+    assert measured['policy_version'] == 'ct-text-quality-measures-v2'
+    assert measured['axes']['role']['reason'] == f'house_{kind}_not_found'
+    assert measured['axes']['role']['policy_version'] == 'ct-response-roles-v2'
+    assert measured['fts_triage']['band'] == 'review_first'
+    assert measured['fts_triage']['reasons'] == ['obvious_response_body']
+    proposal = json.loads((tmp_path/'result/proposals.jsonl').read_text())['proposal']
+    assert proposal['facts']['reading_status'] == 'completed'
+    assert proposal['facts']['selected'] is None
+    assert proposal['qualified'] is False and proposal['dispatch_allowed'] is False
 
 
 def test_output_hash_and_page_scope_refuse_invented_identity():
