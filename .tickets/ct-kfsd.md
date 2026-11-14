@@ -47,3 +47,9 @@ Bounded qualification now also exercises real accepted-key composition:14 source
 **2026-11-14T12:31:10Z**
 
 Added the first selective-repair batch: prioritize source-confirmed, search-visible cleanup losses from ct-n3ik; reuse exact retained intermediates and reviewed consumer outputs before native rereading. Preserve before/after identity, direct raw/intermediate/output review and accepted-selection readback. ct-0a35 verifies restored passages through search. OCR remains paused; unrelated native/geometry/recognition/source causes stay with their existing owners.
+
+**2026-11-14T14:33:16Z**
+
+Current metadata independently confirms that all14 privately qualified correction/control bodies each have one unhidden document association in release 4b9a7bd126cc17e39dfbe7f8fabafbdb7251dcd32576277f308916f469c9bab1. This does not establish publication of the eight corrected readings. Reuse the existing direct 14-body/281-page qualification and actual reading keys instead of repeating PDF/OCR work.
+
+Native adoption planning now pins the separate920 completed recovery PDF keys and existing8 correction overrides/14 selected identities in repairs/markup-reparse-20261114/adoption-planning-20261114/{pdf-adoption-inputs.json,recovery-pdf-actual-keys.jsonl,README.md}. The eight overrides do not overlap those920 bodies. Keep old baseline PDF keys at their actual versions; do not restamp them to the current declared parser. The observed public manifest has no text index and the checked body-text pointer returns404, so production adoption/export/search readback remain pending ct-m704/ct-0a35. Bulk manual PDF/page audits, if any new scope needs them, use gpt-6.1-terra medium.

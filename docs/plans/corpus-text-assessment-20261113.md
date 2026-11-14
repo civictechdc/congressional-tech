@@ -57,7 +57,7 @@ frozen after batch 205 by actual reading and output identities. It accounts for
 overlap. Historical refusals and alternative versions remain separate records.
 These are retained extraction states, not source-quality or accepted-text counts.
 
-The combined PDF metadata records 296,686 bodies and 8,141,096 page-offset slots.
+That frozen batch-205 PDF metadata records 296,686 bodies and 8,141,096 page-offset slots.
 This larger figure includes 376,402 recovery slots absent from the earlier
 7,764,694-slot census. Physical page completeness still needs source evidence.
 No new token total was calculated. Document-body exposure remains explicitly
@@ -101,8 +101,9 @@ An external recovery process subsequently resumed at 05:34/05:40 UTC on
 14 November. The coordinator restored the pause guard and stopped recovery at
 the batch-207 boundary at 05:50 UTC. Four additional outputs committed before
 shutdown, leaving 206 targets pending and 1,320 completed recovery outputs.
-They remain outside the reviewed batch-205 reconciliation and PDF features;
-neither quality, integrity nor accepted selection follows from their completion.
+They remain outside the original batch-205 reconciliation and feature generation;
+their later additive integrity and feature evidence is recorded below. Neither
+quality nor accepted selection follows from their completion.
 The five frozen extraction source pins still match, and all seven identified
 recovery processes have exited. The separate operational evidence is
 `ocr-recovery-20261113/coordination/pause-conflict-20261114/` and
@@ -114,8 +115,45 @@ chains and the original pause record's replacement locator. The later
 hashes, UTF-8 byte counts, offsets and OCR provenance. Together with the prior
 receipts, stored-output integrity now covers all 1,320 completed recovery
 results. The staged text file is absent, so staged-to-committed parity remains
-unknown; source accuracy, current-version compatibility, page features and
-accepted selection remain unqualified for the four late results.
+unknown; source accuracy, current-version compatibility and accepted selection
+remain unqualified for the four late results.
+
+### Current incremental features and exception queue
+
+The separate `late-batch207-features-20261114/` packet now adds the four missing
+PDF feature rows under the unchanged `pdf-page-features-20261113-1` definition.
+It reads only 4,394,643 retained text bytes, takes 0.301 seconds at 0.116 GiB
+peak RSS, and reuses every prior feature partition. Combined coverage is
+**296,690 PDF bodies / 8,143,043 recorded page-offset slots**. All four additions
+have only weak possible-blank signals and rank `review_later`; that is not a
+source defect or an instruction to repeat OCR. No original PDF was opened.
+
+`exception-queue-20261114/checkpoint-v2/` combines those features, recovery
+states, the frozen markup checkpoint, response examples and existing direct
+review findings by exact identities. It contains **45,102 candidate/control
+rows**, of which **1,166** have priority 0–2. The metadata-only build takes
+1.432 seconds at 0.889 GiB peak RSS. It accounts for all 2,632 recovery targets,
+all 400 examples, the four late outputs and the valid dedicated feed. These are
+review priorities, not 45,102 defective documents. Historical source-review
+findings without a matching current output remain explicitly unbound. All rows
+leave selection unverified and dispatch disabled. Independent review approved
+the identity/state accounting; final markup outcomes require a new generation.
+
+`publication-state-20261114/` adds current document associations without
+rewriting that frozen queue. The checked release
+`4b9a7bd126cc17e39dfbe7f8fabafbdb7251dcd32576277f308916f469c9bab1`
+contains 324,013 document rows. Exactly 823 priority 0–2 queue rows have an
+unhidden document association; all 400 examples have none. Two other known
+error-page bodies and all 14 privately qualified PDF correction/control bodies
+each have one unhidden document association. The hash-verified metadata check
+and independent review do not establish accepted text selection or search
+coverage. The observed publication manifest has no text index and the checked
+body-text export pointer returns 404. ct-en4n owns error-response eligibility;
+ct-m704 and ct-0a35 own publication and actual search readback.
+
+Any further bulk manual PDF/page audit uses `gpt-6.1-terra` agents with medium
+reasoning. Reuse exact earlier direct reviews and limit new reading to the
+remaining evidence gap; metadata accounting does not require a PDF audit.
 
 ## Reuse the work already retained
 

@@ -21,7 +21,9 @@ Reuse the link reader, retained captures, queues, selection/recovery history and
 
 ct-fb7k owns the focused House Meeting Not Found / File Not Found detector extension using the 400 retained examples. Reuse its versioned observations here; do not implement a second detector. This parent retains source-role qualification beyond those templates, retained capture-history reconciliation and the evidence-backed deferred-source list. ct-n3ik consumes the role observations in the cheap review queue, while ct-0a35 checks accepted content through real search.
 
-The example set annotates existing inventory bodies: 384 error-template instances, two directly reviewed ordinary metadata/landing controls and 14 unassessed records. Neither extraction completion nor example membership authorizes document-text selection or publisher refetch. The broader source-role work must not block the already authorized CPU reparse.
+The example set annotates existing inventory bodies: 384 error-template instances, two directly reviewed ordinary metadata/landing controls and 14 unassessed records. Neither extraction completion nor example membership authorizes document-text selection or publisher refetch. The broader source-role work must not block the already authorized CPU reparse. Current public metadata independently confirms zero document associations for the 400 examples, but two other known error-page bodies have unhidden document references. This establishes exposure, not accepted reading selection or indexed search.
+
+Add an explicit search-eligibility decision tied to reviewed body-role evidence before publishing these responses as document prose. The current accepted-key selector has no exclusion field, and body_text_export filters saved bodies without source roles. Preserve completed extraction rows and original response history; do not fake a parser failure to exclude an error page. A detector result alone neither selects a substitute nor initiates refetch.
 
 ## Acceptance Criteria
 
@@ -29,6 +31,7 @@ The example set annotates existing inventory bodies: 384 error-template instance
 2. Trace all eight landing URLs through link readings, capture attempts, retained copies, selection and accepted recovery. Reconcile both missing and existing outcomes; do not count successful captures as unresolved.
 3. Preserve raw identity and refusal evidence, report selected versus unselected effects, and plant false-positive and missed-error cases that the independent check catches.
 4. Produce a deduplicated unresolved-source list with reasons and evidence for the deferred refetch ticket. Classification alone does not initiate retrieval.
+5. Apply an explicit, reviewable source-role/search-eligibility decision to accepted export/index inputs. Preserve completed response evidence and useful alternative readings. Verify known error bodies are excluded from substantive search while ordinary short, metadata and feed controls retain their intended roles.
 
 ## Notes
 
@@ -87,3 +90,9 @@ The user requested that the 400 previously held HTML/XML bodies serve as invento
 **2026-11-14T12:31:10Z**
 
 Five-step FTS follow-through is now ticketed. New child ct-fb7k owns the missing House meeting/file response detector; this parent retains broader role and capture-history qualification. Linked ct-n3ik for cheap triage and ct-0a35 for actual source-to-search acceptance. Existing raw/review history remains intact; OCR stays paused and refetch deferred.
+
+**2026-11-14T14:33:16Z**
+
+Current release metadata, independently reviewed in repairs/corpus-assessment-20261113/publication-state-20261114/independent-review/review.md, confirms all400 examples have zero document associations. Two other previously source-reviewed error bodies do each have one unhidden document: T001 359e3b8b6b844d69fa29bd39c40f970af1586af0500dcda1f98a302721eafe1d and T002 82867326cf8750a2cb2de9b3cd5f25b447269fcd870440390f7512f8e08d1d5e. The release is 4b9a7bd126cc17e39dfbe7f8fabafbdb7251dcd32576277f308916f469c9bab1, published 2026-11-14T05:25:35Z. These are document associations, not accepted reading or search claims.
+
+Implementation gap: body_text_selection currently records actual keys without a source-role exclusion decision, while body_text_export filters saved bodies only. Preserve completed error-page extraction evidence and add explicit reviewed search eligibility; do not encode exclusion by fabricating failed reading status. Focused House detector PR165 is independently approved after real quotation/duplicate-attribute controls; broader history, zero-page classification and actual search eligibility remain here. OCR paused and refetch deferred.
