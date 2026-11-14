@@ -619,7 +619,7 @@ requires-dist = [
     { name = "pytz", marker = "extra == 'archive'", specifier = "==2026.5" },
     { name = "requests" },
     { name = "rulespec-artifacts", marker = "python_full_version < '3.13' and extra == 'archive'", path = "vendor/rulespec_artifacts-1.1.2-py3-none-any.whl" },
-    { name = "spicy-docs", marker = "python_full_version < '3.13' and extra == 'archive'", path = "vendor/spicy_docs-0.85.0+ctreaders.20261113.2-py3-none-any.whl" },
+    { name = "spicy-docs", marker = "python_full_version < '3.13' and extra == 'archive'", path = "vendor/spicy_docs-0.85.0+ctrecovery.20261114-py3-none-any.whl" },
     { name = "surt", marker = "extra == 'archive'", specifier = ">=0.3.1,<0.4" },
     { name = "trafilatura", marker = "extra == 'archive'", specifier = "==2.0.0" },
     { name = "warcio", marker = "extra == 'archive'", specifier = "==1.7.5" },
@@ -3195,14 +3195,14 @@ wheels = [
 
 [[package]]
 name = "spicy-docs"
-version = "0.85.0+ctreaders.20261113.2"
-source = { path = "vendor/spicy_docs-0.85.0+ctreaders.20261113.2-py3-none-any.whl" }
+version = "0.85.0+ctrecovery.20261114"
+source = { path = "vendor/spicy_docs-0.85.0+ctrecovery.20261114-py3-none-any.whl" }
 dependencies = [
     { name = "jsonschema" },
     { name = "rulespec-artifacts" },
 ]
 wheels = [
-    { filename = "spicy_docs-0.85.0+ctreaders.20261113.2-py3-none-any.whl", hash = "sha256:550b8bb20e0cb716be2c1b277ceca3c1712a3d54f19a9001f66c8a08cb2c7363" },
+    { filename = "spicy_docs-0.85.0+ctrecovery.20261114-py3-none-any.whl", hash = "sha256:d54c1723a6e773c9c8a15fd327749d2abaefcee628f079ec50c0a038793d7f1a" },
 ]
 
 [package.metadata]
