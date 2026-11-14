@@ -241,8 +241,10 @@ def append_rows(source, *, engine,work,catalog_root,table,keys,definition,
     identity_sql=(f'SELECT concat({_literal(identity_prefix)},encode(sha256('
         f"string_agg(DISTINCT {key_json},'' ORDER BY {key_json})),'hex')) AS identity FROM pending")
     join=' AND '.join(f'(incoming.{q} IS NOT DISTINCT FROM existing.{q})' for q in quoted)
+    # The pinned engine builds the left side. Build only existing keys, and
+    # stream incoming payloads through the probe side of this anti-join.
     operation=dict(kind='append',name='append',table=table,current_table='existing',
-        work_table='pending',sql='SELECT incoming.* FROM incoming LEFT ANTI JOIN existing ON '+join,
+        work_table='pending',sql='SELECT incoming.* FROM existing RIGHT ANTI JOIN incoming ON '+join,
         identity_sql=identity_sql,
         layout=dict(file_bytes=file_bytes,row_group_rows=row_group_rows,row_group_bytes=row_group_bytes))
     result=_job(engine,work,catalog_root=catalog_root,

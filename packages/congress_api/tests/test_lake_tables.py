@@ -26,12 +26,53 @@ def test_native_table_creation_and_repeated_append(tmp_path):
         table=table,keys=['receipt_key'],definition='mapping-v1')
     assert second['files']==[] and second['metadata_location']==first['metadata_location']
     more=tmp_path/'more.parquet'
-    pq.write_table(pa.table({'receipt_key':['two','three'],'value':[2,3]}),more)
+    pq.write_table(pa.table({'receipt_key':['two','three'],'value':[999,3]}),more)
     third=append_rows(more,engine=engine,work=tmp_path/'third',catalog_root=tmp_path/'catalog',
         table=table,keys=['receipt_key'],definition='mapping-v1')
     assert sum(f['rows'] for f in third['files'])==1
     assert third['table_uuid']==first['table_uuid']
     assert third['snapshot']!=first['snapshot']
+    stored=pa.concat_tables([pq.read_table(f['path']) for f in first['files']+third['files']])
+    assert sorted(stored.to_pylist(),key=lambda r:r['receipt_key'])==[
+        {'receipt_key':'one','value':1},{'receipt_key':'three','value':3},{'receipt_key':'two','value':2}]
+    empty=tmp_path/'empty.parquet'
+    pq.write_table(pa.table({'receipt_key':pa.array([],type=pa.string()),
+                            'value':pa.array([],type=pa.int64())}),empty)
+    no_work=append_rows(empty,engine=engine,work=tmp_path/'empty',catalog_root=tmp_path/'catalog',
+        table=table,keys=['receipt_key'],definition='mapping-v1')
+    assert no_work['files']==[] and no_work['metadata_location']==third['metadata_location']
+
+
+def test_native_append_matches_nullable_work_keys_without_replacing_existing_values(tmp_path):
+    from congress_api.lake.tables import create_table, append_rows
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    schema={'type':'struct','schema-id':0,'identifier-field-ids':[1], 'fields':[
+        {'id':1,'name':'id','required':True,'type':'long'},
+        {'id':2,'name':'label','required':False,'type':'string'},
+        {'id':3,'name':'text','required':True,'type':'string'}]}
+    table=dict(namespace=['archive'],name='nullable_work_keys')
+    create_table(engine=engine,work=tmp_path/'create',catalog_root=tmp_path/'catalog',
+                 table=table,schema=schema,location=tmp_path/'data',create_namespace=True)
+    arrow=pa.schema([('id',pa.int64()),('label',pa.string()),('text',pa.string())])
+    sources=[]
+    for name,rows in [('seed',[{'id':1,'label':None,'text':'retained'}]),
+                      ('incoming',[{'id':1,'label':None,'text':'must not replace'},
+                                   {'id':2,'label':None,'text':'new with null'},
+                                   {'id':3,'label':'','text':'empty is not null'}])]:
+        source=tmp_path/(name+'.parquet')
+        pq.write_table(pa.Table.from_pylist(rows,schema=arrow),source)
+        sources.append(source)
+    kwargs=dict(engine=engine,catalog_root=tmp_path/'catalog',table=table,
+                keys=['id','label'],definition='nullable-work-key-v1')
+    first=append_rows(sources[0],work=tmp_path/'first',**kwargs)
+    second=append_rows(sources[1],work=tmp_path/'second',**kwargs)
+    repeated=append_rows(sources[1],work=tmp_path/'repeated',**kwargs)
+    assert repeated['files']==[] and repeated['metadata_location']==second['metadata_location']
+    stored=pa.concat_tables([pq.read_table(f['path']) for f in first['files']+second['files']])
+    assert sorted(stored.to_pylist(),key=lambda r:r['id'])==[
+        {'id':1,'label':None,'text':'retained'},
+        {'id':2,'label':None,'text':'new with null'},
+        {'id':3,'label':'','text':'empty is not null'}]
 
 
 @pytest.mark.parametrize('binary_type,iceberg_type', [
