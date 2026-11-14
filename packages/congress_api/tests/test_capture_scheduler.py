@@ -1331,3 +1331,33 @@ def test_reviewed_cutoff_runs_before_unattempted_urls(tmp_path):
     rows=[(r['requested_url'].rsplit('/',1)[1],r['priority']) for r in pq.read_table(result['queue']).to_pylist()]
     assert rows==[('z-retry',-1),('z-reviewed',-1),('a',0),('b',0),('size',1)]
     assert result['counts']['cutoffs']==3 and result['counts']['queue']==2
+
+
+def test_missing_and_empty_attempt_journals_preserve_queue_and_cutoff_accounting(tmp_path):
+    from congress_api.acquisition.capture_scheduler import cutoff_report,plan_queue
+    from congress_api.retention.provenance import json_input
+    other='https://docs.house.gov/billsthisweek/20260101/other.pdf'
+    root=release(tmp_path,[AMP_STATE,dict(requested_url=other,attempts=0)],entries=SCOPE_ENTRIES)
+    selected=load(root,tmp_path/'read')
+    seed=json_input(tmp_path,'seeds',[dict(url=AMP,source='reviewed',pointer='[]')],
+                    url='Utf8',source='Utf8',pointer='Utf8')
+    empty=_attempted(tmp_path/'empty.jsonl.gz',[])
+    observed=[]
+    with engine() as native:
+        for name,journal in [('none',None),('missing',tmp_path/'missing.jsonl.gz'),('empty',empty)]:
+            result=plan_queue(selected,engine=native,work=tmp_path/name/'plan',as_of=RETAINED_ASOF,
+                request_budget=20,seed_files=seed['files'],cutoff_urls=[AMP],attempted=journal)
+            rows=pq.read_table(result['queue']).to_pylist()
+            reports=cutoff_report(selected,urls=[AMP],attempted=journal,engine=native,work=tmp_path/name/'cutoffs',
+                as_of=RETAINED_ASOF,stop_reason='metadata_only',discovery_files=())
+            observed.append((rows,result['counts'],reports))
+        assert observed[0]==observed[1]==observed[2]
+        assert [row['requested_url'] for row in observed[0][0]]==[GOOD,other]
+        assert observed[0][2][0]['disposition']=='deferred'
+        attempted=_attempted(tmp_path/'attempted.jsonl.gz',[GOOD])
+        result=plan_queue(selected,engine=native,work=tmp_path/'after',as_of=RETAINED_ASOF,
+            request_budget=20,seed_files=seed['files'],cutoff_urls=[AMP],attempted=attempted)
+        assert [row['requested_url'] for row in pq.read_table(result['queue']).to_pylist()]==[other]
+        [report]=cutoff_report(selected,urls=[AMP],attempted=attempted,engine=native,work=tmp_path/'after-cutoffs',
+            as_of=RETAINED_ASOF,stop_reason='metadata_only')
+        assert (report['disposition'],report['candidate_url'],report['http_status'])==('attempted',GOOD,404)

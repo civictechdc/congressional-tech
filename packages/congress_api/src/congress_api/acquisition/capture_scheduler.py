@@ -249,6 +249,15 @@ def _record_attempt(path,url,*,attempted,complete=None,outcome=None,http_status=
             http_status=http_status,error_type=error_type,receipt_key=receipt_key))+'\n')
 
 
+def _attempted_input(work,path,**fields):
+    # A zero-file JSON input has zero native partitions and cannot build a hash join.
+    # An actual empty file preserves an unattempted run without inventing a URL row.
+    if path is None or not Path(path).exists():
+        return json_input(work,'attempted',(),**fields)
+    return dict(name='attempted',kind='json_lines',files=[dict(key='attempted',path=str(path))],
+                schema=dict(fields=[field(name,kind) for name,kind in fields.items()],metadata={}))
+
+
 def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discovery_files=(),
                   _keyed_states_cache=None,campaign=None):
     """Account for every reviewed URL, including deadline/budget/scope deferrals."""
@@ -265,11 +274,8 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discove
         json_input(work,'cutoffs',(dict(url=url) for url in urls),url='Utf8'),
         dict(name='discovery',kind='json_lines',files=list(discovery_files),
             schema=dict(fields=[field(k,'Utf8') for k in ('href','base_href','context')],metadata={})),
-        dict(name='attempted',kind='json_lines',
-            files=[dict(key='attempted',path=str(attempted))] if attempted.exists() else [],
-            schema=dict(fields=[field('url','Utf8'),field('attempted','Boolean'),field('complete','Boolean'),
-                field('outcome','Utf8'),field('http_status','Int32'),field('error_type','Utf8'),
-                field('receipt_key','Utf8')],metadata={}))]
+        _attempted_input(work,attempted,url='Utf8',attempted='Boolean',complete='Boolean',
+            outcome='Utf8',http_status='Int32',error_type='Utf8',receipt_key='Utf8')]
     inputs.extend(_profile_inputs(release,binding,work))
     key_sources=[('attempted','attempted','url'),('cutoffs','cutoff','url'),
         ('discovered_urls','discovery','url'),('reviewed_repairs','repair','candidate_url')]
@@ -434,8 +440,7 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
         schema=dict(fields=[field(k,'Utf8') for k in ('url','source','pointer')],metadata={})))
     inputs.append(dict(name='discovery',kind='json_lines',files=list(discovery_files),
         schema=dict(fields=[field(k,'Utf8') for k in ('href','base_href','context','source','pointer')],metadata={})))
-    inputs.append(dict(name='attempted',kind='json_lines',files=[] if attempted is None else [dict(key='attempted',path=str(attempted))],
-        schema=dict(fields=[field('url','Utf8')],metadata={})))
+    inputs.append(_attempted_input(work,attempted,url='Utf8'))
     inputs.append(json_input(work,'cutoffs',(dict(url=url) for url in cutoff_urls),url='Utf8'))
     inputs.extend(_profile_inputs(release,binding,work))
     campaign_seeds = " UNION ALL SELECT target_url AS url,'campaign' AS source,'[]' AS pointer FROM campaign_targets" if campaign is not None else ''
