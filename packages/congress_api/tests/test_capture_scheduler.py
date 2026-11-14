@@ -1447,3 +1447,34 @@ def test_reviewed_only_candidate_chains_converge_or_refuse_without_partial_queue
         with pytest.raises(ValueError,match='more than eight candidate expansions'):
             _plan(tmp_path,states,**options)
         assert not (tmp_path/'plan/queue.parquet').exists()
+
+
+def test_reviewed_root_does_not_schedule_every_due_campaign_candidate(tmp_path):
+    urls=[f'https://docs.house.gov/billsthisweek/20260101/review-{label}.pdf' for label in ('A','B','C')]
+    states=[dict(requested_url=url,attempts=1,last_outcome='failed',last_status=404,
+        next_attempt_at=PAST) for url in urls]
+    options=dict(targets=urls[:1],candidates=[(urls[0],url) for url in urls[1:]],cutoff_urls=urls[:1])
+    full,_,_=_plan(tmp_path/'full',states,**options)
+    reviewed,_,_=_plan(tmp_path/'reviewed',states,reviewed_only=True,**options)
+    assert [row['requested_url'] for row in full]==urls
+    # Existing candidate histories influence the choice, but only A is a reviewed root.
+    # Both candidates were tried already, so the maintained preference chooses observed A.
+    assert reviewed==full[:1]
+
+
+@pytest.mark.parametrize('state',['due','future','stored-future','satisfied','attempted'])
+def test_reviewed_root_chosen_repair_keeps_its_own_history(tmp_path,state):
+    candidate='https://democrats-science.house.gov/uploads/reviewed.pdf'
+    target=candidate+'%20'
+    rows=[dict(requested_url=target,attempts=1,last_outcome='failed',last_status=404,next_attempt_at=PAST),
+        dict(requested_url=candidate,attempts=2,
+            last_outcome='stored' if state in {'stored-future','satisfied'} else 'failed',
+            last_status=200 if state in {'stored-future','satisfied'} else 503,
+            next_attempt_at=FUTURE if state in {'future','stored-future'} else PAST,
+            capture_disposition='satisfied' if state=='satisfied' else 'eligible')]
+    attempted=_attempted(tmp_path/'attempted.jsonl.gz',[candidate]) if state=='attempted' else None
+    full,_,_=_plan(tmp_path/'full',rows,recovery=True,cutoff_urls=[target],attempted=attempted)
+    reviewed,_,_=_plan(tmp_path/'reviewed',rows,recovery=True,cutoff_urls=[target],
+        reviewed_only=True,attempted=attempted)
+    assert reviewed==full
+    assert [row['requested_url'] for row in reviewed]==([candidate] if state=='due' else [])

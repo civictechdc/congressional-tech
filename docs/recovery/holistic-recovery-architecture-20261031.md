@@ -117,8 +117,10 @@ Use the implemented capture `--campaign` selector limiting execution to the pinn
 For metadata-only review, `plan_queue(..., reviewed_only=True, cutoff_urls=...)` and
 `cutoff_report(..., reviewed_only=True, urls=...)` explicitly limit history to the
 named keys and their related repair/campaign candidates. Both default to full
-release behavior. Supply the actual seed or discovery context separately; naming
-a cutoff does not establish discovery. The reviewed path still reads all URL
+release behavior. Related history informs address choice and retry state; it
+does not independently authorize requests. Only reviewed roots and their chosen
+addresses enter due planning. Supply the actual seed or discovery context
+separately; naming a cutoff does not establish discovery. The reviewed path still reads all URL
 metadata to apply the release's pinned key definition, then limits the wider
 state joins. It refuses a full-release state cache and exports no replacement
 cache. Candidate chains must stop growing within eight rounds or planning

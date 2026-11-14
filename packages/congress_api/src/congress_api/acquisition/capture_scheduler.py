@@ -297,20 +297,21 @@ def _reviewed_history(work,engine,inputs,binding,seed_sql):
         _check_keys(result)
         keys=current/'reviewed_keys.parquet'
         if result['growth'][0]['added']==0:
-            return dict(url_keys=str(history),keys=str(keys),rounds=number+1,
+            return dict(url_keys=str(history),root_keys=str(initial/'reviewed_keys.parquet'),keys=str(keys),rounds=number+1,
                 related_keys=result['size'][0]['keys'],unkeyable_states=values['unkeyable_states'][0]['states'])
     raise ValueError('Reviewed history needs more than eight candidate expansions; no partial queue was planned')
 
 
 def _reviewed_state_step():
     # Build only the related keys; scan the full state metadata on the right. No row-group pushdown is claimed.
-    return dict(name='keyed_states',sql="""SELECT s.*,h.url_key FROM reviewed_keys r
+    return dict(name='keyed_states',sql="""SELECT s.*,h.url_key FROM history_keys r
         JOIN history_url_keys h ON r.url_key=h.url_key AND h.input_id LIKE 'state:%'
         JOIN states s ON h.url=s.requested_url""",materialize=True)
 
 
 def _reviewed_inputs(history):
-    return [dict(name='reviewed_keys',kind='parquet',path=history['keys']),
+    return [dict(name='reviewed_keys',kind='parquet',path=history['root_keys']),
+            dict(name='history_keys',kind='parquet',path=history['keys']),
             dict(name='history_url_keys',kind='parquet',path=history['url_keys'])]
 
 
@@ -540,15 +541,16 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
     explicit_candidates = (" UNION ALL SELECT url,url_key,'campaign' AS tier FROM ("
         + _campaign_candidates_sql('SELECT url,url_key FROM keyed_seeds') + ")") if campaign is not None else ''
     bad_spelling = _literal(_repair_spelling(binding['rules']))
+    repair_states='keyed_states s'+(' JOIN reviewed_keys r ON r.url_key=s.url_key' if reviewed_only else '')
     steps.extend([
         dict(name='keyed_seeds',sql="""SELECT s.*,k.url_key FROM seed_rows s JOIN url_keys k
             ON k.input_id='seed:' || s.url"""+
             (' JOIN reviewed_keys r ON r.url_key=k.url_key' if reviewed_only else '')),
         # Seed keys and a reused keyed_states cache arrive as different string
         # types; a materialized union needs one declared type.
-        dict(name='repair_sources',sql="""SELECT arrow_cast(url,'Utf8') AS url,arrow_cast(url_key,'Utf8') AS url_key FROM (
+        dict(name='repair_sources',sql=f"""SELECT arrow_cast(url,'Utf8') AS url,arrow_cast(url_key,'Utf8') AS url_key FROM (
             SELECT url,url_key FROM keyed_seeds WHERE url_key IS NOT NULL
-            UNION SELECT requested_url AS url,url_key FROM keyed_states WHERE url_key IS NOT NULL)""",materialize=True),
+            UNION SELECT s.requested_url AS url,s.url_key FROM {repair_states} WHERE s.url_key IS NOT NULL)""",materialize=True),
         dict(name='keyed_cutoffs',sql="""SELECT DISTINCT k.url_key FROM cutoffs c JOIN url_keys k
             ON k.input_id='cutoff:' || c.url"""),
         dict(name='observations',sql="""SELECT url_key,min(url) AS url,array_agg(DISTINCT json_array(url,source,pointer)
@@ -587,6 +589,12 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
                     su.url IS NOT NULL AS has_state
                 FROM candidate_urls c LEFT JOIN unusable_keys u ON c.url_key=u.url_key
                 LEFT JOIN state_urls su ON su.url=c.url)) WHERE ordinal=1""",materialize=True)]
+        # Consult related history without scheduling it independently. The chosen address's
+        # own row still governs its cooldown, retained result and completed attempts.
+        + ([dict(name='planning_states',sql="""SELECT s.* FROM (
+            SELECT s.requested_url FROM reviewed_keys r JOIN keyed_states s ON s.url_key=r.url_key
+            UNION SELECT url AS requested_url FROM seed_urls) w
+            JOIN keyed_states s ON s.requested_url=w.requested_url""",materialize=True)] if reviewed_only else [])
         + ([dict(name='campaign_allowed',sql="""SELECT target_url AS url FROM campaign_targets
             UNION SELECT c.candidate_url AS url FROM campaign_candidates c JOIN campaign_targets t ON c.target_url=t.target_url
             UNION SELECT o.url FROM seed_urls o JOIN keyed_seeds ks ON o.url_key=ks.url_key JOIN campaign_targets t ON ks.url=t.target_url""")] if campaign is not None else [])
@@ -603,7 +611,8 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
             WHEN {outcome} NOT IN ('stored','unchanged') AND regexp_like(s.requested_url,{bad_spelling}) THEN 'keep'
             WHEN {outcome} NOT IN ('stored','unchanged') AND s.attempts>0 AND o.tier='campaign' THEN 'keep'
             END AS repair
-            FROM keyed_states s LEFT JOIN seed_urls o ON s.url_key=o.url_key LEFT JOIN state_urls own ON own.url=o.url"""),
+            FROM {'planning_states' if reviewed_only else 'keyed_states'} s
+            LEFT JOIN seed_urls o ON s.url_key=o.url_key LEFT JOIN state_urls own ON own.url=o.url"""),
         # A candidate with its own state row is governed by that row, never by a stale spelling.
         # The NULL branch names the published timestamp type: DataFusion 55 unions widen a
         # bare TIMESTAMP to nanoseconds (apache/datafusion#27023).
