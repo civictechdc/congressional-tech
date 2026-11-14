@@ -203,6 +203,6 @@ def compose_pages(base, base_reading, *, source_bytes, source_page_count, source
     receipt = dict(provenance=provenance, parser_version=version, inherited_pages=source_page_count-len(numbers),
                    replaced_pages=sorted(numbers), text_sha256=row['text_sha256'].hex(),
                    text_bytes=len(text.encode()), sources=[dict(r) for r in replacements],
-                   source_evidence=dict(source_evidence), selected=False, published=False)
+                   source_evidence=dict(source_evidence), selection_performed=False, publication_performed=False)
     return row, reading, receipt
 

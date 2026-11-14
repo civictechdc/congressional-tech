@@ -56,6 +56,8 @@ def test_composes_final_pages_without_touching_inherited_bytes_or_inputs(tmp_pat
     assert row['text_sha256'] == sha256(row['text'].encode()).digest()
     assert row['parser_version'] != base['parser_version']
     assert receipt['inherited_pages'] == 2 and receipt['replaced_pages'] == [2]
+    assert receipt['selection_performed'] is False and receipt['publication_performed'] is False
+    assert 'selected' not in receipt and 'published' not in receipt
     assert receipt['provenance']['base']['page_offsets'] == base['page_offsets']
     assert set(receipt['provenance']['implementation']) == {'composition', 'body_text', 'page_checkpoints'}
     assert 'original' in receipt['provenance']['inherited_interpretation']
