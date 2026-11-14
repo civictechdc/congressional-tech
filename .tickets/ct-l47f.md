@@ -2,7 +2,7 @@
 id: ct-l47f
 status: closed
 deps: []
-links: [ct-6v77]
+links: [ct-6v77, ct-tpwm, ct-cbkz]
 created: 2026-11-14T14:24:24Z
 type: bug
 priority: 1

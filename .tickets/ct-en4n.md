@@ -11,7 +11,7 @@ tags: [body_text, quality, captures, html, xml]
 ---
 # Qualify document, feed, error and landing roles against retained capture history
 
-The review identified 384 retained error-template bodies (197 NoSuchKey, 14 File Not Found, 173 Meeting Not Found); none were selected in the inspected frozen release. Eight checked landing targets are already discovered by document_links: six have selected PDFs, one was never attempted and one returned HTTP 410. A separate WARC contains HTTP 200 with application/pdf but zero payload bytes. These observations require response roles and capture-history reconciliation, not an assumption that every PDF-looking URL or short body needs refetching.
+House response detection and explicit reviewed source-body exclusions have merged in PR165 and PR167. Known error/wait/feed bodies can be kept out of document prose while preserving completed readings and saved-body coverage. The 400 example bodies have no document associations in the checked public release; two separately reviewed State Department error bodies do. The corrected Mast and Mahoney addresses now yield useful PDFs, while Cornwell still returns zero bytes. Broader role assignment, capture adoption, accepted selection and search readback remain.
 
 ## Design
 
@@ -100,3 +100,7 @@ Implementation gap: body_text_selection currently records actual keys without a 
 **2026-11-14T15:08:53Z**
 
 Implemented explicit reviewed publication exclusions in selection manifest v2 at fcab04f08b8891f08a1f1beba12a2fd7bfbd7701. Only error_response/wait_response/feed are eligible roles; reasons and qualification report are pinned. Actual selected-key validation still runs, original reading status and total saved-body coverage remain visible, and planner pending work is unchanged. Independent native review approved; 26 focused tests passed (partial lane). /root directly read T001/T002 originals, actual shared parse events, CT cleanup and full output; native private export removes both real error responses and preserves ordinary M005 text byte-for-byte. Exact current public associations are used separately from a synthetic three-row control. Evidence: repairs/corpus-assessment-20261113/source-eligibility-20261114/. No hosted index or production selection changed. House error detection PR165 is merged; broader source-role adoption remains open.
+
+**2026-11-14T15:57:37Z**
+
+PR #167 merged at 7cbb9f3b51bef7621c8516da31c01e8965d727d4 after CI and independent exact-input review. Selection manifest v2 permits hash-qualified exact-body error_response/wait_response/feed exclusions while retaining accepted-key validation, completed status and saved-body coverage. Real export omits two reviewed State error pages and preserves ordinary meeting text byte-for-byte. Broader source-role assignment and public adoption remain. Source refetch recovered Mast/Mahoney corrected addresses; Cornwell still empty; see ct-z4w5.

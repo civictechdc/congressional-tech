@@ -13,6 +13,23 @@ assessment remains non-dispatching and retains the original paused-run evidence.
 acceptance remain separate work. This extends the existing inventory rather than
 creating a second corpus or another selection authority.
 
+## New source-confirmed controls
+
+The resumed recovery pilot adds a useful negative control: extraction completed
+and all 1,158 page checkpoints verified, yet direct reading found substantial
+prose missing on physical pages 600 and 1100. Exact replay separates text Vision
+never emitted from one recognized line per page dropped by strip merging.
+`ct-l3xd` owns that narrow merge defect. The existing cheap queue should gain
+these explicit cause/page findings and new actual-policy outcomes incrementally;
+a successful exit or larger output alone must not clear a known omission.
+
+The corrected-address refetch adds three positive FTS controls: all eight pages
+of the short bill, Mast amendment and Mahoney disclosure were directly read by a
+GPT-6.1-Terra medium reviewer through actual intermediates and outputs. Their
+small formatting/form-state errors do not erase useful searchable content.
+The zero-byte Cornwell response remains a source failure. None of these reviewed
+new candidates is yet a publicly selected reading.
+
 ## Verified population and units
 
 The retained census is frozen at body-text snapshot `919214147503378993` and

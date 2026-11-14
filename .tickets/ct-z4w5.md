@@ -2,7 +2,7 @@
 id: ct-z4w5
 status: in_progress
 deps: [ct-en4n]
-links: [ct-en4n]
+links: [ct-en4n, ct-saqg, ct-4jms, ct-6v77, ct-5cdu]
 created: 2026-11-13T17:46:16Z
 type: task
 priority: 3
@@ -11,7 +11,7 @@ tags: [body_text, captures, refetch]
 ---
 # Refetch reviewed damaged or missing publisher sources and preserve new evidence
 
-The user explicitly authorized background OCR/refetch on 14 November. Reconcile retained target history and refetch only reviewed unresolved sources; the earlier deferral is lifted. Known candidates include a 64 MiB Senate prefix, a 1 MiB testimony prefix, a zero-byte PDF WARC payload, damaged page trees and genuinely unresolved landing targets. OCR cannot recover bytes absent from a truncated response. These are candidates pending identity/history reconciliation, not a new fetch queue.
+The user authorized background OCR/refetch on 14 November. A bounded four-target followup now has three source-reviewed useful PDFs: the previously truncated four-page bill, the Mast amendment and the Mahoney disclosure form. The maintained download-query repair fixed the two initial HTTP 410 targets. Cornwell still returns HTTP 200 with zero bytes and remains failed. Three other reviewed damaged-source URLs and three State Department URLs remain outside the published capture scope. New captures/readings are retained locally; association, accepted selection and publication remain.
 
 ## Design
 
@@ -46,3 +46,7 @@ Deferral preserved. Added a retained-history proposal under repairs/response-rol
 **2026-11-14T15:08:53Z**
 
 User authorization on 14 November lifts the old deferral. First bounded reviewed batch used maintained capture policy/Fetcher/DirectAdapter/BodyStore/ReceiptWriter with current URL history and capture scope. P001 Mahoney and P005 Mast targets both returned HTTP410, each a complete tiny HTML response containing only a meta-refresh to its /404 page. /root read both complete raw bodies and receipts. They remain unresolved; new bodies, headers, source hashes and create-only receipts are retained. Three reviewed State Department URLs were not requested because they fall outside the published capture scope. No original or accepted selection changed. Evidence: repairs/source-refetch-20261114/{authorization.json,current-target-history.json,queue.json,results.json,finished.json,README.md}; final batch 1.4 seconds / 0.106 GiB RSS. Remaining damaged/prefix/zero-payload candidates still need exact history qualification; do not repeatedly fetch already satisfied targets.
+
+**2026-11-14T15:57:37Z**
+
+Corrected bounded refetch completed: short bill e5de955c… (43,652 bytes, four pages), Mast amendment 4ee6fd1a… (25,289 bytes, one page) and Mahoney disclosure f500112e… (224,265 bytes, three pages) are readable useful FTS sources. /root/ocr_pilot_manual_review used GPT-6.1-Terra medium and genuinely read all eight raw pages, actual producer intermediates and final text. Report SHA fd04f6df13bd14bc29f6d6fe13eb1ef98e9961de5830b252f05f781af581af12. Cornwell remained HTTP 200/zero bytes/failed. Exact receipts, bodies, source roles and prior failures are under repairs/source-refetch-20261114/scheduler-followup/refetch-four/. Batch: 5.5 seconds / 0.108 GiB RSS; no public adoption. The maintained query repair changes &download=1 to ?download=1; original two HTTP 410 responses stay retained. Post-refetch accounting includes actual attempts plus reviewed seed context, superseding an earlier context-incomplete diagnostic. Planner defects now have separate tickets ct-saqg (absent journal) and ct-5cdu (whole-history build).

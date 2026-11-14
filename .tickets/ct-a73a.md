@@ -2,7 +2,7 @@
 id: ct-a73a
 status: in_progress
 deps: []
-links: [ct-m704, ct-kfsd, ct-n3ik, ct-hz8y, ct-yy07, ct-t4p3, ct-55qo, ct-aitp]
+links: [ct-m704, ct-kfsd, ct-n3ik, ct-hz8y, ct-yy07, ct-t4p3, ct-55qo, ct-aitp, ct-l3xd]
 created: 2026-11-10T05:38:12Z
 type: bug
 priority: 2
@@ -92,3 +92,7 @@ Targeted OCR resumed at 2026-11-14T14:59:23Z in repairs/ocr-checkpoint-resume-20
 **2026-11-14T15:11:06Z**
 
 First checkpointed body committed and verified at 2026-11-14T15:07:24Z: 1,158 pages / 1,106 OCR pages, 2,653,819 UTF-8 bytes, exact native/staged text SHA d105d199bb5cf5ee7f05dce60d06133737d8cb3add0f8cee556c2bb078e9780e. All1,158 page digests and source-page identities validated; checkpoints occupy41,926,040 bytes. Measured pilot481.9seconds /1.229GiB RSS, verification2.9seconds /.162GiB. Evidence: repairs/ocr-checkpoint-resume-20261114/pilot-verification/receipt.json. Remaining205 will run serially with one-body watchdogs, releasing shared nightly lock between documents. This is operational integrity, not manual transcription qualification.
+
+**2026-11-14T15:57:37Z**
+
+Separate checkpointed lane at source 09fdca797bc5428af7eaec9cfdfd32bb824f7fad is running asynchronously under the explicit authorization. Snapshot at 15:49:17 UTC: 12/206 completed, zero reported errors,194 remaining; durable supervisor 57410 advances one body per watchdog and yields the shared nightly lock between bodies. First 1,158-page pilot:481.9 seconds / 1.229 GiB RSS,1,106 OCR pages,2,653,819 text bytes; all 1,158 checkpoint/source/digest identities verify. Terra medium directly read pages 10/300/600/1100; two dense pages have substantive omissions already before final cleanup. Operational completion does not establish quality. Exact three-band replay isolated both Vision non-detection and unique strip-edge discards; ct-l3xd owns the latter. Old outcomes and active policy remain unchanged.

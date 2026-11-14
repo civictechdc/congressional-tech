@@ -75,6 +75,41 @@ def test_native_append_matches_nullable_work_keys_without_replacing_existing_val
         {'id':3,'label':'','text':'empty is not null'}]
 
 
+def test_native_append_matches_complete_keys_with_duplicate_stored_keys(tmp_path):
+    """Membership uses whole tuples; repeated stored keys cannot multiply work."""
+    from congress_api.lake.tables import create_table, append_rows
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    schema={'type':'struct','schema-id':0,'identifier-field-ids':[1], 'fields':[
+        {'id':1,'name':'id','required':True,'type':'long'},
+        {'id':2,'name':'label','required':False,'type':'string'},
+        {'id':3,'name':'text','required':True,'type':'string'}]}
+    table=dict(namespace=['archive'],name='duplicate_stored_keys')
+    create_table(engine=engine,work=tmp_path/'create',catalog_root=tmp_path/'catalog',
+                 table=table,schema=schema,location=tmp_path/'data',create_namespace=True)
+    arrow=pa.schema([('id',pa.int64()),('label',pa.string()),('text',pa.string())])
+    retained=[{'id':1,'label':None,'text':'retained null'},
+              {'id':2,'label':'x','text':'retained x'},
+              {'id':9,'label':'same','text':'first retained occurrence'},
+              {'id':9,'label':'same','text':'second retained occurrence'}]
+    added=[{'id':1,'label':'x','text':'new tuple'},
+           {'id':2,'label':None,'text':'another new tuple'}]
+    seed=tmp_path/'seed.parquet';incoming=tmp_path/'incoming.parquet'
+    pq.write_table(pa.Table.from_pylist(retained,schema=arrow),seed)
+    pq.write_table(pa.Table.from_pylist([
+        {'id':1,'label':None,'text':'must not replace null'},
+        {'id':9,'label':'same','text':'must not replace either occurrence'},
+        *added],schema=arrow),incoming)
+    kwargs=dict(engine=engine,catalog_root=tmp_path/'catalog',table=table,
+                keys=['id','label'],definition='complete-work-key-v1')
+    first=append_rows(seed,work=tmp_path/'first',**kwargs)
+    second=append_rows(incoming,work=tmp_path/'second',**kwargs)
+    assert sum(f['rows'] for f in second['files'])==2
+    stored=pa.concat_tables([pq.read_table(f['path']) for f in first['files']+second['files']])
+    assert sorted(stored.to_pylist(),key=lambda r:r['text'])==sorted(retained+added,key=lambda r:r['text'])
+    again=append_rows(incoming,work=tmp_path/'again',**kwargs)
+    assert again['files']==[] and again['metadata_location']==second['metadata_location']
+
+
 @pytest.mark.parametrize('binary_type,iceberg_type', [
     (pa.binary(32),'fixed[32]'), (pa.binary(),'binary')])
 def test_compound_binary_work_key_appends_and_repeats_as_noop(tmp_path,binary_type,iceberg_type):
