@@ -1,15 +1,16 @@
 # Find and prioritize text repairs without repeating OCR
 
-Assess every retained body cheaply, then inspect original pages where evidence
-is missing or suggests loss. Keep source roles, completeness, recognition
-quality and repair cost separate. A score orders investigation; it never accepts
-text, discards a source or authorizes OCR. OCR remains paused and publisher
-refetch remains deferred.
+Find unsuccessful or substantially incomplete extraction cheaply so the retained
+text is useful for full-text search (FTS). The owner clarified on 14 November that
+perfect transcription and LLM review of every document are not required. Start
+with retained status and page/text statistics, then spot-check a small sample of
+suspected problems and ordinary outputs. Missing measurements are not defects.
+A review band never discards a source or authorizes OCR. OCR remains paused and
+publisher refetch remains deferred.
 
-`ct-n3ik` owns this assessment and calibration plan, including its existing
-selective backend comparison. The repair tickets below keep their existing
-acceptance work. This extends the existing inventory rather than creating a
-second corpus or another selection authority.
+`ct-n3ik` owns this cheap triage. Selective backend comparison and actual repair
+acceptance remain separate work. This extends the existing inventory rather than
+creating a second corpus or another selection authority.
 
 ## Verified population and units
 
@@ -212,50 +213,34 @@ deduplicating equal prose must not collapse their identities or links.
    actual supervised request. Do not start a recognizer or acquisition from a
    score or assessment record.
 
-## Scores, uncertainty and calibration
+## Practical FTS triage and spot checks
 
-Begin with a transparent **ordinal review priority**, not a claimed probability:
-directly reviewed loss or a selected wrong source first; runtime/provenance
-failures next; measured anomalies next; no-trigger and unassessed controls last.
-Within each stratum retain coverage, recognition, role, normalization and
-provenance findings as separate axes. Selected exposure and estimated repair
-cost are sorting columns, not quality evidence. A high readability score cannot
-cancel a source-confirmed omission. Do not let many correlated length features
-count as several independent votes.
+Produce transparent bands with actionable reasons: known failed, suspicious,
+no obvious failure detected, and unassessed. Separate runtime failure from
+text-quality suspicion. Prioritize missing/error output, substantial blank-page
+gaps, output dominated by repeated headers, severe garbling and known error-page
+structures. Correlated length measures are one signal, not several votes.
 
-Freeze a pilot before inspecting labels: the named confirmed failures and
-controls form a **development** set. Draw a separate held-out sample by source
-hash, document family, format, era, language and layout. Keep related captures,
-exact-text template families and pages from one document in the same split.
-Include source-disjoint and later-capture holdouts where available. Deliberately
-include completed, long, normal-score and no-trigger documents; sampling only
-the repair queue cannot measure false negatives.
+A short amendment or sparse photo page may be fully useful for search. Isolated
+formatting, punctuation, date or checkbox mistakes do not automatically make an
+otherwise searchable document a failed extraction. Flag substantial loss of
+body text or whole sections; preserve finer observations for later repair work.
+No-trigger means no obvious failure was detected by these cheap checks, not
+proof of perfect transcription. Unknown source fidelity or selection does not
+block generating a useful triage queue.
 
-Start with a feasible 200-body held-out review budget and record inclusion
-probabilities. Cover at least 60 no-trigger/low-risk bodies, 40 legitimate
-short/empty/repeated/metadata/container controls, 40 high-signal bodies, 30
-mixed-layout/forms/tables and 30 response-role/encoding families; deduplicate
-overlaps and publish the final disjoint allocation. These are planning quotas,
-not evidence that 200 bodies can bound every source family's error rate.
-For long PDFs review nominated pages plus seeded random pages and first/middle/
-last pages, with the unreviewed pages explicit. Only page-level claims follow
-unless the whole document was read. Use document-level clusters in uncertainty
-estimates; pages from one template are not independent samples.
+Use known failures and legitimate short/blank/structured controls to develop the
+rules. Independently read a small fresh sample of raw inputs, available native
+references and actual outputs, including ordinary long/no-trigger documents.
+Record major misses and false alarms, exact reviewed page scopes, and unavailable
+intermediates. A newly extracted native reference is not a historical pre-cleanup
+OCR intermediate. The first tranche is eight bodies with predeclared pages.
 
-Reviewers blinded to rank/route labels record: substantive omissions, invented
-content, wrong numbers/names/dates/choices, ordering, role and useful coverage;
-record uncertain cases rather than forcing a label. Measure per-action precision,
-false-negative rate among low-risk pages, per-family coverage and unknown share.
-Review both directions of every changed candidate and report confidence
-intervals using the sampling design. Zero observed failures does not establish
-zero population error. Keep prioritization thresholds provisional until this
-held-out evaluation is complete.
-
-Plant at least a missing substantive paragraph/bullet/table value, a plausible
-wrong date/number, a mislabeled error page and an omitted page whose remaining
-text is long/fluent. An author-independent reviewer must reject each from the
-raw source, not by seeing the planted label. Preserve legitimate short, blank,
-photo, redacted-grid, non-Latin, repeated amendment and valid-feed controls.
+The earlier 200-body calibration proposal is superseded by the owner's FTS
+clarification. It is not an implementation or deployment prerequisite. Expand
+spot checks only when they resolve a concrete bad rule or costly repair choice;
+do not read every source or invoke an LLM per document. Keep the OCR pause and
+refetch deferral independent of finishing this inexpensive screen.
 
 ## Keeplist inspiration and limits
 

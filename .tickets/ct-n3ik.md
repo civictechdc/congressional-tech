@@ -9,28 +9,27 @@ priority: 2
 assignee: mikewolfd
 tags: [ocr, pdf_text, readings, tesseract]
 ---
-# Assess retained text quality and qualify selective PDF repair
+# Cheaply find failed or substantially incomplete text extraction for FTS
 
-Preserve the owner's decisions: measure the hybrid split first and use Tesseract fast as the default candidate. Earlier bounded comparisons favored Tesseract fast for missing/garbled typeset layers and Vision for scans; they do not authorize corpus-wide OCR. OCR remains paused. Reprocess only independently identified bad PDFs/pages after policy and cost qualification.
-
-Assess the entire retained population using existing metadata/page features, then inspect source and intermediate contents for omissions despite successful extraction. The user estimates about 2.7 billion tokens; the frozen census has 607,584 completed bodies, 295,770 PDF bodies and 7,764,694 recorded PDF page slots. Logical document rows, body identities, recorded pages and tokens have different denominators. See docs/plans/corpus-text-assessment-20261113.md for counts, multi-stage assessment, Keeplist reuse, held-out calibration and measured-cost boundaries.
+The user clarified on 14 November that the primary purpose is full-text search (FTS). Find failed, empty, badly garbled or substantially incomplete OCR/extraction cheaply across the retained corpus. Perfect transcription, exact form-field fidelity and reading every document with an LLM are not required. Minor mistakes can coexist with useful searchable text. OCR remains paused and publisher refetch remains deferred.
 
 ## Design
 
-Keep coverage, recognition, cleanup loss, response role and missing evidence separate. Priority scores rank review and never become acceptance probabilities. A thin offline assessor consumes identity-bound observations and emits keep/reparse/renormalize/native-reread/selective-OCR/manual/deferred-refetch recommendations; it never reads source content, changes selection, or dispatches recognition/acquisition. Reuse the existing complete PDF page-feature pass and the 376-case Keeplist applicability study, adding only changed reading keys and genuinely missing measurements. ct-hz8y owns native/vector repair, ct-kfsd cleanup exposure/publication, ct-cbkz/ct-f6hr markup reparse/compatibility, and ct-en4n/ct-z4w5 source roles/deferred acquisition; this ticket coordinates assessment without duplicating their acceptance.
+Use existing reading status, output metadata and PDF page features first. Flag missing/error outputs, unexpected near-empty text, substantial page gaps, repeated headers with little body text, severe corruption and known error-response structures. Treat legitimate short amendments, blank/photo pages, forms, tables and metadata/feed containers according to their purpose; short text alone is not extraction failure. Keep missing measurements distinct from observed defects.
 
-The retained all-PDF census reads text, offsets and OCR page lists, not source raster/font/vector features. It ranks review candidates but cannot count typeset versus scanned pages. Reuse spicy-docs NativeOrOcr, FullPage, NativeWithRegions and per-page overrides; qualify composition order and overlaps before adopting region extraction. Upstream commits 5e298abe and 6792cb44 already implement Tesseract model/build identity: coordinate one wheel with ct-cbkz rather than rebuilding backend support in CT. ct-hz8y owns incomplete native-layer detection, ct-yy07 geometry recovery, ct-t4p3 crash settings, ct-aitp page persistence, ct-55qo accepted body selection.
+Produce practical review bands with reasons and body/page locators: known failed, suspicious, no obvious failure detected, and unassessed. These are triage results, not probabilities or automatic repair/selection decisions. Preserve runtime failures separately from text-quality suspicions. Use bounded native-to-final comparison where the intermediate already exists to identify substantial lost passages. Reuse spicy-docs and CT's maintained response-role reader; do not import Keeplist's web acceptance threshold.
+
+Reuse the retained page features and completed 376-case Keeplist applicability study. The frozen batch-205 feature generation covers 296,686 PDF bodies / 8,141,096 recorded page slots; four later batch-207 outputs remain explicitly outside that feature generation. Do not reread the entire baseline text merely to repeat existing measurements. Additional cheap text signals may use bounded samples or a justified incremental pass. Use a small independent raw/intermediate/output spot check, including ordinary no-trigger and legitimate short/blank controls, to catch obvious bad rules. A 200-body calibration study and word-perfect source qualification are not prerequisites for this FTS triage.
+
+ct-hz8y owns native/vector repair, ct-kfsd cleanup exposure/publication, ct-cbkz/ct-f6hr markup reparse, ct-en4n source roles and ct-z4w5 deferred refetch. ct-55qo owns selected readings and ct-aitp page persistence. Earlier Tesseract-fast candidate preferences remain available for later selective repair; backend comparison, provider execution and publication are separate from completing the cheap screen.
 
 ## Acceptance Criteria
 
-1. Reconcile every frozen body/reading into an assessed, missing-evidence, unsupported, pending or refused state with exact source/output/version identity; do not add snapshot counts without deduplication. Preserve page scope and alternative attempts.
-2. Independently calibrate review priorities and action proposals on source-disjoint held-out originals, including long/completed/no-trigger false-negative controls, legitimate short/empty/container/feed controls and planted omissions/wrong values. Record per-stratum precision, missed defects, unknowns and review scope; no corpus accuracy claim from the current exploratory sample.
-3. Measure representative and largest eligible source/input costs separately from already-measured text-feature costs. Freeze token/render/provider costs and bounded budgets only for selectively escalated reviewed pages; preserve the OCR pause and refetch deferral. Proposal-only output cannot close source qualification or publication criteria.
-
-4. Obtain source-qualified features for the selected sample and independently measure classifier precision, including mixed pages, vector lettering, sidebars, short and blank controls; name unassessed records.
-5. Measure accuracy, omissions, numeric values, runtime and memory for the affected cohort and bring the reread cost to the owner before OCR resumes.
-6. Pin backend/model/render/routing identities; demonstrate that unchanged pages are reused and only qualified bad pages are replaced, with original evidence retained.
-7. Complex pages may enter an explicit LLM/VLM comparison only when ordinary maintained paths are inadequate; retain source alignment, uncertainty, provider/model identity and cost. No LLM result is accepted from plausible prose alone.
+1. Give the frozen retained population explicit dispositions using exact actual reading identities. Preserve unsupported, pending, refused and missing-evidence states, and state any generation coverage gaps.
+2. Run transparent, cheap checks for unsuccessful or substantially incomplete extraction and retain actionable reasons/locators. A low quantity or harmless formatting change alone must not declare a document bad.
+3. Check known major failures and legitimate controls, then directly spot-check a small independent sample of suspicious and ordinary outputs against retained originals/intermediates. Report obvious missed failures and false alarms; do not claim exhaustive or word-perfect accuracy.
+4. Report elapsed time, peak memory, inputs reused and any payload bytes newly read so the screen can run economically across the corpus. No LLM-per-document review or original-PDF scan is required.
+5. Leave a prioritized selective repair/reparse queue while keeping OCR paused, refetch deferred and existing accepted readings unchanged. Do not treat unmeasured source fidelity as a blocker to useful FTS triage.
 
 ## Notes
 
@@ -75,3 +74,11 @@ Independent reviewer /root/shared_reader_ci_finish approved core accounting and 
 **2026-11-14T05:52:05Z**
 
 The four previously reviewed examples now join to frozen metadata by exact identities: S046/S055/S150 match their historical pdf_text keys, text hashes and page-1 feature records; S301's reviewed html_text intermediate matches while its response_roles/ct-response-roles-v1 observation remains private candidate-only. Independent reviewer approved 103 checks and rejected five planted wrong claims; source scopes, qualified=false and dispatch_allowed=false remain unchanged. Evidence: repairs/corpus-assessment-20261113/review-links-20261114/ (manifest 0ea4dab46c7ae43e1af268478006ce999aa418076e849f39865ef76677d0f3b5). This reuses existing direct semantic reviews, not fresh held-out data.
+
+**2026-11-14T10:33:06Z**
+
+2026-11-14 source-quality focus resumed. The Keeplist applicability study is complete; the implemented text_assessment adapter only routes supplied facts and does not detect defects. Corpus accounting and stored-output integrity are prerequisites already completed at their stated frozen scope, not source-quality acceptance. Active owners: corpus_current_reconciliation implements CT-specific measurement/ranking over retained page features and bounded native/final comparisons; regs_local_boundary_review checks maintained Keeplist reuse; shared_reader_ci_finish performs independent direct raw/intermediate/output review without new ranking labels. A small first held-out tranche starts the planned evaluation; the 200-body calibration criterion stays open. Reuse the existing PDF feature generation, keep four late batch207 outputs explicitly outside it, and retain OCR paused/refetch deferred. Do not close this ticket from proposal output or bookkeeping.
+
+**2026-11-14T10:52:02Z**
+
+Owner clarification supersedes the earlier 200-body calibration requirement: the goal is cheap screening for FTS usefulness, not perfect transcription. Prioritize failed/empty/severely garbled/substantially incomplete outputs with existing metadata and page statistics, plus a small direct spot check. Do not require per-document LLM review, exact form-field fidelity or corpus source certification. Lead/design/acceptance and the assessment plan were rewritten accordingly; prior evidence is retained. First all-format quantity summary covered 607,584 baseline bodies in 0.538 seconds at 0.11 GiB peak RSS with no source/text payload opened; 4,039 empty outputs are review signals, not confirmed failures. OCR remains paused and publisher refetch deferred.
