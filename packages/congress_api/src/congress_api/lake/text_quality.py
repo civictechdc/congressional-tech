@@ -10,7 +10,7 @@ import unicodedata
 
 from congress_api.parsers.response_roles import assess_response
 
-POLICY_VERSION = 'ct-text-quality-measures-v1'
+POLICY_VERSION = 'ct-text-quality-measures-v2'
 FEATURE_VERSION = 'pdf-page-features-20261113-1'
 MAX_TEXT_BYTES = 256 << 10
 MAX_COMPARE_CHARS = 64 << 10

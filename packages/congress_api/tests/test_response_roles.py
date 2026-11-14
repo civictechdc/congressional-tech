@@ -1,9 +1,114 @@
 """Role observations must not turn document phrases or refusal into rejection."""
 from hashlib import sha256
+from pathlib import Path
 
 import pytest
 
 from congress_api.parsers.response_roles import MAX_EVIDENCE_FIELDS, MAX_EVIDENCE_TEXT_CHARS, assess_response
+
+
+def house_html(kind):
+    # Reduced visible templates from retained originals M004 (meeting) and
+    # M002 (file); full-source identities/replay live in ct-fb7k's evidence.
+    return (Path(__file__).parent / 'fixtures/response_roles' / f'house-{kind}-not-found.html').read_bytes()
+
+
+@pytest.mark.parametrize('kind', ['meeting', 'file'])
+def test_house_errors_require_a_complete_primary_meeting_area(kind):
+    source = house_html(kind)
+    row = assess_response(source, format='html')
+    assert (row.role, row.reason) == ('error_response', f'house_{kind}_not_found')
+    assert row.policy_version == 'ct-response-roles-v2'
+    assert row.body_sha256 == sha256(source).hexdigest()
+    panel, = [field for field in row.evidence if field['field'] == 'house_error_alert']
+    assert source[panel['byte_start']:panel['byte_end']].startswith(b"<div class='alert alert-error'>")
+    assert 'exception category:' in panel['text'] and 'meeting id:' in panel['text']
+    if kind == 'file':
+        assert 'sst full committee markup' in next(f['text'] for f in row.evidence if f['field'] == 'h1')
+        assert 'publish id: hmkp118348' in panel['text']
+
+
+@pytest.mark.parametrize(('before', 'after'), [
+    (b'[Meeting Not Found]', b'[Meeting schedule updated]'),
+    (b'No meeting data is available for display.', b'Meeting documents are available below.'),
+    (b'<title>Event |', b'<title>Report about web errors |'),
+    (b"class='alert alert-error'", b"class='well'"),
+    (b'<strong>Exception Category</strong>: General', b'<strong>Exception Category</strong>: Quoted example'),
+    (b'<div id="DivMeetingContent">', b'<div id="DivMeetingContent"><p>Substantive testimony remains here.</p>'),
+    (b'<div id="DivMeetingContent">', b'<div id="other" id="DivMeetingContent">'),
+    (b'</div></div></body>', b'</body>'),
+])
+def test_partial_or_mixed_house_diagnostics_stay_unassessed(before, after):
+    source = house_html('meeting')
+    assert before in source
+    assert assess_response(source.replace(before, after), format='html').role == 'unassessed'
+
+
+@pytest.mark.parametrize('attribute', [b'hidden', b'aria-hidden="true"', b'style="display: none"',
+                                      b'style="color: red; VISIBILITY: hidden !important;"'])
+@pytest.mark.parametrize('element', [b'<div id="DivMeetingContent"', b"<div class='alert alert-error'"])
+def test_hidden_house_diagnostics_cannot_supply_a_role(attribute, element):
+    source = house_html('meeting').replace(element, element+b' '+attribute)
+    assert assess_response(source, format='html').role == 'unassessed'
+
+
+@pytest.mark.parametrize('element', [b'blockquote', b'q', b'pre', b'code', b'article', b'template', b'script'])
+def test_house_template_quoted_in_a_document_is_not_the_response(element):
+    source = house_html('meeting').replace(b'<div id="body">', b'<div id="body"><'+element+b'>')
+    source = source.replace(b'</body>', b'</'+element+b'></body>')
+    assert assess_response(source, format='html').role == 'unassessed'
+
+
+@pytest.mark.parametrize(('before', 'after'), [
+    (b'<div id="body">', b'<div id="body" style="display:none" style="display:block">'),
+    (b'<div id="body">', b'<div id="body" style="display:block" style="display:none">'),
+    (b'<div id="body">', b'<div id="different" id="body">'),
+    (b'<h1>', b'<h1 style="display:none" style="display:block">'),
+    (b'<h1>', b'<h1 aria-hidden="false" aria-hidden="true">'),
+    (b'<strong>Error Encountered', b'<strong style="display:block" style="display:none">Error Encountered'),
+    (b'<div id="DivMeetingContent">', b'<div id="DivMeetingContent">'
+        b'<p style="display:none" style="display:block">Possibly visible testimony.</p>'),
+])
+@pytest.mark.parametrize('kind', ['meeting', 'file'])
+def test_ambiguous_ancestor_heading_or_diagnostic_cannot_qualify_house_role(kind, before, after):
+    source = house_html(kind)
+    assert before in source
+    row = assess_response(source.replace(before, after), format='html')
+    assert row.role == 'unassessed'
+
+
+@pytest.mark.parametrize('element', [b'blockquote', b'q', b'pre', b'code', b'article'])
+@pytest.mark.parametrize('kind', ['meeting', 'file'])
+def test_quoted_alert_descendants_cannot_supply_house_diagnostics(kind, element):
+    source = house_html(kind)
+    source = source.replace(b"<div class='alert alert-error'>", b"<div class='alert alert-error'><"+element+b'>')
+    source = source.replace(b'</span></div>', b'</span></'+element+b'></div>')
+    row = assess_response(source, format='html')
+    assert row.role == 'unassessed'
+    panel, = [field for field in row.evidence if field['field'] == 'house_error_alert']
+    assert panel['quoted_content'] is True
+
+
+def test_quoted_diagnostic_phrase_is_unknown_but_real_heading_annotation_is_supported():
+    source = house_html('meeting')
+    assert b"<small class='text-tiny'><blockquote>" in source
+    assert assess_response(source, format='html').reason == 'house_meeting_not_found'
+    source = source.replace(b'[Meeting Not Found]', b'[<q>Meeting Not Found</q>]')
+    assert assess_response(source, format='html').role == 'unassessed'
+
+
+def test_house_panel_must_not_use_hidden_diagnostic_or_another_meetings_title():
+    source = house_html('meeting').replace(b'[Meeting Not Found]', b'[<span hidden>Meeting Not Found</span>]')
+    assert assess_response(source, format='html').role == 'unassessed'
+    source = house_html('file').replace(b'<title>SST Full Committee Markup', b'<title>Other substantive meeting')
+    assert assess_response(source, format='html').role == 'unassessed'
+
+
+def test_house_content_uses_the_existing_evidence_budget():
+    source = house_html('meeting').replace(b'<div id="DivMeetingContent">',
+        b'<div id="DivMeetingContent">'+b'x'*MAX_EVIDENCE_TEXT_CHARS)
+    row = assess_response(source, format='html')
+    assert (row.role, row.reason) == ('unassessed', 'evidence_exceeds_assessment_bound')
 
 
 def test_storage_error_requires_root_code_and_request_identity():
