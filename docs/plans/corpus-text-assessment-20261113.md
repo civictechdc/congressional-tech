@@ -30,9 +30,11 @@ Its selected release is
 | Extracted Unicode characters, all four parsers | 29,854,824,445 | Includes whitespace; this is text volume, not pages or words. |
 | Existing proposed non-OCR cohort | 310,964 | Completed HTML/XML plus 917 additional recovery targets; not 310,964 defective documents. |
 
-The user clarified the scale as approximately **2.7 billion tokens**, not pages.
-That is a user estimate; the tokenizer, input selection and counting convention
-are not pinned. The denominator behind approximately 500,000 documents also
+The user clarified the scale as approximately **2.7 billion tokens across
+7.7 million pages**. The token figure is a user estimate; the tokenizer, input
+selection and counting convention are not pinned. The page estimate agrees
+with the frozen 7,764,694 recorded PDF page slots, subject to the source-count
+qualification above. The denominator behind approximately 500,000 documents also
 differs from the frozen logical-document count above. Future census exports must
 name the snapshot, selected/unselected scope, body/document/reading/token unit,
 and whether a page count is inferred or source-confirmed. Recovery additions
