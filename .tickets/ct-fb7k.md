@@ -1,6 +1,6 @@
 ---
 id: ct-fb7k
-status: in_progress
+status: closed
 deps: []
 links: [ct-f6hr, ct-n3ik]
 created: 2026-11-14T12:27:35Z
@@ -48,3 +48,11 @@ Independent review at 4e68755b found two concrete false positives: duplicate att
 96 focused tests now pass (partial production-offline lane, 2/555 files), including both House families, duplicate ancestor identity/style, heading/diagnostic descendants, all quoted wrappers, the real subtitle, and downstream FTS non-promotion. Normal 6 GiB watchdog admission; 0.29 GiB peak RSS. Ruff and git diff --check passed for changed code/tests.
 
 The independent old-commit certificate and exact 36 retained controls remain frozen at house-response-detection-20261114/independent-code-review.md and independent-review/. Root directly reviewed the five source -> retained parse/text -> role/CLI paths in root-source-review.md and root-cli-review/. Exact inputs stay unchanged. Repair replay and independent repaired-commit acceptance are next; ticket remains in_progress until handoff.
+
+**2026-11-14T14:12:42Z**
+
+Completed the bounded detector implementation and independent repair acceptance. Exact reviewed code commit: 22fc142916330c82d26e0d8038c495fcdcd7f9bb. Independent repaired-code approval: house-response-detection-20261114/independent-repaired-code-review.md (SHA-256 98b192f9c0e824d722ef23c1e8c68458778debf0a063e357130bb5d406ad90b8). All 36 frozen independent controls pass, including all eight former duplicate/quote false positives and unchanged ten ordinary legacy positives. Root's direct source -> retained parse/text -> role/CLI review is root-source-review.md, with root-cli-review/ actual outputs.
+
+96 focused tests passed (partial production-offline, 2/555 files; not a full lane), plus Ruff/diff checks. Exact-commit local replay in repair-02/ preserves all 400 role/reason/evidence records: 384 known response matches, zero known misses, zero false positives among two reviewed ordinary controls, 14 unlabelled unknowns. Actual five-case CLI measurements are byte-identical to root's; proposals differ only in the newly written evidence path and derived assessment ID, which the maintained consumer reproduces. First strict comparison refusal remains preserved under repair-01/ and repair-replay.log.
+
+Successful replay: 7,988,904 raw bytes plus 132,307 raw and 2,584 retained-text bytes for the five CLI cases; 1.929 seconds, 0.12 GiB RSS, normal 6 GiB admission. No source request, OCR/provider, extraction-version, capture/refusal, catalog or selected-text change. Detailed repair receipt: house-response-detection-20261114/repair-review.md and repair-02/summary.json. This closes ct-fb7k's implementation/consumer-review slice; parent ct-en4n retains broader corpus/source-history work. Root owns integration/CI and any push/merge.
