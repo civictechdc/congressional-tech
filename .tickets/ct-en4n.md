@@ -1,8 +1,8 @@
 ---
 id: ct-en4n
 status: open
-deps: []
-links: [ct-chc4, ct-z4w5, ct-f6hr]
+deps: [ct-fb7k]
+links: [ct-chc4, ct-z4w5, ct-f6hr, ct-0a35, ct-n3ik]
 created: 2026-11-13T17:46:16Z
 type: task
 priority: 1
@@ -17,13 +17,18 @@ The review identified 384 retained error-template bodies (197 NoSuchKey, 14 File
 
 Reuse the link reader, retained captures, queues, selection/recovery history and maintained content-quality measurements through narrow adapters. Version body-role and quality findings separately from historical parser completion. Distinguish substantive documents, Atom/RSS feeds, error/wait/empty responses, metadata, containers, justified empty and unassessed bodies. A complete feed is valid source data: keep its entry identities, updates and links separately from document prose. Preserve accepted requested_content_in_official_hearing and user_accepted_url_variant recoveries and every logical association. Inventory portfolio attachments separately. Publisher refetching is deferred by the user.
 
+## Immediate implementation and scope
+
+ct-fb7k owns the focused House Meeting Not Found / File Not Found detector extension using the 400 retained examples. Reuse its versioned observations here; do not implement a second detector. This parent retains source-role qualification beyond those templates, retained capture-history reconciliation and the evidence-backed deferred-source list. ct-n3ik consumes the role observations in the cheap review queue, while ct-0a35 checks accepted content through real search.
+
+The example set annotates existing inventory bodies: 384 error-template instances, two directly reviewed ordinary metadata/landing controls and 14 unassessed records. Neither extraction completion nor example membership authorizes document-text selection or publisher refetch. The broader source-role work must not block the already authorized CPU reparse.
+
 ## Acceptance Criteria
 
 1. Independently qualify known error families with real documents quoting error phrases, legitimate short/empty content, XML manifests/playlists, valid Atom/RSS feeds, PDF portfolios and accepted whole-hearing fallbacks as controls. Do not reuse a generic text-length threshold as proof.
 2. Trace all eight landing URLs through link readings, capture attempts, retained copies, selection and accepted recovery. Reconcile both missing and existing outcomes; do not count successful captures as unresolved.
 3. Preserve raw identity and refusal evidence, report selected versus unselected effects, and plant false-positive and missed-error cases that the independent check catches.
 4. Produce a deduplicated unresolved-source list with reasons and evidence for the deferred refetch ticket. Classification alone does not initiate retrieval.
-
 
 ## Notes
 
@@ -78,3 +83,7 @@ The reviewed response-role example S301 now links to its exact historical html_t
 **2026-11-14T11:58:30Z**
 
 The user requested that the 400 previously held HTML/XML bodies serve as inventory examples. Added exact-key annotations under repairs/corpus-assessment-20261113/response-examples-20261114/{examples.jsonl,examples.csv,summary.json,input-manifest.json,README.md}. All 400 already belong to the frozen 18,777-body inventory; no corpus bodies were added or original rows overwritten. Labels preserve 197 NoSuchKey, 173 meeting-not-found and 14 file-not-found template examples. Of the 16 unmatched records, earlier direct reviews supply one ordinary structured-metadata control (M003) and one meeting-landing control (M005); 14 remain unassessed. Reused five original source-role reviews without claiming all template siblings were individually source-reviewed. Every example links its retained-copy descriptor, actual current reading/version and text hash, historical output and frozen selection scope. All 400 separately reparsed successfully in 14 seconds at 0.509 GiB peak; extraction completion remains distinct from source quality. Use these as development/regression data grouped by template family, not a held-out accuracy benchmark. Assembly took 0.34 seconds with no new source retrieval or model calls. OCR remains paused, publisher refetch deferred, selection unchanged. Broader ticket acceptance stays open.
+
+**2026-11-14T12:31:10Z**
+
+Five-step FTS follow-through is now ticketed. New child ct-fb7k owns the missing House meeting/file response detector; this parent retains broader role and capture-history qualification. Linked ct-n3ik for cheap triage and ct-0a35 for actual source-to-search acceptance. Existing raw/review history remains intact; OCR stays paused and refetch deferred.
