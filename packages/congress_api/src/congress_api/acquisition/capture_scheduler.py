@@ -258,11 +258,75 @@ def _attempted_input(work,path,**fields):
                 schema=dict(fields=[field(name,kind) for name,kind in fields.items()],metadata={}))
 
 
+def _reviewed_history(work,engine,inputs,binding,seed_sql):
+    """Resolve reviewed keys and their candidate history without making a partial release cache.
+
+    The first job keys all state addresses using the pinned definition. Later jobs only expand
+    related keys through the existing address/campaign rules. Python reads convergence counts,
+    never matches URLs or state rows. Refuse a deep chain instead of silently truncating history.
+    """
+    work=Path(work)/'reviewed-history';initial=work/'initial';initial.mkdir(parents=True,exist_ok=True)
+    steps=[dict(name='history_seeds',sql=f'SELECT url FROM ({seed_sql})')]
+    steps.extend(_key_steps(binding,[('states','state','requested_url'),
+        ('history_seeds','seed','url'),('cutoffs','cutoff','url')]))
+    values=run_job(initial,engine,inputs=inputs,steps=steps,outputs=[
+        parquet_output(initial,'url_keys','SELECT input_id,url,url_key FROM url_keys ORDER BY input_id',['input_id']),
+        parquet_output(initial,'reviewed_keys',"SELECT DISTINCT url_key FROM url_keys WHERE input_id LIKE 'cutoff:%' ORDER BY url_key",['url_key'])],
+        queries=_key_queries())
+    _check_keys(values)
+    history=initial/'url_keys.parquet';keys=initial/'reviewed_keys.parquet'
+    shared=[item for item in inputs if item['name'] in {'url_rules','url_variants','campaign_candidates'}]
+    for number in range(8):
+        current=work/f'candidates-{number}';current.mkdir()
+        candidates=_address_repairs_sql('SELECT url,url_key FROM related_sources')
+        if any(item['name']=='campaign_candidates' for item in shared):
+            candidates+=' UNION ALL '+_campaign_candidates_sql('SELECT url,url_key FROM related_sources')
+        steps=[dict(name='related_sources',sql="""SELECT DISTINCT h.url,h.url_key FROM reviewed_keys r
+            JOIN history_url_keys h ON h.url_key=r.url_key
+            WHERE h.input_id LIKE 'state:%' OR h.input_id LIKE 'seed:%'""",materialize=True),
+            dict(name='related_candidates',sql=f"SELECT DISTINCT arrow_cast(url,'Utf8') AS url FROM ({candidates})",materialize=True)]
+        steps.extend(_key_steps(binding,[('related_candidates','candidate','url')]))
+        steps.append(dict(name='next_keys',sql='SELECT url_key FROM reviewed_keys UNION SELECT url_key FROM url_keys',materialize=True))
+        result=run_job(current,engine,inputs=[*shared,
+            dict(name='history_url_keys',kind='parquet',path=str(history)),
+            dict(name='reviewed_keys',kind='parquet',path=str(keys))],steps=steps,
+            outputs=[parquet_output(current,'reviewed_keys','SELECT url_key FROM next_keys ORDER BY url_key',['url_key'])],
+            queries=[*_key_queries(),dict(name='growth',sql="""SELECT count(*) AS added FROM reviewed_keys r
+                RIGHT ANTI JOIN next_keys n ON n.url_key=r.url_key"""),
+                dict(name='size',sql='SELECT count(*) AS keys FROM next_keys')])
+        _check_keys(result)
+        keys=current/'reviewed_keys.parquet'
+        if result['growth'][0]['added']==0:
+            return dict(url_keys=str(history),keys=str(keys),rounds=number+1,
+                related_keys=result['size'][0]['keys'],unkeyable_states=values['unkeyable_states'][0]['states'])
+    raise ValueError('Reviewed history needs more than eight candidate expansions; no partial queue was planned')
+
+
+def _reviewed_state_step():
+    # Build only the related keys; scan the full state metadata on the right. No row-group pushdown is claimed.
+    return dict(name='keyed_states',sql="""SELECT s.*,h.url_key FROM reviewed_keys r
+        JOIN history_url_keys h ON r.url_key=h.url_key AND h.input_id LIKE 'state:%'
+        JOIN states s ON h.url=s.requested_url""",materialize=True)
+
+
+def _reviewed_inputs(history):
+    return [dict(name='reviewed_keys',kind='parquet',path=history['keys']),
+            dict(name='history_url_keys',kind='parquet',path=history['url_keys'])]
+
+
+def _reviewed_mode(reviewed_only,urls,cache):
+    if type(reviewed_only) is not bool:
+        raise ValueError('reviewed_only must be a boolean')
+    if reviewed_only and (not urls or cache is not None):
+        raise ValueError('Reviewed-only planning needs named URLs and cannot use a full-release state cache')
+
+
 def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discovery_files=(),
-                  _keyed_states_cache=None,campaign=None):
+                  _keyed_states_cache=None,campaign=None,reviewed_only=False):
     """Account for every reviewed URL, including deadline/budget/scope deferrals."""
     _require_capture_authority(release)
     urls=reviewed_cutoffs(urls)
+    _reviewed_mode(reviewed_only,urls,_keyed_states_cache)
     if not urls:return []
     binding,_,profile=_url_binding(release,engine)
     work=Path(work);work.mkdir(parents=True,exist_ok=True)
@@ -279,7 +343,7 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discove
     inputs.extend(_profile_inputs(release,binding,work))
     key_sources=[('attempted','attempted','url'),('cutoffs','cutoff','url'),
         ('discovered_urls','discovery','url'),('reviewed_repairs','repair','candidate_url')]
-    if not reuse_keyed_states:
+    if not reuse_keyed_states and not reviewed_only:
         key_sources.insert(0,('states','state','requested_url'))
     if campaign is not None:
         inputs.extend([dict(name='campaign_targets',kind='parquet',path=str(campaign.table_path(campaign.target_table))),
@@ -289,8 +353,14 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discove
     steps=[dict(name='discovered_urls',sql=f"SELECT DISTINCT {DISCOVERY_URL_SQL} AS url FROM discovery"),
         dict(name='reviewed_repairs',sql=f"""SELECT DISTINCT url_key AS cutoff_url,
             arrow_cast(url,'Utf8') AS candidate_url FROM ({repairs_sql})""",materialize=True)]
+    if reviewed_only:
+        seed_sql=f'SELECT {DISCOVERY_URL_SQL} AS url FROM discovery'
+        if campaign is not None:seed_sql+=' UNION ALL SELECT target_url AS url FROM campaign_targets'
+        history=_reviewed_history(work,engine,inputs,binding,seed_sql)
+        inputs.extend(_reviewed_inputs(history))
+        steps.append(_reviewed_state_step())
     steps.extend(_key_steps(binding,key_sources))
-    state_key, state_source = ('s.url_key', 'keyed_states s') if reuse_keyed_states else (
+    state_key, state_source = ('s.url_key', 'keyed_states s') if reuse_keyed_states or reviewed_only else (
         'k.url_key', "states s JOIN url_keys k ON k.input_id='state:' || s.requested_url AND k.url_key IS NOT NULL")
     state_fields=', '.join(f'cast(s.{name} AS VARCHAR) AS {name}' if name in state_columns and
         (profile['version']==2 or not name.startswith('capture_')) else f'cast(NULL AS VARCHAR) AS {name}'
@@ -387,11 +457,13 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discove
 
 
 def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
-               seed_files=(),discovery_files=(),attempted=None,cutoff_urls=(),_keyed_states_cache=None,campaign=None):
-    """Use shared URL keys for matching, retaining literal requested URL outputs."""
+               seed_files=(),discovery_files=(),attempted=None,cutoff_urls=(),_keyed_states_cache=None,campaign=None,
+               reviewed_only=False):
+    """Use shared URL keys; reviewed_only explicitly limits history and work to the named cutoffs."""
     _require_capture_authority(release)
     _positive(request_budget,'request budget');as_of=_utc(as_of)
     cutoff_urls=reviewed_cutoffs(cutoff_urls)
+    _reviewed_mode(reviewed_only,cutoff_urls,_keyed_states_cache)
     binding,definition_sha256,profile=_url_binding(release,engine)
     work=Path(work);work.mkdir(parents=True,exist_ok=True)
     required={'requested_url','attempts','next_attempt_at','last_outcome'}
@@ -444,13 +516,20 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
     inputs.append(json_input(work,'cutoffs',(dict(url=url) for url in cutoff_urls),url='Utf8'))
     inputs.extend(_profile_inputs(release,binding,work))
     campaign_seeds = " UNION ALL SELECT target_url AS url,'campaign' AS source,'[]' AS pointer FROM campaign_targets" if campaign is not None else ''
-    steps=[dict(name='seed_rows',sql=f"""SELECT url,source,pointer FROM seeds UNION ALL
-        SELECT {DISCOVERY_URL_SQL} AS url,source,pointer FROM discovery"""+campaign_seeds)]
+    seed_sql=f"""SELECT url,source,pointer FROM seeds UNION ALL
+        SELECT {DISCOVERY_URL_SQL} AS url,source,pointer FROM discovery"""+campaign_seeds
+    steps=[dict(name='seed_rows',sql=seed_sql)]
+    history=None
+    if reviewed_only:
+        history=_reviewed_history(work,engine,inputs,binding,seed_sql)
+        inputs.extend(_reviewed_inputs(history))
     key_sources=[('seed_rows','seed','url'),('attempted','attempted','url'),('cutoffs','cutoff','url')]
-    if not reuse_keyed_states:
+    if not reuse_keyed_states and not reviewed_only:
         key_sources.insert(0,('states','state','requested_url'))
     steps.extend(_key_steps(binding,key_sources))
-    if not reuse_keyed_states:
+    if reviewed_only:
+        steps.append(_reviewed_state_step())
+    elif not reuse_keyed_states:
         steps.append(dict(name='keyed_states',sql="""SELECT s.*,k.url_key FROM states s JOIN url_keys k
             ON k.input_id='state:' || s.requested_url AND k.url_key IS NOT NULL""",materialize=True))
     disposition = 's.capture_disposition' if recovery_eligibility else 'cast(NULL AS VARCHAR)'
@@ -463,7 +542,8 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
     bad_spelling = _literal(_repair_spelling(binding['rules']))
     steps.extend([
         dict(name='keyed_seeds',sql="""SELECT s.*,k.url_key FROM seed_rows s JOIN url_keys k
-            ON k.input_id='seed:' || s.url"""),
+            ON k.input_id='seed:' || s.url"""+
+            (' JOIN reviewed_keys r ON r.url_key=k.url_key' if reviewed_only else '')),
         # Seed keys and a reused keyed_states cache arrive as different string
         # types; a materialized union needs one declared type.
         dict(name='repair_sources',sql="""SELECT arrow_cast(url,'Utf8') AS url,arrow_cast(url_key,'Utf8') AS url_key FROM (
@@ -568,7 +648,7 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
                next_attempt_at,url_key{',capture_disposition,capture_reason,capture_decision_id' if recovery_eligibility else ''}
                FROM keyed_states ORDER BY url_key,requested_url""",
             ['url_key','requested_url']))
-    states_table='keyed_states' if reuse_keyed_states else 'states'
+    states_table='keyed_states' if reuse_keyed_states or reviewed_only else 'states'
     eligibility_invalid=" OR capture_disposition IS NULL OR capture_disposition NOT IN ('eligible','satisfied','excluded')" if recovery_eligibility else ''
     campaign_queries=[]
     if campaign is not None:
@@ -592,8 +672,14 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
             raise ValueError('Invalid campaign membership or eligibility')
     if any(values[name][0]['violations'] for name in ('bad_states','duplicates','large_observations')):
         raise ValueError('Invalid or duplicate url_state rows')
-    return dict(queue=str(work/'queue.parquet'),counts=dict(values['counts'][0],unkeyable_states=values['unkeyable_states'][0]['states']),release_id=release['release_id'],
+    result=dict(queue=str(work/'queue.parquet'),counts=dict(values['counts'][0],unkeyable_states=values['unkeyable_states'][0]['states']),release_id=release['release_id'],
                 as_of=as_of,seed_files=files,url_key_definition_sha256=definition_sha256)
+    if history is not None:
+        result['counts']['unkeyable_states']=history['unkeyable_states']
+        result['history_scope']=dict(mode='reviewed_only',urls=list(cutoff_urls),
+            related_keys=history['related_keys'],candidate_rounds=history['rounds'],
+            source_state_rows=release['identities']['url_state.parquet']['rows'])
+    return result
 
 
 def _provider_terminal(transport,status,error):
