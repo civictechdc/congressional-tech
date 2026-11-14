@@ -311,16 +311,17 @@ unchanged pages. Recompute a score policy from retained features without
 rerunning extraction. A parser change recomputes only its exact eligible input
 predicate, followed by combined-generation invariants.
 
-Deliver in this order: inventory reconciliation and offline recommendations;
-independent calibration; qualified non-OCR reparse/cleanup work; measured source
-feature expansion; then an explicit selective recognition proposal. OCR and
-refetch stay paused throughout the first stages.
+Deliver the cheap FTS triage queue and a small independent spot check first,
+with major misses, false alarms and missing evidence recorded. Keep source-feature
+expansion, native/backend and cost comparisons, qualified repairs, and
+selection/publication as separately scoped follow-ups. OCR remains paused and
+publisher refetch remains deferred.
 
 ## Existing ticket ownership and remaining gates
 
 | Ticket | Work retained by that ticket |
 | --- | --- |
-| `ct-n3ik` | Assessment inventory, priority policy, source-qualified typeset/scanned/mixed split, held-out evaluation, backend/cost proposal and optional complex-page comparison. |
+| `ct-n3ik` | Cheap assessment inventory and FTS priority bands, a small independent spot check, and documented major misses, false alarms and missing evidence. Native/backend comparisons and repair acceptance remain separately scoped follow-ups. |
 | `ct-hz8y` | Incomplete-native/vector detection and source-confirmed page recovery, including held-out omission controls. |
 | `ct-kfsd` | Historical cleanup exposure, retained-intermediate reuse, corrected selection/publication and composed-WARC qualification. |
 | `ct-cbkz`, `ct-f6hr` | Qualified non-OCR cohort/pilot, markup normalization, encoding/DOCTYPE compatibility and reparse acceptance. |
@@ -328,6 +329,7 @@ refetch stay paused throughout the first stages.
 | `ct-55qo`, `ct-aitp`, `ct-a73a` | Actual reading selection, durable page reuse, and supervised request resource/recovery evidence. |
 | `ct-yy07`, `ct-t4p3` | Typed geometry fallback and page-local recognition crash policy; real recovered output remains gated by the OCR pause. |
 
-No ticket closes from this plan or an offline priority output. Full coverage,
-held-out detector accuracy, source-qualified repairs and publication/readback
-remain separate acceptance claims.
+The cheap FTS screen and its small spot check may finish with documented blind
+spots and missing evidence. Source-feature expansion, native/backend comparison,
+qualified repairs and selection/publication require separately scoped work and
+evidence. OCR remains paused and publisher refetch remains deferred.
