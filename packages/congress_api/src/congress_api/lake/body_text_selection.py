@@ -29,7 +29,8 @@ def load(path, versions):
     raw = path.read_bytes()
     value = json.loads(raw)
     fields = {'version', 'baseline_versions', 'qualification', 'overrides'}
-    if not isinstance(value, dict) or type(value.get('version')) is not int or value['version'] not in (1, 2):
+    if (not isinstance(value, dict) or not isinstance(value.get('version'), int)
+            or isinstance(value['version'], bool) or value['version'] not in (1, 2)):
         raise ValueError('Invalid body-text selection manifest')
     if value['version'] == 2:
         fields.add('excluded_bodies')
