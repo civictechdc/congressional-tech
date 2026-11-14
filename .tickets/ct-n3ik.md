@@ -11,7 +11,7 @@ tags: [ocr, pdf_text, readings, tesseract]
 ---
 # Cheaply find failed or substantially incomplete text extraction for FTS
 
-The cheap inventory and review queue cover 296,690 PDF bodies/8,143,043 stored page slots and all completed markup outcomes. A metadata-only check of920 old recovery PDFs narrowed strong failure signals to7: Terra medium directly reviewed17 pages and found2 valid photo-only sources,3 bodies with confirmed text omissions, and2 damaged sources with useful partial text. The other913 retain429 no-obvious-failure and484 weaker review-later classifications; none is a transcription certificate.
+The cheap screen covers 296,690 PDF bodies / 8,143,043 stored page slots and completed markup outcomes. Exact current-release binding finds 494 potentially substantial extraction problems, 38,560 ambiguous signals and 86 selected empty texts. These are review signals, with one known biography omission and two known media-playlist roles among the empties. The 944 repair overrides pass actual payload/hash/offset validation; wider source quality remains explicitly imperfect.
 
 ## Design
 
@@ -123,3 +123,7 @@ New real completion control: dbaa560c… pages 600/1100 are substantially incomp
 **2026-11-14T16:48:30Z**
 
 Seven-case direct report: accepted-text-adoption-20261114/seven-manual-review/review.md SHA cc8ed9bf76156aed4330925993cf14e31901dd935f58c8e081f3c263f6022215. Empty bodies 78504f1e/c9ed5729 are photo-only. ee7ad6da pages 1/109/217 contain legislative prose while output is only 216 newlines. 228ddad5 p105 and 3a21a04f p140 contain omitted prose/endnotes; neighboring controls retain useful text. a558032c/e51dfab3 have invalid structures and damaged rendering; white pages cannot establish original blanks. Route confirmed native/recognition loss to ct-hz8y and damaged sources to ct-en4n/ct-z4w5. Full markup quantity comparison finds no large relative drop/growth among ≥1,000-byte completed baselines; all 3,571 newly empty results had zero old non-whitespace counts. Preserve source-review scope and unread ranges, not a universal accuracy score.
+
+**2026-11-14T17:16:28Z**
+
+Current accepted-set-v1 metadata validation finds 311,716 eligible selected bodies with matching completed actual readings, no duplicate selection and no completed selected reading missing text. Another 11,874 eligible saved bodies lack selected text: 278 error, 209 size_limit and 11,387 without a reading at the accepted versions. This last group is not evidence they were never attempted. There are 86 selected empty digests (52 PDF, 34 XML), outside the 944 overrides. Existing cheap flags bind to 494 potentially substantial and 38,560 ambiguous selected cases; these are not newly confirmed defects. All 944 overrides have recomputed UTF-8 text hashes and valid page/recognition arrays, covering 812,613,771 text bytes and 377,969 slots. Use exact receipts under accepted-text-adoption-20261114/full-delivery-admission; no new whole-corpus source or text scan was required.

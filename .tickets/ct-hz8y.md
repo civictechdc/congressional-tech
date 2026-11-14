@@ -1,6 +1,6 @@
 ---
 id: ct-hz8y
-status: open
+status: in_progress
 deps: []
 links: [ct-kfsd, ct-n3ik, ct-a73a, ct-yy07, ct-55qo, ct-aitp]
 created: 2026-11-13T17:46:16Z
@@ -11,7 +11,7 @@ tags: [body_text, pdf, ocr, routing]
 ---
 # Route incomplete native PDF layers and vector-only writing to OCR
 
-Exact-page overrides are implemented, but source-qualified native-layer and vector-text recovery remains open. In addition to the prior Q005/Q007/Q009/Q010/S167/S188 cases, a new Terra medium review confirms omitted legislative prose on ee7ad6da pages1/109/217, VFW testimony on228ddad5 page105, and Nord Stream endnotes on3a21a04f page140. Useful neighboring retained text survives. Diagnose routing from actual native/page evidence, then recognize only qualified pages or body scopes under the resumed authorization.
+Exact-page overrides are implemented. New source and native-route evidence confirms omitted visible prose on ee7ad6da pages 1/109/217, 228ddad5 page 105 and 3a21a04f page 140: each reports an empty native layer and zero detected images, so NativeOrOcr skips recognition. S002 page 1 is another directly reviewed selected empty biography. Six exact-page recognition candidates are being generated with an explicit routing policy; accepted composition and the earlier Q/S cases remain open.
 
 ## Design
 
@@ -46,3 +46,7 @@ Five-step follow-through: ct-n3ik owns queue priority and cause-to-owner routing
 **2026-11-14T16:48:30Z**
 
 New direct source/intermediate/output evidence is accepted-text-adoption-20261114/seven-manual-review/review.md, SHA cc8ed9bf76156aed4330925993cf14e31901dd935f58c8e081f3c263f6022215. ee7ad6da has 217 stored slots, 216 newline bytes and no useful output; only 1/109/217 were read, so whole-body repair is a candidate scope, not 217 reviewed pages. For 228ddad5 feature run 102–110 has direct omission at 105; for 3a21a04f run 134–149 has direct omission at 140. Do not infer all flagged pages contain prose. Existing partial text remains useful for FTS. No new OCR was performed by this review; user has separately authorized targeted OCR/refetch.
+
+**2026-11-14T17:16:28Z**
+
+The fresh no-OCR native probe is accepted-text-adoption-20261114/seven-manual-review/current-native-route/summary.json. Five source-confirmed omitted pages have native_nonspace=0, image_count=0 and would_recognize=false; four useful neighboring controls report images and route to recognition. This is current routing evidence, not the historical intermediary or proof of vector content. S002 body 131d34ba7fa4baec9299358bedb4576101957d794fb407d57a85063033a2ffd4 is a prior directly reviewed one-page biography omission and remains selected at the baseline version. Authorized candidate generation is restricted to these six pages. New interpretations require their own actual identity and independent Terra medium raw/intermediary/output review.

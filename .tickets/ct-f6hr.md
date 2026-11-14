@@ -11,7 +11,7 @@ tags: [body_text, html, xml, spicy-docs, compatibility]
 ---
 # Handle retained HTML encoding and XML compatibility failures under explicit policies
 
-The shared opt-in repair helper is merged in SpicyDocs PR #30. All 35 markup refusals have direct source dispositions: six useful older readings, seventeen useful actual repaired readings, eight error responses and four damaged sources. The seventeen repaired pairs are now in the authoritative local catalog at their separate actual versions. CT PR #168 is at 30bcc8e9 with import-layer and early-checkpoint-refusal fixes; final CI and accepted publication remain.
+Shared repair is merged in SpicyDocs PR #30 and CT PR #168 (1375adda), with all CI checks passing. All 35 markup refusals have direct source dispositions: six useful older readings, seventeen useful repaired readings, eight error responses and four damaged sources. The seventeen repaired pairs are adopted at their actual separate versions. Candidate selection validates their keys, hashes and offsets; publishing accepted text remains with ct-cbkz.
 
 ## Design
 
@@ -124,3 +124,7 @@ PR168 correction pushed at 8c1a317b04b01862d8ca9f604266246d36f1d250: recovery co
 **2026-11-14T16:48:29Z**
 
 All 17 actual repair pairs were adopted with exact field/hash readback. PR #168 latest head 30bcc8e974d8009a7a4ec131578bb3a5f5271870 relocates the unchanged recovery-version guard after checkpoint identity validation, fixing the CI KeyError while keeping refusal before stage/workers/source access. 39 focused checkpoint/recovery/markup tests pass; 114 prior focused tests cover unchanged integration/import fences. Root independently verified exact guard-only relocation and retained qualified parser/helper/wheel/output bytes. New-head MCP CI passes; offline matrix is running. No active OCR policy change.
+
+**2026-11-14T17:16:28Z**
+
+CT PR #168 merged at 1375addaadd5388d579e07463edc6670551c207c after both workflows passed. The final 39 focused checkpoint/recovery checks and earlier 114-test integration evidence remain valid. All seventeen actual repaired pairs passed the later 944-override payload validation. Historical refusals remain preserved; no global compatibility restamping or source-fidelity claim was made.

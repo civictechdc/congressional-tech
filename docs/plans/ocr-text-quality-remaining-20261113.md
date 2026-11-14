@@ -11,8 +11,10 @@ keys are running in a separate current-policy recovery lane with durable page
 checkpoints. Refetch uses reviewed unresolved targets and preserves every new
 response. Any bulk manual PDF/page audit uses `gpt-6.1-terra` with medium reasoning.
 
-The user owns text search through SereneDB. This task supplies verified accepted
-text, document/body associations, page offsets, provenance and source exclusions.
+The user owns text search through SereneDB. This task checks the text tables for
+internal consistency and useful source content, and reports omissions, garbage
+and error responses explicitly. Plain text and minor OCR mistakes are acceptable.
+Preserve actual reading keys, page offsets, provenance and source exclusions.
 The local SQLite/MCP adapter is shelved, unmerged and unpublished; its independent
 review found a page-map reuse defect. Do not continue that delivery path or infer
 that its small consumer proof establishes the SereneDB integration.
@@ -30,9 +32,9 @@ that its small consumer proof establishes the SereneDB integration.
 | Page-local recognizer crashes | [ct-t4p3](../../.tickets/ct-t4p3.md) | Qualify alternate settings on the exact failing page; shared checkpoints belong to ct-aitp. |
 | Cheap extraction-failure screen | [ct-n3ik](../../.tickets/ct-n3ik.md) | Reused features cover 296,690 PDF bodies / 8,143,043 recorded slots. The final markup refresh has 45,106 candidate/control rows, including 1,182 priority 0–2 rows. Broader non-PDF signals remain. Scores rank review; they do not certify text. |
 | HTML/XML reparse and adoption | [ct-cbkz](../../.tickets/ct-cbkz.md), upstream `ss-mkxe` | Reparse and exact local adoption are complete: 310,928 texts, 310,963 readings and one separately handled valid feed. All 35 refusals and older outcomes survive. Accepted data handoff remains. |
-| HTML encoding and XML subsets | [ct-f6hr](../../.tickets/ct-f6hr.md) | Shared helper merged in SpicyDocs PR #30. All 35 refusals are diagnosed; seventeen repaired pairs are adopted at their actual separate versions. PR #168 at 30bcc8e9 retains the import fence and early checkpoint refusal. Final CI remains; 39 final focused checks and the preceding 114-test integration run pass. |
+| HTML encoding and XML subsets | [ct-f6hr](../../.tickets/ct-f6hr.md) | Shared helper merged in SpicyDocs PR #30; CT PR #168 merged at 1375adda after both workflows passed. All 35 refusals are diagnosed; seventeen repaired pairs are adopted at their actual separate versions. The final 39 focused checks and preceding 114-test integration evidence remain valid. |
 | Document/feed/error/landing roles and capture history | [ct-en4n](../../.tickets/ct-en4n.md), [ct-fb7k](../../.tickets/ct-fb7k.md) | House error detection merged in CT PR #165 after all ten checks passed. Explicit reviewed source-body exclusions merged in PR #167 after independent native review and a real two-error/one-control export replay. Broader eligibility adoption and capture history remain. |
-| Accepted text handoff to SereneDB | [ct-m704](../../.tickets/ct-m704.md) | User owns search ingestion and deployment. Supply exact accepted text/table/release identities and exclusions; reuse the retained extraction. SQLite/MCP indexing work is shelved. |
+| Text-table consistency and quality handoff | [ct-m704](../../.tickets/ct-m704.md) | User owns SereneDB ingestion and deployment. Validate actual retained/selected keys, text hashes and page maps; expose missing and suspicious results. SQLite/MCP indexing work is shelved. |
 | Verify source-to-search results | [ct-0a35](../../.tickets/ct-0a35.md) | Coordinate downstream acceptance with the user's SereneDB work. Keep source, accepted text, snippets and citations bound to their actual identities. No SereneDB acceptance is claimed here. |
 | Publisher refetch | [ct-z4w5](../../.tickets/ct-z4w5.md) | Authorized on 14 November. The corrected-address followup recovered three useful PDFs, independently read across all eight pages. Cornwell remains HTTP 200 with zero bytes. Six other reviewed source URLs remain outside published capture scope. |
 
@@ -40,8 +42,8 @@ that its small consumer proof establishes the SereneDB integration.
 
 - [ct-tpwm](../../.tickets/ct-tpwm.md) is closed after PR #169 merged with passing CI and all remaining markup rows reconciled. The same bounded writer adopted another 945 text/reading pairs at 0.464 GiB peak RSS. No memory ceiling was increased.
 - [ct-l3xd](../../.tickets/ct-l3xd.md) has its shared fix merged in SpicyDocs PR #31 after CI and independent review. Two reviewed pages gain one previously discarded recognized line each. CT package/policy composition and selected-page adoption remain; source omissions and reading-order limits are explicit.
-- [ct-saqg](../../.tickets/ct-saqg.md) handles an absent attempted journal that currently produces a native zero-partition planning failure.
-- [ct-5cdu](../../.tickets/ct-5cdu.md) bounds reviewed capture planning to relevant URL history. The seven-target workaround preserved maintained URL keys and source context without raising resource limits.
+- [ct-saqg](../../.tickets/ct-saqg.md) now represents an absent attempted journal as a real empty native input. Integrated source and 107 focused scheduler cases pass; merge acceptance remains.
+- [ct-5cdu](../../.tickets/ct-5cdu.md) now separates reviewed request roots from related URL history. The exact seven-target replay preserves four requests and seven cutoff records at 1.539 GiB RSS under unchanged limits. Root reproduced the candidate-scope defect, reviewed its fix and reran the actual native consumer at the integrated source; merge acceptance remains.
 
 Refetch evidence is under `repairs/source-refetch-20261114/scheduler-followup/`.
 The corrected-address batch retained all responses and receipts. A Terra medium
@@ -57,8 +59,33 @@ three bodies have confirmed text omissions; two have damaged PDF structures and
 useful partial text. Exact reviewed and unread pages are retained under
 `accepted-text-adoption-20261114/seven-manual-review/`. This directs selective
 repair without a model review of every document. The first accepted-set candidate
-holds those seven while native validation proceeds for 944 actual overrides and
-eleven directly reviewed source exclusions.
+holds those seven. All 944 actual overrides now pass completed-reading membership,
+recomputed UTF-8 text hashes and page/recognition-array checks; none is empty.
+That payload check covered 812,613,771 bytes and 377,969 stored page slots below
+0.87 GiB RSS. Eleven directly reviewed source exclusions remain explicit.
+
+The candidate's current-release metadata has 311,716 selected text bodies, each
+with one matching completed reading, with no duplicate selection or completed
+selection missing text. Another 11,874 eligible saved bodies have no selected
+text: 278 errors, 209 size-limit outcomes and 11,387 with no reading at the
+accepted versions. The latter count does not mean they were never attempted.
+These are checks of a selection candidate, not a published clean-text export.
+
+Structural consistency does not establish useful text. The selected baseline
+still contains 86 empty-text digests (52 PDF and 34 XML), including a known
+one-page biography omission and two known media-playlist sources. Existing
+cheap signals match 494 potentially substantial and 38,560 ambiguous cases.
+Keep the exact flags and source-review limits alongside the table identities;
+do not call every short or empty result a failure. Receipts and exact key lists
+are in `accepted-text-adoption-20261114/full-delivery-admission/`.
+
+A fresh native-only probe isolates one routing cause on five source-reviewed
+missing pages: the native layer is empty, no images are reported and the policy
+skips recognition. Four useful neighboring controls do report images. Six exact
+recognition candidates, including the selected S002 biography, are now being
+generated under explicit settings. Candidate generation and final-page
+composition retain separate identities; no old checkpoint is relabeled and no
+whole-document OCR is implied.
 
 ## Sequence and limits
 
@@ -68,7 +95,7 @@ eleven directly reviewed source exclusions.
 4. Local catalog adoption is complete. PR #166 bounded incoming payloads and PR #169 bounded stored-key membership under the same 512 MiB engine pool. All markup rows plus 920 old recovery PDF pairs, eight corrected PDF pairs and seventeen markup repair pairs have exact readback. Six useful older markup pairs remain unchanged. Final snapshots are text `4606969079641435643` and readings `7411791213520479856`; root independently verified the 125 additional append receipts and snapshot ancestry. Keep historical refusals and one selected actual version per body/parser, without restamping.
 5. Use the final exception queue, which took 1.515 seconds at 0.91 GiB peak RSS with metadata only and includes all 2,632 recovery targets and all 400 examples. Its 206 pending rows describe the old recovery snapshot; current dispatch authorization is separate. Four missing late PDF feature rows were added using 4,394,643 retained text bytes in 0.301 seconds at 0.116 GiB; all prior feature files were reused. Weak blank-page signals nominate review and do not prove failure.
 6. Adopt explicit reviewed search eligibility before publication. Manifest version 2 excludes exact reviewed error/wait/feed bodies from document prose while retaining actual keys, completed evidence and full saved-body coverage. It refuses empty/unassessed roles, and exclusion cannot hide a wrong accepted digest. The real T001/T002 responses disappear from a private export while the ordinary M005 meeting control remains byte-identical. No hosted index has changed.
-7. Hand off qualified text and exact identity/coverage metadata for the user's SereneDB ingestion. Search integration and deployment belong to that work. Continue diagnosing identified bad PDF pages/bodies, reuse checkpoints and retained intermediates, and run authorized targeted OCR/refetch under separate supervision. Conditional LLM remedies have no newly qualified results.
+7. Keep the table's consistency, missing outcomes and useful-text evidence explicit. Search integration and deployment belong to the user's SereneDB work. Continue repairing identified bad PDF pages/bodies, reuse checkpoints and retained intermediates, and run authorized targeted OCR/refetch under separate supervision. Conditional LLM remedies have no newly qualified results.
 
 Operational completion and source completeness remain separate. Preserve valid empty results, old refusals and recovery evidence. Carry forward only readings proved unaffected, and declare semantic changes rather than restamping old rows. New recovery results carry their actual new policy version.
 
