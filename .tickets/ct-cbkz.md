@@ -12,7 +12,7 @@ tags: [congress_api, body_text, spicy-docs, html, xml, post-wave-6]
 ---
 # Finish the HTML/XML reparse and adopt qualified text
 
-The full 310,964-body HTML/XML cohort is processed and locally adopted: 310,928 completed texts, 35 preserved refusals and one valid dedicated feed. Exact catalog reconciliation passed for all 310,928 text rows and 310,963 readings. PR #169 removed the final append memory blocker. Six useful older markup pairs and seventeen actual repaired pairs are also retained; accepted export and public search delivery remain open.
+The complete 310,964-body HTML/XML cohort is processed and locally adopted: 310,928 completed texts, 35 retained refusals and one dedicated valid feed. All 310,963 reading rows are reconciled. Seventeen repaired and six useful older markup readings are retained and selected at actual versions. Current selected-key validation passes; public export and downstream search delivery remain separate.
 
 ## Design
 
@@ -24,7 +24,7 @@ The retained inventory names 310,964 unique HTML/XML bodies (310,047 completed b
 
 The frozen cohort contains 310,964 body/parser keys: 310,563 in the unchanged bulk lane, 400 completed in the separate verified-retained-copy lane and one House feed with an existing dedicated structured reading. The feed is not an xml_text completion and its zero prose bytes are not a failed extraction. The 400 remain bound to observed archive size/ETag and decoded identity; do not invent missing original capture metadata or restamp historical readings.
 
-Run evidence and final collector: <main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/markup-reparse-20261114/. Preserve the completed source/policy pins and final reconciliation hashes. Verified coarse chunks retain all 310,928 text rows and 310,963 reading rows without changing keys or values. All 310,928 texts are now appended with exact key/hash membership; 234,602 new reading rows are appended and 76,361 remain. The separate measured key-growth fix ct-tpwm is independently reviewed before those final 22 pieces resume. ct-f6hr owns cause-specific residual encoding/XML failures; only affected inputs should be retried after a qualified fix. ct-fb7k/ct-en4n supply response-role evidence, ct-n3ik owns the practical exception queue, and ct-0a35 owns source-to-search acceptance.
+Run evidence and final collector: <main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/markup-reparse-20261114/. Preserve the completed source/policy pins and final reconciliation hashes. Verified coarse chunks retain all 310,928 text rows and 310,963 reading rows without changing keys or values. All 310,928 texts and 310,963 readings are now appended with exact key/hash membership. The final 22 pieces completed after the independently reviewed bounded stored-key fix ct-tpwm merged in PR #169. ct-f6hr owns cause-specific residual encoding/XML failures; only affected inputs should be retried after a qualified fix. ct-fb7k/ct-en4n supply response-role evidence, ct-n3ik owns the practical exception queue, and ct-0a35 owns source-to-search acceptance.
 
 Bind authoritative reading/text catalogs and one accepted actual key per body/parser using ct-55qo. Carry prior usable text when a new attempt fails. Keep source errors, unknown roles, active refusals and unattempted work visible; completion alone must not promote an error page to substantive document text. Retain legitimate metadata/feed outputs according to their role. No PDF OCR or publisher refetch is part of this lane.
 
@@ -120,3 +120,7 @@ All 310,928 text rows now reside in the local catalog with missing = extra = has
 **2026-11-14T16:48:29Z**
 
 Local adoption finished and verified. Markup receipt SHA 470dd9a144d88959498be2682fee19b411c28bbe1c71b3b6294c829a7beee775. Subsequent 945-pair receipt SHA 713842cf4c9dd15e627a1bea2dc28df0e1805712c042202438571973aebfc18d includes all 17 markup repairs and 8 corrected PDFs plus 920 old recovery PDFs. Current exact snapshots: text 4606969079641435643/readings 7411791213520479856. Cheap before/after markup quantity checks find no >80% drop among completed pairs with >=1,000 old bytes. All 3,571 positive-byte-to-empty changes bind to exact old readings with zero non-whitespace characters (maximum 93 bytes). These metadata checks do not certify all source text. Evidence: accepted-text-adoption-20261114/selection-preparation/.
+
+**2026-11-14T18:47:50Z**
+
+The obsolete 76,361-reading append remainder is resolved by merged PR #169 and final exact reconciliation. Accepted-set-v3 preserves the same qualified markup baseline versions, 17 repair exceptions, 6 older usable keys and 11 reviewed source exclusions as v1. Existing raw/intermediary/output qualification and exact append receipts are reused; no markup reread was necessary. The user owns SereneDB search.

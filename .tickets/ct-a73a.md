@@ -11,7 +11,7 @@ tags: [congress_api, body_text, ocr]
 ---
 # Reconcile resource-failure recovery and measure memory per request
 
-The original defect affected seven paused page deadlines and seven 1 GiB memory-limit decisions. The source fixes have landed: page deadlines use user CPU time and the producer has a separate worker budget. Data acceptance remains open until those original identities are reconciled. The old recovery remains frozen after 2,426/2,632 committed outcomes, including four later completed bodies beyond the original pause. On 14 November the user authorized background OCR/refetch. Its 206 remaining PDF keys are running in a separate current-policy lane with durable page checkpoints; the old worker lacks these checkpoints and stays stopped. The new unlimited-size PDF policy is e7af136c37deb9d3bab5a3e9f3d4c79a4f5b38bd8b8f820aba5ec175672826dc, distinct from old d6250c3c… outcomes.
+The old 2,426-outcome recovery stays frozen. Its 206 remaining PDF keys continue in a separately versioned checkpointed lane under the user's 14 November authorization. The 17:52:42 UTC reboot interrupted the active attempt; unchanged supervision resumed safely, reusing 250 saved pages and processing only the remaining 27 before commit. Exact original resource-failure reconciliation and final qualified adoption remain open.
 
 ## Design
 
@@ -96,3 +96,7 @@ First checkpointed body committed and verified at 2026-11-14T15:07:24Z: 1,158 pa
 **2026-11-14T15:57:37Z**
 
 Separate checkpointed lane at source 09fdca797bc5428af7eaec9cfdfd32bb824f7fad is running asynchronously under the explicit authorization. Snapshot at 15:49:17 UTC: 12/206 completed, zero reported errors,194 remaining; durable supervisor 57410 advances one body per watchdog and yields the shared nightly lock between bodies. First 1,158-page pilot:481.9 seconds / 1.229 GiB RSS,1,106 OCR pages,2,653,819 text bytes; all 1,158 checkpoint/source/digest identities verify. Terra medium directly read pages 10/300/600/1100; two dense pages have substantive omissions already before final cleanup. Operational completion does not establish quality. Exact three-band replay isolated both Vision non-detection and unique strip-edge discards; ct-l3xd owns the latter. Old outcomes and active policy remain unchanged.
+
+**2026-11-14T18:47:50Z**
+
+Restart evidence: ocr-checkpoint-resume-20261114/restart-20261114T182343Z/post-restart.json. Worker commit 09fdca797bc5428af7eaec9cfdfd32bb824f7fad and all 27 manifest pins are unchanged. Incomplete batch 50 remains intact; resumed body committed in batch 51. The reboot is verified, but the precise pre-reboot termination trigger is unknown. Recovered body watchdog passed at 0.972 GiB / 11.2 seconds. A frozen 56-completion screen passes structural integrity; two new garbling warnings remain unaccepted. Runtime completion does not prove source quality. At 18:43:49 UTC the separate lane had 59 completed outcomes, zero runtime errors and 147 remaining. The 56-row quality snapshot is a separate frozen prefix; later completions are outside that check.

@@ -1,6 +1,6 @@
 ---
 id: ct-f6hr
-status: in_progress
+status: closed
 deps: [ct-55qo]
 links: [ct-cbkz, ct-en4n, ct-fb7k, ct-n3ik]
 created: 2026-11-13T17:46:16Z
@@ -11,7 +11,7 @@ tags: [body_text, html, xml, spicy-docs, compatibility]
 ---
 # Handle retained HTML encoding and XML compatibility failures under explicit policies
 
-Shared repair is merged in SpicyDocs PR #30 and CT PR #168 (1375adda), with all CI checks passing. All 35 markup refusals have direct source dispositions: six useful older readings, seventeen useful repaired readings, eight error responses and four damaged sources. The seventeen repaired pairs are adopted at their actual separate versions. Candidate selection validates their keys, hashes and offsets; publishing accepted text remains with ct-cbkz.
+The shared repair and CT integration are merged, all 35 markup refusals have direct source dispositions, and the seventeen qualified repair pairs are adopted and selected at their actual versions. Six useful older readings survive; eight response bodies and four damaged sources retain explicit dispositions. CT PR #168 passed both workflows. Public text delivery remains with ct-cbkz and the user's SereneDB work.
 
 ## Design
 
@@ -19,7 +19,7 @@ Spicy-docs owns explicit decoding, safe XML parsing and bounded/streaming markup
 
 ## Residual failures from the current CPU reparse
 
-Legacy encoding and empty-subset support are merged, and the large feed has a dedicated route. The completed run has 35 refusals, all directly reviewed: six useful historical transcript readings to preserve at their actual old keys, seventeen useful private encoding/literal-entity candidates, eight error responses and four damaged/truncated sources. Exact actions and the final nine-case review are frozen under repairs/markup-reparse-20261114/residual-diagnosis-final-tail-20261114/. The seventeen candidates now have declared recovery policies and actual private catalog keys; production adoption remains. CT PR168 preserves seventeen old errors beside seventeen new readings and text rows, and corrected its import-layer placement at 8c1a317b before updated CI acceptance. The opt-in shared helper merged in spicy-docs PR30 at e934cfb1c99532a542b946eaa884c4b87196a729 after CI. Default CT reader behavior and the running bulk wheel remain unchanged.
+Legacy encoding and empty-subset support are merged, and the large feed has a dedicated route. The completed run has 35 refusals, all directly reviewed: six useful historical transcript readings to preserve at their actual old keys, seventeen useful private encoding/literal-entity candidates, eight error responses and four damaged/truncated sources. Exact actions and the final nine-case review are frozen under repairs/markup-reparse-20261114/residual-diagnosis-final-tail-20261114/. The seventeen repaired readings now have declared recovery policies, authoritative local catalog keys and validated selected keys; public delivery remains ct-cbkz. CT PR168 preserves seventeen old errors beside seventeen new readings and text rows, and corrected its import-layer placement at 8c1a317b before updated CI acceptance. The opt-in shared helper merged in spicy-docs PR30 at e934cfb1c99532a542b946eaa884c4b87196a729 after CI. Default CT reader behavior and the running bulk wheel remain unchanged.
 
 Group final refusals by demonstrated cause and inspect representative original bytes and actual intermediate diagnostics. Reuse maintained spicy-docs decoding/XML recovery capabilities where they preserve useful text. Do not add permissive replacement decoding, external entity loading or silent partial-success labels. Preserve damaged/ambiguous sources explicitly. Qualify a versioned fix and retry only matching failed keys in a separate lane; do not mutate the running bulk policy or reparse successful unrelated bodies. ct-n3ik records impact and remaining remedy, ct-cbkz adopts accepted results.
 
@@ -128,3 +128,7 @@ All 17 actual repair pairs were adopted with exact field/hash readback. PR #168 
 **2026-11-14T17:16:28Z**
 
 CT PR #168 merged at 1375addaadd5388d579e07463edc6670551c207c after both workflows passed. The final 39 focused checkpoint/recovery checks and earlier 114-test integration evidence remain valid. All seventeen actual repaired pairs passed the later 944-override payload validation. Historical refusals remain preserved; no global compatibility restamping or source-fidelity claim was made.
+
+**2026-11-14T18:47:49Z**
+
+Closed after local catalog reconciliation and actual-key selection validation. The shared opt-in repair helper remains bounded and source-preserving; all seventeen qualified recovered rows are among the unchanged 944 exceptions validated in accepted-set-v3. Prior error outcomes and the dedicated 2,226-entry feed remain retained. The earlier source reviews, final 39 focused checks, 114-test integration evidence and merged CI remain applicable. No broad reparse was repeated.

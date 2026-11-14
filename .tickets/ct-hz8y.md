@@ -11,7 +11,7 @@ tags: [body_text, pdf, ocr, routing]
 ---
 # Route incomplete native PDF layers and vector-only writing to OCR
 
-Exact-page overrides are implemented. New source and native-route evidence confirms omitted visible prose on ee7ad6da pages 1/109/217, 228ddad5 page 105 and 3a21a04f page 140: each reports an empty native layer and zero detected images, so NativeOrOcr skips recognition. S002 page 1 is another directly reviewed selected empty biography. Six exact-page recognition candidates are being generated with an explicit routing policy; accepted composition and the earlier Q/S cases remain open.
+Selective composition now repairs five formerly empty one-page PDFs (S002, S010, S016, S027 and S029) and the reviewed page-140 bibliography. All seven repaired body versions, including the two strip-edge page corrections, are adopted in the local tables; accepted-set-v3 selects their actual identities. Two other empty PDFs are legitimate photographs. The difficult VFW page, 217-page whitespace-only body and earlier Q/S coverage cases remain open; partial source and OCR limits are explicit.
 
 ## Design
 
@@ -50,3 +50,11 @@ New direct source/intermediate/output evidence is accepted-text-adoption-2026111
 **2026-11-14T17:16:28Z**
 
 The fresh no-OCR native probe is accepted-text-adoption-20261114/seven-manual-review/current-native-route/summary.json. Five source-confirmed omitted pages have native_nonspace=0, image_count=0 and would_recognize=false; four useful neighboring controls report images and route to recognition. This is current routing evidence, not the historical intermediary or proof of vector content. S002 body 131d34ba7fa4baec9299358bedb4576101957d794fb407d57a85063033a2ffd4 is a prior directly reviewed one-page biography omission and remains selected at the baseline version. Authorized candidate generation is restricted to these six pages. New interpretations require their own actual identity and independent Terra medium raw/intermediary/output review.
+
+**2026-11-14T18:47:49Z**
+
+Groq Qwen was tested once on the difficult 228ddad5 page105 with the recovered six-key JSON schema and exact minimal fidelity prompt. Schema-valid qwen/qwen3.8-27b output invented sections and substantive testimony and omitted real source sections, so Terra rejected it. Both 200/400-DPI Vision candidates also remain rejected for major omissions; confidence did not predict usable text. Baseline-six source and four-candidate reviews are accepted-text-adoption-20261114/baseline-empty-manual-review-20261114/{report-02.md,repair-review.md}; source custody, actual raster/detections and final text are pinned. No model output is relabeled as a Vision checkpoint. All four new one-page candidates and page 140 are now appended with exact readback. V3 preserves the other 150 pages of 3a21a04f unchanged. The cheap-screen followup also directly confirmed broken native word boundaries on f6d8df26 page 1, before cleanup; a separate 5e3f6444 page 1602 is mostly searchable with one letter-spaced line. Evidence: ocr-checkpoint-resume-20261114/quality-screen-20261114/manual-review/. Do not infer all 1,301 flagged f6 slots have been source-reviewed.
+
+**2026-11-14T18:51:48Z**
+
+Next bounded repair target: f6d8df26 page 1 loses normal whole-word search because its native output splits FOREIGN OPERATIONS and other words into letters before CT cleanup. Compare maintained alternate native extraction on that exact retained page before considering recognition; qualify unchanged ordinary text and the localized letter-spacing case on 5e3f6444 page 1602 as controls. The 1,301 flagged f6 slots nominate broader evaluation but do not establish a source-reviewed whole-body replacement.

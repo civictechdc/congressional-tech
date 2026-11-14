@@ -11,7 +11,7 @@ tags: [body_text, pdf, ocr, publication]
 ---
 # Publish corrected historical PDF readings after GPO cleanup qualification
 
-The GPO cleanup fix is merged and its actual 14-body/281-page consumer is qualified. Eight corrected reading/text pairs are now adopted in the authoritative local catalog; six unchanged PDF controls keep their baseline keys. The first explicit accepted-text manifest includes those eight corrections. Release-bound export, public search and citation readback remain open; no blanket PDF reread or restamping is needed.
+Eight GPO-corrected PDF pairs are adopted and validated in the explicit selected-text manifest; six unchanged controls retain their baseline keys. The merged cleanup and 14-body/281-page source qualification are reused unchanged. Public text delivery and remaining historical cleanup exposure stay open. Search implementation belongs to the user's SereneDB work.
 
 ## Design
 
@@ -21,7 +21,7 @@ Reuse spicy-docs 0.85.0+gpo.20261113 and the existing CT reader, native tables a
 
 Use ct-n3ik's practical queue and exact selected-release exposure to choose a bounded first batch of source-confirmed, search-visible cleanup losses. Reuse retained pre-cleanup text and the existing 14-PDF consumer evidence where identities match. Prefer renormalization; reread native text only when the needed intermediate is absent and a source-confirmed native path is supported. Do not repeat all PDF OCR or claim minor typography must be perfect.
 
-Retain the before/after text identity, restored substantive passages, old accepted key, actual remedy and explicit residual gaps for each chosen body. A named reviewer directly reads raw -> retained or newly produced intermediate -> candidate output; qualify selection separately. Route native/vector, geometry, recognition and missing-source cases to their existing owners instead of absorbing unrelated causes. OCR remains paused and publisher refetch deferred. ct-0a35 checks the accepted corrected passages through search after publication.
+Retain the before/after text identity, restored substantive passages, old accepted key, actual remedy and explicit residual gaps for each chosen body. A named reviewer directly reads raw -> retained or newly produced intermediate -> candidate output; qualify selection separately. Route native/vector, geometry, recognition and missing-source cases to their existing owners instead of absorbing unrelated causes. The user authorized targeted OCR and reviewed refetch on 14 November. ct-0a35 coordinates downstream accepted-passage checks with the user's SereneDB work.
 
 ## Acceptance Criteria
 
@@ -57,3 +57,7 @@ Native adoption planning now pins the separate920 completed recovery PDF keys an
 **2026-11-14T16:48:30Z**
 
 Eight actual 4d045589 correction pairs adopted with field/hash parity at text snapshot 4606969079641435643 and reading snapshot7411791213520479856. Root initial accepted set under accepted-text-adoption-20261114/accepted-set-v1/ pins baseline 2980a4db plus 944 exact exceptions and 11 source exclusions; native validation and full-delivery admission are underway. Existing 14-body source qualification remains unchanged. The new retained-index adapter passes ordinary/repaired/excluded real MCP proof but has not yet been published or applied to these eight cases.
+
+**2026-11-14T18:47:50Z**
+
+Accepted-set-v3 preserves all eight actual 4d045589 corrections and the six baseline controls, and reuses their source-qualified and payload-validated identities. Additional final-page repairs use distinct composition identities rather than restamping GPO or historical parser versions. Public search acceptance is not implied by local table consistency.

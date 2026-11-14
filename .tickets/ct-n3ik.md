@@ -11,7 +11,7 @@ tags: [ocr, pdf_text, readings, tesseract]
 ---
 # Cheaply find failed or substantially incomplete text extraction for FTS
 
-The cheap screen covers 296,690 PDF bodies / 8,143,043 stored page slots and completed markup outcomes. Exact current-release binding finds 494 potentially substantial extraction problems, 38,560 ambiguous signals and 86 selected empty texts. These are review signals, with one known biography omission and two known media-playlist roles among the empties. The 944 repair overrides pass actual payload/hash/offset validation; wider source quality remains explicitly imperfect.
+The cheap corpus screen reuses 296,690 PDF feature rows and completed markup outcomes. Accepted-set-v3 validates 311,721 release-associated text bodies and 956 actual overrides. Five previously empty PDFs now contain source-reviewed text; 83 selected empty outputs remain, including six known playlist/photographic roles and 77 unresolved sources. A separate 56-body OCR screen found one severe native-word-spacing case and one localized searchable limitation in direct two-page review. Scores remain review priorities.
 
 ## Design
 
@@ -127,3 +127,7 @@ Seven-case direct report: accepted-text-adoption-20261114/seven-manual-review/re
 **2026-11-14T17:16:28Z**
 
 Current accepted-set-v1 metadata validation finds 311,716 eligible selected bodies with matching completed actual readings, no duplicate selection and no completed selected reading missing text. Another 11,874 eligible saved bodies lack selected text: 278 error, 209 size_limit and 11,387 without a reading at the accepted versions. This last group is not evidence they were never attempted. There are 86 selected empty digests (52 PDF, 34 XML), outside the 944 overrides. Existing cheap flags bind to 494 potentially substantial and 38,560 ambiguous selected cases; these are not newly confirmed defects. All 944 overrides have recomputed UTF-8 text hashes and valid page/recognition arrays, covering 812,613,771 text bytes and 377,969 slots. Use exact receipts under accepted-text-adoption-20261114/full-delivery-admission; no new whole-corpus source or text scan was required.
+
+**2026-11-14T18:47:49Z**
+
+The incremental screen read only 56 newly completed private outputs: all exact reading/text keys, hashes, byte counts, UTF-8 page boundaries and sorted OCR arrays pass across 27,514 slots; no whole output is empty. Reused feature code and maintained text_quality report 53 ambiguous, two strong and one no-obvious-failure result in 18 seconds at 0.27 GiB RSS. f6d8df26 has widespread single-letter splitting; 5e3f6444 has one flagged slot 1602. Terra then read the exact raw/native/final chains: f6 page 1 has broken word boundaries before cleanup; 5e page 1602 remains largely searchable with one letter-spaced source line. Other pages remain unreviewed. Both private readings remain outside the accepted manifest. Evidence: ocr-checkpoint-resume-20261114/quality-screen-20261114/. The prior 11,387 no-selected-reading cases include 8,442 WARC, 1,470 HTML, 613 PDF, 386 DOCX, 126 Word, 259 ZIP, 68 ARC, 19 images, two WMV and two plain-text bodies; this is format reconciliation, not 11,387 OCR failures.
