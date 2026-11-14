@@ -40,3 +40,11 @@ The exact retained 400-key replay read all inputs: 173 House meeting errors, 14 
 67 focused tests passed (partial production-offline lane, 2/555 files). Replay: 7,988,904 decoded bytes, 22.97 s, 0.152 GiB peak RSS, normal 6 GiB admission; five originals reused and only exact retained archive keys read. No publisher refetch, OCR/provider job, catalog or selection change.
 
 Evidence: .cache/archive-release/ocr-recovery-20261113/repairs/corpus-assessment-20261113/house-response-detection-20261114/README.md, run-02/summary.json, run-02/outcomes.jsonl, run-02/review-cases.jsonl, and run-02/review-cli/. Raw, parsed evidence and current output locators/hashes are retained for all five representative cases. Awaiting named independent root review and integration; ticket remains in_progress.
+
+**2026-11-14T14:08:02Z**
+
+Independent review at 4e68755b found two concrete false positives: duplicate attributes could supply hidden/ambiguous House evidence, and quoted alert descendants (or an outer q) could supply the complete diagnostic. The repair propagates attribute ambiguity through the primary area, keeps first-value HTML visibility, and disqualifies quoted alert content while preserving the authentic h1/small/blockquote subtitle. It retains the v2 observation policies and all extraction/parser versions.
+
+96 focused tests now pass (partial production-offline lane, 2/555 files), including both House families, duplicate ancestor identity/style, heading/diagnostic descendants, all quoted wrappers, the real subtitle, and downstream FTS non-promotion. Normal 6 GiB watchdog admission; 0.29 GiB peak RSS. Ruff and git diff --check passed for changed code/tests.
+
+The independent old-commit certificate and exact 36 retained controls remain frozen at house-response-detection-20261114/independent-code-review.md and independent-review/. Root directly reviewed the five source -> retained parse/text -> role/CLI paths in root-source-review.md and root-cli-review/. Exact inputs stay unchanged. Repair replay and independent repaired-commit acceptance are next; ticket remains in_progress until handoff.

@@ -148,6 +148,23 @@ def test_house_response_cli_keeps_extraction_status_separate_from_review(kind, t
     assert proposal['qualified'] is False and proposal['dispatch_allowed'] is False
 
 
+@pytest.mark.parametrize(('before', 'after'), [
+    (b'<div id="body">', b'<div id="different" id="body">'),
+    (b'<h1>', b'<h1 style="display:none" style="display:block">'),
+    (b'[Meeting Not Found]', b'[<q>Meeting Not Found</q>]'),
+])
+def test_unqualified_house_evidence_does_not_promote_fts_review(before, after):
+    raw = (Path(__file__).parent/'fixtures/response_roles/house-meeting-not-found.html').read_bytes()
+    raw = raw.replace(before, after)
+    text = 'A retained example with searchable text.'
+    ident = identity(text)
+    ident.update(body_sha256=sha256(raw).hexdigest(), parser='html_text', source_format='html')
+    measured = measure_quality(ident, text=text, raw_markup=raw)
+    assert measured['axes']['role']['role'] == 'unassessed'
+    assert measured['fts_triage']['band'] == 'no_obvious_failure_detected'
+    assert 'role_phrase_match' not in measured['signals']
+
+
 def test_output_hash_and_page_scope_refuse_invented_identity():
     with pytest.raises(ValueError, match='output text hash'):
         measure_quality(identity('one'), text='two')

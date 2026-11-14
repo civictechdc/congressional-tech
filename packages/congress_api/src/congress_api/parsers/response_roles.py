@@ -18,7 +18,7 @@ MAX_EVIDENCE_FIELDS = 512
 MAX_EVIDENCE_TEXT_CHARS = 64 << 10
 _HEADINGS = {'h1', 'h2', 'h3'}
 _HIDDEN = {'script', 'style', 'template', 'noscript'}
-_QUOTED = {'blockquote', 'pre', 'code', 'article'}
+_QUOTED = {'blockquote', 'q', 'pre', 'code', 'article'}
 _HOUSE_TITLE_SUFFIX = ' | committee repository | u.s. house of representatives'
 _HOUSE_DATE = r'\d{1,2}/\d{1,2}/\d{4} \d{1,2}:\d{2}:\d{2} [ap]m'
 _HOUSE_ALERT = re.compile(
@@ -29,8 +29,7 @@ _HOUSE_ALERT = re.compile(
     rf'published on: {_HOUSE_DATE} exception category: (?P<category>general|file not found) {_HOUSE_DATE}')
 
 
-def _hidden_element(event):
-    attrs = dict(event.attributes)
+def _hidden_element(event, attrs):
     style = attrs.get('style') or ''
     return (event.name in _HIDDEN or 'hidden' in attrs or (attrs.get('aria-hidden') or '').casefold() == 'true'
             or re.search(r'(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*(?:hidden|collapse))'
@@ -60,7 +59,7 @@ def _html_fields(events):
 
     def append_active(value):
         nonlocal evidence_chars
-        active = [item for _, item, _, _ in stack if item is not None]
+        active = [item for _, item, _, _, _ in stack if item is not None]
         evidence_chars += len(value) * len(active)
         if evidence_chars > MAX_EVIDENCE_TEXT_CHARS:
             raise _EvidenceLimit('markup field text exceeds the evidence bound')
@@ -68,24 +67,37 @@ def _html_fields(events):
             item['parts'].append(value)
 
     for event in events:
-        hidden = any(inert for _, _, inert, _ in stack)
+        hidden = any(inert for _, _, inert, _, _ in stack)
         if event.kind in {'start', 'empty'}:
-            hidden |= _hidden_element(event)
+            attrs = {}
+            for name, value in event.attributes:
+                attrs.setdefault(name, value)
+            duplicate_attrs = len(attrs) != len(event.attributes)
+            ambiguous = duplicate_attrs or any(uncertain for _, _, _, _, uncertain in stack)
+            # HTML keeps the first duplicate value. Even with that visibility
+            # reading, ambiguous ancestry or descendants cannot qualify a House
+            # panel. Keep their visible text so it cannot hide mixed content.
+            hidden |= _hidden_element(event, attrs)
+            for _, active, _, _, _ in stack:
+                if active is not None:
+                    if duplicate_attrs:
+                        active['ambiguous_attributes'] = True
+                    if event.name in _QUOTED and active['field'] == 'house_error_alert':
+                        active['quoted_content'] = True
         if (not hidden and event.kind in {'start', 'empty', 'end'}
                 and event.name in HTM_BLOCK_ELEMENTS | {'br'}):
             visible.append('\n')
             append_active('\n')
         if event.kind in {'start', 'empty'}:
             item = None
-            attrs = dict(event.attributes)
-            containers = [item for _, item, _, _ in stack
+            containers = [item for _, item, _, _, _ in stack
                           if item is not None and item['field'] == 'house_meeting_content']
-            field = event.name if not hidden and event.name in {'title', *_HEADINGS} else None
+            field = event.name if not hidden and not ambiguous and event.name in {'title', *_HEADINGS} else None
             # The House template owns one primary meeting area and a direct
             # alert child. Quoted examples and duplicate attributes cannot
             # supply that structure. Keep original byte anchors for review.
-            if (not hidden and event.name == 'div' and len(attrs) == len(event.attributes)
-                    and not (_QUOTED & {name for name, _, _, _ in stack})):
+            if (not hidden and not ambiguous and event.name == 'div'
+                    and not (_QUOTED & {name for name, _, _, _, _ in stack})):
                 if attrs.get('id') == 'DivMeetingContent' and stack and stack[-1][3] == 'body':
                     field = 'house_meeting_content'
                 elif (containers and stack[-1][1] is containers[-1]
@@ -99,21 +111,21 @@ def _html_fields(events):
                     item['container_byte_start'] = containers[-1]['byte_start']
                 fields.append(item)
             if event.kind == 'start' and event.name not in HTML_VOID_TAGS:
-                stack.append((event.name, item, hidden, attrs.get('id')))
+                stack.append((event.name, item, hidden, attrs.get('id'), ambiguous))
         elif event.kind == 'end':
-            names = [name for name, _, _, _ in stack]
+            names = [name for name, _, _, _, _ in stack]
             if event.name in names:
                 close_at = len(names) - 1 - names[::-1].index(event.name)
                 # Closing an ancestor also ends every heading inside it. An
                 # unclosed heading cannot accumulate later sibling content.
-                for _, item, _, _ in stack[close_at:]:
+                for _, item, _, _, _ in stack[close_at:]:
                     if item is not None:
                         item['byte_end'] = event.byte_start
                         item['closed_by'] = event.name
                 del stack[close_at:]
         elif event.kind == 'text' and not hidden:
             append_active(event.text or '')
-            if not any(name == 'head' for name, _, _, _ in stack):
+            if not any(name == 'head' for name, _, _, _, _ in stack):
                 visible.append(event.text or '')
     for item in fields:
         item['text'] = _normal(''.join(item.pop('parts')))
@@ -126,14 +138,15 @@ def _house_error_reason(title, fields):
     if not title.endswith(_HOUSE_TITLE_SUFFIX) or title == _HOUSE_TITLE_SUFFIX:
         return None
     containers = [item for item in fields if item['field'] == 'house_meeting_content']
-    if len(containers) != 1 or containers[0].get('closed_by') != 'div':
+    if (len(containers) != 1 or containers[0].get('closed_by') != 'div'
+            or containers[0].get('ambiguous_attributes')):
         return None
     container = containers[0]
     scoped = [item for item in fields if item.get('container_byte_start') == container['byte_start']]
     headings = [item for item in scoped if item['field'] == 'h1']
     alerts = [item for item in scoped if item['field'] == 'house_error_alert']
     if (len(headings) != 1 or len(alerts) != 1 or headings[0].get('closed_by') != 'h1'
-            or alerts[0].get('closed_by') != 'div'):
+            or alerts[0].get('closed_by') != 'div' or alerts[0].get('quoted_content')):
         return None
     heading, alert = headings[0]['text'], alerts[0]['text']
     # Additional visible meeting content makes this a mixed/unknown source,

@@ -52,10 +52,48 @@ def test_hidden_house_diagnostics_cannot_supply_a_role(attribute, element):
     assert assess_response(source, format='html').role == 'unassessed'
 
 
-@pytest.mark.parametrize('element', [b'blockquote', b'pre', b'code', b'article', b'template', b'script'])
+@pytest.mark.parametrize('element', [b'blockquote', b'q', b'pre', b'code', b'article', b'template', b'script'])
 def test_house_template_quoted_in_a_document_is_not_the_response(element):
     source = house_html('meeting').replace(b'<div id="body">', b'<div id="body"><'+element+b'>')
     source = source.replace(b'</body>', b'</'+element+b'></body>')
+    assert assess_response(source, format='html').role == 'unassessed'
+
+
+@pytest.mark.parametrize(('before', 'after'), [
+    (b'<div id="body">', b'<div id="body" style="display:none" style="display:block">'),
+    (b'<div id="body">', b'<div id="body" style="display:block" style="display:none">'),
+    (b'<div id="body">', b'<div id="different" id="body">'),
+    (b'<h1>', b'<h1 style="display:none" style="display:block">'),
+    (b'<h1>', b'<h1 aria-hidden="false" aria-hidden="true">'),
+    (b'<strong>Error Encountered', b'<strong style="display:block" style="display:none">Error Encountered'),
+    (b'<div id="DivMeetingContent">', b'<div id="DivMeetingContent">'
+        b'<p style="display:none" style="display:block">Possibly visible testimony.</p>'),
+])
+@pytest.mark.parametrize('kind', ['meeting', 'file'])
+def test_ambiguous_ancestor_heading_or_diagnostic_cannot_qualify_house_role(kind, before, after):
+    source = house_html(kind)
+    assert before in source
+    row = assess_response(source.replace(before, after), format='html')
+    assert row.role == 'unassessed'
+
+
+@pytest.mark.parametrize('element', [b'blockquote', b'q', b'pre', b'code', b'article'])
+@pytest.mark.parametrize('kind', ['meeting', 'file'])
+def test_quoted_alert_descendants_cannot_supply_house_diagnostics(kind, element):
+    source = house_html(kind)
+    source = source.replace(b"<div class='alert alert-error'>", b"<div class='alert alert-error'><"+element+b'>')
+    source = source.replace(b'</span></div>', b'</span></'+element+b'></div>')
+    row = assess_response(source, format='html')
+    assert row.role == 'unassessed'
+    panel, = [field for field in row.evidence if field['field'] == 'house_error_alert']
+    assert panel['quoted_content'] is True
+
+
+def test_quoted_diagnostic_phrase_is_unknown_but_real_heading_annotation_is_supported():
+    source = house_html('meeting')
+    assert b"<small class='text-tiny'><blockquote>" in source
+    assert assess_response(source, format='html').reason == 'house_meeting_not_found'
+    source = source.replace(b'[Meeting Not Found]', b'[<q>Meeting Not Found</q>]')
     assert assess_response(source, format='html').role == 'unassessed'
 
 
