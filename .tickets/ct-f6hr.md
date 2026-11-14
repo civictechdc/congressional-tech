@@ -11,7 +11,7 @@ tags: [body_text, html, xml, spicy-docs, compatibility]
 ---
 # Handle retained HTML encoding and XML compatibility failures under explicit policies
 
-Legacy encoding and empty-subset support are merged, and the complete House Atom feed uses its dedicated reader. The full markup reparse leaves 35 directly reviewed refusals: six useful historical readings, seventeen useful recovery candidates, eight error responses and four damaged sources. The seventeen candidates now have real separate-version readings and text in a private native catalog, preserving every ordinary error row. CT PR168 now has the import-layer correction at 8c1a317b and 114 focused passing checks; updated CI, accepted selection and publication remain.
+The shared opt-in repair helper is merged in SpicyDocs PR #30. All 35 markup refusals have direct source dispositions: six useful older readings, seventeen useful actual repaired readings, eight error responses and four damaged sources. The seventeen repaired pairs are now in the authoritative local catalog at their separate actual versions. CT PR #168 is at 30bcc8e9 with import-layer and early-checkpoint-refusal fixes; final CI and accepted publication remain.
 
 ## Design
 
@@ -120,3 +120,7 @@ Private actual recovery integration qualified 17 originals / 667,347 source byte
 **2026-11-14T16:03:03Z**
 
 PR168 correction pushed at 8c1a317b04b01862d8ca9f604266246d36f1d250: recovery coordinator moved byte-for-byte into lake, callers and diagnostic location updated, import fence unchanged. All 114 focused checks passed. Root independently verified Git-object identities, unchanged ordinary declarations/fixtures/tools/policies, and the limited workspace fingerprint delta. Root review SHA 5a5bb7ad03f6e876632f47e8585a1db37870cbf1291b4bf26b5f2cab068fd52c. Original 17-body evidence remains valid by exact extraction/helper/wheel identity; updated CI must pass before merge.
+
+**2026-11-14T16:48:29Z**
+
+All 17 actual repair pairs were adopted with exact field/hash readback. PR #168 latest head 30bcc8e974d8009a7a4ec131578bb3a5f5271870 relocates the unchanged recovery-version guard after checkpoint identity validation, fixing the CI KeyError while keeping refusal before stage/workers/source access. 39 focused checkpoint/recovery/markup tests pass; 114 prior focused tests cover unchanged integration/import fences. Root independently verified exact guard-only relocation and retained qualified parser/helper/wheel/output bytes. New-head MCP CI passes; offline matrix is running. No active OCR policy change.

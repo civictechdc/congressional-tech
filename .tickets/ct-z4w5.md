@@ -11,7 +11,7 @@ tags: [body_text, captures, refetch]
 ---
 # Refetch reviewed damaged or missing publisher sources and preserve new evidence
 
-The user authorized background OCR/refetch on 14 November. A bounded four-target followup now has three source-reviewed useful PDFs: the previously truncated four-page bill, the Mast amendment and the Mahoney disclosure form. The maintained download-query repair fixed the two initial HTTP 410 targets. Cornwell still returns HTTP 200 with zero bytes and remains failed. Three other reviewed damaged-source URLs and three State Department URLs remain outside the published capture scope. New captures/readings are retained locally; association, accepted selection and publication remain.
+Targeted publisher refetch is authorized. The corrected-address followup recovered three useful PDFs, directly reviewed across all eight pages; Cornwell still returns HTTP200 with zero bytes. Reviewed-only scheduler fixes are completing against retained seven-target metadata. For damaged CHRG-116hhrg35338, the archive already contains useful complete HTML hearing prose, but its publisher-side prepared-statements graphics remain missing. New captures/readings still require model association and accepted publication.
 
 ## Design
 
@@ -50,3 +50,7 @@ User authorization on 14 November lifts the old deferral. First bounded reviewed
 **2026-11-14T15:57:37Z**
 
 Corrected bounded refetch completed: short bill e5de955c… (43,652 bytes, four pages), Mast amendment 4ee6fd1a… (25,289 bytes, one page) and Mahoney disclosure f500112e… (224,265 bytes, three pages) are readable useful FTS sources. /root/ocr_pilot_manual_review used GPT-6.1-Terra medium and genuinely read all eight raw pages, actual producer intermediates and final text. Report SHA fd04f6df13bd14bc29f6d6fe13eb1ef98e9961de5830b252f05f781af581af12. Cornwell remained HTTP 200/zero bytes/failed. Exact receipts, bodies, source roles and prior failures are under repairs/source-refetch-20261114/scheduler-followup/refetch-four/. Batch: 5.5 seconds / 0.108 GiB RSS; no public adoption. The maintained query repair changes &download=1 to ?download=1; original two HTTP 410 responses stay retained. Post-refetch accounting includes actual attempts plus reviewed seed context, superseding an earlier context-incomplete diagnostic. Planner defects now have separate tickets ct-saqg (absent journal) and ct-5cdu (whole-history build).
+
+**2026-11-14T16:48:30Z**
+
+Root directly compared retained CHRG-116hhrg35338 HTML original, actual worker record and final text at opening, middle, appendix transition and tail. Existing unhidden document df2a0a3aa21bb697 binds body df2a0a3aa21bb6976aa1145a70484afb48064838a01875e3a4a4add33d1f756d; current HTML output 114,116 bytes matches prior hash 68ac36b47779b6b11996cd9c6be8eeb2745b26ad979e82af5b705439e7854e24. Raw prepared-statements section explicitly says GRAPHICS NOT AVAILABLE IN TIFF FORMAT. Reuse useful HTML; retain PDF/appendix gap. No publisher request for that review. Report SHA bc64fb1af58e7f363578082ebad31a898b52941d8dbb7a5ee0a3920b606dba14 at source-refetch-20261114/scheduler-followup/retained-package-html/manual-review.md. Additional exact damaged PDFs a558032c/e51dfab3 are source-recovery candidates from the 17-page Terra review.

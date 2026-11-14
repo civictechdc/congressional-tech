@@ -11,7 +11,7 @@ tags: [body_text, pdf, ocr, routing]
 ---
 # Route incomplete native PDF layers and vector-only writing to OCR
 
-A native-text count of at least 50 can suppress OCR even when it consists only of a caption or margin notice; image-free vector lettering can be skipped entirely. Source review confirms Q005 vector tables, Q007 captions over image tables/charts, Q009 headers over scanned appendices, and Q010 a vertical publisher notice beside omitted journal content. S167 has more than 50 margin characters and vector body text with no raster images; S188 has already-corrupt native English alongside a legitimate Cherokee sidebar. Document averages and zero-OCR filters miss mixed-document failures.
+Exact-page overrides are implemented, but source-qualified native-layer and vector-text recovery remains open. In addition to the prior Q005/Q007/Q009/Q010/S167/S188 cases, a new Terra medium review confirms omitted legislative prose on ee7ad6da pages1/109/217, VFW testimony on228ddad5 page105, and Nord Stream endnotes on3a21a04f page140. Useful neighboring retained text survives. Diagnose routing from actual native/page evidence, then recognize only qualified pages or body scopes under the resumed authorization.
 
 ## Design
 
@@ -42,3 +42,7 @@ Exact-source/page candidate routing is now implemented with PageRule.page_overri
 **2026-11-14T12:31:10Z**
 
 Five-step follow-through: ct-n3ik owns queue priority and cause-to-owner routing; ct-0a35 owns source-to-search verification. Prioritize search-visible substantial omissions and reuse retained native/page evidence for the next bounded diagnosis. Native-only inspection and safe composition can continue, but actual OCR/provider recognition remains paused. Preserve per-page causes and unresolved evidence; do not restart or re-OCR the entire PDF corpus for this plan.
+
+**2026-11-14T16:48:30Z**
+
+New direct source/intermediate/output evidence is accepted-text-adoption-20261114/seven-manual-review/review.md, SHA cc8ed9bf76156aed4330925993cf14e31901dd935f58c8e081f3c263f6022215. ee7ad6da has 217 stored slots, 216 newline bytes and no useful output; only 1/109/217 were read, so whole-body repair is a candidate scope, not 217 reviewed pages. For 228ddad5 feature run 102–110 has direct omission at 105; for 3a21a04f run 134–149 has direct omission at 140. Do not infer all flagged pages contain prose. Existing partial text remains useful for FTS. No new OCR was performed by this review; user has separately authorized targeted OCR/refetch.

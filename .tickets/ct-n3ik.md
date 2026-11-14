@@ -11,7 +11,7 @@ tags: [ocr, pdf_text, readings, tesseract]
 ---
 # Cheaply find failed or substantially incomplete text extraction for FTS
 
-The user clarified on 14 November that the primary purpose is full-text search (FTS). Find failed, empty, badly garbled or substantially incomplete OCR/extraction cheaply across the retained corpus. Perfect transcription, exact form-field fidelity and reading every document with an LLM are not required. Minor mistakes can coexist with useful searchable text. Targeted OCR/refetch is separately authorized as of 14 November; this assessment command does not dispatch either job.
+The cheap inventory and review queue cover 296,690 PDF bodies/8,143,043 stored page slots and all completed markup outcomes. A metadata-only check of920 old recovery PDFs narrowed strong failure signals to7: Terra medium directly reviewed17 pages and found2 valid photo-only sources,3 bodies with confirmed text omissions, and2 damaged sources with useful partial text. The other913 retain429 no-obvious-failure and484 weaker review-later classifications; none is a transcription certificate.
 
 ## Design
 
@@ -119,3 +119,7 @@ Final metadata-only refresh reuses the approved unchanged v2 builder plus final 
 **2026-11-14T15:57:37Z**
 
 New real completion control: dbaa560c… pages 600/1100 are substantially incomplete although extraction/checkpoint integrity passed. Exact three-band replay attributes omissions to both text Vision never emitted and unique recognized lines discarded at strip edges. The direct Terra medium comparison of one/four-band candidates found mixed gains and losses, so byte count alone cannot select a replacement. ct-l3xd owns the proven edge loss; retain missing-recognition coverage separately. Reuse the 45,106-row queue, then incrementally join new actual-policy outcomes and source-confirmed cause locators; do not rescan all original PDFs. Three newly refetched PDFs were fully read across eight pages and are useful FTS controls despite small formatting/form errors.
+
+**2026-11-14T16:48:30Z**
+
+Seven-case direct report: accepted-text-adoption-20261114/seven-manual-review/review.md SHA cc8ed9bf76156aed4330925993cf14e31901dd935f58c8e081f3c263f6022215. Empty bodies 78504f1e/c9ed5729 are photo-only. ee7ad6da pages 1/109/217 contain legislative prose while output is only 216 newlines. 228ddad5 p105 and 3a21a04f p140 contain omitted prose/endnotes; neighboring controls retain useful text. a558032c/e51dfab3 have invalid structures and damaged rendering; white pages cannot establish original blanks. Route confirmed native/recognition loss to ct-hz8y and damaged sources to ct-en4n/ct-z4w5. Full markup quantity comparison finds no large relative drop/growth among ≥1,000-byte completed baselines; all 3,571 newly empty results had zero old non-whitespace counts. Preserve source-review scope and unread ranges, not a universal accuracy score.
