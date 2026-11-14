@@ -1,0 +1,2109 @@
+{
+ "version": 1,
+ "base_release_id": "55c14dcda87ae954583bf518050b3bd45db6aed49c88c53413260c1d092ef105",
+ "candidate_release_id": "4b9a7bd126cc17e39dfbe7f8fabafbdb7251dcd32576277f308916f469c9bab1",
+ "notes": {
+  "identifiers": [
+   {
+    "statement": "Hosted capture night 2026-11-13: capture-archive.yml (run 43415806696) relisted 7 days of Congress.gov committee meetings and spent the 2,000-request capture budget (1,027 captures); this release publishes 4 new meetings, 449 new documents, 12 re-keyed recovered documents, 115 new recordings and 1,458 newly titled documents from it.",
+    "decision": "ct-4jms, ct-q4e2, ct-9j3z, owner decision 2026-11-13"
+   }
+  ]
+ },
+ "groups": [
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 449,
+   "disposition": "explained",
+   "cause": "449 documents are new to the archive, all first captured 2026-11-13 by hosted capture-archive.yml run 43415806696 (capture run 20261113T111848Z-cfd510985e1f: 2,000 requests, 1,027 captures; meetings relist 20261113T111813Z-c7802864b373), 1,087 new receipt keys read by nightly 20261114T045317Z (392 HTML pages, 56 PDFs, 1 DOCX; 461 of 461 added/re-keyed documents trace to 2026-11-13 url_state attempts).",
+   "tickets": [
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/capture-summary.json",
+     "sha256": "52699bf9ee0cef1344b25d987501dd893ee97e2abadd5a9f9de56c44cc27d6d5",
+     "size": 147830
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed date_kind|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 documents that the live release held only as recovered copies (saved_kind recovery, date_kind import_day) were fetched 2026-11-13 from their own publisher address with byte-identical bodies (md5 match on all 12), so each is now an original capture under a new link key (saved_kind original, date_kind captured, first_captured 2026-11-13); the old key is retired to the new one by the link rule (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "One document (5ED3BF2AAD2164EE) takes document_date 2025-12-18 (source filename, accepted) from its listed Democrats Science PDF address (DOE 2025.12.18 HSST Research Security Final Testimony.pdf) read on 2026-11-13.",
+   "tickets": [
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_source|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "One document (5ED3BF2AAD2164EE) takes document_date 2025-12-18 (source filename, accepted) from its listed Democrats Science PDF address (DOE 2025.12.18 HSST Research Security Final Testimony.pdf) read on 2026-11-13.",
+   "tickets": [
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_status|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "One document (5ED3BF2AAD2164EE) takes document_date 2025-12-18 (source filename, accepted) from its listed Democrats Science PDF address (DOE 2025.12.18 HSST Research Security Final Testimony.pdf) read on 2026-11-13.",
+   "tickets": [
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_family|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 matched-key PDFs keep the same bytes but move their leading filename to a descriptive listed filename (e.g. HHRG-117-SY16-20221116-SD001.pdf -> Charter_Unfolding the Universe...pdf, HHRG-116-SY18-MState-*.pdf -> field-hearing OS names, HMKP-117-SY00-MState* -> committee print), updating document_family, document_kind and facts for those 12 rows.",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_kind|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 matched-key PDFs keep the same bytes but move their leading filename to a descriptive listed filename (e.g. HHRG-117-SY16-20221116-SD001.pdf -> Charter_Unfolding the Universe...pdf, HHRG-116-SY18-MState-*.pdf -> field-hearing OS names, HMKP-117-SY00-MState* -> committee print), updating document_family, document_kind and facts for those 12 rows.",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed facts|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 matched-key PDFs keep the same bytes but move their leading filename to a descriptive listed filename (e.g. HHRG-117-SY16-20221116-SD001.pdf -> Charter_Unfolding the Universe...pdf, HHRG-116-SY18-MState-*.pdf -> field-hearing OS names, HMKP-117-SY00-MState* -> committee print), updating document_family, document_kind and facts for those 12 rows.",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed filename|value differs on matched key",
+   "count": 24,
+   "disposition": "explained",
+   "cause": "12 documents that the live release held only as recovered copies (saved_kind recovery, date_kind import_day) were fetched 2026-11-13 from their own publisher address with byte-identical bodies (md5 match on all 12), so each is now an original capture under a new link key (saved_kind original, date_kind captured, first_captured 2026-11-13); the old key is retired to the new one by the link rule (0 missing, 0 dangling). In addition, 12 matched-key PDFs keep the same bytes but move their leading filename to a descriptive listed filename (e.g. HHRG-117-SY16-20221116-SD001.pdf -> Charter_Unfolding the Universe...pdf, HHRG-116-SY18-MState-*.pdf -> field-hearing OS names, HMKP-117-SY00-MState* -> committee print), updating document_family, document_kind and facts for those 12 rows. Together those account for all 24 filename changes.",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measures.json",
+     "sha256": "c0b9cc85d8bbd7b36126d411d96c0e1bc4552ee77daca02c05db10c6b7d9c531",
+     "size": 1070
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed first_captured|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 documents that the live release held only as recovered copies (saved_kind recovery, date_kind import_day) were fetched 2026-11-13 from their own publisher address with byte-identical bodies (md5 match on all 12), so each is now an original capture under a new link key (saved_kind original, date_kind captured, first_captured 2026-11-13); the old key is retired to the new one by the link rule (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed in_archive_since|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 documents that the live release held only as recovered copies (saved_kind recovery, date_kind import_day) were fetched 2026-11-13 from their own publisher address with byte-identical bodies (md5 match on all 12), so each is now an original capture under a new link key (saved_kind original, date_kind captured, first_captured 2026-11-13); the old key is retired to the new one by the link rule (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed link_key|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 documents that the live release held only as recovered copies (saved_kind recovery, date_kind import_day) were fetched 2026-11-13 from their own publisher address with byte-identical bodies (md5 match on all 12), so each is now an original capture under a new link key (saved_kind original, date_kind captured, first_captured 2026-11-13); the old key is retired to the new one by the link rule (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_kind|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 documents that the live release held only as recovered copies (saved_kind recovery, date_kind import_day) were fetched 2026-11-13 from their own publisher address with byte-identical bodies (md5 match on all 12), so each is now an original capture under a new link key (saved_kind original, date_kind captured, first_captured 2026-11-13); the old key is retired to the new one by the link rule (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 489,
+   "disposition": "explained",
+   "cause": "477 matched-key documents with unchanged bodies gain one newly listed source address (src_len +1; 477 of 477 have a new URL in sources.parquet), plus the 12 re-keyed recovered documents = 489.",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measures.json",
+     "sha256": "c0b9cc85d8bbd7b36126d411d96c0e1bc4552ee77daca02c05db10c6b7d9c531",
+     "size": 1070
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 1458,
+   "disposition": "explained",
+   "cause": "1,449 previously untitled documents take a link-text title (893 link_text, 556 copy_link_text) and 9 switch between link-text titles (6 copy_link_text -> link_text, 3 copy_link_text -> copy_link_text); all 1,458 have a source row whose link_text changed in the same night. title_source changes on 1,461 documents (893 NULL -> link_text, 556 NULL -> copy_link_text, 12 copy_link_text -> link_text including 6 with identical title text, excluding the 3 copy_link_text -> copy_link_text rows). Pages read in this night (340 listing pages attempted 2026-11-13 across armedservices.house.gov, democrats-financialservices.house.gov, agriculture.house.gov, and democrats-agriculture.house.gov; 456 HTML + 8 JSON readings in readings/batch-000000) fill previously NULL link_text and listed_on on 2,921 source rows (2,921 of 2,921 on the retired_links -> links row_map join).",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measures.json",
+     "sha256": "c0b9cc85d8bbd7b36126d411d96c0e1bc4552ee77daca02c05db10c6b7d9c531",
+     "size": 1070
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 1461,
+   "disposition": "explained",
+   "cause": "1,449 previously untitled documents take a link-text title (893 link_text, 556 copy_link_text) and 9 switch between link-text titles (6 copy_link_text -> link_text, 3 copy_link_text -> copy_link_text); all 1,458 have a source row whose link_text changed in the same night. title_source changes on 1,461 documents (893 NULL -> link_text, 556 NULL -> copy_link_text, 12 copy_link_text -> link_text including 6 with identical title text, excluding the 3 copy_link_text -> copy_link_text rows). Pages read in this night (340 listing pages attempted 2026-11-13 across armedservices.house.gov, democrats-financialservices.house.gov, agriculture.house.gov, and democrats-agriculture.house.gov; 456 HTML + 8 JSON readings in readings/batch-000000) fill previously NULL link_text and listed_on on 2,921 source rows (2,921 of 2,921 on the retired_links -> links row_map join).",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measures.json",
+     "sha256": "c0b9cc85d8bbd7b36126d411d96c0e1bc4552ee77daca02c05db10c6b7d9c531",
+     "size": 1070
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 461,
+   "disposition": "explained",
+   "cause": "461 new link keys: the 449 new documents plus the 12 recovered documents re-keyed as originals. 12 documents that the live release held only as recovered copies (saved_kind recovery, date_kind import_day) were fetched 2026-11-13 from their own publisher address with byte-identical bodies (md5 match on all 12), so each is now an original capture under a new link key (saved_kind original, date_kind captured, first_captured 2026-11-13); the old key is retired to the new one by the link rule (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 449,
+   "disposition": "explained",
+   "cause": "449 documents are new to the archive, all first captured 2026-11-13 by hosted capture-archive.yml run 43415806696 (capture run 20261113T111848Z-cfd510985e1f: 2,000 requests, 1,027 captures; meetings relist 20261113T111813Z-c7802864b373), 1,087 new receipt keys read by nightly 20261114T045317Z (392 HTML pages, 56 PDFs, 1 DOCX; 461 of 461 added/re-keyed documents trace to 2026-11-13 url_state attempts).",
+   "tickets": [
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/capture-summary.json",
+     "sha256": "52699bf9ee0cef1344b25d987501dd893ee97e2abadd5a9f9de56c44cc27d6d5",
+     "size": 147830
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed date_kind|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 documents that the live release held only as recovered copies (saved_kind recovery, date_kind import_day) were fetched 2026-11-13 from their own publisher address with byte-identical bodies (md5 match on all 12), so each is now an original capture under a new link key (saved_kind original, date_kind captured, first_captured 2026-11-13); the old key is retired to the new one by the link rule (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "One document (5ED3BF2AAD2164EE) takes document_date 2025-12-18 (source filename, accepted) from its listed Democrats Science PDF address (DOE 2025.12.18 HSST Research Security Final Testimony.pdf) read on 2026-11-13.",
+   "tickets": [
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date_status|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "One document (5ED3BF2AAD2164EE) takes document_date 2025-12-18 (source filename, accepted) from its listed Democrats Science PDF address (DOE 2025.12.18 HSST Research Security Final Testimony.pdf) read on 2026-11-13.",
+   "tickets": [
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_family|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 matched-key PDFs keep the same bytes but move their leading filename to a descriptive listed filename (e.g. HHRG-117-SY16-20221116-SD001.pdf -> Charter_Unfolding the Universe...pdf, HHRG-116-SY18-MState-*.pdf -> field-hearing OS names, HMKP-117-SY00-MState* -> committee print), updating document_family, document_kind and facts for those 12 rows.",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_kind|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 matched-key PDFs keep the same bytes but move their leading filename to a descriptive listed filename (e.g. HHRG-117-SY16-20221116-SD001.pdf -> Charter_Unfolding the Universe...pdf, HHRG-116-SY18-MState-*.pdf -> field-hearing OS names, HMKP-117-SY00-MState* -> committee print), updating document_family, document_kind and facts for those 12 rows.",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed filename|value differs on matched key",
+   "count": 24,
+   "disposition": "explained",
+   "cause": "12 documents that the live release held only as recovered copies (saved_kind recovery, date_kind import_day) were fetched 2026-11-13 from their own publisher address with byte-identical bodies (md5 match on all 12), so each is now an original capture under a new link key (saved_kind original, date_kind captured, first_captured 2026-11-13); the old key is retired to the new one by the link rule (0 missing, 0 dangling). In addition, 12 matched-key PDFs keep the same bytes but move their leading filename to a descriptive listed filename (e.g. HHRG-117-SY16-20221116-SD001.pdf -> Charter_Unfolding the Universe...pdf, HHRG-116-SY18-MState-*.pdf -> field-hearing OS names, HMKP-117-SY00-MState* -> committee print), updating document_family, document_kind and facts for those 12 rows. Together those account for all 24 filename changes.",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measures.json",
+     "sha256": "c0b9cc85d8bbd7b36126d411d96c0e1bc4552ee77daca02c05db10c6b7d9c531",
+     "size": 1070
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed first_captured|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 documents that the live release held only as recovered copies (saved_kind recovery, date_kind import_day) were fetched 2026-11-13 from their own publisher address with byte-identical bodies (md5 match on all 12), so each is now an original capture under a new link key (saved_kind original, date_kind captured, first_captured 2026-11-13); the old key is retired to the new one by the link rule (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed saved_kind|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 documents that the live release held only as recovered copies (saved_kind recovery, date_kind import_day) were fetched 2026-11-13 from their own publisher address with byte-identical bodies (md5 match on all 12), so each is now an original capture under a new link key (saved_kind original, date_kind captured, first_captured 2026-11-13); the old key is retired to the new one by the link rule (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 1458,
+   "disposition": "explained",
+   "cause": "1,449 previously untitled documents take a link-text title (893 link_text, 556 copy_link_text) and 9 switch between link-text titles (6 copy_link_text -> link_text, 3 copy_link_text -> copy_link_text); all 1,458 have a source row whose link_text changed in the same night. title_source changes on 1,461 documents (893 NULL -> link_text, 556 NULL -> copy_link_text, 12 copy_link_text -> link_text including 6 with identical title text, excluding the 3 copy_link_text -> copy_link_text rows). Pages read in this night (340 listing pages attempted 2026-11-13 across armedservices.house.gov, democrats-financialservices.house.gov, agriculture.house.gov, and democrats-agriculture.house.gov; 456 HTML + 8 JSON readings in readings/batch-000000) fill previously NULL link_text and listed_on on 2,921 source rows (2,921 of 2,921 on the retired_links -> links row_map join).",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measures.json",
+     "sha256": "c0b9cc85d8bbd7b36126d411d96c0e1bc4552ee77daca02c05db10c6b7d9c531",
+     "size": 1070
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "Coverage recomputed from tonight's new recordings and recording matches (69 recording claimed -> present, 43 present -> present count/reason updates, 12 captions unknown -> unknown updates, 9 recording unknown -> present, 3 claimed -> partial, 3 unresolved -> present, 1 partial -> present) plus Congress.gov meeting updates.",
+   "tickets": [
+    "ct-4jms",
+    "ct-q4e2",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/meeting-updates.json",
+     "sha256": "89058bd356b3a90f8041d48a922a205bfdedd7962dc0abd44dc25ee0097968b6",
+     "size": 14282
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 58,
+   "disposition": "explained",
+   "cause": "Coverage recomputed from tonight's new recordings and recording matches (69 recording claimed -> present, 43 present -> present count/reason updates, 12 captions unknown -> unknown updates, 9 recording unknown -> present, 3 claimed -> partial, 3 unresolved -> present, 1 partial -> present) plus Congress.gov meeting updates.",
+   "tickets": [
+    "ct-4jms",
+    "ct-q4e2",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/meeting-updates.json",
+     "sha256": "89058bd356b3a90f8041d48a922a205bfdedd7962dc0abd44dc25ee0097968b6",
+     "size": 14282
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 88,
+   "disposition": "explained",
+   "cause": "Coverage recomputed from tonight's new recordings and recording matches (69 recording claimed -> present, 43 present -> present count/reason updates, 12 captions unknown -> unknown updates, 9 recording unknown -> present, 3 claimed -> partial, 3 unresolved -> present, 1 partial -> present) plus Congress.gov meeting updates.",
+   "tickets": [
+    "ct-4jms",
+    "ct-q4e2",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/meeting-updates.json",
+     "sha256": "89058bd356b3a90f8041d48a922a205bfdedd7962dc0abd44dc25ee0097968b6",
+     "size": 14282
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 85,
+   "disposition": "explained",
+   "cause": "Coverage recomputed from tonight's new recordings and recording matches (69 recording claimed -> present, 43 present -> present count/reason updates, 12 captions unknown -> unknown updates, 9 recording unknown -> present, 3 claimed -> partial, 3 unresolved -> present, 1 partial -> present) plus Congress.gov meeting updates.",
+   "tickets": [
+    "ct-4jms",
+    "ct-q4e2",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/meeting-updates.json",
+     "sha256": "89058bd356b3a90f8041d48a922a205bfdedd7962dc0abd44dc25ee0097968b6",
+     "size": 14282
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed publisher_status_observations|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Meeting 338820 (2026-11-16) receives an updated Congress.gov listing observation timestamp (2026-11-13 06:18:46 EST, identical record_sha) from the hosted meetings relist (20261113T111813Z-c7802864b373, ct-q4e2).",
+   "tickets": [
+    "ct-q4e2",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/meetings-summary.json",
+     "sha256": "80e39f5209bcbac9ba744ae6a57e833746ce5f9a6765b4d1ec9c0b174630c0c8",
+     "size": 23681
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/meeting-updates.json",
+     "sha256": "89058bd356b3a90f8041d48a922a205bfdedd7962dc0abd44dc25ee0097968b6",
+     "size": 14282
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 194,
+   "disposition": "explained",
+   "cause": "194 committee_page recording matches (all decision linked, status asserted) and 53 committee_page source_ref updates come from committee event HTML pages read tonight (194 of 194 and 53 of 53 match body_sha in tonight's readings/batch-000000); 4 publisher_link matches from new Congress.gov details were verified by the gate itself.",
+   "tickets": [
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 53,
+   "disposition": "explained",
+   "cause": "194 committee_page recording matches (all decision linked, status asserted) and 53 committee_page source_ref updates come from committee event HTML pages read tonight (194 of 194 and 53 of 53 match body_sha in tonight's readings/batch-000000); 4 publisher_link matches from new Congress.gov details were verified by the gate itself.",
+   "tickets": [
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 95,
+   "disposition": "explained",
+   "cause": "113 new YouTube recordings (95 linked to events by new committee_page matches, 18 unlinked whose video IDs all appear in links extracted from tonight's 456 HTML readings) and 6 event_ids additions (6 of 6 in new recording_matches) come from tonight's committee event pages; 2 Senate recordings from Congress.gov meeting details were verified by the gate itself.",
+   "tickets": [
+    "ct-4jms",
+    "ct-q4e2"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 18,
+   "disposition": "explained",
+   "cause": "113 new YouTube recordings (95 linked to events by new committee_page matches, 18 unlinked whose video IDs all appear in links extracted from tonight's 456 HTML readings) and 6 event_ids additions (6 of 6 in new recording_matches) come from tonight's committee event pages; 2 Senate recordings from Congress.gov meeting details were verified by the gate itself.",
+   "tickets": [
+    "ct-4jms",
+    "ct-q4e2"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "113 new YouTube recordings (95 linked to events by new committee_page matches, 18 unlinked whose video IDs all appear in links extracted from tonight's 456 HTML readings) and 6 event_ids additions (6 of 6 in new recording_matches) come from tonight's committee event pages; 2 Senate recordings from Congress.gov meeting details were verified by the gate itself.",
+   "tickets": [
+    "ct-4jms",
+    "ct-q4e2"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "Bytes only: the same 12,506 recoveries with identical (md5(body), recovered_url) pairs (0 differ); list_row ordinals shift because 449 documents are inserted.",
+   "tickets": [
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 950,
+   "disposition": "explained",
+   "cause": "950 addresses newly added to sources.parquet: 938 newly listed with first_seen 2026-11-13 by pages read tonight, plus the 12 \"&download=1\" recovered addresses kept as non-saved alternates on the 12 re-keyed documents. Pages read in this night (340 listing pages attempted 2026-11-13 across armedservices.house.gov, democrats-financialservices.house.gov, agriculture.house.gov, and democrats-agriculture.house.gov; 456 HTML + 8 JSON readings in readings/batch-000000) fill previously NULL link_text and listed_on on 2,921 source rows (2,921 of 2,921 on the retired_links -> links row_map join).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measures.json",
+     "sha256": "c0b9cc85d8bbd7b36126d411d96c0e1bc4552ee77daca02c05db10c6b7d9c531",
+     "size": 1070
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed is_saved|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "Which listed address is the saved copy moves to the capture fetched 2026-11-13 on the 12 re-keyed recovered documents (12 of 12 on the row_map join). 12 documents that the live release held only as recovered copies (saved_kind recovery, date_kind import_day) were fetched 2026-11-13 from their own publisher address with byte-identical bodies (md5 match on all 12), so each is now an original capture under a new link key (saved_kind original, date_kind captured, first_captured 2026-11-13); the old key is retired to the new one by the link rule (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measures.json",
+     "sha256": "c0b9cc85d8bbd7b36126d411d96c0e1bc4552ee77daca02c05db10c6b7d9c531",
+     "size": 1070
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 2921,
+   "disposition": "explained",
+   "cause": "Pages read in this night (340 listing pages attempted 2026-11-13 across armedservices.house.gov, democrats-financialservices.house.gov, agriculture.house.gov, and democrats-agriculture.house.gov; 456 HTML + 8 JSON readings in readings/batch-000000) fill previously NULL link_text and listed_on on 2,921 source rows (2,921 of 2,921 on the retired_links -> links row_map join).",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measures.json",
+     "sha256": "c0b9cc85d8bbd7b36126d411d96c0e1bc4552ee77daca02c05db10c6b7d9c531",
+     "size": 1070
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 2921,
+   "disposition": "explained",
+   "cause": "Pages read in this night (340 listing pages attempted 2026-11-13 across armedservices.house.gov, democrats-financialservices.house.gov, agriculture.house.gov, and democrats-agriculture.house.gov; 456 HTML + 8 JSON readings in readings/batch-000000) fill previously NULL link_text and listed_on on 2,921 source rows (2,921 of 2,921 on the retired_links -> links row_map join).",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measures.json",
+     "sha256": "c0b9cc85d8bbd7b36126d411d96c0e1bc4552ee77daca02c05db10c6b7d9c531",
+     "size": 1070
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|removed URLs|unexplained",
+   "count": -549,
+   "disposition": "explained",
+   "cause": "549 never-attempted queued spellings on democrats-science.house.gov ending in \"&download=1\" (capture_disposition eligible, capture_reason no_satisfying_recovery, attempts 0) leave url_state because the capture attempted the repaired \"?download=1\" spelling of all 549 on 2026-11-13 (491 unchanged, 55 stored, 1 failed, 1 request_failed, 1 size_limit). No attempted URL and no stored body is lost.",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 556,
+   "disposition": "explained",
+   "cause": "Capture bookkeeping for addresses attempted or discovered on 2026-11-13 (556 new attempted URLs, 344 newly queued URLs with linked_from on captured pages, 531 updated attempt records). The ct-9j3z automatic url_state proof only listed removed URLs in automatic_reasons, i.e. the receipt fold implies these additions and updates; the proof refused the night on removed URLs so they are recorded here.",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/capture-summary.json",
+     "sha256": "52699bf9ee0cef1344b25d987501dd893ee97e2abadd5a9f9de56c44cc27d6d5",
+     "size": 147830
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 344,
+   "disposition": "explained",
+   "cause": "Capture bookkeeping for addresses attempted or discovered on 2026-11-13 (556 new attempted URLs, 344 newly queued URLs with linked_from on captured pages, 531 updated attempt records). The ct-9j3z automatic url_state proof only listed removed URLs in automatic_reasons, i.e. the receipt fold implies these additions and updates; the proof refused the night on removed URLs so they are recorded here.",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/capture-summary.json",
+     "sha256": "52699bf9ee0cef1344b25d987501dd893ee97e2abadd5a9f9de56c44cc27d6d5",
+     "size": 147830
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 531,
+   "disposition": "explained",
+   "cause": "Capture bookkeeping for addresses attempted or discovered on 2026-11-13 (556 new attempted URLs, 344 newly queued URLs with linked_from on captured pages, 531 updated attempt records). The ct-9j3z automatic url_state proof only listed removed URLs in automatic_reasons, i.e. the receipt fold implies these additions and updates; the proof refused the night on removed URLs so they are recorded here.",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/capture-summary.json",
+     "sha256": "52699bf9ee0cef1344b25d987501dd893ee97e2abadd5a9f9de56c44cc27d6d5",
+     "size": 147830
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 531,
+   "disposition": "explained",
+   "cause": "Capture bookkeeping for addresses attempted or discovered on 2026-11-13 (556 new attempted URLs, 344 newly queued URLs with linked_from on captured pages, 531 updated attempt records). The ct-9j3z automatic url_state proof only listed removed URLs in automatic_reasons, i.e. the receipt fold implies these additions and updates; the proof refused the night on removed URLs so they are recorded here.",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/capture-summary.json",
+     "sha256": "52699bf9ee0cef1344b25d987501dd893ee97e2abadd5a9f9de56c44cc27d6d5",
+     "size": 147830
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 523,
+   "disposition": "explained",
+   "cause": "Capture bookkeeping for addresses attempted or discovered on 2026-11-13 (556 new attempted URLs, 344 newly queued URLs with linked_from on captured pages, 531 updated attempt records). The ct-9j3z automatic url_state proof only listed removed URLs in automatic_reasons, i.e. the receipt fold implies these additions and updates; the proof refused the night on removed URLs so they are recorded here.",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/capture-summary.json",
+     "sha256": "52699bf9ee0cef1344b25d987501dd893ee97e2abadd5a9f9de56c44cc27d6d5",
+     "size": 147830
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 512,
+   "disposition": "explained",
+   "cause": "Capture bookkeeping for addresses attempted or discovered on 2026-11-13 (556 new attempted URLs, 344 newly queued URLs with linked_from on captured pages, 531 updated attempt records). The ct-9j3z automatic url_state proof only listed removed URLs in automatic_reasons, i.e. the receipt fold implies these additions and updates; the proof refused the night on removed URLs so they are recorded here.",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/capture-summary.json",
+     "sha256": "52699bf9ee0cef1344b25d987501dd893ee97e2abadd5a9f9de56c44cc27d6d5",
+     "size": 147830
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 478,
+   "disposition": "explained",
+   "cause": "Capture bookkeeping for addresses attempted or discovered on 2026-11-13 (556 new attempted URLs, 344 newly queued URLs with linked_from on captured pages, 531 updated attempt records). The ct-9j3z automatic url_state proof only listed removed URLs in automatic_reasons, i.e. the receipt fold implies these additions and updates; the proof refused the night on removed URLs so they are recorded here.",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/capture-summary.json",
+     "sha256": "52699bf9ee0cef1344b25d987501dd893ee97e2abadd5a9f9de56c44cc27d6d5",
+     "size": 147830
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 486,
+   "disposition": "explained",
+   "cause": "Capture bookkeeping for addresses attempted or discovered on 2026-11-13 (556 new attempted URLs, 344 newly queued URLs with linked_from on captured pages, 531 updated attempt records). The ct-9j3z automatic url_state proof only listed removed URLs in automatic_reasons, i.e. the receipt fold implies these additions and updates; the proof refused the night on removed URLs so they are recorded here.",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/capture-summary.json",
+     "sha256": "52699bf9ee0cef1344b25d987501dd893ee97e2abadd5a9f9de56c44cc27d6d5",
+     "size": 147830
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 531,
+   "disposition": "explained",
+   "cause": "Capture bookkeeping for addresses attempted or discovered on 2026-11-13 (556 new attempted URLs, 344 newly queued URLs with linked_from on captured pages, 531 updated attempt records). The ct-9j3z automatic url_state proof only listed removed URLs in automatic_reasons, i.e. the receipt fold implies these additions and updates; the proof refused the night on removed URLs so they are recorded here.",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/capture-summary.json",
+     "sha256": "52699bf9ee0cef1344b25d987501dd893ee97e2abadd5a9f9de56c44cc27d6d5",
+     "size": 147830
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 2382,
+   "disposition": "explained",
+   "cause": "2,382 new lookup keys: 972 on the 461 added/re-keyed documents and 1,410 on existing documents that gained one of the 950 newly listed addresses in sources.parquet (0 other). Pages read in this night (340 listing pages attempted 2026-11-13 across armedservices.house.gov, democrats-financialservices.house.gov, agriculture.house.gov, and democrats-agriculture.house.gov; 456 HTML + 8 JSON readings in readings/batch-000000) fill previously NULL link_text and listed_on on 2,921 source rows (2,921 of 2,921 on the retired_links -> links row_map join).",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measures.json",
+     "sha256": "06379d3c40488f2e1201b6224a75f415c7a23a136e95a5a50eb640ca18666272",
+     "size": 10183
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measures.json",
+     "sha256": "c0b9cc85d8bbd7b36126d411d96c0e1bc4552ee77daca02c05db10c6b7d9c531",
+     "size": 1070
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/release-gate.refused.json",
+     "sha256": "50eff4d5904f1db9f9541d59bbdc86dac36ef9b9d61a1522e9462b7dabc9cd42",
+     "size": 39840
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/measure.py",
+     "sha256": "c61093d7ca679bf246172b4a0b3a8614d01540e35f2eb6010719053ef2cecade",
+     "size": 9766
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/sources_measure.py",
+     "sha256": "c5e854076df0f7c2ce3da5d58d63e381d87c13596003bc6c52eab6e247388276",
+     "size": 4346
+    },
+    {
+     "path": "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/investigations/capture-night-20261113/evidence/daily-summary.json",
+     "sha256": "8961bd59f48cc4f5ae739339cf0c9cf621cad3712be6a5f5828644fbf54f6242",
+     "size": 3554573
+    }
+   ]
+  }
+ ]
+}
