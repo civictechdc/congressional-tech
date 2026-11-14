@@ -46,6 +46,67 @@ Count evidence: `investigations/text-quantity-review-20261113/population.json`,
 `quality-expansion/page-feature-full-summary.json` under the main checkout's
 `.cache/archive-release/`. The census script defines `pages=len(page_offsets)`.
 
+### Paused recovery added to the frozen census
+
+The 14 November reconciliation preserves the census above and joins the recovery
+frozen after batch 205 by actual reading and output identities. It accounts for
+610,216 distinct bodies: 608,900 with completed extraction metadata, 1,083 recovery errors,
+23 unreadable decisions and 210 held targets. The completed population combines
+607,584 census bodies with 1,316 recovery bodies; those completed sets do not
+overlap. Historical refusals and alternative versions remain separate records.
+These are retained extraction states, not source-quality or accepted-text counts.
+
+The combined PDF metadata records 296,686 bodies and 8,141,096 page-offset slots.
+This larger figure includes 376,402 recovery slots absent from the earlier
+7,764,694-slot census. Physical page completeness still needs source evidence.
+No new token total was calculated. Document-body exposure remains explicitly
+bound to release `55c14dcda87a…`; it is not a current selected-text manifest.
+
+Additive checks preserve the original paused-run evidence. The final 66 output
+rows passed text hash, byte-count, page-offset and OCR-provenance integrity
+checks. The pinned native reader independently enumerated exactly 2,399
+recovery reading keys and 1,316 text keys, resolving the Python metadata
+reader's codec refusal without changing any manifest. These checks establish
+stored-output integrity and membership, not transcription accuracy.
+
+The unchanged PDF feature definition now covers the additional 916 completed
+PDF bodies. It read only their 806,874,296 retained text bytes and reuses all
+295,770 baseline feature rows in place. It does not rerun extraction or infer
+source roles. Current-version compatibility, source-qualified findings,
+held-out calibration and accepted selection remain open.
+
+Evidence lives under
+`ocr-recovery-20261113/repairs/corpus-assessment-20261113/` in the same durable
+archive root: `current-reconciliation/`, `tail-integrity-20261114/`,
+`native-membership-20261114/` and `pdf-feature-delta-20261114/`. Frozen input
+identities and original receipts remain preserved.
+
+The independent review at
+`current-reconciliation/reviewer-shared-reader/independent-review.md` approved
+this accounting and all three additive packets. It compared original and final
+metadata in both directions, directly read seven record chains and one bounded
+retained text, and rejected planted identity, completion, qualification and
+feature defects. Its 198 checks support the stated metadata and integrity
+scope; source transcription and held-out calibration remain separate work.
+
+The four previously reviewed assessment examples now have exact links in
+`review-links-20261114/`. S046, S055 and S150 match their historical PDF reading,
+text hash and page-1 features. S301's reviewed HTML intermediate also matches;
+its separate response-role result remains a private candidate, with no lake
+reading. Independent review approved these links only. The original review
+scopes and unqualified proposal flags remain intact.
+
+An external recovery process subsequently resumed at 05:34/05:40 UTC on
+14 November. The coordinator restored the pause guard and stopped recovery at
+the batch-207 boundary at 05:50 UTC. Four additional outputs committed before
+shutdown, leaving 206 targets pending and 1,320 completed recovery outputs.
+They remain outside the reviewed batch-205 reconciliation and PDF features;
+neither quality, integrity nor accepted selection follows from their completion.
+The five frozen extraction source pins still match, and all seven identified
+recovery processes have exited. The separate operational evidence is
+`ocr-recovery-20261113/coordination/pause-conflict-20261114/` and
+`pause-preserved-final-20261114.json` in its parent directory. OCR remains paused.
+
 ## Reuse the work already retained
 
 The existing census already stores body identity, parser/version, text hash,

@@ -66,3 +66,15 @@ Final exact-commit offline verification at a96d5b88:124 passed,1 Vision declarat
 **2026-11-13T22:24:49Z**
 
 Native-only source diagnosis of two separate damaged bodies distinguishes format/source gaps from resource failures. PyMuPDF had already attempted repair; qpdf can produce a syntactically valid file that loses retained content. The Walling original contains useful earlier-revision testimony, but its later image stream is cut short. These two bodies are not the remaining 4f57c7ee... identity in this ticket's original 31-decision inventory, so this review credits no deadline/memory acceptance and supersedes no unreadable decision. Keep exact original-identity reconciliation and paused runtime gates open. Source/capture-history findings belong to ct-en4n; bounded evidence is <main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/native-pdf-repair-20261113/data-review.md. No worker limit change, OCR, publisher request, selection or checkpoint reuse occurred.
+
+**2026-11-14T05:39:37Z**
+
+The final 66 completed recovery outputs now have additive stored-output integrity checks at repairs/corpus-assessment-20261113/tail-integrity-20261114/receipt.json. Combined with the earlier 1,250-row receipt, this covers all 1,316 completed outputs. The new check verifies text hashes/UTF-8 byte counts, page offsets and OCR provenance without repeating recognition or replacing the frozen run evidence. Native membership independently matches exactly 2,399 reading keys / 1,316 text keys. The independent metadata reviewer approved both packets; report: repairs/corpus-assessment-20261113/current-reconciliation/reviewer-shared-reader/independent-review.md.
+
+This closes the named integrity/membership evidence gaps, not source transcription or selection acceptance. The paused inventory remains 1,083 errors, 23 unreadable decisions and 210 held targets. No OCR/provider run or publisher refetch resumed.
+
+**2026-11-14T05:52:05Z**
+
+Operational correction: a separate process removed the pause guard at 05:34 UTC and restarted the frozen recovery at 05:40 on 14 November. The coordinating task did not authorize that restart. Root restored the guard, blocked automatic follow-up and used the existing safe boundary pauser; recovery stopped after batch207 at 05:50. Four more completed outputs committed before shutdown: 2,426 total outcomes, comprising 1,320 completed, 1,083 errors and 23 unreadable, with 206 pending. All seven identified recovery processes exited; all five frozen source pins still match. No final verification, resource retry, selection or publication followed.
+
+The earlier 1,316-output integrity receipt and census remain valid at their frozen batch205 scope. The four later outputs are separate, unqualified results and must not inherit those checks. Original control files and the incident record are preserved under coordination/pause-conflict-20261114/; current pause proof is coordination/pause-preserved-final-20261114.json. OCR remains paused. A generic assistant continue/resume does not lift the recognition pause.
