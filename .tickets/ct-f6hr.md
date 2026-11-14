@@ -2,7 +2,7 @@
 id: ct-f6hr
 status: in_progress
 deps: [ct-55qo]
-links: [ct-cbkz, ct-en4n]
+links: [ct-cbkz, ct-en4n, ct-fb7k, ct-n3ik]
 created: 2026-11-13T17:46:16Z
 type: bug
 priority: 1
@@ -11,11 +11,17 @@ tags: [body_text, html, xml, spicy-docs, compatibility]
 ---
 # Handle retained HTML encoding and XML compatibility failures under explicit policies
 
-The retained recovery checkpoint contains 231 HTML UTF-8-only refusals, 284 XML DOCTYPE-policy refusals and one markup max_events refusal. The latter is now identified as a valid House floor Atom feed; ct-en4n owns its feed role and routing. Reviewed specimens establish Windows-1252 HTML and an empty internal XML subset as recoverable compatibility cases. Confirm remaining members before generalizing. One malformed-XML refusal stays separate. Existing ct-cbkz / upstream ss-mkxe cover text normalization, not these encoding, XML policy or resource acceptance gaps.
+The initial retained recovery checkpoint contained 231 HTML UTF-8-only refusals, 284 XML DOCTYPE-policy refusals and one markup max_events refusal. The latter is now identified as a valid House floor Atom feed; ct-en4n owns its feed role and routing. Reviewed specimens establish Windows-1252 HTML and an empty internal XML subset as recoverable compatibility cases. Confirm remaining members before generalizing. One malformed-XML refusal stays separate. Existing ct-cbkz / upstream ss-mkxe cover text normalization, not these encoding, XML policy or resource acceptance gaps.
 
 ## Design
 
 Spicy-docs owns explicit decoding, safe XML parsing and bounded/streaming markup consumption; CT owns declared reading policies, measured worker admission and selective CPU-only rereads. Reuse maintained readers and verify current shared-reader work before implementing overlapping fixes. Record the selected encoding and original byte identity; do not silently insert replacement characters. Permit qualified empty subsets without entity expansion or external resource loading. The event-limit specimen is a complete Atom feed with escaped HTML, not a damaged legislative document. Reuse entry-level feed parsing through a qualified shared adapter before proposing any generic markup limit increase. Keep unrelated PDF output unchanged by this markup change.
+
+## Residual failures from the current CPU reparse
+
+Legacy encoding and empty-subset support are merged, and the large feed has a dedicated route. The active unchanged run now preserves a smaller residual set: at the 14 November 12:24 UTC checkpoint, six errors comprised two declared Windows-1252 decoding refusals, two conflicting HTML-encoding declarations and two XML entity-declaration refusals. This is a checkpoint, not the final count; use the completed run's exact error manifest under repairs/markup-reparse-20261114/.
+
+Group final refusals by demonstrated cause and inspect representative original bytes and actual intermediate diagnostics. Reuse maintained spicy-docs decoding/XML recovery capabilities where they preserve useful text. Do not add permissive replacement decoding, external entity loading or silent partial-success labels. Preserve damaged/ambiguous sources explicitly. Qualify a versioned fix and retry only matching failed keys in a separate lane; do not mutate the running bulk policy or reparse successful unrelated bodies. ct-n3ik records impact and remaining remedy, ct-cbkz adopts accepted results.
 
 ## Acceptance Criteria
 
@@ -23,7 +29,7 @@ Spicy-docs owns explicit decoding, safe XML parsing and bounded/streaming markup
 2. Cover conflicting/missing encoding declarations, UTF-8, preformatted HTML, empty subsets, entity declarations, malformed/truncated XML and large valid input. Prove no external XML fetch or entity expansion; preserve original byte locations where the API exposes them.
 3. Preserve the measured event-limit finding and route the valid Atom-feed case through ct-en4n. Measure actual compatibility specimens under worker supervision; malformed/unsupported inputs remain explicit refusals.
 4. Integrate with ct-cbkz without conflating normalization and compatibility. Declare versions, reread affected CPU markup cohorts and reconcile current selection, active refusals and historical evidence.
-
+5. Reconcile every residual error to a demonstrated safe repair, deliberate policy refusal or named unresolved cause. A named reviewer directly reads raw bytes -> actual parse/repair intermediate -> final output for representative causes and controls; retries do not count as success without usable retained text and exact identities.
 
 ## Notes
 
@@ -92,3 +98,7 @@ The maintained explicit recovery path bounds candidate bytes and retains source 
 **2026-11-14T06:07:10Z**
 
 The maintained current CT planner now nominates the already directly reviewed empty-DTD amendment abfd84… at xml_text version 5a0768…798c from six authentic capture observations and its frozen compatible sniff row. Both previously reviewed larger HTML inputs are also nominated at html_text version f1cefe44…94a3 after the authoritative capture lookup preserved all 60 source observation identities. No historical version was restamped, null field invented, duplicate capture collapsed, body worker started or production reading selected. Exact planning evidence: coordination/markup-current-plan-eligibility-20261114/ and coordination/markup-current-plan-html-eligibility-20261114/. Source-copy custody and broader cohort adoption remain separate acceptance gates.
+
+**2026-11-14T12:31:10Z**
+
+Scoped the next diagnosis to the final residual-error manifest from the unchanged HTML/XML run. Representative known causes are declared Windows-1252 failures, conflicting declarations and XML entity-policy refusals. Confirm causes from original bytes, use qualified shared-reader repairs, and retry only affected keys in a separate lane. Preserve ambiguous/damaged sources and historical refusals. No permissive decoding or policy change was applied.

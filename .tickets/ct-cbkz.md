@@ -2,7 +2,7 @@
 id: ct-cbkz
 status: in_progress
 deps: [ct-55qo]
-links: [ct-chc4, ct-m704, ct-f6hr]
+links: [ct-chc4, ct-m704, ct-f6hr, ct-0a35, ct-n3ik]
 created: 2026-11-12T15:38:26Z
 type: task
 priority: 2
@@ -10,22 +10,32 @@ assignee: mikewolfd
 external-ref: ss-mkxe
 tags: [congress_api, body_text, spicy-docs, html, xml, post-wave-6]
 ---
-# Adopt qualified spicy-docs markup normalization and reparse the non-OCR cohort
+# Finish the HTML/XML reparse and adopt qualified text
 
-The independent audit found upstream normalization commits 847a32fd and e247fc9b already implemented in spicy-docs but absent from CT's pinned GPO wheel. Credit that work; inspect and qualify the remaining contextual <pre> and adjacent-link spacing gaps before packaging. The old claim that all PDF output was clean and the CPU reread would take minutes is withdrawn.
+The composed spicy-docs reader and bounded pilots are qualified, and the full CPU-only HTML/XML reparse is running. Finish exact-key reconciliation and adopt the useful outputs through the existing selection/publication path. Earlier packaging and reader fixes are completed work; successful local staging does not yet establish catalog adoption or searchable publication.
 
 ## Design
 
-This ticket owns the single composed spicy-docs wheel for CT: retain the merged GPO cleanup, adopt qualified markup changes, and coordinate Tesseract identity support with ct-n3ik. Reuse shared markup walkers rather than adding a CT parser. ct-f6hr owns encoding, XML subset and event-limit compatibility. ct-55qo owns selected reading keys; compaction cannot substitute for selection. Keep historical readings and refusal evidence until exact retained-table reconciliation passes.
+Reuse the qualified composed spicy-docs wheel, merged GPO cleanup and maintained markup readers. ct-f6hr owns residual encoding and XML-policy compatibility; ct-55qo supplies the implemented selected-reading mechanism. Apply those accepted components to this real cohort, keeping historical readings and refusal evidence until exact retained-table reconciliation passes. Compaction does not establish selection.
 
-The retained inventory names 310,964 unique HTML/XML bodies (310,047 completed baseline plus 917 recovery targets), with 11.92 GB of existing text. Measure a bounded CPU pilot and estimate full input/output/scratch cost before reprocessing. WARC is excluded from the ordinary cohort deliberately: establish payload and saved-body reachability before adding it. No PDF OCR rerun; OCR remains paused.
+The retained inventory names 310,964 unique HTML/XML bodies (310,047 completed baseline plus 917 recovery targets), with 11.92 GB of historical text. Reuse completed representative/largest-input pilots and continue the bounded, checkpointed run under its measured memory/storage limits. WARC remains outside this cohort pending separate payload and saved-body reachability qualification. No PDF OCR rerun; OCR remains paused.
+
+## Current execution and remaining work
+
+The frozen cohort contains 310,964 body/parser keys: 310,563 in the unchanged bulk lane, 400 completed in the separate verified-retained-copy lane and one House feed with an existing dedicated structured reading. The feed is not an xml_text completion and its zero prose bytes are not a failed extraction. The 400 remain bound to observed archive size/ETag and decoded identity; do not invent missing original capture metadata or restamp historical readings.
+
+Run evidence and final collector: <main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/markup-reparse-20261114/. Preserve the running source/policy pins. ct-f6hr owns cause-specific residual encoding/XML failures; only affected inputs should be retried after a qualified fix. ct-fb7k/ct-en4n supply response-role evidence, ct-n3ik owns the practical exception queue, and ct-0a35 owns source-to-search acceptance.
+
+At completion, bind authoritative reading/text catalogs and one accepted actual key per body/parser using ct-55qo. Carry prior usable text when a new attempt fails. Keep source errors, unknown roles, active refusals and unattempted work visible; completion alone must not promote an error page to substantive document text. Retain legitimate metadata/feed outputs according to their role. No PDF OCR or publisher refetch is part of this lane.
 
 ## Acceptance Criteria
 
 1. The composed wheel passes real bill XML, mixed HTML with local <pre>, adjacent links/buttons and GPO verbatim controls. PDF text and declared PDF identity remain unchanged relative to the chosen baseline.
 2. A measured CPU-only pilot and complete deduplicated HTML/XML manifest name supported, malformed, refused and unassessed bodies; no PDF enters that lane.
 3. Reparse the qualified non-OCR cohort with measured capacity and compare text, refused and pending records in both directions. WARC requires a separate justified reachable cohort.
-4. Publish only ct-55qo selections; retain earlier evidence and prove row uniqueness before any separately authorized destructive compaction.
+4. Account for all 310,964 keys across bulk results, the 400 retained-copy results and the distinct feed route. Check missing/extra/duplicate keys in both directions and preserve completed/error/unreadable/pending outcomes and their exact causes.
+5. Publish only ct-55qo selections, reconcile the authoritative catalogs used by subsequent jobs and read back actual selected text hashes. A failed replacement preserves prior accepted text; retain earlier evidence and prove row uniqueness before any separately authorized destructive compaction.
+6. A named reviewer directly reads a small raw -> actual intermediate -> adopted output sample spanning changed markup, ordinary controls and explicit refusals. Record remaining exceptions for ct-f6hr/ct-n3ik and hand the release/selection identities to ct-0a35.
 
 ## Notes
 
@@ -94,3 +104,7 @@ All three previously reviewed larger markup inputs are now nominated by the main
 The HTML lookup preserved all 60 actual capture observations and exact receipt_key/receipt_line/capture_index identities; no duplicates collapsed or missing fields fabricated. Root read the actual planned rows, native sniff rows and representative original capture records for all three bodies. Their direct source/intermediary/text reviews remain the earlier unchanged producer-probe evidence. These probes establish current-code nomination under the explicitly frozen source snapshots, without a body worker or source fetch. The final HTML metadata job peaked at 0.257 GiB RSS and ran 2.2 seconds. It projected 12 columns across ten row groups (101,019,809 compressed column bytes declared by the footer); this is metadata planning, not source extraction throughput.
 
 Evidence: coordination/markup-current-plan-eligibility-20261114/ and coordination/markup-current-plan-html-eligibility-20261114/ under the main OCR recovery root. The earlier missing-metadata observation and two bounded harness refusals remain preserved. Captured-gzip replay or explicit retained-raw custody adoption for the two HTML copies, broader role/custody qualification, measured cohort reparse and accepted reading selection remain open. OCR stays paused and publisher refetch deferred.
+
+**2026-11-14T12:31:10Z**
+
+Updated the lead and remaining acceptance to the active run: 310,563 bulk keys plus 400 completed retained-copy keys and one dedicated feed route, all reconciled against the frozen 310,964-key cohort. Qualified packaging/pilots are completed work. Remaining work is final outcome accounting, cause-specific exception handoff, authoritative catalog/selection adoption and readback; ct-0a35 owns search verification. No running process, policy pin or source output changed during ticket editing.

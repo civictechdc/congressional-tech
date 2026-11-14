@@ -2,7 +2,7 @@
 id: ct-n3ik
 status: in_progress
 deps: []
-links: [ct-a73a, ct-kfsd, ct-hz8y, ct-t4p3, ct-55qo, ct-aitp]
+links: [ct-a73a, ct-kfsd, ct-hz8y, ct-t4p3, ct-55qo, ct-aitp, ct-f6hr, ct-fb7k, ct-0a35, ct-en4n, ct-cbkz]
 created: 2026-11-11T15:40:45Z
 type: feature
 priority: 2
@@ -23,13 +23,22 @@ Reuse the retained page features and completed 376-case Keeplist applicability s
 
 ct-hz8y owns native/vector repair, ct-kfsd cleanup exposure/publication, ct-cbkz/ct-f6hr markup reparse, ct-en4n source roles and ct-z4w5 deferred refetch. ct-55qo owns selected readings and ct-aitp page persistence. Earlier Tesseract-fast candidate preferences remain available for later selective repair; backend comparison, provider execution and publication are separate from completing the cheap screen.
 
+## Next deliverable: one practical exception queue
+
+Combine the existing PDF feature rankings, actual reparse/recovery outcomes and bounded response-role observations from ct-fb7k/ct-en4n without another whole-corpus payload scan. Join exact source/reading/output identities; expose selected-document effects with a named release, retaining unknown or stale exposure explicitly. The 400 response examples are annotations on existing bodies, not additional corpus counts.
+
+For each candidate record the reason, observation basis, FTS impact, priority, page or text locator, least-cost remedy, required evidence and owning ticket. Use the existing review bands, with missing evidence separate from observed defects. Prioritize search-visible missing content and substantial omissions ahead of low-impact formatting. Keep ordinary short/blank/photo/metadata/feed controls usable according to their role.
+
+Route cleanup to ct-kfsd, native/vector recovery to ct-hz8y, geometry to ct-yy07, markup failures to ct-f6hr, crash recognition to ct-t4p3 and unresolved sources to deferred ct-z4w5. Reuse known repair evidence and checkpoints; do not start a new provider/OCR job or publisher request. ct-0a35 verifies accepted changes through the actual search consumer.
+
 ## Acceptance Criteria
 
 1. Give the frozen retained population explicit dispositions using exact actual reading identities. Preserve unsupported, pending, refused and missing-evidence states, and state any generation coverage gaps.
 2. Run transparent, cheap checks for unsuccessful or substantially incomplete extraction and retain actionable reasons/locators. A low quantity or harmless formatting change alone must not declare a document bad.
 3. Check known major failures and legitimate controls, then directly spot-check a small independent sample of suspicious and ordinary outputs against retained originals/intermediates. Report obvious missed failures and false alarms; do not claim exhaustive or word-perfect accuracy.
 4. Report elapsed time, peak memory, inputs reused and any payload bytes newly read so the screen can run economically across the corpus. No LLM-per-document review or original-PDF scan is required.
-5. Leave a prioritized selective repair/reparse queue while keeping OCR paused, refetch deferred and existing accepted readings unchanged. Do not treat unmeasured source fidelity as a blocker to useful FTS triage.
+5. Leave one deduplicated selective repair/reparse queue with explicit reasons, search exposure, cheapest next action, owning ticket and unknown evidence. Account for all included input keys and generation gaps; a source-response finding is not an extraction-runtime failure.
+6. Rank the next bounded repair batch by search impact and demonstrated cause. Keep OCR paused, refetch deferred and accepted readings unchanged in the assessment command. Missing source fidelity and a mandatory 200-body calibration study must not block useful priorities.
 
 ## Notes
 
@@ -90,3 +99,7 @@ First cheap FTS screen is implemented at b6d2865f (documentation at 003244f5). R
 **2026-11-14T11:59:01Z**
 
 Added the 400 recovered markup bodies as reusable examples in the existing inventory lineage at repairs/corpus-assessment-20261113/response-examples-20261114/. They are annotations on existing body keys, not 400 new corpus bodies. Expected source-role labels are 384 error-template examples, two bounded ordinary metadata/landing controls and 14 unknown; completed extraction is a separate field. Raw/archive, actual reading and historical/current text identities are retained. The independent direct M002/M004/M005 review found only whitespace changes and preserved source roles; it does not qualify all changed outputs. Use this development/regression collection to improve cheap response detection, preserving template-family grouping and unknown labels. No broad LLM review, OCR, refetch or selected-text change occurred; broader non-PDF screening remains open.
+
+**2026-11-14T12:31:10Z**
+
+Specified the next concrete deliverable as one exact-key exception queue with reason, evidence basis, search exposure, priority, locator, cheapest remedy and owning ticket. It combines retained PDF features and current markup/recovery outcomes, including ct-fb7k/ct-en4n observations, without another baseline payload scan. Existing case memberships are not added to corpus counts. OCR/refetch remain paused/deferred; perfect transcription and a 200-body study are not gates.
