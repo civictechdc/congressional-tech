@@ -9,21 +9,24 @@ priority: 1
 assignee: mikewolfd
 tags: [body_text, pdf, ocr, geometry]
 ---
-# Recover PDF native-geometry failures through a qualified OCR fallback
+# Qualify PDF geometry repairs using native text or selective OCR
 
-The recovery checkpoint has 208 errors reporting native text falls outside displayed page bounds. On retained specimen c84834bdffb4, source inspection localized a zero-width TX span; an OCR probe recovered 2,496 bytes. This establishes one narrow recoverable geometry case, not that all 208 errors share it. The strict native check currently prevents the otherwise readable page from reaching OCR.
+The frozen inventory contains 208 bodies with 1,350 failed-page records. Direct source and numerical review covers four bodies and six failed pages; the other 204 bodies / 1,344 pages remain cause-unresolved. The old generic outside-page error does not establish their actual geometry or source quality.
+
+SpicyDocs PR28 merged an explicit native plain-text inspection option for finite, ordered zero-area bounds wholly inside the page. Strict defaults remain. The c848 letter and 156 biography recover useful native text but retain split words and omitted graphic text/signatures; d128 and 924 also have damaged source structure/fonts. None is an accepted replacement. CT has not adopted the native option. OCR remains paused and publisher refetch deferred.
 
 ## Design
 
-Keep the shared native geometry validation meaningful. Distinguish degenerate zero-area spans from genuinely external text, rotated/cropped pages and unrelated extraction failures. Preserve the original native refusal and exact source/page evidence while allowing a narrowly qualified page-level OCR fallback. Reuse the existing render/recognizer path and recorded settings.
+Preserve the original source, native refusal, numerical geometry and candidate text. Distinguish zero-area spans, genuinely external text, crop/rotation, invisible spans and damaged source bytes. Inspect a maintained native representation where applicable before proposing page-specific recognition. A geometry repair or structurally valid rewrite must not imply complete or accurate text.
+
+Reuse the shared reader's explicit reason-specific policies and existing render/recognizer path. Keep native inspection, actual CT consumer qualification, declared-version compatibility and accepted selection separate. Recognition requires an explicit human resume; a generic assistant continue/resume does not lift the pause.
 
 ## Acceptance Criteria
 
-1. Inventory and classify the 208 retained failures by actual page/span geometry; identify records not inspected.
-2. Reproduce the c84834bdffb4 failure and source-confirm its recovered passage through the real CT consumer.
-3. Cover zero-area, out-of-bounds, crop/rotation and unrelated-error controls; unrelated failures retain their reasons.
-4. Preserve source hashes, refusal history, page offsets and OCR provenance under a declared version. Independently verify source text and a planted omission before affected-body rereads/publication.
-
+1. Classify the remaining 204 bodies / 1,344 failed-page records from actual source and span geometry; retain every uninspected or unresolved record in the original inventory.
+2. Source-confirm a candidate for the c848 case through the real CT consumer, preserving numbers, names, reading order and visible content. Native and OCR alternatives need their own exact policy and output identities.
+3. Cover zero-area, out-of-bounds, crop/rotation, invisible-text, damaged-source and unrelated-error controls. Unrelated failures retain their reasons; invisible native text is not assumed visible.
+4. Preserve source hashes, refusal history, page offsets and recognition provenance when used. Independently review source/intermediary/output content and a planted omission before affected-body rereads or publication; qualify versions and selection separately.
 
 ## Notes
 
