@@ -2,8 +2,9 @@
 
 `ct-55qo` and `ct-aitp` add opt-in support for mixed accepted readings and
 PDF restart and exact-page repair candidates. The default extraction and cleanup rules are unchanged.
-No production manifest has been adopted by this change. OCR remains paused;
-these options do not lift the pause or change the frozen recovery checkout.
+No production manifest has been adopted by this change. The user separately
+authorized targeted OCR/refetch on 14 November. That work uses a new checkpointed
+lane; these options do not mutate the frozen historical recovery checkout.
 
 ## Select actual retained readings
 
@@ -101,7 +102,8 @@ through ct-0a35; this option alone does not change a hosted search index.
 
 Set `page_checkpoints` in the producer spec to an explicit durable directory
 under the main checkout's `.cache/archive-release/`. The recovery command also
-accepts `--page-checkpoints`; do not use that command to restart paused OCR.
+accepts `--page-checkpoints`; execution still requires a separately authorized
+recovery run with measured resource admission.
 Batch-stage directories are rejected because their contents are transient.
 
 The adapter uses installed spicy-docs `DocumentExtractor.extract(pages=...)`
@@ -188,7 +190,7 @@ this change alters selection and persistence, not extraction or GPO cleanup.
 `model/reading-version-diagnostics.json` records the reviewed implementation
 evidence. This is not a claim that historical PDF versions are semantically
 equivalent, that all retained rows are qualified, or that real Vision restart
-has passed. Real OCR remains paused; no recognizer/provider or publisher-refetch
+has passed. At that qualification boundary OCR was paused; no recognizer/provider or publisher-refetch
 jobs were run for these checks. Corpus checkpoint storage and bulk parse costs
 still need measurement before rollout.
 

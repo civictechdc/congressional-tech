@@ -1,6 +1,6 @@
 ---
 id: ct-en4n
-status: open
+status: in_progress
 deps: [ct-fb7k]
 links: [ct-chc4, ct-z4w5, ct-f6hr, ct-0a35, ct-n3ik]
 created: 2026-11-13T17:46:16Z
@@ -15,22 +15,22 @@ The review identified 384 retained error-template bodies (197 NoSuchKey, 14 File
 
 ## Design
 
-Reuse the link reader, retained captures, queues, selection/recovery history and maintained content-quality measurements through narrow adapters. Version body-role and quality findings separately from historical parser completion. Distinguish substantive documents, Atom/RSS feeds, error/wait/empty responses, metadata, containers, justified empty and unassessed bodies. A complete feed is valid source data: keep its entry identities, updates and links separately from document prose. Preserve accepted requested_content_in_official_hearing and user_accepted_url_variant recoveries and every logical association. Inventory portfolio attachments separately. Publisher refetching is deferred by the user.
+Reuse the link reader, retained captures, queues, selection/recovery history and maintained content-quality measurements through narrow adapters. Version body-role and quality findings separately from historical parser completion. Distinguish substantive documents, Atom/RSS feeds, error/wait/empty responses, metadata, containers, justified empty and unassessed bodies. A complete feed is valid source data: keep its entry identities, updates and links separately from document prose. Preserve accepted requested_content_in_official_hearing and user_accepted_url_variant recoveries and every logical association. Inventory portfolio attachments separately. The user authorized targeted publisher refetch on 14 November; source/history qualification still determines the exact request queue.
 
 ## Immediate implementation and scope
 
-ct-fb7k owns the focused House Meeting Not Found / File Not Found detector extension using the 400 retained examples. Reuse its versioned observations here; do not implement a second detector. This parent retains source-role qualification beyond those templates, retained capture-history reconciliation and the evidence-backed deferred-source list. ct-n3ik consumes the role observations in the cheap review queue, while ct-0a35 checks accepted content through real search.
+ct-fb7k owns the focused House Meeting Not Found / File Not Found detector extension using the 400 retained examples. Reuse its versioned observations here; do not implement a second detector. This parent retains source-role qualification beyond those templates, retained capture-history reconciliation and the evidence-backed unresolved-source list. ct-n3ik consumes the role observations in the cheap review queue, while ct-0a35 checks accepted content through real search.
 
 The example set annotates existing inventory bodies: 384 error-template instances, two directly reviewed ordinary metadata/landing controls and 14 unassessed records. Neither extraction completion nor example membership authorizes document-text selection or publisher refetch. The broader source-role work must not block the already authorized CPU reparse. Current public metadata independently confirms zero document associations for the 400 examples, but two other known error-page bodies have unhidden document references. This establishes exposure, not accepted reading selection or indexed search.
 
-Add an explicit search-eligibility decision tied to reviewed body-role evidence before publishing these responses as document prose. The current accepted-key selector has no exclusion field, and body_text_export filters saved bodies without source roles. Preserve completed extraction rows and original response history; do not fake a parser failure to exclude an error page. A detector result alone neither selects a substitute nor initiates refetch.
+Manifest version 2 now implements an explicit reviewed source-body exclusion decision, independently approved at fcab04f08b8891f08a1f1beba12a2fd7bfbd7701. It excludes error/wait/feed bodies only from the document-text export while preserving actual-key validation, completed readings and planner state. A private native replay excludes the actual T001/T002 errors and preserves M005 byte-for-byte. Corpus adoption and hosted search eligibility remain to be applied. Preserve completed extraction rows and original response history; do not fake a parser failure to exclude an error page. A detector result alone neither selects a substitute nor initiates refetch.
 
 ## Acceptance Criteria
 
 1. Independently qualify known error families with real documents quoting error phrases, legitimate short/empty content, XML manifests/playlists, valid Atom/RSS feeds, PDF portfolios and accepted whole-hearing fallbacks as controls. Do not reuse a generic text-length threshold as proof.
 2. Trace all eight landing URLs through link readings, capture attempts, retained copies, selection and accepted recovery. Reconcile both missing and existing outcomes; do not count successful captures as unresolved.
 3. Preserve raw identity and refusal evidence, report selected versus unselected effects, and plant false-positive and missed-error cases that the independent check catches.
-4. Produce a deduplicated unresolved-source list with reasons and evidence for the deferred refetch ticket. Classification alone does not initiate retrieval.
+4. Produce a deduplicated unresolved-source list with reasons and evidence for the targeted refetch ticket. Classification alone does not initiate retrieval.
 5. Apply an explicit, reviewable source-role/search-eligibility decision to accepted export/index inputs. Preserve completed response evidence and useful alternative readings. Verify known error bodies are excluded from substantive search while ordinary short, metadata and feed controls retain their intended roles.
 
 ## Notes
@@ -96,3 +96,7 @@ Five-step FTS follow-through is now ticketed. New child ct-fb7k owns the missing
 Current release metadata, independently reviewed in repairs/corpus-assessment-20261113/publication-state-20261114/independent-review/review.md, confirms all400 examples have zero document associations. Two other previously source-reviewed error bodies do each have one unhidden document: T001 359e3b8b6b844d69fa29bd39c40f970af1586af0500dcda1f98a302721eafe1d and T002 82867326cf8750a2cb2de9b3cd5f25b447269fcd870440390f7512f8e08d1d5e. The release is 4b9a7bd126cc17e39dfbe7f8fabafbdb7251dcd32576277f308916f469c9bab1, published 2026-11-14T05:25:35Z. These are document associations, not accepted reading or search claims.
 
 Implementation gap: body_text_selection currently records actual keys without a source-role exclusion decision, while body_text_export filters saved bodies only. Preserve completed error-page extraction evidence and add explicit reviewed search eligibility; do not encode exclusion by fabricating failed reading status. Focused House detector PR165 is independently approved after real quotation/duplicate-attribute controls; broader history, zero-page classification and actual search eligibility remain here. OCR paused and refetch deferred.
+
+**2026-11-14T15:08:53Z**
+
+Implemented explicit reviewed publication exclusions in selection manifest v2 at fcab04f08b8891f08a1f1beba12a2fd7bfbd7701. Only error_response/wait_response/feed are eligible roles; reasons and qualification report are pinned. Actual selected-key validation still runs, original reading status and total saved-body coverage remain visible, and planner pending work is unchanged. Independent native review approved; 26 focused tests passed (partial lane). /root directly read T001/T002 originals, actual shared parse events, CT cleanup and full output; native private export removes both real error responses and preserves ordinary M005 text byte-for-byte. Exact current public associations are used separately from a synthetic three-row control. Evidence: repairs/corpus-assessment-20261113/source-eligibility-20261114/. No hosted index or production selection changed. House error detection PR165 is merged; broader source-role adoption remains open.

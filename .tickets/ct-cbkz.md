@@ -12,21 +12,21 @@ tags: [congress_api, body_text, spicy-docs, html, xml, post-wave-6]
 ---
 # Finish the HTML/XML reparse and adopt qualified text
 
-The composed spicy-docs reader and bounded pilots are qualified, and the full CPU-only HTML/XML reparse is running. Finish exact-key reconciliation and adopt the useful outputs through the existing selection/publication path. Earlier packaging and reader fixes are completed work; successful local staging does not yet establish catalog adoption or searchable publication.
+The composed spicy-docs reader and bounded pilots are qualified, and the full CPU-only HTML/XML reparse is complete. All 310,964 inventory keys reconcile to 310,928 markup completions, 35 preserved refusals and one separately handled valid feed. Finish native adoption and adopt the useful outputs through the existing selection/publication path. Earlier packaging and reader fixes are completed work; successful local staging does not yet establish catalog adoption or searchable publication.
 
 ## Design
 
 Reuse the qualified composed spicy-docs wheel, merged GPO cleanup and maintained markup readers. ct-f6hr owns residual encoding and XML-policy compatibility; ct-55qo supplies the implemented selected-reading mechanism. Apply those accepted components to this real cohort, keeping historical readings and refusal evidence until exact retained-table reconciliation passes. Compaction does not establish selection.
 
-The retained inventory names 310,964 unique HTML/XML bodies (310,047 completed baseline plus 917 recovery targets), with 11.92 GB of historical text. Reuse completed representative/largest-input pilots and continue the bounded, checkpointed run under its measured memory/storage limits. WARC remains outside this cohort pending separate payload and saved-body reachability qualification. No PDF OCR rerun; OCR remains paused.
+The retained inventory names 310,964 unique HTML/XML bodies (310,047 completed baseline plus 917 recovery targets), with 11.92 GB of historical text. Reuse the frozen completed run and its representative/largest-input reviews. Adopt its exact staged rows through bounded native append. WARC remains outside this cohort pending separate payload and saved-body reachability qualification. This lane does not rerun PDF OCR. The user separately authorized the remaining 206 targeted PDF keys and reviewed refetch on 14 November.
 
 ## Current execution and remaining work
 
 The frozen cohort contains 310,964 body/parser keys: 310,563 in the unchanged bulk lane, 400 completed in the separate verified-retained-copy lane and one House feed with an existing dedicated structured reading. The feed is not an xml_text completion and its zero prose bytes are not a failed extraction. The 400 remain bound to observed archive size/ETag and decoded identity; do not invent missing original capture metadata or restamp historical readings.
 
-Run evidence and final collector: <main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/markup-reparse-20261114/. Preserve the running source/policy pins. ct-f6hr owns cause-specific residual encoding/XML failures; only affected inputs should be retried after a qualified fix. ct-fb7k/ct-en4n supply response-role evidence, ct-n3ik owns the practical exception queue, and ct-0a35 owns source-to-search acceptance.
+Run evidence and final collector: <main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/markup-reparse-20261114/. Preserve the completed source/policy pins and final reconciliation hashes. Verified coarse chunks retain all 310,928 text rows and 310,963 reading rows without changing keys or values. ct-f6hr owns cause-specific residual encoding/XML failures; only affected inputs should be retried after a qualified fix. ct-fb7k/ct-en4n supply response-role evidence, ct-n3ik owns the practical exception queue, and ct-0a35 owns source-to-search acceptance.
 
-At completion, bind authoritative reading/text catalogs and one accepted actual key per body/parser using ct-55qo. Carry prior usable text when a new attempt fails. Keep source errors, unknown roles, active refusals and unattempted work visible; completion alone must not promote an error page to substantive document text. Retain legitimate metadata/feed outputs according to their role. No PDF OCR or publisher refetch is part of this lane.
+Bind authoritative reading/text catalogs and one accepted actual key per body/parser using ct-55qo. Carry prior usable text when a new attempt fails. Keep source errors, unknown roles, active refusals and unattempted work visible; completion alone must not promote an error page to substantive document text. Retain legitimate metadata/feed outputs according to their role. No PDF OCR or publisher refetch is part of this lane.
 
 ## Acceptance Criteria
 
@@ -108,3 +108,7 @@ Evidence: coordination/markup-current-plan-eligibility-20261114/ and coordinatio
 **2026-11-14T12:31:10Z**
 
 Updated the lead and remaining acceptance to the active run: 310,563 bulk keys plus 400 completed retained-copy keys and one dedicated feed route, all reconciled against the frozen 310,964-key cohort. Qualified packaging/pilots are completed work. Remaining work is final outcome accounting, cause-specific exception handoff, authoritative catalog/selection adoption and readback; ct-0a35 owns search verification. No running process, policy pin or source output changed during ticket editing.
+
+**2026-11-14T15:08:53Z**
+
+Full CPU reparse finished at 2026-11-14T14:50:05Z: 310,928 completed markup readings, 35 preserved refusals and one separate valid feed account for all 310,964 keys. Normal lane: 11,197.5 seconds, peak 1.433 GiB RSS; complete staged text is 11,800,377,840 UTF-8 bytes. Final collector: repairs/markup-reparse-20261114/final-reconciliation/output-manifest.json SHA df442bdf8b10e7c7959b198d4e27b229fc4bd560626ecbd591b17308f4670bba. Verified append chunks preserve every value/key/hash: 178 text files and 10 reading files, 74 supervised seconds / 0.545 GiB. Local native adoption is assigned to /root/corpus_current_reconciliation using independently reviewed PR166 code; selection/publication remain open.
