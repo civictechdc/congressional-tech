@@ -48,7 +48,7 @@ def test_remote_create_and_append_preserve_native_jobs_and_uri(tmp_path):
     assert create['table_operations'][1]['schema']==schema
     operation=append['table_operations'][0]
     assert operation['kind']=='append' and operation['table']==table
-    assert 'LEFT ANTI JOIN existing' in operation['sql']
+    assert 'FROM existing RIGHT ANTI JOIN incoming' in operation['sql']
     assert "encode(cast(\"body_sha\" AS BYTEA),'hex')" in operation['identity_sql']
     assert append['inputs']==[dict(name='incoming',kind='parquet',path=str(source))]
 
