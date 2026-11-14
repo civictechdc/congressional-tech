@@ -628,8 +628,6 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
     from congress_api.parsers.body_text import DEFAULT_STRATEGY, load_page_rule
     from congress_api.lake.reading_versions import MARKUP_RECOVERY_VERSIONS
     ParserWorkerPool.validate_budget(parser_workers, parser_memory_bytes, worker_memory_bytes)
-    if markup_recovery is None and set(planned['versions'].values()) & set(MARKUP_RECOVERY_VERSIONS.values()):
-        raise ValueError('Reviewed markup reading versions require their pinned recovery manifest')
     if recovery and any(recovery_versions().get(p) != v for p, v in planned['versions'].items()):
         raise ValueError('Unlimited body reads require the explicit recovery reading versions')
     strategy = strategy or DEFAULT_STRATEGY
@@ -648,6 +646,8 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
             replacement.checkpoint_identity is None
             for pages in rule.page_overrides.values() for replacement in pages.values())):
         raise ValueError('Page checkpoints require a strategy with reproducible identity')
+    if markup_recovery is None and set(planned['versions'].values()) & set(MARKUP_RECOVERY_VERSIONS.values()):
+        raise ValueError('Reviewed markup reading versions require their pinned recovery manifest')
     work = Path(work).resolve()
     if page_checkpoints is not None:
         page_checkpoints = Path(page_checkpoints).resolve()
