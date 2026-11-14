@@ -121,6 +121,24 @@ input facts are supplied by that review, not discovered by the assessor.
 Focused tests separately cover wrong identities, incomplete review, missing or
 conflicting stage evidence, page scope, paused routes and CLI limits.
 
+`response-examples-20261114/examples.jsonl` adds reusable annotations for 400
+existing bodies in the original `inventory/body-triage.jsonl`; it does not add
+400 new bodies to the corpus. The accompanying CSV supports direct inspection.
+All 400 have completed current-version HTML/XML readings. Their source roles
+remain separate: 197 `NoSuchKey`, 173 House meeting-not-found and 14 House
+file-not-found examples, plus 16 unmatched records. Within the unmatched group,
+two previously reviewed originals provide ordinary meeting-metadata and landing
+controls; the other 14 have no expected error/non-error label.
+
+Each example preserves its archive copy descriptor, actual reading/version,
+current and historical text hashes, source-review scope and frozen selection
+evidence. Five existing raw-source reviews support the three template families
+and two controls; the other records are not individually source-reviewed.
+Use these as detector development and regression examples. Group related
+templates together when evaluating new cases: 384 instances of three error
+families are not 384 independent error types or a held-out accuracy estimate.
+Example membership neither selects document text nor initiates refetch or OCR.
+
 This is the bounded recommendation layer of
 [the corpus assessment plan](plans/corpus-text-assessment-20261113.md).
 The frozen batch-205 inventory is reconciled, and retained PDF text features
