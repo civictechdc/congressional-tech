@@ -58,7 +58,7 @@ def _validate(record):
     _require(record['source_state'] in {'retained', 'missing', 'damaged', 'unknown'}, 'unknown source_state')
     _require(record['reading_status'] in {'completed', 'error', 'unreadable', 'pending', 'missing'},
              'unknown reading_status')
-    _require(type(record['selected']) is bool, 'selected must be boolean')
+    _require(record['selected'] is None or type(record['selected']) is bool, 'selected must be boolean or unknown')
     _require(record['precleanup_available'] is None or type(record['precleanup_available']) is bool,
              'precleanup_available must be boolean or unknown')
     for key in ('page_number', 'page_count'):
