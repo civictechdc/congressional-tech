@@ -91,6 +91,7 @@ def text_corruption_measures(text):
         longest = max(longest, run)
         previous_end = match.end()
     return {'status': 'measured', 'unicode_characters': len(text),
+            'alphanumeric_characters': sum(c.isalnum() for c in text),
             'replacement_characters': text.count('\ufffd'),
             'nonwhitespace_control_characters': sum(unicodedata.category(c) == 'Cc' and not c.isspace() for c in text),
             'private_use_characters': sum(unicodedata.category(c) == 'Co' for c in text),
@@ -124,6 +125,7 @@ def coverage_measures(feature, slot=None):
             'longest_interior_empty_run': longest,
             'nonocr_empty_slots': sum(n == 0 and i+1 not in ocr for i, n in enumerate(counts)),
             'under_200_slots': sum(n < 200 for n in counts),
+            'nonocr_under_200_slots': sum(n < 200 and i+1 not in ocr for i, n in enumerate(counts)),
             'sparse_under_1000_slots': sum(n < 1000 for n in counts),
             'under_200_slot_fraction': sum(n < 200 for n in counts)/len(counts) if counts else None,
             'ocr_slot_count': len(ocr),
@@ -154,12 +156,14 @@ def fts_triage(axes):
     reasons, later = [], []
     if role.get('role') in {'error_response', 'wait_response', 'empty_response'}:
         reasons.append('obvious_response_body')
-    if slots > 1 and c.get('nonspace_characters') == 0:
-        reasons.append('empty_multi_slot_output')
+    if (r.get('status') == 'measured' and r.get('alphanumeric_characters') == 0
+            or slots and c.get('nonspace_characters') == 0):
+        reasons.append('empty_or_no_searchable_tokens')
     if run >= 3 and (run/max(slots, 1) >= 0.1 or run >= 20):
         reasons.append('substantial_interior_blank_run')
     bad_chars = sum(r.get(n, 0) for n in ('replacement_characters', 'nonwhitespace_control_characters', 'private_use_characters'))
-    if bad_chars >= 3 or r.get('longest_latin_single_letter_run', 0) >= 12:
+    if (bad_chars >= 3 and bad_chars/max(r.get('unicode_characters', 0), 1) >= 0.01
+            or r.get('longest_latin_single_letter_run', 0) >= 12):
         reasons.append('severe_mechanical_garbling')
     elif bad_chars or r.get('longest_latin_single_letter_run', 0) >= 8:
         later.append('possible_mechanical_garbling')
@@ -167,6 +171,11 @@ def fts_triage(axes):
             and c.get('sparse_under_1000_slots', 0)/slots >= 0.8
             and c.get('nonspace_characters', 0)/slots < 200):
         reasons.append('sparse_output_dominated_by_repeated_furniture')
+    if slots >= 3 and c.get('under_200_slot_fraction', 0) >= 0.8:
+        later.append('mostly_near_empty_multi_slot_output')
+    if (c.get('ocr_slot_count', 0) and c.get('nonocr_under_200_slots', 0) >= 3
+            and c['nonocr_under_200_slots']/max(slots, 1) >= 0.2):
+        later.append('mixed_sparse_native_ocr_slots')
     if cleanup.get('removed_content_tokens', 0) >= 20 and (cleanup.get('ordered_retained_token_fraction') or 0) < 0.8:
         later.append('substantial_intermediate_difference')
     if not reasons and (c.get('empty_slots', 0) or role.get('role') == 'feed'):
@@ -227,7 +236,7 @@ def measure_quality(identity, *, text=None, intermediate=None, feature=None, raw
         signals.append('low_quantity')
     if coverage.get('longest_interior_empty_run', 0):
         signals.append('interior_blank_run')
-    if coverage.get('nonocr_empty_slots', 0) and coverage.get('ocr_slot_count', 0):
+    if coverage.get('nonocr_under_200_slots', 0) and coverage.get('ocr_slot_count', 0):
         signals.append('mixed_native_ocr_gap')
     if (coverage.get('sparse_repeated_line_char_fraction') or 0) > 0:
         signals.append('repeated_sparse_text')

@@ -122,12 +122,12 @@ def rank_features(generation_path, out, recovery_status=None):
           'status', 'repetition_scope', 'physical_source_coverage', 'feature_file', 'feature_version',
           'signals', 'stratum', 'recognition', 'cleanup', 'role', 'fts_band', 'fts_reasons')],
         *[pa.field(n, pa.int64()) for n in ('recorded_offset_slots', 'empty_slots', 'interior_empty_slots',
-          'longest_interior_empty_run', 'nonocr_empty_slots', 'under_200_slots', 'ocr_slot_count',
+          'longest_interior_empty_run', 'nonocr_empty_slots', 'under_200_slots', 'nonocr_under_200_slots', 'ocr_slot_count',
           'selected_offset_slot', 'nonspace_characters', 'sparse_under_1000_slots', 'triage_order')],
         *[pa.field(n, pa.float64()) for n in ('under_200_slot_fraction', 'sparse_repeated_line_char_fraction')],
     ])
     rows_seen = slots_seen = 0
-    signal_counts, band_counts = {}, {}
+    signal_counts, band_counts, reason_counts = {}, {}, {}
     try:
         for part in generation['baseline_parts'] + generation['delta_parts']:
             path = Path(part['path'])
@@ -143,6 +143,8 @@ def rank_features(generation_path, out, recovery_status=None):
                     coverage = measured['axes']['coverage']
                     triage = measured['fts_triage']
                     band_counts[triage['band']] = band_counts.get(triage['band'], 0)+1
+                    for reason in triage['reasons']:
+                        reason_counts[reason] = reason_counts.get(reason, 0)+1
                     for signal in measured['signals']:
                         signal_counts[signal] = signal_counts.get(signal, 0)+1
                     pending.append({**{k: feature[k] for k in ('body_sha256', 'parser', 'parser_version', 'text_sha256')},
@@ -174,7 +176,7 @@ def rank_features(generation_path, out, recovery_status=None):
     con.close()
     unsorted.unlink()
     summary = {'policy_version': POLICY_VERSION, 'reading_rows': rows_seen, 'recorded_offset_slots': slots_seen,
-               'signal_counts': signal_counts, 'fts_band_counts': band_counts, 'ranking': str(ranked),
+               'signal_counts': signal_counts, 'fts_band_counts': band_counts, 'fts_reason_counts': reason_counts, 'ranking': str(ranked),
                'ranking_axes': ['longest_interior_empty_run', 'nonocr_empty_slots',
                                 'sparse_repeated_line_char_fraction', 'under_200_slot_fraction'],
                'ranking_method': 'lexicographic_review_order_not_quality_probability',

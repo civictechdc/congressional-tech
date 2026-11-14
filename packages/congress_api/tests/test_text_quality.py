@@ -68,6 +68,26 @@ def test_corruption_counts_are_script_aware_and_do_not_certify():
     assert axis['source_fidelity'] == 'unknown_text_only'
 
 
+@pytest.mark.parametrize('text', ['', ' \n\t', '--- ... !!!'])
+def test_output_without_search_tokens_needs_review(text):
+    measured = measure_quality(identity(text), text=text)
+    assert measured['fts_triage']['band'] == 'review_first'
+    assert measured['fts_triage']['reasons'] == ['empty_or_no_searchable_tokens']
+
+
+def test_sparse_multi_page_and_corruption_density_are_coarse_signals():
+    from congress_api.lake.text_quality import coverage_measures, fts_triage
+    axes = dict(recognition={}, cleanup={}, role={})
+    for counts, ocr, reason in [([20]*5, [], 'mostly_near_empty_multi_slot_output'),
+                               ([50, 50, 50, 2000, 2000], [4, 5], 'mixed_sparse_native_ocr_slots')]:
+        axes['coverage'] = coverage_measures(dict(feature_version=FEATURE_VERSION, pages=5,
+            page_nonspace_chars=counts, ocr_page_numbers=ocr, sparse_repeated_line_char_fraction=0.0))
+        assert fts_triage(axes)['band'] == 'review_later'
+        assert reason in fts_triage(axes)['reasons']
+    text = 'A useful body of text. '*1000+'\ufffd'*3
+    assert measure_quality(identity(text), text=text)['fts_triage']['reasons'] == ['possible_mechanical_garbling']
+
+
 def test_short_blank_and_repeated_pages_are_only_measurement_findings():
     text = 'A short real amendment.'
     ident = identity(text)
