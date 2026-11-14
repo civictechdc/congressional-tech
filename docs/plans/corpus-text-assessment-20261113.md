@@ -107,6 +107,15 @@ recovery processes have exited. The separate operational evidence is
 `ocr-recovery-20261113/coordination/pause-conflict-20261114/` and
 `pause-preserved-final-20261114.json` in its parent directory. OCR remains paused.
 
+The separate `late-batch207-20261114/` packet preserves the four new metadata
+chains and the original pause record's replacement locator. The later
+`late-batch207-integrity-20261114/receipt.json` verifies their committed text
+hashes, UTF-8 byte counts, offsets and OCR provenance. Together with the prior
+receipts, stored-output integrity now covers all 1,320 completed recovery
+results. The staged text file is absent, so staged-to-committed parity remains
+unknown; source accuracy, current-version compatibility, page features and
+accepted selection remain unqualified for the four late results.
+
 ## Reuse the work already retained
 
 The existing census already stores body identity, parser/version, text hash,
