@@ -511,6 +511,7 @@ def _parse_payload(payload):
     outlived its deadline) or a ``row`` with ``text`` naming the file, its bytes and SHA-256.
     """
     from congress_api.parsers import body_text as derivation
+    from congress_api.parsers.markup_recovery import RecoveryInputError, read_reviewed_markup
     from congress_api.retention.page_checkpoints import CheckpointError, adapter
     request = json.loads(payload)
     try:
@@ -525,10 +526,21 @@ def _parse_payload(payload):
         _STRATEGIES[spec] = derivation.load_page_rule(spec)
     with _QualityEvidence(request) as evidence:
         try:
-            reading = derivation.derive(data, request['parser'], strategy=_STRATEGIES[spec],
-                page_deadline_seconds=request['page_deadline_seconds'], sniff_format=_sniff_format,
-                max_bytes=None if request.get('unlimited_body_bytes') else MAX_DECODED_BYTES,
-                evidence=evidence.emit if evidence.path else None, checkpoint=adapter(request.get('page_checkpoints')))
+            if request.get('markup_recovery') is not None:
+                from congress_api.lake.reading_versions import MARKUP_RECOVERY_VERSIONS
+                if (request['markup_recovery']['case']['parser'] != request['parser']
+                        or request.get('parser_version') != MARKUP_RECOVERY_VERSIONS.get(request['parser'])):
+                    raise RecoveryInputError('Worker key differs from the reviewed recovery version')
+                directory = Path(request['diagnostics']).parent / (request['body_sha'] + '.markup-recovery.' + uuid4().hex)
+                reading = read_reviewed_markup(data, request['markup_recovery'], evidence_dir=directory)
+            else:
+                reading = derivation.derive(data, request['parser'], strategy=_STRATEGIES[spec],
+                    page_deadline_seconds=request['page_deadline_seconds'], sniff_format=_sniff_format,
+                    max_bytes=None if request.get('unlimited_body_bytes') else MAX_DECODED_BYTES,
+                    evidence=evidence.emit if evidence.path else None, checkpoint=adapter(request.get('page_checkpoints')))
+        except RecoveryInputError as error:
+            return dict(read_error='markup_recovery_input', error=str(error),
+                        worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
         except CheckpointError as error:
             evidence.emit(dict(event='checkpoint_failed', error=str(error)))
             return dict(read_error='page_checkpoint', error=str(error),
@@ -605,16 +617,32 @@ def _write_texts(path, texts):
 def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadable_store=None,
           parser_workers=1, parser_memory_bytes=PARSER_MEMORY_BYTES,
           strategy=None, page_deadline_seconds=PAGE_DEADLINE_SECONDS, origin=None,
-          recovery=False, worker_memory_bytes=WORKER_MEMORY_BYTES, retain_quality_evidence=False, page_checkpoints=None):
+          recovery=False, worker_memory_bytes=WORKER_MEMORY_BYTES, retain_quality_evidence=False, page_checkpoints=None,
+          markup_recovery=None):
     """Read one batch with bounded workers; stage its texts, readings rows and decisions.
 
     ``origin`` reads bodies from the archive origin rather than the plan's local raw root.
+    ``markup_recovery`` names a hash-pinned source-review manifest for separate,
+    bounded recovery versions. It requires local originals and never invokes OCR.
     """
     from congress_api.parsers.body_text import DEFAULT_STRATEGY, load_page_rule
+    from congress_api.lake.reading_versions import MARKUP_RECOVERY_VERSIONS
     ParserWorkerPool.validate_budget(parser_workers, parser_memory_bytes, worker_memory_bytes)
+    if markup_recovery is None and set(planned['versions'].values()) & set(MARKUP_RECOVERY_VERSIONS.values()):
+        raise ValueError('Reviewed markup reading versions require their pinned recovery manifest')
     if recovery and any(recovery_versions().get(p) != v for p, v in planned['versions'].items()):
         raise ValueError('Unlimited body reads require the explicit recovery reading versions')
     strategy = strategy or DEFAULT_STRATEGY
+    recovery_cases = {}
+    if markup_recovery is not None:
+        from itertools import islice
+        from congress_api.parsers.markup_recovery import stage_cases
+        if recovery or origin is not None or strategy != DEFAULT_STRATEGY or page_checkpoints is not None:
+            raise ValueError('Reviewed markup recovery requires bounded local originals and the default no-OCR strategy')
+        items = list(islice(items, MAX_BATCH_ITEMS + 1))
+        if len(items) > MAX_BATCH_ITEMS:
+            raise ValueError('Reviewed markup recovery exceeds the batch item bound')
+        recovery_cases = stage_cases(planned, items, markup_recovery)
     rule = load_page_rule(strategy)  # an engine this host lacks refuses before any body is read
     if page_checkpoints is not None and (rule.checkpoint_identity is None or any(
             replacement.checkpoint_identity is None
@@ -664,6 +692,9 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
         quality = sorted(diagnostics_dir.glob(body_hex + '.quality.*.jsonl'))
         if quality:
             body_outcomes[-1]['quality_evidence_paths'] = [str(path) for path in quality]
+        if markup_recovery is not None:
+            body_outcomes[-1]['markup_recovery_evidence_paths'] = [str(path) for path in
+                sorted(diagnostics_dir.glob(body_hex + '.markup-recovery.*'))]
         with (work / 'body-outcomes.jsonl').open('a') as progress:
             progress.write(json.dumps(body_outcomes[-1], sort_keys=True) + '\n')
 
@@ -683,6 +714,9 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
             request = dict(body_sha=body_hex, parser=parser, stored_bytes=item['stored_bytes'],
                            texts=str(texts_dir), strategy=strategy, page_deadline_seconds=page_deadline_seconds,
                            unlimited_body_bytes=recovery, diagnostics=str(diagnostics_dir / (body_hex + '.txt')))
+            if markup_recovery is not None:
+                request['markup_recovery'] = recovery_cases[body_hex]
+                request['parser_version'] = version
             if page_checkpoints is not None:
                 request['page_checkpoints'] = str(page_checkpoints)
             if retain_quality_evidence:

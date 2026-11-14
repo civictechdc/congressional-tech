@@ -33,3 +33,19 @@ MIGRATION_BUNDLE_INPUTS = 'eb1390f56e0216d7ed9ea94db85264a51a2dfd63c1831bc87e2f2
 
 # New derived source meaning, independent of generic XML and document-text readings.
 HOUSE_FLOOR_DECLARATION = 'house_floor_feed 2026-11-13: spicy-docs house-floor-feed/002; complete Atom entries with exact original byte spans and hashes, literal publisher metadata and link occurrences; weekly-page HTML base unless explicit xml:base; preserve repeated IDs and weekly URLs; schedule/discovery only, no prose or legislative actions; a separate extra-leading-slash target repair requires the exact absolute URL elsewhere in the same feed, with raw spellings and repair reason retained; malformed input refuses whole; 64 MiB decoded bound'
+
+# Opt-in reviewed repairs do not replace the ordinary body-text declarations above.
+MARKUP_RECOVERY_BASE_VERSIONS = {
+    'html_text': 'f1cefe442182dc8e4c456359aebdb37e5c50db6b0abb669b303e05763feb94a3',
+    'xml_text': '5a0768bcbaaaf7f67e29e2ff989689b62356579780f99e518d137f7b222c798c',
+}
+
+MARKUP_RECOVERY_DECLARATIONS = {
+    'html_text': 'body_text html_text reviewed recovery 2026-11-14: opt-in html-windows-1252-v1 over exact reviewed original SHA-256; ordinary html_text f1cefe442182dc8e4c456359aebdb37e5c50db6b0abb669b303e05763feb94a3 must refuse; spicy-docs explicit-html-encoding-candidate-v1 strictly decodes complete Windows-1252, transcodes to UTF-8 and replaces actual encoding meta tags with exact edits retained; original and candidate independently retained; same ordinary HTML consumer runs on candidate; candidate and text SHA-256 must match pinned source review; helper refusal is error without text, identity drift leaves work pending; reading/text key is original body and this separate version; no selection; 64 MiB original/candidate and ordinary worker limits; no OCR or network resources',
+    'xml_text': 'body_text xml_text reviewed recovery 2026-11-14: opt-in xml-literals-v1 over exact reviewed original SHA-256; ordinary xml_text 5a0768bcbaaaf7f67e29e2ff989689b62356579780f99e518d137f7b222c798c must refuse; spicy-docs bounded-literal-xml-candidate-v1 permits only bounded flat internal UTF-8 literals in ordinary element text, retains and removes inert DOCTYPE, substitutes exact reference spans; refuses external/parameter/recursive entities, markup values, non-text references and additional DTD declarations; original and candidate independently retained; same ordinary XML consumer runs on candidate, including generic XML when removed DOCTYPE no longer qualifies legislative cleanup; candidate and text SHA-256 must match pinned source review; helper refusal is error without text, identity drift leaves work pending; reading/text key is original body and this separate version; no selection; 64 MiB original/candidate, 16 KiB declarations, eight definitions, 256-byte literals, 64 references and ordinary worker limits; no OCR or network resources',
+}
+
+MARKUP_RECOVERY_VERSIONS = {
+    'html_text': 'ef4745f48e0432dd21ae960621589e5d1a1404d2e90f0b35c0618b4b10673a42',
+    'xml_text': 'e11e19e1f5ed946e0fda9259e549ca76dd5488ab2070e85f5624e9e4e9849f27',
+}

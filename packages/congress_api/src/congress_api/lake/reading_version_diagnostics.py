@@ -36,7 +36,7 @@ READERS = {
                   *(Path('model/sql') / f'{name}.sql' for name in BUNDLE_SQL))),
     # The worker (lake/body_text.parse_payload) routes each body by read_sniff, then derives it.
     'body_text': ((SOURCE / 'parsers/body_text.py', SOURCE / 'retention/sniff.py',
-                   SOURCE / 'retention/page_checkpoints.py'),
+                   SOURCE / 'retention/page_checkpoints.py', SOURCE / 'parsers/markup_recovery.py'),
                   (SOURCE / 'lake/body_text.py', *SHARED_READING_FILES, BODY_TEXT_SCHEMA)),
 }
 # The one plumbing a reader module reaches by import: retention/__init__.py re-exports it, and
