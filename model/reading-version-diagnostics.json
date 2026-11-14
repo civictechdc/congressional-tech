@@ -4,7 +4,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "ea8691b53fa995ff9b3b6fec81c5eba537086e36c9a7eb8232c090e730902bbd",
+    "locked_sha256": "ba98a110facf02ce435ed86150cad30c1e3123975e5628ba9a3c9101490e8ca9",
     "policy": {
       "max_input_bytes": 65536,
       "max_output_bytes": 67108864,
@@ -57,7 +57,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "c969c7a67d33e728ce54ca59995cc98f291527847c915b78f59f374e9c8b3570",
+    "locked_sha256": "f390ee8d11ab2bab47010d7faadbb23cb7c89c4728a7fec4eabdcc5286ae132d",
     "page_deadline_seconds": 60,
     "policy": {
       "max_input_bytes": 65536,
@@ -69,10 +69,10 @@
     "spicy_docs": {
       "derivation": "007+ctreaders.20261113",
       "digest": "sha256:32d10c89125e491f699bb8ce43f094fdeebbb5f5a0e5c267801b4ae7f7194a89",
-      "version": "0.85.0+ctreaders.20261113.2"
+      "version": "0.85.0+ctrecovery.20261114"
     },
     "version": "f1cefe442182dc8e4c456359aebdb37e5c50db6b0abb669b303e05763feb94a3",
-    "workspace_sha256": "0ce7fa13262994ccda94ee7178e33050ace49f471282b84f1c06151cb5d70fd5"
+    "workspace_sha256": "d06837eb71d162df647a7cd33a88da3e361c98ad61ea7e24fffce420e7ab98a1"
   },
   "json": {
     "limits": {
@@ -90,7 +90,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "c969c7a67d33e728ce54ca59995cc98f291527847c915b78f59f374e9c8b3570",
+    "locked_sha256": "f390ee8d11ab2bab47010d7faadbb23cb7c89c4728a7fec4eabdcc5286ae132d",
     "macos_build": "25G5057c",
     "ocr_rule": {
       "bands": 3,
@@ -114,10 +114,10 @@
     "spicy_docs": {
       "derivation": "007+ctreaders.20261113",
       "digest": "sha256:32d10c89125e491f699bb8ce43f094fdeebbb5f5a0e5c267801b4ae7f7194a89",
-      "version": "0.85.0+ctreaders.20261113.2"
+      "version": "0.85.0+ctrecovery.20261114"
     },
     "version": "4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8",
-    "workspace_sha256": "0ce7fa13262994ccda94ee7178e33050ace49f471282b84f1c06151cb5d70fd5"
+    "workspace_sha256": "d06837eb71d162df647a7cd33a88da3e361c98ad61ea7e24fffce420e7ab98a1"
   },
   "readings": {
     "limits": {
@@ -163,7 +163,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "c969c7a67d33e728ce54ca59995cc98f291527847c915b78f59f374e9c8b3570",
+    "locked_sha256": "f390ee8d11ab2bab47010d7faadbb23cb7c89c4728a7fec4eabdcc5286ae132d",
     "page_deadline_seconds": 60,
     "policy": {
       "max_input_bytes": 65536,
@@ -175,9 +175,9 @@
     "spicy_docs": {
       "derivation": "007+ctreaders.20261113",
       "digest": "sha256:32d10c89125e491f699bb8ce43f094fdeebbb5f5a0e5c267801b4ae7f7194a89",
-      "version": "0.85.0+ctreaders.20261113.2"
+      "version": "0.85.0+ctrecovery.20261114"
     },
     "version": "5a0768bcbaaaf7f67e29e2ff989689b62356579780f99e518d137f7b222c798c",
-    "workspace_sha256": "0ce7fa13262994ccda94ee7178e33050ace49f471282b84f1c06151cb5d70fd5"
+    "workspace_sha256": "d06837eb71d162df647a7cd33a88da3e361c98ad61ea7e24fffce420e7ab98a1"
   }
 }
