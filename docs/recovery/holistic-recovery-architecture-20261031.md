@@ -114,6 +114,19 @@ Retain the source families as discovery work: House XML/PDF siblings and local a
 
 Use the implemented capture `--campaign` selector limiting execution to the pinned target/candidate set. Current `--cutoff-urls` is priority/reporting input, not an include-only boundary. Check candidates against retained inventory and the attempt journal before fetching; prevent rediscovery loops. Incomplete, denied, rate-limited, or unpaginated archive searches leave targets unresolved. A complete negative result establishes only no match in the queried index/time window.
 
+For metadata-only review, `plan_queue(..., reviewed_only=True, cutoff_urls=...)` and
+`cutoff_report(..., reviewed_only=True, urls=...)` explicitly limit history to the
+named keys and their related repair/campaign candidates. Both default to full
+release behavior. Related history informs address choice and retry state; it
+does not independently authorize requests. Only reviewed roots and their chosen
+addresses enter due planning. Supply the actual seed or discovery context
+separately; naming a cutoff does not establish discovery. The reviewed path still reads all URL
+metadata to apply the release's pinned key definition, then limits the wider
+state joins. It refuses a full-release state cache and exports no replacement
+cache. Candidate chains must stop growing within eight rounds or planning
+refuses without returning a partial queue. This planning option does not change
+capture execution or authorize requests.
+
 **Acceptance:** Every documented entry point has a real parser and local journey. Cover partial CDX results, Web Harvest/Wayback replay identity, binary preservation, invalid hosts, duplicate discovery, and GovInfo version mismatch. Never fetch an out-of-campaign due URL. A retained candidate and a downloaded candidate must each reach acceptance, existing import, publication, and queue readback.
 
 ## Finding 5 — Make attempts, imports, and publication restartable

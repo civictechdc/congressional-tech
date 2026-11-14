@@ -11,7 +11,7 @@ tags: [source_quality, body_text, followup]
 ---
 # Preserve unique OCR detections at strip boundaries
 
-Direct source review of pilot dbaa560cf220b77d9ea839faaf6485675a5e38b92f2d6fa31c6068a48a20ceab pages 600 and 1100 found substantial omissions already present in page checkpoints. Two exact three-band replays showed one recognized line on each page is discarded by the 11-pixel edge rule despite having no overlapping retained detection. Other missing prose was never emitted by Vision and is a separate cause.
+The shared strip-edge fix is merged in SpicyDocs PR #31 at 19869b0ca0738869f39743a076daa637cf6a362d after CI and independent review. It retains recognized unique edge lines while avoiding nonadjacent duplicate retention. Direct two-page review accepts improved search-term availability, with remaining missing prose and reading-order limits. CT wheel/policy composition and selective page adoption remain; the active OCR run keeps its frozen version.
 
 ## Design
 
@@ -27,3 +27,7 @@ Show the old code fails unique-edge cases and retains duplicate controls; pass m
 **2026-11-14T16:03:03Z**
 
 Shared candidate committed at 7957a02634c809e35bcecac1151e6a854c971985. Four new unique-edge cases fail old source; two duplicate controls pass; repaired Apple Vision focus passes all 14 cases. Real two-page replay used 0.426 GiB RSS / 1.9 seconds and preserves all 76/47 baseline detections, adding one previously dropped line on each page. Terra medium independently read both raw pages, actual detection/merge records and final text, accepting improved term availability. Page 1100 adds its line out of source order, so phrase order remains a known gap; both pages still omit prose Vision never detected. Independent code review follows; shared release and CT policy qualification remain separate. Evidence: repairs/ocr-checkpoint-resume-20261114/page-gap-diagnosis-20261114/unique-edge-fix/.
+
+**2026-11-14T16:48:29Z**
+
+Final shared head 0f1311d6b9ab7a551ec612619dc12eebcb580989 passed the planted 50-band nonadjacent duplicate case and independent code review. Terra medium directly read original pages600/1100, actual recognizer records, checkpoint and final text: one source line restored on each, no completeness claim; p1100 inserted line order remains imperfect. Twelve nonnative controls plus one native leak test passed (the latter made 70 synthetic-PDF recognition calls, not corpus re-OCR). Exact reports/hashes under ocr-checkpoint-resume-20261114/page-gap-diagnosis-20261114/unique-edge-fix/. Next compose a distinct CT policy in an inactive checkout, qualify selected-page output, and preserve active 09fd OCR bytes.

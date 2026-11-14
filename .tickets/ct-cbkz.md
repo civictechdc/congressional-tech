@@ -12,7 +12,7 @@ tags: [congress_api, body_text, spicy-docs, html, xml, post-wave-6]
 ---
 # Finish the HTML/XML reparse and adopt qualified text
 
-The composed spicy-docs reader and bounded pilots are qualified, and the full CPU-only HTML/XML reparse is complete. All 310,964 inventory keys reconcile to 310,928 markup completions, 35 preserved refusals and one separately handled valid feed. Finish native adoption and adopt the useful outputs through the existing selection/publication path. Earlier packaging and reader fixes are completed work; successful local staging does not yet establish catalog adoption or searchable publication.
+The full 310,964-body HTML/XML cohort is processed and locally adopted: 310,928 completed texts, 35 preserved refusals and one valid dedicated feed. Exact catalog reconciliation passed for all 310,928 text rows and 310,963 readings. PR #169 removed the final append memory blocker. Six useful older markup pairs and seventeen actual repaired pairs are also retained; accepted export and public search delivery remain open.
 
 ## Design
 
@@ -116,3 +116,7 @@ Full CPU reparse finished at 2026-11-14T14:50:05Z: 310,928 completed markup read
 **2026-11-14T15:57:37Z**
 
 All 310,928 text rows now reside in the local catalog with missing = extra = hash differences = 0; text snapshot 4051456966188986505. Reading append reached 234,602 new rows then stopped at the stored-key hash memory ceiling (snapshot 235125270819201117,1,494,759 total rows). No failed piece committed. Remaining 22 bounded pieces contain 76,361 new rows. ct-tpwm fixes the lookup with incoming-bounded semijoin then anti-join; at 6ab88fed, exact failed 4,237-row read-only replay and true concurrent CAS passed unchanged limits; independent review precedes resume. Full raw/source reviews and original refusals remain retained. Local append is separate from accepted selection/publication.
+
+**2026-11-14T16:48:29Z**
+
+Local adoption finished and verified. Markup receipt SHA 470dd9a144d88959498be2682fee19b411c28bbe1c71b3b6294c829a7beee775. Subsequent 945-pair receipt SHA 713842cf4c9dd15e627a1bea2dc28df0e1805712c042202438571973aebfc18d includes all 17 markup repairs and 8 corrected PDFs plus 920 old recovery PDFs. Current exact snapshots: text 4606969079641435643/readings 7411791213520479856. Cheap before/after markup quantity checks find no >80% drop among completed pairs with >=1,000 old bytes. All 3,571 positive-byte-to-empty changes bind to exact old readings with zero non-whitespace characters (maximum 93 bytes). These metadata checks do not certify all source text. Evidence: accepted-text-adoption-20261114/selection-preparation/.

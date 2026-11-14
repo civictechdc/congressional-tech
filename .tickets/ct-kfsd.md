@@ -11,7 +11,7 @@ tags: [body_text, pdf, ocr, publication]
 ---
 # Publish corrected historical PDF readings after GPO cleanup qualification
 
-PR #151 is merged at 2cef1dbde71f842d527b6a9cfb8893ff8c16dc25: it preserves substantive text after printing footers and ordinary prose bullets, and adds optional per-attempt diagnostic evidence. The real CT consumer passed 14 archived PDFs / 281 pages, with exact agreement to reviewed candidate outputs. This proves bounded integration, not that historical body_text has been corrected or published. The paused 2,632-body recovery retains its older frozen parser policy; do not restart it for this work. Identify historical exposure, reread the affected bodies under the new declared versions, and publish qualified selections.
+The GPO cleanup fix is merged and its actual 14-body/281-page consumer is qualified. Eight corrected reading/text pairs are now adopted in the authoritative local catalog; six unchanged PDF controls keep their baseline keys. The first explicit accepted-text manifest includes those eight corrections. Release-bound export, public search and citation readback remain open; no blanket PDF reread or restamping is needed.
 
 ## Design
 
@@ -53,3 +53,7 @@ Added the first selective-repair batch: prioritize source-confirmed, search-visi
 Current metadata independently confirms that all14 privately qualified correction/control bodies each have one unhidden document association in release 4b9a7bd126cc17e39dfbe7f8fabafbdb7251dcd32576277f308916f469c9bab1. This does not establish publication of the eight corrected readings. Reuse the existing direct 14-body/281-page qualification and actual reading keys instead of repeating PDF/OCR work.
 
 Native adoption planning now pins the separate920 completed recovery PDF keys and existing8 correction overrides/14 selected identities in repairs/markup-reparse-20261114/adoption-planning-20261114/{pdf-adoption-inputs.json,recovery-pdf-actual-keys.jsonl,README.md}. The eight overrides do not overlap those920 bodies. Keep old baseline PDF keys at their actual versions; do not restamp them to the current declared parser. The observed public manifest has no text index and the checked body-text pointer returns404, so production adoption/export/search readback remain pending ct-m704/ct-0a35. Bulk manual PDF/page audits, if any new scope needs them, use gpt-6.1-terra medium.
+
+**2026-11-14T16:48:30Z**
+
+Eight actual 4d045589 correction pairs adopted with field/hash parity at text snapshot 4606969079641435643 and reading snapshot7411791213520479856. Root initial accepted set under accepted-text-adoption-20261114/accepted-set-v1/ pins baseline 2980a4db plus 944 exact exceptions and 11 source exclusions; native validation and full-delivery admission are underway. Existing 14-body source qualification remains unchanged. The new retained-index adapter passes ordinary/repaired/excluded real MCP proof but has not yet been published or applied to these eight cases.

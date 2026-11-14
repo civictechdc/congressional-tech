@@ -1036,7 +1036,8 @@ def _attempted(path,urls):
     return path
 
 
-def _plan(work,states,seeds=(),*,targets=None,candidates=(),requirements=None,recovery=False,attempted=None,as_of=RETAINED_ASOF):
+def _plan(work,states,seeds=(),*,targets=None,candidates=(),requirements=None,recovery=False,attempted=None,
+          as_of=RETAINED_ASOF,cutoff_urls=(),reviewed_only=False):
     """Plan one queue over the real scope; return (queue rows, release id, campaign)."""
     from congress_api.acquisition.capture_scheduler import plan_queue
     from congress_shared.campaign import load_campaign
@@ -1071,7 +1072,7 @@ def _plan(work,states,seeds=(),*,targets=None,candidates=(),requirements=None,re
     seed=work/'seeds.json';seed.write_text(json.dumps({'urls':list(seeds)}))
     selected=load(root,work/'read')
     result=plan_queue(selected,engine=engine(),work=work/'plan',as_of=as_of,request_budget=20,
-        seed_inventories=[seed],campaign=campaign,attempted=attempted)
+        seed_inventories=[seed],campaign=campaign,attempted=attempted,cutoff_urls=cutoff_urls,reviewed_only=reviewed_only)
     return pq.read_table(result['queue']).to_pylist(),selected,campaign
 
 
@@ -1331,3 +1332,149 @@ def test_reviewed_cutoff_runs_before_unattempted_urls(tmp_path):
     rows=[(r['requested_url'].rsplit('/',1)[1],r['priority']) for r in pq.read_table(result['queue']).to_pylist()]
     assert rows==[('z-retry',-1),('z-reviewed',-1),('a',0),('b',0),('size',1)]
     assert result['counts']['cutoffs']==3 and result['counts']['queue']==2
+
+
+def test_missing_and_empty_attempt_journals_preserve_queue_and_cutoff_accounting(tmp_path):
+    from congress_api.acquisition.capture_scheduler import cutoff_report,plan_queue
+    from congress_api.retention.provenance import json_input
+    other='https://docs.house.gov/billsthisweek/20260101/other.pdf'
+    root=release(tmp_path,[AMP_STATE,dict(requested_url=other,attempts=0)],entries=SCOPE_ENTRIES)
+    selected=load(root,tmp_path/'read')
+    seed=json_input(tmp_path,'seeds',[dict(url=AMP,source='reviewed',pointer='[]')],
+                    url='Utf8',source='Utf8',pointer='Utf8')
+    empty=_attempted(tmp_path/'empty.jsonl.gz',[])
+    observed=[]
+    with engine() as native:
+        for name,journal in [('none',None),('missing',tmp_path/'missing.jsonl.gz'),('empty',empty)]:
+            result=plan_queue(selected,engine=native,work=tmp_path/name/'plan',as_of=RETAINED_ASOF,
+                request_budget=20,seed_files=seed['files'],cutoff_urls=[AMP],attempted=journal)
+            rows=pq.read_table(result['queue']).to_pylist()
+            reports=cutoff_report(selected,urls=[AMP],attempted=journal,engine=native,work=tmp_path/name/'cutoffs',
+                as_of=RETAINED_ASOF,stop_reason='metadata_only',discovery_files=())
+            observed.append((rows,result['counts'],reports))
+        assert observed[0]==observed[1]==observed[2]
+        assert [row['requested_url'] for row in observed[0][0]]==[GOOD,other]
+        assert observed[0][2][0]['disposition']=='deferred'
+        attempted=_attempted(tmp_path/'attempted.jsonl.gz',[GOOD])
+        result=plan_queue(selected,engine=native,work=tmp_path/'after',as_of=RETAINED_ASOF,
+            request_budget=20,seed_files=seed['files'],cutoff_urls=[AMP],attempted=attempted)
+        assert [row['requested_url'] for row in pq.read_table(result['queue']).to_pylist()]==[other]
+        [report]=cutoff_report(selected,urls=[AMP],attempted=attempted,engine=native,work=tmp_path/'after-cutoffs',
+            as_of=RETAINED_ASOF,stop_reason='metadata_only')
+        assert (report['disposition'],report['candidate_url'],report['http_status'])==('attempted',GOOD,404)
+
+
+@pytest.mark.parametrize('kind',['alias','trimmed-future','trimmed-retained','campaign-future',
+                                'campaign-untried','attempted-candidate','candidate-history-only','missing','seed-only'])
+def test_reviewed_only_matches_related_full_plan_history(tmp_path,kind):
+    from congress_api.acquisition.capture_scheduler import cutoff_report
+    other='https://docs.house.gov/billsthisweek/20260101/unrelated.pdf'
+    trimmed='https://democrats-science.house.gov/uploads/reviewed.pdf'
+    states=[dict(requested_url=other,attempts=0)]
+    options={}
+    seeds=[]
+    if kind=='alias':
+        target=HTTP
+        states.extend(HTTP_STATES)
+        seeds=[HTTPS]
+        expected=[HTTPS]
+    elif kind in {'trimmed-future','trimmed-retained','attempted-candidate','candidate-history-only'}:
+        target=trimmed+'%20'
+        if kind!='candidate-history-only':
+            states.append(dict(requested_url=target,attempts=1,last_outcome='failed',next_attempt_at=PAST))
+        if kind=='attempted-candidate':
+            options['attempted']=_attempted(tmp_path/'attempted.jsonl.gz',[trimmed])
+        else:
+            states.append(dict(requested_url=trimmed,attempts=1,
+                last_outcome='stored' if kind=='trimmed-retained' else 'retry_later',
+                last_status=200 if kind=='trimmed-retained' else 503,next_attempt_at=FUTURE))
+        expected=[]
+    elif kind in {'campaign-future','campaign-untried'}:
+        target=WSTATE
+        states.extend([dict(requested_url=target,attempts=1,last_outcome='failed',next_attempt_at=PAST),
+            dict(requested_url=GOVINFO,attempts=1,last_outcome='retry_later',last_status=503,next_attempt_at=FUTURE)])
+        options=dict(targets=[target],candidates=[(target,GOVINFO)])
+        # The existing failed candidate must not be treated as untried. The full planner keeps
+        # the observed due address unless another genuinely untried campaign candidate exists.
+        expected=[target]
+        if kind=='campaign-untried':
+            untried='https://www.govinfo.gov/content/pkg/CHRG-118hhrg99999/pdf/CHRG-118hhrg99999.pdf'
+            options['candidates'].append((target,untried))
+            expected=[untried]
+    else:
+        target=AMP
+        if kind=='seed-only':seeds=[target]
+        expected=[GOOD] if seeds else []
+    results=[]
+    for name,reviewed in [('full',False),('reviewed',True)]:
+        rows,selected,campaign=_plan(tmp_path/name,states,seeds,cutoff_urls=[target],reviewed_only=reviewed,**options)
+        reports=cutoff_report(selected,urls=[target],attempted=options.get('attempted'),engine=engine(),work=tmp_path/name/'cutoffs',
+            as_of=RETAINED_ASOF,stop_reason='metadata_only',campaign=campaign,reviewed_only=reviewed)
+        results.append(([row for row in rows if row['requested_url']!=other],reports))
+        if reviewed:
+            assert [row['requested_url'] for row in rows]==expected
+            assert not (tmp_path/name/'plan/keyed_states.parquet').exists()
+    assert results[0]==results[1]
+    if kind=='trimmed-future':
+        assert results[1][1][0]['state_url']==trimmed
+        assert results[1][1][0]['retained_http_status']==503
+
+
+def test_reviewed_only_refuses_ambiguous_scope_or_full_release_cache(tmp_path):
+    from congress_api.acquisition.capture_scheduler import plan_queue
+    selected=load(release(tmp_path,[]),tmp_path/'read')
+    with engine() as native:
+        for options in [dict(cutoff_urls=[]),dict(cutoff_urls=[AMP],_keyed_states_cache=tmp_path/'cache.parquet')]:
+            with pytest.raises(ValueError,match='Reviewed-only'):
+                plan_queue(selected,engine=native,work=tmp_path/'refused',as_of=ASOF,request_budget=1,
+                    reviewed_only=True,**options)
+
+
+@pytest.mark.parametrize('cycle',[True,False])
+def test_reviewed_only_candidate_chains_converge_or_refuse_without_partial_queue(tmp_path,cycle):
+    urls=[f'https://docs.house.gov/billsthisweek/20260101/history-{i}.pdf' for i in range(3 if cycle else 9)]
+    states=[dict(requested_url=url,attempts=1,last_outcome='retry_later',last_status=503,
+        next_attempt_at=FUTURE) for url in urls]
+    candidates=list(zip(urls,urls[1:]))
+    options=dict(targets=urls,candidates=candidates,cutoff_urls=urls[:1],reviewed_only=True)
+    if cycle:
+        candidates.append((urls[-1],urls[0]))
+        rows,_,_=_plan(tmp_path,states,**options)
+        assert rows==[]
+        keys=pq.read_table(tmp_path/'plan/reviewed-history/candidates-2/reviewed_keys.parquet')
+        assert keys.num_rows==len(urls)
+    else:
+        with pytest.raises(ValueError,match='more than eight candidate expansions'):
+            _plan(tmp_path,states,**options)
+        assert not (tmp_path/'plan/queue.parquet').exists()
+
+
+def test_reviewed_root_does_not_schedule_every_due_campaign_candidate(tmp_path):
+    urls=[f'https://docs.house.gov/billsthisweek/20260101/review-{label}.pdf' for label in ('A','B','C')]
+    states=[dict(requested_url=url,attempts=1,last_outcome='failed',last_status=404,
+        next_attempt_at=PAST) for url in urls]
+    options=dict(targets=urls[:1],candidates=[(urls[0],url) for url in urls[1:]],cutoff_urls=urls[:1])
+    full,_,_=_plan(tmp_path/'full',states,**options)
+    reviewed,_,_=_plan(tmp_path/'reviewed',states,reviewed_only=True,**options)
+    assert [row['requested_url'] for row in full]==urls
+    # Existing candidate histories influence the choice, but only A is a reviewed root.
+    # Both candidates were tried already, so the maintained preference chooses observed A.
+    assert reviewed==full[:1]
+
+
+@pytest.mark.parametrize('state',['due','future','stored-future','satisfied','attempted'])
+def test_reviewed_root_chosen_repair_keeps_its_own_history(tmp_path,state):
+    candidate='https://democrats-science.house.gov/uploads/reviewed.pdf'
+    target=candidate+'%20'
+    rows=[dict(requested_url=target,attempts=1,last_outcome='failed',last_status=404,next_attempt_at=PAST),
+        dict(requested_url=candidate,attempts=2,
+            last_outcome='stored' if state in {'stored-future','satisfied'} else 'failed',
+            last_status=200 if state in {'stored-future','satisfied'} else 503,
+            next_attempt_at=FUTURE if state in {'future','stored-future'} else PAST,
+            capture_disposition='satisfied' if state=='satisfied' else 'eligible')]
+    attempted=_attempted(tmp_path/'attempted.jsonl.gz',[candidate]) if state=='attempted' else None
+    full,_,_=_plan(tmp_path/'full',rows,recovery=True,cutoff_urls=[target],attempted=attempted)
+    reviewed,_,_=_plan(tmp_path/'reviewed',rows,recovery=True,cutoff_urls=[target],
+        reviewed_only=True,attempted=attempted)
+    assert reviewed==full
+    assert [row['requested_url'] for row in reviewed]==([candidate] if state=='due' else [])
