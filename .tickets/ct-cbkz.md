@@ -1,8 +1,8 @@
 ---
 id: ct-cbkz
 status: in_progress
-deps: [ct-55qo]
-links: [ct-chc4, ct-m704, ct-f6hr, ct-0a35, ct-n3ik]
+deps: [ct-55qo, ct-tpwm]
+links: [ct-chc4, ct-m704, ct-f6hr, ct-0a35, ct-n3ik, ct-tpwm, ct-l47f, ct-6v77]
 created: 2026-11-12T15:38:26Z
 type: task
 priority: 2
@@ -24,7 +24,7 @@ The retained inventory names 310,964 unique HTML/XML bodies (310,047 completed b
 
 The frozen cohort contains 310,964 body/parser keys: 310,563 in the unchanged bulk lane, 400 completed in the separate verified-retained-copy lane and one House feed with an existing dedicated structured reading. The feed is not an xml_text completion and its zero prose bytes are not a failed extraction. The 400 remain bound to observed archive size/ETag and decoded identity; do not invent missing original capture metadata or restamp historical readings.
 
-Run evidence and final collector: <main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/markup-reparse-20261114/. Preserve the completed source/policy pins and final reconciliation hashes. Verified coarse chunks retain all 310,928 text rows and 310,963 reading rows without changing keys or values. ct-f6hr owns cause-specific residual encoding/XML failures; only affected inputs should be retried after a qualified fix. ct-fb7k/ct-en4n supply response-role evidence, ct-n3ik owns the practical exception queue, and ct-0a35 owns source-to-search acceptance.
+Run evidence and final collector: <main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/markup-reparse-20261114/. Preserve the completed source/policy pins and final reconciliation hashes. Verified coarse chunks retain all 310,928 text rows and 310,963 reading rows without changing keys or values. All 310,928 texts are now appended with exact key/hash membership; 234,602 new reading rows are appended and 76,361 remain. The separate measured key-growth fix ct-tpwm is independently reviewed before those final 22 pieces resume. ct-f6hr owns cause-specific residual encoding/XML failures; only affected inputs should be retried after a qualified fix. ct-fb7k/ct-en4n supply response-role evidence, ct-n3ik owns the practical exception queue, and ct-0a35 owns source-to-search acceptance.
 
 Bind authoritative reading/text catalogs and one accepted actual key per body/parser using ct-55qo. Carry prior usable text when a new attempt fails. Keep source errors, unknown roles, active refusals and unattempted work visible; completion alone must not promote an error page to substantive document text. Retain legitimate metadata/feed outputs according to their role. No PDF OCR or publisher refetch is part of this lane.
 
@@ -112,3 +112,7 @@ Updated the lead and remaining acceptance to the active run: 310,563 bulk keys p
 **2026-11-14T15:08:53Z**
 
 Full CPU reparse finished at 2026-11-14T14:50:05Z: 310,928 completed markup readings, 35 preserved refusals and one separate valid feed account for all 310,964 keys. Normal lane: 11,197.5 seconds, peak 1.433 GiB RSS; complete staged text is 11,800,377,840 UTF-8 bytes. Final collector: repairs/markup-reparse-20261114/final-reconciliation/output-manifest.json SHA df442bdf8b10e7c7959b198d4e27b229fc4bd560626ecbd591b17308f4670bba. Verified append chunks preserve every value/key/hash: 178 text files and 10 reading files, 74 supervised seconds / 0.545 GiB. Local native adoption is assigned to /root/corpus_current_reconciliation using independently reviewed PR166 code; selection/publication remain open.
+
+**2026-11-14T15:57:37Z**
+
+All 310,928 text rows now reside in the local catalog with missing = extra = hash differences = 0; text snapshot 4051456966188986505. Reading append reached 234,602 new rows then stopped at the stored-key hash memory ceiling (snapshot 235125270819201117,1,494,759 total rows). No failed piece committed. Remaining 22 bounded pieces contain 76,361 new rows. ct-tpwm fixes the lookup with incoming-bounded semijoin then anti-join; at 6ab88fed, exact failed 4,237-row read-only replay and true concurrent CAS passed unchanged limits; independent review precedes resume. Full raw/source reviews and original refusals remain retained. Local append is separate from accepted selection/publication.

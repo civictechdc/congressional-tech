@@ -2,7 +2,7 @@
 id: ct-n3ik
 status: in_progress
 deps: []
-links: [ct-a73a, ct-kfsd, ct-hz8y, ct-t4p3, ct-55qo, ct-aitp, ct-f6hr, ct-fb7k, ct-0a35, ct-en4n, ct-cbkz]
+links: [ct-a73a, ct-kfsd, ct-hz8y, ct-t4p3, ct-55qo, ct-aitp, ct-f6hr, ct-fb7k, ct-0a35, ct-en4n, ct-cbkz, ct-l3xd]
 created: 2026-11-11T15:40:45Z
 type: feature
 priority: 2
@@ -115,3 +115,7 @@ publication-state-20261114/ binds a separate association overlay to release 4b9a
 **2026-11-14T15:08:53Z**
 
 Final metadata-only refresh reuses the approved unchanged v2 builder plus final markup outcomes and four additive old-recovery PDF feature rows: 45,106 candidate/control rows, 1,182 priority0–2, 1.515 seconds / 0.91 GiB RSS, no source or text-payload scan. Reused PDF coverage is 296,690 bodies / 8,143,043 recorded slots. Exact current release association overlay finds 834 unhidden priority0–2 bodies; all400 examples have no associations. Neither priority nor association is a proven defect or accepted search coverage. Evidence: repairs/corpus-assessment-20261113/exception-queue-20261114/final/ and publication-state-final-20261114/. Inherited paused/deferred labels describe the frozen old recovery snapshot; the user now separately authorizes targeted OCR/refetch. Final35 cause decisions are retained separately pending queue enrichment.
+
+**2026-11-14T15:57:37Z**
+
+New real completion control: dbaa560c… pages 600/1100 are substantially incomplete although extraction/checkpoint integrity passed. Exact three-band replay attributes omissions to both text Vision never emitted and unique recognized lines discarded at strip edges. The direct Terra medium comparison of one/four-band candidates found mixed gains and losses, so byte count alone cannot select a replacement. ct-l3xd owns the proven edge loss; retain missing-recognition coverage separately. Reuse the 45,106-row queue, then incrementally join new actual-policy outcomes and source-confirmed cause locators; do not rescan all original PDFs. Three newly refetched PDFs were fully read across eight pages and are useful FTS controls despite small formatting/form errors.

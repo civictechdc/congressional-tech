@@ -2,7 +2,7 @@
 id: ct-aitp
 status: closed
 deps: []
-links: [ct-a73a, ct-n3ik, ct-hz8y, ct-yy07]
+links: [ct-a73a, ct-n3ik, ct-hz8y, ct-yy07, ct-t4p3, ct-l3xd]
 created: 2026-11-13T18:46:40Z
 type: task
 priority: 1
@@ -11,7 +11,7 @@ tags: [body_text, quality, recovery]
 ---
 # Resume PDF extraction from durable matched page checkpoints
 
-Whole-document staging discards completed page work when a late page or worker fails. Separate durable pre-cleanup page checkpoints from batch commits, so retry extracts only unfinished matching pages. OCR remains paused; implementation uses native and scripted failure fixtures.
+Durable page checkpoints are implemented and qualified through native/scripted interruption checks and independent raw/checkpoint/output review. The user lifted the OCR pause on 14 November. A separate targeted recovery lane now uses these checkpoints while preserving the old run. Its first 1,158-page PDF has 1,158 verified page records. Checkpoint integrity proves preserved work, not complete recognition: new source-confirmed strip omissions belong to ct-l3xd and the source-quality assessment.
 
 ## Design
 
@@ -46,3 +46,7 @@ Offline acceptance complete on the composed candidate. An author-independent rev
 **2026-11-14T15:08:53Z**
 
 The newly authorized targeted recovery lane is exercising the merged page-checkpoint implementation on a real1158-page retained PDF; checkpoints are being written before whole-body completion. Exact policy/source/tool pins and durable path are in repairs/ocr-checkpoint-resume-20261114/manifest.json and pilot-launch.json. This operational reuse does not reopen the already reviewed checkpoint mechanism or claim semantic acceptance of the new body. The old frozen worker lacks checkpoints and remains stopped.
+
+**2026-11-14T15:57:37Z**
+
+Real authorized pilot now preserves 1,158 page checkpoints, with complete source identity/digest verification. A bounded diagnosis reused 1,156 matching checkpoints while recomputing only pages 600/1100, and the exact baseline reproduced the whole-output hash. Alternate one/four-band candidates had gains and losses under Terra medium direct source review; none is selected. Checkpoint behavior remains complete; OCR semantic gaps are ct-l3xd/ct-n3ik, not a checkpoint corruption finding. Evidence: repairs/ocr-checkpoint-resume-20261114/{pilot-verification,manual-pilot-review,page-gap-diagnosis-20261114}.

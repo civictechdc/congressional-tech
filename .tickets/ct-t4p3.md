@@ -2,7 +2,7 @@
 id: ct-t4p3
 status: open
 deps: [ct-aitp]
-links: [ct-a73a, ct-n3ik]
+links: [ct-a73a, ct-n3ik, ct-aitp, ct-l3xd]
 created: 2026-11-13T17:46:16Z
 type: bug
 priority: 2
