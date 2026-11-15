@@ -11,7 +11,7 @@ tags: [congress_api, body_text, ocr]
 ---
 # Reconcile resource-failure recovery and measure memory per request
 
-Authorized selective recovery continues in a separate current-policy lane; the old run stays frozen. At 08:28:30 UTC on 15 November, 177 of the 206 stored-size-limit targets had completed and 29 remained. Integrity and cheap quality checks cover 176 exact outputs; none is automatically selected. The separate 66 memory/deadline cases reconcile to 62 same-body completions, one complete later retained source and three unresolved bodies. The d120 retries preserve 183 of 215 valid page checkpoints. Continuation 02 added thirty checkpoints before another real 4 GiB memory-limit outcome; another bounded fresh-worker attempt is being prepared from page 184. The other two bodies still need their first attempts.
+Selective recovery continues in its separate current-policy lane; the old run stays frozen. At 09:18:12 UTC on 15 November, 188 of 206 stored-size-limit targets had completed and 18 remained. Integrity and cheap quality checks cover 187 exact outputs; completion does not automatically select them. All 66 original memory/deadline cases are now operationally accounted for: 62 same-body selected completions, one complete later retained source, and three new private completions. The d120 run reused checkpoints across fresh workers to finish all 215 pages under the unchanged 4 GiB worker limit. The other two finished 123 and 169 pages. Independent source review found materially damaged handwriting in all three new completions, which remain held despite passing mechanical checks.
 
 ## Design
 
@@ -120,3 +120,7 @@ The new d120 pilot committed unreadable/memory_limit at2026-11-15T07:43:19Z: req
 **2026-11-15T08:36:23Z**
 
 Private quality chain now freezes 176 completed results: quality-screen-chain-176.json SHA eac2946616745135cc8f5581b23fd61f8592261c7193ba58f38868a5473def9b; delta handoff SHA e545ef9a08eedcdbd69ddf522dc9adb9a24fdbd4ac6f74fe0b0f97787e7042a5. Eleven new pairs add 17,528,369 UTF-8 bytes / 8,835 slots / 6,863 OCR markers, with all integrity checks passing, zero empty outputs and no new strong flags in 2.17 seconds / 0.21 GiB. None is selected automatically. Resource continuation02 retained memory_limit at request RSS 4,435,804,160 bytes but preserves 153 to 183 valid checkpoints; next page 184 of 215. All old checkpoints remain unchanged. Evidence: repairs/resource-checkpoint-d120-continuation-02-20261115/post-attempt-review.json. The other two resource bodies remain distinct and unattempted.
+
+**2026-11-15T09:22:13Z**
+
+All three remaining complete-source resource cases now finish without raising the worker limit: d120 215 pages / 407,695 bytes / 99 OCR markers; b269 123 pages / 48,200 bytes / 123 OCR markers; 1ebf 169 pages / 151,979 bytes / 169 OCR markers. Earlier memory failures and matching checkpoints survive. Independent review finds six held handwriting positions and three useful controls; 498 other source-page positions are unread. Additive hold: repairs/resource-source-six-page-review-20261115/additive-held-quality-20261115/handoff.json, SHA bd3810fd507dccbd5d0a83067debdaf544ad2b07ef6a8418fd6d0d499202a410. Vision confidence is not an acceptance gate here. The separate 206-lane quality chain covers 187 exact results without rereading the prior 176 payloads.
