@@ -69,6 +69,52 @@ def test_corruption_counts_are_script_aware_and_do_not_certify():
     assert axis['source_fidelity'] == 'unknown_text_only'
 
 
+def _reference_corruption_counts(text):
+    """Deliberately direct Unicode/token oracle for the optimized counters."""
+    import re
+    import unicodedata
+    words = list(re.finditer(r'\w+', text))
+    latin = [m for m in words if m.group().isalpha() and all(
+        unicodedata.name(c, '').startswith('LATIN ') for c in m.group())]
+    singles = sum(len(m.group()) == 1 for m in latin)
+    longest = run = 0
+    previous_end = None
+    for match in words:
+        word = match.group()
+        single = len(word) == 1 and word.isalpha() and unicodedata.name(word, '').startswith('LATIN ')
+        run = (run+1 if previous_end is not None and text[previous_end:match.start()].isspace() else 1) if single else 0
+        longest = max(longest, run)
+        previous_end = match.end()
+    return dict(unicode_characters=len(text), alphanumeric_characters=sum(c.isalnum() for c in text),
+                replacement_characters=text.count('\ufffd'),
+                nonwhitespace_control_characters=sum(unicodedata.category(c) == 'Cc' and not c.isspace() for c in text),
+                private_use_characters=sum(unicodedata.category(c) == 'Co' for c in text),
+                latin_word_tokens=len(latin), latin_single_letter_tokens=singles,
+                latin_single_letter_fraction=singles/len(latin) if latin else None,
+                longest_latin_single_letter_run=longest)
+
+
+@pytest.mark.parametrize('text', [
+    'A_ B2 3C abcΔ Δabc A\u0301 é ſ Ａ ᵃ Ⅳ 𝔄 中文',
+    'A\tB\nC\rD\fE\vF\u0085G\u00a0H\u2028I\u2029J\u3000K,L M-N O',
+    ''.join(chr(n) for n in range(256)) + '\ue000\uf8ff\uf900\U000f0000\U000ffffd\U00100000\U0010fffd\U0010fffe',
+    ('A substantial hearing statement with 2026 figures and café.\n' * 5000) + 'a b c d e f g h i j k l',
+])
+def test_fast_corruption_counters_preserve_unicode_boundaries_and_long_text(text):
+    actual = text_corruption_measures(text)
+    expected = _reference_corruption_counts(text)
+    assert {k: actual[k] for k in expected} == expected
+
+
+def test_fast_corruption_character_classes_cover_the_runtime_unicode_database():
+    # This includes every control, private-use range and unassigned/non-Latin
+    # character rather than relying on a few English examples.
+    text = ''.join(map(chr, range(0x110000)))
+    actual = text_corruption_measures(text)
+    expected = _reference_corruption_counts(text)
+    assert {k: actual[k] for k in expected} == expected
+
+
 @pytest.mark.parametrize('text', ['', ' \n\t', '--- ... !!!'])
 def test_output_without_search_tokens_needs_review(text):
     measured = measure_quality(identity(text), text=text)

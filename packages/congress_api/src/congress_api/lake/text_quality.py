@@ -4,6 +4,7 @@ Native/final differences preserve order, multiplicity and original character
 spans. They nominate review, including legitimate cleanup, never a defect verdict.
 """
 from difflib import SequenceMatcher
+from functools import cache
 from hashlib import sha256
 import re
 import unicodedata
@@ -76,27 +77,39 @@ def compare_intermediate(before, after):
             'output_nonspace_chars': sum(not c.isspace() for c in after), 'changes': changes}
 
 
+@cache
+def _corruption_patterns():
+    # Keep the existing Unicode-name definition, including its exclusions, and
+    # use this interpreter's Unicode database. Compile once instead of asking
+    # for a Unicode name for every letter in every retained document.
+    letters = [chr(code) for code in range(0x110000)
+               if chr(code).isalpha() and unicodedata.name(chr(code), '').startswith('LATIN ')]
+    latin = '[' + ''.join(letters) + ']'
+    return (re.compile(r'(?<!\w)' + latin + r'+(?!\w)'),
+            re.compile(r'(?<!\w)' + latin + r'(?!\w)'),
+            re.compile(r'(?<!\w)' + latin + r'(?:\s+' + latin + r'(?!\w)){1,}'))
+
+
+_NON_ALNUM = re.compile(r'[\W_]')
+_NONSPACE_CONTROL = re.compile(r'[\x00-\x08\x0e-\x1b\x7f-\x84\x86-\x9f]')
+_PRIVATE_USE = re.compile('[\ue000-\uf8ff\U000f0000-\U000ffffd\U00100000-\U0010fffd]')
+_WHITESPACE = re.compile(r'\s+')
+
+
 def text_corruption_measures(text):
     """Script-aware mechanical anomalies; plausible wrong words/values can pass."""
-    words = list(re.finditer(r'\w+', text))
-    latin = [m for m in words if m.group().isalpha() and all(
-        unicodedata.name(c, '').startswith('LATIN ') for c in m.group())]
-    singles = sum(len(m.group()) == 1 for m in latin)
-    longest = run = 0
-    previous_end = None
-    for match in words:
-        word = match.group()
-        single = len(word) == 1 and word.isalpha() and unicodedata.name(word, '').startswith('LATIN ')
-        run = (run+1 if previous_end is not None and text[previous_end:match.start()].isspace() else 1) if single else 0
-        longest = max(longest, run)
-        previous_end = match.end()
+    words, single, runs = _corruption_patterns()
+    latin_count = words.subn('', text)[1]
+    singles = single.subn('', text)[1]
+    longest = max((len(_WHITESPACE.sub('', match.group())) for match in runs.finditer(text)),
+                  default=int(singles > 0))
     return {'status': 'measured', 'unicode_characters': len(text),
-            'alphanumeric_characters': sum(c.isalnum() for c in text),
+            'alphanumeric_characters': len(text) - _NON_ALNUM.subn('', text)[1],
             'replacement_characters': text.count('\ufffd'),
-            'nonwhitespace_control_characters': sum(unicodedata.category(c) == 'Cc' and not c.isspace() for c in text),
-            'private_use_characters': sum(unicodedata.category(c) == 'Co' for c in text),
-            'latin_word_tokens': len(latin), 'latin_single_letter_tokens': singles,
-            'latin_single_letter_fraction': singles/len(latin) if latin else None,
+            'nonwhitespace_control_characters': _NONSPACE_CONTROL.subn('', text)[1],
+            'private_use_characters': _PRIVATE_USE.subn('', text)[1],
+            'latin_word_tokens': latin_count, 'latin_single_letter_tokens': singles,
+            'latin_single_letter_fraction': singles/latin_count if latin_count else None,
             'longest_latin_single_letter_run': longest,
             'source_fidelity': 'unknown_text_only'}
 
