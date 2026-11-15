@@ -1,174 +1,198 @@
 # Remaining OCR and text-quality work — 15 November 2026 UTC
 
-The corpus is broadly useful for full-text search (FTS), with a specific tail of
-missing, garbled and incomplete extractions. The cheap screen is complete and
-selective repair continues. HTML/XML reparse and local adoption are complete.
-Accepted-set-v9 passes independent stored-row and selection review. Private
-recovery candidates still require quality disposition and accepted selection.
+Accepted-set-v10 contains 312,114 release-associated text bodies. All 388 latest
+additions pass independent stored-row and selection checks. Their source review
+covers 94 of 114,416 page slots; the remaining pages are not manually certified.
+The separate 1,208-page recovery pilot completed mechanically, but direct source
+review found substantial OCR omissions. Its candidate stays private and held.
 
-The user wants real, internally consistent text with minimal garbage, not perfect
-transcription. Do not re-OCR the corpus or send every document to an LLM. Use
-`gpt-6.1-terra` with medium reasoning for bulk manual source/page reviews. Read
-actual source → intermediary → final text into context; scripts provide inventory
-and integrity checks, not the source-quality verdict. The user owns SereneDB
-search ingestion and deployment. The shelved SQLite/MCP prototype stays outside
-this task.
+The user wants useful, internally consistent text for full-text search, with
+minimal missing content or garbage. Perfect transcription is not required.
+Use selective repair, maintained SpicyDocs readers and existing renderers. Do not
+re-OCR the corpus or send every document to an LLM. Bulk manual reviews use
+`gpt-6.1-terra` with medium reasoning and read actual source → intermediary →
+final output. Scripts provide inventory and integrity checks, not source verdicts.
+The user owns SereneDB ingestion and deployment; the shelved SQLite/MCP path
+remains outside this task.
 
-## Current accepted text
+## Counts and accepted text
 
-The local handoff is `repairs/accepted-text-adoption-20261114/accepted-set-v9/`
-under the durable recovery root below. It has:
+Counts refer to distinct file-content hashes, not deduplicated logical documents.
+The frozen assessment contains 610,216 bodies. The review inventory also identifies
+11,383 bodies outside that population, giving a known union of 621,599 bodies.
+This union is not a complete current object-store census. There are 297,484 PDFs
+inside the assessment and 609 more in the outside inventory.
 
-- 311,726 selected release text bodies and 8,142,726 physical page slots.
-- 2,727,457 OCR-marked pages, 1,217 explicit reading overrides and 339 quality dispositions.
-- 26 exact source exclusions and 57 source-reviewed valid empty results.
-- Native catalog snapshots: body_text `2003281374347950523`; readings `2857253250252688186`.
+The assessment has 609,811 completed outputs: 85,515 contain at least one recorded
+OCR page, and 524,296 contain no OCR markers. Of the latter, 211,578 are PDFs.
+Completed includes explicitly held private candidates and historical/unassociated
+bodies; it does not mean every output is suitable for publication.
 
-The latest nine pairs replace eight errors and one size-limit outcome, adding
-315,131 UTF-8 bytes and 258 slots. They include eight geometry repairs with all
-41 pages directly source-read and the complete 217-page ee7ad6da replacement.
-Ee7 source review covers pages 1, 55, 109, 163 and 217; the other 212 remain
-manually unread. Split/joined words, graph/table relationships, graphic signatures
-and named footer omissions remain explicit FTS limitations.
+The accepted local handoff is
+`repairs/accepted-text-adoption-20261114/accepted-set-v10/` under the recovery root:
 
-Independent v9 review checks every stored field of all eighteen new native rows,
-page boundaries, OCR/build provenance, append-only ancestry and actual native
-selection results. The planted wrong digest is rejected. All prior 1,208 choices
-and 330 dispositions survive unchanged. The nine-pair Parquet files are validation
-deltas, **not a complete accepted-text export**. See
-`accepted-set-v9-independent-review/{review.md,result.json}` beside the handoff.
+- 312,114 selected release-associated bodies, including 85,427 with OCR pages.
+- 8,257,142 stored page slots and 2,807,900 OCR markers.
+- 1,605 reading overrides, 727 quality dispositions, 26 source exclusions and
+  57 source-reviewed valid empty results.
+- Native snapshots: `body_text` 4383126096555098411;
+  `readings` 6734786965736914418.
+- Selection SHA256:
+  `eb8473ab6163d3ab4b16f4fa56754a5b72b9391065aeedf3138db02eaaf3b111`.
 
-Another 11,857 non-excluded saved bodies have no selected text at these accepted
-versions: 266 errors, 205 size-limit outcomes and 11,386 without an applicable
-reading. That last group includes 8,442 WARC, 1,470 HTML, 612 PDF, 386 DOCX,
-126 Word, 259 ZIP, 68 ARC, 19 image, two WMV and two plain-text bodies. This is a
-mixed eligibility/custody/processing inventory, not 11,386 OCR failures. Private
-retry completion does not update these selected counts automatically.
+Independent v10 review checks every stored field of the 388 new text/reading
+pairs, append ancestry, page boundaries, text hashes, OCR provenance and actual
+native selection. It preserves all 1,217 preceding choices and 339 disposition
+lines and rejects a planted wrong digest. The added text totals 234,583,311 UTF-8
+bytes, 114,416 page slots and 80,443 OCR markers. The catalog plus explicit
+selection is the accepted dataset; small validation Parquets are not a full
+accepted-text export. Evidence: `accepted-set-v10-independent-review/`.
+
+## Remaining processing and source gaps
+
+There are 11,469 non-excluded release-associated bodies without selected text:
+70 errors, 13 size-limit outcomes and 11,386 without an applicable reading.
+The 83 errors/size-limit refusals are PDFs. They comprise:
+
+- 13 failed large-object archive reads; one source is now recovered, but its
+  replacement OCR is held for source-quality failure.
+- 19 older memory failures, separate from the original 66 memory/deadline cohort.
+  Two have selected same-URL alternatives needing revision comparison; 17 remain
+  fresh retry candidates.
+- 49 zero-page parser errors whose source causes remain unassessed.
+- One encrypted PDF and one missing-page-tree case.
+
+The no-reading group contains 8,442 WARC, 1,470 HTML, 612 PDF, 386 DOCX, 126 Word,
+259 ZIP, 68 ARC, 19 image, two WMV and two plain-text bodies. Three private
+handwriting completions are among those 612 PDFs, leaving the 11,383 outside
+inventory bodies above. These are mixed format, eligibility, custody and
+processing gaps, not 11,386 OCR failures. Do not double-count the three private
+holds in the 83 selected refusals or the distinct nineteen memory failures.
 
 ## Recovery and repair status
 
-| Work | Ticket | Verified state and next boundary |
+| Work | Ticket | Current result and next step |
 | --- | --- | --- |
-| Stored-size and resource recovery | [ct-a73a](../../.tickets/ct-a73a.md) | The separate 206-target lane finished at 09:46:27 UTC: 193 complete, thirteen pending archive-read failures. All 193 pass integrity and cheap quality checks. Qualify/adopt useful candidates and diagnose the thirteen reads. |
-| Geometry failures | [ct-yy07](../../.tickets/ct-yy07.md) | First eight bodies are adopted in v9. Native census and remaining 196 whole-body candidates are complete; independent artifact checks pass. Complete source-risk dispositions and targeted 487aa18e repair before adoption. |
-| Incomplete native layers and vector text | [ct-hz8y](../../.tickets/ct-hz8y.md) | Ee7 is adopted. F6 native-spacing repair and its nineteen-page source review are complete; staging/adoption remain. VFW page 105 and named handwriting/coverage cases remain held. |
-| Corrected historical GPO text | [ct-kfsd](../../.tickets/ct-kfsd.md) | Eight corrected pairs and six unchanged controls are qualified, locally adopted and associated. Final accepted-data handoff remains. |
-| Markup adoption | [ct-cbkz](../../.tickets/ct-cbkz.md) | All 310,928 completed texts and 310,963 readings are locally adopted; one valid feed is handled separately. All 35 original refusals survive with source dispositions. Final handoff remains. |
-| Source roles and history | [ct-en4n](../../.tickets/ct-en4n.md), [ct-fb7k](../../.tickets/ct-fb7k.md) | Reviewed error/wait/feed/wrapper exclusions are selected. Preserve broader inventory and capture-history distinctions. |
-| Publisher refetch | [ct-z4w5](../../.tickets/ct-z4w5.md) | Three newly retrieved PDFs are useful across all eight source-reviewed pages. Capture/reading adoption and association checks remain. Cornwell is still HTTP 200 with zero bytes. |
-| Consistent-text handoff | [ct-m704](../../.tickets/ct-m704.md) | Bind final selected keys, hashes, page maps, exclusions and quality inventory for the user's SereneDB work. Do not present a small validation delta as the full table. |
-| Downstream source-to-search acceptance | [ct-0a35](../../.tickets/ct-0a35.md) | Coordinate with the user's SereneDB work; this task claims no hosted search acceptance. |
+| Resource and stored-size recovery | [ct-a73a](../../.tickets/ct-a73a.md) | All 193 completed bodies from the separate 206-target lane now have qualified selected text: 190 direct results, f6/4f6 repairs and the better existing dbaa composition. Thirteen historical read failures remain recorded. Diagnose the held 1,208-page pilot before expanding the remaining twelve. |
+| Geometry failures | [ct-yy07](../../.tickets/ct-yy07.md) | Eight earlier bodies plus the final 196-body group are selected. The final group has 4,445 slots and 414 OCR markers. Its 56 source-reviewed pages include all eighteen nominated empty roles; the preceding eight bodies had all 41 pages read. Preserve damaged-source and partial-text limits. |
+| Incomplete native layers and vector text | [ct-hz8y](../../.tickets/ct-hz8y.md) | Ee7, f6 native-spacing repair and 4f6 regional repair are selected. VFW page 105, handwriting and named source-loss cases remain held. |
+| Corrected historical GPO text | [ct-kfsd](../../.tickets/ct-kfsd.md) | Eight corrected pairs and six unchanged controls are qualified and adopted. Carry their exact associations and limits into the final handoff. |
+| HTML/XML adoption | [ct-cbkz](../../.tickets/ct-cbkz.md) | 310,928 completed texts and 310,963 readings are adopted. All 35 original refusals survive; one valid feed is handled separately. |
+| Source roles and history | [ct-en4n](../../.tickets/ct-en4n.md), [ct-fb7k](../../.tickets/ct-fb7k.md) | Preserve reviewed error/wait/feed/wrapper exclusions and the broader missing-format inventory. |
+| Publisher refetch | [ct-z4w5](../../.tickets/ct-z4w5.md) | Bill and Mahoney already have stored bodies and release associations. Preserve the better bill reading; a small Mahoney improvement is staged. Mast needs maintained receipt ingestion and an explicit document association. Cornwell remains HTTP 200 with zero bytes. |
+| Consistent-text handoff | [ct-m704](../../.tickets/ct-m704.md) | Deliver catalog pins, exact selection and the current quality inventory together. Independently review the Q5 additive inventory and preserve its population boundary. |
+| Source-to-search acceptance | [ct-0a35](../../.tickets/ct-0a35.md) | The user owns SereneDB integration. No hosted search acceptance follows from local text qualification. |
 
-The 193-result quality chain covers 228,840,708 UTF-8 bytes, 111,129 page slots
-and 81,135 OCR markers. No complete result is empty. Five have no obvious
-screen flag, five have stronger first-review signals and 183 have weaker signals.
-These are triage bands, not accuracy ratings. The final six-result delta extends
-prior evidence without rereading its unchanged 187 predecessors. Exact bindings
-are in `repairs/ocr-checkpoint-resume-20261114/quality-screen-chain-193.json`.
+### Large-object transfer and held OCR pilot
 
-The thirteen pending objects are the largest stored payloads: 541,845,812 to
-1,065,029,037 bytes. All current one-byte range checks and SDK metadata checks
-match their retained identities; two full-range header probes also pass. Those
-bounded probes read thirteen application bytes, not the complete objects.
-The historical worker discarded the specific `ValueError`, so its exact subcause
-is unknown. A prepared change retains safe phase/length/response diagnostics
-without changing pending outcomes or reader versions. The next experiment is one
-smallest-object raw-only transfer, stopping before decompression or OCR. See
-`repairs/raw-range-diagnosis-final13-20261115/` and
-`repairs/raw-range-diagnostics-code-20261115/`.
+CT PR179 merged at `043d048c0588a04f7921301efd6ec9cf170def95` after CI passed.
+A complete pinned-object request can accept HTTP 200 only with the exact expected
+length and ETag and no conflicting range header. Partial requests still require
+206. The original pilot captured a rejected 200 response; the repaired raw-only
+retry returned 206, so it is not live proof of the 200 branch. It recovered all
+541,845,812 stored bytes in 14.2 seconds at 0.637 GiB peak RSS. Bounded local
+unpacking verified 575,953,191 PDF bytes and the expected body hash.
 
-The 196 geometry candidates contain 4,445 slots and 412 OCR markers. Independent
-review checks actual source/checkpoint/reading/final identities and page maps,
-and rejects planted wrong-output and wrong-offset cases. Existing screens
-nominate 342 unique pages; these are not 342 proved failures. Direct review covers 41 unique source pages, with remaining empty nominations
-under review. The eight-page continuation sample found useful partial
-fragmentation, legitimate symbol/bullet warnings and appropriate sparse/empty
-outputs, with no new major prose omission in those eight.
-In 487aa18e, source review found substantial missing cover text on page 1 and
-questionnaire fields on page 82. Two targeted Vision calls recover useful page-82
-text, but page 1's tiny screenshot collage produces extensive garbage and its
-full OCR output remains held. Other named graph, header/footer, ordering and
-signature limits remain in the source-review reports. Evidence is in
-`repairs/geometry-wholebody-recovery-20261115/final-03/` and
-`repairs/geometry-487-two-page-repair-20261115/`.
+The source-only OCR pilot completed 1,208 checkpoints in 1,037 seconds at
+1.756 GiB outer peak RSS: 1,174 OCR pages, 34 native pages and 2,196,023 UTF-8
+bytes. Stored row, page map, hash, source identity and resource checks pass.
+A cheap whole-output screen found no replacement/control/private-use characters,
+no repeated-line signal, one empty page and one possible fragmentation flag.
 
-The 1,476-page f6d8df26 candidate uses maintained SpicyDocs
-`DefaultReader(native_inhibit_spaces=True)`. It finished in 49 seconds at
-0.665 GiB peak RSS: 1,465 native reads and eleven unchanged prior OCR contents,
-with no new recognition or rendering. All native non-whitespace characters
-survive; strong letter-fragmentation flags disappear. The final text has
-4,206,117 UTF-8 bytes. Native character parity does not prove word quality.
-Terra directly read nineteen source pages and confirmed all eight retained empty
-exceptions. Sampled written pages provide useful FTS text with named spelling,
-date, table and cover limitations. The explicit no-GPO-cleanup finishing policy
-differs from 419 prior final slices: 169 strict additions and 250 punctuation/format
-exceptions remain recorded. Every prior page's NFKC-normalized letters/digits
-survive as a subsequence of the candidate, with zero exceptions. That metric
-establishes preservation of prior search characters, not source accuracy.
-See `repairs/ocr-checkpoint-resume-20261114/native-spacing-repair-20261115/`.
+Direct Terra review of pages 1, 2, 4, 5, 7, 302, 604, 906 and 1208 found material
+omission/garbling on pages 7, 302, 604 and 906 already in Vision observations.
+Page 4 is visually blank; page 5 has useful contents headings but finishing
+removes its page numbers. Other sampled pages are useful with named defects.
+The remaining 1,199 pages are unread. This is a false negative for broad quality
+inference from clean character statistics. Hold the candidate and remaining
+twelve dispatches; compare maintained OCR/rendering settings on one failed page
+before choosing the next processing policy. Evidence:
+`repairs/raw-range-retry13-20261115/{postpilot-quality,independent-source-review}/`.
 
-All 66 original memory/deadline cases are operationally accounted for: 62 have
-same-body selected completions, one truncated source has a complete later stored
-body at the same URL, and three new private retries completed 215/123/169 pages.
-The three remain held because direct review found six materially damaged
-handwriting pages; three useful controls do not qualify their unread 498 page
-positions. Two Groq/Qwen handwriting candidates also guessed words and omitted
-annotations. Preserve those rejected outputs. The truncated 4f57c7ee body has
-67,108,864 of 118,982,865 declared bytes; its complete later 4e8115a7 body is
-already selected and associated, so do not repeat its acquisition or OCR.
+### Selective repairs and damaged sources
 
-VFW page 105 remains unresolved. Vision at 200/400 DPI omitted substantial text;
-a single Groq/Qwen six-key response invented passages and was rejected. Two
-other damaged-PDF cases also retain honest source limits: one body lacks
-recoverable pages, while a Walling file holds an earlier intact revision before
-a truncated update. A generic qpdf rewrite dropped testimony and was rejected.
-Repairing PDF structure alone does not qualify its text.
+SpicyDocs PR32 merged at `b51b338fef18806b8c0db7759ebf793b4adebb2a`.
+Its opt-in `DefaultReader(native_inhibit_spaces=True)` supports the selected f6
+repair: 1,476 pages, eleven retained OCR pages, 4,206,117 UTF-8 bytes, 49 seconds
+and 0.665 GiB peak RSS, with no new rendering or recognition. Nineteen source
+pages were read. All prior normalized letters/digits survive, which establishes
+preservation, not accurate word boundaries or whole-source fidelity.
 
-## Completed foundations and reusable evidence
+The selected 4f6 repair replaces page 223 with maintained regional Vision output
+and preserves its other 442 slices byte-for-byte. The whole-page one-band result
+omitted content; Groq repeated a table and invented prose before a token/schema
+failure. Both rejected outputs remain preserved. Regional output restores the
+paragraphs and caption with explicit number/unit and table-association defects.
+The final body has 968,281 UTF-8 bytes, 443 slots and 387 OCR markers.
 
-- Shared reading selection [ct-55qo](../../.tickets/ct-55qo.md) and durable page checkpoints [ct-aitp](../../.tickets/ct-aitp.md) are closed after actual consumer qualification. Reuse exact retained pages and preserve original failures.
-- Cheap screening [ct-n3ik](../../.tickets/ct-n3ik.md) is closed at independently accepted `final-all-screen-20261115/checkpoint-04-v7-private165/`: 610,216 inventory bodies, 609,574 exact current measurements and 114,636 deduplicated review/control rows. Later versions require additive reconciliation. Of measured outputs, 517,334 have no obvious flag, 85,498 weaker signals and 6,742 stronger signals. These do not measure accuracy.
-- Frozen literal-empty review is complete: 26 source-confirmed omissions repaired and 57 legitimate empties preserved. All sources and actual new outputs were read directly; old intermediaries were unavailable where explicitly recorded.
-- Font corruption, sideways pages, vector text and provider compositions have qualified local repairs in accepted sets v5–v7. Table associations, column order, small labels and Cherokee-script loss retain named limitations. No whole-corpus transcription claim follows.
-- [ct-t4p3](../../.tickets/ct-t4p3.md) is closed after v8 adopted the 244-page repair. Qwen page 124 and regional Vision page 125 retain real provider evidence, all other 243 page strings are unchanged, and model-supplied incorrect metadata stays outside document metadata.
-- Wrapper leakage [ct-g4yz](../../.tickets/ct-g4yz.md), markup encoding [ct-f6hr](../../.tickets/ct-f6hr.md), bounded append [ct-tpwm](../../.tickets/ct-tpwm.md), Vision edge bands [ct-l3xd](../../.tickets/ct-l3xd.md), empty attempted-journal handling [ct-saqg](../../.tickets/ct-saqg.md) and refetch request-scope preservation [ct-5cdu](../../.tickets/ct-5cdu.md) are closed with scoped consumer evidence. Reuse their receipts rather than rerunning unchanged qualifications.
+All 66 original memory/deadline identities are operationally accounted for:
+62 same-body selected completions, one truncated body with a complete later
+selected source, and three private 215/123/169-page completions held after
+source review found handwriting loss. Their six bad pages and three useful
+controls do not qualify the other 498 page positions. The separate nineteen
+memory failures above are a different cohort.
 
-The large BillsThisWeek XML is a valid Atom feed, not a legislative document.
-The shared SpicyDocs reader and CT/Regs consumers retain 2,226 entries and 65,511
-link occurrences. Five source entries received direct end-to-end review.
-The maintained reader preserves original links and the recorded repair basis for
-one malformed URL. See [feed behavior and limits](../house-floor-feed.md).
-Recurring acquisition and freshness/coverage evaluation are separate from this
-completed retained-input implementation.
+VFW page 105 remains held: Vision and Groq trials omitted or invented prose.
+For damaged ZIP-code collections a558/e51, macOS PDFKit could not open either
+retained original and installed Adobe Acrobat reported both damaged and
+unrepairable. No new images were recovered. Earlier white renderings remain
+unknown-source pages, not confirmed blanks. These are distinct from Walling
+ed029, which retains an earlier useful revision before a truncated update.
+Existing qpdf rewriting lost content and was rejected. Evidence:
+`repairs/established-viewer-damaged-probe-20261115/`.
 
-## Finish sequence and operating rules
+### Refetch integration
 
-1. Complete direct source dispositions for the flagged private candidates and the narrowly repaired pages. Preserve useful FTS output with named limits; hold substantial garbage, invented content and unresolved source loss.
-2. Append only qualified actual text/reading pairs. Preserve old rows and refusals, then validate real selection, page maps, hashes and every changed stored field. Reuse append ancestry for unchanged rows.
-3. Diagnose the thirteen archive reads with the prepared bounded one-object replay. Preserve complete raw bytes if recovered; expand only from the observed result. No blind bulk retry or blanket re-OCR.
-4. Adopt the three source-reviewed refetch results with capture/reading associations. Retain the empty Cornwell response as failure evidence.
-5. Add later selected/private results to the frozen quality inventory by exact body/parser/version/output identity. Retain valid empties, source exclusions, false alarms and unresolved source cases.
-6. Deliver the consistent accepted table, selection and quality inventory together. The user handles SereneDB ingestion/deployment; do not resume the shelved SQLite/MCP path.
+Current `archive_r1b.captures_df55_20261113` snapshot 4529945025615165014 contains
+the bill/Mahoney bodies and Mast parent HTML/historical 410. It contains neither
+the Mast PDF nor the six checked November 14 refetch receipt keys. Preserve all
+six attempts, including failures, through maintained receipt ingestion. Mast's
+parent links the malformed address and the corrected address redirects to the
+reviewed PDF; that trail alone is not a logical document association.
 
-OCR/refetch was explicitly authorized on 14 November. The original run remains
-frozen at its committed boundary; the separate checkpointed lane preserves those
-outcomes. The recovery version `e7af136c37deb9d3bab5a3e9f3d4c79a4f5b38bd8b8f820aba5ec175672826dc`
-is distinct from ordinary `4d045589…` and historical `d6250c3c…`; never restamp
-old rows. Root owns dispatch, catalog writes, selected versions and ticket edits.
-Use measured watchdog admission, the shared archive lock and frozen runtime pins.
-Preserve unrelated jobs and checkpoints.
+Mahoney's exact reviewed three-page Vision pair is staged in native schemas and
+restores Self, Organization and CV/biography lines. Radio state remains ambiguous.
+It needs independent pre-apply review and a narrow selected replacement. Bill's
+current reading already preserves the provisions more cleanly, so retain it.
+Evidence: `repairs/refetch-three-adoption-planning-20261115/`.
 
-The durable evidence root is
+## Quality inventory and finish sequence
+
+Cheap screening [ct-n3ik](../../.tickets/ct-n3ik.md) is closed at its frozen Q4
+scope. The additive Q5 candidate keeps 610,216 assessed bodies and 114,636
+review/control rows, updates 485 existing rows and binds 609,811 current measured
+outputs totaling 30,809,112,369 UTF-8 bytes. It reuses prior measures; only the final
+487/4f6 compositions needed new scoring, 1,323,322 bytes. Its author consumer
+checks pass; independent Q5 review is pending. Character/structure flags rank
+review effort and do not certify content completeness. The new held pilot is
+outside this frozen Q5 generation.
+
+1. Diagnose the held pilot with one matched-source-page comparison before the
+   remaining twelve large-source OCR jobs. Preserve all original checkpoints.
+2. Retry the seventeen distinct memory candidates under measured limits; compare
+   the two same-URL alternatives before deciding whether they need retry.
+3. Classify the forty-nine zero-page cases and missing-format inventory from raw
+   evidence; use known better source versions and maintained tools where useful.
+4. Complete narrow Mahoney selection and Mast capture/source-link integration,
+   preserving failures and exact source history.
+5. Independently qualify Q5, then add later candidates by exact output identity.
+   Preserve the 26 exclusions, 57 valid empties, 203 exposed no-search-character
+   candidates and source holds as distinct outcomes.
+6. Deliver selected text, native catalog pins and quality inventory for the user's
+   SereneDB work. Do not equate local text qualification with search publication.
+
+Reading selection, page checkpoints, bounded append, Vision edge-band handling,
+wrapper/encoding repairs and qualified literal-empty repairs are completed
+foundations. Reuse their exact retained evidence. The shared valid Atom-feed
+reader preserves 2,226 entries and 65,511 links; recurring feed acquisition is a
+separate task. See [feed behavior and limits](../house-floor-feed.md).
+
+OCR/refetch was explicitly authorized on November 14. The original run remains
+frozen; selective continuations use separate checkpoints and declared versions.
+Root owns dispatch, catalog writes, selected versions and tickets. Use measured
+watchdog admission, shared archive locking and frozen runtimes. Preserve unrelated
+jobs. The durable evidence root is
 `<main checkout>/.cache/archive-release/ocr-recovery-20261113/`.
-`coordination/text-quality-audit-20261113/repair-plan.md` holds the original causal
-audit; `coordination/greybeard-root-cause-20261113/review.md` holds the independent
-architecture review. `coordination/ocr-offline-ticket-matrix-20261113.md` names
-the direct raw/intermediate/output reviewers and remaining gates. Accepted sets
-v4–v9 retain preceding adoption/selection evidence. Historical progress is in
-those immutable receipts and this document's Git history.
-
-The last checked public release was
-`4b9a7bd126cc17e39dfbe7f8fabafbdb7251dcd32576277f308916f469c9bab1`,
-published at 05:25:35 UTC on 14 November, with 324,013 detail rows. That dated
-observation is separate from the qualified local handoff. No new public search
-release or full accepted export is claimed by these local repairs.
+Earlier accepted generations and reports remain immutable; this file's Git
+history retains preceding status. No new public release, full accepted-text
+export, SereneDB ingestion or BGE embedding is claimed by these local repairs.

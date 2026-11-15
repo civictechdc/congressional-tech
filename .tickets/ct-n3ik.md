@@ -11,7 +11,7 @@ tags: [ocr, pdf_text, readings, tesseract]
 ---
 # Cheaply find failed or substantially incomplete text extraction for FTS
 
-The complete cheap screen and frozen queue pass independent acceptance. Checkpoint04 has 610,216 population identities, 609,574 exactly measured current outputs and 114,636 deduplicated review/control rows. It incorporates accepted-set-v7 and private OCR through completion 165, preserving valid empties, source exclusions, prior queue positions and exact findings. Scores rank review; they do not certify source fidelity. Later additive evidence now covers all 193 private size-recovery completions, accepted-set-v9 and the separately completed 196 geometry candidates. Their selected-state reconciliation remains with the recovery/adoption owners; this frozen screen task stays closed.
+The cheap-screen implementation remains closed at independently accepted checkpoint-04 scope. Additive checkpoint-05 binds accepted-set-v10 and all 193 completed private-lane bodies to existing measures, with fresh scoring only for two changed compositions. Its author consumer checks pass; independent review is pending. The 610,216 frozen assessment bodies differ from the broader 621,599 known assessment-plus-outside-inventory identities. Character and structure signals prioritize review; they do not certify OCR completeness, as the separate 1,208-page pilot now demonstrates.
 
 ## Design
 
@@ -159,3 +159,11 @@ Closed the frozen cheap-screen and current-queue scope after independent checkpo
 **2026-11-15T10:52:31Z**
 
 The final disjoint private-quality chain reaches 193 completions with exact bindings and no whole empty output. Geometry screens nominate 342 pages but direct review found several legitimate symbol, image-only, blank and sparse cases, as well as actual partial word fragmentation. The new f6 policy removes the strong isolated-letter flags while preserving native characters; source checks remain separate. Add these exact new versions/dispositions to the frozen checkpoint04 inventory during final handoff. Do not relabel the frozen 114,636 review/control rows as failed documents or imply the old v7/private165 queue already contains later results.
+
+**2026-11-15T12:11:19Z**
+
+The v10 overlay has 398 selected changes since Q4, plus preserved dbaa and three held resource completions. Exact existing metrics were reused for 190 direct private results, 195 geometry results, f6 and ten v8/v9 results. Only the final 487/4f6 composition texts required new measurement: 1,323,322 bytes in 5 seconds at 0.61 GiB. Current selected-refusal metadata identifies 13 archive-read/size-limit cases, 19 separate old memory failures, 49 zero-page errors, one encrypted PDF and one missing-page-tree case. Do not infer 49 damaged sources from the shared error label. Two memory cases have selected same-URL alternative leads that require revision comparison before direct retry. Q5 keeps source-unread, valid-empty, excluded, false-alarm and unresolved outcomes distinct.
+
+**2026-11-15T12:27:39Z**
+
+The new pilot has clean replacement/control/private-use character and repeated-line checks, but direct Terra review found substantial missing source prose in four sampled OCR pages. Preserve this false-negative evidence for evaluating the cheap screen; do not silently turn clean statistics into a source-quality pass. No whole-corpus LLM review or blanket re-OCR is prescribed. Q5 remains frozen before this pilot. Its 114,636 review/control rows include 11,383 identities outside the 610,216 assessed population, so the known union is 621,599. Exact source and observation evidence: repairs/raw-range-retry13-20261115/independent-source-review/.

@@ -11,7 +11,7 @@ tags: [body_text, captures, refetch]
 ---
 # Refetch reviewed damaged or missing publisher sources and preserve new evidence
 
-Targeted publisher refetch is authorized. The corrected-address followup recovered three useful PDFs, directly reviewed across all eight pages; Cornwell still returns HTTP200 with zero bytes. Reviewed-only scheduler fixes are completing against retained seven-target metadata. For damaged CHRG-116hhrg35338, the archive already contains useful complete HTML hearing prose, but its publisher-side prepared-statements graphics remain missing. New captures/readings still require model association and accepted publication.
+Bill and Mahoney already have exact stored bodies and release associations. Preserve the better existing bill reading; the source-reviewed Mahoney improvement is staged in native schemas for independent pre-apply review. Mast has useful reviewed text but needs maintained receipt ingestion and a supported logical document association. The current capture table lacks Mast PDF and all six checked November 14 refetch receipts, including failures. Cornwell remains an HTTP 200 zero-byte failure. PDFKit and Acrobat could not open the separately retained damaged ZIP-code collections a558/e51; no additional images were recovered.
 
 ## Design
 
@@ -54,3 +54,11 @@ Corrected bounded refetch completed: short bill e5de955c… (43,652 bytes, four 
 **2026-11-14T16:48:30Z**
 
 Root directly compared retained CHRG-116hhrg35338 HTML original, actual worker record and final text at opening, middle, appendix transition and tail. Existing unhidden document df2a0a3aa21bb697 binds body df2a0a3aa21bb6976aa1145a70484afb48064838a01875e3a4a4add33d1f756d; current HTML output 114,116 bytes matches prior hash 68ac36b47779b6b11996cd9c6be8eeb2745b26ad979e82af5b705439e7854e24. Raw prepared-statements section explicitly says GRAPHICS NOT AVAILABLE IN TIFF FORMAT. Reuse useful HTML; retain PDF/appendix gap. No publisher request for that review. Report SHA bc64fb1af58e7f363578082ebad31a898b52941d8dbb7a5ee0a3920b606dba14 at source-refetch-20261114/scheduler-followup/retained-package-html/manual-review.md. Additional exact damaged PDFs a558032c/e51dfab3 are source-recovery candidates from the 17-page Terra review.
+
+**2026-11-15T12:11:19Z**
+
+Read-only current capture resolution found archive_r1b.captures_df55_20261113 snapshot 4529945025615165014 unchanged from the published nightly pin. It contains the bill/Mahoney bodies, Mast parent HTML 00a251 and historical 410 70ae; it contains neither Mast PDF 4ee6fd1a nor any of the six checked 14 November refetch receipt keys. Preserve those receipts and failures during ingestion. Terra compared actual selected and reviewed outputs: bill baseline retains the provisions with cleaner page boundaries; Mahoney 4d restores Self/Organization/CV lines but leaves radio state ambiguous. Its exact reviewed pair is reserialized to native schemas with all stored values unchanged. Mast parent HTML explicitly links the malformed &download=1 URL; corrected ?download=1 redirects to the reviewed PDF, but that trail is not a logical release-document association. Evidence: refetch-three-adoption-planning-20261115/{plan.md,result.json,capture-exact-result.json,mahoney-native-staging/receipt.json}.
+
+**2026-11-15T12:27:39Z**
+
+Established-viewer probe: maintained macOS PDFKit returned no document for both a558032c and e51dfab3 originals; installed Adobe Acrobat 25.001.20432 separately reported both damaged and unrepairable. Originals and copies remain byte-identical. No export or image rendering could follow those refusals. Earlier white PyMuPDF renderings remain unknown source content, not confirmed blank pages, and the e51 Goose Creek letter remains partly obscured. These two ZIP-code collections are distinct from Walling ed029. Exact tool/source pins and the six directly reread earlier samples: repairs/established-viewer-damaged-probe-20261115/{review.md,pins.json}. No OCR or new fetch occurred.
