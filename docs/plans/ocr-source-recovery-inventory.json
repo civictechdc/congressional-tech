@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "updated_at": "2026-11-15T15:39:17.988717+00:00",
+  "archive_root": "<main checkout>/.cache/archive-release",
+  "owner_tickets": [
+    "ct-en4n",
+    "ct-z4w5"
+  ],
+  "scope": "Consolidated known invalid sources from named retained reviews and actual fetch receipts; not a whole-corpus source-validity census.",
+  "rows": 451,
+  "recovery_open": 450,
+  "needs_refetch": 56,
+  "refetch_requires_history_review": 394,
+  "already_covered": 1,
+  "zero_page_batch": {
+    "invalid_sources": 49,
+    "same_invalid_body_returned": 47,
+    "alternate_revision_review_pending": 2
+  },
+  "rules": {
+    "http_success_or_transfer_complete_closes_recovery": false,
+    "same_invalid_body_closes_recovery": false,
+    "alternate_without_identity_review_closes_recovery": false,
+    "close_only_with": "Reviewed usable replacement or explicitly accepted scoped coverage, linked to the intended document/revision and exact body identity.",
+    "retry_behavior": "Keep open across failed attempts; search alternative copies and retry publishers with backoff after current URL/history/eligibility review."
+  },
+  "inventory": {
+    "path": "ocr-recovery-20261113/repairs/source-recovery-inventory-20261115/invalid-sources.jsonl",
+    "sha256": "a8dc20d06f18ef012b4304faae325c60088f86d894faec8478543d1f34ee25e0",
+    "bytes": 683735
+  },
+  "review_view": {
+    "path": "ocr-recovery-20261113/repairs/source-recovery-inventory-20261115/invalid-sources.csv",
+    "sha256": "47c40de33469c21aa859bb4fef19c9d9226317919d43eaa8cf889876ab754e77",
+    "bytes": 137877
+  },
+  "summary": {
+    "path": "ocr-recovery-20261113/repairs/source-recovery-inventory-20261115/summary.json",
+    "sha256": "8f3e73a22509e651cc054048ece1910db07edfafaadf9e9223e685df6cc9f5b0",
+    "bytes": 18020
+  },
+  "instructions": {
+    "path": "ocr-recovery-20261113/repairs/source-recovery-inventory-20261115/README.md",
+    "sha256": "4ccfa6bc9c359010154abd3cd025a57e1ac4473f0e82436b52f21cd57c8ee3b2",
+    "bytes": 4201
+  },
+  "verification": {
+    "path": "ocr-recovery-20261113/repairs/source-recovery-inventory-20261115/verification.json",
+    "sha256": "1971c300e290f85d077582f10f160bf8cec2d343cd6fa10ad650b6a4419d99b3",
+    "bytes": 605
+  },
+  "automatic_dispatch": false,
+  "native_catalog_and_selected_text_unchanged": true
+}
