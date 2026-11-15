@@ -11,7 +11,7 @@ tags: [body_text, captures, refetch]
 ---
 # Refetch reviewed damaged or missing publisher sources and preserve new evidence
 
-Bill and Mahoney already have exact stored bodies and release associations. Preserve the better existing bill reading; the source-reviewed Mahoney improvement is staged in native schemas for independent pre-apply review. Mast has useful reviewed text but needs maintained receipt ingestion and a supported logical document association. The current capture table lacks Mast PDF and all six checked November 14 refetch receipts, including failures. Cornwell remains an HTTP 200 zero-byte failure. PDFKit and Acrobat could not open the separately retained damaged ZIP-code collections a558/e51; no additional images were recovered.
+Mahoney is now appended and selected in accepted-set-v11; preserve the better existing bill reading. Mast still needs maintained receipt ingestion and a supported logical document association, including all six November 14 attempts and failures. Cornwell remains an HTTP 200 zero-byte failure. All 49 zero-page originals are now verified damaged PDFs: 48 incomplete and one with a zero-filled tail. Their exact refetch proposal must resolve current history, two selected same-URL alternatives and the targets outside the published static capture patterns before dispatch.
 
 ## Design
 
@@ -62,3 +62,7 @@ Read-only current capture resolution found archive_r1b.captures_df55_20261113 sn
 **2026-11-15T12:27:39Z**
 
 Established-viewer probe: maintained macOS PDFKit returned no document for both a558032c and e51dfab3 originals; installed Adobe Acrobat 25.001.20432 separately reported both damaged and unrepairable. Originals and copies remain byte-identical. No export or image rendering could follow those refusals. Earlier white PyMuPDF renderings remain unknown source content, not confirmed blank pages, and the e51 Goose Creek letter remains partly obscured. These two ZIP-code collections are distinct from Walling ed029. Exact tool/source pins and the six directly reread earlier samples: repairs/established-viewer-damaged-probe-20261115/{review.md,pins.json}. No OCR or new fetch occurred.
+
+**2026-11-15T13:34:46Z**
+
+Mahoney selected 4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8 / text 04b5bb0d829fde64467f8e44f6e661152386d152568ee07ae2256e9d795c40a9; 4,524 bytes, three pages/three OCR markers, +80 bytes. Independent actual-native/selection review passes, preserving radio-state ambiguity and name typo. The 49-source archive-only inspection verified 46,370,178 decoded bytes; 42 originals are shorter than declared linearized length, six end inside streams without recoverable trailers, one has a 54,818-byte zero tail. All fail qpdf checks. Capture complete=True is a transfer observation, not PDF semantic completeness, and the damage origin remains unknown. repairs/zero-page-cause-inventory-20261115/handoff.json SHA 1f95436520591946b23494465bc1c543f799dc91d8a2a1d0d36ac6b6260264e0 binds the evidence. The proposed 49 primary URLs retain all 52 spellings; 47 are outside the pinned static scope, two inside, and one needs a target-specific 32 MiB bound. No publisher requests for this proposal have run. Two selected same-URL alternatives need document/revision review before new acquisition.

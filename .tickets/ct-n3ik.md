@@ -11,7 +11,7 @@ tags: [ocr, pdf_text, readings, tesseract]
 ---
 # Cheaply find failed or substantially incomplete text extraction for FTS
 
-The cheap-screen implementation remains closed at independently accepted checkpoint-04 scope. Additive checkpoint-05 binds accepted-set-v10 and all 193 completed private-lane bodies to existing measures, with fresh scoring only for two changed compositions. Its author consumer checks pass; independent review is pending. The 610,216 frozen assessment bodies differ from the broader 621,599 known assessment-plus-outside-inventory identities. Character and structure signals prioritize review; they do not certify OCR completeness, as the separate 1,208-page pilot now demonstrates.
+The cheap-screen implementation remains closed at its independently accepted frozen scope. Q5a corrects thirteen stale embedded state aliases, and the independently accepted Q5b overlay updates one Mahoney output for accepted-set-v11. The 610,216-body assessment and 114,636-row review/control queue retain their scope; the broader known union is 621,599. Clean character statistics do not certify source completeness: the separately held 1,208-page report contains substantial recognition omissions despite weak mechanical signals.
 
 ## Design
 
@@ -167,3 +167,7 @@ The v10 overlay has 398 selected changes since Q4, plus preserved dbaa and three
 **2026-11-15T12:27:39Z**
 
 The new pilot has clean replacement/control/private-use character and repeated-line checks, but direct Terra review found substantial missing source prose in four sampled OCR pages. Preserve this false-negative evidence for evaluating the cheap screen; do not silently turn clean statistics into a source-quality pass. No whole-corpus LLM review or blanket re-OCR is prescribed. Q5 remains frozen before this pilot. Its 114,636 review/control rows include 11,383 identities outside the 610,216 assessed population, so the known union is 621,599. Exact source and observation evidence: repairs/raw-range-retry13-20261115/independent-source-review/.
+
+**2026-11-15T13:34:46Z**
+
+Additive inventory review is complete: Q5a changes only 13 stale embedded state/basis aliases; independent result SHA d5e8d88b5301d294ba8a63ad9b88c22ba8689aed23d414cb6e84485283814c72. Q5b independently passes exact prior/full-row replacement, v11 selected/native identity, measurement binding and four rejection controls; result SHA 397b2e25ab99435ae91a3742b15627df331e5d52a3d53f9b4aa41bc9ee5edb8d. Only the new 4,524-byte text needed fresh scoring. Keep historical Q5 summaries immutable and apply +80 bytes for the combined current total 30,809,112,449. Q5b uses a pinned JSON measurement locator; consumers must explicitly support it and apply the replacement. Queue size remains 114,636 because the measured band is unchanged. The separate large-report diagnostic remains outside this frozen generation; no screen or corpus-fidelity certification is implied.
