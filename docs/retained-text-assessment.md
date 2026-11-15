@@ -120,6 +120,26 @@ diagnostics remain unassessed by these rules. Evidence retains source byte
 anchors and the observed diagnostic text. The measurement policy is
 `ct-text-quality-measures-v2`; extraction versions and selection are unchanged.
 
+The maintained implementations now live in SpicyDocs:
+`reading.response_roles.assess_response` and
+`extraction.quality.{text_corruption_measures,compare_intermediate}`. CT imports
+the measurements and retains a response adapter for its qualified HTML/XML
+policy name. CT still owns page-feature coverage, triage thresholds, capture
+history, inventory status and accepted selections.
+
+For a retained PDF, `python -m congress_api.cli.response_roles ORIGINAL --format
+pdf` uses the shared `reading.pdf_bytes.assess_pdf_bytes` observations under
+`ct-pdf-byte-observations-v1`: declared length, EOF/xref witnesses and bounded
+zero-tail counts, with the original body hash. The CLI accepts up to 64 MiB
+for this format and never renders or OCRs a page. Results remain unassessed;
+byte anomalies alone cannot qualify a replacement or close a recovery item.
+
+The shared-code qualification is retained under
+`repairs/shared-source-quality-20261115/` in the main recovery evidence root.
+It compares exact role/evidence outputs and actual quality-consumer output,
+and reuses the earlier raw-source manual reviews. It is a code-move regression
+check, not a new corpus-wide source-quality audit.
+
 ## Retained demonstration and remaining work
 
 The durable directory is

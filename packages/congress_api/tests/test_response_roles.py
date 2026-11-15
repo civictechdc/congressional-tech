@@ -215,3 +215,32 @@ def test_heading_evidence_has_its_own_text_and_field_bounds():
 def test_storage_role_rejects_mixed_root_content_and_foreign_fields(source):
     row = assess_response(source, format='xml')
     assert (row.role, row.reason) == ('unassessed', 'unqualified_error_structure')
+
+
+def test_pdf_cli_uses_shared_byte_facts_and_a_distinct_policy(tmp_path, capsys):
+    import json
+    from congress_api.cli.response_roles import main
+    from congress_api.parsers.response_roles import MAX_BYTES, MAX_PDF_BYTES, PDF_POLICY_VERSION
+
+    source = tmp_path / 'source.pdf'
+    raw = b'%PDF-1.7\n' + b'x' * MAX_BYTES
+    source.write_bytes(raw)
+    assert main([str(source), '--format', 'pdf']) == 0
+    row = json.loads(capsys.readouterr().out)
+    assert row['policy_version'] == PDF_POLICY_VERSION
+    assert row['body_sha256'] == sha256(raw).hexdigest()
+    assert row['role'] == 'unassessed'
+    assert 'missing_pdf_trailer' in row['evidence'][0]['issues']
+    with source.open('wb') as stream:
+        stream.truncate(MAX_PDF_BYTES + 1)
+    with pytest.raises(SystemExit) as error:
+        main([str(source), '--format', 'pdf'])
+    assert error.value.code == 2
+
+
+def test_ct_reexports_shared_text_measurements():
+    from congress_api.lake import text_quality as ct
+    from spicy_docs.extraction import quality as shared
+
+    assert ct.compare_intermediate is shared.compare_intermediate
+    assert ct.text_corruption_measures is shared.text_corruption_measures
