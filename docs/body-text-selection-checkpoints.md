@@ -179,6 +179,30 @@ Every selected record is checked against its expected page identity before
 reuse. This implementation does not migrate older code/dependency namespaces or
 accept incomplete diagnostic logs as page checkpoints.
 
+## Reviewed structured-provider pages
+
+`lake.structured_page.retained_groq_page` reconstructs a SpicyDocs `PageResult`
+from seven retained artifacts: the source/page identity, actual request, actual
+response, six-key schema, prompt, HTTP receipt and the exact PNG sent. It verifies
+the image in the request, successful complete provider response, model identity,
+schema and table placeholders. Only Markdown and explicitly positioned table
+cells become searchable text; date, identifiers and other metadata remain
+evidence. It performs no provider call and does not judge source quality.
+
+Final-page composition v2 can use this result only when reconstruction matches
+the supplied packed intermediary and final text exactly. The caller must still
+provide an independent source/intermediary/output review. A fluent, schema-valid
+response with invented names or omitted prose remains unsuitable for adoption.
+The existing 32-page replacement bound and source/page/digest checks still apply.
+Inherited final pages retain their original interpretation and exact bytes.
+
+`ocr_pages` includes remote image recognition. `macos_build` describes only the
+Vision contribution in a mixed body; a body with only remote recognition has no
+macOS build. Version-bound composition provenance records remote page numbers
+and the actual provider/request/response identities, including across a later
+selective repair. Existing native/Vision readings, workers and checkpoints are
+not migrated or restamped by this adapter.
+
 ## Interpret request memory measurements
 
 The persistent parser supervisor samples worker RSS every 50 ms and resets the

@@ -15,11 +15,13 @@ from congress_api.parsers.body_text import Reading, _PageRun, page_offsets
 from congress_api.retention.page_checkpoints import unpack
 
 DECLARATION = (
-    'body_text pdf_text final-page composition v1: exact completed base reading and text; '
+    'body_text pdf_text final-page composition v2: exact completed base reading and text; '
     'validated UTF-8 page starts and one-newline separators; replace only explicit source/page '
     'identities with pinned reviewed final UTF-8 text; preserve every inherited final page verbatim '
     'under its original reading interpretation; retain original replacement policy and intermediate '
-    'identities; no extraction, normalization, checkpoint migration or automatic selection'
+    'identities; reviewed structured Groq pages retain their actual request/response/image/schema '
+    'and remote recognition provenance without a macOS identity; '
+    'no extraction, normalization, checkpoint migration or automatic selection'
 )
 MAX_TEXT_BYTES = 64 << 20
 MAX_ARTIFACT_BYTES = 16 << 20
@@ -77,6 +79,30 @@ def _pages(text, offsets, count):
     return pages, data
 
 
+def _base_remote_pages(base, reading):
+    """Only a version-bound composition can distinguish prior remote OCR pages."""
+    fields = reading.get('fields', {})
+    if isinstance(fields, list):
+        names = [row['field'] for row in fields]
+        if len(names) != len(set(names)):
+            raise ValueError('Ambiguous base reading fields')
+        fields = {row['field']: row['value'] for row in fields}
+    raw = fields.get('page_composition')
+    if raw is None:
+        return set()
+    prior = json.loads(raw)
+    if 'remote_recognition_pages' not in prior:
+        return set()
+    if (sha256(_encoded(prior)).hexdigest() != base['parser_version']
+            or fields.get('page_composition_sha256') != base['parser_version']):
+        raise ValueError('Base remote recognition provenance is not version-bound')
+    pages = prior['remote_recognition_pages']
+    if (not isinstance(pages, list) or any(type(n) is not int for n in pages)
+            or pages != sorted(set(pages)) or not set(pages) <= set(base['ocr_pages'])):
+        raise ValueError('Invalid base remote recognition pages')
+    return set(pages)
+
+
 def compose_pages(base, base_reading, *, source_bytes, source_page_count, source_evidence, replacements):
     """Return (body_text row, Reading, receipt) without mutating the base.
 
@@ -103,7 +129,9 @@ def compose_pages(base, base_reading, *, source_bytes, source_page_count, source
     if (any(type(n) is not int or not 1 <= n <= source_page_count for n in ocr)
             or list(ocr) != sorted(set(ocr))):
         raise ValueError('Invalid base OCR page identities')
-    if ocr and (not isinstance(base.get('macos_build'), str) or not base['macos_build']):
+    base_remote = _base_remote_pages(base, base_reading)
+    legacy_ocr = set(ocr) - base_remote
+    if legacy_ocr and (not isinstance(base.get('macos_build'), str) or not base['macos_build']):
         raise ValueError('Base OCR build is unavailable')
     _artifact(source_evidence)
     if not isinstance(replacements, (list, tuple)) or not 1 <= len(replacements) <= MAX_REPLACEMENTS:
@@ -118,9 +146,11 @@ def compose_pages(base, base_reading, *, source_bytes, source_page_count, source
         numbers.append(n)
 
     inherited_ocr = set(ocr) - set(numbers)
-    builds = {base['macos_build']} if inherited_ocr else set()
+    builds = {base['macos_build']} if legacy_ocr - set(numbers) else set()
     output_ocr = set(inherited_ocr)
+    remote_pages = base_remote - set(numbers)
     resolved = []
+    provider_implementation = {}
     final_bytes = len(data)
     for replacement in sorted(replacements, key=lambda row: row['page']):
         number = replacement['page']
@@ -150,13 +180,24 @@ def compose_pages(base, base_reading, *, source_bytes, source_page_count, source
         observed = unpack(packed)
         accounting = _PageRun(None, 0)
         accounting.observe(observed.content, number)
-        if any(o.configuration.get('backend') != 'apple-vision' for o in observed.content.observations
-               if o.id != 'native' or any(i.code == body_text.REPLACED_ISSUE for i in o.issues)):
-            raise ValueError('Composition supports retained native or Apple Vision page observations')
+        structured = policy_value['backend']['backend'] == 'groq'
+        if structured:
+            from congress_api.lake import structured_page
+            references = policy_value.get('structured_provider_artifacts', {})
+            rebuilt, settings = structured_page.retained_groq_page(
+                {name: _artifact(reference) for name, reference in references.items()})
+            if (page_checkpoints.pack(rebuilt) != packed or settings != policy_value['backend']
+                    or final != rebuilt.text.encode()):
+                raise ValueError('Structured provider page or final text differs from its actual retained response')
+            remote_pages.add(number)
+            provider_implementation['structured_page'] = sha256(Path(structured_page.__file__).read_bytes()).hexdigest()
+        elif any(o.configuration.get('backend') != 'apple-vision' for o in observed.content.observations
+                 if o.id != 'native' or any(i.code == body_text.REPLACED_ISSUE for i in o.issues)):
+            raise ValueError('Composition supports retained native, Apple Vision or verified structured Groq pages')
         if any(o.configuration != policy_value['backend'] for o in observed.content.observations
                if o.id != 'native' or any(i.code == body_text.REPLACED_ISSUE for i in o.issues)):
             raise ValueError('Replacement backend settings disagree with the intermediate')
-        if accounting.ocr and len(accounting.builds) != 1:
+        if accounting.ocr and not structured and len(accounting.builds) != 1:
             raise ValueError('Replacement OCR build is unavailable or ambiguous')
         output_ocr.update(accounting.ocr)
         builds.update(accounting.builds)
@@ -174,21 +215,25 @@ def compose_pages(base, base_reading, *, source_bytes, source_page_count, source
             policy_settings={key: policy_value[key] for key in (
                 'backend', 'reader', 'routing', 'strategy', 'min_chars', 'require_images', 'garble',
                 'native_normalization', 'final_normalization', 'cleanup') if key in policy_value},
-            ocr=bool(accounting.ocr), macos_build=next(iter(accounting.builds), None)))
+            ocr=bool(accounting.ocr), macos_build=next(iter(accounting.builds), None),
+            **({'recognition_provider':'groq', 'structured_provider_artifacts':{
+                name:_identity(reference) for name,reference in sorted(references.items())}} if structured else {})))
     if len({row['source_bytes'] for row in resolved}) != 1:
         raise ValueError('Replacement source byte identities disagree')
     if len(builds) > 1:
         raise ValueError('Composed OCR pages have different macOS builds')
     provenance = dict(
         declaration=DECLARATION,
-        implementation={name: sha256(Path(path).read_bytes()).hexdigest() for name, path in (
+        implementation={**{name: sha256(Path(path).read_bytes()).hexdigest() for name, path in (
             ('composition', __file__), ('body_text', body_text.__file__),
-            ('page_checkpoints', page_checkpoints.__file__))},
+            ('page_checkpoints', page_checkpoints.__file__))}, **provider_implementation},
         base=dict(body_sha256=body.hex(), parser='pdf_text', parser_version=base['parser_version'],
                   text_sha256=text_hash.hex(), text_bytes=len(data), page_offsets=list(base['page_offsets']),
                   ocr_pages=list(ocr), macos_build=base.get('macos_build')),
         source_bytes=source_bytes, source_page_count=source_page_count, source_evidence=_identity(source_evidence),
         replacements=resolved,
+        remote_recognition_pages=sorted(remote_pages),
+        macos_build_scope='Vision contribution only; remote recognition has its own provider identity.',
         inherited_interpretation='Each unreplaced final page retains its original base reading interpretation.',
     )
     version = sha256(_encoded(provenance)).hexdigest()
