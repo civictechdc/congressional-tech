@@ -11,7 +11,7 @@ tags: [body_text, quality, captures, html, xml]
 ---
 # Qualify document, feed, error and landing roles against retained capture history
 
-House response detection and explicit reviewed source-body exclusions have merged in PR165 and PR167. Known error/wait/feed bodies can be kept out of document prose while preserving completed readings and saved-body coverage. The 400 example bodies have no document associations in the checked public release; two separately reviewed State Department error bodies do. The corrected Mast and Mahoney addresses now yield useful PDFs, while Cornwell still returns zero bytes. Broader role assignment, capture adoption, accepted selection and search readback remain.
+Accepted-set-v6 now applies 26 reviewed source-body exclusions, including fourteen statute viewers under the existing wrapper role and one publisher challenge. Seven viewers were exposed; the thirteen distinct linked PDFs and separately retained resolution remain eligible under their own completed reading identities. No linked-PDF refetch is needed. One two-page PDF was directly source-read; twelve have metadata proof only. Commit 9801e9af adds wrapper-role support, with 19 focused consumer/failure checks and doctor passing; merge remains. Three separately recovered useful PDFs still need capture/model/reading adoption, and Cornwell remains HTTP 200 with zero bytes.
 
 ## Design
 
@@ -104,3 +104,11 @@ Implemented explicit reviewed publication exclusions in selection manifest v2 at
 **2026-11-14T15:57:37Z**
 
 PR #167 merged at 7cbb9f3b51bef7621c8516da31c01e8965d727d4 after CI and independent exact-input review. Selection manifest v2 permits hash-qualified exact-body error_response/wait_response/feed exclusions while retaining accepted-key validation, completed status and saved-body coverage. Real export omits two reviewed State error pages and preserves ordinary meeting text byte-for-byte. Broader source-role assignment and public adoption remain. Source refetch recovered Mast/Mahoney corrected addresses; Cornwell still empty; see ct-z4w5.
+
+**2026-11-15T07:05:12Z**
+
+Direct source-role review: 14 Congress.gov statute PDF viewers and one distinct challenge. The authoritative frozen 4,169,182-row capture input contains all 13 distinct linked PDFs, each with its own exposed association and selected completed baseline reading. Seven viewer bodies are exposed; seven others and the challenge are unassociated. Only 06984 PDF source fidelity was directly checked; the other 12 are metadata-bound. No PDF refetch needed. Evidence: repairs/corpus-assessment-20261113/triage-current-20261114/ct-g4yz-fallback-release-binding-20261115/. Existing role wrapper is reused by 9801e9af (19 focused tests, doctor passed); actual exclusions are pending. Historical readings/planner completion remain intact.
+
+**2026-11-15T07:24:33Z**
+
+Accepted-set-v6 is independently qualified: selection SHA 95fad5e005670ce150ce4d09321ff9e321f11fdfa9abd641970c8e63b037c72f; independent result SHA dbd3e66bcd9d8e66142f318e501108db20976557c02e13c254dc349dd17ef539. Evidence: repairs/accepted-text-adoption-20261114/accepted-set-v6-independent-review/. The 210 actual appended pairs are selected; fifteen exact source roles exclude seven exposed viewers while preserving thirteen linked PDFs and the alternate resolution. Main heads: body_text 4020361685539847953; readings 6816097245686786721. PR174 merged at 8965dc00e409dbdbdc6ee4e00af7418a4fc87e59 with both CI workflows successful. Wrapper helper code merge and final handoff remain separate.

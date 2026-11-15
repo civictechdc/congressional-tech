@@ -11,7 +11,7 @@ tags: [congress_api, body_text, ocr]
 ---
 # Reconcile resource-failure recovery and measure memory per request
 
-The old 2,426-outcome recovery stays frozen. Its 206 remaining PDF keys continue in a separately versioned checkpointed lane under the user's 14 November authorization. At 05:03:52 UTC on 15 November, 106 had completed and 100 remained; integrity and quality coverage is frozen through result 105. Host-memory interruptions preserve and reuse page checkpoints and remain separate from extraction failures. Exact original resource-failure reconciliation and final qualified adoption remain open.
+The old recovery stays frozen. At 07:09:49 UTC on 15 November, the separate checkpointed lane had completed 152 of its 206 original stored-size-limit targets, leaving 54; quality checks cover 145. Those targets are disjoint from 66 original memory/deadline cases: 62 have selected completed readings and four remain unresolved. Three have complete retained captures and a separate retry preflight; 4f57c7ee is a confirmed incomplete 64 MiB capture whose response declared 118,982,865 bytes. It needs source recovery. Current same-worker regression confirms request-memory reset with a separate lifetime peak. Runtime completion, the four followups and qualified adoption remain open.
 
 ## Design
 
@@ -104,3 +104,7 @@ Restart evidence: ocr-checkpoint-resume-20261114/restart-20261114T182343Z/post-r
 **2026-11-15T04:46:39Z**
 
 Current supervised continuation is repairs/ocr-checkpoint-resume-20261114/restart-20261115T035808Z/. A host-memory stop below the existing 4 GiB floor ended the prior supervisor; 76 saved pages were reused before recognition resumed at page 77. continue_targeted_v2.py retries only a no-commit watchdog-99 host-memory stop, at most three times with 30-second backoff and the unchanged memory admission. Six focused retry-policy checks pass. Completed outcomes 1-91 have exact-key integrity/quality screens in the original 56-body generation and two disjoint 20/15-body deltas. No empty whole output or new strong garbling signal appears in the two deltas. The earlier f6d8df26 word-fragmentation finding remains explicit and separate from runtime completion. Snapshot: 93 completed / 113 remaining at 2026-11-15T04:39:22Z; private results are not automatically selected or published.
+
+**2026-11-15T07:05:12Z**
+
+Current reconciliation separates the 206 original stored-size-limit targets (148completed/58remaining at2026-11-15T06:48:25Z) from 66 original memory/deadline targets. Of the latter 62 have selected completed readings;1ebf2aeb,d1203c08,4f57c7ee,b269f9d8 remain unresolved. A separate exact-key preflight is being prepared; the 206-target worker/manifest remain unchanged. Quality chain through145: repairs/ocr-checkpoint-resume-20261114/quality-screen-delta-20261115T064046Z/handoff-with-integrity.json SHA 4bc57e3c479437d2cf3eda5aa1d298403083b1f31cefb7209e95e6fcebe92757.

@@ -162,10 +162,44 @@ def test_reviewed_source_exclusion_filters_publication_without_changing_readings
     assert originals == {p: sha256(Path(p).read_bytes()).hexdigest() for p in originals}
 
 
-def test_exclusion_does_not_bypass_actual_accepted_key_validation(tmp_path, mixed):
+def test_reviewed_html_wrapper_exclusion_keeps_other_bodies_and_completed_work(tmp_path, mixed):
+    args, detail, shas, manifest = mixed
+    # Accept this actual HTML key first. Publication must retain it until its
+    # exact source hash is explicitly excluded; the source role is not detected.
+    markup = next(row for row in pq.read_table(args['existing_text']).to_pylist()
+                  if row['body_sha'] == shas['markup'])
+    manifest['overrides'].append(dict(body_sha256=shas['markup'].hex(), parser='html_text',
+        parser_version=markup['parser_version'], status='completed', text_sha256=markup['text_sha256'].hex()))
+    args['selection'].write_text(json.dumps(manifest))
+    before = body_text.plan(**args, work=tmp_path / 'before')
+    body_text_export.export(**export_args(args, detail, tmp_path / 'before-export'))
+    published = {r['saved_body']: r['text'] for r in
+                 pq.read_table(tmp_path / 'before-export/export.parquet').to_pylist()}
+    assert published[shas['markup']] == 'Old markup.'
+    originals = {str(p): sha256(p.read_bytes()).hexdigest() for p in
+                 (args['existing'], args['existing_text'], detail)}
+    manifest.update(version=2, excluded_bodies=[dict(body_sha256=shas['markup'].hex(),
+        source_role='wrapper', reason='Fixture review: HTML viewer; legal text belongs to a linked PDF body.')])
+    args['selection'].write_text(json.dumps(manifest))
+    after = body_text.plan(**args, work=tmp_path / 'after')
+    assert pq.read_table(before['work_list']).equals(pq.read_table(after['work_list']))
+    assert after['unselected_current_attempts'] == before['unselected_current_attempts']
+    pointer = body_text_export.export(**export_args(args, detail, tmp_path / 'export'))
+    selected = {r['saved_body']: r['text'] for r in pq.read_table(tmp_path / 'export/export.parquet').to_pylist()}
+    assert selected == {body: text for body, text in published.items() if body != shas['markup']}
+    assert selected[shas['baseline']] == 'Keep this unchanged.'  # the separate PDF body stays eligible
+    assert pointer['coverage']['excluded_by_source_role'] == {'wrapper': 1}
+    assert pointer['coverage']['saved_bodies'] == 7 and pointer['coverage']['eligible_saved_bodies'] == 6
+    assert pointer['coverage']['readings'] == {'html_text:completed': 1, 'pdf_text:completed': 4}
+    assert pointer['selection'] == after['selection']
+    assert originals == {p: sha256(Path(p).read_bytes()).hexdigest() for p in originals}
+
+
+@pytest.mark.parametrize('source_role', ['error_response', 'wrapper'])
+def test_exclusion_does_not_bypass_actual_accepted_key_validation(tmp_path, mixed, source_role):
     args, detail, shas, manifest = mixed
     manifest.update(version=2, excluded_bodies=[
-        dict(body_sha256=shas['corrected'].hex(), source_role='error_response', reason='Fixture source review.')])
+        dict(body_sha256=shas['corrected'].hex(), source_role=source_role, reason='Fixture source review.')])
     next(r for r in manifest['overrides'] if r['body_sha256'] == shas['corrected'].hex())['text_sha256'] = '0' * 64
     args['selection'].write_text(json.dumps(manifest))
     with pytest.raises(ValueError, match='invalid_selected_text'):
@@ -177,7 +211,7 @@ def test_exclusion_does_not_bypass_actual_accepted_key_validation(tmp_path, mixe
 def test_unqualified_or_ambiguous_publication_exclusions_refuse(tmp_path, damage):
     report = tmp_path / 'qualification.md'
     report.write_text('Fixture raw-source review, not an empty-text heuristic.')
-    row = dict(body_sha256=identity('source'), source_role='error_response', reason='Reviewed source template.')
+    row = dict(body_sha256=identity('source'), source_role='wrapper', reason='Reviewed document landing page.')
     manifest = dict(version=2, baseline_versions=body_text.current_versions(), overrides=[],
                     qualification=dict(path=report.name, sha256=sha256(report.read_bytes()).hexdigest()),
                     excluded_bodies=[row])
