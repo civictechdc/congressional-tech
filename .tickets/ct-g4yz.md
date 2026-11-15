@@ -1,6 +1,6 @@
 ---
 id: ct-g4yz
-status: in_progress
+status: closed
 deps: []
 links: [ct-082q, ct-chc4, ct-cbkz, ct-n3ik]
 created: 2026-11-15T04:59:35Z
@@ -11,7 +11,7 @@ tags: [body_text, html, source-quality, fts]
 ---
 # Keep Congress.gov quick-search controls out of document text
 
-PR173 and PR174 are merged with passing CI. The complete H.R.4307 bill and 210 additional legislative-wrapper pairs are now actually appended and selected in independently reviewed accepted-set-v6. Native checks select all changed keys, suppress old reading controls and reject a wrong digest. Independent raw-source/intermediary/output reading covers the declared example/control scope, with the remaining sources explicitly unreviewed. Fifteen fallback bodies retain original readings and reviewed publication roles; all thirteen linked PDFs remain selected and exposed. The tested explicit wrapper-exclusion helper awaits merge under ct-en4n; that is the remaining integration step before closing this ticket.
+PR #173, PR #174 and PR #175 are merged with passing CI. The complete H.R.4307 bill and 210 additional legislative-wrapper pairs are appended and selected; independent v6 review passed and v7 preserves those choices. The merged wrapper-role helper applies the exact reviewed exclusions, removing seven exposed viewer pages while retaining all thirteen linked PDFs and the separate resolution. Fifteen fallback bodies retain original readings and explicit source roles. Native selection/eligibility checks, old-reading controls and wrong-digest rejection pass. Independent source/intermediate/output review covers the declared examples and controls; other sources remain explicitly unread. This ticket's implementation and local adoption are complete; SereneDB handoff is ct-m704.
 
 Original affected html_text version f1cefe442182dc8e4c456359aebdb37e5c50db6b0abb669b303e05763feb94a3; text SHA 0e0610a6d7eebd908f6cce52923298cb8b9f5f06e9586262ab01607ad142d299. Raw source and output were genuinely read at the member selector and bill heading. Evidence: repairs/corpus-assessment-20261113/triage-current-20261114/markup-exposed8-review-packets-20261115/a6fb358f8a7c/. Historical intermediary unavailable. This one source confirms the mechanism, not corpus-wide scope.
 
@@ -38,3 +38,7 @@ PR173 merged 5cd761d740454469dc5f47263e6a79275cc2a623 with both CI workflows suc
 **2026-11-15T07:24:33Z**
 
 Accepted-set-v6 is independently qualified: selection SHA 95fad5e005670ce150ce4d09321ff9e321f11fdfa9abd641970c8e63b037c72f; independent result SHA dbd3e66bcd9d8e66142f318e501108db20976557c02e13c254dc349dd17ef539. Evidence: repairs/accepted-text-adoption-20261114/accepted-set-v6-independent-review/. The 210 actual appended pairs are selected; fifteen exact source roles exclude seven exposed viewers while preserving thirteen linked PDFs and the alternate resolution. Main heads: body_text 4020361685539847953; readings 6816097245686786721. PR174 merged at 8965dc00e409dbdbdc6ee4e00af7418a4fc87e59 with both CI workflows successful. Wrapper helper code merge and final handoff remain separate.
+
+**2026-11-15T07:55:50Z**
+
+Closed after PR175 merged at d5c20b55859950fab76e3215c842e1d9ffdcfb59 with both Explorer and Congress MCP workflows successful at b349c92be7de865090a9f858814ebacb9959cc97. Native v6 eligibility proof removes seven actual viewer bodies and preserves all thirteen linked PDFs. Actual HTML pairs and prior choices remain independently verified in v7. Public text delivery remains ct-m704; no downstream search acceptance is claimed.

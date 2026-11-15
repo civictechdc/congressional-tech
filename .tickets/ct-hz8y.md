@@ -11,7 +11,7 @@ tags: [body_text, pdf, ocr, routing]
 ---
 # Route incomplete native PDF layers and vector-only writing to OCR
 
-Accepted-set-v6 preserves the 26 repaired/57 legitimate literal-empty results and the six later PDF repairs: fourteen formerly unsearchable pages plus 52 font-corrupt pages are appended, selected and independently checked. A further six-document batch is staged for 22 source-reviewed Q005/Q007/Q009/Q010/S167/S188 pages, including all ten S167 pages. Q009 page 37 uses a useful reviewed Groq/Qwen candidate with a truthful provider adapter under independent review; failed/invented candidates remain rejected. S188's Cherokee-script sidebar and named partial table/chart/ordering gaps remain explicit. The fragmented-word body, VFW page and 217-page whitespace-only body remain open; no staged next-batch pair is adopted yet.
+Accepted-set-v7 independently selects six further PDF repairs covering 22 source-reviewed Q005/Q007/Q009/Q010/S167/S188 pages, including all ten S167 pages. It preserves the earlier 26 repaired/57 legitimate literal-empty results, fourteen formerly unsearchable pages and 52 font-corrupt pages. Q009 page 37 uses actual retained Groq/Qwen evidence, page 47 uses Vision, and the other 47 pages remain byte-identical. The adapter passes 37 focused tests and awaits PR #176 merge. S188's Cherokee-script sidebar and named table/chart/ordering/signature gaps remain explicit. The fragmented-word body, VFW page and 217-page whitespace-only body still need selective work.
 
 ## Design
 
@@ -19,8 +19,8 @@ Spicy-docs owns reusable page evidence and routing hooks; CT owns the versioned 
 
 ## Acceptance Criteria
 
-1. Recover the named tables, values, labels, prose and footnotes on Q005 pages 70-72, Q007 pages 6/12/16, Q009 pages 37/47 and Q010 pages 2/9/16, plus S167 and S188.
-2. Independently inspect held-out source pages and plant a substantive omission and a plausible wrong value; both must fail.
+1. Recover useful searchable prose and labels on Q005 pages70-72, Q007 pages6/12/16, Q009 pages37/47 and Q010 pages2/9/16, plus S167 and S188. Record remaining table, number, signature and script omissions rather than requiring exact structured transcription.
+2. Independently read actual source, intermediate and output examples. Reject substantial invented or missing content, retain the substantive-omission failure control and document tolerable spelling/order/number defects under the user's practical FTS standard.
 3. Preserve legitimate repeated amendments/covers, roll-call forms, blank/logo-only pages, short covers, redacted grids, rotated tables, sidebars and non-Latin text. Vector ink or low density alone cannot establish an omission.
 4. Report routing reasons, reading versions, accuracy/omissions, peak memory and reread cost separately. Reuse prior census work and reread only the qualified affected set.
 
@@ -66,3 +66,11 @@ Direct Terra medium review read all 45 unresolved one-page PDF originals and the
 **2026-11-15T07:05:12Z**
 
 Accepted-set-v5 independently passes: seven final repairs selected from eight actual appended pairs; the font intermediate remains history-only. Six PDF finals recover 14 formerly unsearchable pages plus 52 font-corrupt pages. Evidence: repairs/accepted-text-adoption-20261114/accepted-set-v5-independent-review/handoff.json SHA 6db4eeaea8f06f29e2d7326fcf48198c183b86a2d45524fe14987065d61c4826. New named-coverage work separately staged ten Q005/Q007/Q009/Q010 pages and four S167/S188 pages, with direct raw/candidate/output reading and explicit partial FTS limits. Q009p37 has a useful reviewed Groq Qwen candidate, held outside composition because provider provenance is unsupported by the current helper. S167 remaining seven pages are in targeted review. These stages are not adopted.
+
+**2026-11-15T07:55:50Z**
+
+Accepted-set-v7 independently passed after eight actual PDF pairs were appended: six compositions/22 replacement pages and two retained-native one-page replays. Result repairs/accepted-text-adoption-20261114/accepted-set-v7-independent-review/result.json SHA15865e8b2d59ccbc30f1a1f36d8a8e46aae9ea077f45c4a61451f856f6aeea2c; selection SHA22756dbf6e8db2702532c26362bbbc1ba302e9841176f05aa1ee2f742f03677c. All1199 prior overrides/26exclusions/321 dispositions preserved; final1207 overrides,311716 selected texts,8142224 slots,2727045 OCR markers,57 valid empties and274 selected errors. Actual16 native rows match all fields; old eight reading controls suppressed and planted wrong digest rejected. Useful partial FTS limits remain explicit; no full export or SereneDB claim. Native replay versions truthfully preserve original refusals; no default policy restamp. Twenty-two source pages were previously directly reviewed; inherited pages were not newly audited.
+
+**2026-11-15T07:55:50Z**
+
+Acceptance wording now follows the user's practical FTS requirement: useful searchable prose and labels, with named numeric/table/script/signature limits. It does not require perfect structured transcription. Substantial missing or invented passages still fail review; the prior rejected map negation and Groq invention evidence remains.

@@ -1,6 +1,6 @@
 ---
 id: ct-yy07
-status: open
+status: in_progress
 deps: []
 links: [ct-a73a, ct-hz8y, ct-55qo, ct-aitp]
 created: 2026-11-13T17:46:16Z
@@ -11,9 +11,9 @@ tags: [body_text, pdf, ocr, geometry]
 ---
 # Qualify PDF geometry repairs using native text or selective OCR
 
-The frozen inventory contains 208 bodies with 1,350 failed-page records. Direct source and numerical review covers four bodies and six failed pages; the other 204 bodies / 1,344 pages remain cause-unresolved. The old generic outside-page error does not establish their actual geometry or source quality. Targeted OCR and reviewed refetch were authorized on 14 November; the original paused run remains frozen.
+The frozen inventory contains 208 bodies with 1,350 failed-page records. Cause review still covers four bodies/six pages, leaving 204 bodies / 1,344 pages unclassified. Two reviewed one-page native replays are now appended and independently selected in v7: c848's letter and156's biography. They add useful searchable text where selected failed_pages readings had none, while preserving original errors and split-word/graphic/signature limits. The damaged d128/924 controls and the wider cause inventory remain unresolved.
 
-SpicyDocs PR28 merged an explicit native plain-text inspection option for finite, ordered zero-area bounds wholly inside the page. Strict defaults remain. The c848 letter and 156 biography recover useful native text but retain split words and omitted graphic text/signatures; d128 and 924 also have damaged source structure/fonts. None is an accepted replacement. CT has not adopted the native option. Any new candidate uses the separately authorized targeted lane and retains its exact source, policy, intermediate and final identities.
+SpicyDocs PR28 merged an explicit native plain-text inspection option for finite, ordered zero-area bounds wholly inside the page. Strict defaults remain. The c848 letter and 156 biography recover useful native text but retain split words and omitted graphic text/signatures; d128 and 924 also have damaged source structure/fonts. The two useful candidates are accepted at explicit retained-native-replay versions. CT has not adopted the native option as its default reader. Any new candidate uses the separately authorized targeted lane and retains its exact source, policy, intermediate and final identities.
 
 ## Design
 
@@ -83,3 +83,7 @@ Five-step follow-through: use ct-n3ik impact/priority to choose the next bounded
 **2026-11-15T04:46:39Z**
 
 Updated the current authorization text to the user's explicit 14 November instruction allowing asynchronous targeted OCR/refetch; historical pause notes remain preserved. No new geometry source qualification is claimed by the 26 unrelated one-page repairs. The remaining 204-body/1,344-page cause inventory still needs actual numerical/source evidence and selective consumer qualification.
+
+**2026-11-15T07:55:50Z**
+
+Accepted-set-v7 independently passed after eight actual PDF pairs were appended: six compositions/22 replacement pages and two retained-native one-page replays. Result repairs/accepted-text-adoption-20261114/accepted-set-v7-independent-review/result.json SHA15865e8b2d59ccbc30f1a1f36d8a8e46aae9ea077f45c4a61451f856f6aeea2c; selection SHA22756dbf6e8db2702532c26362bbbc1ba302e9841176f05aa1ee2f742f03677c. All1199 prior overrides/26exclusions/321 dispositions preserved; final1207 overrides,311716 selected texts,8142224 slots,2727045 OCR markers,57 valid empties and274 selected errors. Actual16 native rows match all fields; old eight reading controls suppressed and planted wrong digest rejected. Useful partial FTS limits remain explicit; no full export or SereneDB claim. Native replay versions truthfully preserve original refusals; no default policy restamp. Twenty-two source pages were previously directly reviewed; inherited pages were not newly audited.
