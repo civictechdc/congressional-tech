@@ -11,7 +11,7 @@ tags: [congress_api, body_text, ocr]
 ---
 # Reconcile resource-failure recovery and measure memory per request
 
-The old recovery stays frozen. At 2026-11-15T07:53:46.500987+00:00, the separate checkpointed lane had completed 170 of its 206 original stored-size-limit targets, leaving 36; exact quality checks cover 165. These are disjoint from 66 original memory/deadline cases: 62 have selected completed readings at the same body identity, one truncated capture has a complete retained replacement source with selected text, and three remain unresolved. A separate pilot for d120 still hit the measured 4 GiB worker limit; its unreadable outcome and diagnostics are retained, and continuation is held for diagnosis. The other two remain unattempted in that lane. Current same-worker regression confirms request-memory reset with a separate lifetime peak. Runtime completion, selective fixes and qualified adoption remain open.
+Authorized selective recovery continues in a separate current-policy lane; the old run stays frozen. At 08:28:30 UTC on 15 November, 177 of the 206 stored-size-limit targets had completed and 29 remained. Integrity and cheap quality checks cover 176 exact outputs; none is automatically selected. The separate 66 memory/deadline cases reconcile to 62 same-body completions, one complete later retained source and three unresolved bodies. The d120 retries preserve 183 of 215 valid page checkpoints. Continuation 02 added thirty checkpoints before another real 4 GiB memory-limit outcome; another bounded fresh-worker attempt is being prepared from page 184. The other two bodies still need their first attempts.
 
 ## Design
 
@@ -116,3 +116,7 @@ Current reconciliation separates the 206 original stored-size-limit targets (148
 **2026-11-15T07:55:50Z**
 
 The new d120 pilot committed unreadable/memory_limit at2026-11-15T07:43:19Z: request-sampled worker RSS4,331,323,392bytes against4GiB; watchdog peak4.079GiB RSS/3.332physical,98.9seconds, outerexit0. A successful driver exit is not completed text. No new completed reading or text was adopted, and no continuation was launched. Exact failure/diagnostics/checkpoints remain under repairs/resource-checkpoint-retry-20261115; cause diagnosis precedes any changed limits or next attempt. The206worker remains live and separate.
+
+**2026-11-15T08:36:23Z**
+
+Private quality chain now freezes 176 completed results: quality-screen-chain-176.json SHA eac2946616745135cc8f5581b23fd61f8592261c7193ba58f38868a5473def9b; delta handoff SHA e545ef9a08eedcdbd69ddf522dc9adb9a24fdbd4ac6f74fe0b0f97787e7042a5. Eleven new pairs add 17,528,369 UTF-8 bytes / 8,835 slots / 6,863 OCR markers, with all integrity checks passing, zero empty outputs and no new strong flags in 2.17 seconds / 0.21 GiB. None is selected automatically. Resource continuation02 retained memory_limit at request RSS 4,435,804,160 bytes but preserves 153 to 183 valid checkpoints; next page 184 of 215. All old checkpoints remain unchanged. Evidence: repairs/resource-checkpoint-d120-continuation-02-20261115/post-attempt-review.json. The other two resource bodies remain distinct and unattempted.

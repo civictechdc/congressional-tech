@@ -1,6 +1,6 @@
 ---
 id: ct-n3ik
-status: in_progress
+status: closed
 deps: []
 links: [ct-a73a, ct-kfsd, ct-hz8y, ct-t4p3, ct-55qo, ct-aitp, ct-f6hr, ct-fb7k, ct-0a35, ct-en4n, ct-cbkz, ct-l3xd, ct-082q, ct-g4yz, ct-chc4]
 created: 2026-11-11T15:40:45Z
@@ -11,7 +11,7 @@ tags: [ocr, pdf_text, readings, tesseract]
 ---
 # Cheaply find failed or substantially incomplete text extraction for FTS
 
-The complete cheap screen and frozen queue pass independent acceptance: 610,216 population identities, 609,512 exactly measured current outputs, one held bad output and 114,412 ranked candidate/control rows. Private OCR quality chains now cover 165 completions; the original queue cutoff remains 105. A separate immutable v6/private165 overlay describes 292 affected bodies: 217 accepted replacements, 15 source exclusions and 60 later private results. It does not select private outputs or rewrite checkpoint 03. Independently qualified v7 adds eight further PDF pairs; its additive queue supplement and final current handoff remain. Mechanical flags rank review and are not confirmed defect counts.
+The complete cheap screen and current frozen queue pass independent acceptance. Checkpoint04 has 610,216 population identities, 609,574 exactly measured current outputs and 114,636 deduplicated review/control rows. It incorporates accepted-set-v7 and private OCR through completion 165, preserving 57 valid empties, 26 exclusions, all previous queue positions and exact prior findings. Scores rank review; they do not certify source fidelity. The separately screened 176-result private chain and later repairs require additive updates under their owning recovery/repair tickets. The frozen screen and actionable queue are complete.
 
 ## Design
 
@@ -151,3 +151,7 @@ The frozen all-screen queue remains independently accepted at checkpoint03. Disj
 **2026-11-15T07:24:33Z**
 
 Accepted-set-v6 is independently qualified: selection SHA 95fad5e005670ce150ce4d09321ff9e321f11fdfa9abd641970c8e63b037c72f; independent result SHA dbd3e66bcd9d8e66142f318e501108db20976557c02e13c254dc349dd17ef539. Evidence: repairs/accepted-text-adoption-20261114/accepted-set-v6-independent-review/. The 210 actual appended pairs are selected; fifteen exact source roles exclude seven exposed viewers while preserving thirteen linked PDFs and the alternate resolution. Main heads: body_text 4020361685539847953; readings 6816097245686786721. PR174 merged at 8965dc00e409dbdbdc6ee4e00af7418a4fc87e59 with both CI workflows successful. Wrapper helper code merge and final handoff remain separate.
+
+**2026-11-15T08:36:23Z**
+
+Closed the frozen cheap-screen and current-queue scope after independent checkpoint04 acceptance. Handoff: repairs/corpus-assessment-20261113/triage-current-20261114/final-all-screen-20261115/checkpoint-04-v7-private165/handoff.json, SHA 223d42f04769b0eb00f47434677db3f1114f82f3dcc1161d0466abe8d22dab44. Independent result SHA 09a007ccaf1476eae8ac2d1d1ed89088832ce95785061c824ea07e58a868f935 and human review are in sibling checkpoint-04-independent-root-review/. The 18-second / 0.95 GiB review compares every unchanged stored value, all 300 changed bodies, previous history and ordering, actual accepted/private keys, 57 valid empties, 26 exclusions, and measurement conservation; the wrong-digest comparison rejects. No old text or PDF payloads were reread. Known limit: character-only signals missed new crash-candidate page124 garbling, found by source reading and handled in ct-t4p3. Later completions and repairs remain additive work, not universally certified source content.
