@@ -63,7 +63,7 @@ plan and export pointer. Historical rows retain their actual version. Physical
 compaction, corpus-wide equivalence and production publication remain separate
 acceptance work.
 
-### Exclude reviewed response bodies from document-text publication
+### Exclude reviewed source bodies from document-text publication
 
 Manifest version 2 retains the same actual-key selection and qualification
 report, and requires an additional `excluded_bodies` list:
@@ -78,12 +78,27 @@ report, and requires an additional `excluded_bodies` list:
 ]
 ```
 
-Allowed roles are `error_response`, `wait_response` and `feed`. The pinned
+Allowed roles are `error_response`, `wait_response`, `feed` and `wrapper`. The pinned
 qualification report must justify each source-body classification from raw
 evidence, including quotation and ordinary-document controls. An empty reading,
 a short result or a parser failure cannot justify a body-level exclusion: a
 useful older reading may exist. This mechanism does not run a detector or
 automatically copy review-priority labels into a manifest.
+
+`wrapper` reuses the data model's existing role for a document landing or viewer
+page. Use it when direct review shows that the page supplies navigation,
+metadata or version choices and the legal text is in a linked asset. For example,
+a Congress.gov statute viewer may embed the actual law as a separate PDF while
+its completed HTML reading contains only the surrounding page. Record the exact
+reviewed HTML body SHA-256, the displayed-version/embed evidence and the advertised
+asset identity in the pinned qualification report. A page with useful complete
+inline legislative text does not qualify merely because it also links a PDF.
+
+The linked asset keeps its own body identity and accepted-reading checks. A
+wrapper exclusion neither follows the link nor selects, fetches or certifies its
+content; verify that separate body's eligible text before treating the document
+as covered. This option does not change model role detection, document/source
+relationships or the treatment of unreviewed HTML pages.
 
 The export removes only those exact bodies from document prose, including an
 otherwise accepted override. Actual-key validation still runs: exclusion cannot

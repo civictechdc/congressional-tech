@@ -69,7 +69,7 @@ def load(path, versions):
     for row in excluded:
         if (not isinstance(row, dict) or set(row) != {'body_sha256', 'source_role', 'reason'}
                 or not digest(row['body_sha256'])
-                or row['source_role'] not in {'error_response', 'wait_response', 'feed'}
+                or row['source_role'] not in {'error_response', 'wait_response', 'feed', 'wrapper'}
                 or not isinstance(row['reason'], str) or not row['reason'].strip()):
             raise ValueError('Invalid reviewed body publication exclusion')
         if row['body_sha256'] in excluded_keys:
