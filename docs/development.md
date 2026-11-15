@@ -253,7 +253,22 @@ adapter and completed-text consumer; malformed identity/length, partial-200,
 and short/extra-body controls remain refusals. All ten reader declarations,
 fixture digests and diagnostic snapshots are unchanged: this changes raw
 transport acceptance, not text interpretation. The large repaired transfer
-requires its separate bounded pilot; local checks do not establish its success.
+has a separate bounded pilot: one request retrieved all 541,845,812 stored
+bytes in 14.2 seconds at 0.637 GiB peak RSS, then a bounded local decode
+verified the 575,953,191-byte PDF and expected body SHA. That live response
+was 206; HTTP 200 acceptance remains covered by the local consumer controls.
+
+The 2026-11-15 optional geometry-error compatibility change also preserves
+declared reading versions. Error accounting discovers `NativeGeometryError`
+only when the installed shared reader exports that type. A maintained reader
+that reports the general `ExtractionError` therefore keeps its original page
+failure instead of losing it to an import error. Typed and untyped failure
+controls pass, and all ten fixed fixture digests and declared versions remain
+identical. Only the PDF/HTML/XML workspace fingerprints move. This is an
+equivalence decision for the installed reader and fixed fixtures, not a claim
+that every shared-reader version or historical source produces identical text.
+The geometry recovery's separately versioned text remains governed by its
+retained source, reader policy, page evidence and accepted selection.
 
 The isolated cleanup integration candidate pins the reproducible vendored wheel
 `spicy-docs==0.85.0+gpo.20261113`. Its receipt names the exact source commit and

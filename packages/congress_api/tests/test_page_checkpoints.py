@@ -15,6 +15,39 @@ from congress_api.parsers import body_text as derivation
 from congress_api.retention.page_checkpoints import CheckpointError, adapter, encoded
 
 
+@pytest.mark.parametrize('typed', [False, True])
+def test_page_failure_accounting_supports_optional_typed_geometry_error(monkeypatch, typed):
+    from types import SimpleNamespace
+    from spicy_docs import extraction
+
+    class GeometryError(extraction.ExtractionError):
+        reason = 'zero_area'
+
+    if typed:
+        monkeypatch.setattr(extraction, 'NativeGeometryError', GeometryError, raising=False)
+        error = GeometryError('geometry refused', details={'bbox': [1, 2, 1, 3]})
+    else:
+        monkeypatch.delattr(extraction, 'NativeGeometryError', raising=False)
+        error = extraction.ExtractionError('legacy geometry refused')
+
+    class Refuses:
+        def extract(self, page):
+            raise error
+
+    events = []
+    run = derivation._PageRun(Refuses(), 0, evidence=events.append)
+    assert run.extract(SimpleNamespace(number=7)).text == ''
+    assert run.failed == [7] and run.errors == {7: 'ExtractionError'}
+    failed = next(event for event in events if event['event'] == 'page_failed')
+    assert failed['error'] == str(error)
+    if typed:
+        assert failed['native_geometry_reason'] == 'zero_area'
+        assert failed['native_geometry_details'] == error.details
+    else:
+        assert 'native_geometry_reason' not in failed
+    assert derivation._persisted_extraction_error(ValueError('bad page')) == 'ValueError'
+
+
 RUNNER = '''
 import json, os, sys
 from pathlib import Path

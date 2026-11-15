@@ -100,10 +100,15 @@ def page_offsets(pages):
     return tuple(offsets)
 
 
+def _native_geometry_error(error):
+    """Older maintained readers report geometry with the general ExtractionError."""
+    from spicy_docs import extraction
+    return isinstance(error, getattr(extraction, 'NativeGeometryError', ()))
+
+
 def _persisted_extraction_error(error):
     """Keep the declared PDF failure family while diagnostics gain a typed reason."""
-    from spicy_docs.extraction import NativeGeometryError
-    return 'ExtractionError' if isinstance(error, NativeGeometryError) else type(error).__name__
+    return 'ExtractionError' if _native_geometry_error(error) else type(error).__name__
 
 
 def markup_text(data, parser, *, select_publisher_content=False):
@@ -307,8 +312,7 @@ class _PageRun:
             self.diagnostics[page.number] = traceback.format_exc(limit=8)
             if self.evidence:
                 event=dict(event='page_failed', page=page.number, error_type=type(error).__name__, error=str(error))
-                from spicy_docs.extraction import NativeGeometryError
-                if isinstance(error,NativeGeometryError):
+                if _native_geometry_error(error):
                     event.update(native_geometry_reason=error.reason,native_geometry_details=error.details)
                 self.evidence(event)
             return PageContent((), ())
