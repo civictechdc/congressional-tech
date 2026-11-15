@@ -11,7 +11,7 @@ tags: [congress_api, body_text, ocr]
 ---
 # Reconcile resource-failure recovery and measure memory per request
 
-The old 2,426-outcome recovery stays frozen. Its 206 remaining PDF keys continue in a separately versioned checkpointed lane under the user's 14 November authorization. The 17:52:42 UTC reboot interrupted the active attempt; unchanged supervision resumed safely, reusing 250 saved pages and processing only the remaining 27 before commit. Exact original resource-failure reconciliation and final qualified adoption remain open.
+The old 2,426-outcome recovery stays frozen. Its 206 remaining PDF keys continue in a separately versioned checkpointed lane under the user's 14 November authorization. At 05:03:52 UTC on 15 November, 106 had completed and 100 remained; integrity and quality coverage is frozen through result 105. Host-memory interruptions preserve and reuse page checkpoints and remain separate from extraction failures. Exact original resource-failure reconciliation and final qualified adoption remain open.
 
 ## Design
 
@@ -100,3 +100,7 @@ Separate checkpointed lane at source 09fdca797bc5428af7eaec9cfdfd32bb824f7fad is
 **2026-11-14T18:47:50Z**
 
 Restart evidence: ocr-checkpoint-resume-20261114/restart-20261114T182343Z/post-restart.json. Worker commit 09fdca797bc5428af7eaec9cfdfd32bb824f7fad and all 27 manifest pins are unchanged. Incomplete batch 50 remains intact; resumed body committed in batch 51. The reboot is verified, but the precise pre-reboot termination trigger is unknown. Recovered body watchdog passed at 0.972 GiB / 11.2 seconds. A frozen 56-completion screen passes structural integrity; two new garbling warnings remain unaccepted. Runtime completion does not prove source quality. At 18:43:49 UTC the separate lane had 59 completed outcomes, zero runtime errors and 147 remaining. The 56-row quality snapshot is a separate frozen prefix; later completions are outside that check.
+
+**2026-11-15T04:46:39Z**
+
+Current supervised continuation is repairs/ocr-checkpoint-resume-20261114/restart-20261115T035808Z/. A host-memory stop below the existing 4 GiB floor ended the prior supervisor; 76 saved pages were reused before recognition resumed at page 77. continue_targeted_v2.py retries only a no-commit watchdog-99 host-memory stop, at most three times with 30-second backoff and the unchanged memory admission. Six focused retry-policy checks pass. Completed outcomes 1-91 have exact-key integrity/quality screens in the original 56-body generation and two disjoint 20/15-body deltas. No empty whole output or new strong garbling signal appears in the two deltas. The earlier f6d8df26 word-fragmentation finding remains explicit and separate from runtime completion. Snapshot: 93 completed / 113 remaining at 2026-11-15T04:39:22Z; private results are not automatically selected or published.

@@ -11,7 +11,7 @@ tags: [body_text, pdf, ocr, publication]
 ---
 # Publish corrected historical PDF readings after GPO cleanup qualification
 
-Eight GPO-corrected PDF pairs are adopted and validated in the explicit selected-text manifest; six unchanged controls retain their baseline keys. The merged cleanup and 14-body/281-page source qualification are reused unchanged. Public text delivery and remaining historical cleanup exposure stay open. Search implementation belongs to the user's SereneDB work.
+Eight GPO-corrected PDF pairs are adopted and validated in the explicit selected-text manifest; six unchanged controls retain their baseline keys. Accepted-set-v4 preserves those exact selections and adds independently reviewed repairs under ct-hz8y. The merged cleanup and 14-body/281-page source qualification remain reusable. Public text delivery and remaining historical cleanup exposure stay open; search implementation belongs to the user's SereneDB work.
 
 ## Design
 
@@ -61,3 +61,7 @@ Eight actual 4d045589 correction pairs adopted with field/hash parity at text sn
 **2026-11-14T18:47:50Z**
 
 Accepted-set-v3 preserves all eight actual 4d045589 corrections and the six baseline controls, and reuses their source-qualified and payload-validated identities. Additional final-page repairs use distinct composition identities rather than restamping GPO or historical parser versions. Public search acceptance is not implied by local table consistency.
+
+**2026-11-15T04:46:39Z**
+
+The current selection is accepted-text-adoption-20261114/accepted-set-v4/selection.json, SHA 0f5bfec953b7c0e0f85d92b437da3e8e4c6245e7f4c5542efac8391deb10479d. The independent delta review proves all 956 earlier overrides unchanged and all earlier native manifest references retained. Do not repeat the GPO control reviews solely because 26 unrelated empty-output repairs were appended. ct-n3ik is completing the exact-current-key corruption screen/exposure queue before selecting another bounded historical cleanup batch.

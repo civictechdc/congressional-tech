@@ -11,15 +11,15 @@ tags: [body_text, pdf, ocr, geometry]
 ---
 # Qualify PDF geometry repairs using native text or selective OCR
 
-The frozen inventory contains 208 bodies with 1,350 failed-page records. Direct source and numerical review covers four bodies and six failed pages; the other 204 bodies / 1,344 pages remain cause-unresolved. The old generic outside-page error does not establish their actual geometry or source quality.
+The frozen inventory contains 208 bodies with 1,350 failed-page records. Direct source and numerical review covers four bodies and six failed pages; the other 204 bodies / 1,344 pages remain cause-unresolved. The old generic outside-page error does not establish their actual geometry or source quality. Targeted OCR and reviewed refetch were authorized on 14 November; the original paused run remains frozen.
 
-SpicyDocs PR28 merged an explicit native plain-text inspection option for finite, ordered zero-area bounds wholly inside the page. Strict defaults remain. The c848 letter and 156 biography recover useful native text but retain split words and omitted graphic text/signatures; d128 and 924 also have damaged source structure/fonts. None is an accepted replacement. CT has not adopted the native option. OCR remains paused and publisher refetch deferred.
+SpicyDocs PR28 merged an explicit native plain-text inspection option for finite, ordered zero-area bounds wholly inside the page. Strict defaults remain. The c848 letter and 156 biography recover useful native text but retain split words and omitted graphic text/signatures; d128 and 924 also have damaged source structure/fonts. None is an accepted replacement. CT has not adopted the native option. Any new candidate uses the separately authorized targeted lane and retains its exact source, policy, intermediate and final identities.
 
 ## Design
 
 Preserve the original source, native refusal, numerical geometry and candidate text. Distinguish zero-area spans, genuinely external text, crop/rotation, invisible spans and damaged source bytes. Inspect a maintained native representation where applicable before proposing page-specific recognition. A geometry repair or structurally valid rewrite must not imply complete or accurate text.
 
-Reuse the shared reader's explicit reason-specific policies and existing render/recognizer path. Keep native inspection, actual CT consumer qualification, declared-version compatibility and accepted selection separate. Recognition requires an explicit human resume; a generic assistant continue/resume does not lift the pause.
+Reuse the shared reader's explicit reason-specific policies and existing render/recognizer path. Keep native inspection, actual CT consumer qualification, declared-version compatibility and accepted selection separate. The 14 November explicit user authorization permits targeted recognition and reviewed refetch; it does not justify repeating OCR for the whole corpus or resuming the old frozen worker.
 
 ## Acceptance Criteria
 
@@ -79,3 +79,7 @@ Root independently viewed c848's PESA letter page 1 and 15611e's Linsey Haram bi
 **2026-11-14T12:31:10Z**
 
 Five-step follow-through: use ct-n3ik impact/priority to choose the next bounded native-only geometry work and preserve exact source/intermediate/candidate identities. ct-0a35 will check accepted text through search. Do not repeat all source scans or promote every geometry refusal to an OCR task; OCR remains paused and missing-source refetch deferred. Current unknown geometry/source causes remain explicit.
+
+**2026-11-15T04:46:39Z**
+
+Updated the current authorization text to the user's explicit 14 November instruction allowing asynchronous targeted OCR/refetch; historical pause notes remain preserved. No new geometry source qualification is claimed by the 26 unrelated one-page repairs. The remaining 204-body/1,344-page cause inventory still needs actual numerical/source evidence and selective consumer qualification.

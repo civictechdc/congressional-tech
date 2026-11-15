@@ -11,7 +11,7 @@ tags: [body_text, pdf, ocr, routing]
 ---
 # Route incomplete native PDF layers and vector-only writing to OCR
 
-Selective composition now repairs five formerly empty one-page PDFs (S002, S010, S016, S027 and S029) and the reviewed page-140 bibliography. All seven repaired body versions, including the two strip-edge page corrections, are adopted in the local tables; accepted-set-v3 selects their actual identities. Two other empty PDFs are legitimate photographs. The difficult VFW page, 217-page whitespace-only body and earlier Q/S coverage cases remain open; partial source and OCR limits are explicit.
+All 26 newly confirmed empty-output omissions now have source-reviewed useful text and are selected in accepted-set-v4, alongside the five earlier one-page repairs and page-140 bibliography. The frozen 83-empty cohort is fully explained: 26 repaired and 57 legitimate empty results. Maintained native-reader comparison confirms a separate fragmented-word problem; two OCR settings still omit different lines on its page 739. The VFW page, 217-page whitespace-only body and named Q/S coverage cases remain open; form, table and map limits stay attached to actual selected versions.
 
 ## Design
 
@@ -58,3 +58,7 @@ Groq Qwen was tested once on the difficult 228ddad5 page105 with the recovered s
 **2026-11-14T18:51:48Z**
 
 Next bounded repair target: f6d8df26 page 1 loses normal whole-word search because its native output splits FOREIGN OPERATIONS and other words into letters before CT cleanup. Compare maintained alternate native extraction on that exact retained page before considering recognition; qualify unchanged ordinary text and the localized letter-spacing case on 5e3f6444 page 1602 as controls. The 1,301 flagged f6 slots nominate broader evaluation but do not establish a source-reviewed whole-body replacement.
+
+**2026-11-15T04:46:39Z**
+
+Direct Terra medium review read all 45 unresolved one-page PDF originals and their actual empty outputs: 26 omitted visible writing, 18 contained images without prose and one was blank. Thirty-two tiny XML files were directly read as ASX media playlists. The 26 PDF candidates reused maintained SpicyDocs NativeOrOcr (25 OCR calls, one native-only result); one map required maintained NativeWithRegions to restore the full legend including 'Not Destroyed'. Actual new intermediaries and final outputs were read directly. The 26 actual pairs (36,529 UTF-8 bytes) are adopted and selected in accepted-set-v4; independent review edc9fa09fc686eea5ac1bcab88183ff8952ef7d8b4f7de6170eaa7a02a4fed8e checks all 52 native files and preserves checkbox/table/column/map qualifications. Evidence: corpus-assessment-20261113/triage-current-20261114/{empty77,empty26-candidates,map-legend-region-20261115}. Separately, ocr-checkpoint-resume-20261114/native-word-spacing-probe-20261114 compares maintained native readers on f6d8df26 pages 1/739/1476 and a 5e3f6444 control. Both native readers fragment words; exact-page OCR repairs page 1 usefully, but both three-band and one-band page739 candidates omit real passages in recognition itself. Neither partial page739 candidate is a complete repair or adopted whole-body replacement.

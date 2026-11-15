@@ -2,7 +2,7 @@
 id: ct-n3ik
 status: in_progress
 deps: []
-links: [ct-a73a, ct-kfsd, ct-hz8y, ct-t4p3, ct-55qo, ct-aitp, ct-f6hr, ct-fb7k, ct-0a35, ct-en4n, ct-cbkz, ct-l3xd]
+links: [ct-a73a, ct-kfsd, ct-hz8y, ct-t4p3, ct-55qo, ct-aitp, ct-f6hr, ct-fb7k, ct-0a35, ct-en4n, ct-cbkz, ct-l3xd, ct-082q, ct-g4yz, ct-chc4]
 created: 2026-11-11T15:40:45Z
 type: feature
 priority: 2
@@ -11,7 +11,7 @@ tags: [ocr, pdf_text, readings, tesseract]
 ---
 # Cheaply find failed or substantially incomplete text extraction for FTS
 
-The cheap corpus screen reuses 296,690 PDF feature rows and completed markup outcomes. Accepted-set-v3 validates 311,721 release-associated text bodies and 956 actual overrides. Five previously empty PDFs now contain source-reviewed text; 83 selected empty outputs remain, including six known playlist/photographic roles and 77 unresolved sources. A separate 56-body OCR screen found one severe native-word-spacing case and one localized searchable limitation in direct two-page review. Scores remain review priorities.
+The cheap corpus screen now covers all 310,928 completed markup outputs and 296,690 current PDF outputs, with exact identity checks passing. Accepted-set-v4 repairs all 26 confirmed omissions in the frozen 83-empty cohort; its other 57 results are valid empties. Final queue integration binds those current keys, the first 105 private OCR results and direct source dispositions. Independent final review and targeted PDF diagnosis remain open. Mechanical flags prioritize review; they are not confirmed failures.
 
 ## Design
 
@@ -25,7 +25,7 @@ ct-hz8y owns native/vector repair, ct-kfsd cleanup exposure/publication, ct-cbkz
 
 ## Current exception queue and remaining work
 
-The metadata-only checkpoint queue combines existing PDF feature rankings, actual reparse/recovery outcomes and bounded response-role observations from ct-fb7k/ct-en4n. The final markup refresh is complete without another whole-corpus payload scan. Broader non-PDF garbling and source-role coverage remain explicit gaps. Join exact source/reading/output identities; expose selected-document effects with a named release, retaining unknown or stale exposure explicitly. The 400 response examples are annotations on existing bodies, not additional corpus counts.
+The metadata-only checkpoint queue combines existing PDF feature rankings, actual reparse/recovery outcomes and bounded response-role observations from ct-fb7k/ct-en4n. A justified additional pass now measures the previously absent corruption signals across all completed markup outputs; the corresponding current-PDF pass is running. Reuse the old quantity measurements and completed pilot rows. Full-screen integration, current-selection exposure and source-role qualification remain explicit gaps. Join exact source/reading/output identities; expose selected-document effects with a named release, retaining unknown or stale exposure explicitly. The 400 response examples are annotations on existing bodies, not additional corpus counts.
 
 For each candidate record the reason, observation basis, FTS impact, priority, page or text locator, least-cost remedy, required evidence and owning ticket. Use the existing review bands, with missing evidence separate from observed defects. Prioritize search-visible missing content and substantial omissions ahead of low-impact formatting. Keep ordinary short/blank/photo/metadata/feed controls usable according to their role.
 
@@ -131,3 +131,15 @@ Current accepted-set-v1 metadata validation finds 311,716 eligible selected bodi
 **2026-11-14T18:47:49Z**
 
 The incremental screen read only 56 newly completed private outputs: all exact reading/text keys, hashes, byte counts, UTF-8 page boundaries and sorted OCR arrays pass across 27,514 slots; no whole output is empty. Reused feature code and maintained text_quality report 53 ambiguous, two strong and one no-obvious-failure result in 18 seconds at 0.27 GiB RSS. f6d8df26 has widespread single-letter splitting; 5e3f6444 has one flagged slot 1602. Terra then read the exact raw/native/final chains: f6 page 1 has broken word boundaries before cleanup; 5e page 1602 remains largely searchable with one letter-spaced source line. Other pages remain unreviewed. Both private readings remain outside the accepted manifest. Evidence: ocr-checkpoint-resume-20261114/quality-screen-20261114/. The prior 11,387 no-selected-reading cases include 8,442 WARC, 1,470 HTML, 613 PDF, 386 DOCX, 126 Word, 259 ZIP, 68 ARC, 19 images, two WMV and two plain-text bodies; this is format reconciliation, not 11,387 OCR failures.
+
+**2026-11-15T04:46:39Z**
+
+Full markup screen: repairs/corpus-assessment-20261113/markup-quality-screen-20261115/{complete-summary.json,handoff.json}; 310,928 exact keys / 11,800,377,840 UTF-8 bytes, 19m37.5s, 0.434 GiB RSS. Bands: 268,339 no obvious failure, 37,626 weak and 4,963 first review. First-review reasons include 3,760 no-searchable-token outputs, 61 severe mechanical signals and 1,142 template candidates (572 known output identities plus 570 narrow text patterns). These are candidate counts, not failures or selected-document counts. candidate-annotations-v2 corrects an ambiguous selected=false annotation to selected=null and selection_changed=false without changing measurements; actual selection must be joined independently. A separate 1,790-key pass covers 1,767 WARC outputs and 23 selected markup overrides. Its sole strong selected-markup flag was directly checked against raw HTML: intentional A-M table columns and spaced CONTENTS, so it is a bounded false alarm, not a reason to weaken the rule globally. All 26 new v4 repair keys pass the exact-key delta screen. The 296,690-key current PDF payload pass is still running. Finish one deduplicated queue with current keys, explicit legitimate empties, source exclusions, private OCR deltas and known hard cases; keep source fidelity and search exposure distinct.
+
+**2026-11-15T05:06:59Z**
+
+The exact v4/release join gives zero unhidden release associations or exact release-selected text keys among 1,142 template candidates, and eight among 61 severe mechanical candidates. All unassociated candidates remain inventoried for future whole-corpus consumption. Root directly read raw/current-output contexts for all 13 long-letter runs in the eight exposed bodies: six cases have benign spaced headings, the VA table uses defined l markers plus an explicit source-symbol limitation, and the Congress.gov bill has a benign spaced heading but separate confirmed quick-search member-option pollution. That actual defect is ct-g4yz, now assigned for a narrow maintained-reader fix. Full source and historical intermediary coverage is not claimed. Frozen review: triage-current-20261114/markup-exposed8-review-packets-20261115/root-review-handoff.json; report SHA28eb7f435a8351d435259679db8d276f7056a1bf2d8c7670b3bce08acb872e53. Preserve observations and actual-key scope rather than changing the global threshold. Private OCR integrity/quality now has a frozen105-key chain; its disjoint14-key delta adds12.06MB/7,103slots with no empty or strong-garbling output.
+
+**2026-11-15T05:11:10Z**
+
+Full PDF corruption screen completed: 296,690 exact current outputs / 18,758,528,526 UTF-8 bytes, 41m26s, 0.726 GiB peak. All key, digest, byte and page-map checks pass; 20 exact pilot rows were reused. Of 1,530 severe candidates, 1,424 have only a long single-letter run, 104 only private-use character density, and two both. Preserve mechanical bands and rank density or widespread fragmentation above isolated typography; these are not defect counts. Evidence: corpus-assessment-20261113/current-pdf-quality-screen-20261115/{complete-summary.json,signal-distribution.json}; full manifest SHA 5cd64f709eace5aa0ef2828c49a7c4552bbc9cfe5b862e47edfba5f221535bfb. PR #172 merged at 298b93ffa654138bf06ab16d1ed1879e36fed691 after both CI workflows passed; the optimization preserves scores and policy. Final all-screen queue integration now binds current v4, the private 105-result cutoff, root markup dispositions and source limits. A gpt-6.1-terra medium reviewer is assigned a bounded new PDF density sample; do not generalize it to all 106 density candidates.

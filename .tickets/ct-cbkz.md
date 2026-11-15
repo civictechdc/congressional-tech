@@ -2,7 +2,7 @@
 id: ct-cbkz
 status: in_progress
 deps: [ct-55qo, ct-tpwm]
-links: [ct-chc4, ct-m704, ct-f6hr, ct-0a35, ct-n3ik, ct-tpwm, ct-l47f, ct-6v77]
+links: [ct-chc4, ct-m704, ct-f6hr, ct-0a35, ct-n3ik, ct-tpwm, ct-l47f, ct-6v77, ct-082q, ct-g4yz]
 created: 2026-11-12T15:38:26Z
 type: task
 priority: 2
@@ -12,7 +12,7 @@ tags: [congress_api, body_text, spicy-docs, html, xml, post-wave-6]
 ---
 # Finish the HTML/XML reparse and adopt qualified text
 
-The complete 310,964-body HTML/XML cohort is processed and locally adopted: 310,928 completed texts, 35 retained refusals and one dedicated valid feed. All 310,963 reading rows are reconciled. Seventeen repaired and six useful older markup readings are retained and selected at actual versions. Current selected-key validation passes; public export and downstream search delivery remain separate.
+The complete 310,964-body HTML/XML cohort is processed and locally adopted: 310,928 completed texts, 35 retained refusals and one dedicated valid feed. All 310,963 reading rows are reconciled. Seventeen repaired and six useful older markup readings remain selected at actual versions. The complete text corruption screen has finished; its source-role candidates still need current-selection/exposure reconciliation under ct-n3ik. Accepted data handoff and downstream delivery remain separate.
 
 ## Design
 
@@ -124,3 +124,11 @@ Local adoption finished and verified. Markup receipt SHA 470dd9a144d88959498be26
 **2026-11-14T18:47:50Z**
 
 The obsolete 76,361-reading append remainder is resolved by merged PR #169 and final exact reconciliation. Accepted-set-v3 preserves the same qualified markup baseline versions, 17 repair exceptions, 6 older usable keys and 11 reviewed source exclusions as v1. Existing raw/intermediary/output qualification and exact append receipts are reused; no markup reread was necessary. The user owns SereneDB search.
+
+**2026-11-15T04:46:39Z**
+
+All 310,928 ordinary completed markup outputs now have the previously missing whole-text corruption measurements, with exact reading/output identity and digest checks. The 23 selected markup alternatives are measured separately rather than inheriting the current failed-attempt conclusion. No extra markup reparse was needed. Screen scope, reasons and remaining selected-exposure review are under repairs/corpus-assessment-20261113/markup-quality-screen-20261115/handoff.json and ct-n3ik. Accepted-set-v4 leaves the previous markup selections unchanged; no new public search or standalone full-text export is claimed.
+
+**2026-11-15T05:06:59Z**
+
+The full markup screen's release-exposed strong warnings received direct bounded source/output review. Their long-letter triggers are source typography or table markers, with a source-symbol limitation retained. One separate concrete issue remains: Congress.gov quick-search member dropdown content pollutes a bill's selected plain text. New ct-g4yz owns a narrow content-selection repair using maintained readers and exact publisher/source evidence. The complete prior reparse/adoption remains credited; do not repeat that entire cohort for the affected subset.

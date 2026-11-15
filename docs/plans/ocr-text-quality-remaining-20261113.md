@@ -1,17 +1,28 @@
-# Remaining OCR and text-quality work — updated 14 November 2026
+# Remaining OCR and text-quality work — updated 15 November 2026 UTC
 
 The GPO cleanup and optional diagnostic evidence are merged in [PR #151](https://github.com/civictechdc/congressional-tech/pull/151), commit `2cef1dbde71f842d527b6a9cfb8893ff8c16dc25`. All ten CI checks passed. Bounded integration covered 14 archived PDFs / 281 pages through the real CT consumer; independent source review approved that scope. Corrected historical text has not yet been published.
 
-The current goal is useful full-text search (FTS): cheaply find failed, empty,
-badly garbled or substantially incomplete extraction, then repair selected
-cases. Perfect transcription and an LLM review of every document are not
-required. On 14 November the user authorized targeted OCR and publisher refetch
-to continue asynchronously. The old run stays frozen; its 206 remaining PDF
-keys run in a separate current-policy recovery lane with durable page
-checkpoints. At 18:43:49 UTC, 59 had completed with no runtime errors and 147
-remained. After the Mac rebooted, the unchanged runner reused 250 saved pages
-and processed only the interrupted PDF's remaining 27 pages. Refetch uses reviewed unresolved targets and preserves every new
-response. Any bulk manual PDF/page audit uses `gpt-6.1-terra` with medium reasoning.
+The remaining work is to finish selective retries, reconcile one current repair
+queue, repair the confirmed navigation-text leak and qualify difficult PDF cases.
+The HTML/XML reparse and local adoption are complete. Full corruption screens
+now cover both completed markup and the selected current PDF outputs.
+All 26 confirmed omissions in the frozen 83-empty-result cohort now have
+source-reviewed useful text; its other 57 results are legitimate empties.
+Accepted-set-v4 passes independent stored-row and selection review. These
+results establish the named scope, not complete source fidelity across the corpus.
+
+The goal is useful full-text search (FTS): cheaply find failed, empty, badly
+garbled or substantially incomplete extraction, then repair selected cases.
+Perfect transcription and an LLM review of every document are not required.
+On 14 November the user authorized targeted OCR and publisher refetch to
+continue asynchronously. The old run stays frozen; its 206 remaining PDF keys
+run in a separate current-policy lane with durable page checkpoints. At
+05:03:52 UTC on 15 November, 106 had completed and 100 remained. A host-memory
+stop preserved 76 page checkpoints, which the unchanged worker reused before
+recognition resumed at page 77. Bounded supervision retries only no-commit
+host-memory stops under the same memory admission. These are separate from
+extraction failures. Refetch preserves every new response. Any bulk manual
+PDF/page audit uses `gpt-6.1-terra` with medium reasoning.
 
 The user owns text search through SereneDB. This task checks the text tables for
 internal consistency and useful source content, and reports omissions, garbage
@@ -32,7 +43,8 @@ that its small consumer proof establishes the SereneDB integration.
 | Incomplete native layers and vector text | [ct-hz8y](../../.tickets/ct-hz8y.md) | Source-qualified page coverage and selective routing remain; existing cheap signals can miss charts and bullets. |
 | Native geometry failures | [ct-yy07](../../.tickets/ct-yy07.md) | Reconciled 208 affected bodies / 1,350 failed-page records. Numeric source evidence now covers four bodies / six pages; 204 bodies / 1,344 pages remain unresolved. Typed diagnostics preserve original geometry; replacement text still requires qualification. |
 | Page-local recognizer crashes | [ct-t4p3](../../.tickets/ct-t4p3.md) | Qualify alternate settings on the exact failing page; shared checkpoints belong to ct-aitp. |
-| Cheap extraction-failure screen | [ct-n3ik](../../.tickets/ct-n3ik.md) | Reused features cover 296,690 PDF bodies / 8,143,043 recorded slots. The final markup refresh has 45,106 candidate/control rows, including 1,182 priority 0–2 rows. Broader non-PDF signals remain. Scores rank review; they do not certify text. |
+| Cheap extraction-failure screen | [ct-n3ik](../../.tickets/ct-n3ik.md) | Complete screens cover 310,928 markup and 296,690 PDF outputs, reusing earlier quantity/page features. Exact current-selection/exposure reconciliation and independent final queue review remain. Scores rank review; they do not certify text. |
+| Congress.gov navigation in bill text | [ct-g4yz](../../.tickets/ct-g4yz.md) | Direct source/output review confirms unrelated quick-search member options in one selected bill rendition. A narrow publisher-wrapper candidate reuses the maintained reader; affected scope, independent source review and actual adoption remain. |
 | HTML/XML reparse and adoption | [ct-cbkz](../../.tickets/ct-cbkz.md), upstream `ss-mkxe` | Reparse and exact local adoption are complete: 310,928 texts, 310,963 readings and one separately handled valid feed. All 35 refusals and older outcomes survive. Accepted data handoff remains. |
 | HTML encoding and XML subsets | [ct-f6hr](../../.tickets/ct-f6hr.md) | Closed: shared helper and CT PR #168 are merged with passing CI; all 35 refusals have source dispositions and the seventeen actual repair pairs are adopted and selected. Public delivery remains ct-cbkz. |
 | Document/feed/error/landing roles and capture history | [ct-en4n](../../.tickets/ct-en4n.md), [ct-fb7k](../../.tickets/ct-fb7k.md) | House error detection merged in CT PR #165 after all ten checks passed. Explicit reviewed source-body exclusions merged in PR #167 after independent native review and a real two-error/one-control export replay. Broader eligibility adoption and capture history remain. |
@@ -62,21 +74,34 @@ selected, with page 140 of 3a21a04f now repaired at a distinct actual key. The
 217-slot ee7ad6da output remains held: its 216 newline bytes omit visible prose.
 Three useful candidate pages do not qualify a whole-body replacement.
 
-Five formerly empty baseline PDFs now contain reviewed text: the S002 and S016
-biographies, the S010 mine-plan title and legend, and S027/S029 amendments. The
-reviewers read the originals, actual recognition observations and final text.
-Small map labels, some word splits and imperfect header/URL recognition remain
-explicit. Two other inspected empty PDFs, S021 and S026, contain photographs
-without readable document prose. No recognition ran on those two controls.
+The five earlier one-page repairs remain selected: S002/S016 biographies,
+S010's mine-plan title and legend, and S027/S029 amendments. The remaining
+77 unknown empty sources have now all been read directly: 45 one-page PDFs and
+32 tiny ASX media playlists. The PDFs contain 26 omitted texts, 18 images
+without readable prose and one blank page. Adding the prior six valid empties
+fully explains the frozen 83-body cohort: 26 repairs and 57 legitimate empties.
+
+The new candidates reused maintained SpicyDocs native/OCR strategies. One
+amendment recovered through the native path; 25 pages needed recognition.
+The full-page map candidate lost a substantive negation and was rejected.
+A maintained regional read recovered its complete legend, including **Not
+Destroyed**, plus the title and date. Terra medium reviews cover every actual
+source, new intermediate and final output. Historical intermediaries of the
+old empty readings remain unavailable. Checkbox placement, table associations,
+column order and small map labels retain explicit limits: the recovered words
+are useful for search, not exact structured interpretation.
 
 The current local handoff is
-`accepted-text-adoption-20261114/accepted-set-v3/`. Its manifest has **956 actual
+`accepted-text-adoption-20261114/accepted-set-v4/`. Its manifest has **982 actual
 overrides** and eleven source exclusions. The selected release has **311,721
 text bodies**, each with an exact completed reading, with no duplicate selected
 body or completed selection missing text in the checked set. The unchanged
-prior checks are reused by exact identity and append-only ancestry; the changed
-actual payloads pass native selection validation, including planted wrong-digest
-rejection. Historical tables retain older readings and response text; consumers
+prior checks are reused by exact identity and append-only ancestry. Independent
+review read all 52 new native files and every field, checked four append-only
+transitions, and proved that all 956 prior overrides remain unchanged. The
+26 new pairs contain 36,529 UTF-8 bytes and pass native selection validation,
+including planted wrong-digest rejection. Historical tables retain older
+readings and response text; consumers
 must use the explicit selection and exclusions. No standalone full-text export
 or public search deployment is claimed.
 
@@ -85,10 +110,11 @@ Another **11,869** non-excluded saved bodies have no selected text: 276 errors,
 The last group includes 8,442 WARC, 1,470 HTML, 613 PDF, 386 DOCX, 126 Word,
 259 ZIP, 68 ARC, 19 image, two WMV and two plain-text bodies. It is a mixed
 eligibility/custody/processing inventory, not 11,387 OCR failures. The selected
-set still has **83 empty outputs**: six known playlist/photographic roles and
-77 sources needing review. The earlier 494 strong and 38,560 ambiguous signals
-remain retained priorities; changing a selected version requires rebinding its
-old flag rather than silently carrying its semantic conclusion forward.
+set now has **57 empty outputs**, all source-reviewed as valid within the frozen
+83-body cohort. The 11,869 missing selections describe this accepted version,
+not the current private retry lane. Earlier mechanical signals remain retained
+observations; changing a selected version requires rebinding its old flag rather
+than silently carrying its semantic conclusion forward.
 
 A separate incremental screen of **56 completed background OCR results** checked
 59,876,306 UTF-8 text bytes and 27,514 page slots in 18 seconds at 0.27 GiB RSS.
@@ -97,11 +123,62 @@ pass; no whole output is empty. It reuses the existing feature function and
 maintained quality measures. Two strong word-spacing warnings received a direct
 two-page review: f6d8df26 page 1 has broken word boundaries already in native
 text; 5e3f6444 page 1602 remains mostly searchable with one letter-spaced line.
-Only those two pages were source-reviewed. The other 1,300 flagged f6 slots are
-measurements, not independently confirmed defects. The next bounded repair
-compares a maintained alternate native reader on f6 page 1 before considering
-recognition; the localized 5e case remains a useful control. These private results are
-outside the accepted selection except for the separately qualified dbaa repair.
+Three disjoint incremental checks extend this to the first **105 completed
+private results**, including exact hashes, page maps and recognition markers.
+The 20-, 15- and 14-body deltas add 15.50, 15.22 and 12.06 MB respectively,
+with no empty whole outputs or new strong garbling signal. New completions
+need their own delta; the frozen queue cutoff is distinct from live progress.
+
+The maintained alternate native reader also fragments f6 words. Direct source
+review now covers f6 pages 1, 739 and its valid blank back cover, plus the
+localized 5e control. Targeted OCR repairs page 1 usefully. Three-band and
+one-band page-739 candidates omit different real lines already absent from
+recognition observations; neither is a complete repair. Other flagged pages
+remain measurements, not independently confirmed defects. These private results
+are outside the accepted selection except for the separately qualified dbaa
+repair. Do not infer that a reader switch or whole-body OCR will solve this case.
+
+The full markup screen measured **310,928 actual outputs / 11.800 GB UTF-8** in
+19m37.5s at 0.434 GiB peak RSS. It found 268,339 outputs with no obvious failure,
+37,626 weak flags and 4,963 first-review flags. The latter include 3,760 outputs
+without searchable tokens, 61 severe mechanical signals and 1,142 template
+candidates. These are candidate counts, not confirmed defects or selected
+document counts. The corrected candidate handoff leaves selection unknown until
+the actual-key join; a no-mutation annotation is not an exposure fact.
+
+A separate 1,790-key screen covers 1,767 WARC outputs and 23 selected markup
+alternatives. Its single strong selected-markup flag was directly checked in
+raw HTML and actual output: intentional A-M table columns and a spaced CONTENTS
+heading. Preserve that bounded false-alarm disposition and the mechanical
+observation. No global threshold was weakened. All 26 new v4 keys pass their
+small exact-key delta screen.
+
+The PDF corruption pass is complete: **296,690 exact outputs / 18.759 GB
+UTF-8**, in 41m26s at 0.726 GiB peak RSS. Identity, digest, byte and page-map
+checks pass. Its 1,530 severe candidates include 1,424 triggered only by a long
+single-letter run, 104 only by private-use character density, and two by both.
+Keep isolated typography separate from widespread font/word damage in ranking.
+The pass adds the signal missing from the old quantity features; it did not
+reread raw PDFs or repeat OCR. A bounded Terra medium source-page review is
+being assigned to the highest-impact novel density cases. Whole-corpus queue
+integration remains open.
+
+The exact markup exposure join finds eight selected, release-associated severe
+candidates and zero release-associated template candidates. Root read the raw
+and actual output contexts for all 13 long-letter runs in those eight cases:
+they are deliberate heading typography or table availability marks. One source
+also contains undefined table symbols, which remain a limitation. A separate
+real defect emerged in the Congress.gov case: quick-search member choices
+pollute its bill text. ct-g4yz owns that fix. Preserve all 1,142 unassociated
+template candidates in the corpus inventory; release absence does not establish
+their safety for another consumer.
+
+[PR #172](https://github.com/civictechdc/congressional-tech/pull/172) merged at
+`298b93ffa654138bf06ab16d1ed1879e36fed691` with both CI workflows passing. Its
+counter implementation preserves existing scores and policy; bounded paired
+measurements show a 3.16x faster counter kernel. Do not apply that ratio to an
+unmeasured whole job. The source pins and independent equivalence evidence
+remain with the completed screen artifacts.
 
 The difficult VFW page 105 remains unresolved. Both 200- and 400-DPI Vision
 candidates omit substantial text. A single Groq `qwen/qwen3.8-27b` image request
@@ -120,10 +197,10 @@ does not certify useful text.
 1. Resume only the 206 remaining targeted PDF keys in a separate checkpointed lane. The frozen worker lacks page checkpoints, so restarting it would lose page work again on interruption. The maintained unlimited-size recovery policy has actual PDF version `e7af136c37deb9d3bab5a3e9f3d4c79a4f5b38bd8b8f820aba5ec175672826dc`, derived from ordinary policy `4d045589…`; neither may be used to restamp old `d6250c3c…` results. Use measured worker admission and preserve original pause receipts.
 2. Reuse the frozen completed markup run. The normal lane finished at 14:50:05 UTC on 14 November: 310,528 completed and 35 refusals. Adding the separate 400-key lane gives 310,928 completed readings; the remaining inventory key is the valid dedicated feed. The run took 3h 6m 37.5s at 1.433 GiB peak RSS and produced 11,800,377,840 UTF-8 text bytes / 3,854,160,110 staged Parquet bytes. These are operational outcomes, not whole-corpus semantic acceptance. Bounded local adoption subsequently appended and verified all text and reading rows; no accepted selection followed automatically.
 3. Diagnose only residual failures. Preserve useful prior text at its actual old key. The new spicy-docs helper creates explicitly unqualified, hash-bound encoding/entity candidates; it never silently changes the default reader. Missing endings, error responses and external/recursive entity requests remain explicit refusals. Reuse existing raw/intermediate/output reviews and read new tail cases directly.
-4. Local catalog adoption is complete. PR #166 bounded incoming payloads and PR #169 bounded stored-key membership under the same 512 MiB engine pool. All markup rows plus 920 old recovery PDF pairs, eight corrected PDF pairs and seventeen markup repair pairs have exact readback. Six useful older markup pairs remain unchanged. Seven subsequent page compositions add seven pairs with exact field readback. Current snapshots are text `2493839356716256545` and readings `4465624561954249591`; prior and new append ancestry preserve every earlier row. Root independently verified the earlier 125-receipt chain, and separate reviewers checked the later bounded appends. Keep historical refusals and one selected actual version per body/parser, without restamping.
-5. Use the final exception queue, which took 1.515 seconds at 0.91 GiB peak RSS with metadata only and includes all 2,632 recovery targets and all 400 examples. Its 206 pending rows describe the old recovery snapshot; current dispatch authorization is separate. Four missing late PDF feature rows were added using 4,394,643 retained text bytes in 0.301 seconds at 0.116 GiB; all prior feature files were reused. Weak blank-page signals nominate review and do not prove failure.
+4. Local adoption of the qualified markup and selected PDF repairs is complete. PR #166 bounded incoming payloads and PR #169 bounded stored-key membership under the same 512 MiB engine pool. All markup rows plus 920 old recovery PDF pairs, eight corrected PDF pairs and seventeen markup repair pairs have exact readback. Six useful older markup pairs remain unchanged. Seven earlier page compositions and the 26 new empty-result repairs retain exact field readback. Current snapshots are text `7650959729846423291` (931,618 historical rows) and readings `1644797720107093254` (1,572,098 historical rows). Append ancestry preserves every earlier row. These historical counts are not selected-document counts. Keep historical refusals and one selected actual version per body/parser, without restamping.
+5. Finish the current queue under `corpus-assessment-20261113/triage-current-20261114/`. Its 56,489-row checkpoint is explicitly not final: join complete screen results to actual v4 and release keys, add new private OCR deltas, preserve 57 legitimate empties and reviewed false alarms, and keep outdated versions as history. The frozen population has 610,216 body identities. Reuse prior quantity features and the exact 400 example identities; examples are annotations, not additional corpus bodies. Independently review the final deduplicated queue and state any unassessed inputs. Weak blank-page signals nominate review and do not prove failure.
 6. Adopt explicit reviewed search eligibility before publication. Manifest version 2 excludes exact reviewed error/wait/feed bodies from document prose while retaining actual keys, completed evidence and full saved-body coverage. It refuses empty/unassessed roles, and exclusion cannot hide a wrong accepted digest. The real T001/T002 responses disappear from a private export while the ordinary M005 meeting control remains byte-identical. No hosted index has changed.
-7. Keep the table's consistency, missing outcomes and useful-text evidence explicit. Search integration and deployment belong to the user's SereneDB work. Continue repairing identified bad PDF pages/bodies, reuse checkpoints and retained intermediates, and run authorized targeted OCR/refetch under separate supervision. The tested Groq candidate remains rejected; source-qualified Vision page repairs are adopted at their actual composition versions.
+7. Keep the table's consistency, missing outcomes and useful-text evidence explicit. Search integration and deployment belong to the user's SereneDB work. Continue repairing identified bad PDF pages/bodies, reuse checkpoints and retained intermediates, and run authorized targeted OCR/refetch under separate supervision. The tested Groq candidate remains rejected; source-qualified Vision page repairs are adopted at their actual composition versions. The small `accepted-set-v4/body_text.parquet` is the 26-row validation delta, not a full accepted-text export. Hand off the catalog pins, actual selection and quality records together.
 
 Operational completion and source completeness remain separate. Preserve valid empty results, old refusals and recovery evidence. Carry forward only readings proved unaffected, and declare semantic changes rather than restamping old rows. New recovery results carry their actual new policy version.
 
