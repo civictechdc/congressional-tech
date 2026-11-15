@@ -106,15 +106,39 @@ def _persisted_extraction_error(error):
     return 'ExtractionError' if isinstance(error, NativeGeometryError) else type(error).__name__
 
 
-def markup_text(data, parser):
-    """``html_text``/``xml_text``: spicy-docs' markup reader, ``<pre>`` layout kept; one page."""
+def markup_text(data, parser, *, select_publisher_content=False):
+    """Read markup with spicy-docs; publisher selection is a separately versioned opt-in."""
     from spicy_docs.extraction.body_text import rendition_text
+    selection = None
+    selection_evidence = None
+    rendition = None
+    if select_publisher_content:
+        if parser != 'html_text':
+            raise ValueError('Publisher content selection requires html_text')
+        from congress_api.parsers.congress_bill_content import select_congress_bill_content
+        selection = select_congress_bill_content(data)
+        selection_evidence = None if selection is None else dict(selection.evidence)
+        if selection is not None and selection.body is not None:
+            try:
+                rendition = rendition_text(selection.body, rendition='uslm')
+                if not rendition.text.strip():
+                    rendition = None
+                    selection_evidence.update(outcome='fallback', reason='empty_selected_bill')
+            except (ValueError, UnicodeError, RecursionError):
+                selection_evidence.update(outcome='fallback', reason='unreadable_selected_bill')
     try:
-        rendition = rendition_text(data, rendition=MARKUP_RENDITIONS[parser])
+        if rendition is None:
+            rendition = rendition_text(data, rendition=MARKUP_RENDITIONS[parser])
     except (ValueError, UnicodeError, RecursionError) as error:  # BodyTextError and MarkupReadError are ValueErrors
-        return Reading('error', type(error).__name__, diagnostic=traceback.format_exc(limit=8))
+        error_fields = {} if selection_evidence is None else dict(
+            source_sha256=hashlib.sha256(data).hexdigest(),
+            content_selection=json.dumps(selection_evidence, sort_keys=True, separators=(',', ':')))
+        return Reading('error', type(error).__name__, fields=error_fields, diagnostic=traceback.format_exc(limit=8))
     fields = dict(page_count=1, source_sha256=hashlib.sha256(data).hexdigest(),
                   markup_cleanup=json.dumps(asdict(rendition.record), sort_keys=True, separators=(',', ':')))
+    if selection_evidence is not None:
+        selection_evidence['output_rendition'] = rendition.rendition
+        fields['content_selection'] = json.dumps(selection_evidence, sort_keys=True, separators=(',', ':'))
     for name in ('source_encoding', 'encoding_basis'):
         value = getattr(rendition.record, name, None)
         if value is not None: fields[name] = value

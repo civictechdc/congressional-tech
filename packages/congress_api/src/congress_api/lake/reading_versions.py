@@ -49,3 +49,9 @@ MARKUP_RECOVERY_VERSIONS = {
     'html_text': 'ef4745f48e0432dd21ae960621589e5d1a1404d2e90f0b35c0618b4b10673a42',
     'xml_text': 'e11e19e1f5ed946e0fda9259e549ca76dd5488ab2070e85f5624e9e4e9849f27',
 }
+
+# Opt-in completed HTML repairs; ordinary HTML/WARC and encoding recovery keep
+# their existing versions until a qualified affected set is selectively adopted.
+HTML_CONTENT_SELECTION_BASE_VERSION = 'f1cefe442182dc8e4c456359aebdb37e5c50db6b0abb669b303e05763feb94a3'
+HTML_CONTENT_SELECTION_DECLARATION = 'body_text html_text publisher selection 2026-11-15: opt-in congress-gov-embedded-uslm-bill/001 over original bytes; preserve ordinary html_text f1cefe442182dc8e4c456359aebdb37e5c50db6b0abb669b303e05763feb94a3 unless one HTTPS Congress.gov bill text canonical and one balanced xml#billTextUslm.generated-html-container identify exactly one complete UTF-8 bill in the GPO USLM namespace; retain exact original byte span and selected SHA-256; render that fragment through the unchanged spicy-docs uslm derivation 007+ctreaders.20261113; preserve all bill sections, signatures and in-wrapper form content; missing, ambiguous, unqualified, unreadable or empty selected content falls back to the complete ordinary HTML rendition with a reason when the marker was present; no generic form deletion, network or OCR; original body identity, one page, 64 MiB input bound; distinct version for reviewed selective adoption, no ordinary reader or WARC activation'
+HTML_CONTENT_SELECTION_VERSION = 'f202ef5f2850f835cd4a1c6bb227dba2908457f0e385bf27aec668e2f4da88bb'
