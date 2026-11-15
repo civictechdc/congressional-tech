@@ -11,7 +11,7 @@ tags: [body_text, pdf, ocr, routing]
 ---
 # Route incomplete native PDF layers and vector-only writing to OCR
 
-Accepted-set-v7 independently selects six further PDF repairs covering 22 source-reviewed Q005/Q007/Q009/Q010/S167/S188 pages, including all ten S167 pages. It preserves the earlier 26 repaired/57 legitimate literal-empty results, fourteen formerly unsearchable pages and 52 font-corrupt pages. Q009 page 37 uses actual retained Groq/Qwen evidence, page 47 uses Vision, and the other 47 pages remain byte-identical. The adapter passes 37 focused tests and awaits PR #176 merge. S188's Cherokee-script sidebar and named table/chart/ordering/signature gaps remain explicit. The fragmented-word body, VFW page and 217-page whitespace-only body still need selective work.
+Accepted-set-v8 preserves the six PDF repairs covering 22 source-reviewed Q005/Q007/Q009/Q010/S167/S188 pages, including all ten S167 pages, plus the earlier 26 repaired/57 legitimate literal-empty results, fourteen formerly unsearchable pages and 52 font-corrupt pages. Q009 page 37 uses actual Groq/Qwen evidence, page 47 uses Vision, and its other 47 pages remain byte-identical. The provider adapter passes 37 focused tests and merged in PR #176 with passing CI. S188 Cherokee-script and named table/chart/ordering/signature gaps remain explicit. The fragmented-word body, VFW page and 217-page whitespace-only body still need selective work; the latter has three useful source-reviewed page candidates and a checkpointed whole-body plan in preparation.
 
 ## Design
 

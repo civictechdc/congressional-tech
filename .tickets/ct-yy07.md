@@ -11,7 +11,7 @@ tags: [body_text, pdf, ocr, geometry]
 ---
 # Qualify PDF geometry repairs using native text or selective OCR
 
-Two independently reviewed native replays are selected in v7; two damaged controls are unassociated. The remaining 204 exposed bodies have 1,344 historical failed-page records. Exact native inspection now identifies finite in-page zero-width spans on twelve failed pages in eight bodies; the maintained explicit plain-text option returns text on all twelve. Independent raw/intermediate/output reading covers those twelve plus six control pages: sixteen have useful FTS, while a graphic slide and a footer-only page yield empty native text. Named graphic, normalization and table limits remain; complete body replacements are not yet qualified. Another 1,332 failed-page records remain uninspected: 1,325 in the other 196 bodies and seven additional bedacc pages within this first-eight set.
+Two independently reviewed native replays remain selected; two damaged controls are unassociated. The remaining 204 exposed bodies have 1,344 historical failed-page records. All 41 physical pages in the first eight bodies are now directly source-read, and all nineteen failed pages have actual finite in-page zero-width refusals followed by maintained explicit plain-text returns. Useful native text, footer names and table/layout limits are preserved. Seven missing graphic/heading pages have completed nine bounded recognition calls and pass independent source/intermediary/output review; complete-body assembly and adoption remain. The other 196 bodies / 1,325 failed-page records still need the native census. Its per-body adapter passed exact parity on all 41 retained pages in one second at 0.088 GiB RSS, with eight source hashes and sixteen PDF opens.
 
 SpicyDocs PR28 merged an explicit native plain-text inspection option for finite, ordered zero-area bounds wholly inside the page. Strict defaults remain. The c848 letter and 156 biography recover useful native text but retain split words and omitted graphic text/signatures; d128 and 924 also have damaged source structure/fonts. The two useful candidates are accepted at explicit retained-native-replay versions. CT has not adopted the native option as its default reader. Any new candidate uses the separately authorized targeted lane and retains its exact source, policy, intermediate and final identities.
 
@@ -95,3 +95,11 @@ Frozen geometry-native-eight-20261115 inspection acquired eight exact retained o
 **2026-11-15T08:44:02Z**
 
 Count clarification: the 1,332 uninspected failed-page records comprise 1,325 in the other 196 bodies and seven additional bedacc pages (4, 11, 12, 15, 18, 19, 21) in the first-eight set. The retained inventory confirms ten bedacc failures; only pages 1, 16 and 22 were inspected. Pinned earlier evidence stays unchanged and receives a separate erratum.
+
+**2026-11-15T09:22:13Z**
+
+The first eight-source review covers every physical page, including the seven additional bedacc failures. Exact native parity: repairs/geometry-runners-20261115/parity/result.json; 41 pages, 60 native attempts, 2,478,875 source bytes hashed, sixteen PDF opens and no OCR. Seven graphic candidates subsequently used nine actual recognition calls at 0.439 GiB peak RSS; the 344-second wrapper duration includes waiting for the shared one-body lock and is not recognition timing. Actual rasters/observations/finals are under graphics/. Independent semantic review and complete-body staging remain. The remaining census is exactly 196 bodies / 1,325 failed pages, with no default-policy change.
+
+**2026-11-15T09:24:53Z**
+
+Independent Terra review now qualifies all seven exact graphic candidates as useful FTS improvements. Missing slide labels and Medicare headings are restored in source order; map/chart/table limitations remain explicit. Exact evidence: repairs/geometry-runners-20261115/graphics/independent-review/{review.md,pins.json}. Eight-body complete pairs are being assembled from these candidates and the retained source-reviewed native pages; no new selection follows automatically.
