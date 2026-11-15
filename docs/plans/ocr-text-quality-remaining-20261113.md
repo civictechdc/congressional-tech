@@ -90,7 +90,7 @@ holds in the 83 selected refusals or the distinct nineteen memory failures.
 | Corrected historical GPO text | [ct-kfsd](../../.tickets/ct-kfsd.md) | Eight corrected pairs and six unchanged controls are qualified and adopted. Carry their exact associations and limits into the final handoff. |
 | HTML/XML adoption | [ct-cbkz](../../.tickets/ct-cbkz.md) | 310,928 completed texts and 310,963 readings are adopted. All 35 original refusals survive; one valid feed is handled separately. |
 | Source roles and history | [ct-en4n](../../.tickets/ct-en4n.md), [ct-fb7k](../../.tickets/ct-fb7k.md) | Preserve reviewed error/wait/feed/wrapper exclusions and the broader missing-format inventory. |
-| Publisher refetch | [ct-z4w5](../../.tickets/ct-z4w5.md) | Mahoney is selected in v11; preserve the better existing bill reading. Mast needs maintained receipt ingestion and an explicit document association. Cornwell remains HTTP 200 with zero bytes. The 49 damaged-source targets have a concrete refetch proposal requiring current eligibility and exact target scope. |
+| Publisher refetch | [ct-z4w5](../../.tickets/ct-z4w5.md) | Mahoney is selected in v11; preserve the better existing bill reading. Mast needs maintained receipt ingestion and an explicit document association. Cornwell remains HTTP 200 with zero bytes. All 47 dispatched damaged-source refetches returned the same invalid bodies; two retained alternatives need revision review. The current invalid-source inventory keeps those failures open. |
 | Consistent-text handoff | [ct-m704](../../.tickets/ct-m704.md) | V11, Q5a and the one-row Q5b Mahoney update pass independent review. Deliver them together, applying the exact state replacement and preserving the population boundary; the small validation deltas are not a full text export. |
 | Source-to-search acceptance | [ct-0a35](../../.tickets/ct-0a35.md) | The user owns SereneDB integration. No hosted search acceptance follows from local text qualification. |
 
@@ -184,11 +184,16 @@ stored identities. Forty-two are shorter than their declared linearized length,
 six end inside streams without recoverable trailers, and one has a zero-filled
 tail. All fail qpdf structural checks; their capture `complete=True` flag does
 not establish PDF completeness or where the damage originated. Two have selected
-same-URL alternatives requiring revision comparison. The refetch proposal keeps
-49 primary URLs and all 52 observed spellings; 47 primary URLs fall outside the
-pinned release's static patterns, so current eligibility and exact target scope
-must be resolved before dispatch. One target needs a specific 32 MiB bound.
-Evidence: `repairs/zero-page-cause-inventory-20261115/`.
+GovInfo alternatives requiring document/revision comparison. The other 47 were
+actually refetched under separate reviewed exact-target policies; all returned
+HTTP 200 with complete transfers and byte-identical damaged originals. They
+remain unresolved, and these endpoints currently serve the same damaged copies.
+Four apparent alternatives decode to three already-damaged bodies. The corrected
+URL count is 51 requested URLs, 54 final URLs and a union of 56 observed URLs
+across requested/final/original/recovered fields; the earlier 52 count included
+null and did not cover every field. The 49 primary targets are unchanged.
+Evidence: `repairs/zero-page-cause-inventory-20261115/` and
+`repairs/zero-page-refetch-preparation-20261115/`.
 
 VFW page 105 remains held: Vision and Groq trials omitted or invented prose.
 For damaged ZIP-code collections a558/e51, macOS PDFKit could not open either
@@ -216,6 +221,24 @@ Evidence: `repairs/refetch-three-adoption-planning-20261115/` and
 `repairs/mahoney-adoption-20261115/`.
 
 ## Quality inventory and finish sequence
+
+The [current invalid-source inventory manifest](ocr-source-recovery-inventory.json)
+links the durable source-recovery worklist. It consolidates 451 known invalid
+source records: 56 damaged PDF bodies, one empty response and 394 error responses.
+The short bill is covered by its verified selected replacement; 450 records stay
+open. Of those, 56 PDF/empty-response cases retain a source-recovery requirement,
+including the two pending alternate comparisons. The 394 error responses need
+requested-URL and existing-recovery reconciliation; they are not 394 ready fetch
+requests or additional released documents. All 49 damaged zero-page originals
+remain open after the 47 unsuccessful refetches. Each actual attempt retains its
+receipt, timestamp, returned hash and failure reason.
+
+HTTP success, transfer completion and repeated invalid bytes do not remove a
+record from the recovery worklist. Close it only with a reviewed usable
+replacement or explicitly accepted scoped coverage and the intended document
+association. Preserve invalid originals and useful partial text. This metadata
+update runs no OCR or acquisition, changes no selected reading and does not
+rewrite the frozen Q5 generation. Owners remain ct-en4n and ct-z4w5.
 
 Cheap screening [ct-n3ik](../../.tickets/ct-n3ik.md) is closed at its frozen Q4
 scope. The additive Q5 generation keeps 610,216 assessed bodies and 114,636

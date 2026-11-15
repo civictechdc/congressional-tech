@@ -6,6 +6,22 @@ A recovered file is not imported because a script downloaded it. Each command wr
 
 Library code for assembly, transfer, and the write guards is in [`packages/corpus_recovery`](../../packages/corpus_recovery/README.md). Run these commands from the repository root with the locked environment.
 
+## Known invalid sources
+
+Before planning follow-up recovery, read the [current invalid-source inventory
+manifest](../../docs/plans/ocr-source-recovery-inventory.json). It points to the
+durable per-source worklist, evidence and latest fetch outcomes. Keep rows with
+`recovery_open=true` in follow-up planning even when capture history says HTTP
+200, `complete=true` or `outcome=stored`. Those fields describe the transfer;
+they do not establish that the requested document was recovered.
+
+Resolve missing URL/history mappings and review existing alternatives first.
+Use the normal capture scope and resource checks for each new request, with
+backoff for repeated failures. Close an invalid-source record only after a usable
+replacement or explicitly accepted scoped coverage is linked to the intended
+document/revision. Preserve the original and every failed attempt. This worklist
+does not itself dispatch requests or change the automatic scheduler.
+
 ## Order of work
 
 1. **`prepare_corpus_recovery_batch.py`** copies one recovery result into a new local batch. It checks body hashes and sizes, ZIP membership, and deferred URLs that must stay out. It does not upload. Use a new destination for each checkpoint. Do not overwrite a batch you already sealed.
