@@ -3,115 +3,22 @@
 Native/final differences preserve order, multiplicity and original character
 spans. They nominate review, including legitimate cleanup, never a defect verdict.
 """
-from difflib import SequenceMatcher
-from functools import cache
 from hashlib import sha256
-import re
-import unicodedata
+
+from spicy_docs.extraction.quality import (
+    MAX_COMPARE_CHARS as MAX_COMPARE_CHARS,
+    MAX_COMPARE_TOKENS as MAX_COMPARE_TOKENS,
+    MAX_TOKEN_PRODUCT as MAX_TOKEN_PRODUCT,
+    compare_intermediate as compare_intermediate,
+    text_corruption_measures as text_corruption_measures,
+)
 
 from congress_api.parsers.response_roles import assess_response
 
 POLICY_VERSION = 'ct-text-quality-measures-v2'
 FEATURE_VERSION = 'pdf-page-features-20261113-1'
 MAX_TEXT_BYTES = 256 << 10
-MAX_COMPARE_CHARS = 64 << 10
-MAX_COMPARE_TOKENS = 2048
-MAX_TOKEN_PRODUCT = 1_000_000
-_QUOTE_SHAPES = str.maketrans({'“': '"', '”': '"', '‘': "'", '’': "'"})
 _KEY = ('body_sha256', 'parser', 'parser_version', 'text_sha256')
-
-
-def _tokens(text):
-    spans = []
-    start = 0
-    def word(c):
-        return c.isalnum() or c == '_' or unicodedata.category(c).startswith('M')
-    while start < len(text):
-        if text[start].isspace():
-            start += 1
-            continue
-        end = start+1
-        if word(text[start]):
-            while end < len(text) and word(text[end]):
-                end += 1
-        spans.append((unicodedata.normalize('NFC', text[start:end]).translate(_QUOTE_SHAPES).casefold(), start, end))
-        start = end
-    return spans
-
-
-def compare_intermediate(before, after):
-    """Bounded ordered alignment; ranges index original Unicode characters."""
-    if before is None:
-        return {'status': 'missing_intermediate', 'changes': []}
-    if not before.strip():
-        return {'status': 'empty_intermediate_no_cleanup_inference', 'changes': []}
-    if max(len(before), len(after)) > MAX_COMPARE_CHARS:
-        return {'status': 'unassessed_character_budget', 'changes': []}
-    left, right = _tokens(before), _tokens(after)
-    if max(len(left), len(right)) > MAX_COMPARE_TOKENS or len(left) * len(right) > MAX_TOKEN_PRODUCT:
-        return {'status': 'unassessed_token_budget', 'changes': [],
-                'intermediate_tokens': len(left), 'output_tokens': len(right)}
-    removed_content = removed_symbols = inserted = matched = 0
-    changes = []
-    for operation, a, b, c, d in SequenceMatcher(
-            None, [t[0] for t in left], [t[0] for t in right], autojunk=False).get_opcodes():
-        if operation == 'equal':
-            matched += b-a
-            continue
-        start = left[a][1] if a < len(left) else len(before)
-        end = left[b-1][2] if b > a else start
-        out_start = right[c][1] if c < len(right) else len(after)
-        out_end = right[d-1][2] if d > c else out_start
-        content = sum(any(ch.isalnum() for ch in t[0]) for t in left[a:b])
-        removed_content += content
-        removed_symbols += b-a-content
-        inserted += d-c
-        changes.append({'operation': operation, 'intermediate_char_range': [start, end],
-                        'output_char_range': [out_start, out_end],
-                        'intermediate_slice': before[start:end], 'output_slice': after[out_start:out_end],
-                        'removed_content_tokens': content, 'removed_symbol_tokens': b-a-content})
-    return {'status': 'measured', 'intermediate_tokens': len(left), 'output_tokens': len(right),
-            'ordered_retained_token_fraction': matched/len(left) if left else None,
-            'removed_content_tokens': removed_content, 'removed_symbol_tokens': removed_symbols,
-            'inserted_tokens': inserted, 'intermediate_nonspace_chars': sum(not c.isspace() for c in before),
-            'output_nonspace_chars': sum(not c.isspace() for c in after), 'changes': changes}
-
-
-@cache
-def _corruption_patterns():
-    # Keep the existing Unicode-name definition, including its exclusions, and
-    # use this interpreter's Unicode database. Compile once instead of asking
-    # for a Unicode name for every letter in every retained document.
-    letters = [chr(code) for code in range(0x110000)
-               if chr(code).isalpha() and unicodedata.name(chr(code), '').startswith('LATIN ')]
-    latin = '[' + ''.join(letters) + ']'
-    return (re.compile(r'(?<!\w)' + latin + r'+(?!\w)'),
-            re.compile(r'(?<!\w)' + latin + r'(?!\w)'),
-            re.compile(r'(?<!\w)' + latin + r'(?:\s+' + latin + r'(?!\w)){1,}'))
-
-
-_NON_ALNUM = re.compile(r'[\W_]')
-_NONSPACE_CONTROL = re.compile(r'[\x00-\x08\x0e-\x1b\x7f-\x84\x86-\x9f]')
-_PRIVATE_USE = re.compile('[\ue000-\uf8ff\U000f0000-\U000ffffd\U00100000-\U0010fffd]')
-_WHITESPACE = re.compile(r'\s+')
-
-
-def text_corruption_measures(text):
-    """Script-aware mechanical anomalies; plausible wrong words/values can pass."""
-    words, single, runs = _corruption_patterns()
-    latin_count = words.subn('', text)[1]
-    singles = single.subn('', text)[1]
-    longest = max((len(_WHITESPACE.sub('', match.group())) for match in runs.finditer(text)),
-                  default=int(singles > 0))
-    return {'status': 'measured', 'unicode_characters': len(text),
-            'alphanumeric_characters': len(text) - _NON_ALNUM.subn('', text)[1],
-            'replacement_characters': text.count('\ufffd'),
-            'nonwhitespace_control_characters': _NONSPACE_CONTROL.subn('', text)[1],
-            'private_use_characters': _PRIVATE_USE.subn('', text)[1],
-            'latin_word_tokens': latin_count, 'latin_single_letter_tokens': singles,
-            'latin_single_letter_fraction': singles/latin_count if latin_count else None,
-            'longest_latin_single_letter_run': longest,
-            'source_fidelity': 'unknown_text_only'}
 
 
 def coverage_measures(feature, slot=None):

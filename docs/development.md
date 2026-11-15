@@ -355,6 +355,24 @@ and unqualified even if their XML is well formed. A missing ending is a source
 gap; closing tags cannot recover its words. See the exact per-ticket direct
 reviews in the retained `coordination/ocr-offline-ticket-matrix-20261113.md`.
 
+The shared quality backport pins `spicy-docs==0.85.0+sourcequality.20261115`,
+source `c7d6ded0ff246dad7737c82fe9760e190e456e6a`. Its wheel receipt verifies
+reproducible bytes and every package member: it adds shared response-role and
+text-measurement modules and extends the shared PDF-byte and error-page helpers.
+Existing extraction, markup, OCR and recovery members remain byte-identical to
+the prior CT wheel. CT imports the shared measurements and retains its qualified
+HTML/XML response policy alias; the new PDF observations have a separate version.
+
+The maintainer retains all reading versions. Exact replay preserves the roles,
+reasons and evidence of 411 retained HTML/XML bodies and the five existing
+quality-consumer cases. Every reading fixture digest and declared version
+matches the pre-change snapshot. Only the locked SpicyDocs identity and its
+reported package version change in `model/reading-version-diagnostics.json`.
+The retained receipt directory is
+`<main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/shared-source-quality-20261115/`.
+This bounded equivalence decision reuses earlier manual source reviews; it
+does not certify unread corpus content or trigger recomputation.
+
 The lake keys reading rows by body digest, parser, and the declared version in
 `congress_api.lake.reading_versions`. The combined unreadable-decision version
 also depends on the four leaf versions and the combined worker limits.
