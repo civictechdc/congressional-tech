@@ -363,6 +363,33 @@ sniff compatibility entry and predicate entries until retained-table
 comparisons establish that their selected rows, refusals, and pending work
 are preserved.
 
+The Congress.gov embedded-bill selector (ct-g4yz) is a separate opt-in candidate:
+`markup_text(body, 'html_text', select_publisher_content=True)`. It selects the
+exact original USLM bill bytes only when the page has one canonical Congress.gov
+bill URL and one explicit `xml#billTextUslm.generated-html-container`. SpicyDocs
+reads that fragment as USLM, retaining the complete bill and any in-bill form
+text. Missing or unqualified wrappers use the ordinary complete HTML reader;
+empty or unreadable selected fragments also fall back. Selection evidence gives
+the policy, byte span, fragment digest and outcome, or a fallback reason when
+the marker was present. An ordinary-reader failure remains an error.
+
+The candidate uses `HTML_CONTENT_SELECTION_VERSION`, distinct from ordinary
+`READING_VERSIONS['html_text']`. Default HTML, WARC and reviewed encoding
+recovery keep their existing versions and behavior. No worker, scheduled job or
+selection is activated by this opt-in. Qualify exact affected keys and review
+source, selected fragment and final text before selective adoption; retain the
+previous actual rows. The initial source-backed fixture establishes one complete
+bill. It does not establish corpus-wide eligibility, general article selection,
+or preservation of substantive content outside other publishers' wrappers.
+
+The 2026-11-15 ct-g4yz equivalence decision retains ordinary reader versions:
+selection defaults off, the three ordinary body-text fixture digests match,
+the authentic Congress.gov default reproduces its retained prior text digest,
+and focused HTML, XML, WARC and reviewed-recovery checks pass. The refreshed
+diagnostic changes only the shared source fingerprint. Changed opt-in semantics
+have their own declaration and version; this is not equivalence for selected
+candidate output or a corpus-wide review.
+
 The historical `--old-lock` attestation reconstructs a byte-derived version.
 Run it from the pre-declaration source revision that owns that proof. The
 committed compatibility entries retain their evidence and selection behavior.
