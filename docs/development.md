@@ -390,6 +390,36 @@ diagnostic changes only the shared source fingerprint. Changed opt-in semantics
 have their own declaration and version; this is not equivalence for selected
 candidate output or a corpus-wide review.
 
+The additional ct-g4yz policy is explicitly requested with
+`select_publisher_content='congress-gov-legislative-wrappers/002'` and uses
+`HTML_LEGISLATIVE_SELECTION_VERSION`. `True` still requests the original policy.
+The new policy recognizes the observed Congress.gov House bill/resolution,
+House joint/concurrent resolution and Senate concurrent resolution canonical
+text paths. It selects one complete visible USLM `bill`/`pLaw`,
+`div.generated-html-container`, or `pre#billTextContainer`. SpicyDocs' index
+reader qualifies the canonical head; its shared events provide exact wrapper
+coordinates without requiring the publisher's generated HTML to close every
+paragraph. The shared XML reader validates the complete USLM root. The existing
+USLM/HTML consumers render these source slices without a new normalizer or
+generic form deletion.
+
+All selected fragments retain source coordinates and hashes. Unqualified,
+ambiguous, incomplete or empty selections use the original full HTML reader;
+candidate staging preserves their existing actual keys. An embedded PDF or
+challenge page does not become recovered legislative text through selection.
+The retained 226-source URL cohort bounds the candidate run; it does not cover
+HTML bodies without source-URL metadata or other publishers. The four complete
+short legislative fixtures and declared contexts from the large preformatted
+bill provide source review, not a manual review of every candidate. Root review
+and explicit selective adoption remain separate from extraction.
+
+The additional 2026-11-15 equivalence decision preserves ordinary HTML, XML,
+PDF, WARC and encoding-recovery versions. Default selection remains off, the
+original embedded-bill meaning remains unchanged, and focused derivation,
+recovery and both selector tests cover those consumers. Only the shared source
+fingerprints change in diagnostics; the new opt-in meaning has its own declared
+version. No active worker, model pin or accepted selection is changed here.
+
 The historical `--old-lock` attestation reconstructs a byte-derived version.
 Run it from the pre-declaration source revision that owns that proof. The
 committed compatibility entries retain their evidence and selection behavior.

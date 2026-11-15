@@ -1,0 +1,133 @@
+
+[Congressional Bills 110th Congress]
+[From the U.S. Government Publishing Office]
+[H.R. 3916 Introduced in House (IH)]
+
+
+
+
+
+
+
+110th CONGRESS
+  1st Session
+                                H. R. 3916
+
+  To provide for the next generation of border and maritime security
+                             technologies.
+
+
+_______________________________________________________________________
+
+
+                    IN THE HOUSE OF REPRESENTATIVES
+
+                            October 22, 2007
+
+Mr. Hall of Texas (for himself, Mr. Bartlett of Maryland, Mr. Bilbray,
+    Mr. Broun of Georgia, Mr. Burgess, Mr. Conaway, Mr. Feeney, Mr.
+Gingrey, Mr. Gordon of Tennessee, Mr. Inglis of South Carolina, Mr. Sam
+Johnson of Texas, Mr. McCaul of Texas, Mrs. Myrick, Mr. Neugebauer, Mr.
+   Sensenbrenner, Mr. Sessions, Mr. Smith of Nebraska, Mr. Wu, Mrs.
+  Biggert, and Mr. Lampson) introduced the following bill; which was
+referred to the Committee on Homeland Security, and in addition to the
+ Committee on Science and Technology, for a period to be subsequently
+   determined by the Speaker, in each case for consideration of such
+ provisions as fall within the jurisdiction of the committee concerned
+
+_______________________________________________________________________
+
+                                 A BILL
+
+
+
+  To provide for the next generation of border and maritime security
+                             technologies.
+
+    Be it enacted by the Senate and House of Representatives of the
+United States of America in Congress assembled,
+
+SECTION 1. ENSURING RESEARCH ACTIVITIES OF THE DEPARTMENT OF HOMELAND
+              SECURITY INCLUDE APPROPRIATE CONCEPTS OF OPERATION.
+
+    The Under Secretary for Science and Technology of the Department of
+Homeland Security (in this Act referred to as the "Under Secretary")
+shall ensure that any Federal Government interagency or intra-agency
+agreement to develop and transition new technology explicitly
+characterizes the requirements, expected use, and concept of operations
+for that technology, including--
+            (1) the manpower needed to effectively operate the
+        technology;
+            (2) the expected training requirements; and
+            (3) the expected operations and maintenance costs.
+
+SEC. 2. REAUTHORIZATION OF HOMELAND SECURITY SCIENCE AND TECHNOLOGY
+              ADVISORY COMMITTEE.
+
+    Section 311(j) of the Homeland Security Act of 2002 (6 U.S.C.
+191(j)) is amended by striking "on December 31, 2008" and inserting
+"on December 31, 2012".
+
+SEC. 3. REPORT ON BASIC RESEARCH NEEDS FOR BORDER/MARITIME SECURITY.
+
+    Not later than 3 months after the date of enactment of this Act,
+the Under Secretary shall enter into an arrangement with the National
+Research Council for an assessment of the basic science research needs
+in the border and maritime security domain. The assessment shall
+include consideration of--
+            (1) detection, tracking, and identification technologies;
+            (2) personal protective equipment;
+            (3) anticounterfeit technologies; and
+            (4) advanced screening technologies at ports of entry.
+
+SEC. 4. INCORPORATING UNMANNED AERIAL VEHICLES INTO BORDER/MARITIME
+              AIRSPACE.
+
+    (a) Research and Development.--The Secretary of Homeland Security
+and the Director of the Joint Planning and Development Office shall
+research and develop technologies to permit routine operation of
+unmanned aerial vehicles within the national airspace for border and
+maritime security missions without any degradation of existing levels
+of safety for all national airspace system users.
+    (b) Pilot Projects.--The Secretary shall coordinate with the
+Administrator of the Federal Aviation Administration to enter into
+pilot projects in sparsely populated, low-density Class G air traffic
+airspace to conduct experiments and collect data in order to accelerate
+the safe integration of unmanned aircraft systems into the national
+airspace system.
+
+SEC. 5. ESTABLISHING A RESEARCH PROGRAM IN TUNNEL DETECTION.
+
+    (a) Research and Development.--The Under Secretary shall research
+and develop technologies to permit detection of near surface voids,
+such as tunnels, with an emphasis on technologies with real time
+capability.
+    (b) Coordination.--The Secretary of Homeland Security shall
+coordinate with other appropriate Federal agencies, including the
+Department of Defense, and ensure the integration of activities under
+subsection (a) with relevant efforts of such other agencies and the
+Department of Homeland Security's Centers of Excellence Program.
+
+SEC. 6. RESEARCH IN ANTICOUNTERFEIT TECHNOLOGIES.
+
+    (a) Establishment of Program.--The Under Secretary and the Director
+of the National Institute of Standards and Technology shall establish a
+joint research and development program on anticounterfeit technologies
+and standards. The program may include development of counterfeit-
+resistant documentation, counterfeit-resistant devices, document
+validation technologies, and document identification standards.
+    (b) Coordination.--In carrying out the program in subsection (a),
+the Under Secretary or his designee shall coordinate with other Federal
+agencies engaged in similar activities, including Immigration and
+Customs Enforcement, the Department of State, the Department of
+Defense, and the Department of Justice.
+    (c) Report to Congress.--Not later than 12 months after the date of
+enactment of this Act, the Under Secretary and the Director of the
+National Institute of Standards and Technology shall provide to the
+Committee on Homeland Security and the Committee on Science and
+Technology of the House of Representatives, and the Committee on
+Homeland Security and Government Affairs of the Senate, a report
+detailing the actions taken by the Under Secretary and the Director
+under this section.
+                                 <all>
+

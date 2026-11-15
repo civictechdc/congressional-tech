@@ -116,16 +116,24 @@ def markup_text(data, parser, *, select_publisher_content=False):
         if parser != 'html_text':
             raise ValueError('Publisher content selection requires html_text')
         from congress_api.parsers.congress_bill_content import select_congress_bill_content
-        selection = select_congress_bill_content(data)
+        from congress_api.parsers.congress_legislative_content import POLICY, select_congress_legislative_content
+        if select_publisher_content is True:
+            selection = select_congress_bill_content(data)
+        elif select_publisher_content == POLICY:
+            selection = select_congress_legislative_content(data)
+        else:
+            raise ValueError('Unknown publisher content selection policy')
         selection_evidence = None if selection is None else dict(selection.evidence)
         if selection is not None and selection.body is not None:
             try:
-                rendition = rendition_text(selection.body, rendition='uslm')
+                rendition = rendition_text(selection.body, rendition=selection.evidence['rendition'])
                 if not rendition.text.strip():
                     rendition = None
-                    selection_evidence.update(outcome='fallback', reason='empty_selected_bill')
+                    selection_evidence.update(outcome='fallback', reason=(
+                        'empty_selected_bill' if select_publisher_content is True else 'empty_selected_content'))
             except (ValueError, UnicodeError, RecursionError):
-                selection_evidence.update(outcome='fallback', reason='unreadable_selected_bill')
+                selection_evidence.update(outcome='fallback', reason=(
+                    'unreadable_selected_bill' if select_publisher_content is True else 'unreadable_selected_content'))
     try:
         if rendition is None:
             rendition = rendition_text(data, rendition=MARKUP_RENDITIONS[parser])
