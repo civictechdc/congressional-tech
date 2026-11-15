@@ -11,7 +11,7 @@ tags: [body_text, pdf, ocr, routing]
 ---
 # Route incomplete native PDF layers and vector-only writing to OCR
 
-Accepted-set-v8 preserves the six PDF repairs covering 22 source-reviewed Q005/Q007/Q009/Q010/S167/S188 pages, including all ten S167 pages, plus the earlier 26 repaired/57 legitimate literal-empty results, fourteen formerly unsearchable pages and 52 font-corrupt pages. Q009 page 37 uses actual Groq/Qwen evidence, page 47 uses Vision, and its other 47 pages remain byte-identical. The provider adapter passes 37 focused tests and merged in PR #176 with passing CI. S188 Cherokee-script and named table/chart/ordering/signature gaps remain explicit. The fragmented-word body, VFW page and 217-page whitespace-only body still need selective work; the latter has three useful source-reviewed page candidates and a checkpointed whole-body plan in preparation.
+Accepted-set-v9 preserves the earlier source-qualified repairs and now selects the complete 217-page ee7ad6da replacement. Five source pages are directly reviewed; the other 212 are manually unread with minor joined-word limits recorded. The 1,476-page f6d8df26 candidate completed using maintained native_inhibit_spaces: 1,465 native reads and eleven unchanged OCR results, with no new OCR or rendering. Terra reviewed nineteen source pages, confirmed all eight retained empty exceptions, and found useful searchable words with named defects. Native characters are preserved, strong fragmentation flags disappear and prior normalized alphanumeric sequences survive on every page. Stage/adoption and final finishing dispositions remain. VFW page 105 and the named handwriting cases remain held.
 
 ## Design
 
@@ -74,3 +74,7 @@ Accepted-set-v7 independently passed after eight actual PDF pairs were appended:
 **2026-11-15T07:55:50Z**
 
 Acceptance wording now follows the user's practical FTS requirement: useful searchable prose and labels, with named numeric/table/script/signature limits. It does not require perfect structured transcription. Substantial missing or invented passages still fail review; the prior rejected map negation and Groq invention evidence remains.
+
+**2026-11-15T10:52:31Z**
+
+f6 evidence: repairs/ocr-checkpoint-resume-20261114/native-spacing-repair-20261115/. Actual candidate version 829114fe1f30609a05353467fd62ae9132cf0262923602303f6b17727bb63aa1, text SHA 9928a8d507330201b1f86f986e052b230f156531aba61aa9eb2ea4600df0e7de, 4,206,117 UTF-8 bytes. Run: 49 seconds / 0.665 GiB peak RSS. Independent review/pins cover nineteen exact source/intermediary/final pages; seven newly reviewed empties are visibly blank, with p1476 already source-proven blank. The no-final-GPO policy produces 419 non-whitespace final differences: 169 are strict additions and 250 include punctuation/format substitutions. All 1,476 prior NFKC letters/digits sequences remain subsequences of actual candidate pages, with zero exceptions; this is preservation evidence, not source accuracy or word-boundary certification. Useful sampled prose retains minor source-layer spelling, TABLE OFC ENTS, date and table-order defects. Shared option PR32 remains separate from CT candidate adoption.

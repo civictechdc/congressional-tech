@@ -11,7 +11,7 @@ tags: [ocr, pdf_text, readings, tesseract]
 ---
 # Cheaply find failed or substantially incomplete text extraction for FTS
 
-The complete cheap screen and current frozen queue pass independent acceptance. Checkpoint04 has 610,216 population identities, 609,574 exactly measured current outputs and 114,636 deduplicated review/control rows. It incorporates accepted-set-v7 and private OCR through completion 165, preserving 57 valid empties, 26 exclusions, all previous queue positions and exact prior findings. Scores rank review; they do not certify source fidelity. The separately screened 176-result private chain and later repairs require additive updates under their owning recovery/repair tickets. The frozen screen and actionable queue are complete.
+The complete cheap screen and frozen queue pass independent acceptance. Checkpoint04 has 610,216 population identities, 609,574 exactly measured current outputs and 114,636 deduplicated review/control rows. It incorporates accepted-set-v7 and private OCR through completion 165, preserving valid empties, source exclusions, prior queue positions and exact findings. Scores rank review; they do not certify source fidelity. Later additive evidence now covers all 193 private size-recovery completions, accepted-set-v9 and the separately completed 196 geometry candidates. Their selected-state reconciliation remains with the recovery/adoption owners; this frozen screen task stays closed.
 
 ## Design
 
@@ -155,3 +155,7 @@ Accepted-set-v6 is independently qualified: selection SHA 95fad5e005670ce150ce4d
 **2026-11-15T08:36:23Z**
 
 Closed the frozen cheap-screen and current-queue scope after independent checkpoint04 acceptance. Handoff: repairs/corpus-assessment-20261113/triage-current-20261114/final-all-screen-20261115/checkpoint-04-v7-private165/handoff.json, SHA 223d42f04769b0eb00f47434677db3f1114f82f3dcc1161d0466abe8d22dab44. Independent result SHA 09a007ccaf1476eae8ac2d1d1ed89088832ce95785061c824ea07e58a868f935 and human review are in sibling checkpoint-04-independent-root-review/. The 18-second / 0.95 GiB review compares every unchanged stored value, all 300 changed bodies, previous history and ordering, actual accepted/private keys, 57 valid empties, 26 exclusions, and measurement conservation; the wrong-digest comparison rejects. No old text or PDF payloads were reread. Known limit: character-only signals missed new crash-candidate page124 garbling, found by source reading and handled in ct-t4p3. Later completions and repairs remain additive work, not universally certified source content.
+
+**2026-11-15T10:52:31Z**
+
+The final disjoint private-quality chain reaches 193 completions with exact bindings and no whole empty output. Geometry screens nominate 342 pages but direct review found several legitimate symbol, image-only, blank and sparse cases, as well as actual partial word fragmentation. The new f6 policy removes the strong isolated-letter flags while preserving native characters; source checks remain separate. Add these exact new versions/dispositions to the frozen checkpoint04 inventory during final handoff. Do not relabel the frozen 114,636 review/control rows as failed documents or imply the old v7/private165 queue already contains later results.
