@@ -95,6 +95,46 @@ def set_capture(captures, digest, **values):
 
 
 @pytest.mark.loopback
+def test_read_once_body_accepts_full_pinned_200_but_leaves_partial_200_pending(tmp_path,monkeypatch):
+    """The same public-origin path as the large-object pilot, with a tiny stored gzip."""
+    import gzip
+    from congress_api.lake.readings import _ReadOnceBody
+    from congress_api.retention.public_origin import PublicOrigin
+    from congress_api.retention.r2 import R2Store
+    raw=tmp_path/'raw';stored=gzip.compress(b'Complete source bytes, without decoding.',mtime=0)
+    digest=hashlib.sha256(b'Complete source bytes, without decoding.').hexdigest()
+    key=f'bodies/sha256/{digest[:2]}/{digest}.gz'
+    path=raw/key;path.parent.mkdir(parents=True);path.write_bytes(stored)
+    etag='"'+hashlib.md5(stored).hexdigest()+'"'
+    monkeypatch.setenv('DOCSPEC_PARSER_IO_MARKER',str(tmp_path/'io-marker'))
+    with Origin(raw) as origin:
+        origin.quirks['/'+key]='no_range'
+        store=R2Store(PublicOrigin(origin.url,user_agent=body_text.USER_AGENT,attempts=1),'bucket')
+        remote=dict(bucket='bucket',key=key,etag=etag,md5=None)
+        source=_ReadOnceBody(None,tmp_path/'full',len(stored),remote=remote,body_store=store,
+                             stored_gzip=True,max_read_bytes=len(stored),request_timings=True)
+        try:
+            assert source.read(0,len(stored))==stored
+            assert source.read_bytes==len(stored) and source.encoding=='gzip'
+            assert [t['requests'] for t in source.timings]==[1]
+            assert [p.read_bytes() for p in source.cache.glob('*.bin')]==[stored]
+            # A complete retained range serves another read without another request.
+            assert source.read(0,len(stored))==stored and len(origin.requests)==1
+        finally:source.close()
+        partial=_ReadOnceBody(None,tmp_path/'partial',len(stored),remote=remote,body_store=store)
+        try:
+            with pytest.raises(OSError,match='^raw_range_ValueError$') as failure:partial.read(1,len(stored)-1)
+            assert failure.value.raw_read_diagnostic['http_status']==200
+            assert failure.value.raw_read_diagnostic['observed_bytes'] is None
+            assert partial.read_bytes==0 and not list(partial.cache.glob('*.bin'))
+            assert not list(partial.cache.glob('*.pending'))
+        finally:partial.close()
+    assert len(origin.requests)==2
+    assert [h['Range'] for _,h in origin.requests]==[f'bytes=0-{len(stored)-1}',f'bytes=1-{len(stored)-1}']
+    assert all(h['If-Match']==etag and h['Accept-Encoding']=='gzip' for _,h in origin.requests)
+
+
+@pytest.mark.loopback
 def test_origin_reads_are_pinned_ranged_gets_checked_by_the_body_hash(tmp_path):
     bodies = dict(pdf=(two_page_pdf(), 'pdf'), html=(HTML, 'html'), forged=(XML, 'xml'),
                   replaced=(XML.replace(b'Oversight', b'Hearing'), 'xml'), unpinned=(b'<a>unpinned</a>', 'xml'),
@@ -324,12 +364,11 @@ def test_body_listing_pins_md5_less_reads_with_zero_probe_gets_and_preserves_ref
         report = body_text.run(**args, origin=origin.url, body_listing=listing_path, work=tmp_path / 'run', execute=True)
 
     assert report['status'] == 'pending'
-    # 4 refused before any GET (weak, resized, md5_conflict as changed_input; unlisted as missing_remote) + 1 no_range + 1 412.
+    # Four refuse before GET, and one returns 412. The complete pinned 200 is now valid.
     assert report['pending_read_reasons'] == dict(
         changed_input=3,
         missing_remote=1,
         raw_range_ClientError=1,
-        raw_range_ValueError=1,
     )
 
     fetched = {}
@@ -346,6 +385,7 @@ def test_body_listing_pins_md5_less_reads_with_zero_probe_gets_and_preserves_ref
         md5_pinned=PAGE_ONE + '\n' + PAGE_TWO,
         unpinned_plain='plain listed',
         unpinned_gzip='STATEMENT OF THE WITNESS\n\n    Mr. Chairman, thank you.\n',
+        whole='whole',
     )
 
     # Duplicate keys in body_listing or combining local_root + body_listing must refuse cleanly.

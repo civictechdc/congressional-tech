@@ -530,9 +530,18 @@ class R2Store:
                     if diagnostic is not None:diagnostic['reason']='response_metadata_mismatch'
                     raise ValueError('Pinned raw response changed')
                 if ranged:
-                    match=re.fullmatch(r'bytes (\d+)-(\d+)/(\d+)',response.get('ContentRange',''))
-                    valid=(match is not None and tuple(map(int,match.groups()))==(start,start+length-1,pin['bytes'])
-                           and response.get('ResponseMetadata',{}).get('HTTPStatusCode')==206)
+                    status=response.get('ResponseMetadata',{}).get('HTTPStatusCode')
+                    content_range=response.get('ContentRange')
+                    # An origin may ignore Range (RFC 9110 §14.2). A whole pinned
+                    # object needs no slicing; partial requests still require 206.
+                    # Refuse Content-Range on 200 rather than reconcile ambiguous metadata.
+                    if status==200:
+                        valid=start==0 and length==pin['bytes'] and content_range in (None,'')
+                    else:
+                        match=(re.fullmatch(r'bytes (\d+)-(\d+)/(\d+)',content_range)
+                               if isinstance(content_range,str) else None)
+                        valid=(status==206 and match is not None
+                               and tuple(map(int,match.groups()))==(start,start+length-1,pin['bytes']))
                     if diagnostic is not None:diagnostic['range_valid']=valid
                     if not valid:
                         if diagnostic is not None:diagnostic['reason']='range_mismatch'

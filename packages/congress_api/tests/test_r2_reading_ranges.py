@@ -35,6 +35,55 @@ def test_conditional_range_returns_only_requested_bytes_and_never_fills_whole_ca
     assert client.streams[0].closed and not store._immutable_cache_path(KEY).exists()
 
 
+@pytest.mark.parametrize('content_range',[None,''])
+def test_full_pinned_range_accepts_200_without_range_metadata_and_keeps_the_read_bound(tmp_path,content_range):
+    sizes=[]
+    class Bounded(io.BytesIO):
+        def read(self,size=-1):
+            sizes.append(size);return super().read(size)
+    client=Client();client.change=dict(Body=Bounded(DATA),ContentRange=content_range,
+        ETag='"opaque-version"',ResponseMetadata={'HTTPStatusCode':200})
+    store=R2Store(client,'bucket',cache_dir=tmp_path/'cache')
+    assert store.read(KEY,start=0,length=len(DATA),
+        expected=dict(etag='"opaque-version"',md5=None,bytes=len(DATA)))==DATA
+    assert sizes==[len(DATA)+1] and len(client.reads)==1 and client.streams[0].closed
+    assert client.reads[0]['IfMatch']=='"opaque-version"'
+    assert not store._immutable_cache_path(KEY).exists()
+
+
+@pytest.mark.parametrize('start,length',[(0,8192),(1,len(DATA)-1)])
+def test_partial_requests_refuse_200_even_without_content_range(start,length):
+    class Untouched(io.BytesIO):
+        def read(self,*args):raise AssertionError('Partial request must refuse before reading')
+    client=Client();client.change=dict(Body=Untouched(DATA),ContentRange=None,ResponseMetadata={'HTTPStatusCode':200})
+    with pytest.raises(RawRangeReadError) as failure:
+        R2Store(client,'bucket').read(KEY,start=start,length=length,expected=PIN)
+    assert failure.value.diagnostic['reason']=='range_mismatch'
+    assert failure.value.diagnostic['observed_bytes'] is None
+    assert len(client.reads)==1 and client.streams[0].closed
+
+
+@pytest.mark.parametrize('change,reason',[
+    (dict(ContentRange=f'bytes 0-{len(DATA)-1}/{len(DATA)}'),'range_mismatch'),
+    (dict(ContentRange='bytes 1-9/10'),'range_mismatch'),
+    (dict(ContentRange='invalid'),'range_mismatch'),
+    (dict(ContentLength=len(DATA)-1),'response_metadata_mismatch'),
+    (dict(ETag='"'+('0'*32)+'"'),'response_metadata_mismatch'),
+    (dict(Body=io.BytesIO(DATA[:-1])),'payload_length_mismatch'),
+    (dict(Body=io.BytesIO(DATA+b'extra')),'payload_length_mismatch'),
+    (dict(ResponseMetadata={'HTTPStatusCode':201}),'range_mismatch'),
+])
+def test_whole_object_200_keeps_identity_exact_length_and_ambiguity_refusals(tmp_path,change,reason):
+    client=Client();client.change=dict(ContentRange=None,ResponseMetadata={'HTTPStatusCode':200})
+    client.change.update(change)
+    store=R2Store(client,'bucket',cache_dir=tmp_path/'cache')
+    with pytest.raises(RawRangeReadError) as failure:
+        store.read(KEY,start=0,length=len(DATA),expected=PIN)
+    assert failure.value.diagnostic['reason']==reason
+    assert len(client.reads)==1 and client.streams[0].closed
+    assert not store._immutable_cache_path(KEY).exists()
+
+
 @pytest.mark.parametrize('change',[
     dict(ContentRange=f'bytes 0-8191/{len(DATA)+1}'),dict(ContentRange=f'bytes 1-8192/{len(DATA)}'),
     dict(ContentLength=8193),dict(ETag='"'+('0'*32)+'"'),dict(ResponseMetadata={'HTTPStatusCode':200}),

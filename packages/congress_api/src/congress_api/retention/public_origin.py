@@ -9,7 +9,8 @@ class PublicOrigin:
     """The GetObject subset R2Store's pinned reads use, served by the raw bucket's public custom domain.
 
     So R2Store.read and the readings range cache verify a public-origin read exactly as an SDK one:
-    the If-Match condition, the 206 and its Content-Range, the length and the MD5 ETag. Accept-Encoding
+    the If-Match condition, exact length and ETag, and 206 with Content-Range for partial reads.
+    A complete pinned-object request also accepts 200 without Content-Range. Accept-Encoding
     is gzip because the edge then returns a body stored with Content-Encoding gzip as stored (the
     strong MD5 ETag and stored length); asked for identity it decompresses on the fly under a weak
     ETag. Redirects are refused. It can only read: there is no put, list or head. HTTP errors are SDK
