@@ -67,6 +67,11 @@ def retained_groq_page(artifacts):
         raise ValueError('Structured page request, response, schema, prompt or image identity changed')
     if receipt.get('status') != 200 or receipt.get('error'):
         raise ValueError('Structured page requires a successful retained HTTP response')
+    headers = {name.lower(): value for name, value in receipt.get('headers', {}).items()}
+    request_id = headers.get('x-request-id')
+    if (not isinstance(request_id, str) or not request_id
+            or response.get('x_groq', {}).get('id') != request_id):
+        raise ValueError('Structured page HTTP and provider request identities disagree')
     if request.get('response_format') != {'type': 'json_schema', 'json_schema': schema}:
         raise ValueError('Structured page request does not carry the retained schema')
     shape = schema.get('schema', {})
@@ -118,7 +123,7 @@ def retained_groq_page(artifacts):
     settings = dict(backend='groq', endpoint=ENDPOINT, model=model, mode='structured',
         generation={k: v for k, v in request.items() if k not in {'model', 'messages', 'response_format'}},
         prompt_sha256=sha256(artifacts['prompt']).hexdigest(), schema_sha256=sha256(artifacts['schema']).hexdigest(),
-        response_id=response.get('id'), service_tier=response.get('service_tier'))
+        response_id=response.get('id'), transport_request_id=request_id, service_tier=response.get('service_tier'))
     if not isinstance(settings['response_id'], str) or not settings['response_id']:
         raise ValueError('Structured page response identifier is unavailable')
     block = TextBlock(text, observation='structured-provider')

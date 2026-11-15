@@ -189,7 +189,7 @@ def groq_packet(base, *, finish='stop', model='qwen/test', outcome=None, image_i
         response_format=dict(type='json_schema',json_schema=schema))
     outcome = outcome or dict(continuity='complete',markdown='Actual source words α',tables=[],
         doc_type='other',date='1990',identifiers=['metadata only'])
-    response = dict(id='response-actual',model=model,service_tier='on_demand',choices=[
+    response = dict(id='response-actual',model=model,service_tier='on_demand',x_groq={'id':'http-actual'},choices=[
         dict(finish_reason=finish,message=dict(role='assistant',content=json.dumps(outcome)))])
     identity = dict(endpoint='https://api.groq.com/openai/v1/chat/completions',model='qwen/test',
         source=dict(sha256=base['body_sha'].hex(),bytes=len(b'actual source')),
@@ -283,6 +283,17 @@ def test_retained_provider_refuses_failure_or_wrong_image(tmp_path, change, matc
     base, _, _ = fixture(tmp_path)
     with pytest.raises(ValueError, match=match):
         retained_groq_page(groq_packet(base,**change))
+
+
+def test_retained_provider_binds_http_and_response_request_ids(tmp_path):
+    from congress_api.lake.structured_page import retained_groq_page
+    base, _, _ = fixture(tmp_path)
+    packet=groq_packet(base)
+    receipt=json.loads(packet['receipt'])
+    receipt['headers']['x-request-id']='unrelated-response'
+    packet['receipt']=json.dumps(receipt).encode()
+    with pytest.raises(ValueError,match='request identities'):
+        retained_groq_page(packet)
 
 
 def test_structured_table_blanks_are_preserved_and_orphans_refused(tmp_path):
