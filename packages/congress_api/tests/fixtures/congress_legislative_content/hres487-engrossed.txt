@@ -1,0 +1,41 @@
+H. Res. 487
+In the House of Representatives, U. S.,
+July 16, 2007.
+Whereas the United States of America is a great and prosperous Nation, and modeling and simulation contribute significantly to that greatness and prosperity;
+Whereas modeling and simulation in the United States is a unique application of computer science and mathematics that depends on the validity, verification, and reproducibility of the model or simulation, and depends also on the capability of the thousands of Americans in modeling and simulation careers to develop these models;
+Whereas members of the modeling and simulation community in government, industry, and academia have made significant contributions to the general welfare of the United States, and while these contributions are too numerous to enumerate, modeling and simulation efforts have contributed to the United States by—
+(1) expanding the understanding of nuclear chain reactions during the Manhattan Project through some of the earliest simulations replicating the reaction process, which ultimately contributed to the end of World War II;
+(2) serving as a foundational element of the Stockpile Stewardship Program, which enabled the President of the United States to certify the safety, security, and reliability of the nuclear stockpile for more than ten years without the use of live nuclear testing, which demonstrates the Nation's commitment to nuclear nonproliferation;
+(3) accelerating the effectiveness of joint, coalition, and interagency training exercises, while dramatically reducing the costs of such exercises, as demonstrated by United States Joint Forces Command's 2007 homeland security exercise, Noble Resolve, which was conducted virtually and required 5 months, 140 personnel, and $2,000,000 for development, compared to a 2002 Millennium Challenge exercise that was conducted live and required 5 years, 14,000 personnel, and $250,000,000 for development;
+(4) preserving countless human lives, as well as military and civilian aircraft, ships, and other vehicles through the rehearsal of repeatable, simulated emergencies that otherwise could not have been practiced;
+(5) increasing the quality of health care through the development of medical simulation training, which led the Food and Drug Administration to require such training for physicians before certain high-risk procedures to treat heart disease and strokes;
+(6) reducing the cost of health care, as demonstrated by medical malpractice insurance rate discounts being provided to anesthesiologists and obstetricians who include simulated procedures in their biennial training requirements;
+(7) simulating large scale natural or man-made disasters to improve the effectiveness of local, State, and Federal first responders, law enforcement, and other agencies involved in a coordinated emergency response;
+(8) forecasting weather and predicting climate change to enable scientists, industry, and policymakers to study the effects of climate change and also to prepare for extreme weather, such as hurricanes;
+(9) protecting rivers, waterways, and endangered species reliant on these waters through the Environmental Protection Agency's hydrology Dynamic Stream Simulation and Assessment Model, which predicts impacts on water quality for the Truckee River, including its effect on Lake Tahoe and other portions of its basin;
+(10) producing analysis that resulted in enhanced designs and construction of critical infrastructure, such as roads, interchanges, airports, harbors, railways, and bridges that increases transportation capacity and safety, and reduces travel time and environmental impact; and
+(11) providing National Aeronautics and Space Administration (NASA) astronauts training to ensure a safe and productive mission in space, including the utilization of the Shuttle Training Aircraft, which simulates real aircraft shuttle characteristics and enables NASA pilots to have 1,000 simulated shuttle landings before they land the Space Shuttle for the first time as a glider;
+Whereas these contributions, in addition to numerous contributions that are not listed but that equally have brought prosperity to our Nation, demonstrate that modeling and simulation efforts have, and will continue to—
+(1) provide vital strategic support functions to our Military;
+(2) defend our freedom and advance United States interests around the world;
+(3) promote better health care through improved medical training, improved quality of care, reduced medical errors, and reduced cost;
+(4) encourage comprehensive planning for national disaster and emergency preparedness response;
+(5) improve and secure our critical infrastructure and transportation systems;
+(6) protect the environment; and
+(7) allow the Nation to explore the Earth and space to further our understanding of our world and universe;
+Whereas modeling and simulation frequently complements or replaces experimentation where experimentation is hazardous, expensive, or impossible, thus providing far greater capability than experimentation alone;
+Whereas the modeling and simulation industry provides well-paying jobs to many Americans and represents an opportunity for Americans with strong foundations in science, technology, engineering, and mathematics to contribute to the prosperity and security of the United States;
+Whereas other countries have recognized the value of modeling and simulation as an opportunity to gain a competitive advantage over the United States economically and militarily, and some of these same countries produce more engineers each year than the United States;
+Whereas modeling and simulation efforts are critically dependent on a fundamental education in science, technology, engineering, and mathematics;
+Whereas modeling and simulation require unique knowledge, skills, and abilities that are not adequately incorporated into governmental occupational classification codes; and
+Whereas advances in modeling and simulation can be achieved through innovation in the private sector, and proper export controls and intellectual property rights are critical to the continued growth and innovation in this sector: Now, therefore, be it
+Resolved, That the House of Representatives—
+(1) commends those who have contributed to the modeling and simulation efforts which have developed essential characteristics of our Nation;
+(2) urges that, consistent with previous legislation passed by this and previous Congresses, science, technology, engineering, and mathematics remain key disciplines for primary and secondary education;
+(3) encourages the expansion of modeling and simulation as a tool and subject within higher education;
+(4) recognizes modeling and simulation as a National Critical Technology;
+(5) affirms the need to study the national economic impact of modeling and simulation;
+(6) supports the development and implementation of governmental classification codes that include separate classification for modeling and simulation occupations; and
+(7) encourages the development and implementation of ways to protect intellectual property of modeling and simulation enterprises.
+Attest:
+Clerk.
