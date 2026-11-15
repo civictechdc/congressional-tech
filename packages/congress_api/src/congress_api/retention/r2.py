@@ -29,6 +29,33 @@ class R2GetTransportExhausted(RuntimeError):
     """An explicitly bounded GET failed; never turn it into a pending body read."""
 
 
+def raw_range_diagnostic(value):
+    """Bounded failure evidence only: never retain a key, URL, ETag or exception text."""
+    value = value if isinstance(value, dict) else {}
+    phases = {'input', 'request', 'response_headers', 'response_body', 'store_read'}
+    reasons = {'invalid_request', 'response_metadata_mismatch', 'range_mismatch',
+               'payload_length_mismatch', 'unknown_value_error'}
+    phase, reason = value.get('phase'), value.get('reason')
+    result = dict(version=1,
+        phase=phase if type(phase) is str and phase in phases else 'store_read',
+        reason=reason if type(reason) is str and reason in reasons else 'unknown_value_error')
+    for key in ('expected_total_bytes', 'range_start', 'expected_bytes', 'observed_content_length',
+                'observed_bytes', 'http_status'):
+        number = value.get(key)
+        lower, upper = (100, 599) if key == 'http_status' else (0, (1 << 63) - 1)
+        result[key] = number if type(number) is int and lower <= number <= upper else None
+    for key in ('range_valid', 'etag_matches'):
+        result[key] = value.get(key) if type(value.get(key)) is bool else None
+    return result
+
+
+class RawRangeReadError(ValueError):
+    """A ValueError with safe read evidence; callers retain the original pending category."""
+    def __init__(self, diagnostic):
+        self.diagnostic = raw_range_diagnostic(diagnostic)
+        super().__init__('Pinned raw range read failed')
+
+
 class _ReadyPrefetch:
     """Bound ready keys; cancellation releases producer callbacks before joining."""
     _END=object()
@@ -397,17 +424,24 @@ class R2Store:
         started=time.monotonic() if timing is not None else None
         if timing is not None:timing.update(requests=0,bytes=0,cache_hit=False,error_type=None,
             sdk_retries=0,sdk_retry_metadata_complete=True)
+        diagnostic = (dict(phase='input', reason='invalid_request', range_start=start,
+            expected_bytes=length, expected_total_bytes=expected.get('bytes') if isinstance(expected,dict) else None)
+            if start is not None or length is not None else None)
         try:
-            value=self._read(key,start=start,length=length,expected=expected,metadata=metadata,timing=timing)
+            value=self._read(key,start=start,length=length,expected=expected,metadata=metadata,timing=timing,
+                             diagnostic=diagnostic)
             if timing is not None:timing['bytes']=len(value)
             return value
         except BaseException as error:
             if timing is not None:timing['error_type']=type(error).__name__
+            # Other ValueError subclasses retain their existing pending category.
+            if diagnostic is not None and type(error) is ValueError:
+                raise RawRangeReadError(diagnostic) from None
             raise
         finally:
             if timing is not None:timing['seconds']=time.monotonic()-started
 
-    def _read(self, key, *, start=None,length=None,expected=None,metadata=None,timing=None):
+    def _read(self, key, *, start=None,length=None,expected=None,metadata=None,timing=None,diagnostic=None):
         from botocore.exceptions import ClientError, BotoCoreError
         from congress_shared.storage import single_put_md5
         ranged=start is not None or length is not None
@@ -455,6 +489,10 @@ class R2Store:
                 else:timing['sdk_retry_metadata_complete']=False
 
         def request():
+            if diagnostic is not None:
+                diagnostic.update(phase='request', reason='unknown_value_error',
+                    observed_content_length=None, observed_bytes=None, http_status=None,
+                    range_valid=None, etag_matches=None)
             try:
                 if timing is not None:timing['requests']+=1
                 options={} if pin is None else dict(IfMatch=pin['etag'])
@@ -475,6 +513,10 @@ class R2Store:
 
         def consume(response, stream):
             retries(response)
+            if diagnostic is not None:
+                response_metadata=response.get('ResponseMetadata')
+                diagnostic.update(phase='response_headers', observed_content_length=response.get('ContentLength'),
+                    http_status=response_metadata.get('HTTPStatusCode') if isinstance(response_metadata,dict) else None)
             if pin is not None:
                 wanted=length if ranged else pin['bytes']
                 # LIST versions are opaque. A canonical captured-MD5 condition
@@ -482,19 +524,37 @@ class R2Store:
                 version_matches=(single_put_md5(response.get('ETag'))==pin['md5']
                     if pin['md5'] is not None and pin['etag']=='"'+pin['md5']+'"' else
                     response.get('ETag')==pin['etag'])
+                if diagnostic is not None:diagnostic['etag_matches']=version_matches
                 if (type(response.get('ContentLength')) is not int or response['ContentLength']!=wanted
                         or not version_matches):
+                    if diagnostic is not None:diagnostic['reason']='response_metadata_mismatch'
                     raise ValueError('Pinned raw response changed')
                 if ranged:
-                    match=re.fullmatch(r'bytes (\d+)-(\d+)/(\d+)',response.get('ContentRange',''))
-                    if (match is None or tuple(map(int,match.groups()))!=(start,start+length-1,pin['bytes'])
-                            or response.get('ResponseMetadata',{}).get('HTTPStatusCode')!=206):
+                    status=response.get('ResponseMetadata',{}).get('HTTPStatusCode')
+                    content_range=response.get('ContentRange')
+                    # An origin may ignore Range (RFC 9110 §14.2). A whole pinned
+                    # object needs no slicing; partial requests still require 206.
+                    # Refuse Content-Range on 200 rather than reconcile ambiguous metadata.
+                    if status==200:
+                        valid=start==0 and length==pin['bytes'] and content_range in (None,'')
+                    else:
+                        match=(re.fullmatch(r'bytes (\d+)-(\d+)/(\d+)',content_range)
+                               if isinstance(content_range,str) else None)
+                        valid=(status==206 and match is not None
+                               and tuple(map(int,match.groups()))==(start,start+length-1,pin['bytes']))
+                    if diagnostic is not None:diagnostic['range_valid']=valid
+                    if not valid:
+                        if diagnostic is not None:diagnostic['reason']='range_mismatch'
                         raise ValueError('Pinned raw range or total size changed')
                 if metadata is not None:
                     metadata.update(content_encoding=response.get('ContentEncoding'),bytes=pin['bytes'],
                                     etag=response['ETag'])
+                if diagnostic is not None:diagnostic['phase']='response_body'
                 data=stream.read(wanted+1)
-                if len(data)!=wanted:raise ValueError('Incomplete pinned raw response')
+                if diagnostic is not None:diagnostic['observed_bytes']=len(data)
+                if len(data)!=wanted:
+                    if diagnostic is not None:diagnostic['reason']='payload_length_mismatch'
+                    raise ValueError('Incomplete pinned raw response')
                 if not ranged and pin['md5'] is not None and hashlib.md5(data).hexdigest()!=pin['md5']:
                     raise ValueError('Pinned raw MD5 mismatch')
             elif key == 'indexes/catalog.json':

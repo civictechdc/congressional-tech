@@ -517,7 +517,11 @@ def _parse_payload(payload):
     try:
         data = _read_decoded(request)
     except (OSError, EOFError) as error:
-        return dict(read_error=_read_reason(error), error=f'{type(error).__name__}: {error}')
+        value = dict(read_error=_read_reason(error), error=f'{type(error).__name__}: {error}')
+        if getattr(error, 'raw_read_diagnostic', None) is not None:
+            from congress_api.retention.r2 import raw_range_diagnostic
+            value['raw_read_diagnostic'] = raw_range_diagnostic(error.raw_read_diagnostic)
+        return value
     if data is None:
         return dict(row=dict(status='error', error_type='decoded_size_limit'),
                     worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
@@ -671,7 +675,7 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
 
     def record_outcome(body_hex, parser, version, status, *, reading_status=None, reason=None,
                        error=None, peak_rss_bytes=None, worker_lifetime_peak_rss_bytes=None,
-                       rss_samples=0):
+                       rss_samples=0, raw_read_diagnostic=None):
         body_outcomes.append(dict(
             body_sha256=body_hex,
             parser=parser,
@@ -686,6 +690,9 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
             rss_samples=rss_samples,
             worker_lifetime_peak_rss_bytes=worker_lifetime_peak_rss_bytes,
         ))
+        if raw_read_diagnostic is not None:
+            from congress_api.retention.r2 import raw_range_diagnostic as safe_diagnostic
+            body_outcomes[-1]['raw_read_diagnostic'] = safe_diagnostic(raw_read_diagnostic)
         diagnostic = diagnostics_dir / (body_hex + '.txt')
         if diagnostic.is_file():
             body_outcomes[-1]['diagnostic_path'] = str(diagnostic)
@@ -805,7 +812,8 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
             if value.get('read_error'):
                 pending_read(value['read_error'])
                 record_outcome(body_hex, parser, version, 'pending', reason=value['read_error'],
-                               error=value.get('error') or value['read_error'], **resources)
+                               error=value.get('error') or value['read_error'],
+                               raw_read_diagnostic=value.get('raw_read_diagnostic'), **resources)
                 continue
             if value.get('pending'):
                 counters['ocr_pending'] += 1

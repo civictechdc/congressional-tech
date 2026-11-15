@@ -222,6 +222,39 @@ opaque raw objects. Evidence and independent direct review are under
 `repairs/geometry-reconciliation-20261113/` in the main recovery evidence root.
 This diagnostic equivalence does not qualify the scripted text or enable OCR.
 
+The 2026-11-15 raw-range diagnostic change also retains the reading versions.
+`raw_range_ValueError` still leaves the body pending and writes no reading or
+text row. Its optional `raw_read_diagnostic` records a bounded failure phase
+and reason, expected and observed byte counts, HTTP status, and range/ETag
+checks. Unknown values remain null; keys, URLs, ETag strings and exception text
+are excluded. Other error categories, read bounds, cache admission and retry
+rules remain unchanged. Native stage tests and spawned workers against a local
+HTTP server cover metadata/range mismatches, short payloads and unknown
+`ValueError` failures; only their successful controls are committed. A planted
+secret is absent from serialized replies and retained outcomes. All fixed
+reader-fixture digests match. The updated source fingerprints record this
+bounded diagnostic equivalence, not the cause of any historical failure or
+qualification of unread source text.
+
+The later 2026-11-15 full-object range fix accepts HTTP 200 only when the
+pinned request starts at zero and covers the complete expected object.
+Content-Length and ETag must match before reading, and the bounded response
+body must have exactly the expected length. A nonempty Content-Range on 200
+is refused, including an apparently matching range. Every partial request
+still requires 206 and an exact Content-Range. This accommodates origins
+that ignore Range, as allowed by [RFC 9110 section 14.2](https://www.rfc-editor.org/rfc/rfc9110.html#section-14.2);
+Content-Range has no defined response meaning for 200
+([section 14.4](https://www.rfc-editor.org/rfc/rfc9110.html#section-14.4)).
+The exact smallest pending object's live diagnostic confirmed a 200 response
+with matching length and ETag, rejected before reading the body. That proves
+this live failure path, not the causes of the other historical failures.
+Tiny local HTTP checks exercise the real read-once cache, public-origin
+adapter and completed-text consumer; malformed identity/length, partial-200,
+and short/extra-body controls remain refusals. All ten reader declarations,
+fixture digests and diagnostic snapshots are unchanged: this changes raw
+transport acceptance, not text interpretation. The large repaired transfer
+requires its separate bounded pilot; local checks do not establish its success.
+
 The isolated cleanup integration candidate pins the reproducible vendored wheel
 `spicy-docs==0.85.0+gpo.20261113`. Its receipt names the exact source commit and
 both changed package members. PDF readings declare the corrected cleanup and
