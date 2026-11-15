@@ -161,3 +161,150 @@ def test_policy_names_cannot_replace_actual_settings(tmp_path, damage):
     with pytest.raises(ValueError, match='settings'):
         compose_pages(base, reading, **kwargs)
 
+
+def groq_packet(base, *, finish='stop', model='qwen/test', outcome=None, image_in_request=None):
+    """A genuine PNG and actual-shaped retained request/response, without a provider call."""
+    import base64
+    from io import BytesIO
+    from PIL import Image
+    image = BytesIO()
+    Image.new('RGB', (2, 3), 'white').save(image, format='PNG')
+    encoded = lambda v: json.dumps(v, sort_keys=True).encode()
+    pin = lambda b: dict(bytes=len(b), sha256=sha256(b).hexdigest())
+    prompt = b'Preserve printed words only.'
+    properties = dict(continuity={'type':'string'}, markdown={'type':'string'},
+        tables={'type':'array','items':{'type':'object','properties':{
+            'id':{'type':'string'},'columns':{'type':'array','items':{'type':'string'}},
+            'rows':{'type':'array','items':{'type':'string'}}},
+            'required':['id','columns','rows'],'additionalProperties':False}},
+        doc_type={'type':'string'}, date={'type':['string','null']},
+        identifiers={'type':'array','items':{'type':'string'}})
+    schema = dict(name='congressional_page_minimal',strict=True,
+        schema=dict(type='object',properties=properties,required=list(properties),additionalProperties=False))
+    request = dict(model='qwen/test',temperature=0,max_completion_tokens=4096,
+        messages=[dict(role='system',content=prompt.decode()),dict(role='user',content=[
+            dict(type='text',text='<document>\n'), dict(type='image_url',image_url=dict(
+                url='data:image/png;base64,'+base64.b64encode(image.getvalue() if image_in_request is None else image_in_request).decode())),
+            dict(type='text',text='\n</document>')])],
+        response_format=dict(type='json_schema',json_schema=schema))
+    outcome = outcome or dict(continuity='complete',markdown='Actual source words α',tables=[],
+        doc_type='other',date='1990',identifiers=['metadata only'])
+    response = dict(id='response-actual',model=model,service_tier='on_demand',x_groq={'id':'http-actual'},choices=[
+        dict(finish_reason=finish,message=dict(role='assistant',content=json.dumps(outcome)))])
+    identity = dict(endpoint='https://api.groq.com/openai/v1/chat/completions',model='qwen/test',
+        source=dict(sha256=base['body_sha'].hex(),bytes=len(b'actual source')),
+        physical_file_page=2,page_count=3,dpi_from_retained_render=200,dimensions=[2,3],mode='RGB',
+        input_image=pin(image.getvalue()),request=pin(encoded(request)),schema=pin(encoded(schema)),
+        system_prompt=pin(prompt))
+    receipt = dict(status=200,error=None,response=pin(encoded(response)),headers={'x-request-id':'http-actual'})
+    return dict(identity=encoded(identity),request=encoded(request),response=encoded(response),
+        schema=encoded(schema),prompt=prompt,receipt=encoded(receipt),image=image.getvalue())
+
+
+def structured_fixture(tmp_path, *, inherited_ocr=True):
+    from congress_api.lake.structured_page import retained_groq_page
+    base, reading, kwargs = fixture(tmp_path, inherited_ocr=inherited_ocr)
+    packet = groq_packet(base)
+    result, settings = retained_groq_page(packet)
+    refs = {name:artifact(tmp_path/(name+'.retained'),data) for name,data in packet.items()}
+    kwargs['replacements'][0].update(
+        policy=artifact(tmp_path/'structured-policy.json',dict(backend=settings,reader={'dpi':200},
+            structured_provider_artifacts=refs)),
+        intermediate=artifact(tmp_path/'structured-page.json',pack(result)),
+        final=artifact(tmp_path/'structured-final.txt',result.text.encode()))
+    return base, reading, kwargs
+
+
+@pytest.mark.parametrize('inherited_ocr', [True, False])
+def test_structured_page_keeps_actual_provider_and_truthful_mixed_build(tmp_path, inherited_ocr):
+    base, reading, kwargs = structured_fixture(tmp_path, inherited_ocr=inherited_ocr)
+    row, result, receipt = compose_pages(base, reading, **kwargs)
+    assert row['text'] == 'First café\n\nActual source words α\nLast •'
+    assert result.ocr_pages == ((1,2) if inherited_ocr else (2,))
+    assert row['macos_build'] == ('build-a' if inherited_ocr else None)
+    assert receipt['provenance']['remote_recognition_pages'] == [2]
+    remote = receipt['provenance']['replacements'][0]
+    assert remote['recognition_provider'] == 'groq' and remote['macos_build'] is None
+    assert remote['policy_settings']['backend']['model'] == 'qwen/test'
+    assert set(remote['structured_provider_artifacts']) == {'identity','request','response','schema','prompt','receipt','image'}
+    assert '1990' not in row['text'] and 'metadata only' not in row['text']
+    assert receipt['selection_performed'] is False
+
+
+def test_remote_only_base_can_be_selectively_composed_again_without_fake_macos(tmp_path):
+    base, reading, kwargs = structured_fixture(tmp_path, inherited_ocr=False)
+    first, made, _ = compose_pages(base, reading, **kwargs)
+    actual_reading = dict(body_sha=first['body_sha'],parser='pdf_text',parser_version=first['parser_version'],**made.row())
+    second, result, _ = compose_pages(first, actual_reading, **kwargs)
+    assert second['text'] == first['text'] and result.ocr_pages == (2,) and result.macos_build is None
+    damaged = deepcopy(actual_reading)
+    next(f for f in damaged['fields'] if f['field']=='page_composition_sha256')['value']='0'*64
+    with pytest.raises(ValueError, match='version-bound'):
+        compose_pages(first, damaged, **kwargs)
+
+
+def test_prior_remote_page_survives_a_later_vision_page_repair(tmp_path):
+    base, reading, kwargs = structured_fixture(tmp_path, inherited_ocr=False)
+    first, made, _ = compose_pages(base, reading, **kwargs)
+    actual_reading=dict(body_sha=first['body_sha'],parser='pdf_text',parser_version=first['parser_version'],**made.row())
+    _, _, vision = fixture(tmp_path)
+    payload=json.loads((tmp_path/'page.json').read_bytes())
+    payload['metadata']['page']=3
+    vision['replacements'][0]['page']=3
+    vision['replacements'][0]['intermediate']=artifact(tmp_path/'vision-p3.json',payload)
+    second, result, receipt=compose_pages(first,actual_reading,**vision)
+    assert result.ocr_pages==(2,3) and result.macos_build=='build-a'
+    assert 'Actual source words α' in second['text']
+    assert receipt['provenance']['remote_recognition_pages']==[2]
+    assert receipt['provenance']['macos_build_scope'].startswith('Vision contribution only')
+
+
+@pytest.mark.parametrize('damage', ['final-omission','page-text','fake-vision','wrong-source'])
+def test_structured_composition_refuses_rebound_but_inconsistent_output(tmp_path, damage):
+    base, reading, kwargs = structured_fixture(tmp_path)
+    replacement = kwargs['replacements'][0]
+    if damage == 'final-omission':
+        replacement['final'] = artifact(tmp_path/'omitted.txt',b'Actual words')
+    else:
+        value = json.loads((tmp_path/'structured-page.json').read_bytes())
+        if damage == 'page-text': value['blocks'][0]['text']='Plausible invented words'
+        elif damage == 'fake-vision': value['observations'][0]['configuration']['macos_build']='invented'
+        else: value['metadata']['source_sha256']='0'*64
+        replacement['intermediate']=artifact(tmp_path/'changed-page.json',value)
+    with pytest.raises(ValueError, match='differs|identity'):
+        compose_pages(base, reading, **kwargs)
+
+
+@pytest.mark.parametrize('change,match', [
+    ({'finish':'length'},'incomplete'),({'model':'different'},'model mismatch'),
+    ({'image_in_request':b'not the retained image'},'exact retained image')])
+def test_retained_provider_refuses_failure_or_wrong_image(tmp_path, change, match):
+    from congress_api.lake.structured_page import retained_groq_page
+    base, _, _ = fixture(tmp_path)
+    with pytest.raises(ValueError, match=match):
+        retained_groq_page(groq_packet(base,**change))
+
+
+def test_retained_provider_binds_http_and_response_request_ids(tmp_path):
+    from congress_api.lake.structured_page import retained_groq_page
+    base, _, _ = fixture(tmp_path)
+    packet=groq_packet(base)
+    receipt=json.loads(packet['receipt'])
+    receipt['headers']['x-request-id']='unrelated-response'
+    packet['receipt']=json.dumps(receipt).encode()
+    with pytest.raises(ValueError,match='request identities'):
+        retained_groq_page(packet)
+
+
+def test_structured_table_blanks_are_preserved_and_orphans_refused(tmp_path):
+    from congress_api.lake.structured_page import retained_groq_page
+    base, _, _ = fixture(tmp_path)
+    outcome=dict(continuity='complete',markdown='Printed words\n{{table:t1}}',tables=[
+        dict(id='t1',columns=['Name','Yes','No'],rows=['Person |  | X'])],
+        doc_type='form_or_disclosure',date=None,identifiers=[])
+    result,_=retained_groq_page(groq_packet(base,outcome=outcome))
+    assert '| Person |  | X |' in result.text
+    outcome['markdown']='Printed words'
+    with pytest.raises(ValueError,match='placeholders'):
+        retained_groq_page(groq_packet(base,outcome=outcome))
+

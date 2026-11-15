@@ -11,7 +11,7 @@ tags: [congress_api, body_text, ocr]
 ---
 # Reconcile resource-failure recovery and measure memory per request
 
-The old recovery stays frozen. At 07:09:49 UTC on 15 November, the separate checkpointed lane had completed 152 of its 206 original stored-size-limit targets, leaving 54; quality checks cover 145. Those targets are disjoint from 66 original memory/deadline cases: 62 have selected completed readings and four remain unresolved. Three have complete retained captures and a separate retry preflight; 4f57c7ee is a confirmed incomplete 64 MiB capture whose response declared 118,982,865 bytes. It needs source recovery. Current same-worker regression confirms request-memory reset with a separate lifetime peak. Runtime completion, the four followups and qualified adoption remain open.
+The old recovery stays frozen. At 2026-11-15T07:53:46.500987+00:00, the separate checkpointed lane had completed 170 of its 206 original stored-size-limit targets, leaving 36; exact quality checks cover 165. These are disjoint from 66 original memory/deadline cases: 62 have selected completed readings at the same body identity, one truncated capture has a complete retained replacement source with selected text, and three remain unresolved. A separate pilot for d120 still hit the measured 4 GiB worker limit; its unreadable outcome and diagnostics are retained, and continuation is held for diagnosis. The other two remain unattempted in that lane. Current same-worker regression confirms request-memory reset with a separate lifetime peak. Runtime completion, selective fixes and qualified adoption remain open.
 
 ## Design
 
@@ -108,3 +108,11 @@ Current supervised continuation is repairs/ocr-checkpoint-resume-20261114/restar
 **2026-11-15T07:05:12Z**
 
 Current reconciliation separates the 206 original stored-size-limit targets (148completed/58remaining at2026-11-15T06:48:25Z) from 66 original memory/deadline targets. Of the latter 62 have selected completed readings;1ebf2aeb,d1203c08,4f57c7ee,b269f9d8 remain unresolved. A separate exact-key preflight is being prepared; the 206-target worker/manifest remain unchanged. Quality chain through145: repairs/ocr-checkpoint-resume-20261114/quality-screen-delta-20261115T064046Z/handoff-with-integrity.json SHA 4bc57e3c479437d2cf3eda5aa1d298403083b1f31cefb7209e95e6fcebe92757.
+
+**2026-11-15T07:45:37Z**
+
+2026-11-15 additive source-history reconciliation: preserve original incomplete4f57 and its error; same exact publisher URL has complete retained4e8115a7c06e2369bdf2eb4d2f3106593456d99259317d103254bc1060a70fee, selected completed d625 reading, 1,655,126 text bytes /1,038 slots/956 OCR markers and one visible association. Original truncated body has zero associations. Raw receipt/custody/selection evidence is repairs/resource-source-refetch-20261115/handoff.json SHA79a4974e7ac9fe047facaad9fa0e243cc9a501cf643afb7b764f976b883b8f4c. No new PDF semantic review or publisher request is claimed. Remaining three exact complete-capture resource failures have a separately pinned lane; root dispatched its one-body pilot at07:41:41UTC after verifying all35pins. Handoff repairs/resource-checkpoint-retry-20261115/handoff.json SHAd7b025ae1b8ba6622bda200896c7868fb1dba0eb824ecf904341d2e674bac600. Pilot waits shared nightly lock; current206worker and main selection are unchanged.
+
+**2026-11-15T07:55:50Z**
+
+The new d120 pilot committed unreadable/memory_limit at2026-11-15T07:43:19Z: request-sampled worker RSS4,331,323,392bytes against4GiB; watchdog peak4.079GiB RSS/3.332physical,98.9seconds, outerexit0. A successful driver exit is not completed text. No new completed reading or text was adopted, and no continuation was launched. Exact failure/diagnostics/checkpoints remain under repairs/resource-checkpoint-retry-20261115; cause diagnosis precedes any changed limits or next attempt. The206worker remains live and separate.

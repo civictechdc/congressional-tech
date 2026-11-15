@@ -11,7 +11,7 @@ tags: [ocr, pdf_text, readings, tesseract]
 ---
 # Cheaply find failed or substantially incomplete text extraction for FTS
 
-The complete cheap screen and frozen queue pass independent acceptance: 610,216 population identities, 609,512 exactly measured current outputs, one held bad output and 114,412 ranked candidate/control rows. Private OCR quality chains now cover 145 completions; the original queue cutoff remains 105. Independently reviewed v6 adds seven earlier PDF/bill repairs, 210 wrapper cleanups and fifteen source-role decisions. These exact-key changes and later resumed results need the final additive queue update. Nine prior loss reviews bind current keys in the 207 no-searchable-character candidates. Mechanical flags are priorities, not confirmed defect counts.
+The complete cheap screen and frozen queue pass independent acceptance: 610,216 population identities, 609,512 exactly measured current outputs, one held bad output and 114,412 ranked candidate/control rows. Private OCR quality chains now cover 165 completions; the original queue cutoff remains 105. A separate immutable v6/private165 overlay describes 292 affected bodies: 217 accepted replacements, 15 source exclusions and 60 later private results. It does not select private outputs or rewrite checkpoint 03. Independently qualified v7 adds eight further PDF pairs; its additive queue supplement and final current handoff remain. Mechanical flags rank review and are not confirmed defect counts.
 
 ## Design
 
