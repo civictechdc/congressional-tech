@@ -222,6 +222,20 @@ opaque raw objects. Evidence and independent direct review are under
 `repairs/geometry-reconciliation-20261113/` in the main recovery evidence root.
 This diagnostic equivalence does not qualify the scripted text or enable OCR.
 
+The 2026-11-15 raw-range diagnostic change also retains the reading versions.
+`raw_range_ValueError` still leaves the body pending and writes no reading or
+text row. Its optional `raw_read_diagnostic` records a bounded failure phase
+and reason, expected and observed byte counts, HTTP status, and range/ETag
+checks. Unknown values remain null; keys, URLs, ETag strings and exception text
+are excluded. Other error categories, read bounds, cache admission and retry
+rules remain unchanged. Native stage tests and spawned workers against a local
+HTTP server cover metadata/range mismatches, short payloads and unknown
+`ValueError` failures; only their successful controls are committed. A planted
+secret is absent from serialized replies and retained outcomes. All fixed
+reader-fixture digests match. The updated source fingerprints record this
+bounded diagnostic equivalence, not the cause of any historical failure or
+qualification of unread source text.
+
 The isolated cleanup integration candidate pins the reproducible vendored wheel
 `spicy-docs==0.85.0+gpo.20261113`. Its receipt names the exact source commit and
 both changed package members. PDF readings declare the corrected cleanup and

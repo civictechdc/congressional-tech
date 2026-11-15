@@ -928,6 +928,13 @@ class _ReadOnceBody:
                                     if len(self.timings)<128:self.timings.append(dict(start=cursor,length=stop-cursor,**timing))
                                     else:self.omitted_timings+=1
                         except (BotoCoreError,ClientError,ValueError) as error:
+                            from congress_api.retention.r2 import RawRangeReadError,raw_range_diagnostic
+                            if type(error) is ValueError or isinstance(error,RawRangeReadError):
+                                failure=OSError('raw_range_ValueError')
+                                failure.raw_read_diagnostic=raw_range_diagnostic(error.diagnostic
+                                    if isinstance(error,RawRangeReadError) else dict(phase='store_read',
+                                        expected_total_bytes=self.size,range_start=cursor,expected_bytes=stop-cursor))
+                                raise failure from None
                             raise OSError('raw_range_'+type(error).__name__) from None
                         encoding=metadata.get('content_encoding') or ''
                         if encoding not in ('','gzip') or self.encoding not in (None,encoding):

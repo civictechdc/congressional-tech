@@ -13,7 +13,7 @@
     },
     "sample_sha256": "46bc2a46f047467f52eb8b3b214865dec57569c0ac107f0204c4515ef34df84e",
     "version": "b08fb4d8577bb72a97a0b6624eac8d1d21cee01a2db42184e8f7d38c80423a8f",
-    "workspace_sha256": "4346f1834d2e38cadacd147ef2afd2bffaa1a139fd1eca184fbc9732d85ae0ce"
+    "workspace_sha256": "e26ea7e3611657cdd12b8021f72326ae58aa4ca16b4ba6e16e696d57ea090ce2"
   },
   "html": {
     "limits": {
@@ -24,7 +24,7 @@
     "locked_sha256": "6070d77413a75da8f622ee36fcbfffea84831739338bbbab56484b95cebf9762",
     "sample_sha256": "1f7918d00ea4860c20b2dc8a4bccdf4ef0b646505763cc54c784091e6701b74e",
     "version": "61d7904883f042f48d3732d0518adaa5cf5084790ebc9d5411aad7a6ab605969",
-    "workspace_sha256": "1b4ddf00cca7621cca239741d3efcd608920be4ac02bf2c008e8ad985b2a8d6e"
+    "workspace_sha256": "def78191f828ba6b3880acc316c941d265d45b4e40803437814ccefd208274e2"
   },
   "html_metadata": {
     "format_timeout_seconds": 10.0,
@@ -50,7 +50,7 @@
     },
     "sample_sha256": "d6b9359912cac669da66673017cb13451b9d54fc795e7608e29068655be617a5",
     "version": "0fff8151c7752109cc3778d9570e682985edce2e1f90e04c3b638c37a6c4a129",
-    "workspace_sha256": "0a2f637e642c1e3056c072972fea00463dc6b0d271cf173d38389ee745282172"
+    "workspace_sha256": "fa1abed99538f8e8f5ade6f92cb5083510f630afb549d517070fcd6a892cdfcf"
   },
   "html_text": {
     "limits": {
@@ -72,7 +72,7 @@
       "version": "0.85.0+ctrecovery.20261114"
     },
     "version": "f1cefe442182dc8e4c456359aebdb37e5c50db6b0abb669b303e05763feb94a3",
-    "workspace_sha256": "649d6bb7b711211e07cb275a2bc489a32709dfb17d606033b124608f280df7a2"
+    "workspace_sha256": "bddfe96ffc61a73c80ff3e1f7920770171ab9485aafbe1e80146b0dcdc059d1d"
   },
   "json": {
     "limits": {
@@ -83,7 +83,7 @@
     "locked_sha256": "6070d77413a75da8f622ee36fcbfffea84831739338bbbab56484b95cebf9762",
     "sample_sha256": "29b6bd375201fffc4d4aa59db3b1e661d36ad63b94889649396b21b18af92f7c",
     "version": "f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93",
-    "workspace_sha256": "1b4ddf00cca7621cca239741d3efcd608920be4ac02bf2c008e8ad985b2a8d6e"
+    "workspace_sha256": "def78191f828ba6b3880acc316c941d265d45b4e40803437814ccefd208274e2"
   },
   "pdf_text": {
     "limits": {
@@ -117,7 +117,7 @@
       "version": "0.85.0+ctrecovery.20261114"
     },
     "version": "4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8",
-    "workspace_sha256": "649d6bb7b711211e07cb275a2bc489a32709dfb17d606033b124608f280df7a2"
+    "workspace_sha256": "bddfe96ffc61a73c80ff3e1f7920770171ab9485aafbe1e80146b0dcdc059d1d"
   },
   "readings": {
     "limits": {
@@ -134,7 +134,7 @@
     },
     "sample_sha256": "475a2288edeaf9a7dc8e8c91be51524729eeb54b750bb99d28ebb81996393982",
     "version": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed",
-    "workspace_sha256": "19ef608c0e4725383b1b4faf866ed2811898542a6af9f8de2e089a099c161e08"
+    "workspace_sha256": "49d313694f23c297d896c34178c6a50d4e5daf18684d2d118cddef10d641632c"
   },
   "sniff": {
     "locked_sha256": "8d24595591a79984bb7ba208d33396d57c31b23817b844bb0e7c1361e25e746b",
@@ -145,7 +145,7 @@
     },
     "sample_sha256": "a65c8c35474262329806ea3ebcc90e962c6df3aecf509ab9246f599253bb8357",
     "version": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
-    "workspace_sha256": "36c8bbe355cf70be06e2bf9e12b0a71249fa2bba95be88804e4feaa03b81cd19"
+    "workspace_sha256": "58716d2c65c8881fd3a803d241f791bcd31352d2d1c056ffbb180f7a6304868c"
   },
   "xml": {
     "limits": {
@@ -156,7 +156,7 @@
     "locked_sha256": "6070d77413a75da8f622ee36fcbfffea84831739338bbbab56484b95cebf9762",
     "sample_sha256": "25f05b499749df71b38a9edb58dd249a89e5cf9e85dfb93d1f0e82778ab88c4e",
     "version": "c9d955b28b401a3fe56386a4a221b3f2147baa0f1da503c7c6a224f4808d085f",
-    "workspace_sha256": "1b4ddf00cca7621cca239741d3efcd608920be4ac02bf2c008e8ad985b2a8d6e"
+    "workspace_sha256": "def78191f828ba6b3880acc316c941d265d45b4e40803437814ccefd208274e2"
   },
   "xml_text": {
     "limits": {
@@ -178,6 +178,6 @@
       "version": "0.85.0+ctrecovery.20261114"
     },
     "version": "5a0768bcbaaaf7f67e29e2ff989689b62356579780f99e518d137f7b222c798c",
-    "workspace_sha256": "649d6bb7b711211e07cb275a2bc489a32709dfb17d606033b124608f280df7a2"
+    "workspace_sha256": "bddfe96ffc61a73c80ff3e1f7920770171ab9485aafbe1e80146b0dcdc059d1d"
   }
 }

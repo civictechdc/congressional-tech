@@ -48,13 +48,22 @@ class Origin:
                     return self.reply(200, data, headers)
                 start, end = map(int, match.groups())
                 headers['Content-Range'] = f'bytes {start}-{end}/{len(data)}'
-                return self.reply(206, data[start:end + 1], headers)
+                body = data[start:end + 1]
+                if quirk == 'wrong_etag': headers['ETag'] = '"' + '0' * 32 + '"'
+                if quirk == 'wrong_length': headers['Content-Length'] = len(body) + 1
+                if quirk == 'wrong_range': headers['Content-Range'] = f'bytes {start}-{end}/{len(data) + 1}'
+                if quirk == 'huge_range': headers['Content-Range'] = 'bytes ' + '9' * 5000 + f'-{end}/{len(data)}'
+                if quirk == 'short_body':
+                    headers['Content-Length'] = len(body)
+                    body = body[:-1]
+                return self.reply(206, body, headers)
 
             def reply(self, status, body, headers=()):
                 self.send_response(status)
                 for name, value in dict(headers).items():
                     self.send_header(name, value)
-                self.send_header('Content-Length', str(len(body)))
+                if 'Content-Length' not in dict(headers):
+                    self.send_header('Content-Length', str(len(body)))
                 self.end_headers()
                 self.wfile.write(body)
 
@@ -158,6 +167,43 @@ def test_an_md5_less_read_refuses_an_origin_answer_it_cannot_pin(tmp_path):
         (None, 'bytes=0-0'), ('"' + hashlib.md5(stored).hexdigest() + '"', f'bytes=0-{len(stored) - 1}')]}
     text = {names[bytes.fromhex(r['body'])]: r['text'] for r in committed(args, tmp_path / 't', 'body_text', 'text')}
     assert text == dict(gzipped='STATEMENT OF THE WITNESS\n\n    Mr. Chairman, thank you.\n')
+
+
+@pytest.mark.loopback
+def test_spawned_workers_retain_raw_failure_details_and_only_commit_the_good_control(tmp_path):
+    cases = dict(wrong_etag='response_metadata_mismatch', wrong_length='response_metadata_mismatch',
+                 wrong_range='range_mismatch', short_body='payload_length_mismatch',
+                 huge_range='unknown_value_error')
+    bodies = {name: (f'<doc>Source text {name}.</doc>'.encode(), 'xml') for name in (*cases, 'good')}
+    args, names = lake(tmp_path, bodies)
+    raw = args.pop('local_root')
+    with Origin(raw) as origin:
+        origin.quirks = {'/' + str(next(raw.glob(f'bodies/sha256/*/{digest.hex()}')).relative_to(raw)): name
+                         for digest, name in names.items() if name != 'good'}
+        report = body_text.run(**args, origin=origin.url, work=tmp_path / 'run', execute=True)
+    [batch] = report['batches']
+    assert report['status'] == 'pending' and report['pending_read_reasons'] == {'raw_range_ValueError': 5}
+    outcomes = {names[bytes.fromhex(row['body_sha256'])]: row for row in batch['body_outcomes']}
+    for name, reason in cases.items():
+        outcome = outcomes[name]
+        assert (outcome['status'], outcome['reading_status']) == ('pending', None)
+        diagnostic = outcome['raw_read_diagnostic']
+        assert diagnostic['reason'] == reason and diagnostic['http_status'] == 206
+        assert diagnostic['expected_bytes'] == diagnostic['expected_total_bytes'] == len(bodies[name][0])
+        assert outcome['error'] == 'OSError: raw_range_ValueError'
+    assert outcomes['short_body']['raw_read_diagnostic']['observed_bytes'] == len(bodies['short_body'][0]) - 1
+    assert outcomes['huge_range']['raw_read_diagnostic']['phase'] == 'response_headers'
+    assert outcomes['wrong_etag']['raw_read_diagnostic']['etag_matches'] is False
+    assert outcomes['wrong_range']['raw_read_diagnostic']['range_valid'] is False
+    retained = [json.loads(line) for path in (tmp_path / 'run').glob('batch-*/stage/body-outcomes.jsonl')
+                for line in path.read_text().splitlines()]
+    assert sorted(retained, key=lambda row: row['body_sha256']) == batch['body_outcomes']
+    assert origin.url not in json.dumps(retained) and '9' * 5000 not in json.dumps(retained)
+    assert len(origin.requests) == len(bodies)  # the same one-GET, no-retry behavior for ValueError
+    assert {names[bytes.fromhex(row['body'])] for row in committed(args, tmp_path / 'r', 'readings', 'status')} == {'good'}
+    assert [row['text'] for row in committed(args, tmp_path / 't', 'body_text', 'text')] == ['Source text good.']
+    assert not list((tmp_path / 'run').glob('batch-*/stage/bodies/*'))
+    assert body_text.run(**args, origin=origin.url, work=tmp_path / 'again', execute=False)['work_items'] == 5
 
 
 @pytest.mark.network

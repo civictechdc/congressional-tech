@@ -5,7 +5,7 @@ import threading
 
 import pytest
 
-from congress_api.retention.r2 import R2Store
+from congress_api.retention.r2 import R2Store, RawRangeReadError, raw_range_diagnostic
 from test_r2_body_files import Client as BaseClient
 
 
@@ -132,3 +132,80 @@ def test_captured_md5_prefetch_preserves_single_put_quote_normalization(tmp_path
     store.prefetch_immutable([KEY],expected={KEY:PIN})
     assert store._immutable_cache_path(KEY).read_bytes()==DATA
     assert client.reads[0]['IfMatch']=='"'+PIN['md5']+'"'
+
+
+@pytest.mark.parametrize('change,reason,observed,range_valid,etag_matches',[
+    (dict(ContentLength=8193),'response_metadata_mismatch',None,None,True),
+    (dict(ETag='"'+('0'*32)+'"'),'response_metadata_mismatch',None,None,False),
+    (dict(ContentRange='bytes 0-8191/99999'),'range_mismatch',None,False,True),
+    (dict(ResponseMetadata={'HTTPStatusCode':200}),'range_mismatch',None,False,True),
+    (dict(Body=io.BytesIO(DATA[:8191])),'payload_length_mismatch',8191,True,True),
+])
+def test_range_failure_evidence_preserves_lengths_without_a_success_cache(
+        tmp_path,change,reason,observed,range_valid,etag_matches):
+    client=Client();client.change=change
+    store=R2Store(client,'bucket',cache_dir=tmp_path/'cache');timing={}
+    with pytest.raises(RawRangeReadError) as failure:
+        store.read(KEY,start=0,length=8192,expected=PIN,timing=timing)
+    diagnostic=failure.value.diagnostic
+    assert diagnostic==dict(version=1,reason=reason,
+        phase='response_body' if observed is not None else 'response_headers',
+        expected_total_bytes=len(DATA),range_start=0,expected_bytes=8192,
+        observed_content_length=change.get('ContentLength',8192),observed_bytes=observed,
+        http_status=change.get('ResponseMetadata',{}).get('HTTPStatusCode',206),
+        range_valid=range_valid,etag_matches=etag_matches)
+    assert timing['error_type']=='ValueError' and timing['bytes']==0
+    assert len(client.reads)==1 and client.streams[0].closed
+    assert not store._immutable_cache_path(KEY).exists()
+
+
+def test_raw_failure_diagnostic_is_a_closed_bounded_schema():
+    secret='https://credentials.invalid/?token=DO_NOT_RETAIN'
+    value=raw_range_diagnostic(dict(phase=[secret],reason=secret,expected_total_bytes=True,
+        range_start=-1,expected_bytes=1<<80,observed_content_length=secret,observed_bytes=1.5,
+        http_status=999,range_valid=secret,etag_matches=1,url=secret,error=secret))
+    assert value==dict(version=1,phase='store_read',reason='unknown_value_error',
+        **dict.fromkeys(('expected_total_bytes','range_start','expected_bytes','observed_content_length',
+                         'observed_bytes','http_status','range_valid','etag_matches')))
+
+
+def test_missing_response_metadata_does_not_hide_a_length_failure():
+    client=Client();client.change=dict(ContentLength=8193,ResponseMetadata=None)
+    with pytest.raises(RawRangeReadError) as failure:
+        R2Store(client,'bucket').read(KEY,start=0,length=8192,expected=PIN)
+    assert failure.value.diagnostic['reason']=='response_metadata_mismatch'
+    assert failure.value.diagnostic['http_status'] is None
+    assert client.streams[0].closed
+
+
+def test_unknown_store_value_error_stays_pending_without_copying_exception_attributes(tmp_path,monkeypatch):
+    from congress_api.lake.readings import _ReadOnceBody
+    secret='https://credentials.invalid/?token=DO_NOT_RETAIN'
+    class Store:
+        def read(self,*args,**kwargs):
+            error=ValueError(secret)
+            error.diagnostic={'reason':secret,'phase':secret,'url':secret}
+            raise error
+    monkeypatch.setenv('DOCSPEC_PARSER_IO_MARKER',str(tmp_path/'io-marker'))
+    source=_ReadOnceBody(None,tmp_path/'ranges',len(DATA),body_store=Store(),
+        remote=dict(bucket='bucket',key=KEY,md5=PIN['md5']))
+    with pytest.raises(OSError,match='^raw_range_ValueError$') as failure:
+        source.read(0,8192)
+    assert failure.value.raw_read_diagnostic==raw_range_diagnostic(dict(phase='store_read',
+        expected_total_bytes=len(DATA),range_start=0,expected_bytes=8192))
+    assert source.read_bytes==0 and not list(source.cache.glob('*.bin'))
+    assert not list(source.cache.glob('*.pending'))
+    assert secret not in str(failure.value.raw_read_diagnostic)
+
+
+def test_other_value_error_categories_keep_their_existing_pending_reason(tmp_path,monkeypatch):
+    from congress_api.lake.readings import _ReadOnceBody
+    class ClientError(Client):
+        def get_object(self,**kwargs):raise UnicodeError('do not retain transport error text')
+    monkeypatch.setenv('DOCSPEC_PARSER_IO_MARKER',str(tmp_path/'io-marker'))
+    source=_ReadOnceBody(None,tmp_path/'ranges',len(DATA),body_store=R2Store(ClientError(),'bucket'),
+        remote=dict(bucket='bucket',key=KEY,md5=PIN['md5']))
+    with pytest.raises(OSError,match='^raw_range_UnicodeError$') as failure:
+        source.read(0,8192)
+    assert not hasattr(failure.value,'raw_read_diagnostic')
+    assert source.read_bytes==0
