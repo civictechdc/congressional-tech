@@ -24,6 +24,8 @@ Run from the repository root with the locked environment, for example:
 
 **`main_content_cohort.py`** compares every `marked` main-content selection with the same element read by html5lib and with trafilatura, as ordered word runs in both directions, stratified by host and selector shape. Every body it reports as losing words is for a person to read in full. It reads retained bodies only.
 
+**`corpus_quality_audit.py`** runs the offline `viewer_publication.corpus_quality` dataset validation suite across local published tables (`detail.parquet`, `list.parquet`, `sources.parquet`, and optional `witnesses.parquet` / `bills.parquet`) plus optional `--docmeta-dir` (`docmeta_v6_1` sidecars) and `--base-tables`. It checks cross-table provenance, `hsru00` floor-host leakage, Wayback/CMS `/uploads/` date traps, `house_naming` `BILLS-` and Noon-Jan-3 Congress boundaries, `docmeta_v6_1` `link_key` conservation and `strict_v4_valid` invariants, TF-IDF / Dirichlet log-odds label contradictions and host boilerplate drift, unmapped-tail structural clusters, and emits `--output-json`, `--output-md`, and a fresh-seed `--audit-packet-out` acceptance sample without network access.
+
 `release_diff.py` moved into the publisher as `viewer_publication.release_comparison` (sides `--base`, `--candidate`); `viewer_publication.release_gate` runs it in the publish path.
 
 ## Cost and memory samples
