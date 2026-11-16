@@ -252,7 +252,9 @@ def test_readings_import_origin_must_support_selected_html_metadata():
     selector = {'kind': 'native_table', 'metadata_location': 's3://x/m.json',
                 'table_uuid': 'u', 'snapshot': 1, 'schema_id': 0}
     legacy = '085bb61c63dfd9a2087d1770d9a8cff44ff32f73'
-    capable = '7988f0d6f79efc5bba34a24ef57f121ad6029310'
+    historical_capable = '7988f0d6f79efc5bba34a24ef57f121ad6029310'
+    historical_html_metadata = '0fff8151c7752109cc3778d9570e682985edce2e1f90e04c3b638c37a6c4a129'
+    capable = head()
     leaves = {parser: current_version(parser) for parser in LEAF_PARSERS}
     current = current_version('html_metadata')
 
@@ -264,9 +266,13 @@ def test_readings_import_origin_must_support_selected_html_metadata():
         return snapshot_reasons(dict(readings=selector, parser_versions=parser_versions), {'readings': record})
 
     assert reasons(legacy, leaves) == []
+    assert reasons(historical_capable, leaves) == []
     assert reasons(capable, leaves) == []
     assert 'origin: the code at 085bb61c63df computes another version' in reasons(
         legacy, dict(leaves, html_metadata=current))[0]
-    assert reasons(capable, dict(leaves, html_metadata=current)) == []
+    assert reasons(historical_capable, dict(leaves, html_metadata=historical_html_metadata)) == []
     assert 'origin: the code at 7988f0d6f79e computes another version' in reasons(
+        historical_capable, dict(leaves, html_metadata=current))[0]
+    assert reasons(capable, dict(leaves, html_metadata=current)) == []
+    assert f'origin: the code at {capable[:12]} computes another version' in reasons(
         capable, dict(leaves, html_metadata='f' * 64))[0]
