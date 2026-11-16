@@ -69,6 +69,13 @@ def test_dates_bioguide_and_all_facets_keep_ambiguity():
     empty = reader().read_filename('', '', catalog_version='v')
     assert empty['status'] == 'completed' and not empty['valid']
 
+    bio = reader().read_filename('HHRG-119-IF00-Bio-SmithJ-20260203.pdf', '', catalog_version='v')
+    assert {'field': 'filename_slot_kind', 'value': 'witness-biography'} in bio['fields']
+    assert {'field': 'is_slot_ambiguous', 'value': 'true'} in bio['fields']
+    ttf = reader().read_filename('HHRG-119-IF00-TTF-SmithJ-20260203.pdf', '', catalog_version='v')
+    assert {'field': 'filename_slot_kind', 'value': 'testimony-disclosure'} in ttf['fields']
+    assert {'field': 'is_slot_ambiguous', 'value': 'false'} in ttf['fields']
+
 
 class Parser:
     def __init__(self, error): self.calls = []; self.error = error

@@ -119,6 +119,10 @@ def _typed(result, filename):
         package = next((match['canonical_filename'].rsplit('.', 1)[0]
             for match in result.get('matches', [])
             if match.get('canonical_filename', '').rsplit('.', 1)[0].lower() == stem.lower()), None)
+    field_map = dict(metadata)
+    if result.get('filename_slot_kind') is not None:
+        field_map.setdefault('filename_slot_kind', [str(result['filename_slot_kind'])])
+        field_map.setdefault('is_slot_ambiguous', ['true' if result.get('is_slot_ambiguous') else 'false'])
     return dict(valid=bool(result['valid']),
         **{name: list(metadata.get(name, [])) for name in ('document_kind', 'document_family', 'committee_code')},
         congress=congress, date_token=one('date_token'), measure_type=one('measure_type'),
@@ -127,7 +131,7 @@ def _typed(result, filename):
             else _day(one('date_token_candidates')),
         measure_keys=sorted(keys), bioguide_ids=sorted(set(metadata.get('bioguide_token', [])
             + metadata.get('sponsor_bioguide_id', []))), package_id=package,
-        fields=[dict(field=name, value=value) for name, values in sorted(metadata.items()) for value in values])
+        fields=[dict(field=name, value=value) for name, values in sorted(field_map.items()) for value in values])
 
 
 def _reading(filename, source_url, catalog_version, *, status='completed', error_type=None):

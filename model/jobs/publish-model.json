@@ -70,7 +70,7 @@
     "json": "f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93",
     "meeting_records": {
       "congress_gov": "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
-      "house_xml": "24c88e855dab86f0c362387ffd4c40cf196e2a6f5c14d8aa1dba66f821ca0df5"
+      "house_xml": "7bfc7b6a9dbf4e85ce17322a29f331e124c2717b73ce76a144c97d7ce53b2d5b"
     },
     "playlist_records": {
       "hls": "53e6d0904cbc43c20c215505d012fdd054a5eb262d842478dfbdd6891ee4a557"
@@ -85,7 +85,7 @@
       "gpo_html": "1f2ecd58a4b4d538d1e0d16a6c143dcdb477999bc911e08db3ca64497df83725"
     }
   },
-  "catalog_version": "e6e2699343ebae7fd149702114d58360a3bd62a7331d19db58215edc042aba70",
+  "catalog_version": "6a435cb66adfd42ed40151b8565f1118b3dbd07f4d905023489c6a9223b9ec44",
   "output": "../../output/archive-release",
   "scratch": "../../output/archive-model",
   "recording_decision_files": [
