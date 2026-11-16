@@ -233,3 +233,19 @@ def test_unqualified_or_ambiguous_publication_exclusions_refuse(tmp_path, damage
     path.write_text(json.dumps(manifest))
     with pytest.raises(ValueError):
         body_text_selection.load(path, body_text.current_versions())
+
+
+def test_four_parser_warc_manifest_projects_cleanly_for_single_object_planner(tmp_path, mixed):
+    args, _, _, manifest = mixed
+    manifest['baseline_versions']['warc'] = readings.current_version('warc')
+    manifest['overrides'].append(dict(
+        body_sha256=identity('warc-envelope'),
+        parser='warc',
+        parser_version=identity('warc-compose-v1'),
+        status='completed',
+        text_sha256=identity('warc-payload-text'),
+    ))
+    args['selection'].write_text(json.dumps(manifest))
+    planned = body_text.plan(**args, work=tmp_path / 'plan-with-warc')
+    assert planned['selection']['overrides'] == len(manifest['overrides'])
+

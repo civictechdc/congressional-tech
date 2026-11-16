@@ -57,6 +57,7 @@ def run_corpus_quality_audit(
     docmeta_dir: str | Path | None = None,
     base_tables_dir: str | Path | None = None,
     text_parquet: str | Path | None = None,
+    body_text_ssot: str | Path | None = None,
     seed: int = DEFAULT_AUDIT_SEED,
     per_stratum: int = 10,
     limit: int | None = None,
@@ -73,6 +74,7 @@ def run_corpus_quality_audit(
         t_path,
         docmeta_dir=dm_path,
         text_parquet=text_parquet,
+        body_text_ssot=body_text_ssot,
         limit=limit,
         include_text=True,
     )
@@ -350,6 +352,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help="Optional Parquet containing extracted p1..p2 / body text.",
     )
     parser.add_argument(
+        "--body-text-ssot",
+        default=None,
+        type=Path,
+        help="Optional singular body_text export directory, current.json pointer, or export.parquet.",
+    )
+    parser.add_argument(
         "--seed",
         default=DEFAULT_AUDIT_SEED,
         type=int,
@@ -406,6 +414,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         docmeta_dir=args.docmeta_dir,
         base_tables_dir=args.base_tables,
         text_parquet=args.text_parquet,
+        body_text_ssot=args.body_text_ssot,
         seed=args.seed,
         per_stratum=args.per_stratum,
         limit=args.limit,

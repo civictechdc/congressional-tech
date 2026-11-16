@@ -37,7 +37,11 @@ def load(path, versions):
     if set(value) != fields:
         raise ValueError('Invalid body-text selection manifest')
     baseline = value['baseline_versions']
-    if not isinstance(baseline, dict) or set(baseline) != set(versions):
+    supported = set(versions)
+    optional_export = {'warc'}
+    if (not isinstance(baseline, dict)
+            or not (set(baseline) - optional_export == supported - optional_export
+                    and set(baseline) <= supported | optional_export)):
         raise ValueError('Selection baseline must name exactly the supported parsers')
     def digest(value):
         return isinstance(value, str) and re.fullmatch('[0-9a-f]{64}', value) is not None
@@ -78,7 +82,9 @@ def load(path, versions):
     identity = dict(sha256=sha256(raw).hexdigest(), qualification=proof, overrides=len(seen))
     if value['version'] == 2:
         identity['excluded_bodies'] = len(excluded)
-    return dict(versions=baseline, overrides=value['overrides'], excluded_bodies=excluded, identity=identity)
+    active_versions = {k: v for k, v in baseline.items() if k in supported}
+    active_overrides = [r for r in value['overrides'] if r['parser'] in active_versions]
+    return dict(versions=active_versions, overrides=active_overrides, excluded_bodies=excluded, identity=identity)
 
 
 def selection_input(work, selection):

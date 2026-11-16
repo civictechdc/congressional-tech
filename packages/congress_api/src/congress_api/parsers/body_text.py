@@ -121,17 +121,30 @@ def markup_text(data, parser, *, select_publisher_content=False):
         if parser != 'html_text':
             raise ValueError('Publisher content selection requires html_text')
         from congress_api.parsers.congress_bill_content import select_congress_bill_content
+        from congress_api.parsers.congress_cms_content import POLICY as CMS_POLICY, select_congress_cms_content
         from congress_api.parsers.congress_legislative_content import POLICY, select_congress_legislative_content
+        from congress_api.parsers.main_content import strip_cms_time_travel_lines
         if select_publisher_content is True:
             selection = select_congress_bill_content(data)
         elif select_publisher_content == POLICY:
             selection = select_congress_legislative_content(data)
+        elif select_publisher_content == CMS_POLICY:
+            selection = select_congress_cms_content(data)
         else:
             raise ValueError('Unknown publisher content selection policy')
         selection_evidence = None if selection is None else dict(selection.evidence)
         if selection is not None and selection.body is not None:
             try:
                 rendition = rendition_text(selection.body, rendition=selection.evidence['rendition'])
+                if select_publisher_content == CMS_POLICY and rendition.text.strip():
+                    from dataclasses import replace as _replace_rendition
+                    cleaned_text = strip_cms_time_travel_lines(
+                        rendition.text,
+                        declared_dates=tuple(selection_evidence.get('declared_dates', ())),
+                        reference_congress=selection_evidence.get('reference_congress'),
+                    )
+                    if cleaned_text != rendition.text:
+                        rendition = _replace_rendition(rendition, text=cleaned_text)
                 if not rendition.text.strip():
                     rendition = None
                     selection_evidence.update(outcome='fallback', reason=(

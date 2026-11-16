@@ -664,6 +664,7 @@ def iter_corpus_rows(
     *,
     docmeta_dir: str | Path | None = None,
     text_parquet: str | Path | None = None,
+    body_text_ssot: str | Path | None = None,
     limit: int | None = None,
     include_text: bool = True,
     batch_size: int = 8192,
@@ -893,44 +894,82 @@ def iter_corpus_rows(
         )
         dm_joins.append("LEFT JOIN dm_det dmdt ON lower(hex(d.link_key)) = dmdt.lk_hex")
 
-    # Optional external or sibling `p12` / `body_text` Parquet
+    # Optional singular `body_text` SSOT (`export.parquet` + `current.json`) or legacy `p12` Parquet
     ext_txt_expr = "CAST(NULL AS VARCHAR)"
+    ssot_mode = False
+    ssot_offsets_expr = "CAST(NULL AS BIGINT[])"
+    ssot_tsha_expr = "CAST(NULL AS BLOB)"
     if include_text:
-        tp_path: Path | None = Path(text_parquet) if text_parquet is not None else dm_paths.get("p12_hygiene")
-        if tp_path is not None and tp_path.is_file():
-            tcols = _parquet_cols(tp_path)
-            t_val = next(
-                (c for c in ("p12_clean_text", "p12_text", "p12_lines", "text") if c in tcols),
-                None,
+        ssot_arg = body_text_ssot
+        if ssot_arg is None and text_parquet is not None:
+            cand_p = Path(text_parquet)
+            if cand_p.is_dir() or cand_p.name == "current.json":
+                ssot_arg = cand_p
+            elif cand_p.is_file():
+                cand_cols = _parquet_cols(cand_p)
+                if {"saved_body", "text", "page_offsets", "text_sha256"} <= cand_cols:
+                    ssot_arg = cand_p
+
+        if ssot_arg is not None:
+            from viewer_publication.body_text_ssot import verify_ssot_export
+
+            ssot_info = verify_ssot_export(
+                ssot_arg,
+                require_pointer=(body_text_ssot is not None),
+                verify_file_sha256=False,
             )
-            if t_val is not None:
-                if "link_key" in tcols:
-                    ctes.append(
-                        f"""txt_ext AS (
-                            SELECT lower(hex(link_key)) AS lk_hex, CAST({t_val} AS VARCHAR) AS ext_text
-                            FROM read_parquet('{_sql_quote_path(tp_path)}')
-                        )"""
-                    )
-                    dm_joins.append("LEFT JOIN txt_ext tx ON lower(hex(d.link_key)) = tx.lk_hex")
-                    ext_txt_expr = "tx.ext_text"
-                elif "list_row" in tcols:
-                    ctes.append(
-                        f"""txt_ext AS (
-                            SELECT CAST(list_row AS BIGINT) AS list_row, CAST({t_val} AS VARCHAR) AS ext_text
-                            FROM read_parquet('{_sql_quote_path(tp_path)}')
-                        )"""
-                    )
-                    dm_joins.append("LEFT JOIN txt_ext tx ON d.list_row = tx.list_row")
-                    ext_txt_expr = "tx.ext_text"
-                elif "saved_body" in tcols:
-                    ctes.append(
-                        f"""txt_ext AS (
-                            SELECT saved_body, CAST({t_val} AS VARCHAR) AS ext_text
-                            FROM read_parquet('{_sql_quote_path(tp_path)}')
-                        )"""
-                    )
-                    dm_joins.append("LEFT JOIN txt_ext tx ON d.saved_body = tx.saved_body")
-                    ext_txt_expr = "tx.ext_text"
+            ssot_pq = Path(ssot_info["export_path"])
+            ctes.append(
+                f"""txt_ext AS (
+                    SELECT saved_body,
+                           CAST(text AS VARCHAR) AS ext_text,
+                           page_offsets AS ext_offsets,
+                           text_sha256 AS ext_tsha
+                    FROM read_parquet('{_sql_quote_path(ssot_pq)}')
+                )"""
+            )
+            dm_joins.append("LEFT JOIN txt_ext tx ON d.saved_body = tx.saved_body")
+            ext_txt_expr = "tx.ext_text"
+            ssot_offsets_expr = "tx.ext_offsets"
+            ssot_tsha_expr = "tx.ext_tsha"
+            ssot_mode = True
+            batch_size = min(batch_size, 1024)
+        else:
+            tp_path: Path | None = Path(text_parquet) if text_parquet is not None else dm_paths.get("p12_hygiene")
+            if tp_path is not None and tp_path.is_file():
+                tcols = _parquet_cols(tp_path)
+                t_val = next(
+                    (c for c in ("p12_clean_text", "p12_text", "p12_lines", "text") if c in tcols),
+                    None,
+                )
+                if t_val is not None:
+                    if "link_key" in tcols:
+                        ctes.append(
+                            f"""txt_ext AS (
+                                SELECT lower(hex(link_key)) AS lk_hex, CAST({t_val} AS VARCHAR) AS ext_text
+                                FROM read_parquet('{_sql_quote_path(tp_path)}')
+                            )"""
+                        )
+                        dm_joins.append("LEFT JOIN txt_ext tx ON lower(hex(d.link_key)) = tx.lk_hex")
+                        ext_txt_expr = "tx.ext_text"
+                    elif "list_row" in tcols:
+                        ctes.append(
+                            f"""txt_ext AS (
+                                SELECT CAST(list_row AS BIGINT) AS list_row, CAST({t_val} AS VARCHAR) AS ext_text
+                                FROM read_parquet('{_sql_quote_path(tp_path)}')
+                            )"""
+                        )
+                        dm_joins.append("LEFT JOIN txt_ext tx ON d.list_row = tx.list_row")
+                        ext_txt_expr = "tx.ext_text"
+                    elif "saved_body" in tcols:
+                        ctes.append(
+                            f"""txt_ext AS (
+                                SELECT saved_body, CAST({t_val} AS VARCHAR) AS ext_text
+                                FROM read_parquet('{_sql_quote_path(tp_path)}')
+                            )"""
+                        )
+                        dm_joins.append("LEFT JOIN txt_ext tx ON d.saved_body = tx.saved_body")
+                        ext_txt_expr = "tx.ext_text"
 
     # Assemble coalesced docmeta expressions cleanly based on whichever tables exist
     dk_parts = [doc_key_d_expr]
@@ -1003,11 +1042,18 @@ def iter_corpus_rows(
     comp_exprs["dm_text_source"] = _coal(tsrc_parts, "VARCHAR")
 
     if include_text:
-        txt_candidates = [ext_txt_expr]
-        if has_queue:
-            txt_candidates.append("dmq.q_text")
-        txt_candidates.extend([f"NULLIF({sel_text_expr}, '')", f"NULLIF({mc_snippet_expr}, '')"])
-        text_sql = f"COALESCE({', '.join(txt_candidates)}, '')"
+        if ssot_mode:
+            fallback_candidates: list[str] = []
+            if has_queue:
+                fallback_candidates.append("dmq.q_text")
+            fallback_candidates.extend([f"NULLIF({sel_text_expr}, '')", f"NULLIF({mc_snippet_expr}, '')"])
+            text_sql = f"COALESCE({', '.join(fallback_candidates)}, '')"
+        else:
+            txt_candidates = [ext_txt_expr]
+            if has_queue:
+                txt_candidates.append("dmq.q_text")
+            txt_candidates.extend([f"NULLIF({sel_text_expr}, '')", f"NULLIF({mc_snippet_expr}, '')"])
+            text_sql = f"COALESCE({', '.join(txt_candidates)}, '')"
     else:
         text_sql = "''"
 
@@ -1055,7 +1101,10 @@ def iter_corpus_rows(
             {comp_exprs['committees']} AS docmeta_committees,
             {comp_exprs['docmeta_json']} AS docmeta_json,
             {comp_exprs['strict_v4_valid']} AS strict_v4_valid,
-            {comp_exprs['is_alias']} AS is_alias
+            {comp_exprs['is_alias']} AS is_alias,
+            {ext_txt_expr if ssot_mode else 'CAST(NULL AS VARCHAR)'} AS ssot_full_text,
+            {ssot_offsets_expr} AS ssot_page_offsets,
+            {ssot_tsha_expr} AS ssot_text_sha256
         FROM d_raw d
         {list_join_sql}
         {src_join_sql}
@@ -1063,6 +1112,8 @@ def iter_corpus_rows(
         ORDER BY d.list_row
         {limit_sql}
     """
+
+    from viewer_publication.body_text_ssot import head_tail_window as _ssot_head_tail
 
     con = duckdb.connect()
     try:
@@ -1080,6 +1131,18 @@ def iter_corpus_rows(
                 host = extract_url_host(raw_url) or extract_url_host(raw_lo)
                 fmt = r[8]
                 sfx = (r[9] or "").lstrip(".").lower() or None
+                p12_val = r[29] or ""
+                tsrc_val = r[30]
+                if ssot_mode and r[44] is not None:
+                    ssot_txt = r[44]
+                    ssot_offs = tuple(int(x) for x in (r[45] or ()))
+                    ssot_tsha = bytes(r[46]) if r[46] is not None else b""
+                    if sha256(ssot_txt.encode("utf-8")).digest() != ssot_tsha:
+                        raise ValueError(
+                            f"SSOT text_sha256 mismatch on saved_body {sb_hex} (link_key={lk_hex})"
+                        )
+                    p12_val = _ssot_head_tail(ssot_txt, ssot_offs, max_chars=8000)
+                    tsrc_val = tsrc_val or "body_text_ssot"
                 yield CorpusDocRow(
                     list_row=int(r[0]),
                     link_key_hex=lk_hex,
@@ -1111,8 +1174,8 @@ def iter_corpus_rows(
                     witness_keys=_to_str_tuple(r[26]),
                     main_content_outcome=r[27],
                     reading_status=r[28],
-                    p12_text=r[29] or "",
-                    text_source=r[30],
+                    p12_text=p12_val,
+                    text_source=tsrc_val,
                     disposition=r[31],
                     sub_disposition=r[32],
                     v6_route=r[33],
@@ -1136,6 +1199,7 @@ def load_corpus_rows(
     *,
     docmeta_dir: str | Path | None = None,
     text_parquet: str | Path | None = None,
+    body_text_ssot: str | Path | None = None,
     limit: int | None = None,
     include_text: bool = True,
 ) -> list[CorpusDocRow]:
@@ -1145,6 +1209,7 @@ def load_corpus_rows(
             tables_dir,
             docmeta_dir=docmeta_dir,
             text_parquet=text_parquet,
+            body_text_ssot=body_text_ssot,
             limit=limit,
             include_text=include_text,
         )

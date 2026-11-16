@@ -60,7 +60,9 @@ def json_len(column):
 
 
 def test_one_row_per_saved_body_at_the_declared_version_ordered_with_small_groups(tmp_path):
-    assert export.load_definition()['parsers'] == ['pdf_text', 'html_text', 'xml_text']
+    defn = export.load_definition()
+    assert defn['parsers'] == ['pdf_text', 'html_text', 'xml_text', 'warc']
+    assert defn['settings']['footer_limit'] == 16_777_216
     pointer, output = run(tmp_path, 1 << 20)
     names = {digest(n): n for n in TEXTS}
     table = pq.read_table(output)
@@ -288,4 +290,91 @@ def test_export_unreadable_coverage_excludes_withdrawn_decisions(tmp_path):
                             unreadable_files=[dict(key='provenance/unreadable/u.jsonl', path=str(unreadable_path))],
                             versions=VERSIONS)
     assert pointer['coverage']['unreadable'] == {'pdf_text': 1}
+
+
+def test_warc_override_composes_into_export_while_excluding_error_envelopes(tmp_path):
+    from congress_api.lake.reading_versions import WARC_CAPTURE_PAYLOAD_COMPOSITION_VERSION
+    from congress_api.retention.provenance import json_input, parquet_output, run_job
+
+    warc_good_sha = digest('warc_good')
+    warc_err_sha = digest('warc_err_env')
+    warc_retired_sha = digest('warc_retired')
+    pdf_sha = digest('short')
+
+    bt_rows = [
+        dict(body_sha=pdf_sha, parser='pdf_text', parser_version=VERSIONS['pdf_text'], text='PDF prose.',
+             page_offsets=[0], ocr_pages=[], text_sha256=sha256(b'PDF prose.').digest(), macos_build=None),
+        dict(body_sha=warc_good_sha, parser='warc', parser_version=WARC_CAPTURE_PAYLOAD_COMPOSITION_VERSION,
+             text='Unwrapped WARC testimony.\nPage two.', page_offsets=[0, 26], ocr_pages=[],
+             text_sha256=sha256(b'Unwrapped WARC testimony.\nPage two.').digest(), macos_build=None),
+        dict(body_sha=warc_err_sha, parser='warc', parser_version=WARC_CAPTURE_PAYLOAD_COMPOSITION_VERSION,
+             text='404 Meeting Not Found', page_offsets=[0], ocr_pages=[],
+             text_sha256=sha256(b'404 Meeting Not Found').digest(), macos_build=None),
+        dict(body_sha=warc_retired_sha, parser='warc', parser_version='e835fb81' * 8,
+             text='Skip to main content old warc', page_offsets=[0], ocr_pages=[],
+             text_sha256=sha256(b'Skip to main content old warc').digest(), macos_build=None),
+    ]
+    bt_path = tmp_path / 'body-text.parquet'
+    pq.write_table(pa.Table.from_pylist(sorted(bt_rows, key=lambda r: r['body_sha']), schema=body_text._text_schema()), bt_path)
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    rd_json = [
+        dict(body_hex=r['body_sha'].hex(), parser=r['parser'], parser_version=r['parser_version'],
+             status='completed', error_type=None, text_bytes=len(r['text'].encode()), text_head=r['text'][:80],
+             fingerprint_hex=None, content_date=None, fields=[], named_meetings=[], links=[])
+        for r in bt_rows
+    ]
+    pdir = tmp_path / 'rd_job'
+    pdir.mkdir()
+    src = json_input(pdir, 'parsed_readings', sorted(rd_json, key=lambda r: bytes.fromhex(r['body_hex'])), **readings._reading_fields())
+    run_job(pdir / 'run', engine, inputs=[src], steps=[],
+            outputs=[parquet_output(tmp_path, 'readings', f'SELECT {readings._LAKE_READING_COLUMNS} FROM parsed_readings', body_text.PK)])
+
+    detail = tmp_path / 'detail.parquet'
+    saved = [pdf_sha, warc_good_sha, warc_err_sha, warc_retired_sha]
+    pq.write_table(pa.table({'saved_body': pa.array(saved, pa.binary(32)),
+                             'filename': ['a.pdf', 'b.warc.gz', 'c.warc.gz', 'd.warc.gz']}), detail)
+
+    qual_path = tmp_path / 'qualification.md'
+    qual_bytes = b'# Qualification report for WARC composition test\n'
+    qual_path.write_bytes(qual_bytes)
+
+    sel_path = tmp_path / 'selection.json'
+    sel_path.write_text(json.dumps({
+        'version': 2,
+        'baseline_versions': {p: readings.current_version(p) for p in ('pdf_text', 'html_text', 'xml_text', 'warc')},
+        'qualification': {'path': 'qualification.md', 'sha256': sha256(qual_bytes).hexdigest()},
+        'overrides': [
+            {
+                'body_sha256': warc_good_sha.hex(),
+                'parser': 'warc',
+                'parser_version': WARC_CAPTURE_PAYLOAD_COMPOSITION_VERSION,
+                'status': 'completed',
+                'text_sha256': sha256(b'Unwrapped WARC testimony.\nPage two.').hexdigest(),
+            }
+        ],
+        'excluded_bodies': [
+            {
+                'body_sha256': warc_err_sha.hex(),
+                'source_role': 'error_response',
+                'reason': 'Envelope payload is confirmed Meeting Not Found error response',
+            }
+        ],
+    }))
+
+    pointer = export.export(
+        engine=engine,
+        work=tmp_path / 'export-warc',
+        body_text=bt_path,
+        readings_table=tmp_path / 'readings.parquet',
+        detail=detail,
+        selection=sel_path,
+    )
+    assert pointer['rows'] == 2
+    assert pointer['coverage']['bodies_with_text'] == {'pdf_text': 1, 'warc': 1}
+    assert pointer['coverage']['excluded_by_source_role'] == {'error_response': 1}
+    exported = {r['saved_body']: r['text'] for r in pq.read_table(tmp_path / 'export-warc/export.parquet').to_pylist()}
+    assert set(exported) == {pdf_sha, warc_good_sha}
+    assert exported[warc_good_sha] == 'Unwrapped WARC testimony.\nPage two.'
+
 

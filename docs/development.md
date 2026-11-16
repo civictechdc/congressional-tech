@@ -373,6 +373,21 @@ The retained receipt directory is
 This bounded equivalence decision reuses earlier manual source reviews; it
 does not certify unread corpus content or trigger recomputation.
 
+The 2026-11-16 opt-in CMS selection and PDF recovery policies also retain all
+default reading versions. `markup_text` routes `select_publisher_content` to
+`congressional-cms-main-content/001` only when explicitly requested, and
+`pdf_opt_in` binds versioned Tesseract 5.5.4, adaptive pixel-ceiling, and
+`native_inhibit_spaces` page rules only when explicitly passed as a strategy.
+Default `pdf_text`, `html_text`, `xml_text` and `warc` paths, limits and all
+fixed reader-fixture digests remain identical; only the source workspace
+fingerprints in `model/reading-version-diagnostics.json` move. Reparsed CMS
+HTML, composed WARC/ARC sibling payloads and selective PDF repairs carry their
+own explicit `parser_version` identities in `accepted-set-v12/selection.json`.
+Retained qualification evidence is under
+`<main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/body-text-ssot-20261116/`.
+This bounded equivalence decision covers the unchanged default path, not
+unreviewed opt-in cohorts.
+
 The lake keys reading rows by body digest, parser, and the declared version in
 `congress_api.lake.reading_versions`. The combined unreadable-decision version
 also depends on the four leaf versions and the combined worker limits.
