@@ -70,6 +70,7 @@ class Engine:
         `source_url` optionally qualifies local publisher conventions. It is
         caller-supplied provenance, never fetched or used as document identity.
         """
+        from .categories import filename_slot_info
         from .extraction import Extractor
         from .values import filename_metadata
         if not hasattr(self, '_extractor'):
@@ -85,6 +86,12 @@ class Engine:
                 matches = self.parse(filename[:observation['start']])['matches']
                 break
         result['metadata'] = filename_metadata(result, convention_matches=matches)
+        slot_kind, slot_ambiguous = filename_slot_info(
+            extracted['observations'],
+            document_kinds=result['metadata'].get('document_kind'),
+        )
+        result['filename_slot_kind'] = slot_kind
+        result['is_slot_ambiguous'] = slot_ambiguous
         return result
 
     def lookup(self, context: str, token: str) -> dict[str, Any] | None:
@@ -307,4 +314,25 @@ class Engine:
             record[field] = value
         if revision is not None:
             record['revision'] = revision
+        if rule.get('stem_template', '').startswith('BILLS-'):
+            if isinstance(record.get('congress'), int) and record['congress'] > 999:
+                raise NamingError(
+                    'invalid-congress-boundary',
+                    'BILLS Congress prefix exceeds three digits; concatenated digits are not a single Congress number',
+                )
+            if kind == 'bill-untyped-numbered' and len(record.get('numberToken', '')) > 5:
+                raise NamingError(
+                    'invalid-congress-boundary',
+                    'Concatenated untyped BILLS digits exceed supported five-digit bill number bounds',
+                )
+            if kind == 'bill-numbered-described' and record.get('numberedSubject', '').isdigit():
+                if len(record['numberedSubject']) > 5 or re.match(
+                    r'^(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)[0-9]+',
+                    record.get('description', ''),
+                    re.I | re.ASCII,
+                ):
+                    raise NamingError(
+                        'invalid-congress-boundary',
+                        'Concatenated untyped BILLS digits have no established Congress or measure boundary',
+                    )
         return self.validate(record)

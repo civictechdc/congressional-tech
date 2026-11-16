@@ -181,3 +181,14 @@ def derived_values(record: dict, subjects: tuple[str, ...], measures: tuple[str,
     if references:
         out['references'] = references
     return out
+
+
+from .categories import (  # noqa: E402
+    AMBIGUOUS_SLOT_KINDS,
+    AMBIGUOUS_SLOT_TOKENS,
+    SLOT_TOKEN_TO_KIND,
+    filename_slot_info,
+    is_slot_kind_ambiguous,
+    normalize_slot_kind,
+    resolve_verified_document_kind,
+)

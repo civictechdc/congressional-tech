@@ -9,8 +9,24 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+from house_naming.bill_codes import (
+    MAX_BILL_NUMBER_DIGITS,
+    MAX_CONGRESS,
+    MIN_CONGRESS,
+    is_valid_congress,
+    parse_bills_slug,
+    split_bills_congress_and_number,
+)
+from house_naming.categories import (
+    AMBIGUOUS_SLOT_KINDS,
+    AMBIGUOUS_SLOT_TOKENS,
+    filename_slot_info,
+    is_slot_kind_ambiguous,
+    resolve_verified_document_kind,
+)
 from house_naming.corpus import filename_tokens as _filename_tokens, shared_token_pattern
 from house_naming.extraction import EXTENSION, date_candidates, member_title_pattern
+from house_naming.values import date_to_congress_constitutional
 from .naming import HOUSE_NAMING
 
 
@@ -78,6 +94,8 @@ class ParsedFilename(BaseModel):
     issues: tuple[str, ...] = ()
     rejected_candidates: tuple[RejectedNamingCandidate, ...] = ()
     metadata: dict[str, list[str]] = Field(default_factory=dict)
+    filename_slot_kind: str | None = None
+    is_slot_ambiguous: bool = False
 
 
 def parse_filename(filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None,
@@ -95,7 +113,9 @@ def parse_filename(filename: str, *, member_surnames: Mapping[str, Sequence[str]
     return ParsedFilename(filename=result['input'], source_url=source_url, stem_end=result['stem_end'], matches=matches,
                           pieces=result['pieces'], suppressed=result['suppressed'],
                           issues=result['issues'], rejected_candidates=result['rejected_candidates'],
-                          metadata=result['metadata'])
+                          metadata=result['metadata'],
+                          filename_slot_kind=result.get('filename_slot_kind'),
+                          is_slot_ambiguous=bool(result.get('is_slot_ambiguous', False)))
 
 
 def resolve_unmatched_filename(parsed: ParsedFilename) -> FilenameMatch | None:

@@ -15,7 +15,21 @@ from urllib.parse import urlsplit
 from .errors import NamingError
 from .extraction_catalog import bind_extraction_rules, compile_pattern
 from .metadata import NUMBER_BOUNDARY_NOTE, starts_with_ordinal_suffix, target_subject_spans
-from .categories import document_category_fields
+from .categories import (
+    AMBIGUOUS_SLOT_KINDS,
+    AMBIGUOUS_SLOT_TOKENS,
+    document_category_fields,
+    filename_slot_info,
+    is_slot_kind_ambiguous,
+    resolve_verified_document_kind,
+)
+from .bill_codes import (
+    MAX_CONGRESS,
+    MIN_CONGRESS,
+    is_valid_congress,
+    parse_bills_slug,
+    split_bills_congress_and_number,
+)
 
 HOUSE_NAMING_URL = "https://www.govinfo.gov/content/pkg/GOVPUB-Y1_2-PURL-gpo156119/pdf/GOVPUB-Y1_2-PURL-gpo156119.pdf"
 
@@ -35,6 +49,33 @@ ACT_DATED_SUFFIX = re.compile(
     r'(?P<title_year>[12][0-9]{3})[ _]+(?P<date>(?P<month>[0-9]{1,2})-'
     r'(?P<day>[0-9]{1,2})-(?P<short_year>[0-9]{2}))\Z')
 ACT_CITATION_DATE_REASON = 'Overlaps the printed date or year in an Act citation.'
+CONGRESS_BOUNDS_REASON = 'Congress prefix is outside the supported 1..130 bounds.'
+MALFORMED_BILLS_CONGRESS_REASON = 'Malformed concatenated BILLS Congress prefix; digit boundary is not established.'
+_MALFORMED_BILLS_PAYLOAD_RE = re.compile(
+    r'^(?:'
+    r'[0-9]{6,}|'
+    r'[0-9]+(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)[0-9]+|'
+    r'[0-9]+-(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)[0-9]+-[A-Za-z][A-Za-z0-9]{6}-Amdt-'
+    r')',
+    re.I | re.ASCII,
+)
+_BILLS_EXPLICIT_2DIGIT_STEM_RE = re.compile(
+    r'(?P<package_family>BILLS)\s*-\s*(?P<congress>[1-9][0-9]?)'
+    r'(?P<payload>-.+|(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)[0-9_X-].*)',
+    re.I | re.ASCII,
+)
+_BILLS_NO_HYPHEN_STEM_RE = re.compile(
+    r'(?P<package_family>BILLS)(?P<congress>1(?:[0-2][0-9]|30))'
+    r'(?P<payload>'
+    r'(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)[0-9_X-].*|'
+    r'[1-9][0-9]{0,4}(?:r[0-9]+)?'
+    r'(?:pwah|reah|renr|rhuc|ash|ath|ats|cdh|cds|cph|cps|eah|eas|enr|eph|fah|fph|fps|'
+    r'hdh|hds|iph|ips|lth|lts|oph|ops|pap|pav|pch|pcs|pih|pis|rah|ras|rch|rcs|rdh|rds|'
+    r'res|rfh|rfs|rih|ris|rth|rts|sas|as|eh|es|ih|is|pp|rh|rs|sc)'
+    r'(?:[^A-Za-z0-9].*|\Z)'
+    r')',
+    re.I | re.ASCII,
+)
 
 
 def subject_separator(char):
@@ -865,6 +906,18 @@ class Extractor:
             stem_end = hit.start()
         return start, stem_end, source_host, observations, source_readings, ignored
 
+    @staticmethod
+    def _stem_congress_rejection_reason(rule_id: str, hit: re.Match) -> str | None:
+        groups = hit.groupdict()
+        cong_raw = groups.get('congress')
+        if cong_raw is not None and not is_valid_congress(cong_raw):
+            return CONGRESS_BOUNDS_REASON
+        if rule_id == 'legislative-file':
+            payload = groups.get('payload') or ''
+            if _MALFORMED_BILLS_PAYLOAD_RE.match(payload):
+                return MALFORMED_BILLS_CONGRESS_REASON
+        return None
+
     def _match_stem_and_payloads(
         self,
         filename: str,
@@ -875,6 +928,7 @@ class Extractor:
         source_host: str | None,
         observations: list[dict],
         source_readings: list[dict],
+        ignored: list[dict] | None = None,
     ) -> list[tuple[str, str, int]]:
         """Stage 2: Match publisher source-stem rules, stem layouts, and initial payload slots.
 
@@ -898,6 +952,12 @@ class Extractor:
                 if source_host not in rule.get('source_hosts', ()) and source_url not in rule.get('source_urls', ()):
                     continue
                 if hit := regex.fullmatch(stem):
+                    if reason := self._stem_congress_rejection_reason(rule['id'], hit):
+                        if ignored is not None:
+                            ignored.append({'rule': rule['id'], 'raw': hit[0], 'start': start + hit.start(),
+                                            'end': start + hit.end(), 'reason': reason,
+                                            'fields': self._match(rule, hit, start)['fields']})
+                        continue
                     # Some publisher conventions add a reading to the existing
                     # filename. Defer those until dates, IDs and subjects have
                     # been read through their usual paths.
@@ -908,6 +968,12 @@ class Extractor:
             found = False
             for rule, regex in self.rules:
                 if rule['scope'] == 'stem' and rule['priority'] == priority and (hit := regex.fullmatch(stem)):
+                    if reason := self._stem_congress_rejection_reason(rule['id'], hit):
+                        if ignored is not None:
+                            ignored.append({'rule': rule['id'], 'raw': hit[0], 'start': start + hit.start(),
+                                            'end': start + hit.end(), 'reason': reason,
+                                            'fields': self._match(rule, hit, start)['fields']})
+                        continue
                     found = True
                     observations.append(self._match(rule, hit, start))
                     if 'payload' in hit.groupdict():
@@ -917,6 +983,15 @@ class Extractor:
             if found:
                 break
 
+        if not any(m['rule'] in self.stem_ids for m in observations) and 'legislative-file' in self.by_id:
+            leg_rule = self.by_id['legislative-file'][0]
+            for recovery_rx in (_BILLS_EXPLICIT_2DIGIT_STEM_RE, _BILLS_NO_HYPHEN_STEM_RE):
+                hit = recovery_rx.fullmatch(stem)
+                if hit is not None and self._stem_congress_rejection_reason('legislative-file', hit) is None:
+                    observations.append(self._match(leg_rule, hit, start))
+                    payloads.append(('legislative-payload', hit['payload'], start + hit.start('payload')))
+                    break
+
         for scope, payload, offset in payloads:
             if scope == 'descriptive-payload':
                 for priority in STEM_PRIORITIES:
@@ -925,6 +1000,12 @@ class Extractor:
                         if (rule['scope'] != 'stem' or rule['priority'] != priority
                                 or rule.get('payload_scope') == 'descriptive-payload'
                                 or not (hit := regex.fullmatch(payload))):
+                            continue
+                        if reason := self._stem_congress_rejection_reason(rule['id'], hit):
+                            if ignored is not None:
+                                ignored.append({'rule': rule['id'], 'raw': hit[0], 'start': offset + hit.start(),
+                                                'end': offset + hit.end(), 'reason': reason,
+                                                'fields': self._match(rule, hit, offset)['fields']})
                             continue
                         found = True
                         observations.append(self._match(rule, hit, offset))
@@ -1689,7 +1770,7 @@ class Extractor:
         act_references, act_suffix_dates = self._act_dates(stem, start)
 
         payloads = self._match_stem_and_payloads(
-            filename, start, stem_end, stem, source_url, source_host, observations, source_readings
+            filename, start, stem_end, stem, source_url, source_host, observations, source_readings, ignored
         )
         is_untyped_draft = any(m['rule'] == 'draft-legislation' for m in observations)
         measure_spans = [

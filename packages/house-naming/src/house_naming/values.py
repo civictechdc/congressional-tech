@@ -6,13 +6,146 @@ readings; it does not parse names, resolve people, or combine different sources.
 from __future__ import annotations
 
 from collections import defaultdict
+from datetime import date, datetime
 import re
+from zoneinfo import ZoneInfo
 
+from .bill_codes import MAX_CONGRESS, MIN_CONGRESS, is_valid_congress
 from .metadata import target_subject_spans
-from .categories import EVENT_KINDS, document_category_fields, document_families
+from .categories import (
+    EVENT_KINDS,
+    document_category_fields,
+    document_families,
+    filename_slot_info,
+    is_slot_kind_ambiguous,
+    resolve_verified_document_kind,
+)
 
 OMIT_FIELDS = frozenset({'payload', 'query_text', 'ignored_suffix', 'protocol_marker'})
 GENERIC_KINDS = frozenset({'committee-document', 'committee-document-numbered'})
+_WASHINGTON_TZ = ZoneInfo('America/New_York')
+_YMD_ISO_RE = re.compile(
+    r'^(?P<y>\d{4})[-/.](?P<m>\d{1,2})[-/.](?P<d>\d{1,2})'
+    r'(?:[T\s]+(?P<hh>\d{1,2}):(?P<mm>\d{2})(?::(?P<ss>\d{2})(?:\.\d+)?)?'
+    r'\s*(?P<tz>Z|[+-]\d{2}:?\d{2})?)?$',
+    re.I | re.ASCII,
+)
+_YMD_COMPACT_RE = re.compile(r'^(?P<y>\d{4})(?P<m>\d{2})(?P<d>\d{2})$', re.ASCII)
+
+
+def date_to_congress_constitutional(
+    date_or_ymd: date | datetime | str | tuple[int, int, int] | None,
+    *,
+    max_congress: int | None = MAX_CONGRESS,
+) -> int | None:
+    """Map a calendar date or timestamp to its U.S. Congress under the 20th Amendment.
+
+    Implements the constitutional Noon-January-3 session boundary (U.S. Const.
+    amend. XX, § 1, effective 1935 for the 74th Congress; March 4 prior to 1935):
+      - ``Jan 1`` and ``Jan 2`` of an odd-numbered year ``Y >= 1935`` belong to the
+        outgoing Congress (e.g. ``2021-01-01`` and ``2021-01-02`` -> ``116``,
+        fixing early-January off-by-one Congress errors).
+      - ``Jan 3`` of an odd-numbered year ``Y >= 1935`` belongs to the new Congress
+        for date-only inputs (e.g. ``2021-01-03`` -> ``117``, ``2023-01-03`` -> ``118``);
+        when a ``datetime`` or timestamp with time-of-day is supplied on ``Jan 3`` of an
+        odd year, times strictly before ``12:00`` noon (in ``America/New_York`` when
+        timezone-aware) map to the outgoing Congress and ``>= 12:00`` noon map to the
+        incoming Congress.
+      - Even-numbered years (including ``Jan 1`` and ``Jan 2``, e.g. ``2022-01-02`` -> ``117``)
+        always belong to the Congress that convened in ``Y - 1``.
+    """
+    if date_or_ymd is None or isinstance(date_or_ymd, (bool, int, float)):
+        return None
+
+    year: int
+    month: int
+    day: int
+    before_noon: bool | None = None
+
+    if isinstance(date_or_ymd, datetime):
+        dt = date_or_ymd.astimezone(_WASHINGTON_TZ) if date_or_ymd.tzinfo is not None else date_or_ymd
+        year, month, day = dt.year, dt.month, dt.day
+        before_noon = dt.hour < 12
+    elif isinstance(date_or_ymd, date):
+        year, month, day = date_or_ymd.year, date_or_ymd.month, date_or_ymd.day
+    elif isinstance(date_or_ymd, tuple) and len(date_or_ymd) == 3:
+        y_raw, m_raw, d_raw = date_or_ymd
+        if any(isinstance(v, bool) or not isinstance(v, int) for v in (y_raw, m_raw, d_raw)):
+            return None
+        try:
+            checked = date(y_raw, m_raw, d_raw)
+        except ValueError:
+            return None
+        year, month, day = checked.year, checked.month, checked.day
+    elif isinstance(date_or_ymd, str):
+        s = date_or_ymd.strip()
+        if not s:
+            return None
+        m_comp = _YMD_COMPACT_RE.match(s)
+        if m_comp:
+            y_i, m_i, d_i = int(m_comp.group('y')), int(m_comp.group('m')), int(m_comp.group('d'))
+            try:
+                date(y_i, m_i, d_i)
+            except ValueError:
+                return None
+            year, month, day = y_i, m_i, d_i
+        else:
+            m_iso = _YMD_ISO_RE.match(s)
+            if not m_iso:
+                return None
+            y_i, m_i, d_i = int(m_iso.group('y')), int(m_iso.group('m')), int(m_iso.group('d'))
+            try:
+                date(y_i, m_i, d_i)
+            except ValueError:
+                return None
+            if m_iso.group('hh') is not None:
+                norm_iso = s.replace('/', '-').replace('.', '-')
+                if norm_iso.endswith(('Z', 'z')):
+                    norm_iso = norm_iso[:-1] + '+00:00'
+                elif m_iso.group('tz') and re.fullmatch(r'[+-]\d{4}', m_iso.group('tz')):
+                    norm_iso = norm_iso[:-2] + ':' + norm_iso[-2:]
+                try:
+                    dt = datetime.fromisoformat(norm_iso)
+                    if dt.tzinfo is not None:
+                        dt = dt.astimezone(_WASHINGTON_TZ)
+                    year, month, day = dt.year, dt.month, dt.day
+                    before_noon = dt.hour < 12
+                except ValueError:
+                    hh, mm = int(m_iso.group('hh')), int(m_iso.group('mm'))
+                    ss = int(m_iso.group('ss') or 0)
+                    if not (0 <= hh <= 23 and 0 <= mm <= 59 and 0 <= ss <= 59):
+                        return None
+                    year, month, day = y_i, m_i, d_i
+                    before_noon = hh < 12
+            else:
+                year, month, day = y_i, m_i, d_i
+    else:
+        return None
+
+    if year < 1789:
+        return None
+
+    if year % 2 == 0:
+        start_odd_year = year - 1
+    elif year >= 1935:
+        if month == 1 and (day < 3 or (day == 3 and before_noon is True)):
+            start_odd_year = year - 2
+        else:
+            start_odd_year = year
+    else:
+        if month < 3 or (month == 3 and (day < 4 or (day == 4 and before_noon is True))):
+            start_odd_year = year - 2
+        else:
+            start_odd_year = year
+
+    if start_odd_year < 1789:
+        return None
+    congress = (start_odd_year - 1789) // 2 + 1
+    if congress < MIN_CONGRESS:
+        return None
+    if max_congress is not None and congress > max_congress:
+        return None
+    return congress
 
 
 def filename_metadata(result: dict, *, convention_matches: list[dict] | None = None) -> dict[str, list[str]]:
@@ -74,6 +207,8 @@ def filename_metadata(result: dict, *, convention_matches: list[dict] | None = N
                 for part in refinements
             ):
                 continue
+            if name == 'congress' and not is_valid_congress(field['raw']):
+                continue
             add(name, field['raw'])
             add(name + '_code', field.get('code'))
             add(name + '_label', field.get('label'))
@@ -105,6 +240,8 @@ def filename_metadata(result: dict, *, convention_matches: list[dict] | None = N
             add('measure_references', (types[0]['code'] or types[0]['raw']).lower() + (numbers[0]['raw'].lstrip('0') or '0'))
 
     for match in result.get('matches', ()) if convention_matches is None else convention_matches:
+        if 'congress' in match['record'] and not is_valid_congress(match['record']['congress']):
+            continue
         for name, value in match['record'].items():
             if name == 'references':
                 for reference in value:
@@ -162,4 +299,8 @@ def filename_metadata(result: dict, *, convention_matches: list[dict] | None = N
         row['amendment_identifier'] = list(row['amendment_id'])
     if families := document_families(row.get('document_kind')):
         row['document_family'] = families
+    slot_kind, slot_ambiguous = filename_slot_info(observations, document_kinds=row.get('document_kind'))
+    if slot_kind is not None:
+        row['filename_slot_kind'] = [slot_kind]
+        row['is_slot_ambiguous'] = ['true' if slot_ambiguous else 'false']
     return dict(row)

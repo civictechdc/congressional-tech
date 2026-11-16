@@ -6,7 +6,7 @@ between a document's genre, a topic it discusses and a more specific phrase.
 from __future__ import annotations
 
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 
 from .metadata import target_subject_spans
 
@@ -56,6 +56,194 @@ _FAMILY_MEMBERS = {
     'disclosure': ('testimony-disclosure',),
 }
 _KIND_FAMILIES = {kind: family for family, kinds in _FAMILY_MEMBERS.items() for kind in kinds}
+
+# House docs.house.gov / Clerk upload-slot tokens where clerks routinely upload
+# Truth-in-Testimony (TTF) disclosure forms (59.6% contradiction rate on -Bio-),
+# third-party letters, exhibits, or packets that require body verification before
+# treating the filename slot token as ground-truth document kind.
+AMBIGUOUS_SLOT_TOKENS: frozenset[str] = frozenset({'bio', 'sd', 'wstate'})
+
+AMBIGUOUS_SLOT_KINDS: frozenset[str] = frozenset({
+    'witness-biography',
+    'witness-statement',
+    'witness-support',
+    'meeting-support',
+    'support-document',
+    'committee-document',
+    'committee-document-numbered',
+})
+
+SLOT_TOKEN_TO_KIND: dict[str, str] = {
+    'bio': 'witness-biography',
+    'wstate': 'witness-statement',
+    'sd': 'meeting-support',
+    'ttf': 'testimony-disclosure',
+    'mstate': 'member-statement',
+    'wlist': 'witness-list',
+    'transcript': 'committee-transcript',
+    'vote': 'committee-vote',
+    'qfr': 'questions-for-record',
+    'mbrroster': 'member-roster',
+    'committeerules': 'committee-rules',
+    'activities': 'activity-report',
+    'cpg': 'committee-document',
+    'toc': 'committee-document',
+    'weekof': 'weekly-meeting-notice',
+}
+
+_STRUCTURED_PACKAGE_FAMILIES: frozenset[str] = frozenset({
+    'hhrg', 'hmtg', 'hmkp', 'crpt', 'cprt', 'chrg',
+    'bills', 'cdoc', 'plaw', 'hrpt', 'srpt', 'amnt', 'amdt',
+})
+
+_INCOMPLETE_CLERK_SLOT_RE = re.compile(
+    r'^(?P<token>Wstate|Mstate|Bio|TTF|WList|Transcript|Vote|CommitteeRules)(?=[-_.\d]|$)',
+    re.I | re.ASCII,
+)
+
+
+def normalize_slot_kind(slot_kind: str | None) -> str | None:
+    """Normalize a Clerk upload-slot token or filename slot kind to canonical kind spelling."""
+    if not isinstance(slot_kind, str):
+        return None
+    cleaned = slot_kind.strip()
+    if not cleaned:
+        return None
+    low = cleaned.lower()
+    if low in SLOT_TOKEN_TO_KIND:
+        return SLOT_TOKEN_TO_KIND[low]
+    return low if low in _KIND_FAMILIES or low in AMBIGUOUS_SLOT_KINDS else cleaned
+
+
+def is_slot_kind_ambiguous(slot_kind: str | None) -> bool:
+    """Return True when a filename upload-slot token or kind requires body verification."""
+    if not isinstance(slot_kind, str):
+        return False
+    low = slot_kind.strip().lower()
+    if not low:
+        return False
+    if low in AMBIGUOUS_SLOT_TOKENS or low in AMBIGUOUS_SLOT_KINDS:
+        return True
+    normalized = SLOT_TOKEN_TO_KIND.get(low)
+    return bool(normalized and normalized in AMBIGUOUS_SLOT_KINDS)
+
+
+def resolve_verified_document_kind(
+    slot_kind: str | None,
+    body_kind: str | None,
+) -> str | None:
+    """Resolve verified document kind from filename upload-slot kind and body-verified kind.
+
+    - If ``body_kind`` is present (non-empty string), it always wins over ``slot_kind``
+      (e.g. a Truth-in-Testimony form or letter uploaded into a ``-Bio-`` or ``-SD-`` slot).
+    - If ``body_kind`` is absent/None and ``slot_kind`` is an ambiguous upload slot
+      (``Bio``, ``SD``, ``Wstate``, ``witness-biography``, ``witness-statement``,
+      ``witness-support``, ``meeting-support``, ``support-document``), returns ``None``
+      so unverified slot claims are never promoted to ground-truth document kind.
+    - Otherwise returns the normalized ``slot_kind`` when non-ambiguous (e.g. ``TTF`` ->
+      ``testimony-disclosure``, ``Transcript`` -> ``committee-transcript``).
+    """
+    if isinstance(body_kind, str) and body_kind.strip():
+        return body_kind.strip()
+    normalized = normalize_slot_kind(slot_kind)
+    if normalized is None or is_slot_kind_ambiguous(slot_kind) or is_slot_kind_ambiguous(normalized):
+        return None
+    return normalized
+
+
+def filename_slot_info(
+    observations: Iterable[dict],
+    *,
+    document_kinds: Sequence[str] | None = None,
+) -> tuple[str | None, bool]:
+    """Extract ``(filename_slot_kind, is_slot_ambiguous)`` from literal observations.
+
+    Distinguishes structured Clerk/package upload slots (``-Bio-``, ``-Wstate-``,
+    ``-SD001``, ``-TTF-``, ``-MState-``, ``-Transcript-``, ``-WList-``, ``BILLS-``,
+    etc.) from unstructured free-text filenames, while flagging ambiguous upload
+    slots where clerks routinely upload different document genres.
+    """
+    obs_list = list(observations)
+    kinds = list(document_kinds or ())
+
+    has_witness_support = any(m.get('rule') == 'witness-support-marker' for m in obs_list)
+    if has_witness_support:
+        return 'witness-support', True
+
+    committee_doc_tokens: list[str] = []
+    has_committee_stem = False
+    committee_payloads: list[str] = []
+    suffix_markers: list[str] = []
+    has_package_stem = False
+
+    for match in obs_list:
+        rule = match.get('rule', '')
+        scope = match.get('scope', '')
+        if rule in {'committee-file', 'committee-vote-file'}:
+            has_committee_stem = True
+            has_package_stem = True
+        elif rule == 'weekly-notice':
+            return 'weekly-meeting-notice', False
+        elif rule == 'meeting-notice':
+            return 'meeting-notice', False
+        elif rule == 'publisher-house-malformed-ttf':
+            return 'testimony-disclosure', False
+        elif scope == 'committee-payload':
+            has_committee_stem = True
+            for field in match.get('fields', ()):
+                if field.get('name') == 'document_token' and field.get('raw'):
+                    committee_doc_tokens.append(field['raw'])
+        for field in match.get('fields', ()):
+            fname = field.get('name')
+            raw = field.get('raw') or ''
+            if rule in {'committee-file', 'committee-vote-file'} and fname == 'payload' and raw:
+                committee_payloads.append(raw)
+            elif fname == 'document_marker' and raw:
+                suffix_markers.append(raw)
+            elif fname in {'package_family', 'collection_token'} and raw.lower() in _STRUCTURED_PACKAGE_FAMILIES:
+                has_package_stem = True
+            elif rule == 'publisher-public-law' and fname == 'law_type_token':
+                has_package_stem = True
+
+    if committee_doc_tokens:
+        tok = committee_doc_tokens[0]
+        tok_low = tok.lower()
+        if tok_low == 'wstate' and any(m.lower() == 'sd' for m in suffix_markers):
+            return 'witness-support', True
+        slot_kind = SLOT_TOKEN_TO_KIND.get(tok_low) or (kinds[0] if kinds else None)
+        if slot_kind is None:
+            return None, False
+        ambiguous = tok_low in AMBIGUOUS_SLOT_TOKENS or is_slot_kind_ambiguous(slot_kind)
+        return slot_kind, ambiguous
+
+    if has_committee_stem:
+        has_sd_marker = any(m.lower() == 'sd' for m in suffix_markers)
+        for payload in committee_payloads:
+            hit = _INCOMPLETE_CLERK_SLOT_RE.match(payload)
+            if hit:
+                tok_low = hit.group('token').lower()
+                if tok_low == 'wstate' and has_sd_marker:
+                    return 'witness-support', True
+                slot_kind = SLOT_TOKEN_TO_KIND[tok_low]
+                return slot_kind, (tok_low in AMBIGUOUS_SLOT_TOKENS or is_slot_kind_ambiguous(slot_kind))
+        if has_sd_marker:
+            return 'meeting-support', True
+        if any(m.lower() == 'qfr' for m in suffix_markers):
+            return 'questions-for-record', False
+        if any(m.lower() == 'vote' for m in suffix_markers):
+            return 'committee-vote', False
+        if kinds:
+            return kinds[0], is_slot_kind_ambiguous(kinds[0])
+        return None, False
+
+    if any(m.lower() == 'sd' for m in suffix_markers):
+        slot_kind = kinds[0] if kinds and kinds[0] in {'witness-support', 'meeting-support', 'support-document'} else 'support-document'
+        return slot_kind, True
+
+    if has_package_stem and kinds:
+        return kinds[0], is_slot_kind_ambiguous(kinds[0])
+
+    return None, False
 
 
 def document_families(kinds: Iterable[str] | None) -> list[str]:
