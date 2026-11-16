@@ -27,19 +27,19 @@ _BILLS_REV_RE = re.compile(r"-[Uu][1-9][0-9]{0,9}(?:_[0-9]+)?$", re.ASCII)
 _BILLS_HEAD_RE = re.compile(r"^BILLS(?P<sep>\s*-\s*|\s*_\s*|-?)(?P<rest>.+)$", re.I | re.ASCII)
 _MEASURE_CODE_PAT = r"(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)"
 _EXPLICIT_CONG_AND_TYPED_RE = re.compile(
-    rf"^(?P<congress>[1-9][0-9]{{0,2}})[-_ ]*(?P<measure>{_MEASURE_CODE_PAT})(?P<number>[1-9][0-9]{{0,4}}|0+)(?P<tail>(?:[^0-9].*)?)$",
+    rf"^(?P<congress>[1-9][0-9]{{0,2}})[-_ ]*(?P<measure>{_MEASURE_CODE_PAT})(?P<number>[1-9][0-9]{{0,4}}|0{{1,5}})(?P<tail>(?:[^0-9].*)?)$",
     re.I | re.ASCII,
 )
 _DELIMITED_CONG_AND_UNTYPED_RE = re.compile(
-    r"^(?P<congress>[1-9][0-9]{0,2})[-_]+(?P<number>[1-9][0-9]{0,4}|0+)(?P<tail>(?:[^0-9].*)?)$",
+    r"^(?P<congress>[1-9][0-9]{0,2})[-_]+(?P<number>[1-9][0-9]{0,4}|0{1,5})(?P<tail>(?:[^0-9].*)?)$",
     re.I | re.ASCII,
 )
 _CONCAT_3DIGIT_CONG_RE = re.compile(
-    r"^(?P<congress>1(?:[0-2][0-9]|30))(?P<number>[1-9][0-9]{0,4}|0+)(?P<tail>(?:[^0-9].*)?)$",
+    r"^(?P<congress>1(?:[0-2][0-9]|30))(?P<number>[1-9][0-9]{0,4}|0{1,5})(?P<tail>(?:[^0-9].*)?)$",
     re.I | re.ASCII,
 )
 _CONCAT_JAMMED_MEASURE_RE = re.compile(
-    rf"^[0-9]{{4,}}{_MEASURE_CODE_PAT}[0-9]+",
+    rf"^[0-9]{{4,}}-?{_MEASURE_CODE_PAT}(?:[0-9]+|[-_])",
     re.I | re.ASCII,
 )
 
@@ -63,6 +63,7 @@ def _known_stage_codes() -> frozenset[str]:
     from .catalog import load_guide
     guide = load_guide()
     return frozenset({
+        'pis',
         *guide["codes"].get("version", {}).keys(),
         *guide["codes"].get("consideration", {}).keys(),
         *guide["extraction_vocabularies"].get("govinfo-bill-versions", {}).keys(),
@@ -109,10 +110,8 @@ def split_bills_congress_and_number(slug_or_filename: str | None) -> dict[str, A
     has_prefix_sep = bool(m_head.group("sep").strip())
     rest = m_head.group("rest")
 
-    # Hard guard: 4+ leading digits jammed directly before a measure code (e.g. 114119hr1ih, 1117s2126-SUS)
+    # Hard guard: 4+ leading digits jammed before a measure code (e.g. 114119hr1ih, 1117-s2126-SUS, 114119hr-PIH-Draft)
     if _CONCAT_JAMMED_MEASURE_RE.match(rest):
-        return None
-    if re.match(rf"^[0-9]{{4,}}-{_MEASURE_CODE_PAT}[0-9]+", rest, re.I | re.ASCII):
         return None
 
     # 1. Explicit measure code (e.g. BILLS-115hr2823ih, BILLS-115-HR2823ih, BILLS-93hr2823ih, BILLS112hr2576ih)
@@ -149,8 +148,17 @@ def split_bills_congress_and_number(slug_or_filename: str | None) -> dict[str, A
         if not has_prefix_sep and cong < 100:
             return None
         tail = m_delim.group("tail")
-        # Guard against local compound identifiers like BILLS-118-118-30rh or sponsor Amdt slots
-        if tail.startswith("-") and re.match(r"^-[0-9X_]+", tail):
+        if re.match(r"^(?:st|nd|rd|th)(?:[ _-]|[A-Z]|Congress|Century|$)", tail, re.I | re.ASCII):
+            return None
+        # Guard against local compound identifiers, Bioguide sponsor Amdt slots, prints, and appropriations
+        if re.match(r"^[-_]+[0-9X_]+", tail, re.I | re.ASCII):
+            return None
+        if re.match(r"^[-_]+[A-Za-z][A-Za-z0-9]{6}-Amdt-", tail, re.I | re.ASCII):
+            return None
+        if re.search(r"(?:^|[-_])(?:AP-|CommitteePrint|CmtePrint|HAmdt)", tail, re.I | re.ASCII):
+            return None
+        stage = _extract_stage_prefix(tail)
+        if tail and not tail.startswith(("-", "_")) and stage is None:
             return None
         num_raw = m_delim.group("number")
         num_val = int(num_raw) if int(num_raw) > 0 else None
@@ -159,24 +167,23 @@ def split_bills_congress_and_number(slug_or_filename: str | None) -> dict[str, A
             "measure_type": None,
             "measure_number": num_val,
             "number_token": num_raw,
-            "stage": _extract_stage_prefix(tail),
-            "was_concatenated": False,
+            "stage": stage,
+            "was_concatenated": not has_prefix_sep,
         }
 
-    # 3. Unambiguous concatenated 1\d{2} (100..130) Congress + 1..5-digit bill number (e.g. BILLS-1152823ih)
+    # 3. Unambiguous concatenated 1\d{2} (100..130) Congress + 1..5-digit bill number + stage (e.g. BILLS-1152823ih)
     m_concat = _CONCAT_3DIGIT_CONG_RE.match(rest)
     if m_concat:
         cong = int(m_concat.group("congress"))
         num_raw = m_concat.group("number")
         tail = m_concat.group("tail")
-        # Exclude compound print identifiers like BILLS-118118-30rh or BILLS-114114-XXrth
-        if re.match(r"^-[0-9X_]+", tail, re.I | re.ASCII):
-            return None
         if re.match(r"^(?:st|nd|rd|th)(?:[ _-]|[A-Z]|Congress|Century|$)", tail, re.I | re.ASCII):
             return None
+        # Concatenated untyped digits require a direct stage code without a hyphenated non-bill tail
+        if tail.startswith(("-", "_")):
+            return None
         stage = _extract_stage_prefix(tail)
-        # If no hyphen after BILLS (e.g. BILLS1152823ih), require an explicit stage to stay unambiguous
-        if not has_prefix_sep and stage is None:
+        if stage is None:
             return None
         num_val = int(num_raw) if int(num_raw) > 0 else None
         return {

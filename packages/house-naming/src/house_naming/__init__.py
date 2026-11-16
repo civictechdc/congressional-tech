@@ -13,11 +13,12 @@ from .categories import (
     document_families,
     filename_slot_info,
     is_slot_kind_ambiguous,
+    normalize_slot_kind,
     resolve_verified_document_kind,
 )
 from .engine import Engine
 from .errors import NamingError
-from .values import date_to_congress_constitutional
+from .values import date_to_congress_constitutional, filename_metadata
 
 __version__ = '3.2.7'
 __all__ = [
@@ -31,10 +32,12 @@ __all__ = [
     'check_catalog',
     'date_to_congress_constitutional',
     'document_families',
+    'filename_metadata',
     'filename_slot_info',
     'is_slot_kind_ambiguous',
     'is_valid_congress',
     'load_guide',
+    'normalize_slot_kind',
     'parse_bills_slug',
     'resolve_verified_document_kind',
     'split_bills_congress_and_number',

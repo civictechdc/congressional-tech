@@ -59,7 +59,7 @@ class Engine:
         return list(self._kinds)
 
     def extract(self, filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None,
-                source_url: str | None = None) -> dict[str, Any]:
+                source_url: str | None = None, include_slot_info: bool = False) -> dict[str, Any]:
         """Read literal source fields, including non-renderable and partial names.
 
         `valid` and `matches` retain parse()'s convention-validation meaning.
@@ -85,11 +85,18 @@ class Engine:
             if observation['rule'] == 'query-shaped-suffix':
                 matches = self.parse(filename[:observation['start']])['matches']
                 break
-        result['metadata'] = filename_metadata(result, convention_matches=matches)
+        metadata = filename_metadata(result, convention_matches=matches)
         slot_kind, slot_ambiguous = filename_slot_info(
             extracted['observations'],
-            document_kinds=result['metadata'].get('document_kind'),
+            document_kinds=metadata.get('document_kind'),
         )
+        if include_slot_info and slot_kind is not None:
+            metadata = {
+                **metadata,
+                'filename_slot_kind': [slot_kind],
+                'is_slot_ambiguous': ['true' if slot_ambiguous else 'false'],
+            }
+        result['metadata'] = metadata
         result['filename_slot_kind'] = slot_kind
         result['is_slot_ambiguous'] = slot_ambiguous
         return result
@@ -315,6 +322,8 @@ class Engine:
         if revision is not None:
             record['revision'] = revision
         if rule.get('stem_template', '').startswith('BILLS-'):
+            # Strict convention parsing preserves synthetic 1..999 roundtrip tests
+            # (test_runtime.py), while Extractor and filename_metadata enforce 1..130.
             if isinstance(record.get('congress'), int) and record['congress'] > 999:
                 raise NamingError(
                     'invalid-congress-boundary',
@@ -327,7 +336,7 @@ class Engine:
                 )
             if kind == 'bill-numbered-described' and record.get('numberedSubject', '').isdigit():
                 if len(record['numberedSubject']) > 5 or re.match(
-                    r'^(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)[0-9]+',
+                    r'^(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)(?:[0-9]+|[-_])',
                     record.get('description', ''),
                     re.I | re.ASCII,
                 ):

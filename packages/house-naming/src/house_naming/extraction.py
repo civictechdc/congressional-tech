@@ -15,21 +15,8 @@ from urllib.parse import urlsplit
 from .errors import NamingError
 from .extraction_catalog import bind_extraction_rules, compile_pattern
 from .metadata import NUMBER_BOUNDARY_NOTE, starts_with_ordinal_suffix, target_subject_spans
-from .categories import (
-    AMBIGUOUS_SLOT_KINDS,
-    AMBIGUOUS_SLOT_TOKENS,
-    document_category_fields,
-    filename_slot_info,
-    is_slot_kind_ambiguous,
-    resolve_verified_document_kind,
-)
-from .bill_codes import (
-    MAX_CONGRESS,
-    MIN_CONGRESS,
-    is_valid_congress,
-    parse_bills_slug,
-    split_bills_congress_and_number,
-)
+from .categories import document_category_fields
+from .bill_codes import is_valid_congress
 
 HOUSE_NAMING_URL = "https://www.govinfo.gov/content/pkg/GOVPUB-Y1_2-PURL-gpo156119/pdf/GOVPUB-Y1_2-PURL-gpo156119.pdf"
 
@@ -54,8 +41,7 @@ MALFORMED_BILLS_CONGRESS_REASON = 'Malformed concatenated BILLS Congress prefix;
 _MALFORMED_BILLS_PAYLOAD_RE = re.compile(
     r'^(?:'
     r'[0-9]{6,}|'
-    r'[0-9]+(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)[0-9]+|'
-    r'[0-9]+-(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)[0-9]+-[A-Za-z][A-Za-z0-9]{6}-Amdt-'
+    r'[0-9]+-?(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)(?:[0-9]+|[-_])'
     r')',
     re.I | re.ASCII,
 )
@@ -67,8 +53,8 @@ _BILLS_EXPLICIT_2DIGIT_STEM_RE = re.compile(
 _BILLS_NO_HYPHEN_STEM_RE = re.compile(
     r'(?P<package_family>BILLS)(?P<congress>1(?:[0-2][0-9]|30))'
     r'(?P<payload>'
-    r'(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)[0-9_X-].*|'
-    r'[1-9][0-9]{0,4}(?:r[0-9]+)?'
+    r'-?(?:hconres|sconres|hjres|sjres|hres|sres|hr|s)[0-9_X-].*|'
+    r'-?[1-9][0-9]{0,4}(?:r[0-9]+)?'
     r'(?:pwah|reah|renr|rhuc|ash|ath|ats|cdh|cds|cph|cps|eah|eas|enr|eph|fah|fph|fps|'
     r'hdh|hds|iph|ips|lth|lts|oph|ops|pap|pav|pch|pcs|pih|pis|rah|ras|rch|rcs|rdh|rds|'
     r'res|rfh|rfs|rih|ris|rth|rts|sas|as|eh|es|ih|is|pp|rh|rs|sc)'
@@ -918,6 +904,38 @@ class Extractor:
                 return MALFORMED_BILLS_CONGRESS_REASON
         return None
 
+    def _try_recover_bills_stem(
+        self,
+        text: str,
+        offset: int,
+        observations: list[dict],
+        payloads: list[tuple[str, str, int]],
+        ignored: list[dict] | None,
+    ) -> bool:
+        if 'legislative-file' not in self.by_id:
+            return False
+        leg_rule = self.by_id['legislative-file'][0]
+        for recovery_rx in (_BILLS_EXPLICIT_2DIGIT_STEM_RE, _BILLS_NO_HYPHEN_STEM_RE):
+            hit = recovery_rx.fullmatch(text)
+            if hit is None:
+                continue
+            reason = self._stem_congress_rejection_reason('legislative-file', hit)
+            if reason is not None:
+                if ignored is not None:
+                    ignored.append({
+                        'rule': 'legislative-file',
+                        'raw': hit[0],
+                        'start': offset + hit.start(),
+                        'end': offset + hit.end(),
+                        'reason': reason,
+                        'fields': self._match(leg_rule, hit, offset)['fields'],
+                    })
+                continue
+            observations.append(self._match(leg_rule, hit, offset))
+            payloads.append(('legislative-payload', hit['payload'], offset + hit.start('payload')))
+            return True
+        return False
+
     def _match_stem_and_payloads(
         self,
         filename: str,
@@ -983,14 +1001,8 @@ class Extractor:
             if found:
                 break
 
-        if not any(m['rule'] in self.stem_ids for m in observations) and 'legislative-file' in self.by_id:
-            leg_rule = self.by_id['legislative-file'][0]
-            for recovery_rx in (_BILLS_EXPLICIT_2DIGIT_STEM_RE, _BILLS_NO_HYPHEN_STEM_RE):
-                hit = recovery_rx.fullmatch(stem)
-                if hit is not None and self._stem_congress_rejection_reason('legislative-file', hit) is None:
-                    observations.append(self._match(leg_rule, hit, start))
-                    payloads.append(('legislative-payload', hit['payload'], start + hit.start('payload')))
-                    break
+        if not any(m['rule'] in self.stem_ids for m in observations):
+            self._try_recover_bills_stem(stem, start, observations, payloads, ignored)
 
         for scope, payload, offset in payloads:
             if scope == 'descriptive-payload':
@@ -1013,6 +1025,8 @@ class Extractor:
                             payloads.append((child_scope, hit['payload'], offset + hit.start('payload')))
                     if found:
                         break
+                if not found:
+                    found = self._try_recover_bills_stem(payload, offset, observations, payloads, ignored)
                 if not found:
                     observations.append({'rule': 'descriptive-payload-fallback', 'scope': 'descriptive-payload',
                         'start': offset, 'end': offset + len(payload),

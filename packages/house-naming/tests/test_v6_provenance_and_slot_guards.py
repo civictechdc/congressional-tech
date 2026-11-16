@@ -1,11 +1,16 @@
 """Tests for PR-U3a DocMeta V5/V6 backports:
-1. Filename upload-slot kind vs. body-verified document kind (`-Bio-` TTF slot ambiguity, `-SD-`, `-Wstate-`).
+1. Filename upload-slot kind vs. body-verified document kind (`-Bio-` TTF slot ambiguity, `-SD-`, `-Wstate-`),
+   preserving default `filename_metadata()` keys unless `include_slot_info=True`.
 2. Concatenated `BILLS-` Congress/bill-number sanity guard & `1..130` Congress bounds.
 3. Constitutional Noon-Jan-3 Congress boundary helper (`date_to_congress_constitutional`).
 """
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+from pathlib import Path
+import os
+import subprocess
+import sys
 
 import pytest
 
@@ -17,9 +22,11 @@ from house_naming import (
     MIN_CONGRESS,
     Engine,
     date_to_congress_constitutional,
+    filename_metadata,
     filename_slot_info,
     is_slot_kind_ambiguous,
     is_valid_congress,
+    normalize_slot_kind,
     parse_bills_slug,
     resolve_verified_document_kind,
     split_bills_congress_and_number,
@@ -74,6 +81,7 @@ def assert_lossless_spans(result: dict, filename: str) -> None:
         ('CRPT-114-JU00-Vote001-20160525.pdf', ['committee-vote'], 'committee-vote', False),
         ('HMTG-112-AG-Weekof20111205.pdf', ['weekly-meeting-notice'], 'weekly-meeting-notice', False),
         ('BILLS-118hr1418ih.pdf', ['bill-numbered'], 'bill-numbered', False),
+        ('BILLS-115HR998ih-SD001.xml', ['bill-numbered'], 'bill-numbered', False),
         ('CHRG-118shrg049104057.pdf', ['published-hearing'], 'published-hearing', False),
     ],
 )
@@ -88,17 +96,33 @@ def test_filename_slot_kind_and_ambiguity_preserve_backward_compat(
     assert_lossless_spans(extracted, filename)
     parsed = parse_filename(filename)
 
-    # Existing public fields remain 100% intact for backward compatibility
+    # Existing public fields and default metadata dict keys remain 100% intact (no unexpected drift)
     assert extracted['metadata']['document_kind'] == expected_doc_kind
     assert parsed.metadata['document_kind'] == expected_doc_kind
+    assert 'filename_slot_kind' not in extracted['metadata']
+    assert 'is_slot_ambiguous' not in extracted['metadata']
+    assert 'filename_slot_kind' not in parsed.metadata
+    assert 'is_slot_ambiguous' not in parsed.metadata
+    assert 'filename_slot_kind' not in filename_metadata(extracted)
 
-    # Explicit slot fields on both Engine.extract(), ParsedFilename, and metadata dict
+    # Explicit slot fields on Engine.extract() and ParsedFilename
     assert extracted['filename_slot_kind'] == expected_slot_kind
     assert extracted['is_slot_ambiguous'] is expected_ambiguous
     assert parsed.filename_slot_kind == expected_slot_kind
     assert parsed.is_slot_ambiguous is expected_ambiguous
-    assert extracted['metadata']['filename_slot_kind'] == [expected_slot_kind]
-    assert extracted['metadata']['is_slot_ambiguous'] == ['true' if expected_ambiguous else 'false']
+    assert parsed.slot_info() == (expected_slot_kind, expected_ambiguous)
+    assert filename_slot_info(extracted['observations'], document_kinds=expected_doc_kind) == (
+        expected_slot_kind,
+        expected_ambiguous,
+    )
+
+    # Opt-in include_slot_info=True populates flat metadata keys when requested
+    opt_in_meta = filename_metadata(extracted, include_slot_info=True)
+    assert opt_in_meta['filename_slot_kind'] == [expected_slot_kind]
+    assert opt_in_meta['is_slot_ambiguous'] == ['true' if expected_ambiguous else 'false']
+    opt_in_parsed = parse_filename(filename, include_slot_info=True)
+    assert opt_in_parsed.metadata['filename_slot_kind'] == [expected_slot_kind]
+    assert opt_in_parsed.metadata['is_slot_ambiguous'] == ['true' if expected_ambiguous else 'false']
 
 
 def test_malformed_and_sha_prefixed_clerk_slots_retain_slot_ambiguity(engine: Engine) -> None:
@@ -107,16 +131,25 @@ def test_malformed_and_sha_prefixed_clerk_slots_retain_slot_ambiguity(engine: En
     res_prefixed = parse_filename(prefixed)
     assert res_prefixed.filename_slot_kind == 'witness-biography'
     assert res_prefixed.is_slot_ambiguous is True
+    assert res_prefixed.resolve_verified_document_kind(None) is None
+    assert res_prefixed.resolve_verified_document_kind('testimony-disclosure') == 'testimony-disclosure'
 
     # Malformed 7-digit date in Clerk -Bio- filename still flags ambiguous Bio upload slot
     malformed_bio = parse_filename('HHRG-118-JU00-Bio-SmithJ-2023051.pdf')
     assert malformed_bio.filename_slot_kind == 'witness-biography'
     assert malformed_bio.is_slot_ambiguous is True
 
-    # Standalone -SD001 upload suffix without Clerk prefix still marks ambiguous support slot
+    # Standalone -SD001 upload suffix without Clerk or package prefix still marks ambiguous support slot
     standalone_sd = parse_filename('WitnessPacket-SD002.pdf')
     assert standalone_sd.filename_slot_kind == 'support-document'
     assert standalone_sd.is_slot_ambiguous is True
+
+    # Structured BILLS package stem takes precedence over trailing -SD001 suffix
+    bills_sd = parse_filename('BILLS-115HR998ih-SD001.xml')
+    assert bills_sd.metadata['document_kind'] == ['bill-numbered']
+    assert bills_sd.filename_slot_kind == 'bill-numbered'
+    assert bills_sd.is_slot_ambiguous is False
+    assert bills_sd.resolve_verified_document_kind(None) == 'bill-numbered'
 
     # Unstructured free-text filenames have no structured upload slot
     free_text = parse_filename('Lee-testimony.pdf')
@@ -124,9 +157,10 @@ def test_malformed_and_sha_prefixed_clerk_slots_retain_slot_ambiguity(engine: En
     assert free_text.filename_slot_kind is None
     assert free_text.is_slot_ambiguous is False
     assert 'filename_slot_kind' not in free_text.metadata
+    assert 'filename_slot_kind' not in parse_filename('Lee-testimony.pdf', include_slot_info=True).metadata
 
 
-def test_resolve_verified_document_kind_guards_bio_ttf_and_sd_contradictions() -> None:
+def test_resolve_verified_document_kind_and_normalize_slot_kind() -> None:
     assert metadata_resolve_verified_document_kind is resolve_verified_document_kind
     assert {'bio', 'sd', 'wstate'} <= AMBIGUOUS_SLOT_TOKENS
     assert {'witness-biography', 'witness-statement', 'witness-support', 'meeting-support'} <= AMBIGUOUS_SLOT_KINDS
@@ -147,15 +181,46 @@ def test_resolve_verified_document_kind_guards_bio_ttf_and_sd_contradictions() -
     # Genuine biography confirmed by body verification resolves to witness-biography
     assert resolve_verified_document_kind('witness-biography', 'witness-biography') == 'witness-biography'
 
-    # Non-ambiguous slots preserve their normalized kind when body_kind is absent, while allowing body override
+    # Non-ambiguous slots and catalog document kinds (including ungrouped kinds) normalize to lowercase
+    assert normalize_slot_kind('Published-Hearing') == 'published-hearing'
+    assert normalize_slot_kind('PUBLISHED-HEARING') == 'published-hearing'
+    assert normalize_slot_kind('Committee-Rules') == 'committee-rules'
+    assert normalize_slot_kind('Weekly-Meeting-Notice') == 'weekly-meeting-notice'
+    assert normalize_slot_kind('Activity-Report') == 'activity-report'
     assert is_slot_kind_ambiguous('TTF') is False
     assert is_slot_kind_ambiguous('testimony-disclosure') is False
     assert resolve_verified_document_kind('TTF', None) == 'testimony-disclosure'
     assert resolve_verified_document_kind('Transcript', None) == 'committee-transcript'
     assert resolve_verified_document_kind('WList', None) == 'witness-list'
+    assert resolve_verified_document_kind('Published-Hearing', None) == 'published-hearing'
     assert resolve_verified_document_kind('bill-numbered', None) == 'bill-numbered'
     assert resolve_verified_document_kind('testimony-disclosure', 'witness-statement') == 'witness-statement'
     assert resolve_verified_document_kind(None, None) is None
+
+
+def test_categories_and_metadata_have_no_import_order_cycle() -> None:
+    src_root = str(Path(house_naming.__file__).resolve().parents[1])
+    env = {**os.environ, 'PYTHONPATH': src_root}
+    for script in (
+        (
+            'import house_naming.categories as c, house_naming.metadata as m; '
+            'assert m.resolve_verified_document_kind is c.resolve_verified_document_kind; '
+            'assert m.AMBIGUOUS_SLOT_KINDS is c.AMBIGUOUS_SLOT_KINDS'
+        ),
+        (
+            'import house_naming.metadata as m, house_naming.categories as c; '
+            'assert m.filename_slot_info is c.filename_slot_info; '
+            'assert m.normalize_slot_kind is c.normalize_slot_kind'
+        ),
+    ):
+        proc = subprocess.run(
+            [sys.executable, '-B', '-c', script],
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert proc.returncode == 0, proc.stderr
 
 
 # ---------------------------------------------------------------------------
@@ -177,6 +242,9 @@ def test_valid_congress_bounds_helper() -> None:
         ('BILLS-1152823ih.pdf', 115, None, 2823, 'ih', True),
         ('BILLS-1152823ih-U1.pdf', 115, None, 2823, 'ih', True),
         ('BILLS1152823ih.pdf', 115, None, 2823, 'ih', True),
+        ('BILLS1192823pis.pdf', 119, None, 2823, 'pis', True),
+        ('BILLS-1192823pis.pdf', 119, None, 2823, 'pis', True),
+        ('BILLS115-2823ih.pdf', 115, None, 2823, 'ih', True),
         ('BILLS112hr2576ih.pdf', 112, 'hr', 2576, 'ih', True),
         ('BILLS117HR2377RH.xml', 117, 'hr', 2377, 'rh', True),
         ('BILLS-1141192ih-NationalDiabetesClinicalCareCommissionAct-U1_0.pdf', 114, None, 1192, 'ih', True),
@@ -185,6 +253,8 @@ def test_valid_congress_bounds_helper() -> None:
         ('BILLS-115-2823ih.pdf', 115, None, 2823, 'ih', False),
         ('BILLS-93hr2823ih.pdf', 93, 'hr', 2823, 'ih', False),
         ('BILLS-93-HR2823ih.pdf', 93, 'hr', 2823, 'ih', False),
+        (f"{'0123456789abcdef' * 4}.BILLS1152823ih.pdf", 115, None, 2823, 'ih', True),
+        (f"{'0123456789abcdef' * 4}.BILLS-93hr2823ih.pdf", 93, 'hr', 2823, 'ih', False),
     ],
 )
 def test_bills_concatenated_split_recovery(
@@ -219,13 +289,17 @@ def test_bills_concatenated_split_recovery(
 @pytest.mark.parametrize(
     'malformed',
     [
-        # Jammed multi-Congress / 4+ digit Congress before explicit measure code
+        # Jammed multi-Congress / 4+ digit Congress before explicit measure code (hyphenated and unhyphenated)
         'BILLS-1152823hr2823ih.pdf',
         'BILLS-114119hr1ih.pdf',
+        'BILLS-114119-HR1ih.pdf',
         'BILLS-1117s2126-SUS.pdf',
+        'BILLS-1117-s2126-SUS.pdf',
         'BILLS-114119-HR1-A000055-Amdt-1.pdf',
-        # Overlong 6+ digit untyped number after 3-digit Congress
+        'BILLS-114119hr-PIH-Draft.pdf',
+        # Overlong 6+ digit untyped number or 6+ zero bill numbers after 3-digit Congress
         'BILLS-115123456ih.pdf',
+        'BILLS-115000000ih.pdf',
         # Implausible Congress > 130 or < 1
         'BILLS-131hr1ih.pdf',
         'BILLS-150hr1ih.pdf',
@@ -247,9 +321,39 @@ def test_bills_malformed_and_out_of_bounds_congress_rejected(engine: Engine, mal
     assert 'congress' not in parsed.metadata
 
     # Multi-digit concatenated Congress candidates in Engine.parse are explicitly rejected
-    if any(tok in malformed for tok in ('1152823hr', '114119', '1117s', '115123456')):
+    if any(tok in malformed for tok in ('1152823hr', '114119', '1117s', '115123456', '115000000')):
         assert not extracted['valid']
         assert 'invalid-congress-boundary' in extracted['issues']
+
+
+@pytest.mark.parametrize(
+    'non_bill_slug',
+    [
+        # Bioguide sponsor amendment slots on numeric committee-print subjects (not bill numbers)
+        'BILLS-119-5300-A000370-Amdt-119.pdf',
+        'BILLS-119-5300-J000298-Amdt--.pdf',
+        'BILLS-116-5308-KOOO395-Amdt-14.pdf',
+        # Committee prints, compound local identifiers, House floor amendments, and appropriations routing
+        'BILLS-1161-ORH-AP--MilCon-FY2021MILCON-VASubcommitteeBill.pdf',
+        'BILLS-114119-CommitteePrint-A000055-Amdt-1.pdf',
+        'BILLS-118-118-30rh.pdf',
+        'BILLS-118118-30rh.pdf',
+        'BILLS-1165245-HAmdt2.pdf',
+        # 6+ zero placeholder tokens exceed 5-digit bill number bounds
+        'BILLS-115hr000000ih.pdf',
+        'BILLS-115-000000ih.pdf',
+    ],
+)
+def test_split_bills_rejects_non_bill_amendments_prints_appropriations_and_6plus_zeros(
+    engine: Engine,
+    non_bill_slug: str,
+) -> None:
+    assert split_bills_congress_and_number(non_bill_slug) is None
+    extracted = engine.extract(non_bill_slug)
+    assert_lossless_spans(extracted, non_bill_slug)
+    if non_bill_slug == 'BILLS-119-5300-A000370-Amdt-119.pdf':
+        assert extracted['metadata']['congress'] == ['119']
+        assert 'measure_number' not in extracted['metadata']
 
 
 # ---------------------------------------------------------------------------
@@ -284,13 +388,14 @@ def test_bills_malformed_and_out_of_bounds_congress_rejected(engine: Engine, mal
         ('2026-01-02', 119),
         ('2027-01-02', 119),
         ('2027-01-03', 120),
-        # Compact Clerk YYYYMMDD strings, slash dates, date objects, and (Y, M, D) tuples
+        # Compact Clerk YYYYMMDD strings, slash/dot dates, date objects, and (Y, M, D) tuples
         ('20210101', 116),
         ('20210102', 116),
         ('20210103', 117),
         ('20220102', 117),
         ('20230103', 118),
         ('2021/01/02', 116),
+        ('2021.01.02', 116),
         (date(2021, 1, 1), 116),
         (date(2021, 1, 2), 116),
         (date(2021, 1, 3), 117),
@@ -312,24 +417,46 @@ def test_date_to_congress_constitutional_dates(ymd, expected_congress: int) -> N
     assert date_to_congress_constitutional(ymd) == expected_congress
 
 
-def test_date_to_congress_constitutional_noon_jan3_timestamps() -> None:
-    # Naive wall-clock datetimes on Jan 3 of an odd year: < 12:00 -> outgoing, >= 12:00 -> incoming
-    assert date_to_congress_constitutional(datetime(2021, 1, 3, 0, 0, 0)) == 116
-    assert date_to_congress_constitutional(datetime(2021, 1, 3, 11, 59, 59)) == 116
-    assert date_to_congress_constitutional(datetime(2021, 1, 3, 12, 0, 0)) == 117
-    assert date_to_congress_constitutional(datetime(2023, 1, 3, 11, 30, 0)) == 117
-    assert date_to_congress_constitutional(datetime(2023, 1, 3, 12, 0, 0)) == 118
-
-    # Timezone-aware UTC timestamps converted to Washington, D.C. (EST = UTC-5 in January)
-    assert date_to_congress_constitutional(datetime(2021, 1, 3, 16, 59, 59, tzinfo=timezone.utc)) == 116
-    assert date_to_congress_constitutional(datetime(2021, 1, 3, 17, 0, 0, tzinfo=timezone.utc)) == 117
-    assert date_to_congress_constitutional('2021-01-03T16:59:59Z') == 116
-    assert date_to_congress_constitutional('2021-01-03T17:00:00Z') == 117
-    assert date_to_congress_constitutional('2021-01-03T11:59:00-05:00') == 116
-    assert date_to_congress_constitutional('2021-01-03T12:00:00-05:00') == 117
-
-    # Even-numbered year Jan 3 morning stays in the same Congress
-    assert date_to_congress_constitutional(datetime(2022, 1, 3, 9, 0, 0)) == 117
+@pytest.mark.parametrize(
+    'ts,expected_congress',
+    [
+        # Naive wall-clock datetimes on Jan 3 of an odd year: < 12:00 -> outgoing, >= 12:00 -> incoming
+        (datetime(2021, 1, 3, 0, 0, 0), 116),
+        (datetime(2021, 1, 3, 11, 59, 59), 116),
+        (datetime(2021, 1, 3, 12, 0, 0), 117),
+        (datetime(2023, 1, 3, 11, 30, 0), 117),
+        (datetime(2023, 1, 3, 12, 0, 0), 118),
+        # Timezone-aware UTC datetimes and whole-second strings (EST = UTC-5 in January)
+        (datetime(2021, 1, 3, 16, 59, 59, tzinfo=timezone.utc), 116),
+        (datetime(2021, 1, 3, 17, 0, 0, tzinfo=timezone.utc), 117),
+        ('2021-01-03T16:59:59Z', 116),
+        ('2021-01-03T17:00:00Z', 117),
+        ('2021-01-03T11:59:00-05:00', 116),
+        ('2021-01-03T12:00:00-05:00', 117),
+        # Fractional-second ISO-8601 timestamps across Noon Jan 3 EST (F1 regression guard)
+        ('2021-01-03T16:59:59.500Z', 116),
+        ('2021-01-03T16:59:59.999999Z', 116),
+        ('2021-01-03T17:00:00.000Z', 117),
+        ('2021-01-03T12:30:00.000+00:00', 116),
+        ('2021-01-03T11:30:00.500-08:00', 117),
+        ('2021.01.03T16:59:59.500Z', 116),
+        # Compact ±HHMM offsets, single-digit components, and whitespace before TZ
+        ('2021-01-03T11:59:59.500-0500', 116),
+        ('2021-01-03T12:00:00.000-0500', 117),
+        ('2021-01-03T11:30:00-0800', 117),
+        ('2021-1-3T16:30:00Z', 116),
+        ('2021-1-3T17:30:00Z', 117),
+        ('2021-01-03 16:30:00 Z', 116),
+        ('2021-01-03 17:30:00 +0000', 117),
+        # UTC early morning Jan 3 shifting back to Jan 2 in EST
+        ('2021-01-03T02:00:00.250Z', 116),
+        # Even-numbered year Jan 3 morning stays in the same Congress
+        (datetime(2022, 1, 3, 9, 0, 0), 117),
+        ('2022-01-03T14:00:00.500Z', 117),
+    ],
+)
+def test_date_to_congress_constitutional_noon_jan3_timestamps(ts, expected_congress: int) -> None:
+    assert date_to_congress_constitutional(ts) == expected_congress
 
 
 @pytest.mark.parametrize(
@@ -340,11 +467,21 @@ def test_date_to_congress_constitutional_noon_jan3_timestamps() -> None:
         '   ',
         'not-a-date',
         '2021-02-29',
+        '2021-02-29T12:00:00.500Z',
         '2021-13-01',
         '20210229',
         '1789-03-03',
         '1776-07-04',
         '2299-01-05',
+        # Invalid timezone offsets and invalid clock components must return None (never unshifted hh < 12)
+        '2021-01-03T10:00:00+25:99',
+        '2021-01-03T10:00:00.500+25:99',
+        '2021-01-03T10:00:00-24:00',
+        '2021-01-03T10:00:00+05:60',
+        '2021-01-03T10:00:00+9999',
+        '2021-01-03T24:00:00Z',
+        '2021-01-03T12:60:00Z',
+        '2021-01-03T12:00:60Z',
         True,
         False,
         20210102,

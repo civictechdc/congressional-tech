@@ -5,6 +5,7 @@ between a document's genre, a topic it discusses and a more specific phrase.
 """
 from __future__ import annotations
 
+import functools
 import re
 from collections.abc import Iterable, Sequence
 
@@ -102,6 +103,23 @@ _INCOMPLETE_CLERK_SLOT_RE = re.compile(
 )
 
 
+@functools.cache
+def _known_document_kinds() -> frozenset[str]:
+    from .catalog import load_guide
+    guide = load_guide()
+    kinds: set[str] = set(_KIND_FAMILIES) | set(AMBIGUOUS_SLOT_KINDS) | set(SLOT_TOKEN_TO_KIND.values())
+    kinds.update(k.lower() for k in guide.get('patterns', {}).keys())
+    for vocab in guide.get('extraction_vocabularies', {}).values():
+        for entry in vocab.values():
+            if isinstance(entry, dict) and entry.get('category'):
+                kinds.add(str(entry['category']).lower())
+    for rule in guide.get('extraction_rules', ()):
+        for field in rule.get('fields', {}).values():
+            if isinstance(field, dict) and field.get('category'):
+                kinds.add(str(field['category']).lower())
+    return frozenset(kinds)
+
+
 def normalize_slot_kind(slot_kind: str | None) -> str | None:
     """Normalize a Clerk upload-slot token or filename slot kind to canonical kind spelling."""
     if not isinstance(slot_kind, str):
@@ -112,7 +130,7 @@ def normalize_slot_kind(slot_kind: str | None) -> str | None:
     low = cleaned.lower()
     if low in SLOT_TOKEN_TO_KIND:
         return SLOT_TOKEN_TO_KIND[low]
-    return low if low in _KIND_FAMILIES or low in AMBIGUOUS_SLOT_KINDS else cleaned
+    return low if low in _known_document_kinds() else cleaned
 
 
 def is_slot_kind_ambiguous(slot_kind: str | None) -> bool:
@@ -236,12 +254,12 @@ def filename_slot_info(
             return kinds[0], is_slot_kind_ambiguous(kinds[0])
         return None, False
 
+    if has_package_stem and kinds:
+        return kinds[0], is_slot_kind_ambiguous(kinds[0])
+
     if any(m.lower() == 'sd' for m in suffix_markers):
         slot_kind = kinds[0] if kinds and kinds[0] in {'witness-support', 'meeting-support', 'support-document'} else 'support-document'
         return slot_kind, True
-
-    if has_package_stem and kinds:
-        return kinds[0], is_slot_kind_ambiguous(kinds[0])
 
     return None, False
 

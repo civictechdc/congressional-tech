@@ -6,7 +6,7 @@ readings; it does not parse names, resolve people, or combine different sources.
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 import re
 from zoneinfo import ZoneInfo
 
@@ -17,8 +17,6 @@ from .categories import (
     document_category_fields,
     document_families,
     filename_slot_info,
-    is_slot_kind_ambiguous,
-    resolve_verified_document_kind,
 )
 
 OMIT_FIELDS = frozenset({'payload', 'query_text', 'ignored_suffix', 'protocol_marker'})
@@ -26,7 +24,7 @@ GENERIC_KINDS = frozenset({'committee-document', 'committee-document-numbered'})
 _WASHINGTON_TZ = ZoneInfo('America/New_York')
 _YMD_ISO_RE = re.compile(
     r'^(?P<y>\d{4})[-/.](?P<m>\d{1,2})[-/.](?P<d>\d{1,2})'
-    r'(?:[T\s]+(?P<hh>\d{1,2}):(?P<mm>\d{2})(?::(?P<ss>\d{2})(?:\.\d+)?)?'
+    r'(?:[T\s]+(?P<hh>\d{1,2}):(?P<mm>\d{2})(?::(?P<ss>\d{2})(?:\.(?P<frac>\d+))?)?'
     r'\s*(?P<tz>Z|[+-]\d{2}:?\d{2})?)?$',
     re.I | re.ASCII,
 )
@@ -99,24 +97,33 @@ def date_to_congress_constitutional(
             except ValueError:
                 return None
             if m_iso.group('hh') is not None:
-                norm_iso = s.replace('/', '-').replace('.', '-')
-                if norm_iso.endswith(('Z', 'z')):
-                    norm_iso = norm_iso[:-1] + '+00:00'
-                elif m_iso.group('tz') and re.fullmatch(r'[+-]\d{4}', m_iso.group('tz')):
-                    norm_iso = norm_iso[:-2] + ':' + norm_iso[-2:]
+                hh = int(m_iso.group('hh'))
+                mm = int(m_iso.group('mm'))
+                ss = int(m_iso.group('ss') or 0)
+                if not (0 <= hh <= 23 and 0 <= mm <= 59 and 0 <= ss <= 59):
+                    return None
+                frac = m_iso.group('frac')
+                us = int((frac + '000000')[:6]) if frac else 0
+                tz_raw = m_iso.group('tz')
+                tzinfo: timezone | None = None
+                if tz_raw is not None:
+                    if tz_raw.upper() == 'Z':
+                        tzinfo = timezone.utc
+                    else:
+                        sign = -1 if tz_raw[0] == '-' else 1
+                        digits = tz_raw[1:].replace(':', '')
+                        tz_h, tz_m = int(digits[:2]), int(digits[2:])
+                        if not (0 <= tz_h <= 23 and 0 <= tz_m <= 59):
+                            return None
+                        tzinfo = timezone(sign * timedelta(hours=tz_h, minutes=tz_m))
                 try:
-                    dt = datetime.fromisoformat(norm_iso)
-                    if dt.tzinfo is not None:
-                        dt = dt.astimezone(_WASHINGTON_TZ)
-                    year, month, day = dt.year, dt.month, dt.day
-                    before_noon = dt.hour < 12
+                    dt = datetime(y_i, m_i, d_i, hh, mm, ss, us, tzinfo=tzinfo)
                 except ValueError:
-                    hh, mm = int(m_iso.group('hh')), int(m_iso.group('mm'))
-                    ss = int(m_iso.group('ss') or 0)
-                    if not (0 <= hh <= 23 and 0 <= mm <= 59 and 0 <= ss <= 59):
-                        return None
-                    year, month, day = y_i, m_i, d_i
-                    before_noon = hh < 12
+                    return None
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(_WASHINGTON_TZ)
+                year, month, day = dt.year, dt.month, dt.day
+                before_noon = dt.hour < 12
             else:
                 year, month, day = y_i, m_i, d_i
     else:
@@ -148,7 +155,12 @@ def date_to_congress_constitutional(
     return congress
 
 
-def filename_metadata(result: dict, *, convention_matches: list[dict] | None = None) -> dict[str, list[str]]:
+def filename_metadata(
+    result: dict,
+    *,
+    convention_matches: list[dict] | None = None,
+    include_slot_info: bool = False,
+) -> dict[str, list[str]]:
     """Flatten one extraction without losing source spellings or alternatives.
 
     Refined text supersedes its enclosing fallback in these useful values only;
@@ -299,8 +311,9 @@ def filename_metadata(result: dict, *, convention_matches: list[dict] | None = N
         row['amendment_identifier'] = list(row['amendment_id'])
     if families := document_families(row.get('document_kind')):
         row['document_family'] = families
-    slot_kind, slot_ambiguous = filename_slot_info(observations, document_kinds=row.get('document_kind'))
-    if slot_kind is not None:
-        row['filename_slot_kind'] = [slot_kind]
-        row['is_slot_ambiguous'] = ['true' if slot_ambiguous else 'false']
+    if include_slot_info:
+        slot_kind, slot_ambiguous = filename_slot_info(observations, document_kinds=row.get('document_kind'))
+        if slot_kind is not None:
+            row['filename_slot_kind'] = [slot_kind]
+            row['is_slot_ambiguous'] = ['true' if slot_ambiguous else 'false']
     return dict(row)

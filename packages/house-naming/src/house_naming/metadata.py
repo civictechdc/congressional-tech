@@ -183,12 +183,37 @@ def derived_values(record: dict, subjects: tuple[str, ...], measures: tuple[str,
     return out
 
 
-from .categories import (  # noqa: E402
-    AMBIGUOUS_SLOT_KINDS,
-    AMBIGUOUS_SLOT_TOKENS,
-    SLOT_TOKEN_TO_KIND,
-    filename_slot_info,
-    is_slot_kind_ambiguous,
-    normalize_slot_kind,
-    resolve_verified_document_kind,
-)
+_CATEGORY_REEXPORTS = frozenset({
+    'AMBIGUOUS_SLOT_KINDS',
+    'AMBIGUOUS_SLOT_TOKENS',
+    'SLOT_TOKEN_TO_KIND',
+    'filename_slot_info',
+    'is_slot_kind_ambiguous',
+    'normalize_slot_kind',
+    'resolve_verified_document_kind',
+})
+
+
+def __getattr__(name: str):
+    if name in _CATEGORY_REEXPORTS:
+        from . import categories
+        val = getattr(categories, name)
+        globals()[name] = val
+        return val
+    raise AttributeError(f'module {__name__!r} has no attribute {name!r}')
+
+
+__all__ = [
+    'AMBIGUOUS_SLOT_KINDS',
+    'AMBIGUOUS_SLOT_TOKENS',
+    'NUMBER_BOUNDARY_NOTE',
+    'ORDINAL_SUFFIX',
+    'SLOT_TOKEN_TO_KIND',
+    'derived_values',
+    'filename_slot_info',
+    'is_slot_kind_ambiguous',
+    'normalize_slot_kind',
+    'resolve_verified_document_kind',
+    'starts_with_ordinal_suffix',
+    'target_subject_spans',
+]

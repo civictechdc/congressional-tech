@@ -22,11 +22,12 @@ from house_naming.categories import (
     AMBIGUOUS_SLOT_TOKENS,
     filename_slot_info,
     is_slot_kind_ambiguous,
+    normalize_slot_kind,
     resolve_verified_document_kind,
 )
 from house_naming.corpus import filename_tokens as _filename_tokens, shared_token_pattern
 from house_naming.extraction import EXTENSION, date_candidates, member_title_pattern
-from house_naming.values import date_to_congress_constitutional
+from house_naming.values import date_to_congress_constitutional, filename_metadata
 from .naming import HOUSE_NAMING
 
 
@@ -97,9 +98,17 @@ class ParsedFilename(BaseModel):
     filename_slot_kind: str | None = None
     is_slot_ambiguous: bool = False
 
+    def slot_info(self) -> tuple[str | None, bool]:
+        """Return ``(filename_slot_kind, is_slot_ambiguous)`` for this parsed filename."""
+        return (self.filename_slot_kind, self.is_slot_ambiguous)
+
+    def resolve_verified_document_kind(self, body_kind: str | None = None) -> str | None:
+        """Resolve verified document kind from this filename's upload slot and ``body_kind``."""
+        return resolve_verified_document_kind(self.filename_slot_kind, body_kind)
+
 
 def parse_filename(filename: str, *, member_surnames: Mapping[str, Sequence[str]] | None = None,
-                   source_url: str | None = None) -> ParsedFilename:
+                   source_url: str | None = None, include_slot_info: bool = False) -> ParsedFilename:
     """Return the engine's literal observations, including rejected alternatives.
 
     `matches` means extracted source syntax, not convention-valid records.
@@ -107,8 +116,12 @@ def parse_filename(filename: str, *, member_surnames: Mapping[str, Sequence[str]
     report convention validation; neither invalidity nor fallback implies that
     this filename was discarded.
     """
-    result = HOUSE_NAMING.extract(filename, member_surnames=member_surnames,
-                                 **({'source_url': source_url} if source_url is not None else {}))
+    result = HOUSE_NAMING.extract(
+        filename,
+        member_surnames=member_surnames,
+        **({'source_url': source_url} if source_url is not None else {}),
+        **({'include_slot_info': True} if include_slot_info else {}),
+    )
     matches = tuple(FilenameMatch.model_validate(match) for match in result['observations'])
     return ParsedFilename(filename=result['input'], source_url=source_url, stem_end=result['stem_end'], matches=matches,
                           pieces=result['pieces'], suppressed=result['suppressed'],
