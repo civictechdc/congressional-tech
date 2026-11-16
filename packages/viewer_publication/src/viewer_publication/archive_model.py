@@ -1240,7 +1240,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                          spicy_regs=None,include_entities=False,recovery_requirements=None,
                          video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                          transcript_headings=None,
-                         historical_recording_matcher=None,prior_links=None,base_retired=None,base_release_id=None,root=ROOT,registry=None):
+                         historical_recording_matcher=None,docmeta_v6_1=None,prior_links=None,base_retired=None,base_release_id=None,root=ROOT,registry=None):
     """Freeze current input selectors and the shared prefix in fresh private scratch.
 
     `registry` names a compatible-versions file other than the checked-in one (tests only).
@@ -1293,6 +1293,11 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     # are projected once by the native reader before policy joins.
     from viewer_publication.archive_provenance import provenance_inputs
     provenance,prelude=provenance_inputs(scratch/'provenance',recovery_files=recovery_files,review_files=review_files)
+    if docmeta_v6_1 is not None:
+        from viewer_publication.docmeta_v6_1 import docmeta_inputs_and_prelude
+        dm_inputs,dm_prelude=docmeta_inputs_and_prelude(docmeta_v6_1)
+        inputs += dm_inputs
+        prelude += dm_prelude
     prelude[0:0]=compatible_versions.selected_readings_steps(entries,parsers=pins)
     inputs += provenance
     recovery_policy=None
@@ -1402,7 +1407,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         snapshots=selectors,writer_settings=dict(schema_version=1,whole=_settings('whole',['list_row']),
             ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key']),
             auxiliary_row_group_rows=AUXILIARY_ROW_GROUP_ROWS),root=root,
-        recovery_policy=recovery_policy,historical_recording_matcher=historical_recording_matcher)
+        recovery_policy=recovery_policy,historical_recording_matcher=historical_recording_matcher,docmeta_v6_1=docmeta_v6_1)
     (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
@@ -1410,7 +1415,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         include_entities=include_entities,entity_digests=entity_digests,recovery_policy=recovery_policy,explorer_inputs=explorer_inputs,
         has_document_references=has_document_references,
         has_rank_credentials=has_rank_credentials,
-        historical_recording_matcher=historical_recording_matcher is not None)
+        historical_recording_matcher=historical_recording_matcher is not None,
+        has_docmeta_v6_1=docmeta_v6_1 is not None)
 
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
@@ -1419,7 +1425,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
                   spicy_regs=None,include_entities=False,recovery_requirements=None,
                   video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                   transcript_headings=None,
-                  historical_recording_matcher=None,prior_links=None,base_retired=None,base_release_id=None,root=ROOT,registry=None):
+                  historical_recording_matcher=None,docmeta_v6_1=None,prior_links=None,base_retired=None,base_release_id=None,root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
@@ -1428,7 +1434,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
         recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
         recording_decision_files=recording_decision_files,playlist_records=playlist_records,transcript_headings=transcript_headings,
-        historical_recording_matcher=historical_recording_matcher,prior_links=prior_links,base_retired=base_retired,base_release_id=base_release_id,root=root,registry=registry)
+        historical_recording_matcher=historical_recording_matcher,docmeta_v6_1=docmeta_v6_1,prior_links=prior_links,base_retired=base_retired,base_release_id=base_release_id,root=root,registry=registry)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
@@ -1751,6 +1757,13 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         m.filename AS effective_filename,m.source_url,c.member_path
         FROM document_members m JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key
         LEFT JOIN capture_source_contexts c ON m.source_id=c.source_id""",settings=_settings('whole',['document_id','source_id','member_path'],footer_limit=4 << 20))]
+    docmeta_diagnostics=[]
+    if prepared.get('has_docmeta_v6_1'):
+        from viewer_publication.docmeta_v6_1 import docmeta_release_artifacts
+        dm_steps,dm_extra,docmeta_diagnostics=docmeta_release_artifacts(
+            evidence=evidence,settings=_settings('whole',['list_row'],footer_limit=4 << 20),root=root)
+        steps += dm_steps
+        extra += dm_extra
     causes={
         'capture_evidence':['receipt_key','receipt_line','capture_index'],
         'record_roles':['receipt_key','receipt_line','capture_index'],
@@ -1928,7 +1941,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                     UNION SELECT substr(right_node,3,16) AS prefix FROM body_review_edges WHERE right_node IS NOT NULL
                 ) rev ON substr(o.bh,1,16)=rev.prefix
             ) merged_docs ON single_vk.doc_key=merged_docs.doc_key) AS single_doc_version_keys{entity_invariant_sql}"""),
-            LANDING_PAGE_INVARIANTS,RECOVERED_FILE_INVARIANTS]+explorer_diagnostics+url_state_diagnostics()+completeness_checks(
+            LANDING_PAGE_INVARIANTS,RECOVERED_FILE_INVARIANTS]+explorer_diagnostics+url_state_diagnostics()+docmeta_diagnostics+completeness_checks(
             catalog_version=catalog_version,
             include_entities=bool(prepared.get('include_entities')),
             meeting_records_version=parser_versions.get('meeting_records') if isinstance(parser_versions,dict) else None,
