@@ -49,8 +49,8 @@
       "timeout_seconds": 75
     },
     "sample_sha256": "d6b9359912cac669da66673017cb13451b9d54fc795e7608e29068655be617a5",
-    "version": "0fff8151c7752109cc3778d9570e682985edce2e1f90e04c3b638c37a6c4a129",
-    "workspace_sha256": "fa1abed99538f8e8f5ade6f92cb5083510f630afb549d517070fcd6a892cdfcf"
+    "version": "c226ccd99877c497474ffee673baa301f37bc14972b9b9f391af594da9b2b7be",
+    "workspace_sha256": "dd25d5ee08e28459e822e6e8d632b8f741660d8891f91ea95635843fd9119914"
   },
   "html_text": {
     "limits": {

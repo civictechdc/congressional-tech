@@ -209,3 +209,70 @@ def test_empty_then_short_marker_has_consistent_text_reference():
     assert row['text_head'] == fields['main_content:text'] == 'A brief statement.'
     assert row['text_bytes'] == len(b'A brief statement.')
     assert fields['main_content:sha256'] == hashlib.sha256(b'A brief statement.').hexdigest()
+
+
+def test_cms_nav_chrome_multiline_pre_void_tags_and_119th_time_travel_guards():
+    from congress_api.parsers.html_metadata import is_bare_uuid_html, reading_row
+    from congress_api.parsers.main_content import clean_congressional_html
+
+    # 1. Archived 2017 (115th Congress) page served by live 119th Congress CMS:
+    #    - Strips nested <nav>, breadcrumb, social-share, and "119th Congress" banner
+    #    - Preserves text after HTML5 void elements (<img class="site-header">, <input role="search">, <hr hidden>)
+    #    - Preserves multi-line <pre> hearing transcript indentation
+    archived_2017 = (
+        '<html prefix="content: http://purl.org/rss/1.0/modules/content/">'
+        '<head><title>2017 Hearing</title>'
+        '<meta property="article:published_time" content="2017-09-13T18:30:00+00:00">'
+        '<link rel="canonical" href="https://www.indian.senate.gov/imo/media/doc/ce6132fc-902a-fb4d-bda7-3b450844c43d">'
+        '</head><body>'
+        '<div property="content:encoded">'
+        '<nav>119th Congress | Subcommittees | Hearings</nav>'
+        '<div class="breadcrumb"><a href="/">Home</a> &gt; Hearings</div>'
+        '<img class="site-header" src="/logo.png">'
+        '<input role="search" name="q">'
+        '<hr hidden>'
+        '<p>119th Congress | First Session</p>'
+        '<p>September 13, 2017 — Oversight Hearing on High Risk Indian Programs.</p>'
+        '<pre>[Senate Hearing 115-102]\n    The committee met, pursuant to notice, at 2:30 p.m.\n    THE CHAIRMAN. Good afternoon. '
+        + ('Testimony proceedings continue in full detail. ' * 5)
+        + '</pre>'
+        '<div class="social-share"><a href="https://x.com/share">Share</a></div>'
+        '</div></body></html>'
+    ).encode()
+    row_2017 = reading_row(archived_2017)
+    fields_2017 = {item['field']: item['value'] for item in row_2017['fields']}
+    assert fields_2017['main_content:outcome'] == 'marked'
+    assert fields_2017.get('bare_uuid_html') == 'true'
+    text_2017 = fields_2017['main_content:text']
+    assert '119th Congress' not in text_2017
+    assert 'Subcommittees' not in text_2017
+    assert 'Share' not in text_2017
+    assert 'September 13, 2017 — Oversight Hearing on High Risk Indian Programs.' in text_2017
+    assert '    The committee met, pursuant to notice, at 2:30 p.m.' in text_2017
+
+    # 2. F5 Guard: Live 2025 (119th Congress) page mentioning an older statute ("2018 Farm Bill")
+    #    MUST keep its legitimate "119th Congress" header!
+    live_2025 = (
+        '<html prefix="content: http://purl.org/rss/1.0/modules/content/">'
+        '<head><title>2025 Farm Bill Hearing</title></head><body>'
+        '<div property="content:encoded">'
+        '<p>119th Congress — Committee on Agriculture</p>'
+        '<p>July 10, 2025 — Hearing Examining Implementation of the 2018 Farm Bill. '
+        + LONG
+        + '</p></div></body></html>'
+    ).encode()
+    content_2025 = select(live_2025)
+    assert content_2025.outcome == 'marked'
+    assert '119th Congress — Committee on Agriculture' in content_2025.text
+    assert clean_congressional_html(live_2025).startswith('119th Congress — Committee on Agriculture')
+
+    # 3. F11 Bare-UUID HTML boundary checks:
+    html_sample = b'<!-- cached -->\n<!DOCTYPE html><html><body><main><h1>Hearing</h1></main></body></html>'
+    assert is_bare_uuid_html(html_sample, 'https://www.finance.senate.gov/imo/media/doc/ce6132fc-902a-fb4d-bda7-3b450844c43d') is True
+    assert is_bare_uuid_html(html_sample, 'https://www.senate.gov/') is False
+    assert is_bare_uuid_html(html_sample, 'https://www.senate.gov/hearings/') is False
+    assert is_bare_uuid_html(html_sample, 'https://www.senate.gov/page.html') is False
+    assert is_bare_uuid_html(html_sample, 'https://www.senate.gov/file.pdf') is False
+    assert is_bare_uuid_html(html_sample, 'https://www.senate.gov/readme.txt') is False
+    assert is_bare_uuid_html(html_sample, 'https://www.senate.gov/script.cgi') is False
+    assert is_bare_uuid_html(b'%PDF-1.7\n', 'https://www.finance.senate.gov/imo/media/doc/ce6132fc-902a-fb4d-bda7-3b450844c43d') is False

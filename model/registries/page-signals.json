@@ -206,8 +206,85 @@
   {
     "id": "gpo_printed_hearing_cover",
     "kind": "print_cover",
-    "pattern": "(?s)(?:\\bHEARINGS? BEFORE THE\\b.*(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.)|(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.).*\\bHEARINGS? BEFORE THE\\b).*\\bU\\.S\\. GOVERNMENT (?:PRINTING|PUBLISHING) OFFICE\\b",
+    "pattern": "(?s)(?:(?:\\bHEARINGS?\\s+BEFORE\\s+THE\\b.{0,1000}?(?i:\\bSERIAL\\s+NO\\.|\\bS\\.\\s*HRG\\.)|(?i:\\bSERIAL\\s+NO\\.|\\bS\\.\\s*HRG\\.).{0,1000}?\\bHEARINGS?\\s+BEFORE\\s+THE\\b).{0,1000}?\\bU\\.S\\.\\s+GOVERNMENT\\s+(?:PRINTING|PUBLISHING)\\s+OFFICE\\b|\\bU\\.S\\.\\s+GOVERNMENT\\s+(?:PRINTING|PUBLISHING)\\s+OFFICE\\b.{0,1000}?(?:\\bHEARINGS?\\s+BEFORE\\s+THE\\b.{0,1000}?(?i:\\bSERIAL\\s+NO\\.|\\bS\\.\\s*HRG\\.)|(?i:\\bSERIAL\\s+NO\\.|\\bS\\.\\s*HRG\\.).{0,1000}?\\bHEARINGS?\\s+BEFORE\\s+THE\\b))",
     "sample_id": "page-signals:gpo_printed_hearing_cover"
+  },
+  {
+    "id": "cover:testimony-disclosure",
+    "kind": "cover_kind",
+    "number": 1,
+    "pattern": "(?is)\\b(?:TRUTH\\s+IN\\s+TESTIMONY\\s+DISCLOSURE\\s+FORM|INSTRUCTIONS\\s+FOR\\s+COMPLETING\\s+THE\\s+TRUTH\\s+IN\\s+TESTIMONY|WITNESS\\s+DISCLOSURE\\s+REQUIREMENT\\s*[-–—:]?\\s*[\"“']?TRUTH\\s+IN\\s+TESTIMONY)\\b.{0,900}?\\b(?:WITNESS\\s+NAME|NONGOVERNMENTAL\\s+ENTIT(?:Y|IES)|FIDUCIARY\\s+POSITIONS?|FEDERAL\\s+GRANTS?\\s+OR\\s+CONTRACTS?|FOREIGN\\s+GOVERNMENT|CLAUSE\\s+2\\(G\\)\\(5\\))",
+    "sample_id": "page-signals:cover_testimony_disclosure"
+  },
+  {
+    "id": "cover:questionnaire",
+    "kind": "cover_kind",
+    "number": 2,
+    "pattern": "(?is)(?:\\b(?:QUESTIONNAIRE\\s+FOR\\s+(?:JUDICIAL\\s+|NON-JUDICIAL\\s+|EXECUTIVE\\s+)?NOMINEES|SENATE\\s+(?:JUDICIARY\\s+COMMITTEE|COMMITTEE\\s+ON\\s+FOREIGN\\s+RELATIONS)\\s+QUESTIONNAIRE|BIOGRAPHICAL\\s+AND\\s+FINANCIAL\\s+INFORMATION\\s+REQUESTED\\s+OF\\s+NOMINEES|NOMINEE\\s+QUESTIONNAIRE\\s+FOR\\s+THE\\s+COMMITTEE\\s+ON\\s+FOREIGN\\s+RELATIONS)\\b|\\bCOMMITTEE\\s+ON\\s+(?:FOREIGN\\s+RELATIONS|THE\\s+JUDICIARY|ARMED\\s+SERVICES|FINANCE|BANKING)\\b.{0,600}?\\b1\\.\\s*(?:FULL\\s+)?NAME\\b.{0,500}?\\bPOSITION\\s+(?:TO\\s+WHICH|FOR\\s+WHICH)\\s+NOMINATED\\b)",
+    "sample_id": "page-signals:cover_questionnaire"
+  },
+  {
+    "id": "cover:subpoena",
+    "kind": "cover_kind",
+    "number": 3,
+    "pattern": "(?is)(?:\\bBY\\s+AUTHORITY\\s+OF\\s+THE\\s+(?:HOUSE\\s+OF\\s+REPRESENTATIVES|UNITED\\s+STATES\\s+SENATE)\\b.{0,900}?\\b(?:YOU\\s+ARE\\s+HEREBY\\s+COMMANDED|HEREBY\\s+COMMANDED\\s+TO\\s+(?:BE\\s+AND\\s+APPEAR|PRODUCE))\\b|\\bSUBPOENA(?:\\s+DUCES\\s+TECUM|\\s+AD\\s+TESTIFICANDUM)?\\b.{0,700}?\\bCOMMITTEE\\s+ON\\b.{0,700}?\\b(?:YOU\\s+ARE\\s+HEREBY\\s+COMMANDED|HEREBY\\s+COMMANDED\\s+TO\\s+(?:BE\\s+AND\\s+APPEAR|PRODUCE))\\b)",
+    "sample_id": "page-signals:cover_subpoena"
+  },
+  {
+    "id": "cover:attendance-sheet",
+    "kind": "cover_kind",
+    "number": 4,
+    "pattern": "(?is)\\b(?:(?:FULL\\s+)?COMMITTEE\\s+ATTENDANCE(?:\\s+SHEET|\\s+ROSTER)?|(?:MARKUP|HEARING|SUBCOMMITTEE)\\s+ATTENDANCE(?:\\s+SHEET)?|ATTENDANCE\\s+(?:SHEET|RECORD|ROSTER)|QUORUM\\s+(?:AND\\s+ATTENDANCE\\s+)?SHEET)\\b.{0,900}?\\bPRESENT\\b.{0,900}?(?:\\b(?:MR\\.|MRS\\.|MS\\.|DR\\.|REP\\.|SEN\\.|SENATOR|REPRESENTATIVE)\\s+[A-Z].{0,250}?){3}",
+    "sample_id": "page-signals:cover_attendance_sheet"
+  },
+  {
+    "id": "cover:meeting-notice",
+    "kind": "cover_kind",
+    "number": 5,
+    "pattern": "(?is)(?:\\b(?:NOTICE\\s+OF\\s+(?:FULL\\s+COMMITTEE\\s+|SUBCOMMITTEE\\s+|HYBRID\\s+)?MARKUP|(?:FULL\\s+COMMITTEE\\s+|SUBCOMMITTEE\\s+)?MARKUP\\s+NOTICE)\\b|\\b(?:MEMORANDUM|NOTICE)\\b.{0,450}?\\b(?:RE|SUBJECT)\\s*:\\s*(?:(?:AMENDED|REVISED)\\s+)?(?:FULL\\s+COMMITTEE\\s+|SUBCOMMITTEE\\s+)?MARKUP\\b).{0,900}?\\b(?:WILL\\s+MEET\\b|CONVENING\\b|DATE\\s*:|TIME\\s*:|PLACE\\s*:|LOCATION\\s*:|ROOM\\s*:)",
+    "sample_id": "page-signals:cover_meeting_notice"
+  },
+  {
+    "id": "cover:witness-list",
+    "kind": "cover_kind",
+    "number": 6,
+    "pattern": "(?is)(?:^\\s*(?:(?:REVISED|UPDATED|TENTATIVE)\\s+)?(?:WITNESS\\s+LIST|LIST\\s+OF\\s+WITNESSES)\\b|\\b(?:COMMITTEE\\s+ON|SUBCOMMITTEE\\s+ON|SELECT\\s+COMMITTEE|SPECIAL\\s+COMMITTEE)\\b.{0,450}?\\b(?:(?:REVISED|UPDATED|TENTATIVE)\\s+)?(?:WITNESS\\s+LIST|LIST\\s+OF\\s+WITNESSES)\\b).{0,900}?\\b(?:PANEL\\s+(?:[IVX]+|[0-9]+|ONE|TWO|THREE)|THE\\s+HONORABLE\\s+[A-Z]|HON\\.\\s+[A-Z]|DR\\.\\s+[A-Z]|MR\\.\\s+[A-Z]|MS\\.\\s+[A-Z]|MRS\\.\\s+[A-Z]|PROF\\.\\s+[A-Z]|AMBASSADOR\\s+[A-Z])\\b",
+    "sample_id": "page-signals:cover_witness_list"
+  },
+  {
+    "id": "cover:federal-register-notice",
+    "kind": "cover_kind",
+    "number": 7,
+    "pattern": "(?is)\\bFEDERAL\\s+REGISTER\\s*/\\s*VOL\\.\\s*[0-9]{1,3}\\s*,\\s*NO\\.\\s*[0-9]+\\s*/\\s*(?:MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY)\\s*,\\s*[A-Z]+\\s+[0-9]{1,2}\\s*,\\s*(?:19|20)[0-9]{2}\\s*/\\s*(?:NOTICES|RULES\\s+AND\\s+REGULATIONS|PROPOSED\\s+RULES|PRESIDENTIAL\\s+DOCUMENTS)\\b.{0,1000}?\\b(?:ACTION\\s*:|SUMMARY\\s*:|SUPPLEMENTARY\\s+INFORMATION\\s*:|BILLING\\s+CODE\\s+[0-9]|CFR\\s+PART\\b)",
+    "sample_id": "page-signals:cover_federal_register_notice"
+  },
+  {
+    "id": "cover:crs-report",
+    "kind": "cover_kind",
+    "number": 8,
+    "pattern": "(?is)\\b(?:CONGRESSIONAL\\s+RESEARCH\\s+SERVICE|CRS\\s+REPORT\\s+FOR\\s+CONGRESS|CRS\\s+IN\\s+FOCUS|CRS\\s+INSIGHT|CRS\\s+LEGAL\\s+SIDEBAR|INFORMING\\s+THE\\s+LEGISLATIVE\\s+DEBATE\\s+SINCE\\s+1914)\\b.{0,1000}?\\b(?:R[0-9]{4,5}|RL[0-9]{4,5}|RS[0-9]{4,5}|IF[0-9]{5}|IN[0-9]{5}|LSB[0-9]{5})\\b",
+    "sample_id": "page-signals:cover_crs_report"
+  },
+  {
+    "id": "cover:gao-report",
+    "kind": "cover_kind",
+    "number": 9,
+    "pattern": "(?is)\\b(?:U\\.?S\\.?\\s+GOVERNMENT\\s+ACCOUNTABILITY\\s+OFFICE|UNITED\\s+STATES\\s+GOVERNMENT\\s+ACCOUNTABILITY\\s+OFFICE|GAO\\s+HIGHLIGHTS)\\b.{0,900}?\\b(?:REPORT\\s+TO\\s+(?:CONGRESSIONAL\\s+(?:REQUESTERS|COMMITTEES)|THE\\s+(?:CHAIRMAN|CHAIRWOMAN|RANKING\\s+MEMBER|HONORABLE|COMMITTEE|SUBCOMMITTEE))|WHY\\s+GAO\\s+DID\\s+THIS\\s+STUDY|WHAT\\s+GAO\\s+FOUND)\\b.{0,900}?\\bGAO-[0-9]{2}-[0-9]{3,6}(?:[A-QS-SU-Z]\\b|\\b)",
+    "sample_id": "page-signals:cover_gao_report"
+  },
+  {
+    "id": "cover:cost-estimate",
+    "kind": "cover_kind",
+    "number": 10,
+    "pattern": "(?is)(?:\\bCONGRESSIONAL\\s+BUDGET\\s+OFFICE\\s+COST\\s+ESTIMATE\\b|\\bAT\\s+A\\s+GLANCE\\b.{0,900}?\\b(?:COST\\s+ESTIMATE|BY\\s+FISCAL\\s+YEAR,\\s*(?:MILLIONS|BILLIONS)\\s+OF\\s+DOLLARS|PAY-AS-YOU-GO\\s+CONSIDERATIONS|AS\\s+ORDERED\\s+REPORTED\\s+BY)\\b.{0,700}?\\b(?:CONGRESSIONAL\\s+BUDGET\\s+OFFICE|CBO\\.GOV)\\b|\\b(?:CONGRESSIONAL\\s+BUDGET\\s+OFFICE|CBO\\.GOV)\\b.{0,700}?\\bAT\\s+A\\s+GLANCE\\b.{0,900}?\\b(?:COST\\s+ESTIMATE|BY\\s+FISCAL\\s+YEAR,\\s*(?:MILLIONS|BILLIONS)\\s+OF\\s+DOLLARS|PAY-AS-YOU-GO\\s+CONSIDERATIONS|AS\\s+ORDERED\\s+REPORTED\\s+BY)\\b)",
+    "sample_id": "page-signals:cover_cost_estimate"
+  },
+  {
+    "id": "cover:staff-report",
+    "kind": "cover_kind",
+    "number": 11,
+    "pattern": "(?is)(?:^\\s*(?:(?:MAJORITY|MINORITY|JOINT|BIPARTISAN|INTERIM|FINAL|SUBCOMMITTEE|COMMITTEE)\\s+)*STAFF\\s+REPORT\\b|\\b(?:MAJORITY|MINORITY|JOINT|BIPARTISAN)\\s+STAFF\\s+REPORT\\s+(?:OF|PREPARED\\s+(?:FOR|BY))\\b).{0,900}?\\b(?:COMMITTEE\\s+ON|PERMANENT\\s+SUBCOMMITTEE\\s+ON|SELECT\\s+COMMITTEE\\s+ON|SPECIAL\\s+COMMITTEE\\s+ON)\\b.{0,600}?\\b(?:HOUSE\\s+OF\\s+REPRESENTATIVES|UNITED\\s+STATES\\s+SENATE|U\\.S\\.\\s+SENATE|U\\.S\\.\\s+HOUSE|1[0-2][0-9](?:ST|ND|RD|TH)\\s+CONGRESS)\\b",
+    "sample_id": "page-signals:cover_staff_report"
   },
   {
     "id": "error_routes",
