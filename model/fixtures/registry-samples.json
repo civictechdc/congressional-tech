@@ -10012,6 +10012,102 @@
       "value": "Witness Testimony",
       "expected": true,
       "source": "document-normalized.sql:11-14 label list (ct-ccsi), live 77673bfb8fcf: 560 label + witness titles, e.g. \"Biography - Ms. Amy Mathers\" (row 259778)"
+    },
+    {
+      "id": "page-signals:cover_testimony_disclosure",
+      "registry": "page-signals",
+      "entry": "cover:testimony-disclosure",
+      "value": "118th Congress Truth in Testimony Disclosure Form Instructions for Completing the Truth in Testimony Disclosure Form Witness Name: Dr. Jane R. Doe 1. Please list any nongovernmental entity for which you are a fiduciary. 2. Please list any federal grants or contracts received since October 1, 2021.",
+      "expected": true,
+      "source": "Published release 55c14dcda87a: House Rule XI clause 2(g)(5) Truth in Testimony disclosure form uploaded to Clerk -TTF- and -Bio- slots"
+    },
+    {
+      "id": "page-signals:cover_questionnaire",
+      "registry": "page-signals",
+      "entry": "cover:questionnaire",
+      "value": "118th Congress NOMINEE QUESTIONNAIRE FOR THE COMMITTEE ON FOREIGN RELATIONS UNITED STATES SENATE BIOGRAPHICAL AND FINANCIAL INFORMATION REQUESTED OF NOMINEES 1. Name: Kurt Michael Campbell 2. Position to which nominated: Deputy Secretary of State",
+      "expected": true,
+      "source": "Published release 55c14dcda87a: Senate Foreign Relations Committee executive nominee biographical and financial questionnaire"
+    },
+    {
+      "id": "page-signals:cover_subpoena",
+      "registry": "page-signals",
+      "entry": "cover:subpoena",
+      "value": "SUBPOENA BY AUTHORITY OF THE HOUSE OF REPRESENTATIVES OF THE CONGRESS OF THE UNITED STATES OF AMERICA To: Chief Executive Officer You are hereby commanded to be and appear before the Committee on the Judiciary of the House of Representatives and produce the things specified in the attached schedule.",
+      "expected": true,
+      "source": "Published release 55c14dcda87a: House committee subpoena duces tecum cover"
+    },
+    {
+      "id": "page-signals:cover_attendance_sheet",
+      "registry": "page-signals",
+      "entry": "cover:attendance-sheet",
+      "value": "COMMITTEE ON FINANCIAL SERVICES 118th Congress COMMITTEE ATTENDANCE SHEET Full Committee Hearing Present: Mr. McHenry Ms. Waters Mr. Lucas Mr. Sherman",
+      "expected": true,
+      "source": "Published release 55c14dcda87a: House committee hearing attendance and quorum sheet"
+    },
+    {
+      "id": "page-signals:cover_meeting_notice",
+      "registry": "page-signals",
+      "entry": "cover:meeting-notice",
+      "value": "Committee on Transportation and Infrastructure 118th Congress NOTICE OF FULL COMMITTEE MARKUP Date: Wednesday, May 15, 2024 Time: 10:00 a.m. Place: 2167 Rayburn House Office Building The Committee will meet to consider the following measures:",
+      "expected": true,
+      "source": "Published release 55c14dcda87a: House committee full markup schedule notice"
+    },
+    {
+      "id": "page-signals:cover_witness_list",
+      "registry": "page-signals",
+      "entry": "cover:witness-list",
+      "value": "Committee on Energy and Commerce Subcommittee on Health 118th Congress WITNESS LIST Hearing on Strengthening Primary Care Panel I The Honorable Chiquita Brooks-LaSure, Administrator, Centers for Medicare & Medicaid Services",
+      "expected": true,
+      "source": "Published release 55c14dcda87a: standalone committee hearing witness list cover"
+    },
+    {
+      "id": "page-signals:cover_federal_register_notice",
+      "registry": "page-signals",
+      "entry": "cover:federal-register-notice",
+      "value": "54321 Federal Register / Vol. 89, No. 126 / Monday, July 1, 2024 / Notices DEPARTMENT OF COMMERCE ACTION: Notice of public meeting. SUMMARY: NIST announces a workshop on AI safety. Billing Code 3510-13-P",
+      "expected": true,
+      "source": "Published release 55c14dcda87a: Federal Register notice attached as hearing supplemental document"
+    },
+    {
+      "id": "page-signals:cover_crs_report",
+      "registry": "page-signals",
+      "entry": "cover:crs-report",
+      "value": "Congressional Research Service Informing the legislative debate since 1914 Federal Disaster Assistance After Hurricanes Updated October 14, 2024 R47812",
+      "expected": true,
+      "source": "Published release 55c14dcda87a: Congressional Research Service R-series report attached to committee hearing"
+    },
+    {
+      "id": "page-signals:cover_gao_report",
+      "registry": "page-signals",
+      "entry": "cover:gao-report",
+      "value": "United States Government Accountability Office GAO Report to Congressional Requesters May 2024 CYBERSECURITY Agencies Need to Strengthen Cloud Incident Response GAO-24-106214",
+      "expected": true,
+      "source": "Published release 55c14dcda87a: GAO report to congressional requesters (non-T/R product code)"
+    },
+    {
+      "id": "page-signals:cover_gao_report_testimony_excluded",
+      "registry": "page-signals",
+      "entry": "cover:gao-report",
+      "value": "United States Government Accountability Office Statement of Gene L. Dodaro Report to Congressional Committees Testimony Before the Special Committee on Aging GAO-24-107111T",
+      "expected": false,
+      "source": "Authored boundary: GAO-YY-NNNT testimony products are witness statements, never gao-report"
+    },
+    {
+      "id": "page-signals:cover_cost_estimate",
+      "registry": "page-signals",
+      "entry": "cover:cost-estimate",
+      "value": "At a Glance H.R. 4366, Military Construction Appropriations Act As ordered reported by the House Committee on Appropriations By Fiscal Year, Millions of Dollars Pay-As-You-Go Considerations: None CONGRESSIONAL BUDGET OFFICE | WWW.CBO.GOV",
+      "expected": true,
+      "source": "Published release 55c14dcda87a: CBO At a Glance legislative cost estimate cover"
+    },
+    {
+      "id": "page-signals:cover_staff_report",
+      "registry": "page-signals",
+      "entry": "cover:staff-report",
+      "value": "MAJORITY STAFF REPORT Prepared for the Committee on Homeland Security and Governmental Affairs United States Senate 118th Congress Failures in Federal Emergency Contracting",
+      "expected": true,
+      "source": "Published release 55c14dcda87a: Senate committee majority staff oversight report cover"
     }
   ]
 }

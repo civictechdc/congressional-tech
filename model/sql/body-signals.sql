@@ -1,5 +1,5 @@
 -- DM 7.3. page_facts contains the pinned HTML/XML/JSON reading per body.
--- Content patterns run once per body, independently of capture addresses.
+-- Content patterns and exclusion flags run once per body, independently of capture addresses.
 WITH thresholds AS (
     SELECT
         max(CASE WHEN id = 'near_empty' THEN number END) AS near_empty,
@@ -7,8 +7,8 @@ WITH thresholds AS (
         max(CASE WHEN id = 'listing_percent' THEN number END) AS listing_percent
     FROM page_signals
 ), rules AS (
-    SELECT kind, pattern FROM page_signals
-    WHERE kind IN ('source_record_root', 'error_word', 'body_marker', 'wrapper_marker', 'feed_root')
+    SELECT id, kind, pattern, number FROM page_signals
+    WHERE kind IN ('source_record_root', 'error_word', 'body_marker', 'wrapper_marker', 'feed_root', 'cover_kind')
       AND pattern IS NOT NULL
 ), facts AS (
     SELECT body_sha,status,xml_root,title,heading,text_head,text_bytes,link_count,link_text_bytes,
@@ -33,7 +33,36 @@ WITH thresholds AS (
             AND regexp_like(
                 concat_ws(' ', title, heading, text_head),
                 '(?i)\b(?:hearing|markup|testimony|subcommittee|committee\s+on|congressional\s+(?:research\s+service|budget\s+office)|government\s+accountability\s+office)\b'
-            ) AS is_qualified_topic_title
+            ) AS is_qualified_topic_title,
+        regexp_like(
+            coalesce(text_head, ''),
+            '(?is)^\s*(?:memorandum|for\s+immediate\s+release|press\s+release|dear\s+)\b|\b(?:notice\s+of\s+intent\s+to\s+issue\s+a\s+subpoena|authorizing\s+(?:the\s+)?issuance\s+of\s+subpoenas?)\b'
+        ) AS is_subpoena_memo,
+        regexp_like(coalesce(text_head, ''), '(?is)\broll\s+call\b')
+            OR (
+                regexp_like(coalesce(text_head, ''), '(?i)\b(?:yeas?|ayes?)\b')
+                AND regexp_like(coalesce(text_head, ''), '(?i)\b(?:nays?|noes?)\b')
+            ) AS is_roll_call_vote,
+        regexp_like(
+            coalesce(text_head, ''),
+            '(?is)\b(?:markup\s+action\s+sheet|met,\s+pursuant\s+to\s+notice|ordered\s+reported\s+favorably|subpoena)\b'
+        ) AS is_markup_action_or_subpoena,
+        regexp_like(
+            coalesce(text_head, ''),
+            '(?is)\b(?:serial\s+no\.|s\.\s*hrg\.|u\.s\.\s+government\s+(?:publishing|printing)\s+office|stenographic\s+transcript)\b'
+        ) AS is_gpo_or_steno_hearing,
+        regexp_like(
+            coalesce(text_head, ''),
+            '(?is)\b(?:memorandum|congressional\s+distribution\s+memorandum|testimony\s+before\s+the)\b'
+        ) AS is_crs_memo_or_testimony,
+        regexp_like(
+            coalesce(text_head, ''),
+            '(?is)\bGAO-[0-9]{2}-[0-9]{3,6}[TR]\b|\btestimony\b'
+        ) AS is_gao_testimony_or_corresp,
+        regexp_like(
+            coalesce(text_head, ''),
+            '(?is)\b(?:for\s+immediate\s+release|press\s+release|memorandum|congressional\s+research\s+service|government\s+accountability\s+office|h\.\s*rept\.|s\.\s*rept\.|house\s+report\s+1[0-9]{2}|senate\s+report\s+1[0-9]{2})\b'
+        ) AS is_staff_report_excluded
     FROM page_facts
 )
 SELECT f.body_sha, max(f.status) AS status,
@@ -54,6 +83,23 @@ SELECT f.body_sha, max(f.status) AS status,
         THEN coalesce(regexp_like(f.xml_root, r.pattern), false) ELSE false END) AS feed,
     max(f.link_count) >= max(t.listing_links)
         AND 100 * cast(max(f.link_text_bytes) AS BIGINT)
-            >= max(t.listing_percent) * cast(max(f.text_bytes) AS BIGINT) AS listing
+            >= max(t.listing_percent) * cast(max(f.text_bytes) AS BIGINT) AS listing,
+    substr(min(CASE
+        WHEN r.kind = 'cover_kind'
+            AND NOT f.is_pdf_magic
+            AND coalesce(f.text_bytes, 0) >= 80
+            AND CASE r.id
+                WHEN 'cover:subpoena' THEN NOT f.is_subpoena_memo
+                WHEN 'cover:attendance-sheet' THEN NOT f.is_roll_call_vote
+                WHEN 'cover:meeting-notice' THEN NOT f.is_markup_action_or_subpoena
+                WHEN 'cover:witness-list' THEN NOT f.is_gpo_or_steno_hearing
+                WHEN 'cover:crs-report' THEN NOT f.is_crs_memo_or_testimony
+                WHEN 'cover:gao-report' THEN NOT f.is_gao_testimony_or_corresp
+                WHEN 'cover:staff-report' THEN NOT f.is_staff_report_excluded
+                ELSE true
+            END
+            AND coalesce(regexp_like(f.text_head, r.pattern), false)
+        THEN lpad(cast(coalesce(r.number, 99) AS VARCHAR), 2, '0') || ':' || substr(r.id, 7)
+    END), 4) AS cover_document_kind
 FROM rules r CROSS JOIN thresholds t CROSS JOIN facts f
 GROUP BY f.body_sha

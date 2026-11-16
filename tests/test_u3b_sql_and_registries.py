@@ -190,6 +190,233 @@ def test_body_signals_and_transcript_print_covers_on_native_datafusion(tmp_path)
     assert [r['doc_key'] for r in res['tpc']] == ['doc_gpo_1', 'doc_gpo_2']
 
 
+def test_tier1_cover_signals_and_ambiguous_slot_overrides_end_to_end(tmp_path):
+    cover_pages = [
+        (
+            'c_ttf',
+            'HHRG-118-IF14-Bio-DoeJ-20240501.htm',
+            ['witness-biography'],
+            '118th Congress Truth in Testimony Disclosure Form Witness Name: Dr. Jane Doe '
+            '1. Please list any nongovernmental entity for which you are a fiduciary.',
+            'testimony-disclosure',
+            ['testimony-disclosure'],
+            ['disclosure'],
+        ),
+        (
+            'c_quest',
+            'HHRG-118-FR00-Wstate-CampbellK-20231207.htm',
+            ['witness-statement'],
+            '118th Congress NOMINEE QUESTIONNAIRE FOR THE COMMITTEE ON FOREIGN RELATIONS '
+            'BIOGRAPHICAL AND FINANCIAL INFORMATION REQUESTED OF NOMINEES 1. Name: Kurt Campbell '
+            '2. Position to which nominated: Deputy Secretary of State',
+            'questionnaire',
+            ['questionnaire'],
+            ['questions-and-answers'],
+        ),
+        (
+            'c_crs',
+            'HHRG-118-IF14-SD002-20240501.htm',
+            ['support-document'],
+            'Congressional Research Service Informing the legislative debate since 1914 '
+            'Federal Disaster Assistance After Hurricanes Updated October 14, 2024 R47812',
+            'crs-report',
+            ['crs-report'],
+            ['crs-report'],
+        ),
+        (
+            'c_gao',
+            'HHRG-118-IF14-SD003-20240501.htm',
+            ['support-document'],
+            'United States Government Accountability Office Report to Congressional Requesters '
+            'CYBERSECURITY Agencies Need to Strengthen Cloud Incident Response GAO-24-106214',
+            'gao-report',
+            ['gao-report'],
+            ['gao-report'],
+        ),
+        (
+            'c_gao_t_excluded',
+            'HHRG-118-IF14-Wstate-DodaroG-20240501.htm',
+            ['witness-statement'],
+            'United States Government Accountability Office Statement of Gene L. Dodaro '
+            'Report to Congressional Committees Testimony Before the Special Committee on Aging GAO-24-107111T',
+            None,
+            ['witness-statement'],
+            ['statement'],
+        ),
+        (
+            'c_cbo',
+            'estimate.htm',
+            [],
+            'At a Glance H.R. 4366, Military Construction Appropriations Act '
+            'By Fiscal Year, Millions of Dollars CONGRESSIONAL BUDGET OFFICE | WWW.CBO.GOV',
+            'cost-estimate',
+            ['cost-estimate'],
+            ['cost-estimate'],
+        ),
+        (
+            'c_wlist',
+            'witnesses.htm',
+            [],
+            'Committee on Energy and Commerce WITNESS LIST Hearing on Primary Care '
+            'Panel I The Honorable Chiquita Brooks-LaSure, Administrator',
+            'witness-list',
+            ['witness-list'],
+            ['list'],
+        ),
+        (
+            'c_fr',
+            'HHRG-118-IF14-SD004-20240501.htm',
+            ['support-document'],
+            '54321 Federal Register / Vol. 89, No. 126 / Monday, July 1, 2024 / Notices '
+            'ACTION: Notice of public meeting. Billing Code 3510-13-P',
+            'federal-register-notice',
+            ['federal-register-notice'],
+            ['federal-register-notice'],
+        ),
+        (
+            'c_subp',
+            'subpoena.htm',
+            [],
+            'SUBPOENA BY AUTHORITY OF THE HOUSE OF REPRESENTATIVES OF THE CONGRESS '
+            'You are hereby commanded to be and appear before the Committee on the Judiciary.',
+            'subpoena',
+            ['subpoena'],
+            ['subpoena'],
+        ),
+        (
+            'c_att',
+            'attendance.htm',
+            [],
+            'COMMITTEE ON FINANCIAL SERVICES COMMITTEE ATTENDANCE SHEET Present: '
+            'Mr. McHenry Ms. Waters Mr. Lucas Mr. Sherman',
+            'attendance-sheet',
+            ['attendance-sheet'],
+            ['attendance-sheet'],
+        ),
+        (
+            'c_mkp',
+            'markup.htm',
+            [],
+            'Committee on Transportation NOTICE OF FULL COMMITTEE MARKUP '
+            'Date: Wednesday, May 15, 2024 Time: 10:00 a.m. The Committee will meet.',
+            'meeting-notice',
+            ['meeting-notice'],
+            ['notice'],
+        ),
+        (
+            'c_staff',
+            'HHRG-118-GA00-SD005-20240501.htm',
+            ['support-document'],
+            'MAJORITY STAFF REPORT Prepared for the Committee on Homeland Security and Governmental Affairs '
+            'United States Senate 118th Congress Failures in Federal Emergency Contracting',
+            'staff-report',
+            ['staff-report'],
+            ['staff-report'],
+        ),
+        (
+            'c_bill_kept',
+            'BILLS-118hr4366ih.htm',
+            ['bill-numbered'],
+            'At a Glance H.R. 4366 By Fiscal Year, Millions of Dollars CONGRESSIONAL BUDGET OFFICE',
+            'cost-estimate',
+            ['bill-numbered'],  # Unambiguous non-slot filename kind is NOT overridden!
+            ['legislation'],
+        ),
+    ]
+
+    page_rows = []
+    norm_rows = []
+    for idx, (doc_key, filename, doc_kind, text_head, _exp_cover, _exp_kind, _exp_fam) in enumerate(cover_pages, start=1):
+        bhex = f'{idx:064x}'
+        default_fam = (
+            ['biography'] if doc_kind == ['witness-biography']
+            else ['supporting-material'] if doc_kind == ['support-document']
+            else ['statement'] if doc_kind == ['witness-statement']
+            else ['legislation'] if doc_kind == ['bill-numbered']
+            else []
+        )
+        page_rows.append(dict(
+            body_hex=bhex,
+            status='completed',
+            xml_root=None,
+            title=filename,
+            heading='',
+            text_head=text_head,
+            text_bytes=len(text_head) + 500,
+            link_count=0,
+            link_text_bytes=0,
+        ))
+        norm_rows.append(dict(
+            doc_key=doc_key,
+            filename=filename,
+            body_hex=bhex,
+            document_kind=doc_kind,
+            document_family=default_fam,
+        ))
+
+    inputs = registry_inputs(tmp_path / 'registries') + [
+        json_input(
+            tmp_path,
+            'page_facts_raw',
+            page_rows,
+            body_hex='Utf8',
+            status='Utf8',
+            xml_root='Utf8',
+            title='Utf8',
+            heading='Utf8',
+            text_head='Utf8',
+            text_bytes='Int64',
+            link_count='Int64',
+            link_text_bytes='Int64',
+        ),
+        json_input(
+            tmp_path,
+            'base_normalized',
+            norm_rows,
+            doc_key='Utf8',
+            filename='Utf8',
+            body_hex='Utf8',
+            document_kind=list_of('Utf8'),
+            document_family=list_of('Utf8'),
+        ),
+    ]
+    steps = [
+        dict(
+            name='page_facts',
+            sql="SELECT arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha,* EXCLUDE(body_hex) FROM page_facts_raw",
+            materialize=True,
+        ),
+        dict(name='body_signals', sql=(ROOT / 'model/sql/body-signals.sql').read_text(), materialize=True),
+        dict(name='body_cover_kinds', sql=(ROOT / 'model/sql/body-cover-kinds.sql').read_text(), materialize=True),
+    ]
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        res = run_job(
+            tmp_path / 'cover_job',
+            engine,
+            inputs=inputs,
+            steps=steps,
+            outputs=[],
+            queries=[
+                dict(
+                    name='bs',
+                    sql="SELECT n.doc_key, bs.cover_document_kind, "
+                        "CASE WHEN ck.doc_key IS NULL THEN n.document_kind ELSE ck.cover_document_kind END AS final_kind, "
+                        "CASE WHEN ck.doc_key IS NULL THEN n.document_family ELSE ck.cover_document_family END AS final_family "
+                        "FROM body_cover_kinds ck RIGHT JOIN ("
+                        " body_signals bs JOIN (SELECT *, arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha FROM base_normalized) n "
+                        " ON bs.body_sha = n.body_sha"
+                        ") ON ck.doc_key = n.doc_key ORDER BY n.doc_key",
+                ),
+            ],
+        )
+
+    got = {r['doc_key']: r for r in res['bs']}
+    for doc_key, _fn, _dk, _th, exp_cover, exp_kind, exp_fam in cover_pages:
+        assert got[doc_key]['cover_document_kind'] == exp_cover, doc_key
+        assert got[doc_key]['final_kind'] == exp_kind, doc_key
+        assert got[doc_key]['final_family'] == exp_fam, doc_key
+
+
 def test_source_annotations_exported_committees_hsru_floor_host_and_html_pdf_parity(tmp_path):
     cases = [
         # (source_id, filename, source_url, body_sha, format, html_text_head)

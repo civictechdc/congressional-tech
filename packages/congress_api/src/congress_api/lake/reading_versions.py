@@ -5,7 +5,7 @@ READING_VERSIONS = {
     'xml': 'c9d955b28b401a3fe56386a4a221b3f2147baa0f1da503c7c6a224f4808d085f',
     'json': 'f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93',
     'house_floor_feed': 'b08fb4d8577bb72a97a0b6624eac8d1d21cee01a2db42184e8f7d38c80423a8f',
-    'html_metadata': '0fff8151c7752109cc3778d9570e682985edce2e1f90e04c3b638c37a6c4a129',
+    'html_metadata': 'c226ccd99877c497474ffee673baa301f37bc14972b9b9f391af594da9b2b7be',
     'readings': '7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed',
     # Body-text parsers (data model §6.6), declared 2026-11-08: each ID is the SHA-256 of its
     # declaration below, computed once and never recomputed; warc's names the IDs it routes to.
@@ -33,6 +33,7 @@ MIGRATION_BUNDLE_INPUTS = 'eb1390f56e0216d7ed9ea94db85264a51a2dfd63c1831bc87e2f2
 
 # New derived source meaning, independent of generic XML and document-text readings.
 HOUSE_FLOOR_DECLARATION = 'house_floor_feed 2026-11-13: spicy-docs house-floor-feed/002; complete Atom entries with exact original byte spans and hashes, literal publisher metadata and link occurrences; weekly-page HTML base unless explicit xml:base; preserve repeated IDs and weekly URLs; schedule/discovery only, no prose or legislative actions; a separate extra-leading-slash target repair requires the exact absolute URL elsewhere in the same feed, with raw spellings and repair reason retained; malformed input refuses whole; 64 MiB decoded bound'
+HTML_METADATA_DECLARATION = 'html_metadata 2026-11-16: extruct json-ld/opengraph/dublincore/microdata/microformat/rdfa with canonical RDFa blank-node coloring, per-format 10s deadline, comment-tolerant HTML5 prefix and bare-UUID route detection, RDFa content:encoded main-content selection preserving multi-line preformatted transcripts while stripping nested CMS navigation/header/footer/share chrome and retroactive live-CMS Congress banners when page dates/years establish an earlier Congress'
 
 # Opt-in reviewed repairs do not replace the ordinary body-text declarations above.
 MARKUP_RECOVERY_BASE_VERSIONS = {

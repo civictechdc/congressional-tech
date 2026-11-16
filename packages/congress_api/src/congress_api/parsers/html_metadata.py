@@ -21,6 +21,7 @@ from contextlib import contextmanager
 from hashlib import sha256
 from importlib.metadata import version as installed_version
 from typing import Any
+from urllib.parse import urlsplit
 
 from lxml import html as dom
 
@@ -46,7 +47,20 @@ _MARKERS = {
                               + '|'.join(map(re.escape, MICROFORMAT_LEGACY_ROOTS)) + r')(?![\w-])'),
     'rdfa': re.compile(r'(?<![\w-])(?:about|property|resource|typeof|vocab|prefix|rel|rev|datatype|inlist)\s*=', re.I),
 }
-_HTML_START = re.compile(rb'<(?:!doctype\s+html|html|head|body|title|meta|div|p|script)\b', re.I)
+_HTML_START = re.compile(
+    rb'<(?:!doctype\s+html|html|head|body|title|meta|link|base|main|article|section|header|footer|nav|aside|h[1-6]|div|p|pre|table|ul|ol|dl|form|script|style|noscript)\b',
+    re.I,
+)
+_LEADING_HTML_COMMENTS = re.compile(rb'^(?:\s*<!--.*?-->\s*)+', re.S)
+_HTML_EXT_RE = re.compile(r'\.(?:html?|xhtml|shtml|aspx?|php|cfm|jsp)$', re.I)
+_NON_HTML_EXT_RE = re.compile(
+    r'\.(?:pdf|xml|json|txt|csv|tsv|docx?|xlsx?|pptx?|zip|gz|tar|rtf|mp3|mp4|m4a|vtt|m3u8|jpe?g|png|gif|svg|webp|ico|css|js|cgi)$',
+    re.I,
+)
+_BARE_UUID_OR_HASH_RE = re.compile(
+    r'^(?:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[0-9a-f]{32,64})(?:pdf)?$',
+    re.I,
+)
 _MESSAGE_LIMIT = 500
 # Read in a libxml2 tree, which silently stops at depth 256. Mf2py parses separately;
 # OpenGraph and Dublin Core read the head, which precedes any such depth.
@@ -66,7 +80,30 @@ def is_html(body: bytes) -> bool:
     if sample.startswith((b'\xff\xfe', b'\xfe\xff')):
         sample = sample.decode('utf-16', errors='replace').encode('utf-8')
     prefix = sample.lstrip(b'\xef\xbb\xbf\x00\t\n\r ')
+    prefix = _LEADING_HTML_COMMENTS.sub(b'', prefix)
     return prefix.startswith(b'<') and bool(_HTML_START.search(sample))
+
+
+def is_bare_uuid_html(body: bytes, url: str | None = None, *, strict_uuid: bool = False) -> bool:
+    """Return True when ``body`` sniffs as HTML on a bare-UUID or extensionless document route."""
+    if not is_html(body):
+        return False
+    if url is None:
+        return not strict_uuid
+    raw_url = url.strip()
+    if not raw_url:
+        return False
+    path = urlsplit(raw_url).path
+    if not path or path.endswith('/'):
+        return False
+    leaf = path.rsplit('/', 1)[-1]
+    if not leaf or _HTML_EXT_RE.search(leaf) or _NON_HTML_EXT_RE.search(leaf):
+        return False
+    if _BARE_UUID_OR_HASH_RE.match(leaf):
+        return True
+    if strict_uuid:
+        return False
+    return '.' not in leaf
 
 
 @contextmanager
@@ -360,7 +397,13 @@ def reading_row(body: bytes) -> dict:
             fields.append(dict(field=f'main_content:{name}', value=value))
     if reference.text_bytes is not None and reference.text_bytes <= MAX_SELECTED_TEXT_BYTES:
         fields.append(dict(field='main_content:text', value=content.selected_text()))
-    facts = [] if metadata.error_title_hint else fact_fields(page_facts(metadata))
+    raw_facts = () if metadata.error_title_hint else page_facts(metadata)
+    if any(
+        fact.field == 'declared_url' and isinstance(fact.value, str) and is_bare_uuid_html(body, fact.value, strict_uuid=True)
+        for fact in raw_facts
+    ):
+        fields.append(dict(field='bare_uuid_html', value='true'))
+    facts = [] if metadata.error_title_hint else fact_fields(raw_facts)
     # Keep all repeated and conflicting declarations together. Oversize evidence stays
     # reproducible from the original and the reading explicitly records its omission.
     fact_bytes = len(json.dumps(facts, ensure_ascii=False).encode())

@@ -11,29 +11,124 @@ trafilatura reading (archive_readings), rather than a second unbounded run of it
 """
 import re
 
-from lxml import etree
+from lxml import etree, html as dom
 
 from congress_api.models.html_metadata import ContentCandidate, ContentLink, HtmlMetadata, MainContent
-from congress_api.parsers.html_metadata import parse_document
+from congress_api.parsers.html_metadata import page_facts, parse_document
 
 SHORT_MARKED_CHARS = 200
 CONTENT_PROPERTY = 'content:encoded'
 CONTENT_NAMESPACE = 'http://purl.org/rss/1.0/modules/content/'
 CONTENT_PREFIX = re.compile(r'(?:^|\s)content:\s+(\S+)', re.I)
 _DROPPED = {'script', 'style', 'noscript', 'template'}
+_VOID_TAGS = frozenset({
+    'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input',
+    'link', 'meta', 'param', 'source', 'track', 'wbr',
+})
+_CMS_CHROME_TAGS = frozenset({'nav'})
+_CMS_CHROME_ROLES = frozenset({'navigation', 'search', 'banner', 'contentinfo'})
+_CMS_CHROME_CONTAINER_TAGS = frozenset({'header', 'footer', 'aside', 'div', 'section', 'ul'})
+_CMS_CHROME_ATTR_RE = re.compile(
+    r'(?:^|[\s_-])(?:'
+    r'site-header|site-footer|site-nav(?:igation)?|main-nav(?:igation)?|'
+    r'primary-nav(?:igation)?|secondary-nav(?:igation)?|'
+    r'region-header|region-navigation|region-sidebar(?:-first|-second)?|region-footer|'
+    r'navbar|nav-menu|menu-main|breadcrumb|breadcrumbs|'
+    r'social-share|share-links|share-buttons|skip-link|skip-to-main|'
+    r'cookie-banner|cookie-notice|search-form|search-block'
+    r')(?:$|[\s_-])',
+    re.I,
+)
 _BLOCKS = {'p', 'div', 'li', 'tr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'table', 'section', 'article',
            'blockquote', 'ul', 'ol', 'td', 'th', 'dt', 'dd', 'dl', 'hr', 'caption', 'pre', 'figure', 'figcaption'}
 # Match declarations, including !important, without treating custom properties as CSS visibility.
 HIDDEN_STYLE = re.compile(r'(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden)\s*(?:!important\s*)?(?:;|$)', re.I)
 SOFT_HYPHEN = '\u00ad'
+_PRE_OPEN = '\x00PRE_OPEN\x00'
+_PRE_CLOSE = '\x00PRE_CLOSE\x00'
+_YEAR_4_RE = re.compile(r'\b(199[5-9]|20[0-3][0-9])\b')
+_ISO_YEAR_PREFIX_RE = re.compile(r'^\s*(199[5-9]|20[0-3][0-9])-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])')
+_CONGRESS_ORDINAL_RE = re.compile(r'\b(1[0-2][0-9])(?:st|nd|rd|th)\s+congress\b', re.I)
+_CMS_CONGRESS_BANNER_RE = re.compile(
+    r'^(?:'
+    r'(?:the\s+|official\s+website\s+of\s+the\s+)?1[12][0-9](?:st|nd|rd|th)\s+congress(?:\s*[|–—•:/-]\s*[^\n.]{0,90})?|'
+    r'[^\n.]{1,80}\s*[|–—•]\s*1[12][0-9](?:st|nd|rd|th)\s+congress'
+    r')$',
+    re.I,
+)
 
 
 def _hidden(element) -> bool:
     return 'hidden' in element.attrib or bool(HIDDEN_STYLE.search(element.get('style', '')))
 
 
+def _is_cms_chrome(element) -> bool:
+    tag = element.tag.lower() if isinstance(element.tag, str) else None
+    if tag is None or tag in _VOID_TAGS:
+        return False
+    if tag in _CMS_CHROME_TAGS:
+        return True
+    role = (element.get('role') or '').strip().lower()
+    if role in _CMS_CHROME_ROLES:
+        return True
+    if tag in _CMS_CHROME_CONTAINER_TAGS:
+        tokens = f"{element.get('id', '')} {element.get('class', '')}"
+        if tokens.strip() and _CMS_CHROME_ATTR_RE.search(tokens):
+            return True
+    return False
+
+
+def infer_document_congress(text: str, *, declared_dates: tuple[str, ...] = ()) -> int | None:
+    """Infer a page's Congress without pre-filtering 2025+ years (preserving live 119th Congress pages)."""
+    pub_years = [
+        int(m.group(1))
+        for raw in declared_dates
+        if isinstance(raw, str) and (m := _ISO_YEAR_PREFIX_RE.match(raw))
+    ]
+    if pub_years:
+        max_pub = max(pub_years)
+        return (max_pub - 1789) // 2 + 1
+
+    prose_lines = [
+        ln.strip()
+        for ln in text[:4000].splitlines()
+        if ln.strip() and not _CMS_CONGRESS_BANNER_RE.match(ln.strip())
+    ]
+    prose_sample = '\n'.join(prose_lines)
+    years = [int(y) for y in _YEAR_4_RE.findall(prose_sample)]
+    if years:
+        max_yr = max(years)
+        return (max_yr - 1789) // 2 + 1
+
+    congs = [int(m.group(1)) for m in _CONGRESS_ORDINAL_RE.finditer(prose_sample)]
+    return max(congs) if congs else None
+
+
+def strip_cms_time_travel_lines(
+    text: str,
+    *,
+    declared_dates: tuple[str, ...] = (),
+    reference_congress: int | None = None,
+) -> str:
+    """Strip standalone live-CMS Congress banner lines (e.g. ``119th Congress``) on archived earlier-Congress pages."""
+    if not text:
+        return text
+    doc_congress = reference_congress if reference_congress is not None else infer_document_congress(text, declared_dates=declared_dates)
+    if doc_congress is None:
+        return text
+    kept: list[str] = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped and len(stripped) <= 120 and '.' not in stripped and _CMS_CONGRESS_BANNER_RE.match(stripped):
+            banner_congs = [int(m.group(1)) for m in _CONGRESS_ORDINAL_RE.finditer(stripped)]
+            if banner_congs and max(banner_congs) > doc_congress:
+                continue
+        kept.append(line)
+    return '\n'.join(kept)
+
+
 def block_text(node) -> str:
-    """Plain text keeping paragraph order and words intact at inline tags.
+    """Plain text keeping paragraph order, multi-line ``<pre>`` transcripts, and words intact at inline tags.
 
     html_text.extract_text(guess_layout=True) split words at inline tags on 7 of 45
     measured bodies ("t he"). The nested visible() in senate_page.py is the same idea
@@ -41,23 +136,86 @@ def block_text(node) -> str:
     Iterative, because real bodies nest past the recursion limit.
     """
     parts = []
+    pre_depth = 0
     walker = etree.iterwalk(node, events=('start', 'end', 'comment', 'pi'))
     for event, element in walker:
         tag = element.tag.lower() if isinstance(element.tag, str) else None
         if event == 'start':
-            if tag in _DROPPED or (tag is not None and element is not node and _hidden(element)):
-                walker.skip_subtree()  # the end event still comes, so the tail is kept
+            if tag in _DROPPED or (
+                tag is not None
+                and element is not node
+                and (_hidden(element) or _is_cms_chrome(element))
+            ):
+                walker.skip_subtree()  # the end event still comes, so the tail is kept (including void tags)
                 continue
-            if tag in _BLOCKS:
+            if tag == 'pre':
+                if pre_depth == 0:
+                    parts.append('\n' + _PRE_OPEN)
+                pre_depth += 1
+            elif tag in _BLOCKS:
                 parts.append('\n')
             parts.append(element.text or '')
             continue
-        if event == 'end' and tag in _BLOCKS:
-            parts.append('\n')
+        if event == 'end':
+            if tag == 'pre' and pre_depth > 0:
+                pre_depth -= 1
+                if pre_depth == 0:
+                    parts.append(_PRE_CLOSE + '\n')
+            elif tag in _BLOCKS and tag not in _DROPPED:
+                parts.append('\n')
         if element is not node:
             parts.append(element.tail or '')
-    lines = (' '.join(line.split()) for line in ''.join(parts).replace(SOFT_HYPHEN, '').splitlines())
-    return '\n'.join(line for line in lines if line)
+
+    joined = ''.join(parts).replace(SOFT_HYPHEN, '')
+    if _PRE_OPEN not in joined:
+        lines = (' '.join(line.split()) for line in joined.splitlines())
+        return '\n'.join(line for line in lines if line)
+
+    out_lines: list[str] = []
+    cursor = 0
+    while cursor < len(joined):
+        open_idx = joined.find(_PRE_OPEN, cursor)
+        if open_idx == -1:
+            for line in joined[cursor:].splitlines():
+                collapsed = ' '.join(line.split())
+                if collapsed:
+                    out_lines.append(collapsed)
+            break
+        for line in joined[cursor:open_idx].splitlines():
+            collapsed = ' '.join(line.split())
+            if collapsed:
+                out_lines.append(collapsed)
+        pre_start = open_idx + len(_PRE_OPEN)
+        close_idx = joined.find(_PRE_CLOSE, pre_start)
+        if close_idx == -1:
+            pre_body = joined[pre_start:]
+            cursor = len(joined)
+        else:
+            pre_body = joined[pre_start:close_idx]
+            cursor = close_idx + len(_PRE_CLOSE)
+        if '\n' in pre_body:
+            for line in pre_body.splitlines():
+                trimmed = line.rstrip()
+                if trimmed.strip():
+                    out_lines.append(trimmed)
+        else:
+            collapsed = ' '.join(pre_body.split())
+            if collapsed:
+                out_lines.append(collapsed)
+    return '\n'.join(out_lines)
+
+
+def clean_congressional_html(raw_html: str | bytes, *, declared_dates: tuple[str, ...] = ()) -> str:
+    """Extract clean Congressional page text, stripping CMS ``<nav>``/header/sidebar chrome,
+    preserving ``<pre>`` hearing transcripts, keeping text past void chrome tags, and removing
+    retroactive ``119th Congress`` banners on archived earlier-Congress pages."""
+    data = raw_html.encode('utf-8', errors='replace') if isinstance(raw_html, str) else raw_html
+    tree = parse_document(data)
+    if tree is None:
+        return ''
+    roots = tree.xpath('//body') or [tree]
+    text = block_text(roots[0])
+    return strip_cms_time_travel_lines(text, declared_dates=declared_dates)
 
 
 def _tokens(name: str) -> str:
@@ -77,12 +235,23 @@ def _rebound_content_prefix(elements) -> bool:
     return False
 
 
+def _declared_published_dates(metadata: HtmlMetadata) -> tuple[str, ...]:
+    if metadata.error_title_hint:
+        return ()
+    return tuple(
+        fact.value
+        for fact in page_facts(metadata)
+        if fact.field == 'published_time' and isinstance(fact.value, str)
+    )
+
+
 def _dom_candidates(tree, metadata: HtmlMetadata) -> list[ContentCandidate]:
     marked = tree.xpath(f'//*[{_tokens("property") % CONTENT_PROPERTY}]')
     named = {node for node in marked if not _rebound_content_prefix((node, *node.iterancestors()))}
     roots = tree.getroottree()
     out = []
     confirmed = _rdfa_confirms(metadata)
+    declared_dates = _declared_published_dates(metadata)
     for node in marked:
         if node not in named:
             continue
@@ -91,12 +260,17 @@ def _dom_candidates(tree, metadata: HtmlMetadata) -> list[ContentCandidate]:
             ancestor in named or ancestor.tag in _DROPPED or _hidden(ancestor) for ancestor in ancestors
         ):
             continue
-        body = block_text(node)
+        body = strip_cms_time_travel_lines(block_text(node), declared_dates=declared_dates)
         links = [
             ContentLink(href=link.get('href'), text=' '.join(block_text(link).split()))
             for link in node.xpath('.//a[@href]')
             if not _hidden(link) and not any(
-                ancestor.tag in _DROPPED or _hidden(ancestor) for ancestor in link.iterancestors()
+                ancestor is not node
+                and (ancestor.tag in _DROPPED or _hidden(ancestor) or _is_cms_chrome(ancestor))
+                for ancestor in link.iterancestors()
+            ) and not any(
+                ancestor is node and (ancestor.tag in _DROPPED or _hidden(ancestor))
+                for ancestor in link.iterancestors()
             )
         ]
         out.append(ContentCandidate(selector=roots.getpath(node), property=CONTENT_PROPERTY, text=body, char_count=len(body), links=links,
