@@ -18,8 +18,22 @@ SELECT f.body_sha, max(f.status) AS status,
     bool_or(CASE WHEN r.kind = 'source_record_root'
         THEN coalesce(regexp_like(f.xml_root, r.pattern), false) ELSE false END) AS source_record,
     bool_or(CASE
+        WHEN starts_with(ltrim(coalesce(f.text_head, '')), '%PDF-') THEN false
         WHEN r.kind = 'error_word' THEN coalesce(
-            regexp_like(f.title, r.pattern) OR regexp_like(f.heading, r.pattern), false)
+            (regexp_like(f.title, r.pattern) OR regexp_like(f.heading, r.pattern))
+            AND NOT (
+                coalesce(f.text_bytes, 0) >= 1000
+                AND NOT regexp_like(
+                    concat_ws(' ', f.title, f.heading),
+                    '(?i)security risk detected|page not found|\b404\b|\b403\b|\b503\b|service unavailable|just a moment|attention required|checking your browser|client challenge'
+                )
+                AND regexp_like(
+                    concat_ws(' ', f.title, f.heading, f.text_head),
+                    '(?i)\b(?:hearing|markup|testimony|subcommittee|committee\s+on|truth\s+in\s+testimony|questions\s+for\s+the\s+record|congressional\s+(?:research\s+service|budget\s+office)|government\s+accountability\s+office)\b'
+                )
+            ),
+            false
+        )
         WHEN r.kind = 'body_marker' THEN coalesce(regexp_like(f.text_head, r.pattern), false)
         ELSE false END) OR max(f.text_bytes) < max(t.near_empty) AS error_response,
     bool_or(CASE WHEN r.kind = 'wrapper_marker'

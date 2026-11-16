@@ -206,7 +206,7 @@
   {
     "id": "gpo_printed_hearing_cover",
     "kind": "print_cover",
-    "pattern": "(?s)(?:\\bHEARINGS? BEFORE THE\\b.*(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.)|(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.).*\\bHEARINGS? BEFORE THE\\b).*\\bU\\.S\\. GOVERNMENT (?:PRINTING|PUBLISHING) OFFICE\\b",
+    "pattern": "(?s)(?:(?:\\bHEARINGS? BEFORE THE\\b.*(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.)|(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.).*\\bHEARINGS? BEFORE THE\\b).*\\bU\\.S\\. GOVERNMENT (?:PRINTING|PUBLISHING) OFFICE\\b|\\bU\\.S\\. GOVERNMENT (?:PRINTING|PUBLISHING) OFFICE\\b.*(?:\\bHEARINGS? BEFORE THE\\b.*(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.)|(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.).*\\bHEARINGS? BEFORE THE\\b))",
     "sample_id": "page-signals:gpo_printed_hearing_cover"
   },
   {

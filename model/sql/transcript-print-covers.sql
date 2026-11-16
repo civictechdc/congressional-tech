@@ -8,4 +8,4 @@ SELECT DISTINCT n.doc_key FROM (
  SELECT doc_key,arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)') AS body_sha FROM base_normalized
  WHERE array_has(document_kind,'transcript') AND NOT array_has(document_kind,'committee-transcript') AND body_hex IS NOT NULL
 ) n JOIN page_facts f ON f.body_sha=n.body_sha AND f.status='completed'
-JOIN (SELECT pattern FROM page_signals WHERE kind='print_cover') p ON regexp_like(f.text_head,p.pattern)
+JOIN (SELECT pattern FROM page_signals WHERE kind='print_cover') p ON regexp_like(regexp_replace(f.text_head,'\s+',' ','g'),p.pattern)

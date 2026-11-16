@@ -14,6 +14,14 @@ import re
 from lxml import etree
 
 from congress_api.models.html_metadata import ContentCandidate, ContentLink, HtmlMetadata, MainContent
+from congress_api.parsers.congress import (
+    _CHROME_TOKEN_RE,
+    _CONTENT_PROTECT_RE,
+    clean_congressional_html,
+    is_bare_uuid_html,
+    sniff_html_markup,
+    strip_cms_text_chrome,
+)
 from congress_api.parsers.html_metadata import parse_document
 
 SHORT_MARKED_CHARS = 200
@@ -21,6 +29,7 @@ CONTENT_PROPERTY = 'content:encoded'
 CONTENT_NAMESPACE = 'http://purl.org/rss/1.0/modules/content/'
 CONTENT_PREFIX = re.compile(r'(?:^|\s)content:\s+(\S+)', re.I)
 _DROPPED = {'script', 'style', 'noscript', 'template'}
+_CMS_DROPPED = {'script', 'style', 'noscript', 'template', 'nav', 'aside', 'svg', 'iframe'}
 _BLOCKS = {'p', 'div', 'li', 'tr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'br', 'table', 'section', 'article',
            'blockquote', 'ul', 'ol', 'td', 'th', 'dt', 'dd', 'dl', 'hr', 'caption', 'pre', 'figure', 'figcaption'}
 # Match declarations, including !important, without treating custom properties as CSS visibility.
@@ -33,14 +42,23 @@ def _hidden(element) -> bool:
 
 
 def block_text(node) -> str:
-    """Plain text keeping paragraph order and words intact at inline tags.
+    """Plain text keeping paragraph order, ``<pre>`` transcript layout, and words intact at inline tags.
 
     html_text.extract_text(guess_layout=True) split words at inline tags on 7 of 45
     measured bodies ("t he"). The nested visible() in senate_page.py is the same idea
     but extracting it changes a byte-hashed parser; do that at its next re-version.
     Iterative, because real bodies nest past the recursion limit.
     """
-    parts = []
+    segments: list[tuple[bool, list[str]]] = []
+    current: list[str] = []
+    pre_depth = 0
+
+    def flush(is_pre: bool) -> None:
+        nonlocal current
+        if current:
+            segments.append((is_pre, current))
+            current = []
+
     walker = etree.iterwalk(node, events=('start', 'end', 'comment', 'pi'))
     for event, element in walker:
         tag = element.tag.lower() if isinstance(element.tag, str) else None
@@ -48,16 +66,130 @@ def block_text(node) -> str:
             if tag in _DROPPED or (tag is not None and element is not node and _hidden(element)):
                 walker.skip_subtree()  # the end event still comes, so the tail is kept
                 continue
-            if tag in _BLOCKS:
-                parts.append('\n')
-            parts.append(element.text or '')
+            if tag == 'pre':
+                if pre_depth == 0:
+                    flush(False)
+                pre_depth += 1
+                current.append(element.text or '')
+                continue
+            if pre_depth == 0 and tag in _BLOCKS:
+                current.append('\n')
+            current.append(element.text or '')
             continue
-        if event == 'end' and tag in _BLOCKS:
-            parts.append('\n')
+        if event == 'end':
+            if tag == 'pre' and pre_depth > 0:
+                pre_depth -= 1
+                if pre_depth == 0:
+                    flush(True)
+            elif pre_depth == 0 and tag in _BLOCKS:
+                current.append('\n')
         if element is not node:
-            parts.append(element.tail or '')
-    lines = (' '.join(line.split()) for line in ''.join(parts).replace(SOFT_HYPHEN, '').splitlines())
-    return '\n'.join(line for line in lines if line)
+            current.append(element.tail or '')
+
+    flush(pre_depth > 0)
+    rendered: list[str] = []
+    for is_pre, parts in segments:
+        raw = ''.join(parts).replace(SOFT_HYPHEN, '')
+        if is_pre:
+            norm = raw.replace('\r\n', '\n').replace('\r', '\n').strip('\n')
+            if norm.strip():
+                rendered.append(norm if '\n' in norm else ' '.join(norm.split()))
+        else:
+            lines = (' '.join(line.split()) for line in raw.splitlines())
+            prose = '\n'.join(line for line in lines if line)
+            if prose:
+                rendered.append(prose)
+    return '\n'.join(rendered)
+
+
+def _is_cms_chrome_element(element) -> bool:
+    tag = element.tag.lower() if isinstance(element.tag, str) else None
+    if tag is None:
+        return False
+    if tag in _CMS_DROPPED or _hidden(element) or element.get('aria-hidden', '').lower() == 'true':
+        return True
+    role = (element.get('role') or '').strip().lower()
+    if role in {'navigation', 'menubar', 'complementary', 'search'}:
+        return True
+    ident = f"{element.get('id', '')} {element.get('class', '')}".strip()
+    if tag in {'header', 'footer'} and not _CONTENT_PROTECT_RE.search(ident):
+        if role in {'banner', 'contentinfo'} or _CHROME_TOKEN_RE.search(ident) or tag == 'footer':
+            return True
+    if ident and _CHROME_TOKEN_RE.search(ident) and not _CONTENT_PROTECT_RE.search(ident):
+        return True
+    return False
+
+
+def strip_congressional_cms_chrome(
+    body: bytes | str,
+    *,
+    target_congress: int | None = None,
+) -> str:
+    """Extract main Congressional HTML text, stripping CMS ``<nav>``/header/sidebar time-travel chrome
+    and ``<script>/<style>/<noscript>/<template>`` while preserving ``<pre>`` hearing transcripts.
+    """
+    raw_bytes = body.encode('utf-8') if isinstance(body, str) else body
+    if not sniff_html_markup(body) and (isinstance(body, str) and '<' not in body):
+        return strip_cms_text_chrome(body, target_congress=target_congress)
+    tree = parse_document(raw_bytes)
+    if tree is None:
+        return clean_congressional_html(body, target_congress=target_congress)
+
+    segments: list[tuple[bool, list[str]]] = []
+    current: list[str] = []
+    pre_depth = 0
+
+    def flush(is_pre: bool) -> None:
+        nonlocal current
+        if current:
+            segments.append((is_pre, current))
+            current = []
+
+    walker = etree.iterwalk(tree, events=('start', 'end', 'comment', 'pi'))
+    for event, element in walker:
+        tag = element.tag.lower() if isinstance(element.tag, str) else None
+        if event == 'start':
+            if tag == 'head' or (element is not tree and _is_cms_chrome_element(element)):
+                walker.skip_subtree()
+                continue
+            if tag == 'pre':
+                if pre_depth == 0:
+                    flush(False)
+                pre_depth += 1
+                current.append(element.text or '')
+                continue
+            if pre_depth == 0 and tag in _BLOCKS:
+                current.append('\n')
+            current.append(element.text or '')
+            continue
+        if event == 'end':
+            if tag == 'pre' and pre_depth > 0:
+                pre_depth -= 1
+                if pre_depth == 0:
+                    flush(True)
+            elif pre_depth == 0 and tag in _BLOCKS:
+                current.append('\n')
+        if element is not tree:
+            current.append(element.tail or '')
+
+    flush(pre_depth > 0)
+    rendered: list[str] = []
+    has_pre = any(is_pre for is_pre, _ in segments)
+    for is_pre, parts in segments:
+        raw = ''.join(parts).replace(SOFT_HYPHEN, '')
+        if is_pre:
+            norm = raw.replace('\r\n', '\n').replace('\r', '\n').strip('\n')
+            if norm.strip():
+                rendered.append(norm if '\n' in norm else ' '.join(norm.split()))
+        else:
+            lines = (' '.join(line.split()) for line in raw.splitlines())
+            prose = '\n'.join(line for line in lines if line)
+            if prose:
+                prose = strip_cms_text_chrome(prose, target_congress=target_congress) if has_pre else prose
+                if prose:
+                    rendered.append(prose)
+    joined = '\n'.join(rendered).strip()
+    return joined if has_pre else strip_cms_text_chrome(joined, target_congress=target_congress)
 
 
 def _tokens(name: str) -> str:

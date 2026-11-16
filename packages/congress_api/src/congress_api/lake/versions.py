@@ -35,8 +35,16 @@ _REVIEWED_PRODUCER_VERSIONS = {
     # Bounded native filename/worker checks and the decision are in development.md.
     "43a8bbff5938d1d880f5d599e0d53ce06978e57c963917c1eac83b044ed70295":
         "e6e2699343ebae7fd149702114d58360a3bd62a7331d19db58215edc042aba70",
+    # appearance_records.congress_gov (PR-U3b standalone HTML hygiene helpers in parsers/congress.py;
+    # parse_congress_xml and meeting_from_xml unchanged)
+    "b208e6ce96694f5ffd058af18357dc322ec261f2c5d82dc8da00d6a3a423ed3a":
+        "f306c3df6098936b7a336e31e434805d927d4e60c126a5cf3b68a0bc75c831b7",
+    # appearance_records.mods (PR-U3b standalone p3..p8 & stapled-packet helpers in parsers/gpo_hearings.py;
+    # parse_mods, mods_title, and mods_witnesses unchanged)
+    "c6fd3cfd511b941c7b77c5334f97338ed070e600bb64316e519913a659e9352e":
+        "610bb71978173326dc605a7b86e60124d951f8b03fa2e8f69e53b221fe1a37a0",
     # meeting_records.congress_gov
-    "d3ffb805e7de5cf81e785b401dbd35d43579287644c4edb2c15cd9ebbcede3e6":
+    "7603925d415c089b4b293abd7056943a67eec48e93f2d17997931ea9a18ffc7d":
         "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
     # meeting_records.house_xml
     "d877097eeb25a48c80655c0c9f698faf525394d164e97362496bfa9d35aafe63":
