@@ -1,4 +1,4 @@
-"""Tests for V5/V6 Tier-1 document covers and SFRC nominee / embargo / Bio / HSRU guards."""
+"""Tests for V5/V6 Tier-1 document covers and SFRC nominee / embargo / Member opening guards."""
 from io import BytesIO
 import json
 from pathlib import Path
@@ -8,10 +8,8 @@ import pytest
 
 from congress_api.parsers.document_cover import (
     COVER_FIELDS,
-    classify_hsru_host_status,
     document_cover,
     document_page_fields,
-    is_excluded_committee_prose_attribution,
 )
 
 FIXTURES = Path(__file__).parent / 'fixtures'
@@ -58,8 +56,12 @@ def test_all_existing_document_cover_fixtures_stay_pinned():
         got_kind = document_page_fields(rec['assisted_text']).get('content_document_kind', [None])[0]
         assert got_kind == rec['expected_assisted'], rec['review_id']
 
+    rem = json.loads((FIXTURES / 'meeting_inventory/document-covers/remaining-legislative-text.json').read_text())
+    for rec in rem:
+        assert document_page_fields(rec['text']) == rec['expected'], rec['filename']
 
-def test_tier1_truth_in_testimony_and_witness_list_and_cv_covers():
+
+def test_tier1_testimony_disclosure_and_witness_list_and_cv_covers():
     ttf = """118th Congress
     Truth in Testimony Disclosure Form
     Instructions for Completing the Truth in Testimony Disclosure Form
@@ -68,7 +70,7 @@ def test_tier1_truth_in_testimony_and_witness_list_and_cv_covers():
     1. Please list any nongovernmental entity for which you are a fiduciary.
     2. Please list any federal grants or contracts received since October 1, 2021."""
     res_ttf = document_page_fields(ttf)
-    assert res_ttf == {'content_document_kind': ['truth-in-testimony'], 'content_congress': ['118']}
+    assert res_ttf == {'content_document_kind': ['testimony-disclosure'], 'content_congress': ['118']}
 
     wlist = """Committee on Energy and Commerce
     Subcommittee on Health
@@ -161,7 +163,7 @@ def test_gao_report_excludes_testimony_and_cbo_at_a_glance_and_federal_register(
     }
 
 
-def test_subpoena_attendance_markup_notice_staff_report_and_adversarial_traps():
+def test_subpoena_attendance_meeting_notice_staff_report_and_adversarial_traps():
     subpoena = """SUBPOENA
     BY AUTHORITY OF THE HOUSE OF REPRESENTATIVES OF THE CONGRESS OF THE UNITED STATES OF AMERICA
     118th Congress
@@ -173,7 +175,7 @@ def test_subpoena_attendance_markup_notice_staff_report_and_adversarial_traps():
         'content_congress': ['118'],
     }
 
-    # Notice of Intent to Issue a Subpoena memo must NEVER fire subpoena or markup-notice
+    # Notice of Intent to Issue a Subpoena memo must NEVER fire subpoena or meeting-notice
     subpoena_memo = """MEMORANDUM
     To: Members of the Committee on Oversight and Reform
     Fr: Chairwoman Carolyn B. Maloney
@@ -202,7 +204,7 @@ def test_subpoena_attendance_markup_notice_staff_report_and_adversarial_traps():
     Place: 2167 Rayburn House Office Building
     The Committee on Transportation and Infrastructure will meet to consider the following measures:"""
     assert document_page_fields(markup_notice) == {
-        'content_document_kind': ['markup-notice'],
+        'content_document_kind': ['meeting-notice'],
         'content_congress': ['118'],
     }
 
@@ -217,7 +219,7 @@ def test_subpoena_attendance_markup_notice_staff_report_and_adversarial_traps():
     }
 
 
-def test_sfrc_nominee_opening_statement_and_questionnaire_and_embargo_guards():
+def test_sfrc_nominee_opening_statement_and_member_honorable_guard_and_questionnaire():
     # Adversarial Trap 1: SFRC Nominee "Opening Statement" -> witness-statement, NEVER opening-statement
     sfrc_nominee_opening = """OPENING STATEMENT OF HON. KURT M. CAMPBELL
     NOMINEE TO BE DEPUTY SECRETARY OF STATE
@@ -227,6 +229,24 @@ def test_sfrc_nominee_opening_statement_and_questionnaire_and_embargo_guards():
     Chairman Cardin, Ranking Member Risch, and Members of the Committee, I am honored to appear before you today as President Biden's nominee."""
     assert document_page_fields(sfrc_nominee_opening) == {'content_document_kind': ['witness-statement']}
 
+    # Agency official witness "Opening Statement" -> witness-statement
+    agency_witness_opening = """OPENING STATEMENT OF THE HONORABLE CHIQUITA BROOKS-LASURE
+    ADMINISTRATOR, CENTERS FOR MEDICARE & MEDICAID SERVICES
+    BEFORE THE SUBCOMMITTEE ON HEALTH"""
+    assert document_page_fields(agency_witness_opening) == {'content_document_kind': ['witness-statement']}
+
+    # Member Opening Statement with "THE HONORABLE" (F11) MUST remain opening-statement, NEVER witness-statement!
+    member_honorable_opening = """OPENING STATEMENT OF THE HONORABLE FRANK PALLONE
+    BEFORE THE SUBCOMMITTEE ON HEALTH
+    COMMITTEE ON ENERGY AND COMMERCE
+    Good morning. Today the Subcommittee meets to examine prescription drug pricing."""
+    assert document_page_fields(member_honorable_opening) == {'content_document_kind': ['opening-statement']}
+
+    # Physician Member Opening Statement with "THE HONORABLE ..., M.D." MUST remain opening-statement!
+    physician_member_opening = """OPENING STATEMENT OF THE HONORABLE RAUL RUIZ, M.D.
+    BEFORE THE SUBCOMMITTEE ON OVERSIGHT AND INVESTIGATIONS"""
+    assert document_page_fields(physician_member_opening) == {'content_document_kind': ['opening-statement']}
+
     # Member Opening Statement at a nomination hearing MUST remain opening-statement
     chair_opening_at_nomination = """OPENING STATEMENT OF SENATOR BENJAMIN L. CARDIN
     CHAIRMAN, SENATE COMMITTEE ON FOREIGN RELATIONS
@@ -234,7 +254,7 @@ def test_sfrc_nominee_opening_statement_and_questionnaire_and_embargo_guards():
     Good morning. The Committee meets today to consider this nomination."""
     assert document_page_fields(chair_opening_at_nomination) == {'content_document_kind': ['opening-statement']}
 
-    # Adversarial Trap 2: SFRC Nominee Questionnaire -> nominee-questionnaire, NEVER questions-and-answers (QFR)
+    # Adversarial Trap 2: SFRC Nominee Questionnaire -> questionnaire, NEVER questions-and-answers (QFR)
     sfrc_questionnaire = """118th Congress
     NOMINEE QUESTIONNAIRE FOR THE COMMITTEE ON FOREIGN RELATIONS
     UNITED STATES SENATE
@@ -242,7 +262,7 @@ def test_sfrc_nominee_opening_statement_and_questionnaire_and_embargo_guards():
     1. Name: Kurt Michael Campbell
     2. Position to which nominated: Deputy Secretary of State"""
     assert document_page_fields(sfrc_questionnaire) == {
-        'content_document_kind': ['nominee-questionnaire'],
+        'content_document_kind': ['questionnaire'],
         'content_congress': ['118'],
     }
 
@@ -266,43 +286,3 @@ def test_sfrc_nominee_opening_statement_and_questionnaire_and_embargo_guards():
     United States Senate
     Thank you for inviting me. I look forward to answering your questions for the record or today."""
     assert document_page_fields(embargoed_testimony) == {'content_document_kind': ['witness-statement']}
-
-
-def test_bio_180_char_prose_exclusion_and_embargo_and_hsru_host_guards():
-    bio_prose = (
-        'Dr. Robert Chen is President of the Maritime Policy Center. '
-        'Earlier in his career, from 2011 to 2016, Dr. Chen served as Senior Tax Counsel to the '
-        'Senate Committee on Finance during bipartisan trade negotiations.'
-    )
-    idx = bio_prose.index('Senate Committee on Finance')
-    assert is_excluded_committee_prose_attribution(bio_prose, idx, filename='witness-statement.pdf') is True
-    assert is_excluded_committee_prose_attribution(
-        'Committee on the Judiciary Hearing',
-        0,
-        filename='HHRG-118-JU00-Bio-ChenR-20240501.pdf',
-    ) is True
-
-    embargo_footer = (
-        'EMBARGOED UNTIL 10:00 A.M. EST — Media Contact: Press Office, House Committee on Energy and Commerce'
-    )
-    e_idx = embargo_footer.index('House Committee on Energy and Commerce')
-    assert is_excluded_committee_prose_attribution(embargo_footer, e_idx, filename='release.pdf') is True
-
-    # Formal committee masthead without bio/career-prose/embargo is NOT excluded
-    masthead = 'U.S. House of Representatives\nCommittee on Energy and Commerce\nSubcommittee on Health'
-    m_idx = masthead.index('Committee on Energy and Commerce')
-    assert is_excluded_committee_prose_attribution(masthead, m_idx, filename='HHRG-118-IF14-20240501.pdf') is False
-
-    # hsru00 host vs author separation
-    assert classify_hsru_host_status(
-        committee_codes=['hsru00'],
-        filename='BILLS-118hr1435-RCP118-27.pdf',
-        source_url='https://docs.house.gov/billsthisweek/20230911/BILLS-118hr1435-RCP118-27.pdf',
-        text='RULES COMMITTEE PRINT 118-27 TEXT OF H.R. 1435',
-    ) == 'rules_host'
-    assert classify_hsru_host_status(
-        committee_codes=['hsru00'],
-        filename='HHRG-118-RU00-Transcript-20230912.pdf',
-        source_url='https://docs.house.gov/meetings/RU/RU00/20230912/116345/HHRG-118-RU00-Transcript-20230912.pdf',
-        text='FROM THE COMMITTEE ON RULES Providing for consideration of the bill (H.R. 1435)',
-    ) == 'rules_author'

@@ -1,58 +1,47 @@
 WITH url_hosts AS (
  SELECT DISTINCT
   lower(regexp_replace((regexp_match(website_url,'(?i)^https?://(?:www[.])?([a-z0-9-]+[.][a-z]+[.][a-z]+)'))[1],'^(?:democrats-|republicans-)','')) AS host_key,
-  upper(substr(lower(system_code),1,4)||'00') AS code
+  substr(lower(system_code),1,4)||'00' AS parent_committee
  FROM spicy_committees
  WHERE parent_system_code IS NULL AND lower(system_code)<>'jjec00'
   AND regexp_like(coalesce(website_url,''),'(?i)^https?://(?:www[.])?[a-z0-9-]+[.][a-z]+[.][a-z]+')
- UNION SELECT 'aging.senate.gov' AS host_key,'SPAG00' AS code
- UNION SELECT 'ag.senate.gov','SSAF00'
- UNION SELECT 'agriculture.senate.gov','SSAF00'
- UNION SELECT 'appropriations.senate.gov','SSAP00'
- UNION SELECT 'armed-services.senate.gov','SSAS00'
- UNION SELECT 'banking.senate.gov','SSBK00'
- UNION SELECT 'budget.senate.gov','SSBU00'
- UNION SELECT 'commerce.senate.gov','SSCM00'
- UNION SELECT 'drugcaucus.senate.gov','SCNC00'
- UNION SELECT 'energy.senate.gov','SSEG00'
- UNION SELECT 'epw.senate.gov','SSEV00'
- UNION SELECT 'ethics.senate.gov','SLET00'
- UNION SELECT 'finance.senate.gov','SSFI00'
- UNION SELECT 'foreign.senate.gov','SSFR00'
- UNION SELECT 'help.senate.gov','SSHR00'
- UNION SELECT 'hsgac.senate.gov','SSGA00'
- UNION SELECT 'indian.senate.gov','SLIA00'
- UNION SELECT 'intelligence.senate.gov','SLIN00'
- UNION SELECT 'judiciary.senate.gov','SSJU00'
- UNION SELECT 'rules.senate.gov','SSRA00'
- UNION SELECT 'sbc.senate.gov','SSSB00'
- UNION SELECT 'veterans.senate.gov','SSVA00'
- UNION SELECT 'jec.senate.gov','JSEC00'
- UNION SELECT 'climatecrisis.house.gov','HLCN00'
- UNION SELECT 'coronavirus.house.gov','HLVC00'
- UNION SELECT 'modernizecongress.house.gov','HLMH00'
- UNION SELECT 'january6th.house.gov','HLIJ00'
- UNION SELECT 'selectcommitteeontheccp.house.gov','HLZS00'
- UNION SELECT 'chinaselectcommittee.house.gov','HLZS00'
- UNION SELECT 'intelligence.house.gov','HLIG00'
- UNION SELECT 'fairness.house.gov','HLEF00'
- UNION SELECT 'globalwarming.house.gov','HLGW00'
- UNION SELECT 'benghazi.house.gov','HLZI00'
- UNION SELECT 'rules.house.gov','HSRU00'
- UNION SELECT 'docs.house.gov/floor','HSRU00'
- UNION SELECT 'csce.gov','JCSE00'
- UNION SELECT 'cecc.gov','JCPK00'
- UNION SELECT 'jct.gov','JSTX00'
+ UNION SELECT 'aging.senate.gov' AS host_key,'spag00' AS parent_committee
+ UNION SELECT 'ag.senate.gov','ssaf00'
+ UNION SELECT 'agriculture.senate.gov','ssaf00'
+ UNION SELECT 'appropriations.senate.gov','ssap00'
+ UNION SELECT 'armed-services.senate.gov','ssas00'
+ UNION SELECT 'banking.senate.gov','ssbk00'
+ UNION SELECT 'budget.senate.gov','ssbu00'
+ UNION SELECT 'commerce.senate.gov','sscm00'
+ UNION SELECT 'drugcaucus.senate.gov','scnc00'
+ UNION SELECT 'energy.senate.gov','sseg00'
+ UNION SELECT 'epw.senate.gov','ssev00'
+ UNION SELECT 'ethics.senate.gov','slet00'
+ UNION SELECT 'finance.senate.gov','ssfi00'
+ UNION SELECT 'foreign.senate.gov','ssfr00'
+ UNION SELECT 'help.senate.gov','sshr00'
+ UNION SELECT 'hsgac.senate.gov','ssga00'
+ UNION SELECT 'indian.senate.gov','slia00'
+ UNION SELECT 'intelligence.senate.gov','slin00'
+ UNION SELECT 'judiciary.senate.gov','ssju00'
+ UNION SELECT 'rules.senate.gov','ssra00'
+ UNION SELECT 'sbc.senate.gov','sssb00'
+ UNION SELECT 'veterans.senate.gov','ssva00'
+ UNION SELECT 'jec.senate.gov','jsec00'
+ UNION SELECT 'csce.gov','jcse00'
+ UNION SELECT 'cecc.gov','jcpk00'
+ UNION SELECT 'jct.gov','jstx00'
+),
+exported_hosts AS (
+ SELECT DISTINCT uh.host_key,upper(sc.system_code) AS code
+ FROM url_hosts uh
+ JOIN spicy_committees sc ON sc.parent_system_code IS NULL AND lower(sc.system_code)=uh.parent_committee
 )
 SELECT source_id,unnest(committee_code) AS code FROM source_filename_readings WHERE committee_code_status='completed'
 UNION
-SELECT DISTINCT c.source_id,uh.code AS code
-FROM url_hosts uh
+SELECT DISTINCT c.source_id,eh.code AS code
+FROM exported_hosts eh
 JOIN capture_source_contexts c
- ON uh.host_key=CASE
-  WHEN regexp_like(coalesce(c.context_url,''),'(?i)^https?://(?:web[.]archive[.]org/web/[0-9a-z_*]+/https?://)?docs[.]house[.]gov/(?:billsthisweek|floor)(?:/|$)')
-   THEN 'docs.house.gov/floor'
-  ELSE lower(regexp_replace(
-   coalesce((regexp_match(coalesce(c.context_url,''),'(?i)^https?://(?:web[.]archive[.]org/web/[0-9a-z_*]+/https?://)?(?:www[.])?([^/?#:]+)'))[1],''),
-   '^(?:democrats-|republicans-|democrats[.]|republicans[.])',''))
- END
+ ON eh.host_key=lower(regexp_replace(
+  coalesce((regexp_match(coalesce(c.context_url,''),'(?i)^https?://(?:web[.]archive[.]org/web/[0-9a-z_*]+/https?://)?(?:www[.])?([^/?#:]+)'))[1],''),
+  '^(?:democrats-|republicans-|democrats[.]|republicans[.])',''))

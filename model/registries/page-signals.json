@@ -206,7 +206,7 @@
   {
     "id": "gpo_printed_hearing_cover",
     "kind": "print_cover",
-    "pattern": "(?s)(?:(?:\\bHEARINGS? BEFORE THE\\b.*(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.)|(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.).*\\bHEARINGS? BEFORE THE\\b).*\\bU\\.S\\. GOVERNMENT (?:PRINTING|PUBLISHING) OFFICE\\b|\\bU\\.S\\. GOVERNMENT (?:PRINTING|PUBLISHING) OFFICE\\b.*(?:\\bHEARINGS? BEFORE THE\\b.*(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.)|(?i:\\bSERIAL NO\\.|\\bS\\. ?HRG\\.).*\\bHEARINGS? BEFORE THE\\b))",
+    "pattern": "(?s)(?:(?:\\bHEARINGS?\\s+BEFORE\\s+THE\\b.{0,1000}?(?i:\\bSERIAL\\s+NO\\.|\\bS\\.\\s*HRG\\.)|(?i:\\bSERIAL\\s+NO\\.|\\bS\\.\\s*HRG\\.).{0,1000}?\\bHEARINGS?\\s+BEFORE\\s+THE\\b).{0,1000}?\\bU\\.S\\.\\s+GOVERNMENT\\s+(?:PRINTING|PUBLISHING)\\s+OFFICE\\b|\\bU\\.S\\.\\s+GOVERNMENT\\s+(?:PRINTING|PUBLISHING)\\s+OFFICE\\b.{0,1000}?(?:\\bHEARINGS?\\s+BEFORE\\s+THE\\b.{0,1000}?(?i:\\bSERIAL\\s+NO\\.|\\bS\\.\\s*HRG\\.)|(?i:\\bSERIAL\\s+NO\\.|\\bS\\.\\s*HRG\\.).{0,1000}?\\bHEARINGS?\\s+BEFORE\\s+THE\\b))",
     "sample_id": "page-signals:gpo_printed_hearing_cover"
   },
   {

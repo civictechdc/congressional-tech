@@ -54,21 +54,5 @@
     "created_by": "Department of Defense Appropriations Act, 2000, Pub. L. 106-79, section 8162",
     "members_serve": "Section 8162 (membership): four Senators and four Members of the House, with private citizens.",
     "citation_status": "unverified: cited from memory on 2026-11-10 (ct-kw85); check against the public law text before release"
-  },
-  {
-    "id": "scnc00",
-    "name": "Senate Caucus on International Narcotics Control",
-    "pattern": "senate caucus on international narcotics control|international narcotics control caucus",
-    "created_by": "Anti-Drug Abuse Act of 1986, Pub. L. 99-570, title IV, section 4702 (22 U.S.C. 2291 note)",
-    "members_serve": "Section 4702(b): seven Members of the Senate appointed by the President of the Senate (four from the majority party and three from the minority party).",
-    "citation_status": "unverified: cited from memory on 2026-11-16 (PR-U3b); check against the public law text before release"
-  },
-  {
-    "id": "congressional-oversight-commission",
-    "name": "Congressional Oversight Commission",
-    "pattern": "congressional oversight commission",
-    "created_by": "Coronavirus Aid, Relief, and Economic Security (CARES) Act, Pub. L. 116-136, section 4020",
-    "members_serve": "Section 4020(c): five commissioners appointed by congressional leadership, on which sitting Senators and Representatives served.",
-    "citation_status": "unverified: cited from memory on 2026-11-16 (PR-U3b); check against the public law text before release"
   }
 ]

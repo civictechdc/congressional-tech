@@ -38,44 +38,25 @@ _NOMINEE_DESIGNATION_RE = re.compile(
     r'HONORED\s+TO\s+BE\s+NOMINATED\b)',
     re.I,
 )
+_HONORABLE_RE = re.compile(r'\b(?:THE\s+HONORABLE|HON\.)\b', re.I)
+_WITNESS_EXEC_ROLE_RE = re.compile(
+    r'\b(?:(?:DEPUTY\s+|UNDER\s+|ASSISTANT\s+|ACTING\s+)?SECRETARY\b|'
+    r'(?:DEPUTY\s+|ACTING\s+)?ADMINISTRATOR\b|'
+    r'(?:DEPUTY\s+|ACTING\s+)?COMMISSIONER\b|'
+    r'COMPTROLLER\s+GENERAL\b|INSPECTOR\s+GENERAL\b|ATTORNEY\s+GENERAL\b|SURGEON\s+GENERAL\b|'
+    r'(?:DEPUTY\s+|ASSOCIATE\s+|ACTING\s+|EXECUTIVE\s+|MANAGING\s+)?DIRECTOR\b|'
+    r'AMBASSADOR\b|GENERAL\b|LIEUTENANT\s+GENERAL\b|MAJOR\s+GENERAL\b|BRIGADIER\s+GENERAL\b|'
+    r'ADMIRAL\b|VICE\s+ADMIRAL\b|REAR\s+ADMIRAL\b|'
+    r'CHIEF\s+EXECUTIVE\s+OFFICER\b|CEO\b|CHIEF\s+OPERATING\s+OFFICER\b|COO\b|'
+    r'(?:VICE\s+)?PRESIDENT\b|(?:SENIOR\s+)?FELLOW\b|PROFESSOR\b|PROF\.\b|DEAN\b|PROVOST\b)',
+    re.I,
+)
+_WITNESS_ACADEMIC_PREFIX_RE = re.compile(r'\b(?:DR\.|PH\.?D\.|M\.?D\.)', re.I)
 _CRS_CODE_RE = re.compile(r'\b(R\d{4,5}|RL\d{4,5}|RS\d{4,5}|IF\d{5}|IN\d{5}|LSB\d{5})\b')
 _GAO_REPORT_ID_RE = re.compile(r'\b(GAO-\d{2}-\d{3,6}[A-Z]?)\b')
 _GAO_TESTIMONY_OR_CORRESP_RE = re.compile(r'\bGAO-\d{2}-\d{3,6}[TR]\b')
 _CBO_BILL_CITATION_RE = re.compile(
     r'\b((?:H\.\s*R\.|S\.|H\.\s*(?:J\.|CON\.)?\s*RES\.|S\.\s*(?:J\.|CON\.)?\s*RES\.)\s*\d+)\b',
-    re.I,
-)
-_CAREER_PROSE_LOOKBACK_180_RE = re.compile(
-    r'(?:\b(?:counsel|staff|advisor|adviser|fellow|intern|director|clerk|assistant|liaison|member)\s+'
-    r'(?:to|on|of|for|with)\b|'
-    r'\b(?:worked|served|testified|appeared|speaking|testifying|appearing)\s+'
-    r'(?:for|on|with|before|at|to)\b|'
-    r'\b(?:prior\s+to\s+joining|before\s+joining|formerly\s+with)\b)',
-    re.I,
-)
-_BIO_FILENAME_RE = re.compile(r'(?:^|[-_.\s])bio(?:graphy)?(?:$|[-_.\s])', re.I)
-_BIO_NARRATIVE_LEAD_RE = re.compile(
-    r'^(?:page\s+\d+(?:\s+of\s+\d+)?\s+)?'
-    r'(?:(?:biography|biographical\s+sketch|curriculum\s+vitae|r[eé]sum[eé])\s+(?:of|for)\b|'
-    r'[A-Z][a-z]+\s+(?:[A-Z]\.\s+)?[A-Z][a-z]+\s+(?:is\s+|serves\s+as\s+|currently\s+|joined\s+|leads\s+|was\s+|has\s+served\s+))',
-    re.I,
-)
-_CLERK_PROCEEDING_SLUG_RE = re.compile(r'^(?:HHRG|HMTG|HMKP|CRPT)-\d{3}-([A-Z]{2}\d{2})-', re.I)
-_HSRU_AUTHOR_SLUG_RE = re.compile(r'^(?:HHRG|HMTG|HMKP|CRPT)-\d{3}-RU\d{2}-', re.I)
-_HSRU_FLOOR_URL_RE = re.compile(
-    r'^https?://(?:docs\.house\.gov/(?:billsthisweek|floor)/|(?:[a-z0-9-]+\.)?rules\.house\.gov/)',
-    re.I,
-)
-_HSRU_PRINT_BANNER_RE = re.compile(
-    r'(?:\bRULES\s+COMMITTEE\s+PRINT\s+1\d{2}\s*[-–—]\s*\d+\b|'
-    r'^(?:Report\s+Generated:\s*.{5,65}?\s+)?(?:Comparative\s+Print:|Comparing\s+the\s+base\s+document\b))',
-    re.I,
-)
-_HSRU_AUTHOR_TEXT_RE = re.compile(
-    r'(?:^(?:Page\s+\d+\s+of\s+\d+\s+|\d+\s+)?MOTION\s+BY\b|'
-    r'\bProviding\s+for\s+consideration\s+of\s+the\s+(?:bill|joint\s+resolution|resolution|senate\s+amendment)\b|'
-    r'\bFROM\s+THE\s+COMMITTEE\s+ON\s+RULES\b|'
-    r'\bRULES\s+OF\s+THE\s+COMMITTEE\s+ON\s+RULES\b)',
     re.I,
 )
 
@@ -96,7 +77,7 @@ def _extract_congress(clean: str, limit: int = 900) -> str | None:
 
 
 def _is_nominee_or_witness_opening(unembargoed: str) -> bool:
-    """Return True when an ``OPENING STATEMENT`` heading belongs to a nominee or witness, not a Member."""
+    """Return True only when positive nominee or non-Member witness evidence overrides ``OPENING STATEMENT``."""
     head = unembargoed[:900]
     lines = head.splitlines()
     if not lines:
@@ -113,10 +94,17 @@ def _is_nominee_or_witness_opening(unembargoed: str) -> bool:
         return False
     if _NOMINEE_DESIGNATION_RE.search(head):
         return True
-    if re.match(r'OPENING\s+STATEMENT\s+(?:OF|BY)\s+', speaker_block) and re.search(
-        r'\bBEFORE\s+THE\s+(?:U\.?\s*S\.?\s+)?(?:SENATE\s+|HOUSE\s+)?(?:PERMANENT\s+SELECT\s+|SELECT\s+|SPECIAL\s+)?(?:SUB)?COMMITTEE\b',
-        head[:600],
-    ):
+    has_before_committee = bool(
+        re.search(
+            r'\bBEFORE\s+THE\s+(?:U\.?\s*S\.?\s+)?(?:SENATE\s+|HOUSE\s+)?(?:PERMANENT\s+SELECT\s+|SELECT\s+|SPECIAL\s+)?(?:SUB)?COMMITTEE\b',
+            head[:600],
+        )
+    )
+    if not (re.match(r'OPENING\s+STATEMENT\s+(?:OF|BY)\s+', speaker_block) and has_before_committee):
+        return False
+    if _WITNESS_EXEC_ROLE_RE.search(speaker_block):
+        return True
+    if not _HONORABLE_RE.search(speaker_block) and _WITNESS_ACADEMIC_PREFIX_RE.search(speaker_block):
         return True
     return False
 
@@ -265,7 +253,7 @@ def truth_in_testimony_fields(clean: str) -> dict[str, list[str]]:
     )
     if not (has_title and has_form_fields):
         return {}
-    fields = {'content_document_kind': ['truth-in-testimony']}
+    fields = {'content_document_kind': ['testimony-disclosure']}
     if cong := _extract_congress(clean):
         fields['content_congress'] = [cong]
     return fields
@@ -290,7 +278,7 @@ def nominee_questionnaire_fields(clean: str) -> dict[str, list[str]]:
     )
     if not is_questionnaire:
         return {}
-    fields = {'content_document_kind': ['nominee-questionnaire']}
+    fields = {'content_document_kind': ['questionnaire']}
     if cong := _extract_congress(clean):
         fields['content_congress'] = [cong]
     return fields
@@ -415,7 +403,7 @@ def markup_notice_fields(clean: str) -> dict[str, list[str]]:
     )
     if not ((explicit_banner or memo_markup_notice) and has_schedule):
         return {}
-    fields = {'content_document_kind': ['markup-notice']}
+    fields = {'content_document_kind': ['meeting-notice']}
     if cong := _extract_congress(clean):
         fields['content_congress'] = [cong]
     return fields
@@ -623,65 +611,6 @@ def staff_report_fields(clean: str) -> dict[str, list[str]]:
     if cong := _extract_congress(clean):
         fields['content_congress'] = [cong]
     return fields
-
-
-def is_excluded_committee_prose_attribution(
-    text: str | None,
-    match_start: int,
-    *,
-    filename: str | None = None,
-) -> bool:
-    """Return True when a committee mention at ``match_start`` in ``text`` is disqualified from
-    authoring-committee attribution by:
-      1. ``-Bio-`` / witness-biography filename or biographical narrative lead,
-      2. 180-character career-prose lookback (``served on``, ``counsel to``, ``staff of``, etc.), or
-      3. Embargo header/footer banner without a formal Clerk proceeding slug.
-    """
-    base_fn = (filename or '').strip().rsplit('/', 1)[-1]
-    has_clerk_slug = bool(_CLERK_PROCEEDING_SLUG_RE.match(base_fn))
-    if _BIO_FILENAME_RE.search(base_fn):
-        return True
-    if not text:
-        return False
-    norm = ' '.join(text[:2400].split())
-    if _BIO_NARRATIVE_LEAD_RE.match(norm[:240]) and match_start > 140:
-        return True
-    lookback_180 = text[max(0, match_start - 180):match_start]
-    if _CAREER_PROSE_LOOKBACK_180_RE.search(lookback_180):
-        return True
-    # Embargo banner or embargo footer mention without a formal Clerk proceeding slug
-    around = text[max(0, match_start - 140):min(len(text), match_start + 180)]
-    if not has_clerk_slug and _EMBARGO_ANY_RE.search(around):
-        return True
-    return False
-
-
-def classify_hsru_host_status(
-    *,
-    committee_codes: list[str] | tuple[str, ...] = (),
-    filename: str | None = None,
-    source_url: str | None = None,
-    text: str | None = None,
-) -> str:
-    """Separate ``hsru00`` file-server hosting (``'rules_host'``) on ``docs.house.gov`` / ``rules.house.gov``
-    from actual House Rules Committee authorship (``'rules_author'``) or ``'not_hsru'``.
-    """
-    codes_low = [c.strip().lower() for c in committee_codes if c]
-    url_s = (source_url or '').strip()
-    fn_base = (filename or '').strip().rsplit('/', 1)[-1]
-    t_head = ' '.join((text or '')[:1800].split())
-
-    is_floor_url = bool(_HSRU_FLOOR_URL_RE.match(url_s))
-    has_hsru = any(c in {'hsru00', 'ru00', 'ru'} or c.startswith('hsru') for c in codes_low) or is_floor_url
-    if not has_hsru and not _HSRU_PRINT_BANNER_RE.search(t_head[:350]):
-        return 'not_hsru'
-    if _HSRU_AUTHOR_SLUG_RE.match(fn_base) or re.search(r'/meetings/RU/', url_s, re.I):
-        return 'rules_author'
-    if t_head and not _HSRU_PRINT_BANNER_RE.search(t_head[:350]) and _HSRU_AUTHOR_TEXT_RE.search(t_head[:1000]):
-        return 'rules_author'
-    if is_floor_url or _HSRU_PRINT_BANNER_RE.search(t_head[:350]):
-        return 'rules_host'
-    return 'rules_author' if has_hsru else 'not_hsru'
 
 
 def operative_amendment(clean: str) -> bool:
