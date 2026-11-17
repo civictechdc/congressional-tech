@@ -1,6 +1,6 @@
 ---
 id: ct-medh
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-17T18:18:49Z
@@ -35,3 +35,9 @@ The one serialized path: lake rows are written only by archive-jobs.yml, whose w
 Not serialized today: (1) `python -m congress_api.cli.captures_ingest --apply --table <namespace.table>` with a remote engine config from a local checkout (what ct-z4w5 ran against archive_r1b.captures_df55_20261113, the nightly's captures table, followed by a hand-written captures_ingest.py record in lake/producers/); (2) any local script that calls tables.append_rows or a producer's append against the remote catalog; (3) scripts/nightly_publish.py, whose fcntl lock is local to one Mac. The backfill operation (`-f operation=backfill`, model/jobs/backfill.json) is serialized, but I found no hosted way to name receipts outside the 14-day window: its receipt_inventory rows are local files. That gap needs an owner decision, not a hand append.
 
 Proposed guard, not built (captures_ingest.py belongs to another session): refuse `--apply` when `--table` is one of the nightly's tables in model/jobs/publish-daily.json unless an explicit `--nightly-table` flag is given: 6 added lines in packages/congress_api/src/congress_api/cli/captures_ingest.py, no other change. Generation rebuilds into a new table (capture_backfill.execute_batches) keep working. captures_ingest.py is not in the model definition hash.
+
+**2026-11-17: closed**
+
+Merged as pull request 193 (cc80e509). One rule, `producer_records.base_problems`, is what gate 5 refuses about a base and what the daily refuses before it appends, in the same words. Reviewed for what it changes on a normal night: the pre-check refuses nothing gate 5 does not also refuse, and both read the same record store and anchors in the publish job, so a state gate 5 passes still passes.
+
+The operator path is written down in `docs/nightly.md` (receipts to raw, then the nightly). What is left has its own tickets: the guard on `captures_ingest.py --apply` and the missing hosted path for receipts older than the 14-day window (ct-w3dn), and the chain walk's read growth (ct-k7rw).
