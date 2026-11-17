@@ -88,8 +88,16 @@ marker = "not loopback"
 offline = true
 purpose = "Production regression with an in-process Python socket tripwire; child processes are not network-isolated."
 
+# CI runs every loopback test here: production-offline deselects them, and no
+# workflow runs storage-loopback (.github/tests/test_offline_shards.py).
 [lanes.native-loopback]
-roots = ["packages/congress_api/tests", "tests", "packages/viewer_publication/tests/test_recovery_publication_journey.py"]
+roots = [
+    "packages/congress_api/tests",
+    "tests",
+    "packages/viewer_publication/tests/test_recovery_publication_journey.py",
+    "packages/viewer_publication/tests/test_archive_multipart.py",
+    "packages/viewer_publication/tests/test_upload_byte_identity.py",
+]
 marker = "loopback"
 offline = false
 required_binary_env = "SOURCE_FETCH_BINARY"
@@ -118,10 +126,11 @@ roots = [
     "packages/congress_api/tests/test_body_text_origin.py",
     "packages/congress_api/tests/test_producer_records_loopback.py",
     "packages/viewer_publication/tests/test_archive_multipart.py",
+    "packages/viewer_publication/tests/test_upload_byte_identity.py",
 ]
 marker = "loopback"
 offline = false
-purpose = "Real S3 SDK transport against local HTTP fakes; no source-fetch binary or live storage."
+purpose = "Real S3 SDK transport against local HTTP fakes; no source-fetch binary or live storage. A subset of native-loopback, which CI runs."
 
 [lanes.explorer-mcp]
 roots = ["apps/explorer_mcp/tests"]

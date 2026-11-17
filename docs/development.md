@@ -62,7 +62,8 @@ tests read.
 | Lane | Checks | Boundary |
 | --- | --- | --- |
 | `production-offline` | Production, package and workflow regressions, excluding `loopback` tests | The Python socket wrapper is an in-process tripwire. Fresh subprocesses are not network-isolated. |
-| `native-loopback` | Tests marked `loopback`, including real local servers, spawned workers and Rust transport | Requires an executable `SOURCE_FETCH_BINARY`; skips are reported and do not establish qualification. |
+| `native-loopback` | Tests marked `loopback`, including real local servers, spawned workers and Rust transport | Requires an executable `SOURCE_FETCH_BINARY`; skips are reported and do not establish qualification. CI runs every `loopback` test here, so a file with one must sit under its roots. |
+| `storage-loopback` | The `loopback` tests of the S3 SDK against local HTTP fakes | No `SOURCE_FETCH_BINARY` needed. A subset of `native-loopback`; no workflow runs it. |
 | `active-experiment-regression` | All fourteen experiment test files, including the historical/current PDF worker fixture | Fixtures and mocked evidence; this does not reproduce or qualify the frozen research run. |
 | `frozen-reproduction` | Reserved for deliberate historical reproduction | Separate frozen requirements and reviewed experiment protocol; no tests are silently retained-only. The command refuses to run it in the shared environment. |
 
