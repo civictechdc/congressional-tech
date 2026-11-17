@@ -1,0 +1,2116 @@
+{
+ "version": 1,
+ "base_release_id": "4b9a7bd126cc17e39dfbe7f8fabafbdb7251dcd32576277f308916f469c9bab1",
+ "candidate_release_id": "6ac86c21b3732b4c546df1c282cff8e228062355152a4ef0e5252ab86fae5d2e",
+ "notes": {
+  "identifiers": [
+   {
+    "statement": "Hosted CI publication (runs 44002952840, 44019990275, 44024675583) combining 3 scheduled capture-archive.yml nights (2026-11-14..16: 3,270 capture receipts), the 2026-11-15 weekly YouTube/GPO refresh (3 pipeline-data receipts), and V6 parser/SQL hygiene upgrades (committee host attribution, hsru00 floor/RCP exclusion, Tier-1 cover kinds, qualified c226ccd9 html_metadata across 196,298 HTML bodies, and house_naming BILLS/Jan-3 guards): publishes 9 new meetings, 610 newly linked House XML meeting records, 379 new documents, 1 promoted recovered document, 1 retired document, 44 new videos, and 42 new recordings.",
+    "decision": "ct-b1jj, ct-4jms, ct-q4e2, ct-9j3z, ct-rhqw, owner decision 2026-11-17"
+   }
+  ]
+ },
+ "groups": [
+  {
+   "id": "bills.parquet|added bills|unexplained",
+   "count": 21,
+   "disposition": "explained",
+   "cause": "21 bill entries added in entity-bills.sql from new measure_keys on the 379 added documents, updated Congress.gov meeting subject_keys (14 updated meetings including H.R. 3495 and H.R. 5267 on event 118862), 610 newly observed docs.house.gov meeting_records, and V6 house_naming (6a435cb6) measure extraction.",
+   "tickets": [
+    "ct-4jms",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/entity-bills.sql",
+     "sha256": "f71a61cfb1983883acfc6ddfe097b1d75d39aad72adff00043ca5174ff3c4d41",
+     "size": 13552
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|removed bills|unexplained",
+   "count": -3,
+   "disposition": "explained",
+   "cause": "3 spurious bill entries removed from entity-bills.sql after V6 house_naming (6a435cb6, commits 831bbf34/a65f3628/7e015865) added BILLS-* multi-bill split guards and Jan 3 noon EST/EDT Congress boundary handling on 18 documents with changed measure_keys.",
+   "tickets": [
+    "ct-wx65",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/entity-bills.sql",
+     "sha256": "f71a61cfb1983883acfc6ddfe097b1d75d39aad72adff00043ca5174ff3c4d41",
+     "size": 13552
+    },
+    {
+     "path": "model/jobs/publish-model.json",
+     "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
+     "size": 6109
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|removed rows|no surviving link key",
+   "count": -1,
+   "disposition": "explained",
+   "cause": "1 live document cleanly retired from the active table (and moved 1:1 into retired_links.parquet 35,486 -> 35,487; 0 vanished keys, 0 dangling successors, link_rule.ok=true) across the 2026-11-14..16 ingest and V6 model rebuild.",
+   "tickets": [
+    "ct-tk10",
+    "ct-fb7k"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/retired-links.sql",
+     "sha256": "b314dee7a3f08e7211e30ebf86df78882eeddc86f630dd77bd26127151bdfff7",
+     "size": 4802
+    },
+    {
+     "path": "model/sql/body-signals.sql",
+     "sha256": "7abb738ae53cb9a3302c0475bbf01b4bb00d298e71f50093c4cf2bd25f1de8ee",
+     "size": 6313
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 379,
+   "disposition": "explained",
+   "cause": "379 new documents added from the 3,270 new scheduled capture receipts across 2026-11-14..16 (capture-archive.yml runs 43586531545, 43708031303, 43860791720: 697 document + 327 house page + 66 meeting receipts per night). Unattended automatic_causes deferred because the same release ships V6 parser/SQL upgrades and 3 nights exceed the 250-doc nightly cap.",
+   "tickets": [
+    "ct-4jms",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed chambers|value differs on matched key",
+   "count": 60061,
+   "disposition": "explained",
+   "cause": "60,061 matched-key documents updated chambers after V6 source-annotations-codes.sql & source-annotations-committees.sql expanded host attribution to exported committee/democrats-/republicans-/Wayback URL hosts (and fixed cha.house.gov vs JSLC00/JSPR00 and www.uscc.gov -> JCUC00 in commit 5059c0db) while excluding non-proceeding docs.house.gov floor/RCP hsru00 hosting.",
+   "tickets": [
+    "ct-p3ff",
+    "ct-b1jj"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/source-annotations-codes.sql",
+     "sha256": "4a7274604a09b7ee946b0426ade64f7d19af30d6e438719d2b679f4025c03629",
+     "size": 3245
+    },
+    {
+     "path": "model/sql/source-annotations-committees.sql",
+     "sha256": "64875e944f1f37d8031f5b4ee8ac64c25859c8214bab27bd9b4d2fc67abceca1",
+     "size": 1292
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed committee_keys|value differs on matched key",
+   "count": 80544,
+   "disposition": "explained",
+   "cause": "80,544 matched-key documents updated committee_keys after V6 source-annotations-codes.sql & source-annotations-committees.sql enabled host attribution from committee/minority/majority/Wayback source URLs, fixed cha.house.gov/uscc.gov normalization (5059c0db), and excluded non-proceeding docs.house.gov floor/RCP hsru00 hosting (missing_committee_keys=0).",
+   "tickets": [
+    "ct-p3ff",
+    "ct-b1jj"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/source-annotations-codes.sql",
+     "sha256": "4a7274604a09b7ee946b0426ade64f7d19af30d6e438719d2b679f4025c03629",
+     "size": 3245
+    },
+    {
+     "path": "model/sql/source-annotations-committees.sql",
+     "sha256": "64875e944f1f37d8031f5b4ee8ac64c25859c8214bab27bd9b4d2fc67abceca1",
+     "size": 1292
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed congress|value differs on matched key",
+   "count": 19,
+   "disposition": "explained",
+   "cause": "19 matched-key documents updated congress under V6 house_naming (6a435cb6) Jan 3 noon TZ boundary / BILLS-* Congress guards and newly linked docs.house.gov XML meeting records (610 newly observed house_xml event_id rows).",
+   "tickets": [
+    "ct-wx65",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/jobs/publish-model.json",
+     "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
+     "size": 6109
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed date_kind|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 live recovered document (saved_kind=recovery, date_kind=import_day) was newly fetched from its publisher source URL across 2026-11-14..16 and promoted to saved_kind=original, date_kind=captured with its new original link_key; its prior recovery key stays linked in links.parquet (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "3 matched-key document(s) updated document_date from V6 page-dates.sql CMS upload-folder (/wp-content/uploads, /sites/.../files) and 14-digit Wayback timestamp guards (commit 41e128ab), newly ingested listing metadata, or promoted capture dates.",
+   "tickets": [
+    "ct-4jms",
+    "ct-082q"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/page-dates.sql",
+     "sha256": "851ff28450539b6b46b20b8dbacc61807a423487dc4ab12dc0a8350439166aea",
+     "size": 2388
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_source|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "2 matched-key document(s) updated document_date_source from V6 page-dates.sql CMS upload-folder (/wp-content/uploads, /sites/.../files) and 14-digit Wayback timestamp guards (commit 41e128ab), newly ingested listing metadata, or promoted capture dates.",
+   "tickets": [
+    "ct-4jms",
+    "ct-082q"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/page-dates.sql",
+     "sha256": "851ff28450539b6b46b20b8dbacc61807a423487dc4ab12dc0a8350439166aea",
+     "size": 2388
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_status|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 matched-key document(s) updated document_date_status from V6 page-dates.sql CMS upload-folder (/wp-content/uploads, /sites/.../files) and 14-digit Wayback timestamp guards (commit 41e128ab), newly ingested listing metadata, or promoted capture dates.",
+   "tickets": [
+    "ct-4jms",
+    "ct-082q"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/page-dates.sql",
+     "sha256": "851ff28450539b6b46b20b8dbacc61807a423487dc4ab12dc0a8350439166aea",
+     "size": 2388
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_family|value differs on matched key",
+   "count": 63,
+   "disposition": "explained",
+   "cause": "63 matched-key documents updated document_family from V6 Tier-1 cover classification (model/sql/body-signals.sql + body-cover-kinds.sql + model/registries/page-signals.json, commit 2747f2a4), classifying previously untyped or ambiguous -Bio-/-SD-/-Wstate- upload slots while preserving review_overrides.",
+   "tickets": [
+    "ct-isnv",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/body-signals.sql",
+     "sha256": "7abb738ae53cb9a3302c0475bbf01b4bb00d298e71f50093c4cf2bd25f1de8ee",
+     "size": 6313
+    },
+    {
+     "path": "model/sql/body-cover-kinds.sql",
+     "sha256": "ddedae9ff8f2f5f7819031ee3dbbdbafe3ae420e91f415010f8996d3fb0150e5",
+     "size": 1356
+    },
+    {
+     "path": "model/registries/page-signals.json",
+     "sha256": "6c4ded007afacf78912bea5c3018ae14f199989424758753bcb7413c47e88fcb",
+     "size": 17461
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_kind|value differs on matched key",
+   "count": 63,
+   "disposition": "explained",
+   "cause": "63 matched-key documents updated document_kind from V6 Tier-1 cover classification (model/sql/body-signals.sql + body-cover-kinds.sql + model/registries/page-signals.json, commit 2747f2a4), classifying previously untyped or ambiguous -Bio-/-SD-/-Wstate- upload slots while preserving review_overrides.",
+   "tickets": [
+    "ct-isnv",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/body-signals.sql",
+     "sha256": "7abb738ae53cb9a3302c0475bbf01b4bb00d298e71f50093c4cf2bd25f1de8ee",
+     "size": 6313
+    },
+    {
+     "path": "model/sql/body-cover-kinds.sql",
+     "sha256": "ddedae9ff8f2f5f7819031ee3dbbdbafe3ae420e91f415010f8996d3fb0150e5",
+     "size": 1356
+    },
+    {
+     "path": "model/registries/page-signals.json",
+     "sha256": "6c4ded007afacf78912bea5c3018ae14f199989424758753bcb7413c47e88fcb",
+     "size": 17461
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed facts|value differs on matched key",
+   "count": 36,
+   "disposition": "explained",
+   "cause": "36 matched-key documents updated filename/property facts after V6 house_naming (6a435cb6, commit 7e015865) began emitting filename_slot_kind and is_slot_ambiguous fields plus BILLS-* and Jan 3 extraction refinements.",
+   "tickets": [
+    "ct-hiec",
+    "ct-isnv"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/jobs/publish-model.json",
+     "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
+     "size": 6109
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed filename|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 matched-key documents updated leading display filename from newly discovered publisher listing URLs (2026-11-14..16 captures) or the 1 recovery-to-original capture promotion (0 link_rule failures).",
+   "tickets": [
+    "ct-hiec",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed first_captured|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 live recovered document (saved_kind=recovery, date_kind=import_day) was newly fetched from its publisher source URL across 2026-11-14..16 and promoted to saved_kind=original, date_kind=captured with its new original link_key; its prior recovery key stays linked in links.parquet (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed in_archive_since|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 live recovered document (saved_kind=recovery, date_kind=import_day) was newly fetched from its publisher source URL across 2026-11-14..16 and promoted to saved_kind=original, date_kind=captured with its new original link_key; its prior recovery key stays linked in links.parquet (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed link_key|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 live recovered document (saved_kind=recovery, date_kind=import_day) was newly fetched from its publisher source URL across 2026-11-14..16 and promoted to saved_kind=original, date_kind=captured with its new original link_key; its prior recovery key stays linked in links.parquet (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed main_content|value differs on matched key",
+   "count": 15468,
+   "disposition": "explained",
+   "cause": "All 15,468 HTML documents in detail.parquet updated main_content JSON because model/sql/document-page-metadata.sql embeds reader_version, which moved from 0fff8151... to V6 c226ccd99877... (qualified across all 196,298 HTML bodies in CI run 44019990275 with post_work_items=0 and missing_html_metadata=0), alongside V6 CMS <nav>/header/sidebar/share chrome and 119th Congress time-travel banner stripping.",
+   "tickets": [
+    "ct-g4yz",
+    "ct-082q"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/document-page-metadata.sql",
+     "sha256": "d3aea79f4fa5012586b0640d7acd346609d25cec0e75731c8b448eef169bf4c5",
+     "size": 5148
+    },
+    {
+     "path": "model/jobs/publish-model.json",
+     "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
+     "size": 6109
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed measure_keys|value differs on matched key",
+   "count": 18,
+   "disposition": "explained",
+   "cause": "18 matched-key documents updated measure_keys after V6 house_naming (6a435cb6, commits 831bbf34/a65f3628/7e015865) added BILLS-* multi-bill split guards and Jan 3 Congress boundary parsing.",
+   "tickets": [
+    "ct-wx65",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/jobs/publish-model.json",
+     "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
+     "size": 6109
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed meeting_keys|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "4 matched-key documents gained or updated meeting_keys from newly captured/updated meetings (2026-11-14..16 captures and 610 newly observed docs.house.gov house_xml meeting records).",
+   "tickets": [
+    "ct-4jms",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_kind|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 live recovered document (saved_kind=recovery, date_kind=import_day) was newly fetched from its publisher source URL across 2026-11-14..16 and promoted to saved_kind=original, date_kind=captured with its new original link_key; its prior recovery key stays linked in links.parquet (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 580,
+   "disposition": "explained",
+   "cause": "580 matched-key documents updated source count (src_len) as 963 new publisher source URLs from 2026-11-14..16 listing captures attached to existing and newly captured documents.",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 790,
+   "disposition": "explained",
+   "cause": "790 matched-key documents updated title from newly captured 2026-11-14..16 publisher listing link_text and V6 html_metadata (c226ccd9...) qualified page titles/chrome cleanup.",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/document-page-metadata.sql",
+     "sha256": "d3aea79f4fa5012586b0640d7acd346609d25cec0e75731c8b448eef169bf4c5",
+     "size": 5148
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 791,
+   "disposition": "explained",
+   "cause": "791 matched-key documents updated title_source (790 matching changed title plus 1 tie/precedence shift from newly captured listing link_text and qualified V6 html_metadata readings).",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/document-page-metadata.sql",
+     "sha256": "d3aea79f4fa5012586b0640d7acd346609d25cec0e75731c8b448eef169bf4c5",
+     "size": 5148
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed witness_keys|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 matched-key document updated witness_keys alongside the 1 matched witness update in witnesses.parquet following newly ingested/re-parsed house_xml appearance observations.",
+   "tickets": [
+    "ct-rhqw",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|removed keys|no evidence given",
+   "count": -1,
+   "disposition": "explained",
+   "cause": "1 link key removed from links.parquet for the 1 cleanly retired document and recorded 1:1 in retired_links.parquet (35,486 -> 35,487; 0 missing keys, 0 dangling successors, link_rule.ok=true).",
+   "tickets": [
+    "ct-tk10",
+    "ct-fb7k"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/retired-links.sql",
+     "sha256": "b314dee7a3f08e7211e30ebf86df78882eeddc86f630dd77bd26127151bdfff7",
+     "size": 4802
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 380,
+   "disposition": "explained",
+   "cause": "380 new link keys added to links.parquet: 379 primary keys for the 379 new documents added from 2026-11-14..16 captures plus 1 new original link key from the 1 recovery-to-original promotion.",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|removed rows|no surviving link key",
+   "count": -1,
+   "disposition": "explained",
+   "cause": "1 live document cleanly retired from the active table (and moved 1:1 into retired_links.parquet 35,486 -> 35,487; 0 vanished keys, 0 dangling successors, link_rule.ok=true) across the 2026-11-14..16 ingest and V6 model rebuild.",
+   "tickets": [
+    "ct-tk10",
+    "ct-fb7k"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/retired-links.sql",
+     "sha256": "b314dee7a3f08e7211e30ebf86df78882eeddc86f630dd77bd26127151bdfff7",
+     "size": 4802
+    },
+    {
+     "path": "model/sql/body-signals.sql",
+     "sha256": "7abb738ae53cb9a3302c0475bbf01b4bb00d298e71f50093c4cf2bd25f1de8ee",
+     "size": 6313
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 379,
+   "disposition": "explained",
+   "cause": "379 new documents added from the 3,270 new scheduled capture receipts across 2026-11-14..16 (capture-archive.yml runs 43586531545, 43708031303, 43860791720: 697 document + 327 house page + 66 meeting receipts per night). Unattended automatic_causes deferred because the same release ships V6 parser/SQL upgrades and 3 nights exceed the 250-doc nightly cap.",
+   "tickets": [
+    "ct-4jms",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed chambers|value differs on matched key",
+   "count": 60061,
+   "disposition": "explained",
+   "cause": "60,061 matched-key documents updated chambers after V6 source-annotations-codes.sql & source-annotations-committees.sql expanded host attribution to exported committee/democrats-/republicans-/Wayback URL hosts (and fixed cha.house.gov vs JSLC00/JSPR00 and www.uscc.gov -> JCUC00 in commit 5059c0db) while excluding non-proceeding docs.house.gov floor/RCP hsru00 hosting.",
+   "tickets": [
+    "ct-p3ff",
+    "ct-b1jj"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/source-annotations-codes.sql",
+     "sha256": "4a7274604a09b7ee946b0426ade64f7d19af30d6e438719d2b679f4025c03629",
+     "size": 3245
+    },
+    {
+     "path": "model/sql/source-annotations-committees.sql",
+     "sha256": "64875e944f1f37d8031f5b4ee8ac64c25859c8214bab27bd9b4d2fc67abceca1",
+     "size": 1292
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed committee_keys|value differs on matched key",
+   "count": 80544,
+   "disposition": "explained",
+   "cause": "80,544 matched-key documents updated committee_keys after V6 source-annotations-codes.sql & source-annotations-committees.sql enabled host attribution from committee/minority/majority/Wayback source URLs, fixed cha.house.gov/uscc.gov normalization (5059c0db), and excluded non-proceeding docs.house.gov floor/RCP hsru00 hosting (missing_committee_keys=0).",
+   "tickets": [
+    "ct-p3ff",
+    "ct-b1jj"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/source-annotations-codes.sql",
+     "sha256": "4a7274604a09b7ee946b0426ade64f7d19af30d6e438719d2b679f4025c03629",
+     "size": 3245
+    },
+    {
+     "path": "model/sql/source-annotations-committees.sql",
+     "sha256": "64875e944f1f37d8031f5b4ee8ac64c25859c8214bab27bd9b4d2fc67abceca1",
+     "size": 1292
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed congress|value differs on matched key",
+   "count": 19,
+   "disposition": "explained",
+   "cause": "19 matched-key documents updated congress under V6 house_naming (6a435cb6) Jan 3 noon TZ boundary / BILLS-* Congress guards and newly linked docs.house.gov XML meeting records (610 newly observed house_xml event_id rows).",
+   "tickets": [
+    "ct-wx65",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/jobs/publish-model.json",
+     "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
+     "size": 6109
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed date_kind|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 live recovered document (saved_kind=recovery, date_kind=import_day) was newly fetched from its publisher source URL across 2026-11-14..16 and promoted to saved_kind=original, date_kind=captured with its new original link_key; its prior recovery key stays linked in links.parquet (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "3 matched-key document(s) updated document_date from V6 page-dates.sql CMS upload-folder (/wp-content/uploads, /sites/.../files) and 14-digit Wayback timestamp guards (commit 41e128ab), newly ingested listing metadata, or promoted capture dates.",
+   "tickets": [
+    "ct-4jms",
+    "ct-082q"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/page-dates.sql",
+     "sha256": "851ff28450539b6b46b20b8dbacc61807a423487dc4ab12dc0a8350439166aea",
+     "size": 2388
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date_status|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 matched-key document(s) updated document_date_status from V6 page-dates.sql CMS upload-folder (/wp-content/uploads, /sites/.../files) and 14-digit Wayback timestamp guards (commit 41e128ab), newly ingested listing metadata, or promoted capture dates.",
+   "tickets": [
+    "ct-4jms",
+    "ct-082q"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/page-dates.sql",
+     "sha256": "851ff28450539b6b46b20b8dbacc61807a423487dc4ab12dc0a8350439166aea",
+     "size": 2388
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_family|value differs on matched key",
+   "count": 63,
+   "disposition": "explained",
+   "cause": "63 matched-key documents updated document_family from V6 Tier-1 cover classification (model/sql/body-signals.sql + body-cover-kinds.sql + model/registries/page-signals.json, commit 2747f2a4), classifying previously untyped or ambiguous -Bio-/-SD-/-Wstate- upload slots while preserving review_overrides.",
+   "tickets": [
+    "ct-isnv",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/body-signals.sql",
+     "sha256": "7abb738ae53cb9a3302c0475bbf01b4bb00d298e71f50093c4cf2bd25f1de8ee",
+     "size": 6313
+    },
+    {
+     "path": "model/sql/body-cover-kinds.sql",
+     "sha256": "ddedae9ff8f2f5f7819031ee3dbbdbafe3ae420e91f415010f8996d3fb0150e5",
+     "size": 1356
+    },
+    {
+     "path": "model/registries/page-signals.json",
+     "sha256": "6c4ded007afacf78912bea5c3018ae14f199989424758753bcb7413c47e88fcb",
+     "size": 17461
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_kind|value differs on matched key",
+   "count": 63,
+   "disposition": "explained",
+   "cause": "63 matched-key documents updated document_kind from V6 Tier-1 cover classification (model/sql/body-signals.sql + body-cover-kinds.sql + model/registries/page-signals.json, commit 2747f2a4), classifying previously untyped or ambiguous -Bio-/-SD-/-Wstate- upload slots while preserving review_overrides.",
+   "tickets": [
+    "ct-isnv",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/body-signals.sql",
+     "sha256": "7abb738ae53cb9a3302c0475bbf01b4bb00d298e71f50093c4cf2bd25f1de8ee",
+     "size": 6313
+    },
+    {
+     "path": "model/sql/body-cover-kinds.sql",
+     "sha256": "ddedae9ff8f2f5f7819031ee3dbbdbafe3ae420e91f415010f8996d3fb0150e5",
+     "size": 1356
+    },
+    {
+     "path": "model/registries/page-signals.json",
+     "sha256": "6c4ded007afacf78912bea5c3018ae14f199989424758753bcb7413c47e88fcb",
+     "size": 17461
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed filename|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "12 matched-key documents updated leading display filename from newly discovered publisher listing URLs (2026-11-14..16 captures) or the 1 recovery-to-original capture promotion (0 link_rule failures).",
+   "tickets": [
+    "ct-hiec",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed first_captured|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 live recovered document (saved_kind=recovery, date_kind=import_day) was newly fetched from its publisher source URL across 2026-11-14..16 and promoted to saved_kind=original, date_kind=captured with its new original link_key; its prior recovery key stays linked in links.parquet (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed measure_keys|value differs on matched key",
+   "count": 18,
+   "disposition": "explained",
+   "cause": "18 matched-key documents updated measure_keys after V6 house_naming (6a435cb6, commits 831bbf34/a65f3628/7e015865) added BILLS-* multi-bill split guards and Jan 3 Congress boundary parsing.",
+   "tickets": [
+    "ct-wx65",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/jobs/publish-model.json",
+     "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
+     "size": 6109
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed meeting_keys|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "4 matched-key documents gained or updated meeting_keys from newly captured/updated meetings (2026-11-14..16 captures and 610 newly observed docs.house.gov house_xml meeting records).",
+   "tickets": [
+    "ct-4jms",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed saved_kind|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 live recovered document (saved_kind=recovery, date_kind=import_day) was newly fetched from its publisher source URL across 2026-11-14..16 and promoted to saved_kind=original, date_kind=captured with its new original link_key; its prior recovery key stays linked in links.parquet (0 missing, 0 dangling).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 790,
+   "disposition": "explained",
+   "cause": "790 matched-key documents updated title from newly captured 2026-11-14..16 publisher listing link_text and V6 html_metadata (c226ccd9...) qualified page titles/chrome cleanup.",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/document-page-metadata.sql",
+     "sha256": "d3aea79f4fa5012586b0640d7acd346609d25cec0e75731c8b448eef169bf4c5",
+     "size": 5148
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed witness_keys|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 matched-key document updated witness_keys alongside the 1 matched witness update in witnesses.parquet following newly ingested/re-parsed house_xml appearance observations.",
+   "tickets": [
+    "ct-rhqw",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "Recomputed meeting coverage across the 4 resource facets on existing meetings (9 rows changed basis): driven by the 2026-11-15 weekly YouTube/GPO refresh (+44 videos, +38 traced recordings, +144 recording_matches), 610 newly observed docs.house.gov house_xml meeting records, and 2026-11-14..16 document/transcript captures.",
+   "tickets": [
+    "ct-q4e2",
+    "ct-4jms",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 56,
+   "disposition": "explained",
+   "cause": "Recomputed meeting coverage across the 4 resource facets on existing meetings (56 rows changed count): driven by the 2026-11-15 weekly YouTube/GPO refresh (+44 videos, +38 traced recordings, +144 recording_matches), 610 newly observed docs.house.gov house_xml meeting records, and 2026-11-14..16 document/transcript captures.",
+   "tickets": [
+    "ct-q4e2",
+    "ct-4jms",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 131,
+   "disposition": "explained",
+   "cause": "Recomputed meeting coverage across the 4 resource facets on existing meetings (131 rows changed reason): driven by the 2026-11-15 weekly YouTube/GPO refresh (+44 videos, +38 traced recordings, +144 recording_matches), 610 newly observed docs.house.gov house_xml meeting records, and 2026-11-14..16 document/transcript captures.",
+   "tickets": [
+    "ct-q4e2",
+    "ct-4jms",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 107,
+   "disposition": "explained",
+   "cause": "Recomputed meeting coverage across the 4 resource facets on existing meetings (107 rows changed state): driven by the 2026-11-15 weekly YouTube/GPO refresh (+44 videos, +38 traced recordings, +144 recording_matches), 610 newly observed docs.house.gov house_xml meeting records, and 2026-11-14..16 document/transcript captures.",
+   "tickets": [
+    "ct-q4e2",
+    "ct-4jms",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed committees|value differs on matched key",
+   "count": 648,
+   "disposition": "explained",
+   "cause": "648 matched meetings updated committees from newly observed docs.house.gov house_xml meeting records (610 events) plus updated Congress.gov committee-meeting detail records across 2026-11-14..16.",
+   "tickets": [
+    "ct-rhqw",
+    "ct-p3ff"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed congress_gov_detail_observation|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "2 matched meetings updated congress_gov_detail_observation (not exempted under refetch_only) due to coinciding docs.house.gov house_xml observations (7bfc7b6a..., 5,573 rows) and 2026-11-14..16 Congress.gov detail updates.",
+   "tickets": [
+    "ct-rhqw",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed house_xml_updated|value differs on matched key",
+   "count": 610,
+   "disposition": "explained",
+   "cause": "610 matched meetings populated house_xml_updated from docs.house.gov <committee-meeting> XML observations newly ingested in 2026-11-14..16 captures and re-parsed under house_xml parser_version 7bfc7b6a... (5,573 meeting_records rows appended in CI run 44002952840).",
+   "tickets": [
+    "ct-rhqw",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed meeting_type|value differs on matched key",
+   "count": 610,
+   "disposition": "explained",
+   "cause": "610 matched meetings populated meeting_type from docs.house.gov <committee-meeting> XML observations newly ingested in 2026-11-14..16 captures and re-parsed under house_xml parser_version 7bfc7b6a... (5,573 meeting_records rows appended in CI run 44002952840).",
+   "tickets": [
+    "ct-rhqw",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 matched meeting updated outcome from new 2026-11-14..16 meeting/recording/transcript observations.",
+   "tickets": [
+    "ct-rhqw",
+    "ct-q4e2"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_basis|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 matched meeting updated outcome_basis from new 2026-11-14..16 meeting/recording/transcript observations.",
+   "tickets": [
+    "ct-rhqw",
+    "ct-q4e2"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_reason|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 matched meeting updated outcome_reason from new 2026-11-14..16 meeting/recording/transcript observations.",
+   "tickets": [
+    "ct-rhqw",
+    "ct-q4e2"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_source_reference|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 matched meeting updated outcome_source_reference from new 2026-11-14..16 meeting/recording/transcript observations.",
+   "tickets": [
+    "ct-rhqw",
+    "ct-q4e2"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed publisher_status_observations|value differs on matched key",
+   "count": 628,
+   "disposition": "explained",
+   "cause": "628 matched meetings updated publisher_status_observations (beyond the 46+5 refetch_only rows) from newly linked docs.house.gov house_xml meeting status observations (610 events) and 2026-11-14..16 captures.",
+   "tickets": [
+    "ct-rhqw",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed session|value differs on matched key",
+   "count": 610,
+   "disposition": "explained",
+   "cause": "610 matched meetings populated session from docs.house.gov <committee-meeting> XML observations newly ingested in 2026-11-14..16 captures and re-parsed under house_xml parser_version 7bfc7b6a... (5,573 meeting_records rows appended in CI run 44002952840).",
+   "tickets": [
+    "ct-rhqw",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed sittings|value differs on matched key",
+   "count": 54,
+   "disposition": "explained",
+   "cause": "54 matched meetings updated sittings (not exempted under refetch_only) due to coinciding docs.house.gov house_xml observations (7bfc7b6a..., 5,573 rows) and 2026-11-14..16 Congress.gov detail updates.",
+   "tickets": [
+    "ct-rhqw",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed subject_keys|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "9 matched meetings updated subject_keys (not exempted under refetch_only) due to coinciding docs.house.gov house_xml observations (7bfc7b6a..., 5,573 rows) and 2026-11-14..16 Congress.gov detail updates.",
+   "tickets": [
+    "ct-rhqw",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed title|value differs on matched key",
+   "count": 67,
+   "disposition": "explained",
+   "cause": "67 matched meetings updated title (not exempted under refetch_only) due to coinciding docs.house.gov house_xml observations (7bfc7b6a..., 5,573 rows) and 2026-11-14..16 Congress.gov detail updates.",
+   "tickets": [
+    "ct-rhqw",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed transcripts|value differs on matched key",
+   "count": 19,
+   "disposition": "explained",
+   "cause": "19 matched meetings updated transcripts from newly ingested 2026-11-14..16 caption/transcript resources and newly linked docs.house.gov XML records.",
+   "tickets": [
+    "ct-4jms",
+    "ct-q4e2"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/meeting-records-merged.sql",
+     "sha256": "3155bb68261a2050c9bdbfb67be0ccf81ea913d821277608172c5d2d0e1d9413",
+     "size": 3113
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|added keys|no evidence given",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 new person added to people.parquet (beyond the 2 refetch_only Congress.gov additions on event 119594, total 100,719 -> 100,722) from witness appearances linked through newly ingested/re-parsed meeting records.",
+   "tickets": [
+    "ct-4jms",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 144,
+   "disposition": "explained",
+   "cause": "144 new recording matches (beyond 8 refetch_only matches on first-stated Congress.gov meetings, total 42,123 -> 42,275) produced by the 2026-11-15 weekly YouTube/GPO update-data.yml run (43678996225, 3 pipeline-data receipts, commits ad4e2692/9f8922e7) and 2026-11-14..16 committee page captures.",
+   "tickets": [
+    "ct-q4e2",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 37,
+   "disposition": "explained",
+   "cause": "37 matched recording_matches updated source_ref (distinct from the 6,621 refetch_only citation-only shifts) from 2026-11-15 weekly pipeline-data updates (43678996225) and 2026-11-14..16 committee page captures.",
+   "tickets": [
+    "ct-q4e2",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 23,
+   "disposition": "explained",
+   "cause": "23 new recordings with event_ids (beyond 4 refetch_only on first-stated Congress.gov meetings) traced to the 2026-11-15 weekly update-data.yml pipeline-data receipts (43678996225) and 2026-11-14..16 committee captures.",
+   "tickets": [
+    "ct-q4e2",
+    "ct-zdj8"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 15,
+   "disposition": "explained",
+   "cause": "15 new unlinked committee YouTube recordings (empty event_ids) added from 2026-11-15 update-data.yml YouTube cache refresh (43678996225; total recordings 15,720 -> 15,762). Unattended automatic verification bypassed because release includes manual V6 changes.",
+   "tickets": [
+    "ct-q4e2",
+    "ct-zdj8"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "10 existing recordings updated event_ids as new recording_matches (+144) linked videos to hearings following the 2026-11-15 update-data.yml refresh (43678996225) and 2026-11-14..16 committee page captures.",
+   "tickets": [
+    "ct-q4e2",
+    "ct-zdj8"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed recording_scope|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "3 existing recordings updated recording_scope as newly linked event_ids resolved channel-level recordings to specific meetings.",
+   "tickets": [
+    "ct-q4e2",
+    "ct-zdj8"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "Bytes only (count=0): all 12,506 recovery rows retain identical (md5(body), recovered_url) values; list_row ordinals shifted after 379 new documents were inserted and 1 live document retired in list.parquet.",
+   "tickets": [
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "retired_links.parquet|added keys|no evidence given",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 retired key added to retired_links.parquet (35,486 -> 35,487), accounting 1:1 for the 1 key removed from links.parquet (0 missing keys, 0 dangling successors, link_rule.ok=true).",
+   "tickets": [
+    "ct-tk10",
+    "ct-fb7k"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/retired-links.sql",
+     "sha256": "b314dee7a3f08e7211e30ebf86df78882eeddc86f630dd77bd26127151bdfff7",
+     "size": 4802
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|URLs gone|no live row has this address",
+   "count": -1,
+   "disposition": "explained",
+   "cause": "1 source URL removed corresponding to the 1 cleanly retired document (same_url_rows_on_removed_documents=0; link_rule address_changed=0, lookup_changed=0, ok=true).",
+   "tickets": [
+    "ct-tk10",
+    "ct-wscb"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/retired-links.sql",
+     "sha256": "b314dee7a3f08e7211e30ebf86df78882eeddc86f630dd77bd26127151bdfff7",
+     "size": 4802
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 963,
+   "disposition": "explained",
+   "cause": "963 source URLs newly added across the 379 added documents and existing documents linked from 2026-11-14..16 captured listing pages (total sources 585,543 -> 586,505).",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed is_saved|value differs on matched key",
+   "count": 13,
+   "disposition": "explained",
+   "cause": "13 matched source rows updated is_saved (including the 1 recovery-to-original capture promotion and saved-copy precedence selection when a new publisher capture matched an existing document body across 2026-11-14..16).",
+   "tickets": [
+    "ct-4jms",
+    "ct-u9y4"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 1667,
+   "disposition": "explained",
+   "cause": "1,667 matched source rows updated link_text from the 981 House committee listing page captures across 2026-11-14..16 (327 pages/night) and newly qualified V6 html_metadata/listing extractions.",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 1667,
+   "disposition": "explained",
+   "cause": "1,667 matched source rows updated listed_on from the 981 House committee listing page captures across 2026-11-14..16 (327 pages/night) and newly qualified V6 html_metadata/listing extractions.",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|removed URLs|unexplained",
+   "count": -697,
+   "disposition": "explained",
+   "cause": "Capture queue bookkeeping updated across 2026-11-14..16 scheduled capture nights (runs 43586531545, 43708031303, 43860791720; 3,270 capture receipts): 697 redundant/canonicalized queued spellings removed, 715 new attempted URLs recorded, 241 new URLs queued, and 27..467 existing URLs updated for attempts, status, timestamps, linked_from, next_attempt_at, and recheck_meeting_date (net +259 rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 715,
+   "disposition": "explained",
+   "cause": "Capture queue bookkeeping updated across 2026-11-14..16 scheduled capture nights (runs 43586531545, 43708031303, 43860791720; 3,270 capture receipts): 697 redundant/canonicalized queued spellings removed, 715 new attempted URLs recorded, 241 new URLs queued, and 27..467 existing URLs updated for attempts, status, timestamps, linked_from, next_attempt_at, and recheck_meeting_date (net +259 rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 241,
+   "disposition": "explained",
+   "cause": "Capture queue bookkeeping updated across 2026-11-14..16 scheduled capture nights (runs 43586531545, 43708031303, 43860791720; 3,270 capture receipts): 697 redundant/canonicalized queued spellings removed, 715 new attempted URLs recorded, 241 new URLs queued, and 27..467 existing URLs updated for attempts, status, timestamps, linked_from, next_attempt_at, and recheck_meeting_date (net +259 rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 442,
+   "disposition": "explained",
+   "cause": "Capture queue bookkeeping updated across 2026-11-14..16 scheduled capture nights (runs 43586531545, 43708031303, 43860791720; 3,270 capture receipts): 697 redundant/canonicalized queued spellings removed, 715 new attempted URLs recorded, 241 new URLs queued, and 27..467 existing URLs updated for attempts, status, timestamps, linked_from, next_attempt_at, and recheck_meeting_date (net +259 rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 442,
+   "disposition": "explained",
+   "cause": "Capture queue bookkeeping updated across 2026-11-14..16 scheduled capture nights (runs 43586531545, 43708031303, 43860791720; 3,270 capture receipts): 697 redundant/canonicalized queued spellings removed, 715 new attempted URLs recorded, 241 new URLs queued, and 27..467 existing URLs updated for attempts, status, timestamps, linked_from, next_attempt_at, and recheck_meeting_date (net +259 rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 430,
+   "disposition": "explained",
+   "cause": "Capture queue bookkeeping updated across 2026-11-14..16 scheduled capture nights (runs 43586531545, 43708031303, 43860791720; 3,270 capture receipts): 697 redundant/canonicalized queued spellings removed, 715 new attempted URLs recorded, 241 new URLs queued, and 27..467 existing URLs updated for attempts, status, timestamps, linked_from, next_attempt_at, and recheck_meeting_date (net +259 rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 334,
+   "disposition": "explained",
+   "cause": "Capture queue bookkeeping updated across 2026-11-14..16 scheduled capture nights (runs 43586531545, 43708031303, 43860791720; 3,270 capture receipts): 697 redundant/canonicalized queued spellings removed, 715 new attempted URLs recorded, 241 new URLs queued, and 27..467 existing URLs updated for attempts, status, timestamps, linked_from, next_attempt_at, and recheck_meeting_date (net +259 rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 327,
+   "disposition": "explained",
+   "cause": "Capture queue bookkeeping updated across 2026-11-14..16 scheduled capture nights (runs 43586531545, 43708031303, 43860791720; 3,270 capture receipts): 697 redundant/canonicalized queued spellings removed, 715 new attempted URLs recorded, 241 new URLs queued, and 27..467 existing URLs updated for attempts, status, timestamps, linked_from, next_attempt_at, and recheck_meeting_date (net +259 rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 328,
+   "disposition": "explained",
+   "cause": "Capture queue bookkeeping updated across 2026-11-14..16 scheduled capture nights (runs 43586531545, 43708031303, 43860791720; 3,270 capture receipts): 697 redundant/canonicalized queued spellings removed, 715 new attempted URLs recorded, 241 new URLs queued, and 27..467 existing URLs updated for attempts, status, timestamps, linked_from, next_attempt_at, and recheck_meeting_date (net +259 rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 467,
+   "disposition": "explained",
+   "cause": "Capture queue bookkeeping updated across 2026-11-14..16 scheduled capture nights (runs 43586531545, 43708031303, 43860791720; 3,270 capture receipts): 697 redundant/canonicalized queued spellings removed, 715 new attempted URLs recorded, 241 new URLs queued, and 27..467 existing URLs updated for attempts, status, timestamps, linked_from, next_attempt_at, and recheck_meeting_date (net +259 rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 27,
+   "disposition": "explained",
+   "cause": "Capture queue bookkeeping updated across 2026-11-14..16 scheduled capture nights (runs 43586531545, 43708031303, 43860791720; 3,270 capture receipts): 697 redundant/canonicalized queued spellings removed, 715 new attempted URLs recorded, 241 new URLs queued, and 27..467 existing URLs updated for attempts, status, timestamps, linked_from, next_attempt_at, and recheck_meeting_date (net +259 rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-9j3z"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys gone|every row for the key was removed",
+   "count": -1,
+   "disposition": "explained",
+   "cause": "1 lookup key removed from urls.parquet for the 1 cleanly retired document (link_rule lookup_changed=0, ok=true).",
+   "tickets": [
+    "ct-tk10",
+    "ct-wscb"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    },
+    {
+     "path": "model/sql/retired-links.sql",
+     "sha256": "b314dee7a3f08e7211e30ebf86df78882eeddc86f630dd77bd26127151bdfff7",
+     "size": 4802
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 2471,
+   "disposition": "explained",
+   "cause": "2,471 new lookup keys added in urls.parquet (652,788 -> 655,258) for the 379 added documents and 963 new source addresses captured across 2026-11-14..16.",
+   "tickets": [
+    "ct-4jms",
+    "ct-hiec"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|added keys|no evidence given",
+   "count": 44,
+   "disposition": "explained",
+   "cause": "44 new YouTube videos added to videos.parquet (67,424 -> 67,468) by the 2026-11-15 weekly update-data.yml YouTube cache refresh (run 43678996225, 3 pipeline-data receipts).",
+   "tickets": [
+    "ct-q4e2",
+    "ct-u9jl"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed available|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 existing video rows updated available (outside refetch_only citation-only rows) following the 2026-11-15 weekly YouTube cache & API refresh (run 43678996225, video_records snapshot 1117509191451879334 -> 5517607044145028852).",
+   "tickets": [
+    "ct-q4e2",
+    "ct-u9jl"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed details_checked_at|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "9 existing video rows updated details_checked_at (outside refetch_only citation-only rows) following the 2026-11-15 weekly YouTube cache & API refresh (run 43678996225, video_records snapshot 1117509191451879334 -> 5517607044145028852).",
+   "tickets": [
+    "ct-q4e2",
+    "ct-u9jl"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed duration_seconds|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "9 existing video rows updated duration_seconds (outside refetch_only citation-only rows) following the 2026-11-15 weekly YouTube cache & API refresh (run 43678996225, video_records snapshot 1117509191451879334 -> 5517607044145028852).",
+   "tickets": [
+    "ct-q4e2",
+    "ct-u9jl"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed has_caption|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 existing video rows updated has_caption (outside refetch_only citation-only rows) following the 2026-11-15 weekly YouTube cache & API refresh (run 43678996225, video_records snapshot 1117509191451879334 -> 5517607044145028852).",
+   "tickets": [
+    "ct-q4e2",
+    "ct-u9jl"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed published_at|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "5 existing video rows updated published_at (outside refetch_only citation-only rows) following the 2026-11-15 weekly YouTube cache & API refresh (run 43678996225, video_records snapshot 1117509191451879334 -> 5517607044145028852).",
+   "tickets": [
+    "ct-q4e2",
+    "ct-u9jl"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed record_sha|value differs on matched key",
+   "count": 60,
+   "disposition": "explained",
+   "cause": "60 existing video rows updated record_sha (outside refetch_only citation-only rows) following the 2026-11-15 weekly YouTube cache & API refresh (run 43678996225, video_records snapshot 1117509191451879334 -> 5517607044145028852).",
+   "tickets": [
+    "ct-q4e2",
+    "ct-u9jl"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed source_description|value differs on matched key",
+   "count": 52,
+   "disposition": "explained",
+   "cause": "52 existing video rows updated source_description (outside refetch_only citation-only rows) following the 2026-11-15 weekly YouTube cache & API refresh (run 43678996225, video_records snapshot 1117509191451879334 -> 5517607044145028852).",
+   "tickets": [
+    "ct-q4e2",
+    "ct-u9jl"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed title|value differs on matched key",
+   "count": 51,
+   "disposition": "explained",
+   "cause": "51 existing video rows updated title (outside refetch_only citation-only rows) following the 2026-11-15 weekly YouTube cache & API refresh (run 43678996225, video_records snapshot 1117509191451879334 -> 5517607044145028852).",
+   "tickets": [
+    "ct-q4e2",
+    "ct-u9jl"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed video_published_at|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "5 existing video rows updated video_published_at (outside refetch_only citation-only rows) following the 2026-11-15 weekly YouTube cache & API refresh (run 43678996225, video_records snapshot 1117509191451879334 -> 5517607044145028852).",
+   "tickets": [
+    "ct-q4e2",
+    "ct-u9jl"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed event_id|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 matched-key witness row updated event_id (beyond 2 refetch_only additions on event 119594) following newly ingested/re-parsed docs.house.gov house_xml appearance observations and superseded_by reconciliation (22 new appearance_records rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed occasion|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 matched-key witness row updated occasion (beyond 2 refetch_only additions on event 119594) following newly ingested/re-parsed docs.house.gov house_xml appearance observations and superseded_by reconciliation (22 new appearance_records rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed person_key|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 matched-key witness row updated person_key (beyond 2 refetch_only additions on event 119594) following newly ingested/re-parsed docs.house.gov house_xml appearance observations and superseded_by reconciliation (22 new appearance_records rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed superseded_by|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "1 matched-key witness row updated superseded_by (beyond 2 refetch_only additions on event 119594) following newly ingested/re-parsed docs.house.gov house_xml appearance observations and superseded_by reconciliation (22 new appearance_records rows).",
+   "tickets": [
+    "ct-4jms",
+    "ct-rhqw"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373.json",
+     "sha256": "a2adc23edbe55b4e4f15032f3708463db132a3248e034b66210fda893fe0352f",
+     "size": 32062
+    }
+   ]
+  }
+ ]
+}

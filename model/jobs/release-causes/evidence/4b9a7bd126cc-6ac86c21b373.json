@@ -1,0 +1,1160 @@
+{
+ "version": 1,
+ "generated_for": {
+  "base_release_id": "4b9a7bd126cc17e39dfbe7f8fabafbdb7251dcd32576277f308916f469c9bab1",
+  "candidate_release_id": "6ac86c21b3732b4c546df1c282cff8e228062355152a4ef0e5252ab86fae5d2e",
+  "model_commit": "a1288eb3d19c0d5eb384afc0be6ffb310478b663"
+ },
+ "ci_runs": {
+  "entity_and_capture_ingest_backfill": {
+   "run_id": 44002952840,
+   "commit": "2b9d9ee258680e5efcc0d244a6264c9a3f8f86ee",
+   "appended_rows": {
+    "meeting_records": 5573,
+    "appearance_records": 22
+   }
+  },
+  "html_metadata_qualification_backfill": {
+   "run_id": 44019990275,
+   "commit": "5059c0db7ce1d3bcc9bce35255489397654858cc",
+   "batches_count": 20,
+   "listing_objects": 196298,
+   "initial_work_items": 196298,
+   "post_work_items": 0,
+   "gate5_report": {
+    "captures__mapping_version_null": 0,
+    "captures__mapping_version_unknown": 0,
+    "readings__other_versions_retained": 196754,
+    "readings__parser_version_null": 0
+   },
+   "initial_readings_snapshot": 2037872334234576789,
+   "final_readings_snapshot": 7644694018442055649
+  },
+  "gate1_candidate_build": {
+   "run_id": 44024675583,
+   "commit": "a1288eb3d19c0d5eb384afc0be6ffb310478b663",
+   "admitted_names": [
+    "invariants",
+    "model_invariants",
+    "url_state_invariants",
+    "profile_completeness",
+    "entity_profile_completeness"
+   ],
+   "watchdog_peak_rss_gb": 10.282,
+   "watchdog_elapsed_seconds": null,
+   "link_rule": {
+    "missing": 0,
+    "missing_keys": [],
+    "dangling": 0,
+    "dangling_keys": [],
+    "published_and_retired": 0,
+    "published_and_retired_keys": [],
+    "changed": 0,
+    "changed_keys": [],
+    "changed_answers": [],
+    "lookup_changed": 0,
+    "lookup_changed_keys": [],
+    "lookup_changed_answers": [],
+    "address_changed": 0,
+    "address_changed_keys": [],
+    "address_changed_answers": [],
+    "demoted": 0,
+    "demoted_keys": [],
+    "unchecked": [],
+    "demoted_answers": [],
+    "ok": true
+   }
+  }
+ },
+ "receipt_delta": {
+  "base_receipt_count": 36984,
+  "candidate_receipt_count": 40257,
+  "added_receipt_count": 3273,
+  "removed_receipt_count": 0,
+  "added_by_capture_run": {
+   "receipts/congress/meetings/20261114T104306Z-8644817d9215": 66,
+   "receipts/congress/meetings/20261115T111620Z-8b5a0dc10b3d": 66,
+   "receipts/congress/meetings/20261116T114810Z-d7e976102855": 66,
+   "receipts/documents/2026-11-14/20261114T104341Z-f147e9b172c1": 697,
+   "receipts/documents/2026-11-15/20261115T111654Z-8b35361b9153": 697,
+   "receipts/documents/2026-11-16/20261116T114845Z-ef8ac6909e6d": 697,
+   "receipts/house/pages/20261114T104341Z-f147e9b172c1": 327,
+   "receipts/house/pages/20261115T111654Z-8b35361b9153": 327,
+   "receipts/house/pages/20261116T114845Z-ef8ac6909e6d": 327,
+   "receipts/pipeline-data/2026-11-15/20261115T050352Z-085ea4aef63e": 1,
+   "receipts/pipeline-data/2026-11-15/20261115T051150Z-8cd3511594f1": 1,
+   "receipts/pipeline-data/2026-11-15/20261115T051605Z-8e842f46fd13": 1
+  }
+ },
+ "snapshot_changes": {
+  "appearance_records": {
+   "base_snapshot": 7936090936532396091,
+   "candidate_snapshot": 6762271382879983287,
+   "base_version": {
+    "congress_gov": "f306c3df6098936b7a336e31e434805d927d4e60c126a5cf3b68a0bc75c831b7",
+    "house_xml": "108f7ab966e3df646b9bc982e58c66f0f53b6f16abbf90336d670f4cda166bd9",
+    "mods": "610bb71978173326dc605a7b86e60124d951f8b03fa2e8f69e53b221fe1a37a0",
+    "senate_page": "4456507ba7600802801882568674a27c75000a3fe9dc151f8cd8a5fbb534b5c5"
+   },
+   "candidate_version": {
+    "congress_gov": "f306c3df6098936b7a336e31e434805d927d4e60c126a5cf3b68a0bc75c831b7",
+    "house_xml": "108f7ab966e3df646b9bc982e58c66f0f53b6f16abbf90336d670f4cda166bd9",
+    "mods": "610bb71978173326dc605a7b86e60124d951f8b03fa2e8f69e53b221fe1a37a0",
+    "senate_page": "4456507ba7600802801882568674a27c75000a3fe9dc151f8cd8a5fbb534b5c5"
+   }
+  },
+  "captures": {
+   "base_snapshot": 4529945025615165014,
+   "candidate_snapshot": 2223689568732687290,
+   "base_version": "0402c626941453040e447eecd1d37a8bf10cee93160e4000b1d0d4d5d97987b0",
+   "candidate_version": "0402c626941453040e447eecd1d37a8bf10cee93160e4000b1d0d4d5d97987b0"
+  },
+  "committee_records": {
+   "base_snapshot": 4209633858763154714,
+   "candidate_snapshot": 4209633858763154714,
+   "base_version": {
+    "house_xml": "363820a4dd6795fc4bdfad7e341e9070d4f8cc4bc92d22bdb89ee3474438fecc"
+   },
+   "candidate_version": {
+    "house_xml": "363820a4dd6795fc4bdfad7e341e9070d4f8cc4bc92d22bdb89ee3474438fecc"
+   }
+  },
+  "filename_readings": {
+   "base_snapshot": 4613725210930683673,
+   "candidate_snapshot": 5049476962755431919,
+   "base_version": "e6e2699343ebae7fd149702114d58360a3bd62a7331d19db58215edc042aba70",
+   "candidate_version": "6a435cb66adfd42ed40151b8565f1118b3dbd07f4d905023489c6a9223b9ec44"
+  },
+  "meeting_records": {
+   "base_snapshot": 1582761600704387947,
+   "candidate_snapshot": 8135306187013457228,
+   "base_version": {
+    "congress_gov": "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
+    "house_xml": "24c88e855dab86f0c362387ffd4c40cf196e2a6f5c14d8aa1dba66f821ca0df5"
+   },
+   "candidate_version": {
+    "congress_gov": "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
+    "house_xml": "7bfc7b6a9dbf4e85ce17322a29f331e124c2717b73ce76a144c97d7ce53b2d5b"
+   }
+  },
+  "playlist_records": {
+   "base_snapshot": 3020372319786105918,
+   "candidate_snapshot": 3020372319786105918,
+   "base_version": {
+    "hls": "53e6d0904cbc43c20c215505d012fdd054a5eb262d842478dfbdd6891ee4a557"
+   },
+   "candidate_version": {
+    "hls": "53e6d0904cbc43c20c215505d012fdd054a5eb262d842478dfbdd6891ee4a557"
+   }
+  },
+  "readings": {
+   "base_snapshot": 2913671494113996569,
+   "candidate_snapshot": 7644694018442055649,
+   "base_version": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed",
+   "candidate_version": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed"
+  },
+  "transcript_headings": {
+   "base_snapshot": 1521016025579643986,
+   "candidate_snapshot": 1521016025579643986,
+   "base_version": {
+    "gpo_html": "1f2ecd58a4b4d538d1e0d16a6c143dcdb477999bc911e08db3ca64497df83725"
+   },
+   "candidate_version": {
+    "gpo_html": "1f2ecd58a4b4d538d1e0d16a6c143dcdb477999bc911e08db3ca64497df83725"
+   }
+  },
+  "video_records": {
+   "base_snapshot": 1117509191451879334,
+   "candidate_snapshot": 5517607044145028852,
+   "base_version": {
+    "youtube_api": "8a15a14d1921489d4adb5b6f41e594c1d17b67466f716e9cb5994441a0738a4b",
+    "youtube_cache": "6efbae6d2d009baf72e0de5e60eba12307cd427f4900a2c892d36d6cc08ef3ba"
+   },
+   "candidate_version": {
+    "youtube_api": "8a15a14d1921489d4adb5b6f41e594c1d17b67466f716e9cb5994441a0738a4b",
+    "youtube_cache": "6efbae6d2d009baf72e0de5e60eba12307cd427f4900a2c892d36d6cc08ef3ba"
+   }
+  }
+ },
+ "html_metadata_version": {
+  "base": "0fff8151c7752109cc3778d9570e682985edce2e1f90e04c3b638c37a6c4a129",
+  "candidate": "c226ccd99877c497474ffee673baa301f37bc14972b9b9f391af594da9b2b7be"
+ },
+ "meeting_updates_summary": {
+  "count": 14,
+  "event_ids": [
+   118862,
+   119397,
+   119578,
+   119594,
+   119596,
+   119597,
+   119609,
+   338829,
+   338840,
+   338841,
+   338842,
+   338843,
+   338844,
+   338845
+  ],
+  "meetings": [
+   {
+    "event_id": 118862,
+    "title": "H.R. 3495 \u2013 Direct Seller and Real Estate Agent Harmonization Act; H.R. 5267 \u2013 American Franchise Act",
+    "meeting_date": "2026-11-17",
+    "first_stated": true,
+    "documents_added": [
+     ":: H. Rept. 119-494 Part II \u2013 Supplemental report from the Committee on Education and Workforce to accompany H.R. 3495",
+     "H.R. 5267 \u2013 American Franchise Act",
+     ":: H. Rept. 119-802 \u2013 Report from the Committee on Education and Workforce to accompany H.R. 5267",
+     "H.R. 3495 \u2013 Direct Seller and Real Estate Agent Harmonization Act",
+     ":: H. Rept. 119-494 Part I \u2013 Report from the Committee on Education and Workforce to accompany H.R. 3495"
+    ],
+    "documents_removed": [],
+    "videos_added": [],
+    "videos_removed": [],
+    "sittings_added": [
+     "2026-11-17 21:00Z H-313, Capitol"
+    ],
+    "sittings_removed": [],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 119397,
+    "title": "Committee on House Administration Full Committee Hearing, \u201cThe Congressional Research Service and the Future of AI-Enabled Policy Analysis\u201d",
+    "meeting_date": "2026-06-25",
+    "first_stated": false,
+    "documents_added": [],
+    "documents_removed": [],
+    "videos_added": [],
+    "videos_removed": [],
+    "sittings_added": [],
+    "sittings_removed": [],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 119578,
+    "title": "\u201cBeyond the Storm: Assessing FEMA\u2019s Mission Readiness\u201d",
+    "meeting_date": "2026-11-19",
+    "first_stated": true,
+    "documents_added": [
+     "Hearing Notice"
+    ],
+    "documents_removed": [],
+    "videos_added": [],
+    "videos_removed": [],
+    "sittings_added": [
+     "2026-11-19 15:00Z 310, Cannon House Office Building"
+    ],
+    "sittings_removed": [],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 119594,
+    "title": "\u201cOversight of the Bureau of Alcohol, Tobacco, Firearms and Explosives\u2019 Out-of-Business Records Retention Practices\u201d",
+    "meeting_date": "2026-11-18",
+    "first_stated": false,
+    "documents_added": [
+     "Memo"
+    ],
+    "documents_removed": [],
+    "videos_added": [],
+    "videos_removed": [],
+    "sittings_added": [],
+    "sittings_removed": [],
+    "witnesses_added": [
+     "Aidan Johnston (Gun Owners of America)",
+     "Wally Nelson (Bureau of Alcohol, Tobacco, Firearms, and Explosives)"
+    ],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 119596,
+    "title": "Psychedelic-Assisted Therapies for Veterans: The Path Forward",
+    "meeting_date": "2026-11-18",
+    "first_stated": false,
+    "documents_added": [
+     "Statement for the Record: Veterans of Foreign Wars"
+    ],
+    "documents_removed": [],
+    "videos_added": [],
+    "videos_removed": [],
+    "sittings_added": [],
+    "sittings_removed": [],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 119597,
+    "title": "\u201cProtecting Main Street, Securing America: Examining Cybersecurity Challenges for Small Business Contractors.\u201d",
+    "meeting_date": "2026-11-18",
+    "first_stated": false,
+    "documents_added": [
+     "Public Memo"
+    ],
+    "documents_removed": [],
+    "videos_added": [],
+    "videos_removed": [],
+    "sittings_added": [],
+    "sittings_removed": [],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 119609,
+    "title": "Business Meeting to Consider: \r\nRelease of Unclassified Report on the Committee's Open Investigation and Additional Matters",
+    "meeting_date": "2026-11-17",
+    "first_stated": true,
+    "documents_added": [],
+    "documents_removed": [],
+    "videos_added": [],
+    "videos_removed": [],
+    "sittings_added": [
+     "2026-11-17 22:15Z Capitol"
+    ],
+    "sittings_removed": [],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 338829,
+    "title": "Hearings to examine the nominations of Ashley Stow, of Texas, and Andrew Woodson, of Virginia, both to be a Member of the Federal Election Commission.",
+    "meeting_date": "2026-11-17",
+    "first_stated": false,
+    "documents_added": [],
+    "documents_removed": [],
+    "videos_added": [],
+    "videos_removed": [],
+    "sittings_added": [
+     "2026-11-17 15:30Z 301, Russell Senate Office Building"
+    ],
+    "sittings_removed": [
+     "2026-11-17 05:00Z 301, Russell Senate Office Building"
+    ],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 338840,
+    "title": "Hearings to examine certain pending nominations.",
+    "meeting_date": "2026-11-19",
+    "first_stated": true,
+    "documents_added": [],
+    "documents_removed": [],
+    "videos_added": [
+     "Hearings to examine certain pending nominations.",
+     "Hearings to examine certain pending nominations."
+    ],
+    "videos_removed": [],
+    "sittings_added": [
+     "2026-11-19 15:00Z 419, Dirksen Senate Office Building"
+    ],
+    "sittings_removed": [],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 338841,
+    "title": "Business meeting to consider certain pending nominations.",
+    "meeting_date": "2026-11-19",
+    "first_stated": true,
+    "documents_added": [],
+    "documents_removed": [],
+    "videos_added": [
+     "Business meeting to consider certain pending nominations.",
+     "Business meeting to consider certain pending nominations."
+    ],
+    "videos_removed": [],
+    "sittings_added": [
+     "2026-11-19 15:00Z 538, Dirksen Senate Office Building"
+    ],
+    "sittings_removed": [],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 338842,
+    "title": "Business meeting to consider pending calendar business.",
+    "meeting_date": "2026-11-18",
+    "first_stated": true,
+    "documents_added": [],
+    "documents_removed": [],
+    "videos_added": [],
+    "videos_removed": [],
+    "sittings_added": [
+     "2026-11-18 05:00Z 216, Capitol (Senate side)"
+    ],
+    "sittings_removed": [],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 338843,
+    "title": "Business meeting to consider pending calendar business.",
+    "meeting_date": "2026-11-18",
+    "first_stated": true,
+    "documents_added": [],
+    "documents_removed": [],
+    "videos_added": [
+     "Business meeting to consider pending calendar business.",
+     "Business meeting to consider pending calendar business."
+    ],
+    "videos_removed": [],
+    "sittings_added": [
+     "2026-11-18 19:30Z 628, Dirksen Senate Office Building"
+    ],
+    "sittings_removed": [],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 338844,
+    "title": "Business meeting to consider pending calendar business.",
+    "meeting_date": "2026-11-16",
+    "first_stated": true,
+    "documents_added": [],
+    "documents_removed": [],
+    "videos_added": [],
+    "videos_removed": [],
+    "sittings_added": [
+     "2026-11-16 05:00Z 216, Capitol (Senate side)"
+    ],
+    "sittings_removed": [],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   },
+   {
+    "event_id": 338845,
+    "title": "Business meeting to consider pending calendar business.",
+    "meeting_date": "2026-11-18",
+    "first_stated": true,
+    "documents_added": [],
+    "documents_removed": [],
+    "videos_added": [
+     "Business meeting to consider pending calendar business.",
+     "Business meeting to consider pending calendar business."
+    ],
+    "videos_removed": [],
+    "sittings_added": [
+     "2026-11-18 14:30Z 406, Dirksen Senate Office Building"
+    ],
+    "sittings_removed": [],
+    "witnesses_added": [],
+    "witnesses_removed": [],
+    "keys_lost": [],
+    "also_changed": []
+   }
+  ]
+ },
+ "file_deltas": {
+  "bills.parquet": {
+   "rows": {
+    "base": 52291,
+    "candidate": 52309
+   },
+   "delta": 18,
+   "digest_identical": false,
+   "refetch_only_groups": []
+  },
+  "channels.parquet": {
+   "rows": {
+    "base": 119,
+    "candidate": 119
+   },
+   "delta": 0,
+   "digest_identical": false,
+   "refetch_only_groups": [
+    {
+     "group": "changed record_sha",
+     "cause": "only the file citation moved: every content column equal on the row",
+     "count": 119
+    }
+   ]
+  },
+  "detail.parquet": {
+   "rows": {
+    "base": 324013,
+    "candidate": 324391
+   },
+   "delta": 378,
+   "digest_identical": false,
+   "refetch_only_groups": []
+  },
+  "links.parquet": {
+   "rows": {
+    "base": 408719,
+    "candidate": 409098
+   },
+   "delta": 379,
+   "digest_identical": false,
+   "refetch_only_groups": []
+  },
+  "list.parquet": {
+   "rows": {
+    "base": 324013,
+    "candidate": 324391
+   },
+   "delta": 378,
+   "digest_identical": false,
+   "refetch_only_groups": []
+  },
+  "meeting_coverage.parquet": {
+   "rows": {
+    "base": 93665,
+    "candidate": 93710
+   },
+   "delta": 45,
+   "digest_identical": false,
+   "refetch_only_groups": [
+    {
+     "group": "added keys",
+     "cause": "a meeting Congress.gov states for the first time, read from its detail record (ct-rhqw)",
+     "count": 45
+    },
+    {
+     "group": "changed count",
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 1
+    },
+    {
+     "group": "changed state",
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 2
+    }
+   ]
+  },
+  "meetings.parquet": {
+   "rows": {
+    "base": 18733,
+    "candidate": 18742
+   },
+   "delta": 9,
+   "digest_identical": false,
+   "refetch_only_groups": [
+    {
+     "group": "added keys",
+     "cause": "a meeting Congress.gov states for the first time, read from its detail record (ct-rhqw)",
+     "count": 9
+    },
+    {
+     "group": "changed congress_gov_detail_observation",
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 5
+    },
+    {
+     "group": "changed congress_gov_detail_observation",
+     "cause": "a new read of the Congress.gov detail record: every other column equal on the meeting",
+     "count": 46
+    },
+    {
+     "group": "changed congress_gov_updated",
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 5
+    },
+    {
+     "group": "changed document_references",
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 3
+    },
+    {
+     "group": "changed publisher_status_observations",
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 5
+    },
+    {
+     "group": "changed publisher_status_observations",
+     "cause": "a new read of the Congress.gov detail record: every other column equal on the meeting",
+     "count": 46
+    },
+    {
+     "group": "changed sittings",
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 1
+    }
+   ]
+  },
+  "people.parquet": {
+   "rows": {
+    "base": 100719,
+    "candidate": 100722
+   },
+   "delta": 3,
+   "digest_identical": false,
+   "refetch_only_groups": [
+    {
+     "group": "added keys",
+     "cause": "new on its meeting; a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 2
+    }
+   ]
+  },
+  "recording_matches.parquet": {
+   "rows": {
+    "base": 42123,
+    "candidate": 42275
+   },
+   "delta": 152,
+   "digest_identical": false,
+   "refetch_only_groups": [
+    {
+     "group": "added keys",
+     "cause": "a meeting Congress.gov states for the first time, read from its detail record (ct-rhqw)",
+     "count": 8
+    },
+    {
+     "group": "changed source_ref",
+     "cause": "citation follows the video's record_sha: every other column equal on the row",
+     "count": 6621
+    }
+   ]
+  },
+  "recordings.parquet": {
+   "rows": {
+    "base": 15720,
+    "candidate": 15762
+   },
+   "delta": 42,
+   "digest_identical": false,
+   "refetch_only_groups": [
+    {
+     "group": "added keys",
+     "cause": "with event_ids; a meeting Congress.gov states for the first time, read from its detail record (ct-rhqw)",
+     "count": 4
+    }
+   ]
+  },
+  "recoveries.parquet": {
+   "rows": {
+    "base": 12506,
+    "candidate": 12506
+   },
+   "delta": 0,
+   "digest_identical": false,
+   "refetch_only_groups": []
+  },
+  "retired_links.parquet": {
+   "rows": {
+    "base": 35486,
+    "candidate": 35487
+   },
+   "delta": 1,
+   "digest_identical": false,
+   "refetch_only_groups": []
+  },
+  "sources.parquet": {
+   "rows": {
+    "base": 585543,
+    "candidate": 586505
+   },
+   "delta": 962,
+   "digest_identical": false,
+   "refetch_only_groups": []
+  },
+  "url_state.parquet": {
+   "rows": {
+    "base": 1204646,
+    "candidate": 1204905
+   },
+   "delta": 259,
+   "digest_identical": false,
+   "refetch_only_groups": []
+  },
+  "urls.parquet": {
+   "rows": {
+    "base": 652788,
+    "candidate": 655258
+   },
+   "delta": 2470,
+   "digest_identical": false,
+   "refetch_only_groups": []
+  },
+  "videos.parquet": {
+   "rows": {
+    "base": 67424,
+    "candidate": 67468
+   },
+   "delta": 44,
+   "digest_identical": false,
+   "refetch_only_groups": [
+    {
+     "group": "changed details_checked_at",
+     "cause": "only the file citation moved: every content column equal on the row",
+     "count": 173
+    },
+    {
+     "group": "changed record_sha",
+     "cause": "only the file citation moved: every content column equal on the row",
+     "count": 67346
+    }
+   ]
+  },
+  "witnesses.parquet": {
+   "rows": {
+    "base": 172670,
+    "candidate": 172672
+   },
+   "delta": 2,
+   "digest_identical": false,
+   "refetch_only_groups": [
+    {
+     "group": "added keys",
+     "cause": "new on its meeting; a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 2
+    },
+    {
+     "group": "changed record_sha",
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 1
+    }
+   ]
+  }
+ },
+ "failing_groups": [
+  {
+   "id": "bills.parquet|added bills|unexplained",
+   "count": 21
+  },
+  {
+   "id": "bills.parquet|removed bills|unexplained",
+   "count": -3
+  },
+  {
+   "id": "detail.parquet|removed rows|no surviving link key",
+   "count": -1
+  },
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 379
+  },
+  {
+   "id": "detail.parquet|changed chambers|value differs on matched key",
+   "count": 60061
+  },
+  {
+   "id": "detail.parquet|changed committee_keys|value differs on matched key",
+   "count": 80544
+  },
+  {
+   "id": "detail.parquet|changed congress|value differs on matched key",
+   "count": 19
+  },
+  {
+   "id": "detail.parquet|changed date_kind|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "detail.parquet|changed document_date|value differs on matched key",
+   "count": 3
+  },
+  {
+   "id": "detail.parquet|changed document_date_source|value differs on matched key",
+   "count": 2
+  },
+  {
+   "id": "detail.parquet|changed document_date_status|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "detail.parquet|changed document_family|value differs on matched key",
+   "count": 63
+  },
+  {
+   "id": "detail.parquet|changed document_kind|value differs on matched key",
+   "count": 63
+  },
+  {
+   "id": "detail.parquet|changed facts|value differs on matched key",
+   "count": 36
+  },
+  {
+   "id": "detail.parquet|changed filename|value differs on matched key",
+   "count": 12
+  },
+  {
+   "id": "detail.parquet|changed first_captured|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "detail.parquet|changed in_archive_since|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "detail.parquet|changed link_key|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "detail.parquet|changed main_content|value differs on matched key",
+   "count": 15468
+  },
+  {
+   "id": "detail.parquet|changed measure_keys|value differs on matched key",
+   "count": 18
+  },
+  {
+   "id": "detail.parquet|changed meeting_keys|value differs on matched key",
+   "count": 4
+  },
+  {
+   "id": "detail.parquet|changed saved_kind|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 580
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 790
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 791
+  },
+  {
+   "id": "detail.parquet|changed witness_keys|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "links.parquet|removed keys|no evidence given",
+   "count": -1
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 380
+  },
+  {
+   "id": "list.parquet|removed rows|no surviving link key",
+   "count": -1
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 379
+  },
+  {
+   "id": "list.parquet|changed chambers|value differs on matched key",
+   "count": 60061
+  },
+  {
+   "id": "list.parquet|changed committee_keys|value differs on matched key",
+   "count": 80544
+  },
+  {
+   "id": "list.parquet|changed congress|value differs on matched key",
+   "count": 19
+  },
+  {
+   "id": "list.parquet|changed date_kind|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "list.parquet|changed document_date|value differs on matched key",
+   "count": 3
+  },
+  {
+   "id": "list.parquet|changed document_date_status|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "list.parquet|changed document_family|value differs on matched key",
+   "count": 63
+  },
+  {
+   "id": "list.parquet|changed document_kind|value differs on matched key",
+   "count": 63
+  },
+  {
+   "id": "list.parquet|changed filename|value differs on matched key",
+   "count": 12
+  },
+  {
+   "id": "list.parquet|changed first_captured|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "list.parquet|changed measure_keys|value differs on matched key",
+   "count": 18
+  },
+  {
+   "id": "list.parquet|changed meeting_keys|value differs on matched key",
+   "count": 4
+  },
+  {
+   "id": "list.parquet|changed saved_kind|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 790
+  },
+  {
+   "id": "list.parquet|changed witness_keys|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 9
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 56
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 131
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 107
+  },
+  {
+   "id": "meetings.parquet|changed committees|value differs on matched key",
+   "count": 648
+  },
+  {
+   "id": "meetings.parquet|changed congress_gov_detail_observation|value differs on matched key",
+   "count": 2
+  },
+  {
+   "id": "meetings.parquet|changed house_xml_updated|value differs on matched key",
+   "count": 610
+  },
+  {
+   "id": "meetings.parquet|changed meeting_type|value differs on matched key",
+   "count": 610
+  },
+  {
+   "id": "meetings.parquet|changed outcome|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "meetings.parquet|changed outcome_basis|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "meetings.parquet|changed outcome_reason|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "meetings.parquet|changed outcome_source_reference|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "meetings.parquet|changed publisher_status_observations|value differs on matched key",
+   "count": 628
+  },
+  {
+   "id": "meetings.parquet|changed session|value differs on matched key",
+   "count": 610
+  },
+  {
+   "id": "meetings.parquet|changed sittings|value differs on matched key",
+   "count": 54
+  },
+  {
+   "id": "meetings.parquet|changed subject_keys|value differs on matched key",
+   "count": 9
+  },
+  {
+   "id": "meetings.parquet|changed title|value differs on matched key",
+   "count": 67
+  },
+  {
+   "id": "meetings.parquet|changed transcripts|value differs on matched key",
+   "count": 19
+  },
+  {
+   "id": "people.parquet|added keys|no evidence given",
+   "count": 1
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 144
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 37
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 23
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 15
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 10
+  },
+  {
+   "id": "recordings.parquet|changed recording_scope|value differs on matched key",
+   "count": 3
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0
+  },
+  {
+   "id": "retired_links.parquet|added keys|no evidence given",
+   "count": 1
+  },
+  {
+   "id": "sources.parquet|URLs gone|no live row has this address",
+   "count": -1
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 963
+  },
+  {
+   "id": "sources.parquet|changed is_saved|value differs on matched key",
+   "count": 13
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 1667
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 1667
+  },
+  {
+   "id": "url_state.parquet|removed URLs|unexplained",
+   "count": -697
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 715
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 241
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 442
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 442
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 430
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 334
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 327
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 328
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 467
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 27
+  },
+  {
+   "id": "urls.parquet|keys gone|every row for the key was removed",
+   "count": -1
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 2471
+  },
+  {
+   "id": "videos.parquet|added keys|no evidence given",
+   "count": 44
+  },
+  {
+   "id": "videos.parquet|changed available|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "videos.parquet|changed details_checked_at|value differs on matched key",
+   "count": 9
+  },
+  {
+   "id": "videos.parquet|changed duration_seconds|value differs on matched key",
+   "count": 9
+  },
+  {
+   "id": "videos.parquet|changed has_caption|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "videos.parquet|changed published_at|value differs on matched key",
+   "count": 5
+  },
+  {
+   "id": "videos.parquet|changed record_sha|value differs on matched key",
+   "count": 60
+  },
+  {
+   "id": "videos.parquet|changed source_description|value differs on matched key",
+   "count": 52
+  },
+  {
+   "id": "videos.parquet|changed title|value differs on matched key",
+   "count": 51
+  },
+  {
+   "id": "videos.parquet|changed video_published_at|value differs on matched key",
+   "count": 5
+  },
+  {
+   "id": "witnesses.parquet|changed event_id|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "witnesses.parquet|changed occasion|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "witnesses.parquet|changed person_key|value differs on matched key",
+   "count": 1
+  },
+  {
+   "id": "witnesses.parquet|changed superseded_by|value differs on matched key",
+   "count": 1
+  }
+ ]
+}
