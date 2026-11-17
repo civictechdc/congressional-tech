@@ -24,6 +24,7 @@ STALE_AFTER = timedelta(hours=30)
 CAPTURE = 'Capture archive sources'
 PUBLISH = 'Archive publish, backfill and maintenance'
 PASSED = {'success', 'skipped', 'neutral'}
+RUNBOOK = 'docs/nightly.md'
 
 
 def gh(*args: str, stdin: str | None = None) -> str:
@@ -39,7 +40,9 @@ def open_issue(title: str) -> int | None:
 
 
 def report(title: str, body: str) -> None:
-    """Comment on the open issue with this title, or open it."""
+    """Comment on the open issue with this title, or open it; either way it says where the remedy is."""
+    repository = f"{os.environ.get('GITHUB_SERVER_URL', 'https://github.com')}/{os.environ['GH_REPO']}"
+    body += f'\nWhat to do: {repository}/blob/main/{RUNBOOK}\n'
     number = open_issue(title)
     if number is not None:
         gh('issue', 'comment', str(number), '--body-file', '-', stdin=body)
