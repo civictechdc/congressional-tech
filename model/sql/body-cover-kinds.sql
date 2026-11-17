@@ -12,7 +12,11 @@ SELECT n.doc_key,
  END) AS cover_document_family
 FROM (
  SELECT body_sha,cover_document_kind
- FROM body_signals
+ FROM (
+  SELECT body_sha,status,error_response,cover_document_kind FROM body_signals
+  UNION ALL
+  SELECT body_sha,status,error_response,cover_document_kind FROM pdf_cover_signals
+ )
  WHERE status='completed' AND NOT error_response AND cover_document_kind IS NOT NULL
 ) bs
 JOIN (
