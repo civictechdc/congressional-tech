@@ -485,7 +485,8 @@ def load_spec(path):
 def _connect(spec,storage_factory,**options):
     if storage_factory is None:
         from congress_shared.storage import connect_r2 as storage_factory
-    return storage_factory(bucket=spec['bucket'],**options)
+    from viewer_publication.client import evict_idle_connections
+    return evict_idle_connections(storage_factory(bucket=spec['bucket'],**options))
 
 
 def _engine_config(spec,*,need_engine):

@@ -372,7 +372,8 @@ def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factor
     if not isinstance(engine_config, str) or not engine_config.strip():
         raise ValueError('Backfill execution requires an explicit engine_config or DOCSPEC_RUNTIME_CONFIG')
     runtime_factory = runtime_factory or NativeDatasets.from_config
-    storage_factory = storage_factory or connect_r2
+    from viewer_publication.client import idle_evicting
+    storage_factory = idle_evicting(storage_factory or connect_r2)
     decided_at = spec.get('decided_at') or datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
     with runtime_factory(engine_config) as engine:
@@ -522,7 +523,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None,activ
     if not isinstance(engine_config,str) or not engine_config.strip():
         raise ValueError('Backfill execution requires an explicit engine_config or DOCSPEC_RUNTIME_CONFIG')
     runtime_factory=runtime_factory or NativeDatasets.from_config
-    storage_factory=storage_factory or connect_r2
+    from viewer_publication.client import idle_evicting
+    storage_factory=idle_evicting(storage_factory or connect_r2)
     check_targets=producer is None
     producer=producer or produce_daily
     decided_at=spec.get('decided_at') or datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')

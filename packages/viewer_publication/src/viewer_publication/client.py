@@ -67,6 +67,46 @@ class _HashingUpload:
             raise ValueError('Publication upload bytes differ from expected identity')
 
 
+# A hosted runner's NAT forgets a TCP flow idle for about four minutes and sends no reset, so the
+# next request on that pooled socket hangs for the whole read timeout. Runs 44031131350 (the
+# 20-minute model build) and 44087092120 (the daily producers) each lost a night to one.
+IDLE_SECONDS = 120
+
+
+def evict_idle_connections(client, *, idle_seconds=IDLE_SECONDS, clock=None):
+    """Make `client` drop its pooled sockets before any call that follows `idle_seconds` of silence.
+
+    close() is the SDK's own pool eviction: the client stays usable and the next request opens a
+    fresh connection. Nothing is retried, so a conditional write keeps its single attempt. The
+    idle clock is the client's, not each socket's: a wide pool used in bursts can still hold one
+    older socket, which a read's retry budget covers. A client without SDK events is returned as is.
+    """
+    import time
+    events = getattr(getattr(client, 'meta', None), 'events', None)
+    if not callable(getattr(events, 'register', None)) or not callable(getattr(client, 'close', None)):
+        return client
+    clock = clock or time.monotonic
+    last = [clock()]
+
+    def before(**_):
+        if clock() - last[0] > idle_seconds:
+            client.close()
+        last[0] = clock()
+
+    def after(**_):
+        last[0] = clock()
+    # before-parameter-build is the first event of every call and every handler of it runs;
+    # before-call stops at the first handler that answers (as the SDK's own Stubber does).
+    events.register('before-parameter-build.s3', before, unique_id='ct-evict-idle-before')
+    events.register('after-call.s3', after, unique_id='ct-evict-idle-after')
+    return client
+
+
+def idle_evicting(storage_factory, **options):
+    """`storage_factory`, with `evict_idle_connections` applied to every client it makes."""
+    return lambda **request: evict_idle_connections(storage_factory(**request), **options)
+
+
 def require_publication_client(client):
     if not all(callable(getattr(client, name, None)) for name in ('get_object', 'put_object')):
         raise TypeError('Publication client requires complete reads and conditional put_object')

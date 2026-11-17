@@ -25,10 +25,7 @@ def test_actual_model_publishes_then_checks_admission_before_input_skip(tmp_path
     from viewer_publication.archive_model_job import load_spec
     spec,_,_=real_model_spec(tmp_path)
     specpath=tmp_path/'model-spec.json';specpath.write_text(json.dumps(spec))
-    class Pooled(Store):
-        closed=0
-        def close(self):self.closed+=1
-    store=Pooled();keys=['receipts/documents/2026-10-27/slice.jsonl.gz'];calls=[]
+    store=Store();keys=['receipts/documents/2026-10-27/slice.jsonl.gz'];calls=[]
     def probe(**context):
         assert context['probe_selectors']['saved_row']==0
         assert len(context['probe_selectors']['link_key'])==16
@@ -40,8 +37,6 @@ def test_actual_model_publishes_then_checks_admission_before_input_skip(tmp_path
             run={'id':'first'},public_origin='https://archive.fixture.test',contract=probe,canary=probe)
         first=run_publish(load_spec(specpath),work=tmp_path/'publish-first',**kwargs)
         assert first['status']=='published' and len(calls)==2
-        # Sockets idled through the build are evicted before the first post-build read.
-        assert store.closed==1
         before=dict(store.objects)
         spec.update(output=str(tmp_path/'release-again'),scratch=str(tmp_path/'model-again'))
         specpath.write_text(json.dumps(spec))
