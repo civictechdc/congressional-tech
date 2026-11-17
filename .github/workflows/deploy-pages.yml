@@ -43,6 +43,7 @@ jobs:
       (github.event.workflow_run.head_branch == 'main' &&
       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-24.04
+    timeout-minutes: 20  # longest 4.9 (Nov 2026); a Poppler cache miss builds it from source
     steps:
       - uses: actions/checkout@v5
         with:
@@ -68,6 +69,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

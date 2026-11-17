@@ -14,6 +14,19 @@ def workflow(name):
     return yaml.load((ROOT / '.github/workflows' / name).read_text(), Loader=yaml.BaseLoader)
 
 
+@pytest.mark.parametrize('path', sorted((ROOT / '.github/workflows').glob('*.yml')), ids=lambda path: path.name)
+def test_every_job_has_a_time_limit_and_a_pinned_runner(path):
+    for name, job in workflow(path.name)['jobs'].items():
+        assert int(job['timeout-minutes']) > 0, name
+        assert 'latest' not in job['runs-on'], name
+
+
+def test_raw_source_mirror_holders_are_bounded_near_their_measured_runs():
+    # Longest observed runs (Nov 2026): capture 23 minutes, update-data jobs 40.
+    assert workflow('capture-archive.yml')['jobs']['capture']['timeout-minutes'] == '120'
+    assert {job['timeout-minutes'] for job in workflow('update-data.yml')['jobs'].values()} == {'90'}
+
+
 def test_cpi_update_pins_its_environment_and_pushes_through_the_shared_script():
     value = workflow('bls-cpi-update.yml')
     assert value['permissions'] == {'contents': 'write'}

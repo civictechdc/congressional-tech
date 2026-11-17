@@ -17,7 +17,8 @@ permissions:
   contents: write
 
 concurrency:
-  # Saves pipeline-data to raw, so it joins the shared R2 writer lock.
+  # Saves pipeline-data to raw, so it joins the shared R2 writer lock. Each job
+  # gets 90 minutes (the longest took 40) so a hung run cannot hold the lock for hours.
   group: raw-source-mirror
   cancel-in-progress: false
   queue: max
@@ -28,7 +29,8 @@ env:
 
 jobs:
   youtube:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
         with:
@@ -81,7 +83,8 @@ jobs:
     needs: youtube
     # still refresh GPO data and matches if the YouTube job failed
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
         with:
@@ -141,7 +144,8 @@ jobs:
   committees:
     needs: congress
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v5
         with:

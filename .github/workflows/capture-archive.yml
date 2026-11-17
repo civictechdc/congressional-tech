@@ -18,7 +18,8 @@ jobs:
     # Owner enables only after disabling old capture and completing final publish.
     if: github.ref == 'refs/heads/main' && vars.ARCHIVE_CAPTURE_ENABLED == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 360
+    # Holds raw-source-mirror; budgeted runs took up to 23 minutes (Nov 2026).
+    timeout-minutes: 120
     environment: archive-capture
     steps:
       - uses: actions/checkout@v5
