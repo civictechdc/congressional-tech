@@ -1,6 +1,6 @@
 ---
 id: ct-w3dn
-status: open
+status: closed
 deps: []
 links: [ct-medh]
 created: 2026-11-17T19:50:00Z
@@ -27,3 +27,7 @@ The local script refuses to append to a table the nightly writes unless told to 
 Item 1 merged as pull request 196 (62f86ef1): `captures_ingest --apply` to a table named in `model/jobs/publish-daily.json` in the remote catalog is refused before any engine or storage is reached unless `--nightly-table` is passed. Local catalogs and rebuilds into a new table are unaffected. The other session had no uncommitted edits to the file.
 
 Item 2 (no hosted path for receipts older than the 14-day lookback) is the owner's decision and keeps this ticket open.
+
+**2026-11-17: closed**
+
+Item 2, owner decision (questions tool, 2026-11-17): "Leave it for now". Receipts older than the daily's 14-day lookback get no hosted backfill input; nothing is known to be waiting, and they would be picked up by the next full backfill. Reopen if old receipts actually turn up.
