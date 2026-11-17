@@ -1250,7 +1250,8 @@ def test_the_shipped_daily_writes_every_capture_record_table_the_shipped_model_r
 
 def test_execute_wires_retrying_receipt_client_when_automatic_causes_is_enabled(tmp_path,monkeypatch):
     """ct-xyo9 (6): archive_publish_job.execute passes a configure_read_retries-wrapped receipt_client to
-    run_publish when automatic_causes=True (whether or not _daily built one first), while keeping single-attempt writes."""
+    run_publish when automatic_causes=True (whether or not _daily built one first), while keeping single-attempt writes.
+    The publication client itself also gets GetObject retries (run 44031131350)."""
     from congress_api.retention import r2 as r2_mod
     from docspec_client.client import NativeDatasets
     from viewer_publication import archive_controller,archive_publish_job,producer_proof
@@ -1293,7 +1294,7 @@ def test_execute_wires_retrying_receipt_client_when_automatic_causes_is_enabled(
     assert result==dict(status='published')
     assert len(storage_calls)==2
     assert all(k['retries']=={'total_max_attempts':1} for _,k in storage_calls)
-    assert captured['client'] is storage_calls[0][0]
+    assert captured['client']==('retrying',storage_calls[0][0])
     assert captured['receipt_client']==('retrying',storage_calls[1][0])
-    assert wrapped==[storage_calls[1][0]]
+    assert wrapped==[storage_calls[0][0],storage_calls[1][0]]
 

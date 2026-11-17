@@ -502,7 +502,11 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             engine.verify_runtime();require_configuration()
             spec['_model_identity'].require(spec['model_spec']['path'])
             target_identity.require(spec['targets']['path'])
-            client=storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1})
+            from congress_api.retention.r2 import configure_read_retries
+            # Writes keep their single attempt (conditional flips are not safely repeatable). Reads are:
+            # the retry hook covers GetObject only, so a transient R2 stall on a control read (run
+            # 44031131350 lost a built candidate to one 180 s read timeout) does not end the night.
+            client=configure_read_retries(storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1}))
             selected_model=spec['_model'];keys=spec['receipt_keys'];provenance=spec['provenance'];verified=None;daily=None;reads=None
             from congress_api.lake.producer_records import ProducerRecords
             anchors={}
@@ -511,7 +515,6 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             ledger=ProducerRecords(anchors,client=client,bucket=spec['bucket'])
             if '_daily' in spec:
                 from congress_api.retention.body_store import BodyStore,R2Adapter
-                from congress_api.retention.r2 import configure_read_retries
                 spec['_daily_identity'].require(spec['daily']['path'])
                 # Body reads get their own client: a transient R2 server error on one of thousands of
                 # GETs retries, while this job's writes keep their single attempt.
@@ -554,7 +557,6 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                 # The automatic proof reads one raw receipt per new receipt key; a transient error on
                 # one of thousands of GETs must retry, never end the night (ct-gc99).
                 if reads is None:
-                    from congress_api.retention.r2 import configure_read_retries
                     reads=configure_read_retries(storage_factory(bucket=spec['bucket'],endpoint_url=endpoint,retries={'total_max_attempts':1}))
                 options['receipt_client']=reads
             if spec.get('_nightly'):

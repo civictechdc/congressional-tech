@@ -353,6 +353,11 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 if model_spec.get('text_index'):
                     from viewer_publication.archive_text_index import finish_text_index
                     manifest=finish_text_index(model_spec,stage['output'])
+                # The build idles every pooled R2 socket past a hosted runner's NAT timeout; a
+                # reused dead socket hangs for the full read timeout. close() only empties the
+                # SDK's pools, and the next request opens a fresh connection.
+                for pooled in (client,receipt_client):
+                    if callable(getattr(pooled,'close',None)):pooled.close()
                 result=json.loads((prepared['scratch']/'result.json').read_text())
                 reports=_reports(result)
                 _admitted(reports,admitted_names)
