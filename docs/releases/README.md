@@ -39,7 +39,9 @@ until a cause record is committed; the refusal's first line says which input dif
 pull request that makes such a change says so before it merges (`.github/scripts/definition-change.py`).
 An unverified removal, a link that vanishes or is demoted, and a night larger than its receipts
 explain also stop for a person. Capture and publish run the newest commit of main whose push
-validation passed, never an untested tip. A cause
+validation passed, never an untested tip. A re-run after a stop (a committed cause record, say)
+resumes the candidate the stopped run built, at the gates, when the daily ingest, model definitions
+and live release are unchanged; otherwise it builds fresh (ct-31qi). A cause
 record still pinned in `model/jobs/publish.json` after its candidate went live is ignored, so
 unpinning it is tidying, not a step the next night waits on. A failed or missing nightly opens a
 `ci-failure` issue (`.github/workflows/ci-alerts.yml`).
