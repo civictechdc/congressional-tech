@@ -87,7 +87,7 @@ def test_weekly_writer_uses_pinned_clean_python_after_snapshot_save():
     assert 'cd "$writer_root"' not in script
     workflow = yaml.load((ROOT/'.github/workflows/update-data.yml').read_text(),Loader=yaml.BaseLoader)
     for job in workflow['jobs'].values():
-        assert any(step.get('uses')=='astral-sh/setup-uv@v6' or
+        assert any(step.get('uses','').startswith('astral-sh/setup-uv@') or
                    step.get('uses')=='./.github/actions/setup-python-project' for step in job['steps'])
 
 

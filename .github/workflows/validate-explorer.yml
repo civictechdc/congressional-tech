@@ -71,7 +71,7 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4, 5, 6]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
           # Gate 5 needs producing ancestors, without historical data blobs.
@@ -96,7 +96,7 @@ jobs:
           test_status=$?
           printf 'CT_OFFLINE_EXIT_STATUS=%s\n' "$test_status"
           exit "$test_status"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: offline-${{ matrix.shard }}
@@ -108,7 +108,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-python-project

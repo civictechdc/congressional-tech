@@ -58,7 +58,7 @@ def test_archive_contract_gates_the_pages_upload_without_the_legacy_filename_wor
     workflow = yaml.load((ROOT / '.github/workflows/deploy-pages.yml').read_text(), Loader=yaml.BaseLoader)
     build = workflow['jobs']['build']['steps']
     gate = next(i for i, step in enumerate(build) if step.get('name', '').startswith('Require the archive contract'))
-    upload = next(i for i, step in enumerate(build) if step.get('uses') == 'actions/upload-pages-artifact@v3')
+    upload = next(i for i, step in enumerate(build) if step.get('uses', '').startswith('actions/upload-pages-artifact@'))
     assert gate < upload
     assert 'verify-archive-contract.py' in build[gate]['run']
     assert any(step.get('uses') == './.github/actions/setup-publication-browser' for step in build[:gate])

@@ -48,18 +48,20 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version-file: '.python-version'
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           version: '0.11.21'
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
+          # v5+ caches npm by default from the root packageManager, which has no lock file.
+          package-manager-cache: false
       - run: uv sync --locked --project apps/explorer_mcp
       - run: apps/explorer_mcp/.venv/bin/python scripts/dev.py test explorer-mcp -- -q
       - run: uv build apps/explorer_mcp --out-dir dist
@@ -79,10 +81,10 @@ jobs:
       run:
         working-directory: apps/explorer_mcp/cloudflare
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -130,7 +132,7 @@ jobs:
             --arg platform "$platform" '{source_sha:$source_sha, publication:$publication,
             version:$version, image:$image, image_id:$image_id, platform:$platform}' > image.json
           sha256sum image.tar.gz image.json > SHA256SUMS
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: inputs.export_container_image
         with:
           name: congress-mcp-container-linux-amd64
@@ -144,7 +146,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-python-project
@@ -169,7 +171,7 @@ jobs:
           apps/explorer_mcp/.venv/bin/python scripts/dev.py test explorer-mcp \
             --path apps/explorer_mcp/tests/test_native_release.py \
             -- --native-fixture-root="$RUNNER_TEMP/native-mcp" --junitxml="$RUNNER_TEMP/native-consumer.xml"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: native-congress-mcp-checks
