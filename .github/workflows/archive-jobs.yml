@@ -43,7 +43,7 @@ jobs:
     timeout-minutes: 180
     environment: archive-publish
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: main
           persist-credentials: false
@@ -82,7 +82,7 @@ jobs:
         run: .venv/bin/python -I .github/scripts/run-archive-job.py publish
       - name: Retain run evidence (access follows repository)
         if: ${{ always() && steps.publisher_binding.outputs.publisher_work != '' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archive-publish-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           if-no-files-found: ignore
@@ -125,7 +125,7 @@ jobs:
     timeout-minutes: 360
     environment: archive-backfill
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: main
           persist-credentials: false
@@ -149,7 +149,7 @@ jobs:
         run: .venv/bin/python -I .github/scripts/run-archive-job.py backfill
       - name: Retain backfill run evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archive-backfill-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           if-no-files-found: ignore
@@ -167,7 +167,7 @@ jobs:
     timeout-minutes: 180
     environment: archive-maintenance
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: main
           persist-credentials: false

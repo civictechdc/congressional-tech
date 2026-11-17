@@ -32,18 +32,18 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
       - name: Check out pipeline data
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: pipeline-data
           path: pipeline-data
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version-file: ".python-version"
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           version: "0.11.21"
       - name: Install locked collector packages
@@ -86,18 +86,18 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }} # latest, including the youtube job's commit
       - name: Check out pipeline data
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           ref: pipeline-data
           path: pipeline-data
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version-file: ".python-version"
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           version: "0.11.21"
       - name: Install locked collector packages
@@ -147,17 +147,17 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref_name }}
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: pipeline-data
           path: pipeline-data
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v7
         with:
           python-version-file: ".python-version"
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           version: "0.11.21"
       - name: Install locked collector packages

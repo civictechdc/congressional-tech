@@ -3,10 +3,10 @@ description: Install native PDF tools and the locked eight-member Python environ
 runs:
   using: composite
   steps:
-    - uses: actions/setup-python@v6
+    - uses: actions/setup-python@v7
       with:
         python-version-file: ".python-version"
-    - uses: astral-sh/setup-uv@v6
+    - uses: astral-sh/setup-uv@v7
       with:
         version: "0.11.21"
         enable-cache: true
@@ -25,7 +25,7 @@ runs:
         echo "key=poppler-$version-$RUNNER_OS-$os_release-$RUNNER_ARCH-${{ hashFiles('.github/scripts/install-poppler.sh') }}" >> "$GITHUB_OUTPUT"
     - name: Restore the pinned Poppler build
       id: poppler-cache
-      uses: actions/cache/restore@v4
+      uses: actions/cache/restore@v6
       with:
         path: ${{ steps.poppler.outputs.prefix }}
         key: ${{ steps.poppler.outputs.key }}
@@ -48,7 +48,7 @@ runs:
     # Saved at once, not in a post step: a later failing test must not discard the build.
     - name: Save the pinned Poppler build
       if: steps.poppler-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v4
+      uses: actions/cache/save@v6
       continue-on-error: true  # Parallel shards race for the same key; one save suffices.
       with:
         path: ${{ steps.poppler.outputs.prefix }}
