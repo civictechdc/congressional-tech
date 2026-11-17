@@ -6,7 +6,7 @@ on three held-out sets and scores the final `DocMetaV4Causal` objects against go
 
   val48        eval_val48_v4_gold.json (48 stratified blind docs), via `PythonicEngineV6.run_records`
   docs8        eval_docs8_v4_gold.json (8 stress-test docs), via `run_records`
-  valid_sweep  the split `train_lora_v64.py` holds out of the V6.4 gold, via `run_docmeta_parquet_sweep`
+  valid_sweep  the split `gold.select_val_indices` holds out of the V6.4 gold, via `run_docmeta_parquet_sweep`
   val48_sweep  the val48 docs present in the sweep queue, via `run_docmeta_parquet_sweep`
 
 The `*_sweep` sets feed the model the queue rows the production sweep will feed it, through the sweep's own
@@ -20,7 +20,6 @@ from collections import Counter
 import json
 from pathlib import Path
 import re
-import sys
 import time
 from typing import Any
 
@@ -250,7 +249,7 @@ def run_sweep_sets(
             eng, in_p, out_p, b_slots=args.b_slots, max_tokens=args.max_tokens,
             use_ane_ring="auto" if args.ane_ring else False,
             wire_format=args.wire_format, atomic_verifier=args.atomic_verifier,
-            repair_persona_roles=args.repair_persona_roles,
+            repair_persona_roles=args.repair_persona_roles, escalate_gpt_oss=args.escalate_gpt_oss,
         )
         out_rows = {str(r["link_key_hex"]): r for r in pq.read_table(out_p).to_pylist()}
 
@@ -281,6 +280,8 @@ def run_sweep_sets(
         "decode_tok_s": round(summary.decode_tok_s, 1),
         "prompt_tokens": summary.prompt_tokens,
         "completion_tokens": summary.completion_tokens,
+        "pass2_escalated": summary.pass2_escalated_docs,
+        "pass2_accepted": summary.pass2_accepted_docs,
     }
     for scored in results.values():
         scored["sweep"] = sweep_stats
@@ -326,6 +327,8 @@ def main() -> int:
                     help="post-LLM output validator for the *_sweep sets")
     ap.add_argument("--repair-persona-roles", action="store_true", help="let the validator repair suspect roles")
     ap.add_argument("--ane-ring", action="store_true", help="hybrid ANE prefill ring for the *_sweep sets")
+    ap.add_argument("--escalate-gpt-oss", action="store_true",
+                    help="send anomaly-flagged docs to the fast-gpt-oss Pass-2 teacher (*_sweep sets)")
     ap.add_argument("--ane-variant", choices=("w8", "fp16"), default="w8")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--rescore", type=Path, default=None,

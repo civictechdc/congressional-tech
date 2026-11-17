@@ -1,7 +1,7 @@
 """Gold sets for DocMeta: where they live, how a gold row is turned into what the sweep would feed the model,
 the held-out split, and the tokenized training pairs.
 
-Moved from fast-gemma4 `scripts/train_lora_v64.py` (11dcf14), which keeps only the LoRA loop, fuse and pack.
+Moved from fast-gemma4 `scripts/train_lora_v64.py` (11dcf14, then 8edf64b's label repair), which keeps only the LoRA loop, fuse and pack.
 """
 
 from __future__ import annotations
@@ -79,12 +79,13 @@ def parse_gold_rows(
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """Gold rows as the sweep presents them: queue `known`/`filename`/`text` when the doc is in the queue.
 
-    Witness statements get the addressed chair / ranking member restored (see the comment at the call).
+    Personas named in a fixed form are restored by rules R4-R6 (see the comment at the call).
     The reviewer's own text window is kept as `alt_text` (a second view of the same labels). Rows that share a
     body hash, filename, or 200-char head with a blind eval doc are dropped.
     """
     from .parquet_runner_v6 import _build_precomputed_context_from_queue_row
-    from .relational_rules_v6 import add_salutation_chair_personas_v6
+    from .pythonic_v5 import SCHEMA_OBJ
+    from .relational_rules_v6 import add_text_grounded_personas_v6
 
     blind = load_blind_keys(blind_jsons)
     raw_rows = [json.loads(line) for line in gold_jsonl.open("r", encoding="utf-8") if line.strip()]
@@ -94,7 +95,7 @@ def parse_gold_rows(
     )
 
     parsed_rows: list[dict[str, Any]] = []
-    stats = {"skipped_blind_eval_overlap": 0, "queue_context_rows": 0, "salutation_personas_added": 0}
+    stats = {"skipped_blind_eval_overlap": 0, "queue_context_rows": 0, "text_grounded_personas_added": 0}
     for raw in raw_rows:
         u = raw["messages"][0]["content"]
         gold_v4 = json.loads(raw["messages"][-1]["content"])
@@ -117,12 +118,21 @@ def parse_gold_rows(
             continue
         stats["queue_context_rows"] += int(q_row is not None)
 
-        # The 2,000-doc cluster gold omits 72% of the chairs / ranking members a witness addresses by name; the
-        # blind and re-hydrated V4 gold list them. Restore the convention so the model is taught one rule.
-        if gold_v4.get("primary_kind") == "witness_statement" and gold_v4.get("personas"):
-            fixed = add_salutation_chair_personas_v6(gold_v4["personas"], text)
-            stats["salutation_personas_added"] += len(fixed) - len(gold_v4["personas"])
-            gold_v4["personas"] = fixed
+        # Rules R4-R6 restore one listing convention across gold batches: the chair / ranking member a witness
+        # addresses (listed in 28% of cluster-gold witness statements, 92-100% of re-hydrated V4 and blind gold),
+        # a bill's sponsor line, and a letter's addressees. Additive only: nothing a reviewer wrote is changed.
+        if gold_v4.get("status", "usable") == "usable":
+            fixed = add_text_grounded_personas_v6(
+                gold_v4.get("personas") or [],
+                primary_kind=gold_v4.get("primary_kind"),
+                text=text,
+                additive_only=True,
+            )
+            n_before = len(gold_v4.get("personas") or [])
+            if len(fixed) > n_before:
+                stats["text_grounded_personas_added"] += len(fixed) - n_before
+                gold_v4["personas"] = fixed
+                gold_v4 = {k: gold_v4[k] for k in SCHEMA_OBJ["properties"] if k in gold_v4}  # causal key order
 
         st = str(gold_v4.get("status") or "usable")
         parsed_rows.append(

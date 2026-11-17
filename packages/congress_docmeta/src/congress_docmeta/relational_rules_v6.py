@@ -2047,8 +2047,12 @@ def add_text_grounded_personas_v6(
     primary_kind: str | None,
     text: str,
     max_personas: int = 10,
+    additive_only: bool = False,
 ) -> list[dict[str, Any]]:
     """R4-R6: list the actors the document names in a fixed form when the model left them out.
+
+    `additive_only` is for repairing reviewed labels: it adds the missing actors and never drops or re-labels
+    one a reviewer wrote.
 
     R4 `witness_statement`: the chair / ranking member addressed in the salutation.
     R5 `bill_or_draft`: sponsor and cosponsors from the introduction line; a `sponsor` the line does not name is
@@ -2069,7 +2073,7 @@ def add_text_grounded_personas_v6(
         kept: list[dict[str, Any]] = []
         for p in cur:
             line_role = role_of.get(_surname_token(str(p["name"])))
-            if p.get("role") == "sponsor" and line_role != "sponsor":
+            if not additive_only and p.get("role") == "sponsor" and line_role != "sponsor":
                 if line_role is None:
                     continue
                 p["role"] = line_role
