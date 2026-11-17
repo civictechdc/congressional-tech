@@ -123,6 +123,23 @@ def runtime_ran(runtime,*,named=_SELF):
                 limits=dict(path=str(limits),sha256=digest(limits),values=json.loads(limits.read_text())))
 
 
+def next_hosted_runner(held,*,kept,owned):
+    """What the Actions cache gives the next hosted runner (ct-31qi): the `kept` paths as new files,
+    and nothing else of the `owned` directories the last run wrote. `held` stands in for the cache."""
+    import shutil
+    from pathlib import Path
+    copy=lambda source,target:(shutil.copytree if source.is_dir() else shutil.copy2)(source,target)
+    Path(held).mkdir(parents=True);saved=[]
+    for index,path in enumerate(map(Path,kept)):
+        if path.exists():
+            saved.append((Path(held)/str(index),path));copy(path,saved[-1][0])
+    for path in map(Path,owned):
+        if path.exists():shutil.rmtree(path)
+    for source,path in saved:
+        path.parent.mkdir(parents=True,exist_ok=True);copy(source,path)
+    shutil.rmtree(held)
+
+
 def model_spec(tmp_path):
     parsers,catalog=versions()
     return dict(version=1,engine_config=str(tmp_path/'unopened-runtime.json'),

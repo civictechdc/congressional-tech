@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 from urllib.parse import urlsplit
@@ -209,6 +210,75 @@ def nightly_spec(spec,root):
         (work/'model-intent.json').exists() and (Path(model['output'])/'manifest.json').exists())
     return dict(spec,work=str(work),_model=model,_daily=dict(spec['_daily'],work=str(root/'archive-daily')),
                 _nightly=True,resume=resume)
+
+
+# ct-31qi: a hosted runner keeps nothing, so a re-run after a gate stop rebuilt the same candidate
+# (about 22 minutes and 10 GiB). The publish workflow carries these paths to the next run in the
+# Actions cache: what a resumed publish reads besides the run's own fresh inputs. Of the model's
+# evidence (1.4 GB on 2026-11-12) the gates read only these files (release_gate.automatic_causes);
+# an evidence file missing on a resume can only refuse a gate, never pass one.
+KEPT_EVIDENCE=('recording_video_links.parquet',)
+
+
+def kept_candidate_paths(work,model):
+    """The checkpoint, the base record a resume after the flip writes again, the release, the native
+    result and the kept gate evidence."""
+    work,scratch=Path(work),Path(model['scratch'])
+    return [work/'completed-model.json',work/'base-release-record.json',Path(model['output']),
+            scratch/'result.json',*(scratch/'evidence'/name for name in KEPT_EVIDENCE)]
+
+
+def _kept_candidate_damage(work,model,engine):
+    """Why a kept candidate cannot be resumed, from local files only; None when it can.
+
+    The controller's own reader and definition check, then every file the checkpoint pins, every
+    release file and each kept evidence file against the bytes its build recorded. Input identity
+    and the selected release stay the controller's to compare.
+    """
+    from viewer_publication.archive_controller import _read_continuation,_require_model_definition,_stage_paths
+    from congress_api.retention.provenance import file_pin
+    try:
+        source,checkpoint=_read_continuation(work)
+        stage=_stage_paths(None,model_spec=model,work=work)
+        if source.name!='completed-model.json' or _stage_paths(checkpoint.get('stage'),model_spec=model,work=work)!=stage:
+            return 'the checkpoint is not a completed model in this run\'s stage'
+        _require_model_definition(checkpoint,engine)
+        output,scratch=Path(stage['output']),Path(stage['scratch'])
+        held=[(output/'manifest.json',checkpoint['manifest_pin']),(scratch/'result.json',checkpoint['result_pin'])]
+        if any(Path(pin['path'])!=path for path,pin in held):return 'the checkpoint pins files outside its stage'
+        outputs={item['name']:item for item in json.loads((scratch/'result.json').read_text())['outputs']}
+        held+=[(output/item['name'],item) for item in json.loads((output/'manifest.json').read_text())['files']]
+        held+=[(scratch/'evidence'/name,outputs[name]) for name in KEPT_EVIDENCE if name in outputs]
+        for path,item in held:
+            if file_pin(path)!={key:item[key] for key in ('sha256','size')}:return 'kept file differs from its build: '+path.name
+    except (ValueError,OSError,KeyError,TypeError) as error:
+        return str(error) or type(error).__name__
+    return None
+
+
+def publish_kept_candidate(publish,*,work,model,engine):
+    """Resume the kept candidate when it is this run's; otherwise discard it and build fresh.
+
+    `publish(resume)` runs the controller. A damaged kept candidate, or one built from other model
+    definitions, is never resumed. The controller compares the rest before anything is uploaded:
+    other inputs or another selected release raise PublicationInputsChanged. Both paths reach the
+    same gates, contract, upload, canary and conditional flip, and a candidate already live is
+    recorded, not published again.
+    """
+    from viewer_publication.archive_controller import PublicationInputsChanged
+    work=Path(work);owned=[work,Path(model['output']),Path(model['scratch'])]
+    if not any(path.exists() or path.is_symlink() for path in owned):return publish(False)
+    reason=(_kept_candidate_damage(work,model,engine) if (work/'completed-model.json').is_file()
+            else 'no completed model checkpoint')
+    if reason is None:
+        print('Resuming the kept candidate if its inputs are this run\'s',file=sys.stderr)
+        try:return publish(True)
+        except PublicationInputsChanged as error:reason=str(error)
+    print('Building fresh; kept candidate discarded: '+reason,file=sys.stderr)
+    for path in owned:
+        if path.is_symlink() or path.is_file():path.unlink()
+        elif path.exists():shutil.rmtree(path)
+    return publish(False)
 
 
 def _metadata_pin(value,base):
@@ -462,12 +532,14 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             and expected_release_id!=measured_release_id):
         raise ValueError('Measured site targets differ from the approved release')
     measured_release_id=expected_release_id or measured_release_id
+    # A kept candidate is resumed or discarded by publish_kept_candidate; the daily work is never kept.
+    reusable=spec.get('resume',False) or spec.get('_keep_candidate',False)
     for name in ['work']:
         path=Path(spec[name])
-        if (path.exists() or path.is_symlink()) and not spec.get('resume',False):raise ValueError('Publication work must be fresh')
+        if (path.exists() or path.is_symlink()) and not reusable:raise ValueError('Publication work must be fresh')
     for name in ['output','scratch']:
         path=Path(spec['_model'][name])
-        if (path.exists() or path.is_symlink()) and not spec.get('resume',False):raise ValueError('Model output and scratch must be fresh')
+        if (path.exists() or path.is_symlink()) and not reusable:raise ValueError('Model output and scratch must be fresh')
     if '_daily' in spec:
         spec['_daily_identity'].require(spec['daily']['path'])
         path=Path(spec['_daily']['work'])
@@ -578,11 +650,14 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             carried_html_metadata=0
             if daily is not None:
                 carried_html_metadata=int((((daily['daily'].get('carried') or {}).get('html_metadata') or {}).get('bodies')) or 0)
-            result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,engine_runtime=ran,
-                measured_release_id=measured_release_id,comparison_acceptance=acceptance,resume=spec.get('resume',False),
-                release_causes=causes,link_history=spec.get('link_history',[]),
-                first_release=spec.get('first_release',False),automatic_causes=spec.get('automatic_causes',False),
-                carried_html_metadata=carried_html_metadata,**options)
+            def publish(resume):
+                return run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,engine_runtime=ran,
+                    measured_release_id=measured_release_id,comparison_acceptance=acceptance,resume=resume,
+                    release_causes=causes,link_history=spec.get('link_history',[]),
+                    first_release=spec.get('first_release',False),automatic_causes=spec.get('automatic_causes',False),
+                    carried_html_metadata=carried_html_metadata,**options)
+            result=(publish_kept_candidate(publish,work=spec['work'],model=selected_model,engine=engine)
+                    if spec.get('_keep_candidate') else publish(spec.get('resume',False)))
             spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
             return dict(result,daily=daily['daily']) if daily is not None else result
 
@@ -592,14 +667,21 @@ def main(argv=None):
     parser.add_argument('--spec',type=Path,required=True)
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--plan',action='store_true');mode.add_argument('--execute',action='store_true')
     parser.add_argument('--nightly-work',type=Path,help='Use the scheduled Mac candidate directory')
+    parser.add_argument('--keep-candidate',action='store_true',
+        help='Resume a candidate an earlier hosted run left in the work directories when it is this run\'s; otherwise delete it and build fresh')
     args=parser.parse_args(argv)
     if args.nightly_work is not None and not args.execute:
         parser.error('--nightly-work requires --execute')
+    if args.keep_candidate and (not args.execute or args.nightly_work is not None):
+        parser.error('--keep-candidate requires --execute without --nightly-work')
     from viewer_publication.archive_controller import PublicationInputsChanged,_save_continuation
     try:
         spec=load_spec(args.spec)
         if spec.get('status')=='blocked':print(json.dumps(spec,sort_keys=True));return 2
         if args.nightly_work is not None:spec=nightly_spec(spec,args.nightly_work)
+        if args.keep_candidate:
+            if spec.get('resume'):raise ValueError('A declared resume and a kept candidate are separate paths')
+            spec=dict(spec,_keep_candidate=True)
         result=execute(spec) if args.execute else dict(status='planned',executed=False,
             model_spec=spec['model_spec'],bucket=spec['bucket'],work=spec['work'],public_origin=spec['public_origin'],
             targets=spec['targets'],site_dist=spec['site_dist'])

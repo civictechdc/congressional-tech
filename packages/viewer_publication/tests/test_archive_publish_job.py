@@ -556,10 +556,19 @@ def test_raw_startup_refuses_unqualified_or_unmeasured_targets_before_sdk(tmp_pa
     assert not Path(value['work']).exists()
 
 
+def select_fixture_release(tmp_path,store,directory,documents,previous=None):
+    """A real release in the fake bucket, selected by the live pointer."""
+    from test_archive_publish import encoded,real_release
+    base,manifest=real_release(tmp_path/directory,documents,retired=[])
+    for name in [item['name'] for item in manifest['files']]+['manifest.json']:
+        store.objects['viewer-publications/releases/'+manifest['release_id']+'/'+name]=(base['release']/name).read_bytes()
+    store.objects['viewer-publications/manifest.json']=encoded(dict(release_id=manifest['release_id'],previous_release_id=previous))
+
+
 @pytest.mark.parametrize('outcome',[
     'completed','pending','backfill_required','nightly-resume','nightly-changed','nightly-refused',
     'nightly-corrupt','nightly-corrupt-input','nightly-corrupt-status','nightly-corrupt-identity',
-    'nightly-corrupt-etag','nightly-pointer-moved','nightly-reconcile-new',
+    'nightly-corrupt-etag','nightly-pointer-moved','nightly-reconcile-new','hosted-kept','hosted-new-receipts',
 ])
 def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcome,producers_recorded,monkeypatch):
     """Only external catalog storage, SDK and browser execution are adapted."""
@@ -571,10 +580,10 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
     monkeypatch.setattr(daily_module,'writer_identity',lambda root,job:dict(job=job,commit='c'*40,lockfile_digest='d'*64))
     from test_archive_publish import Store,Native
     from viewer_publication.archive_publish_job import load_spec,execute
-    nightly=outcome.startswith('nightly-')
-    count=2 if outcome=='backfill_required' or nightly else 1
+    nightly=outcome.startswith('nightly-');hosted=outcome.startswith('hosted-')
+    count=2 if outcome in {'backfill_required','hosted-new-receipts'} or nightly else 1
     payloads=[f'%PDF-1.7\n% Authored startup report {i}\n%%EOF\n'.encode()
-              for i in range(count)] if outcome=='completed' or nightly else None
+              for i in range(count)] if outcome=='completed' or nightly or hosted else None
     raw=tmp_path/'producer';raw.mkdir()
     daily,initial,raw_store=native_fixture(raw,count,payloads=payloads)
     try:heads=tables.resolve_tables(engine=initial,work=tmp_path/'heads',catalog_root=daily['catalog_root'],tables=daily['tables'])
@@ -593,6 +602,8 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
         # Keep every receipt past the nightly cut so the readings budget itself refuses.
         daily['max_work_items']=1
         monkeypatch.setattr(daily_module,'_within_budget',lambda stage,selected,*a,**k:(list(selected),0))
+    elif outcome=='hosted-new-receipts':
+        daily['max_work_items']=1  # one receipt a run: the re-run's daily ingest admits the second
     value=publish_spec(tmp_path);remote=remote_config(tmp_path)
     runtime=tmp_path/'remote-runtime.json';settings=json.loads(Path(os.environ['DOCSPEC_JOB_CONFIG']).read_text())
     base=Path(os.environ['DOCSPEC_JOB_CONFIG']).parent
@@ -607,7 +618,8 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
         **{name:dict(kind='native_table',**head) for name,head in heads.items()})
     path=Path(value['model_spec']['path']);path.write_text(json.dumps(model));value['model_spec']=dict(path=str(path),**file_pin(path))
     path=tmp_path/'daily.json';path.write_text(json.dumps(daily))
-    value.update(daily=dict(path=str(path),**file_pin(path)),receipt_keys=[],provenance=[],first_release=outcome not in {'nightly-refused','nightly-corrupt-etag','nightly-pointer-moved'})
+    value.update(daily=dict(path=str(path),**file_pin(path)),receipt_keys=[],provenance=[],
+        first_release=outcome not in {'nightly-refused','nightly-corrupt-etag','nightly-pointer-moved'} and not hosted)
     path=tmp_path/'publish.json';path.write_text(json.dumps(value));spec=load_spec(path)
     assert spec['_daily']['catalog_root'] is None
     class SDK(Store):
@@ -660,6 +672,9 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
         _interrupt_nightly_wrapper(tmp_path,path,options,store,receipt_objects,outcome,monkeypatch)
         assert catalog_calls and producers_recorded
         return
+    if hosted:
+        _rerun_hosted_with_kept_candidate(tmp_path,spec,options,store,outcome,monkeypatch)
+        return
     result=execute(spec,**options)
     assert catalog_calls and result['status']==('published' if outcome=='completed' else outcome)
     # Gate 5: each head the run moved has its record in the bucket, even when the run stopped.
@@ -680,6 +695,35 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
     else:
         assert commands==[] and not Path(model['output']).exists() and not Path(model['scratch']).exists()
         assert not any(key.startswith('viewer-publications/') for key in store.objects)
+
+
+def _rerun_hosted_with_kept_candidate(tmp_path,spec,options,store,outcome,monkeypatch):
+    """ct-31qi: a gate stops a hosted run; its re-run gets only what the Actions cache carries, runs
+    the daily ingest again and resumes the kept candidate exactly when the ingest found nothing new."""
+    from archive_job_fixture import next_hosted_runner
+    from viewer_publication import archive_controller,archive_publish_job
+    from viewer_publication.archive_publish_job import execute,kept_candidate_paths
+    select_fixture_release(tmp_path,store,'selected',['A'])
+    live=store.objects['viewer-publications/manifest.json']
+    calls=dict(builds=[],ingests=[])
+    for module,name,counted in [(archive_controller,'build_prepared_release','builds'),
+                                (archive_publish_job,'produce_daily_inputs','ingests')]:
+        original=getattr(module,name)
+        monkeypatch.setattr(module,name,lambda *args,original=original,counted=counted,**kwargs:
+            calls[counted].append(True) or original(*args,**kwargs))
+    kept=dict(spec,_keep_candidate=True);work=Path(spec['work']);model=spec['_model'];daily=Path(spec['_daily']['work'])
+    checkpoints=[]
+    for run in range(2):
+        with pytest.raises(ValueError,match='no recorded cause'):execute(kept,**options)
+        checkpoints.append(json.loads((work/'completed-model.json').read_text()))
+        if run==0:
+            next_hosted_runner(tmp_path/'actions-cache',kept=kept_candidate_paths(work,model),
+                owned=[work,model['output'],model['scratch'],daily,daily.with_name(daily.name+'-provenance')])
+    assert len(calls['ingests'])==2 and store.objects['viewer-publications/manifest.json']==live
+    if outcome=='hosted-kept':
+        assert len(calls['builds'])==1 and checkpoints[1]==checkpoints[0]
+    else:
+        assert len(calls['builds'])==2 and checkpoints[1]['identity']!=checkpoints[0]['identity']
 
 
 def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome,monkeypatch):
@@ -775,15 +819,8 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
     evidence=tmp_path/'.cache/archive-release/nightly'
     active=evidence/'candidate'
     pointer='viewer-publications/manifest.json'
-    def select_fixture_release(directory,documents,previous=None):
-        from test_archive_publish import encoded,real_release
-        base,manifest=real_release(tmp_path/directory,documents,retired=[])
-        for name in [item['name'] for item in manifest['files']]+['manifest.json']:
-            store.objects['viewer-publications/releases/'+manifest['release_id']+'/'+name]=(base['release']/name).read_bytes()
-        store.objects[pointer]=encoded(dict(release_id=manifest['release_id'],previous_release_id=previous))
-
     if outcome in {'nightly-refused','nightly-corrupt-etag','nightly-pointer-moved'}:
-        select_fixture_release('selected',['A'])
+        select_fixture_release(tmp_path,store,'selected',['A'])
     selected=store.objects.get(pointer)
     assert run_once()==2 and store.objects.get(pointer)==selected
     assert not (active/'archive-publish/completed-model.json').exists()
@@ -833,7 +870,7 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
         return
 
     if outcome=='nightly-pointer-moved':
-        select_fixture_release('external',['A','B'],json.loads(selected)['release_id'])
+        select_fixture_release(tmp_path,store,'external',['A','B'],json.loads(selected)['release_id'])
         store.etag='external-etag'
         moved=store.objects[pointer]
         assert run_once()==2  # The fresh candidate still needs reviewed causes.
