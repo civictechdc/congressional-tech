@@ -166,6 +166,62 @@ def test_native_profile_completeness_counts_pending_and_settled_inputs(tmp_path,
     assert {name:value for name,value in report.items() if value}==expected
 
 
+@pytest.mark.parametrize('case,carried,expected',[
+    ('unpinned-ignored',0,{}),
+    ('missing',0,{'missing_html_metadata':1}),
+    ('completed-settles',0,{}),
+    ('partial-settles',0,{}),
+    ('error-settles',0,{}),
+    ('size-limit-settles',0,{}),
+    ('unreadable-settles',0,{}),
+    ('carried-1-allows-1',1,{}),
+    ('carried-1-refuses-2',1,{'missing_html_metadata':1}),
+])
+def test_native_profile_completeness_html_metadata_guard(tmp_path,case,carried,expected):
+    from viewer_publication.archive_model_profile import completeness_checks,completeness_steps,readings_bundle_version
+    body_a='a'*64
+    body_b='b'*64
+    bodies=[body_a,body_b] if case=='carried-1-refuses-2' else [body_a]
+    captures=[dict(receipt_key='r',receipt_line=i+1,capture_index=i,body_hex=b) for i,b in enumerate(bodies)]
+    readings=[r for b in bodies for r in (
+        dict(body_hex=b,parser='sniff',parser_version='sniff-1',status='completed'),
+        dict(body_hex=b,parser='html',parser_version='html-1',status='completed'),
+    )]
+    unreadable=[]
+    if case in {'completed-settles','partial-settles','error-settles','size-limit-settles'}:
+        status_map={
+            'completed-settles':'completed',
+            'partial-settles':'partial',
+            'error-settles':'error',
+            'size-limit-settles':'size_limit',
+        }
+        readings.append(dict(body_hex=body_a,parser='html_metadata',parser_version='hm-1',status=status_map[case]))
+    elif case=='unreadable-settles':
+        unreadable=[dict(body_sha256=body_a,record_sha=None,parser='html_metadata',parser_version='hm-1')]
+    sniff=[dict(body_hex=b,format='html') for b in bodies]
+    filenames=[dict(filename='a.pdf',source_url='',catalog_version='catalog-1',status='completed')]
+    versions=dict(VERSIONS) if case=='unpinned-ignored' else dict(VERSIONS,html_metadata='hm-1')
+    pins={**versions,'readings':readings_bundle_version(VERSIONS)}
+    inputs=[json_input(tmp_path,'capture_rows',captures,receipt_key='Utf8',receipt_line='Int32',capture_index='Int32',body_hex='Utf8',bytes='Int64'),
+        json_input(tmp_path,'reading_rows',readings,body_hex='Utf8',parser='Utf8',parser_version='Utf8',status='Utf8'),
+        json_input(tmp_path,'sniff_rows',sniff,body_hex='Utf8',format='Utf8'),
+        json_input(tmp_path,'admission_rows',[],body_hex='Utf8',format='Utf8',basis='Utf8'),
+        json_input(tmp_path,'filename_readings',filenames,filename='Utf8',source_url='Utf8',catalog_version='Utf8',status='Utf8'),
+        json_input(tmp_path,'unreadable_rows',unreadable,body_sha256='Utf8',record_sha='Utf8',parser='Utf8',parser_version='Utf8'),
+        json_input(tmp_path,'parser_versions',[dict(parser=p,version=v) for p,v in versions.items()],parser='Utf8',version='Utf8'),
+        accepted_versions_input(tmp_path,[],pins=pins)]
+    steps=[dict(name='captures',sql="SELECT *,decode(body_hex,'hex') AS sha256 FROM capture_rows"),
+        dict(name='readings',sql="SELECT *,decode(body_hex,'hex') AS body_sha FROM reading_rows"),*selected_readings_steps([],parsers=pins),
+        dict(name='sniff_facts',sql="SELECT decode(body_hex,'hex') AS body_sha,format FROM sniff_rows"),
+        dict(name='body_admissions',sql="SELECT decode(body_hex,'hex') AS body_sha,format,basis FROM admission_rows"),
+        dict(name='source_files',sql="SELECT 'a.pdf' AS filename,cast(NULL AS VARCHAR) AS source_url"),
+        dict(name='active_unreadable',sql="SELECT body_sha256,record_sha,parser,parser_version FROM unreadable_rows")]
+    queries=completeness_checks(catalog_version='catalog-1',carried_html_metadata=carried)
+    report=run_job(tmp_path,NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),inputs=inputs,
+        steps=steps+completeness_steps(),outputs=[],queries=queries)['profile_completeness'][0]
+    assert {name:value for name,value in report.items() if value}==expected
+
+
 def test_profile_hashes_current_definition_files_and_reuses_capture_profile():
     from viewer_publication.archive_model_profile import profile_record,capture_profile_record
     record=profile_record(parser_versions=VERSIONS,catalog_version='catalog-1',engine_revision='a'*40,

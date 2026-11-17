@@ -63,4 +63,5 @@ SELECT
    OR basis IS NULL OR basis='') AS invalid_body_admissions,
  (SELECT count(*) FROM missing_sniff) AS missing_sniff,
  (SELECT count(*) FROM missing_pages) AS missing_pages,
- (SELECT count(*) FROM missing_filenames) AS missing_filenames
+ (SELECT count(*) FROM missing_filenames) AS missing_filenames,
+ greatest((SELECT cnt FROM profile_missing_html_metadata) - {{CARRIED_HTML_METADATA}}, 0) AS missing_html_metadata

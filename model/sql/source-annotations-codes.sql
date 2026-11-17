@@ -1,10 +1,10 @@
 WITH url_hosts AS (
  SELECT DISTINCT
-  lower(regexp_replace((regexp_match(website_url,'(?i)^https?://(?:www[.])?([a-z0-9-]+[.][a-z]+[.][a-z]+)'))[1],'^(?:democrats-|republicans-)','')) AS host_key,
+  lower(regexp_replace((regexp_match(website_url,'(?i)^https?://(?:www[.])?([a-z0-9-]+(?:[.][a-z0-9-]+)+)/?$'))[1],'^(?:democrats-|republicans-)','')) AS host_key,
   substr(lower(system_code),1,4)||'00' AS parent_committee
  FROM spicy_committees
  WHERE parent_system_code IS NULL AND lower(system_code)<>'jjec00'
-  AND regexp_like(coalesce(website_url,''),'(?i)^https?://(?:www[.])?[a-z0-9-]+[.][a-z]+[.][a-z]+')
+  AND regexp_like(coalesce(website_url,''),'(?i)^https?://(?:www[.])?[a-z0-9-]+(?:[.][a-z0-9-]+)+/?$')
  UNION SELECT 'aging.senate.gov' AS host_key,'spag00' AS parent_committee
  UNION SELECT 'ag.senate.gov','ssaf00'
  UNION SELECT 'agriculture.senate.gov','ssaf00'
@@ -31,6 +31,9 @@ WITH url_hosts AS (
  UNION SELECT 'csce.gov','jcse00'
  UNION SELECT 'cecc.gov','jcpk00'
  UNION SELECT 'jct.gov','jstx00'
+ UNION SELECT 'uscc.gov','jcuc00'
+ UNION SELECT 'cha.house.gov','jslc00'
+ UNION SELECT 'cha.house.gov','jspr00'
 ),
 exported_hosts AS (
  SELECT DISTINCT uh.host_key,upper(sc.system_code) AS code
@@ -45,3 +48,12 @@ JOIN capture_source_contexts c
  ON eh.host_key=lower(regexp_replace(
   coalesce((regexp_match(coalesce(c.context_url,''),'(?i)^https?://(?:web[.]archive[.]org/web/[0-9a-z_*]+/https?://)?(?:www[.])?([^/?#:]+)'))[1],''),
   '^(?:democrats-|republicans-|democrats[.]|republicans[.])',''))
+WHERE CASE
+ WHEN eh.host_key='cha.house.gov' AND eh.code='JSLC00' THEN
+  regexp_like(coalesce(c.context_url,''),'(?i)^https?://(?:web[.]archive[.]org/web/[0-9a-z_*]+/https?://)?(?:www[.])?cha[.]house[.]gov/(?:about/joint-committees/)?joint-committee-on-(?:the-)?library(?:[/?#]|$)')
+ WHEN eh.host_key='cha.house.gov' AND eh.code='JSPR00' THEN
+  regexp_like(coalesce(c.context_url,''),'(?i)^https?://(?:web[.]archive[.]org/web/[0-9a-z_*]+/https?://)?(?:www[.])?cha[.]house[.]gov/(?:about/joint-committees/)?joint-committee-on-printing(?:[/?#]|$)')
+ WHEN eh.host_key='cha.house.gov' AND eh.code='HSHA00' THEN
+  NOT regexp_like(coalesce(c.context_url,''),'(?i)^https?://(?:web[.]archive[.]org/web/[0-9a-z_*]+/https?://)?(?:www[.])?cha[.]house[.]gov/(?:about/joint-committees/)?joint-committee-on-(?:(?:the-)?library|printing)(?:[/?#]|$)')
+ ELSE true
+END

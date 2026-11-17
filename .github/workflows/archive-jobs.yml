@@ -112,6 +112,7 @@ jobs:
         with:
           ref: main
           persist-credentials: false
+          fetch-depth: 0  # gate 5 checks each producing commit is reachable from HEAD
       - uses: ./.github/actions/setup-python-project
       - name: Admit the backfill binding before runtime or storage access
         run: .venv/bin/python -I .github/scripts/run-archive-job.py backfill --check-binding
@@ -129,6 +130,17 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
         run: .venv/bin/python -I .github/scripts/run-archive-job.py backfill
+      - name: Retain backfill run evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archive-backfill-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: ignore
+          path: |
+            output/archive-backfill/backfill-report.json
+            ${{ runner.temp }}/*-disk-admission.json
+            ${{ runner.temp }}/*-watchdog.json
+            ${{ runner.temp }}/*-watchdog.timeline.jsonl
 
   maintenance:
     if: >-

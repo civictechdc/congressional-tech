@@ -195,6 +195,7 @@
     "profile_capture_duplicates": 1,
     "profile_filename_duplicates": 1,
     "profile_filename_pairs": 1293043,
+    "profile_missing_html_metadata": 1,
     "profile_reading_duplicates": 1,
     "publisher_kinds": 6,
     "publisher_links": 849707,

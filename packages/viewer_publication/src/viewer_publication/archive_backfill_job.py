@@ -11,7 +11,7 @@ from congress_api.lake.daily import ALL_TABLE_NAMES,DAILY_CAPTURE_RECORDS
 from viewer_publication.archive_model_job import _local,provenance_record_kind
 
 FIELDS={'version','bucket','catalog_root','work','tables','batch_size','max_batches'}
-OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through','producers','derived_parsers','derived_scopes'}
+OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through','producers','derived_parsers','derived_scopes','qualify_html_metadata'}
 FILENAME_PRIOR_VERSION = '6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1'
 FILENAME_ACT_CITATION_VERSION = 'c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09'
 
@@ -154,6 +154,12 @@ def load_spec(path):
     elif catalog_root is None and 'selective' not in value:
         # Gate 5: a head this job moves without a record refuses every later publish.
         raise ValueError('A daily backfill of the R2 lake requires the producer anchors the publisher pins')
+    if 'qualify_html_metadata' in value:
+        if type(value['qualify_html_metadata']) is not bool:
+            raise ValueError('Backfill qualify_html_metadata must be boolean')
+        if value['qualify_html_metadata'] and ('selective' in value or (catalog_root is None and 'producers' not in value)):
+            raise ValueError('HTML metadata R2 qualification requires R2 producer anchors and cannot combine with selective')
+        result['qualify_html_metadata']=value['qualify_html_metadata']
     return result
 
 
@@ -195,6 +201,8 @@ def plan(spec, *, runtime_factory=None):
     if 'selective' in spec:
         planned.update(where=spec['selective']['where'],base=spec['selective']['base'],resume=spec['resume'])
         return planned
+    if spec.get('qualify_html_metadata'):
+        planned['qualify_html_metadata']=True
     from tempfile import TemporaryDirectory
     from congress_api.lake.daily import inspect_targets, writer_field_paths
     from docspec_client.client import NativeDatasets, choose_runtime
@@ -338,6 +346,143 @@ def _filename_transition(spec, runtime_factory):
     return dict(report, producer=dict(path=str(producer_path), **file_pin(producer_path)))
 
 
+def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factory=None):
+    """Append missing html_metadata readings across the R2 captures head and prove 0 pending items."""
+    from concurrent.futures import ThreadPoolExecutor
+    import sys
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.lake import daily, filenames, readings, tables as lake_tables
+    from congress_api.lake.producer_records import ProducerRecords
+    from congress_api.retention.body_store import BodyStore, R2Adapter
+    from congress_api.retention.provenance import file_pin
+    from congress_api.retention.provenance_inventory import unreadable_inventory
+    from congress_api.retention.r2 import configure_read_retries
+    from congress_shared.storage import connect_r2
+    from docspec_client.client import NativeDatasets, choose_runtime, runtime_record
+    from viewer_publication import archive_model_profile, producer_proof
+    from viewer_publication.archive_publish_job import _verify_metadata
+
+    work = Path(spec['work'])
+    if work.exists() or work.is_symlink():
+        raise ValueError('Backfill work directory must be fresh')
+    if spec.get('catalog_root') is not None or 'producers' not in spec:
+        raise ValueError('HTML metadata R2 qualification requires R2 catalog_root=null and producer anchors')
+    engine_config, choice = choose_runtime(spec.get('engine_config'), job_fallback=True)
+    if not isinstance(engine_config, str) or not engine_config.strip():
+        raise ValueError('Backfill execution requires an explicit engine_config or DOCSPEC_RUNTIME_CONFIG')
+    runtime_factory = runtime_factory or NativeDatasets.from_config
+    storage_factory = storage_factory or connect_r2
+    decided_at = spec.get('decided_at') or datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    with runtime_factory(engine_config) as engine:
+        ran = runtime_record(engine_config, choice, log=sys.stderr)
+        engine.verify_runtime()
+        write_client = storage_factory(bucket=spec['bucket'], retries={'total_max_attempts': 1})
+        reads = configure_read_retries(
+            storage_factory(bucket=spec['bucket'], retries={'total_max_attempts': 1}, max_pool_connections=64)
+        )
+        raw_store = BodyStore(R2Adapter(reads, spec['bucket']))
+        anchors = {}
+        for name, pin in spec['producers'].items():
+            identity = _verify_metadata(pin)
+            anchors[name] = Path(pin['path']).read_bytes()
+            identity.require(pin['path'])
+        ledger = ProducerRecords(anchors, client=write_client, bucket=spec['bucket'])
+        unreadable_snapshot = unreadable_inventory(raw_store, work=work / 'unreadable-inventory')
+        tables_spec = {'captures': spec['tables']['captures'], 'readings': spec['tables']['readings']}
+        heads = lake_tables.resolve_tables(
+            engine=engine, catalog_root=spec['catalog_root'], work=work / 'initial-heads', tables=tables_spec,
+        )
+        daily.verify_target_schemas(heads, engine=engine, work=work / 'target-schemas')
+        initial_plan = readings.plan(
+            captures=heads['captures'], existing=heads['readings'],
+            unreadable_files=unreadable_snapshot.files(), body_inventory=None, captured_copies=True,
+            raw_ranges=False, local_root=work / 'unopened', engine=engine, work=work / 'initial-plan',
+            decided_at=decided_at, parser='html_metadata',
+        )
+        wl = pq.read_table(initial_plan['work_list'], columns=['body_sha'])
+        hex_shas = sorted({b.hex() for b in wl['body_sha'].to_pylist()})
+        scope_path = work / 'scope.parquet'
+        pq.write_table(pa.table({'body_sha': pa.array(hex_shas, type=pa.string())}), scope_path)
+
+        target_hexes = set(hex_shas)
+        prefixes = sorted({f'bodies/sha256/{h[:2]}/' for h in hex_shas})
+        listing_rows = []
+        if prefixes:
+            def list_one(prefix):
+                matched = []
+                paginator = reads.get_paginator('list_objects_v2')
+                for page in paginator.paginate(Bucket=spec['bucket'], Prefix=prefix):
+                    for obj in page.get('Contents', ()):
+                        key = obj['Key']
+                        stem = key.rsplit('/', 1)[-1].split('.', 1)[0]
+                        if len(stem) == 64 and re.fullmatch('[0-9a-f]{64}', stem) and stem in target_hexes:
+                            matched.append(dict(key=key, size=int(obj['Size']), etag=str(obj['ETag'])))
+                return matched
+
+            with ThreadPoolExecutor(max_workers=32) as pool:
+                for fut in [pool.submit(list_one, prefix) for prefix in prefixes]:
+                    listing_rows.extend(fut.result())
+            listing_rows.sort(key=lambda r: r['key'])
+        listing_path = work / 'body-listing.parquet'
+        pq.write_table(pa.Table.from_pylist(listing_rows, schema=daily.LISTING_SCHEMA), listing_path)
+
+        batches_count = 0
+        if hex_shas:
+            result = daily.produce_html_metadata(
+                engine=engine, raw_store=raw_store, producer_records=ledger,
+                catalog_root=spec['catalog_root'], work=work / 'produce', decided_at=decided_at,
+                tables_spec=tables_spec, expected_heads=heads,
+                scope=dict(path=str(scope_path), **file_pin(scope_path)),
+                unreadable_snapshot=unreadable_snapshot,
+                batch_size=max(spec['batch_size'], 10000), parser_workers=4, max_get_workers=64,
+                body_listing=dict(path=str(listing_path), **file_pin(listing_path)),
+            )
+            if result.get('status') != 'completed':
+                raise ValueError('HTML metadata R2 qualification did not complete: ' + str(result.get('status')))
+            final_pins = result['pins']
+            batches_count = len(result['readings']['batches'])
+        else:
+            final_pins = heads
+
+        post_plan = readings.plan(
+            captures=final_pins['captures'], existing=final_pins['readings'],
+            unreadable_files=unreadable_snapshot.files(), body_inventory=None, captured_copies=True,
+            raw_ranges=False, local_root=work / 'post-unopened', engine=engine, work=work / 'post-plan',
+            decided_at=decided_at, parser='html_metadata',
+        )
+        if post_plan['work_items'] != 0:
+            raise ValueError(f"HTML metadata qualification left {post_plan['work_items']} pending items")
+
+        proof_model = dict(
+            captures=dict(kind='native_table', **final_pins['captures']),
+            readings=dict(kind='native_table', **final_pins['readings']),
+            parser_versions=archive_model_profile.current_parser_versions(('html_metadata',)),
+            catalog_version=filenames.current_version(),
+        )
+        records = producer_proof.find_records(proof_model, ledger, anchors)
+        gate5_report = producer_proof.require_producers(
+            proof_model, engine=engine, work=work / 'gate5-proof', records=records, ledger=ledger,
+        )
+
+    report = dict(
+        status='executed',
+        executed=True,
+        qualify_html_metadata=True,
+        initial_heads=heads,
+        initial_work_items=initial_plan['work_items'],
+        listing_objects=len(listing_rows),
+        batches_count=batches_count,
+        final_pins=final_pins,
+        post_work_items=post_plan['work_items'],
+        gate5_report=gate5_report,
+        engine_runtime=ran,
+    )
+    (work / 'backfill-report.json').write_text(_dumps(report) + '\n', encoding='utf-8')
+    return report
+
+
 def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None,activation_lock_fd=None):
     """Run bounded lake backfill batches against the configured remote runtime and raw store."""
     require_no_derived(spec)
@@ -359,6 +504,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None,activ
     if 'selective' in spec:
         from viewer_publication.archive_selective import execute_selective
         return execute_selective(spec,runtime_factory=runtime_factory)
+    if spec.get('qualify_html_metadata'):
+        return _execute_qualify_html_metadata(spec, runtime_factory=runtime_factory, storage_factory=storage_factory)
     work=Path(spec['work'])
     if work.exists() or work.is_symlink():
         raise ValueError('Backfill work directory must be fresh')

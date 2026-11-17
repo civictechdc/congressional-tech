@@ -49,6 +49,7 @@
   },
   "batch_size": 5000,
   "max_batches": 20,
+  "qualify_html_metadata": true,
   "producers": {
     "appearance_records": {
       "path": "producers/appearance_records-rank-20261112.json",

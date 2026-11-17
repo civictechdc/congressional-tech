@@ -202,7 +202,7 @@ def completeness_steps(*,root=ROOT):
     """Retain expected populations once before their independent coverage checks."""
     return [dict(name=name.replace('-','_'),sql=(Path(root)/'model/sql'/(name+'.sql')).read_text(),materialize=True)
         for name in ['profile-bodies','profile-filename-pairs','profile-capture-duplicates','profile-reading-duplicates',
-            'profile-filename-duplicates']]
+            'profile-filename-duplicates','profile-missing-html-metadata']]
 
 
 def _entity_version_cte(table_prefix,expected_sources,override_version):
@@ -233,7 +233,8 @@ def _entity_version_cte(table_prefix,expected_sources,override_version):
 
 
 def completeness_checks(*,catalog_version,include_entities=False,
-                        meeting_records_version=None,appearance_records_version=None,root=ROOT):
+                        meeting_records_version=None,appearance_records_version=None,
+                        carried_html_metadata=0,root=ROOT):
     """Return native counts; every positive value refuses accepted model output.
 
     Run completeness_steps first. Inputs are captures, readings, filename_readings, parser_versions,
@@ -245,7 +246,11 @@ def completeness_checks(*,catalog_version,include_entities=False,
     """
     if not isinstance(catalog_version,str) or not catalog_version:
         raise ValueError('Completeness requires a pinned filename version')
-    sql=(Path(root)/'model/sql/profile-completeness.sql').read_text().replace('{{CATALOG_VERSION}}',"'"+catalog_version.replace("'","''")+"'")
+    if type(carried_html_metadata) is not int or carried_html_metadata<0:
+        raise ValueError('Completeness carried_html_metadata must be a non-negative integer')
+    sql=((Path(root)/'model/sql/profile-completeness.sql').read_text()
+         .replace('{{CATALOG_VERSION}}',"'"+catalog_version.replace("'","''")+"'")
+         .replace('{{CARRIED_HTML_METADATA}}',str(carried_html_metadata)))
     checks=[dict(name='profile_completeness',sql=sql)]
     if include_entities:
         mr_versions_sql=_entity_version_cte('meeting_records',MEETING_SOURCES,meeting_records_version)

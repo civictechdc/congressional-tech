@@ -566,10 +566,14 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
             if 'release_causes' in spec:
                 from viewer_publication.release_gate import load_causes
                 causes=load_causes(spec['release_causes'])
+            carried_html_metadata=0
+            if daily is not None:
+                carried_html_metadata=int((((daily['daily'].get('carried') or {}).get('html_metadata') or {}).get('bodies')) or 0)
             result=run_publish(selected_model,receipt_keys=keys,provenance=provenance,verified_files=verified,engine_runtime=ran,
                 measured_release_id=measured_release_id,comparison_acceptance=acceptance,resume=spec.get('resume',False),
                 release_causes=causes,link_history=spec.get('link_history',[]),
-                first_release=spec.get('first_release',False),automatic_causes=spec.get('automatic_causes',False),**options)
+                first_release=spec.get('first_release',False),automatic_causes=spec.get('automatic_causes',False),
+                carried_html_metadata=carried_html_metadata,**options)
             spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
             return dict(result,daily=daily['daily']) if daily is not None else result
 

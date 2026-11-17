@@ -1206,7 +1206,7 @@ def admission_steps(*,prelude=(),root=ROOT):
     return list(prelude)+current_steps(root=root)+evidence_steps(root=root)+source_steps(root=root)+completeness_steps(root=root)
 
 
-def admission_checks(*,parser_versions,catalog_version,include_entities=False,root=ROOT):
+def admission_checks(*,parser_versions,catalog_version,include_entities=False,carried_html_metadata=0,root=ROOT):
     """Check current pinned inputs without exporting public release files."""
     from viewer_publication.archive_model_profile import completeness_checks,validate_parser_versions
     validate_parser_versions(parser_versions,require_entities=include_entities)
@@ -1216,6 +1216,7 @@ def admission_checks(*,parser_versions,catalog_version,include_entities=False,ro
         include_entities=include_entities,
         meeting_records_version=parser_versions.get('meeting_records') if isinstance(parser_versions,dict) else None,
         appearance_records_version=parser_versions.get('appearance_records') if isinstance(parser_versions,dict) else None,
+        carried_html_metadata=carried_html_metadata,
         root=root)
 
 
@@ -1240,7 +1241,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                          spicy_regs=None,include_entities=False,recovery_requirements=None,
                          video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                          transcript_headings=None,
-                         historical_recording_matcher=None,docmeta_v6_1=None,prior_links=None,base_retired=None,base_release_id=None,root=ROOT,registry=None):
+                         historical_recording_matcher=None,docmeta_v6_1=None,prior_links=None,base_retired=None,base_release_id=None,
+                         carried_html_metadata=0,root=ROOT,registry=None):
     """Freeze current input selectors and the shared prefix in fresh private scratch.
 
     `registry` names a compatible-versions file other than the checked-in one (tests only).
@@ -1251,6 +1253,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     from viewer_publication.archive_format import AUXILIARY_ROW_GROUP_ROWS, _settings
     from viewer_publication.archive_model_profile import (expand_parser_version_rows,profile_record,
         readings_bundle_version,runtime_pins,validate_parser_versions)
+    if type(carried_html_metadata) is not int or carried_html_metadata<0:
+        raise ValueError('carried_html_metadata must be a non-negative integer')
     include_entities=bool(include_entities or meeting_records is not None or appearance_records is not None or spicy_regs is not None)
     # All or none: an omitted table means unavailable, never empty (DM8).
     explorer_inputs=video_records is not None or committee_records is not None or bool(recording_decision_files)
@@ -1416,7 +1420,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         has_document_references=has_document_references,
         has_rank_credentials=has_rank_credentials,
         historical_recording_matcher=historical_recording_matcher is not None,
-        has_docmeta_v6_1=docmeta_v6_1 is not None)
+        has_docmeta_v6_1=docmeta_v6_1 is not None,
+        carried_html_metadata=carried_html_metadata)
 
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
@@ -1425,7 +1430,8 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
                   spicy_regs=None,include_entities=False,recovery_requirements=None,
                   video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                   transcript_headings=None,
-                  historical_recording_matcher=None,docmeta_v6_1=None,prior_links=None,base_retired=None,base_release_id=None,root=ROOT,registry=None):
+                  historical_recording_matcher=None,docmeta_v6_1=None,prior_links=None,base_retired=None,base_release_id=None,
+                  carried_html_metadata=0,root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
@@ -1434,7 +1440,8 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
         recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
         recording_decision_files=recording_decision_files,playlist_records=playlist_records,transcript_headings=transcript_headings,
-        historical_recording_matcher=historical_recording_matcher,docmeta_v6_1=docmeta_v6_1,prior_links=prior_links,base_retired=base_retired,base_release_id=base_release_id,root=root,registry=registry)
+        historical_recording_matcher=historical_recording_matcher,docmeta_v6_1=docmeta_v6_1,prior_links=prior_links,base_retired=base_retired,base_release_id=base_release_id,
+        carried_html_metadata=carried_html_metadata,root=root,registry=registry)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
@@ -1946,5 +1953,6 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             include_entities=bool(prepared.get('include_entities')),
             meeting_records_version=parser_versions.get('meeting_records') if isinstance(parser_versions,dict) else None,
             appearance_records_version=parser_versions.get('appearance_records') if isinstance(parser_versions,dict) else None,
+            carried_html_metadata=prepared.get('carried_html_metadata',0),
             root=root))
     return manifest

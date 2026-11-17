@@ -194,7 +194,8 @@ def _probe_evidence(reports):
 def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,run,
                 public_origin,contract,canary,verified_files=None,measured_release_id=None,comparison_acceptance=None,
                 resume=False,release_causes=None,link_history=(),first_release=False,automatic_causes=False,
-                daily_summary_sha256=None,check_current_daily=None,receipt_client=None,engine_runtime=None):
+                daily_summary_sha256=None,check_current_daily=None,receipt_client=None,engine_runtime=None,
+                carried_html_metadata=0):
     """Prepare once, admit before a skip, otherwise export once and publish.
 
     SQL, graphs, grouping and file writing use the maintained native model.
@@ -206,6 +207,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
     """
     from viewer_publication.archive_comparison_acceptance import require_comparison
     require_comparison(comparison_acceptance,captures=model_spec['captures'])
+    if type(carried_html_metadata) is not int or carried_html_metadata<0:
+        raise ValueError('carried_html_metadata must be a non-negative integer')
     receipt_keys=list(receipt_keys);receipt_list(receipt_keys);provenance=list(provenance)
     keys=sorted(set(receipt_keys))
     if not isinstance(run,dict) or not run:raise ValueError('Publication requires explicit run metadata')
@@ -281,7 +284,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 base_release,prior,retired,history=held_base()
                 prepared=prepare_model_inputs(**arguments,parser_versions=model_spec['parser_versions'],
                     catalog_version=model_spec['catalog_version'],engine=engine,scratch=stage['scratch'],
-                    prior_links=prior,base_retired=retired)
+                    prior_links=prior,base_retired=retired,carried_html_metadata=carried_html_metadata)
                 profile=prepared['profile']
                 if model_spec.get('text_index'):
                     from viewer_publication.archive_text_index import semantic_policy
@@ -332,7 +335,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             if live_input is not None and checkpoint is None:
                 admission=prepared['scratch']/'admission';admission.mkdir()
                 checks=admission_checks(parser_versions=prepared['parser_versions'],catalog_version=prepared['catalog_version'],
-                    include_entities=bool(prepared.get('include_entities')))
+                    include_entities=bool(prepared.get('include_entities')),
+                    carried_html_metadata=prepared.get('carried_html_metadata',0))
                 reports=run_job(admission,engine,inputs=prepared['inputs'],steps=prepared['steps'],outputs=[],
                     queries=checks+[input_receipts_query()])
                 _admitted(reports,[query['name'] for query in checks]);_receipt_evidence(reports,keys)

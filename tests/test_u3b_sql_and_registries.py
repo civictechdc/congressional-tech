@@ -427,6 +427,10 @@ def test_source_annotations_exported_committees_hsru_floor_host_and_html_pdf_par
         ('s_hsru_floor', 'BILLS-118hr1435-RCP118-27.pdf', 'https://docs.house.gov/billsthisweek/20230911/BILLS-118hr1435-RCP118-27.pdf', '5' * 64, 'pdf', None),
         ('s_hsru_rules_pdf', '118-Rules.pdf', 'https://rules.house.gov/sites/evo-subsites/rules.house.gov/files/documents/118-Rules.pdf', '6' * 64, 'pdf', None),
         ('s_hsru_clerk', 'HHRG-118-RU00-Transcript-20230912.pdf', 'https://docs.house.gov/meetings/RU/RU00/20230912/116345/HHRG-118-RU00-Transcript-20230912.pdf', '7' * 64, 'pdf', None),
+        ('s_cha_main', 'hearing.pdf', 'https://cha.house.gov/committee-activity/hearings/foo', '9' * 64, 'pdf', None),
+        ('s_cha_lib', 'library.pdf', 'https://cha.house.gov/about/joint-committees/joint-committee-on-library/hearings', 'a' * 64, 'pdf', None),
+        ('s_cha_prt', 'printing.pdf', 'https://cha.house.gov/joint-committee-on-printing', 'b' * 64, 'pdf', None),
+        ('s_uscc', 'report-2025.pdf', 'https://www.uscc.gov/sites/default/files/2025.pdf', 'c' * 64, 'pdf', None),
         (
             's_html_banking',
             'oversight-hearing.html',
@@ -502,6 +506,10 @@ def test_source_annotations_exported_committees_hsru_floor_host_and_html_pdf_par
         dict(system_code='SSFI00', parent_system_code=None, website_url='https://www.finance.senate.gov/'),
         dict(system_code='HSRU00', parent_system_code=None, website_url='https://rules.house.gov/'),
         dict(system_code='SSBK00', parent_system_code=None, website_url='https://www.banking.senate.gov/'),
+        dict(system_code='HSHA00', parent_system_code=None, website_url='https://cha.house.gov/'),
+        dict(system_code='JSLC00', parent_system_code=None, website_url='https://cha.house.gov/about/joint-committees/joint-committee-on-library'),
+        dict(system_code='JSPR00', parent_system_code=None, website_url='https://cha.house.gov/joint-committee-on-printing'),
+        dict(system_code='JCUC00', parent_system_code=None, website_url='https://www.uscc.gov/'),
     ]
     pop_res = {r['source_id']: r for r in run_with_committees('pop_sc', populated_sc)}
     assert pop_res['s_scnc']['committee_keys'] == ['scnc00']
@@ -513,6 +521,16 @@ def test_source_annotations_exported_committees_hsru_floor_host_and_html_pdf_par
     assert pop_res['s_hsru_floor']['committee_keys'] == []
     assert pop_res['s_hsru_rules_pdf']['committee_keys'] == ['hsru00']
     assert pop_res['s_hsru_clerk']['committee_keys'] == ['hsru00']
+    # cha.house.gov main pages keep only hsha00/'house'; joint subpaths map exclusively to jslc00/jspr00/'joint'.
+    assert pop_res['s_cha_main']['committee_keys'] == ['hsha00']
+    assert pop_res['s_cha_main']['chambers'] == ['house']
+    assert pop_res['s_cha_lib']['committee_keys'] == ['jslc00']
+    assert pop_res['s_cha_lib']['chambers'] == ['joint']
+    assert pop_res['s_cha_prt']['committee_keys'] == ['jspr00']
+    assert pop_res['s_cha_prt']['chambers'] == ['joint']
+    # www.uscc.gov strips www. cleanly and maps to jcuc00/'joint'.
+    assert pop_res['s_uscc']['committee_keys'] == ['jcuc00']
+    assert pop_res['s_uscc']['chambers'] == ['joint']
     # Committee HTML page mentioning "Ranking Member of..." and "testified before..." keeps ssbk00!
     assert pop_res['s_html_banking']['committee_keys'] == ['ssbk00']
 
