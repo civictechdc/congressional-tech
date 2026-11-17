@@ -27,17 +27,8 @@ from pathlib import Path
 import re
 from typing import Any, Literal, Mapping, Sequence
 
-if __package__:
-    from .atomic_validator_v6 import ALL_KIND_DESC_V6
-    from .pythonic_v5 import DOC_KINDS_SET, SCHEMA_OBJ, infer_is_html_v5, strip_html_cms_nav_v5
-else:
-    import sys
-
-    _DOCMETA_DIR = Path(__file__).resolve().parent
-    if str(_DOCMETA_DIR) not in sys.path:
-        sys.path.insert(0, str(_DOCMETA_DIR))
-    from atomic_validator_v6 import ALL_KIND_DESC_V6  # type: ignore
-    from pythonic_v5 import DOC_KINDS_SET, SCHEMA_OBJ, infer_is_html_v5, strip_html_cms_nav_v5  # type: ignore
+from .atomic_validator_v6 import ALL_KIND_DESC_V6
+from .pythonic_v5 import DOC_KINDS_SET, SCHEMA_OBJ, infer_is_html_v5, strip_html_cms_nav_v5
 
 RouterMode = Literal["fast", "ane"]
 _TOK_RE = re.compile(r"[a-z0-9_]{2,}")

@@ -32,21 +32,7 @@ SRC_DIR = REPO_ROOT / "src"
 
 
 def test_stdlib_isolation_and_repo_hygiene() -> None:
-    """Verify `/usr/bin/python3 -B -I -S` imports `anomaly_router_v6`, `atomic_validator_v6`, and `parquet_runner_v6`."""
-    for script_rel in (
-        "src/congress_docmeta/anomaly_router_v6.py",
-        "src/congress_docmeta/atomic_validator_v6.py",
-        "src/congress_docmeta/grammar_router_ane_v6.py",
-        "src/congress_docmeta/parquet_runner_v6.py",
-    ):
-        proc = subprocess.run(
-            ["/usr/bin/python3", "-B", "-I", "-S", str(REPO_ROOT / script_rel)],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert proc.returncode == 0, f"{script_rel} failed under -B -I -S:\n{proc.stderr}"
-
+    """Verify `/usr/bin/python3 -B -I -S` imports the package, validator included, with no third-party module."""
     code = (
         "import sys\n"
         f"sys.path.insert(0, {str(SRC_DIR)!r})\n"

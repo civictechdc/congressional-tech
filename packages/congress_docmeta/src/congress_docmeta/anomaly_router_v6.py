@@ -1003,13 +1003,7 @@ def load_default_usc_oracle_v6(
     if not resolved_repo.exists():
         return None
     try:
-        if __package__:
-            from . import citations_and_signals_v6 as _cit_v6
-        else:
-            docmeta_dir = Path(__file__).resolve().parent
-            if str(docmeta_dir) not in sys.path:
-                sys.path.insert(0, str(docmeta_dir))
-            import citations_and_signals_v6 as _cit_v6  # type: ignore
+        from . import citations_and_signals_v6 as _cit_v6
 
         orc = _cit_v6.get_cached_refspec_oracles_v6(resolved_repo)
         if orc is not None and getattr(orc, "usc_oracle", None) is not None:

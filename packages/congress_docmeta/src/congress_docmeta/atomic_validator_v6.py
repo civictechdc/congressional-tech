@@ -36,25 +36,12 @@ import subprocess
 import threading
 from typing import Any, Literal, Mapping, Sequence
 
-if __package__:
-    from .anomaly_router_v6 import (
-        ACTOR_REQUIRED_KINDS_V6,
-        check_gist_title_grounding_v6,
-        score_atomic_stdlib_v6,
-        surname_token_v6,
-    )
-else:
-    import sys
-
-    _DOCMETA_DIR = Path(__file__).resolve().parent
-    if str(_DOCMETA_DIR) not in sys.path:
-        sys.path.insert(0, str(_DOCMETA_DIR))
-    from anomaly_router_v6 import (  # type: ignore
-        ACTOR_REQUIRED_KINDS_V6,
-        check_gist_title_grounding_v6,
-        score_atomic_stdlib_v6,
-        surname_token_v6,
-    )
+from .anomaly_router_v6 import (
+    ACTOR_REQUIRED_KINDS_V6,
+    check_gist_title_grounding_v6,
+    score_atomic_stdlib_v6,
+    surname_token_v6,
+)
 
 ValidatorMode = Literal["laya-ane", "kev-0.8b", "both"]
 
@@ -644,10 +631,7 @@ class AtomicOutputValidatorV6:
                     v0["gist_grounding_ungrounded"] = True
                     v0["atomic_risk_score"] = round(float(v0["atomic_risk_score"]) + 0.65, 4)
                 if obj.get("primary_kind") == "truth_in_testimony_disclosure" and isinstance(obj.get("disclosure"), Mapping):
-                    if __package__:
-                        from .zero_llm_bypass_v6 import parse_ttf_form_v6
-                    else:
-                        from zero_llm_bypass_v6 import parse_ttf_form_v6  # type: ignore
+                    from .zero_llm_bypass_v6 import parse_ttf_form_v6
 
                     ttf_det = parse_ttf_form_v6(txt)
                     disc_pred = obj["disclosure"]

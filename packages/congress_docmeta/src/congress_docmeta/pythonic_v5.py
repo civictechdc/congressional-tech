@@ -64,118 +64,60 @@ TEXT_QUALITY_SET = set(SCHEMA_OBJ["properties"]["text_quality"]["enum"])
 ROLES_SET = set(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["role"]["enum"])
 ETYPES_SET = set(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["entity_type"]["enum"])
 
-if __package__:
-    from .prompt_v4 import SYS_DOCMETA_V4, build_prompt_v4
-    from . import expanded_rules_v5 as _exv5
-    from . import multipage_rules_v5 as _mpv5
-    from . import provenance_rules_v5 as _prv5
-    from .expanded_rules_v5 import (
-        CANONICAL_COMMITTEES_V5,
-        CMS_STRIPPER_FAMILIES_V5,
-        NEW_TIER1_SIGNATURE_TO_KIND_V5,
-        TIER1_SIGNATURE_IDS_V5,
-        TIER1_SIGNATURE_TO_KIND_V5,
-        TIER1_TARGET_KINDS_V5,
-        V4_TIER1_SIGNATURE_TO_KIND,
-        detect_all_tier1_signatures_v5,
-        detect_exact_tier1_signature_v5,
-        detect_new_tier1_signatures_v5,
-        detect_tier2_sidecar_hints_v5,
-        detect_v4_tier1_signatures,
-        extract_official_slug_congress,
-        extract_pdf_masthead_congress_v5,
-        infer_is_html_v5,
-        iso_date_to_congress,
-        strip_html_cms_nav_v5,
-    )
-    from .multipage_rules_v5 import (
-        detect_stapled_backpage_packets,
-        detect_ttf_page_signature,
-        detect_vote_page_signature,
-        extract_gpo_p3_p8_rescue,
-        extract_multipage_signals_v5,
-        extract_ttf_disclosure_booleans,
-        is_gpo_cover_roster_only_p12,
-        is_qfr_appendix_page,
-        is_steno_cover_roster_only_p12,
-        match_qfr_appendix_page,
-        split_pdf_pages,
-        triage_unwrapped_http_or_empty,
-    )
-    from .provenance_rules_v5 import (
-        DOMAIN_TO_COMMITTEE_CODE,
-        HOUSE_CLERK_2LETTER_TO_CODE,
-        PROVENANCE_SAFE_COMMITTEE_KINDS,
-        can_fill_docmeta_chamber_v5,
-        can_fill_docmeta_committees_v5,
-        can_fill_docmeta_congress_v5,
-        can_fill_docmeta_event_date_v5,
-        committee_code_to_canonical,
-        detect_provenance_link_anchor,
-        extract_url_dates_and_congress,
-        extract_url_official_slug_info,
-        norm_committee_compare,
-        normalize_parent_committee_code,
-        resolve_provenance_v5,
-        unwrap_archive_url,
-    )
-else:
-    if str(DOCMETA_DIR) not in sys.path:
-        sys.path.insert(0, str(DOCMETA_DIR))
-    from prompt_v4 import SYS_DOCMETA_V4, build_prompt_v4  # type: ignore  # noqa: E402
-    import expanded_rules_v5 as _exv5  # type: ignore  # noqa: E402
-    import multipage_rules_v5 as _mpv5  # type: ignore  # noqa: E402
-    import provenance_rules_v5 as _prv5  # type: ignore  # noqa: E402
-    from expanded_rules_v5 import (  # type: ignore  # noqa: E402
-        CANONICAL_COMMITTEES_V5,
-        CMS_STRIPPER_FAMILIES_V5,
-        NEW_TIER1_SIGNATURE_TO_KIND_V5,
-        TIER1_SIGNATURE_IDS_V5,
-        TIER1_SIGNATURE_TO_KIND_V5,
-        TIER1_TARGET_KINDS_V5,
-        V4_TIER1_SIGNATURE_TO_KIND,
-        detect_all_tier1_signatures_v5,
-        detect_exact_tier1_signature_v5,
-        detect_new_tier1_signatures_v5,
-        detect_tier2_sidecar_hints_v5,
-        detect_v4_tier1_signatures,
-        extract_official_slug_congress,
-        extract_pdf_masthead_congress_v5,
-        infer_is_html_v5,
-        iso_date_to_congress,
-        strip_html_cms_nav_v5,
-    )
-    from multipage_rules_v5 import (  # type: ignore  # noqa: E402
-        detect_stapled_backpage_packets,
-        detect_ttf_page_signature,
-        detect_vote_page_signature,
-        extract_gpo_p3_p8_rescue,
-        extract_multipage_signals_v5,
-        extract_ttf_disclosure_booleans,
-        is_gpo_cover_roster_only_p12,
-        is_qfr_appendix_page,
-        is_steno_cover_roster_only_p12,
-        match_qfr_appendix_page,
-        split_pdf_pages,
-        triage_unwrapped_http_or_empty,
-    )
-    from provenance_rules_v5 import (  # type: ignore  # noqa: E402
-        DOMAIN_TO_COMMITTEE_CODE,
-        HOUSE_CLERK_2LETTER_TO_CODE,
-        PROVENANCE_SAFE_COMMITTEE_KINDS,
-        can_fill_docmeta_chamber_v5,
-        can_fill_docmeta_committees_v5,
-        can_fill_docmeta_congress_v5,
-        can_fill_docmeta_event_date_v5,
-        committee_code_to_canonical,
-        detect_provenance_link_anchor,
-        extract_url_dates_and_congress,
-        extract_url_official_slug_info,
-        norm_committee_compare,
-        normalize_parent_committee_code,
-        resolve_provenance_v5,
-        unwrap_archive_url,
-    )
+from .prompt_v4 import SYS_DOCMETA_V4, build_prompt_v4
+from . import expanded_rules_v5 as _exv5
+from . import multipage_rules_v5 as _mpv5
+from . import provenance_rules_v5 as _prv5
+from .expanded_rules_v5 import (
+    CANONICAL_COMMITTEES_V5,
+    CMS_STRIPPER_FAMILIES_V5,
+    NEW_TIER1_SIGNATURE_TO_KIND_V5,
+    TIER1_SIGNATURE_IDS_V5,
+    TIER1_SIGNATURE_TO_KIND_V5,
+    TIER1_TARGET_KINDS_V5,
+    V4_TIER1_SIGNATURE_TO_KIND,
+    detect_all_tier1_signatures_v5,
+    detect_exact_tier1_signature_v5,
+    detect_new_tier1_signatures_v5,
+    detect_tier2_sidecar_hints_v5,
+    detect_v4_tier1_signatures,
+    extract_official_slug_congress,
+    extract_pdf_masthead_congress_v5,
+    infer_is_html_v5,
+    iso_date_to_congress,
+    strip_html_cms_nav_v5,
+)
+from .multipage_rules_v5 import (
+    detect_stapled_backpage_packets,
+    detect_ttf_page_signature,
+    detect_vote_page_signature,
+    extract_gpo_p3_p8_rescue,
+    extract_multipage_signals_v5,
+    extract_ttf_disclosure_booleans,
+    is_gpo_cover_roster_only_p12,
+    is_qfr_appendix_page,
+    is_steno_cover_roster_only_p12,
+    match_qfr_appendix_page,
+    split_pdf_pages,
+    triage_unwrapped_http_or_empty,
+)
+from .provenance_rules_v5 import (
+    DOMAIN_TO_COMMITTEE_CODE,
+    HOUSE_CLERK_2LETTER_TO_CODE,
+    PROVENANCE_SAFE_COMMITTEE_KINDS,
+    can_fill_docmeta_chamber_v5,
+    can_fill_docmeta_committees_v5,
+    can_fill_docmeta_congress_v5,
+    can_fill_docmeta_event_date_v5,
+    committee_code_to_canonical,
+    detect_provenance_link_anchor,
+    extract_url_dates_and_congress,
+    extract_url_official_slug_info,
+    norm_committee_compare,
+    normalize_parent_committee_code,
+    resolve_provenance_v5,
+    unwrap_archive_url,
+)
 
 TOP_ORDER_IDX = {k: i for i, k in enumerate(TOP_KEYS_ORDER)}
 PERSONA_ORDER_IDX = {k: i for i, k in enumerate(PERSONA_KEYS_ORDER)}

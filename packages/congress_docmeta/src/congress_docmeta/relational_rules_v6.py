@@ -2240,8 +2240,8 @@ def attach_work_addresses_v6(
     inside addresses set side by side read as "A B / street A street B"), and otherwise only the run's first
     address is used. A `work_addr` the model wrote is never replaced, and each person takes one address.
 
-    The reader (`fast_gemma4.address_reader`, the `address` extra) is imported here, on first use; without it the
-    personas come back unchanged, so `fast_gemma4.docmeta` stays stdlib-only at import.
+    The reader (`congress_docmeta.address_reader`) is imported here, on first use, so importing this package
+    stays stdlib-only. Its libraries are required dependencies: a missing one raises, it does not switch the rule off.
     """
     cur = [dict(p) for p in (personas or []) if isinstance(p, Mapping)]
     if not text or primary_kind not in _WORK_ADDR_KINDS:
@@ -2253,10 +2253,8 @@ def attach_work_addresses_v6(
             people.setdefault(sur, p)
     if all(p.get("work_addr") for p in people.values()):
         return cur
-    try:
-        from congress_docmeta.address_reader.congressional import read_work_addresses
-    except ImportError:
-        return cur
+    from .address_reader.congressional import read_work_addresses
+
     folded, addresses = read_work_addresses(text)
     name_res = {sur: re.compile(rf"(?i)(?<![A-Za-z]){re.escape(sur)}(?![A-Za-z])") for sur in people}
 

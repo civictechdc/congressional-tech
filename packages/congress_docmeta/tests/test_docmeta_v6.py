@@ -56,8 +56,6 @@ def test_pure_stdlib_import_isolation_and_zero_scratch_paths() -> None:
         "        assert hasattr(mod, exp), f'{mod_name} missing {exp}'\n"
         "for banned in ('mlx', 'numpy', 'pyarrow', 'tokenizers', 'llguidance'):\n"
         "    assert banned not in sys.modules, f'Unexpected third-party import: {banned}'\n"
-        "status = dm.reload_v6_submodules()\n"
-        "assert all(status.values()), status\n"
         "enr, pmeta = dm.pre_pass_v6(None, 'HHRG-118-JU00-Wstate-DoeJ-20230510.pdf', 'Testimony of Jane Doe, May 10, 2023.')\n"
         "assert '118' in enr and pmeta['triage'] is None\n"
     )

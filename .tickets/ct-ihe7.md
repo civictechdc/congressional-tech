@@ -2,7 +2,7 @@
 id: ct-ihe7
 status: in_progress
 deps: []
-links: []
+links: [ct-fk4w]
 created: 2026-11-17T19:47:13Z
 type: task
 priority: 2
@@ -17,3 +17,9 @@ Owner ruling 2026-11-17: fast-gemma4 holds only model-related code; congressiona
 
 1. packages/congress_docmeta owns rules, parsers, schema, prompts, sweep driver, validators' DocMeta half, gold eval, label building, R8, the address reader and the sidecar builder. 2. fast-gemma4 holds no congressional rules, parsers, rosters or DocMeta schema; CT imports it, never the reverse. 3. The eval run from CT reproduces fast-gemma4 artifacts/eval/v64_ep1_r8_after.json exactly on val48, docs8, valid_sweep and val48_sweep with model gemma4_e2b_v64_c2c4_w8. 4. Sidecar columns still satisfy viewer_publication/docmeta_v6_1.py; model/ and publish-model.json unchanged. 5. Moved tests pass under each repo's own runner. 6. uv.lock changes only by added entries.
 
+
+## Notes
+
+**2026-11-17T20:08:53Z**
+
+2026-11-17: 5778dd44 (verbatim move, no-model comparison identical on 34,916 items) and 451f7c4d (generic helper and scorers taken from fast-gemma4, training pairs as a file) on branch ct-docmeta-move, local only. Model proof waits on the fast-gemma4 retrain (PID 94092).

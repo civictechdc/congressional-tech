@@ -8,8 +8,9 @@ Keeplist pages and its corpus diff. What congressional documents need differentl
 addresses, PO boxes, House and Senate office buildings) lives in `congressional.py`, outside the copied modules, so
 a later re-copy overwrites nothing.
 
-Needs `usaddress`, `pycountry` and `msgspec-schemaorg` (the `address` extra). Nothing in `fast_gemma4.docmeta`
-imports this at module load; callers import it lazily and degrade when the extra is absent.
+Needs `usaddress`, `pycountry` and `msgspec-schemaorg`, required dependencies of this package pinned to the
+versions the copy was measured on. Nothing in `congress_docmeta` imports this at module load; rule R8 imports it
+on first use.
 """
 
 from __future__ import annotations

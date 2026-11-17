@@ -36,63 +36,32 @@ import threading
 import time
 from typing import Any, Union
 
-if __package__:
-    from .compact_wire_v6 import (
-        DOCMETA_V6_COMPACT_SCHEMA_STR,
-        build_prompt_v6_compact,
-        detect_checkpoint_wire_format,
-        expand_compact_v6_to_v4,
-    )
-    from .pythonic_v5 import (
-        SCHEMA_OBJ,
-        SCHEMA_V4_STR,
-        SYS_DOCMETA_V4,
-        _build_triage_result,
-        _salvage_truncated_docmeta_v4,
-        build_prompt_v4,
-        canonicalize_docmeta_v4,
-        validate_docmeta_v4,
-    )
-    from .pythonic_v6 import (
-        DOC_KINDS_SET,
-        build_doc_kind_schema_v6,
-        clean_html_and_cms_v6,
-        infer_is_html_v6,
-        load_default_usc_oracle_v6,
-        per_doc_grammar_v6,
-        post_pass_v6,
-        pre_pass_v6,
-    )
-else:
-    import sys
-
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from compact_wire_v6 import (  # type: ignore  # noqa: E402
-        DOCMETA_V6_COMPACT_SCHEMA_STR,
-        build_prompt_v6_compact,
-        detect_checkpoint_wire_format,
-        expand_compact_v6_to_v4,
-    )
-    from pythonic_v5 import (  # type: ignore  # noqa: E402
-        SCHEMA_OBJ,
-        SCHEMA_V4_STR,
-        SYS_DOCMETA_V4,
-        _build_triage_result,
-        _salvage_truncated_docmeta_v4,
-        build_prompt_v4,
-        canonicalize_docmeta_v4,
-        validate_docmeta_v4,
-    )
-    from pythonic_v6 import (  # type: ignore  # noqa: E402
-        DOC_KINDS_SET,
-        build_doc_kind_schema_v6,
-        clean_html_and_cms_v6,
-        infer_is_html_v6,
-        load_default_usc_oracle_v6,
-        per_doc_grammar_v6,
-        post_pass_v6,
-        pre_pass_v6,
-    )
+from .compact_wire_v6 import (
+    DOCMETA_V6_COMPACT_SCHEMA_STR,
+    build_prompt_v6_compact,
+    detect_checkpoint_wire_format,
+    expand_compact_v6_to_v4,
+)
+from .pythonic_v5 import (
+    SCHEMA_OBJ,
+    SCHEMA_V4_STR,
+    SYS_DOCMETA_V4,
+    _build_triage_result,
+    _salvage_truncated_docmeta_v4,
+    build_prompt_v4,
+    canonicalize_docmeta_v4,
+    validate_docmeta_v4,
+)
+from .pythonic_v6 import (
+    DOC_KINDS_SET,
+    build_doc_kind_schema_v6,
+    clean_html_and_cms_v6,
+    infer_is_html_v6,
+    load_default_usc_oracle_v6,
+    per_doc_grammar_v6,
+    post_pass_v6,
+    pre_pass_v6,
+)
 
 ExternalVerifierFn = Callable[
     [Sequence[Mapping[str, Any]], Sequence[Mapping[str, Any]]],

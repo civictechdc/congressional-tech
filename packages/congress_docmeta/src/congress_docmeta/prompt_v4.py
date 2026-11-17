@@ -227,10 +227,7 @@ def canonicalize_v4(raw_obj: dict) -> dict:
 def validate_v4(obj: dict) -> tuple[bool, str | None]:
     """Validate an object against DocMetaV4Causal and verify causal key order."""
     if VALIDATOR is None:
-        if __package__:
-            from .pythonic_v5 import validate_docmeta_v4
-        else:
-            from pythonic_v5 import validate_docmeta_v4  # type: ignore
+        from .pythonic_v5 import validate_docmeta_v4
         return validate_docmeta_v4(obj)
     try:
         VALIDATOR.validate(obj)

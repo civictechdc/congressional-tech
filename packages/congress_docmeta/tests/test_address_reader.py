@@ -24,14 +24,19 @@ def test_docmeta_import_does_not_load_the_reader() -> None:
     assert proc.returncode == 0, proc.stderr
 
 
-def test_rule_returns_personas_unchanged_without_the_extra(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_missing_address_library_raises_instead_of_switching_the_rule_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    from congress_docmeta import post_pass_v6
+
     monkeypatch.setitem(sys.modules, "congress_docmeta.address_reader.congressional", None)  # import raises ImportError
-    people = [{"name": "Jane Doe", "role": "witness"}]
+    people = [{"name": "Jane Doe", "role": "witness", "entity_type": "non_gov_person"}]
     text = "Testimony of\nJane Doe\nAcme Institute\n1615 H Street NW\nWashington, DC 20062\n"
-    assert attach_work_addresses_v6(people, primary_kind="witness_statement", text=text) == people
+    with pytest.raises(ImportError):
+        attach_work_addresses_v6(people, primary_kind="witness_statement", text=text)
+    raw = {"status": "usable", "text_quality": "native", "primary_kind": "witness_statement", "personas": people,
+           "composed_title": "Testimony of Jane Doe", "gist": "Jane Doe testifies.", "topics": ["testimony"]}
+    with pytest.raises(ImportError):  # the post-pass swallows a reader that fails on a document, not a missing library
+        post_pass_v6(raw, filename="doe.pdf", text=text)
 
-
-pytest.importorskip("usaddress", reason="install the `address` extra")
 
 from congress_docmeta.address_reader import get_address_claims, get_addresses  # noqa: E402
 from congress_docmeta.address_reader.congressional import fold_washington_periods, read_work_addresses  # noqa: E402

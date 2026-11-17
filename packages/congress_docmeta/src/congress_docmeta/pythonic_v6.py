@@ -40,7 +40,6 @@ from __future__ import annotations
 
 import copy
 import importlib
-import importlib.util
 import json
 import os
 from pathlib import Path
@@ -62,278 +61,129 @@ DEFAULT_DOCMETA_V6_DATA_DIR = Path(
     os.environ.get("DOCMETA_V6_DATA_DIR", DEFAULT_DOCMETA_V6_DATA_DIR_STR)
 )
 
-if __package__:
-    from . import pythonic_v5 as _pv5
-    from .pythonic_v5 import (
-        CANONICAL_COMMITTEES_V5,
-        CMS_STRIPPER_FAMILIES_V5,
-        CONTEMPORARY_CONGRESSIONAL_KINDS,
-        DISCLOSURE_KEYS_ORDER,
-        DISCLOSURE_ORDER_IDX,
-        DOC_FAMILY_MAP,
-        DOC_KINDS_SET,
-        DOMAIN_TO_COMMITTEE_CODE,
-        ETYPES_SET,
-        EVAL_KIND_FAMILIES,
-        FORMAL_COMMITTEE_KINDS,
-        GPO_COVER_ROSTER_ALLOWED_ROLES,
-        HOUSE_CLERK_2LETTER_TO_CODE,
-        NEW_TIER1_SIGNATURE_TO_KIND_V5,
-        PERSONA_KEYS_ORDER,
-        PERSONA_ORDER_IDX,
-        PROVENANCE_SAFE_COMMITTEE_KINDS,
-        QUORUM_ROSTER_ALLOWED_ROLES,
-        ROLES_SET,
-        SCHEMA_OBJ,
-        SCHEMA_V4_STR,
-        STATUS_SET,
-        SYS_DOCMETA_V4,
-        TEXT_QUALITY_SET,
-        TIER1_SIGNATURE_IDS_V5,
-        TIER1_SIGNATURE_TO_KIND_V5,
-        TIER1_TARGET_KINDS_V5,
-        TOP_KEYS_ORDER,
-        TOP_ORDER_IDX,
-        TTF_SCHEMA_V4_OBJ,
-        TTF_SCHEMA_V4_STR,
-        V4_TIER1_SIGNATURE_TO_KIND,
-        VOTE_ALLOWED_ROLES,
-        _build_triage_result,
-        _extract_bulleted_witness_personas,
-        _has_congressional_proceeding_cue,
-        _is_empty_val,
-        _is_exhibit_or_external_artifact,
-        _is_gpo_cover_roster_only_p12,
-        _nfkc_fold,
-        _norm_cmt_compare,
-        _norm_ws_prefix,
-        _parse_single_ref,
-        _salvage_truncated_docmeta_v4,
-        _surname_token,
-        _text_mentions_explicit_congress,
-        _year_grounded_in_context,
-        build_doc_kind_schema_v5,
-        build_prompt_v4,
-        build_ttf_schema_v5,
-        can_fill_docmeta_chamber_v5,
-        can_fill_docmeta_committees_v5,
-        can_fill_docmeta_congress_v5,
-        can_fill_docmeta_event_date_v5,
-        canonicalize_docmeta_v4,
-        classify_hsru_host_status,
-        committee_code_to_canonical,
-        detect_all_tier1_signatures_v5,
-        detect_exact_tier1_signature_v5,
-        detect_exact_ttf_form,
-        detect_new_tier1_signatures_v5,
-        detect_provenance_link_anchor,
-        detect_stapled_backpage_packets,
-        detect_tier2_sidecar_hints_v5,
-        detect_ttf_page_signature,
-        detect_v4_tier1_signatures,
-        detect_vote_page_signature,
-        extract_formal_committee_masthead_v5,
-        extract_gpo_p3_p8_rescue,
-        extract_multipage_signals_v5,
-        extract_official_slug_congress,
-        extract_pdf_masthead_congress_v5,
-        extract_ttf_disclosure_booleans,
-        extract_url_dates_and_congress,
-        extract_url_official_slug_info,
-        infer_is_html_v5,
-        is_gpo_cover_roster_only_p12,
-        is_qfr_appendix_page,
-        is_steno_cover_roster_only_p12,
-        iso_date_to_congress,
-        match_qfr_appendix_page,
-        norm_committee_compare,
-        normalize_parent_committee_code,
-        resolve_provenance_v5,
-        split_pdf_pages,
-        strip_html_cms_nav_v5,
-        triage_non_usable_v5,
-        triage_unwrapped_http_or_empty,
-        unwrap_archive_url,
-        validate_docmeta_v4,
-    )
-    from .anomaly_router_v6 import (
-        ACTOR_REQUIRED_KINDS_V6,
-        CORE_WITNESS_AUTHOR_KINDS_V6,
-        HOST_CHAMBER_EXEMPT_KINDS_V6,
-        LEGISLATIVE_DRAFT_KINDS_V6,
-        check_gist_title_grounding_v6,
-        load_default_usc_oracle_v6,
-        norm_committee_token_v6,
-        route_batch_anomalies_v6,
-        score_docmeta_anomalies_v6,
-        surname_token_v6,
-    )
-else:
-    if str(DOCMETA_DIR) not in sys.path:
-        sys.path.insert(0, str(DOCMETA_DIR))
-    import pythonic_v5 as _pv5  # type: ignore  # noqa: E402
-    from pythonic_v5 import (  # type: ignore  # noqa: E402
-        CANONICAL_COMMITTEES_V5,
-        CMS_STRIPPER_FAMILIES_V5,
-        CONTEMPORARY_CONGRESSIONAL_KINDS,
-        DISCLOSURE_KEYS_ORDER,
-        DISCLOSURE_ORDER_IDX,
-        DOC_FAMILY_MAP,
-        DOC_KINDS_SET,
-        DOMAIN_TO_COMMITTEE_CODE,
-        ETYPES_SET,
-        EVAL_KIND_FAMILIES,
-        FORMAL_COMMITTEE_KINDS,
-        GPO_COVER_ROSTER_ALLOWED_ROLES,
-        HOUSE_CLERK_2LETTER_TO_CODE,
-        NEW_TIER1_SIGNATURE_TO_KIND_V5,
-        PERSONA_KEYS_ORDER,
-        PERSONA_ORDER_IDX,
-        PROVENANCE_SAFE_COMMITTEE_KINDS,
-        QUORUM_ROSTER_ALLOWED_ROLES,
-        ROLES_SET,
-        SCHEMA_OBJ,
-        SCHEMA_V4_STR,
-        STATUS_SET,
-        SYS_DOCMETA_V4,
-        TEXT_QUALITY_SET,
-        TIER1_SIGNATURE_IDS_V5,
-        TIER1_SIGNATURE_TO_KIND_V5,
-        TIER1_TARGET_KINDS_V5,
-        TOP_KEYS_ORDER,
-        TOP_ORDER_IDX,
-        TTF_SCHEMA_V4_OBJ,
-        TTF_SCHEMA_V4_STR,
-        V4_TIER1_SIGNATURE_TO_KIND,
-        VOTE_ALLOWED_ROLES,
-        _build_triage_result,
-        _extract_bulleted_witness_personas,
-        _has_congressional_proceeding_cue,
-        _is_empty_val,
-        _is_exhibit_or_external_artifact,
-        _is_gpo_cover_roster_only_p12,
-        _nfkc_fold,
-        _norm_cmt_compare,
-        _norm_ws_prefix,
-        _parse_single_ref,
-        _salvage_truncated_docmeta_v4,
-        _surname_token,
-        _text_mentions_explicit_congress,
-        _year_grounded_in_context,
-        build_doc_kind_schema_v5,
-        build_prompt_v4,
-        build_ttf_schema_v5,
-        can_fill_docmeta_chamber_v5,
-        can_fill_docmeta_committees_v5,
-        can_fill_docmeta_congress_v5,
-        can_fill_docmeta_event_date_v5,
-        canonicalize_docmeta_v4,
-        classify_hsru_host_status,
-        committee_code_to_canonical,
-        detect_all_tier1_signatures_v5,
-        detect_exact_tier1_signature_v5,
-        detect_exact_ttf_form,
-        detect_new_tier1_signatures_v5,
-        detect_provenance_link_anchor,
-        detect_stapled_backpage_packets,
-        detect_tier2_sidecar_hints_v5,
-        detect_ttf_page_signature,
-        detect_v4_tier1_signatures,
-        detect_vote_page_signature,
-        extract_formal_committee_masthead_v5,
-        extract_gpo_p3_p8_rescue,
-        extract_multipage_signals_v5,
-        extract_official_slug_congress,
-        extract_pdf_masthead_congress_v5,
-        extract_ttf_disclosure_booleans,
-        extract_url_dates_and_congress,
-        extract_url_official_slug_info,
-        infer_is_html_v5,
-        is_gpo_cover_roster_only_p12,
-        is_qfr_appendix_page,
-        is_steno_cover_roster_only_p12,
-        iso_date_to_congress,
-        match_qfr_appendix_page,
-        norm_committee_compare,
-        normalize_parent_committee_code,
-        resolve_provenance_v5,
-        split_pdf_pages,
-        strip_html_cms_nav_v5,
-        triage_non_usable_v5,
-        triage_unwrapped_http_or_empty,
-        unwrap_archive_url,
-        validate_docmeta_v4,
-    )
-    from anomaly_router_v6 import (  # type: ignore  # noqa: E402
-        ACTOR_REQUIRED_KINDS_V6,
-        CORE_WITNESS_AUTHOR_KINDS_V6,
-        HOST_CHAMBER_EXEMPT_KINDS_V6,
-        LEGISLATIVE_DRAFT_KINDS_V6,
-        check_gist_title_grounding_v6,
-        load_default_usc_oracle_v6,
-        norm_committee_token_v6,
-        route_batch_anomalies_v6,
-        score_docmeta_anomalies_v6,
-        surname_token_v6,
-    )
+from . import pythonic_v5 as _pv5
+from .pythonic_v5 import (
+    CANONICAL_COMMITTEES_V5,
+    CMS_STRIPPER_FAMILIES_V5,
+    CONTEMPORARY_CONGRESSIONAL_KINDS,
+    DISCLOSURE_KEYS_ORDER,
+    DISCLOSURE_ORDER_IDX,
+    DOC_FAMILY_MAP,
+    DOC_KINDS_SET,
+    DOMAIN_TO_COMMITTEE_CODE,
+    ETYPES_SET,
+    EVAL_KIND_FAMILIES,
+    FORMAL_COMMITTEE_KINDS,
+    GPO_COVER_ROSTER_ALLOWED_ROLES,
+    HOUSE_CLERK_2LETTER_TO_CODE,
+    NEW_TIER1_SIGNATURE_TO_KIND_V5,
+    PERSONA_KEYS_ORDER,
+    PERSONA_ORDER_IDX,
+    PROVENANCE_SAFE_COMMITTEE_KINDS,
+    QUORUM_ROSTER_ALLOWED_ROLES,
+    ROLES_SET,
+    SCHEMA_OBJ,
+    SCHEMA_V4_STR,
+    STATUS_SET,
+    SYS_DOCMETA_V4,
+    TEXT_QUALITY_SET,
+    TIER1_SIGNATURE_IDS_V5,
+    TIER1_SIGNATURE_TO_KIND_V5,
+    TIER1_TARGET_KINDS_V5,
+    TOP_KEYS_ORDER,
+    TOP_ORDER_IDX,
+    TTF_SCHEMA_V4_OBJ,
+    TTF_SCHEMA_V4_STR,
+    V4_TIER1_SIGNATURE_TO_KIND,
+    VOTE_ALLOWED_ROLES,
+    _build_triage_result,
+    _extract_bulleted_witness_personas,
+    _has_congressional_proceeding_cue,
+    _is_empty_val,
+    _is_exhibit_or_external_artifact,
+    _is_gpo_cover_roster_only_p12,
+    _nfkc_fold,
+    _norm_cmt_compare,
+    _norm_ws_prefix,
+    _parse_single_ref,
+    _salvage_truncated_docmeta_v4,
+    _surname_token,
+    _text_mentions_explicit_congress,
+    _year_grounded_in_context,
+    build_doc_kind_schema_v5,
+    build_prompt_v4,
+    build_ttf_schema_v5,
+    can_fill_docmeta_chamber_v5,
+    can_fill_docmeta_committees_v5,
+    can_fill_docmeta_congress_v5,
+    can_fill_docmeta_event_date_v5,
+    canonicalize_docmeta_v4,
+    classify_hsru_host_status,
+    committee_code_to_canonical,
+    detect_all_tier1_signatures_v5,
+    detect_exact_tier1_signature_v5,
+    detect_exact_ttf_form,
+    detect_new_tier1_signatures_v5,
+    detect_provenance_link_anchor,
+    detect_stapled_backpage_packets,
+    detect_tier2_sidecar_hints_v5,
+    detect_ttf_page_signature,
+    detect_v4_tier1_signatures,
+    detect_vote_page_signature,
+    extract_formal_committee_masthead_v5,
+    extract_gpo_p3_p8_rescue,
+    extract_multipage_signals_v5,
+    extract_official_slug_congress,
+    extract_pdf_masthead_congress_v5,
+    extract_ttf_disclosure_booleans,
+    extract_url_dates_and_congress,
+    extract_url_official_slug_info,
+    infer_is_html_v5,
+    is_gpo_cover_roster_only_p12,
+    is_qfr_appendix_page,
+    is_steno_cover_roster_only_p12,
+    iso_date_to_congress,
+    match_qfr_appendix_page,
+    norm_committee_compare,
+    normalize_parent_committee_code,
+    resolve_provenance_v5,
+    split_pdf_pages,
+    strip_html_cms_nav_v5,
+    triage_non_usable_v5,
+    triage_unwrapped_http_or_empty,
+    unwrap_archive_url,
+    validate_docmeta_v4,
+)
+from .anomaly_router_v6 import (
+    ACTOR_REQUIRED_KINDS_V6,
+    CORE_WITNESS_AUTHOR_KINDS_V6,
+    HOST_CHAMBER_EXEMPT_KINDS_V6,
+    LEGISLATIVE_DRAFT_KINDS_V6,
+    check_gist_title_grounding_v6,
+    load_default_usc_oracle_v6,
+    norm_committee_token_v6,
+    route_batch_anomalies_v6,
+    score_docmeta_anomalies_v6,
+    surname_token_v6,
+)
 
 strict_validate_v4 = validate_docmeta_v4
 
 # ---------------------------------------------------------------------------
-# Lazy / Reloadable Discovery of Stage 1–4 Sibling Stdlib Modules
+# Stage 1-4 sibling modules, imported on first use
 # ---------------------------------------------------------------------------
 
-_SUBMODULE_CACHE: dict[str, Any] = {}
-
-_SUBMODULE_SPECS: dict[str, tuple[Path, str]] = {
-    "hygiene": (DOCMETA_DIR / "hygiene_and_line_parsers_v6.py", "hygiene_and_line_parsers_v6"),
-    "relational": (DOCMETA_DIR / "relational_rules_v6.py", "relational_rules_v6"),
-    "citations": (DOCMETA_DIR / "citations_and_signals_v6.py", "citations_and_signals_v6"),
-    "cover_locks": (DOCMETA_DIR / "cover_locks_v6.py", "cover_locks_v6"),
-    "zero_llm_bypass": (DOCMETA_DIR / "zero_llm_bypass_v6.py", "zero_llm_bypass_v6"),
+_SUBMODULES: dict[str, str] = {
+    "hygiene": "hygiene_and_line_parsers_v6",
+    "relational": "relational_rules_v6",
+    "citations": "citations_and_signals_v6",
+    "cover_locks": "cover_locks_v6",
+    "zero_llm_bypass": "zero_llm_bypass_v6",
 }
 
 
-def _load_optional_submodule(key: str) -> Any | None:
-    if key in _SUBMODULE_CACHE and _SUBMODULE_CACHE[key] is not None:
-        return _SUBMODULE_CACHE[key]
-    path, mod_name = _SUBMODULE_SPECS[key]
-    if not path.exists():
-        return None
-    if __package__:
-        pkg_mod = f"{__package__}.{mod_name}"
-        if pkg_mod in sys.modules:
-            _SUBMODULE_CACHE[key] = sys.modules[pkg_mod]
-            return _SUBMODULE_CACHE[key]
-        try:
-            mod = importlib.import_module(f".{mod_name}", __package__)
-            _SUBMODULE_CACHE[key] = mod
-            return mod
-        except Exception:
-            pass
-    if mod_name in sys.modules:
-        _SUBMODULE_CACHE[key] = sys.modules[mod_name]
-        return _SUBMODULE_CACHE[key]
-    spec = importlib.util.spec_from_file_location(mod_name, str(path))
-    if spec is None or spec.loader is None:
-        return None
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[mod_name] = mod
-    spec.loader.exec_module(mod)
-    _SUBMODULE_CACHE[key] = mod
-    return mod
-
-
-def reload_v6_submodules() -> dict[str, bool]:
-    """Force re-check / load of all Stage 1–4 sibling modules under `fast_gemma4.docmeta`."""
-    status: dict[str, bool] = {}
-    for key, (_, mod_name) in _SUBMODULE_SPECS.items():
-        _SUBMODULE_CACHE.pop(key, None)
-        if __package__:
-            sys.modules.pop(f"{__package__}.{mod_name}", None)
-        sys.modules.pop(mod_name, None)
-        status[key] = _load_optional_submodule(key) is not None
-    return status
+def _load_optional_submodule(key: str) -> Any:
+    return importlib.import_module(f".{_SUBMODULES[key]}", __package__)
 
 
 # ---------------------------------------------------------------------------
@@ -1729,7 +1579,7 @@ def post_pass_v6(
             except Exception:
                 pass
 
-    # (3c) R8: a person named in the block above a postal address takes it as `work_addr` (needs the `address` extra)
+    # (3c) R8: a person named in the block above a postal address takes it as `work_addr`
     if use_relational and isinstance(obj.get("personas"), list) and obj["personas"]:
         r_mod_addr = _load_optional_submodule("relational")
         if r_mod_addr is not None and hasattr(r_mod_addr, "attach_work_addresses_v6"):
@@ -1739,6 +1589,8 @@ def post_pass_v6(
                     primary_kind=obj.get("primary_kind") if isinstance(obj.get("primary_kind"), str) else None,
                     text=p12_lines or text_for_v5 or text,
                 )
+            except ImportError:
+                raise  # a missing address library is an installation fault, not a document the rule cannot read
             except Exception:
                 pass
 
@@ -1792,10 +1644,7 @@ def post_pass_v6(
 def kind_schema_str_v6(target_doc_kind: str) -> str:
     """JSON Schema for a V4-wire kind lock: one kind, or a pipe-delimited Top-K set of kinds."""
     if "|" in target_doc_kind:
-        if __package__:
-            from .grammar_router_ane_v6 import build_doc_kind_set_schema_v6
-        else:
-            from grammar_router_ane_v6 import build_doc_kind_set_schema_v6  # type: ignore
+        from .grammar_router_ane_v6 import build_doc_kind_set_schema_v6
 
         kinds = [k.strip() for k in target_doc_kind.split("|") if k.strip()]
         return json.dumps(build_doc_kind_set_schema_v6(kinds))
@@ -1804,10 +1653,7 @@ def kind_schema_str_v6(target_doc_kind: str) -> str:
 
 def kind_schema_str_v6_compact(target_doc_kind: str) -> str:
     """JSON Schema for a compact-wire (`C4`) kind lock: one kind or a pipe-delimited set."""
-    if __package__:
-        from .compact_wire_v6 import build_doc_kind_compact_schema_v6
-    else:
-        from compact_wire_v6 import build_doc_kind_compact_schema_v6  # type: ignore
+    from .compact_wire_v6 import build_doc_kind_compact_schema_v6
 
     return json.dumps(build_doc_kind_compact_schema_v6(target_doc_kind), separators=(",", ":"))
 
@@ -1847,18 +1693,11 @@ class PythonicEngineV6:
     ):
         from fast_gemma4.grammar import GrammarHelper
 
-        if __package__:
-            from .compact_wire_v6 import (
-                DOCMETA_V6_COMPACT_SCHEMA_STR,
-                build_prompt_v6_compact,
-                detect_checkpoint_wire_format,
-            )
-        else:
-            from compact_wire_v6 import (  # type: ignore
-                DOCMETA_V6_COMPACT_SCHEMA_STR,
-                build_prompt_v6_compact,
-                detect_checkpoint_wire_format,
-            )
+        from .compact_wire_v6 import (
+            DOCMETA_V6_COMPACT_SCHEMA_STR,
+            build_prompt_v6_compact,
+            detect_checkpoint_wire_format,
+        )
 
         self.eng = eng
         resolved_tok = tok if tok is not None else getattr(eng, "tokenizer", None)
@@ -2174,10 +2013,7 @@ class PythonicEngineV6:
                 try:
                     parsed_cand_obj = json.loads(raw_txt)
                     if isinstance(parsed_cand_obj, Mapping) and self.wire_format == "compact":
-                        if __package__:
-                            from .compact_wire_v6 import expand_compact_v6_to_v4
-                        else:
-                            from compact_wire_v6 import expand_compact_v6_to_v4  # type: ignore
+                        from .compact_wire_v6 import expand_compact_v6_to_v4
 
                         parsed_raw = expand_compact_v6_to_v4(parsed_cand_obj)
                     elif isinstance(parsed_cand_obj, dict):
@@ -2286,7 +2122,6 @@ __all__ = [
     "per_doc_grammar_v6",
     "post_pass_v6",
     "pre_pass_v6",
-    "reload_v6_submodules",
     "route_batch_anomalies_v6",
     "score_docmeta_anomalies_v6",
     "strict_validate_v4",
