@@ -20,9 +20,19 @@ read), checks that the head was reached from it by appends only, and writes the 
 record. Owed records are state, not proof: they change by compare-and-swap, and gate 5
 reads only records.
 
-Cannot see: rows appended between a base and its head by a writer outside the nightly's
-local flock, the only writer exclusion; the lineage check only proves the base is an
-ancestor reached by appends. A late completion widens that window to the time between
+One base rule (ct-medh). base_problems is what gate 5 (viewer_publication.producer_proof)
+refuses about the snapshot a daily record appended onto, and what the daily preflight
+(daily._producer_bases) refuses before it appends onto a head, in the same words. The
+preflight cannot see the parts of gate 5 that need the publish model: a head record's
+versions recomputed at its commit (record_problems' `versions`; gate 5 also judges a
+table the night leaves unmoved as a head) and the per-row version counts. It judges
+reachability from its own checkout's HEAD with its own anchors, which in the publish job
+are gate 5's.
+
+Cannot see: rows appended between a base and its head by a writer outside the
+raw-source-mirror concurrency group (the hosted capture, publish, backfill and
+maintenance jobs), the only writer exclusion; the lineage check only proves the base is
+an ancestor reached by appends. A late completion widens that window to the time between
 the run and the completion. Accepted risk (owner, 2026-11-08: "Keep auto-complete"): a
 run whose checkout changed and that then died before checking it is completed under the
 commit it started from.
@@ -34,11 +44,29 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import subprocess
 from uuid import uuid4
+
+from congress_api.lake.tables import table_input
 
 PREFIX = 'lake/producers/'
 OWED = PREFIX + 'owed/'
 DAILY_JOB = 'packages/congress_api/src/congress_api/lake/daily.py'
+CAPTURES_STAGE = 'packages/congress_api/src/congress_api/cli/captures_ingest.py'
+BACKFILL = 'packages/viewer_publication/src/viewer_publication/archive_backfill_job.py'
+IMPORT = 'packages/viewer_publication/src/viewer_publication/archive_import_job.py'
+# The checked-in jobs that may produce each table; a record naming any other file refuses.
+PRODUCERS = {
+    'captures': {CAPTURES_STAGE, DAILY_JOB, BACKFILL, IMPORT},
+    'readings': {'packages/congress_api/src/congress_api/cli/readings.py', DAILY_JOB, BACKFILL, IMPORT},
+    'filename_readings': {DAILY_JOB, BACKFILL, IMPORT},
+    'meeting_records': {DAILY_JOB, BACKFILL, IMPORT},
+    'appearance_records': {DAILY_JOB, BACKFILL, IMPORT},
+    'video_records': {DAILY_JOB, BACKFILL, IMPORT},
+    'committee_records': {DAILY_JOB, BACKFILL, IMPORT},
+    'playlist_records': {DAILY_JOB, BACKFILL, IMPORT},
+    'transcript_headings': {DAILY_JOB, BACKFILL, IMPORT},
+}
 PIN_FIELDS = ('metadata_location', 'table_uuid', 'snapshot', 'schema_id')
 RECORD_BYTES = 1 << 20
 METADATA_BYTES = 64 << 20
@@ -250,3 +278,127 @@ def appended_from(lineage, head, base):
             return False
         current = parent
     return current == base
+
+
+def git(root, *args):
+    return subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True)
+
+
+def is_delta(record):
+    return record.get('delta_only') is True or record.get('final_reconciliation_required') is True
+
+
+def import_origin_problem(name, source, origin):
+    """Check that a pinned origin can account for the complete file being imported."""
+    if not isinstance(origin, dict):
+        return 'an import needs a producer record object'
+    if origin.get('input') != name:
+        return 'the import origin names another table'
+    if is_delta(origin):
+        return 'a staged delta cannot be the origin of a complete table'
+    selector = origin.get('selector')
+    if not isinstance(selector, dict) or selector.get('kind') not in ('parquet', 'native_table'):
+        return 'the import origin must name a Parquet artifact or native snapshot'
+    if selector['kind'] == 'native_table':
+        try:
+            table_input(name, {key: selector[key] for key in PIN_FIELDS})
+        except (KeyError, ValueError):
+            return 'the import origin needs an exact native table pin'
+    elif (not isinstance(source, dict)
+          or any(source.get(key) is None or source[key] != selector.get(key) for key in ('sha256', 'size'))):
+        return 'the Parquet origin does not match the import source pin'
+    return None
+
+
+def record_problems(name, record, root, *, label, allow_delta=False, versions=None):
+    """One record's refusals: not a staged delta, a known format, a job registered for the
+    table, a full commit reachable from HEAD at `root` and the job checked in there; then,
+    given `versions(record, label)`, the publisher's version rule."""
+    if not allow_delta and is_delta(record):
+        return [f'producer proof: {label}: a staged delta cannot produce a complete table']
+    commit, job = record.get('commit'), record.get('job')
+    if record.get('version') != 1:
+        return [f'producer proof: {label}: unknown producer record version {record.get("version")!r}']
+    if job not in PRODUCERS.get(name, ()):
+        return [f'producer proof: {label}: job {job!r} is not a producer registered for this table']
+    if not isinstance(commit, str) or re.fullmatch('[0-9a-f]{40}', commit) is None:
+        return [f'producer proof: {label}: the producer record has no full commit']
+    if git(root, 'merge-base', '--is-ancestor', commit, 'HEAD').returncode != 0:
+        return [f'producer proof: {label}: producing commit {commit[:12]} is not reachable from HEAD']
+    if git(root, 'cat-file', '-e', f'{commit}:{job}').returncode != 0:
+        return [f'producer proof: {label}: job {job!r} is not a file checked in at {commit[:12]}']
+    return versions(record, label) if versions else []
+
+
+def import_problems(name, record, root, *, label, versions=None):
+    """An import copies rows it did not produce: it names the record of the job that did
+    (never another import), that origin accounts for the copied source, and passes
+    record_problems."""
+    origin = record.get('origin')
+    if not isinstance(origin, dict) or not isinstance(origin.get('record'), dict):
+        return [f'producer proof: {label}: an import record needs the origin record of the job that produced the rows']
+    if origin['record'].get('job') == IMPORT:
+        return [f'producer proof: {label}: an import cannot name another import as its origin']
+    if problem := import_origin_problem(name, record.get('source'), origin['record']):
+        return [f'producer proof: {label} origin: {problem}']
+    return record_problems(name, origin['record'], root, label=f'{label} origin', versions=versions)
+
+
+def link_problems(record, lineage, *, label):
+    """A daily record's link: it names a base of its own table, reached from its snapshot by
+    appends only (`lineage`, from appended_from)."""
+    base = record.get('base')
+    if not isinstance(base, dict) or not isinstance(base.get('selector'), dict):
+        return [f'producer proof: {label}: a daily record must name the base snapshot it appended onto']
+    if base['selector'].get('table_uuid') != record['selector'].get('table_uuid'):
+        return [f'producer proof: {label}: the base snapshot belongs to another table']
+    if not appended_from(lineage, record['selector']['snapshot'], base['selector'].get('snapshot')):
+        return [f'producer proof: {label}: base snapshot {base["selector"].get("snapshot")} is not an ancestor reached by appends only']
+    return []
+
+
+def base_problems(name, base, records, root, *, label, lineage=None):
+    """Refusals for appending onto `base`, {selector, record}: a snapshot and the pin of its record.
+
+    Walks the records back to an empty table, a checked-in import, or a snapshot another
+    registered producer wrote (a capture stage, a backfill), which names no base. Each record
+    is the one pinned by hash, names this snapshot and table, and passes record_problems
+    (import_problems for an import); a daily record's own link must hold (link_problems).
+    Versions are not checked: the rows' versions are the row rule's, the head's gate 5's.
+
+    One record read and two git calls per link, and one table metadata read (`lineage`,
+    read from the first base when not given) once a daily record is walked: linear in the
+    nightly records since the chain's root.
+    """
+    seen = set()
+    while True:
+        selector, pinned = base['selector'], base.get('record')
+        if selector.get('snapshot') is None:
+            return [] if pinned is None else [f'producer proof: {label}: an empty base has no record']
+        if selector['snapshot'] in seen:
+            return [f'producer proof: {label}: the base chain repeats a snapshot']
+        seen.add(selector['snapshot'])
+        found = records.find(name, selector)
+        if (found is None or not isinstance(pinned, dict)
+                or {k: found[1].get(k) for k in ('sha256', 'size')} != {k: pinned.get(k) for k in ('sha256', 'size')}):
+            return [f'producer proof: {label}: the record of base snapshot {selector["snapshot"]} is missing or differs from its pin']
+        prior, reference = found
+        if pin_of(prior.get('selector') or {}) != pin_of(selector):
+            return [f'producer proof: {label}: the base record names another snapshot']
+        link = f'{label} base {selector["snapshot"]}'
+        if prior.get('job') == IMPORT:
+            if 'anchor' not in reference:
+                return [f'producer proof: {link}: an import record in the chain must be checked in beside the publish spec']
+            return record_problems(name, prior, root, label=link) or import_problems(name, prior, root, label=link)
+        # Another registered producer's snapshot (run 44087092120: daily.py appended onto a
+        # captures_ingest.py snapshot, the one the live release was published from) ends the chain.
+        problems = record_problems(name, prior, root, label=link)
+        if not problems and prior.get('input') != name:
+            problems = [f'producer proof: {link}: the base record names another table']
+        if problems or prior.get('job') != DAILY_JOB:
+            return problems
+        if lineage is None:
+            lineage = records.lineage(selector['metadata_location'])
+        if problems := link_problems(prior, lineage, label=label):
+            return problems
+        base = prior['base']

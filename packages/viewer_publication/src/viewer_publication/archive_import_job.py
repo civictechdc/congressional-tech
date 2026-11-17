@@ -83,7 +83,7 @@ def load_spec(path):
 def _verified(name, item):
     """Refuse changed source, schema or origin evidence before the first effect."""
     from congress_api.retention.provenance import file_pin
-    from viewer_publication.producer_proof import import_origin_problem
+    from congress_api.lake.producer_records import import_origin_problem
     for key in ('source','schema','producer'):
         if key in item and file_pin(item[key]['path'])!={k:item[key][k] for k in ('sha256','size')}:
             raise ValueError('Import '+key+' does not match its pin: '+item[key]['path'])
@@ -101,11 +101,12 @@ def _writer(spec):
     """Gate 5 preflight/postflight: require a clean checkout and reachable origin commits."""
     import re
     from congress_api.retention.writer_identity import writer_identity
-    from viewer_publication.producer_proof import IMPORT, PRODUCERS, ROOT, _git
+    from congress_api.lake.producer_records import IMPORT, PRODUCERS, git
+    from viewer_publication.producer_proof import ROOT
 
     writer = writer_identity(ROOT, IMPORT_JOB)
-    if _git(ROOT, 'cat-file', '-t', writer['commit']).returncode == 0:
-        if _git(ROOT, 'cat-file', '-e', f"{writer['commit']}:{IMPORT_JOB}").returncode != 0:
+    if git(ROOT, 'cat-file', '-t', writer['commit']).returncode == 0:
+        if git(ROOT, 'cat-file', '-e', f"{writer['commit']}:{IMPORT_JOB}").returncode != 0:
             raise ValueError(f"Import job {IMPORT_JOB} is not checked in at {writer['commit'][:12]}")
         for name, item in spec['tables'].items():
             if 'producer' in item:
@@ -117,9 +118,9 @@ def _writer(spec):
                     raise ValueError(f'Import {name} origin job {origin_job!r} is not a registered producer')
                 commit = origin.get('commit')
                 if (not isinstance(commit, str) or re.fullmatch('[0-9a-f]{40}', commit) is None
-                        or _git(ROOT, 'merge-base', '--is-ancestor', commit, writer['commit']).returncode != 0):
+                        or git(ROOT, 'merge-base', '--is-ancestor', commit, writer['commit']).returncode != 0):
                     raise ValueError(f'Import {name} origin commit {str(commit)[:12]} is not reachable from HEAD')
-                if _git(ROOT, 'cat-file', '-e', f'{commit}:{origin_job}').returncode != 0:
+                if git(ROOT, 'cat-file', '-e', f'{commit}:{origin_job}').returncode != 0:
                     raise ValueError(f'Import {name} origin job {origin_job!r} is not checked in at {commit[:12]}')
     return writer
 

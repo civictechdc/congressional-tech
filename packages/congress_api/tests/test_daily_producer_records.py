@@ -1,6 +1,7 @@
 """Gate 5 records for the heads a daily run moves (ct-ud0b)."""
 from hashlib import sha256
 import json
+import re
 import subprocess
 
 import pyarrow as pa
@@ -8,7 +9,8 @@ import pyarrow.parquet as pq
 import pytest
 
 from congress_api.lake import compatible_versions, daily, readings, tables
-from congress_api.lake.producer_records import DAILY_JOB, ProducerRecords, appended_from, encode, identity, key_for
+from congress_api.lake.producer_records import (BACKFILL, CAPTURES_STAGE, DAILY_JOB, IMPORT, ProducerRecords, appended_from,
+    encode, identity, key_for)
 from congress_api.retention.provenance import file_pin, import_unreadable, run_job
 from congress_api.retention.provenance_inventory import unreadable_inventory
 from test_daily_producers import native_fixture
@@ -391,6 +393,117 @@ def test_gate_five_accepts_the_chain_a_daily_run_wrote(tmp_path, clean_tree):
     assert snapshot_reasons(model, found, mapping_current=versions['captures'], ledger=records) == [
         'producer proof: captures: the record of base snapshot '
         f"{found['captures']['base']['selector']['snapshot']} is missing or differs from its pin"]
+
+
+def _stage(**change):
+    """A captures snapshot another producer wrote, naming no base (the ct-z4w5 integration's shape)."""
+    return dict(dict(version=1, input='captures', job=CAPTURES_STAGE, commit=HEAD), **change)
+
+
+def _daily_on_import(selector, anchor, **base):
+    return dict(version=1, input='captures', job=DAILY_JOB, commit=HEAD,
+                base=dict(dict(selector=selector(1), record=anchor), **base))
+
+
+APPENDS = {3: (2, 'append'), 2: (1, 'append'), 1: (None, 'append')}
+# The parent of the commit that added captures_ingest.py: reachable, without that job.
+BEFORE_CAPTURES_STAGE = '260768cc40d42c020455279ed4f3f1f774ac9566'
+
+
+@pytest.mark.parametrize('planted,lineage,rule', [
+    (lambda s, anchor: _daily_on_import(s, anchor), APPENDS, None),
+    (lambda s, anchor: _stage(), APPENDS, None),
+    (lambda s, anchor: _stage(job=BACKFILL), APPENDS, None),
+    (lambda s, anchor: _stage(job='scripts/captures_ingest.py'), APPENDS,
+     "base 2: job 'scripts/captures_ingest.py' is not a producer registered for this table"),
+    (lambda s, anchor: _stage(commit='0' * 40), APPENDS, 'base 2: producing commit 000000000000 is not reachable from HEAD'),
+    (lambda s, anchor: _stage(commit=None), APPENDS, 'base 2: the producer record has no full commit'),
+    (lambda s, anchor: _stage(commit=BEFORE_CAPTURES_STAGE), APPENDS, 'base 2: job .* is not a file checked in at 260768cc40d4'),
+    (lambda s, anchor: _stage(version=2), APPENDS, 'base 2: unknown producer record version 2'),
+    (lambda s, anchor: _stage(job=BACKFILL, delta_only=True), APPENDS, 'base 2: a staged delta cannot produce a complete table'),
+    (lambda s, anchor: _stage(job=BACKFILL, input='readings'), APPENDS, 'base 2: the base record names another table'),
+    (lambda s, anchor: _stage(selector=dict(s(2), metadata_location='/elsewhere.json')), APPENDS, 'the base record names another snapshot'),
+    (lambda s, anchor: _stage(job=IMPORT, origin=dict(record=_stage())), APPENDS,
+     'base 2: an import record in the chain must be checked in beside the publish spec'),
+    (lambda s, anchor: {k: v for k, v in _daily_on_import(s, anchor).items() if k != 'base'}, APPENDS,
+     'captures: a daily record must name the base snapshot it appended onto'),
+    (lambda s, anchor: _daily_on_import(s, dict(anchor, sha256='0' * 64)), APPENDS,
+     'captures: the record of base snapshot 1 is missing or differs from its pin'),
+    (lambda s, anchor: _daily_on_import(s, anchor), {3: (2, 'append'), 2: (1, 'overwrite'), 1: (None, 'append')},
+     'captures: base snapshot 1 is not an ancestor reached by appends only'),
+], ids=['daily-on-import', 'capture-stage', 'backfill', 'operator-script', 'unmerged-commit', 'no-commit',
+        'job-not-at-commit', 'record-format', 'staged-delta', 'other-table', 'other-snapshot', 'import-in-bucket',
+        'daily-without-base', 'daily-base-pin-changed', 'daily-base-overwritten'])
+def test_the_daily_refuses_exactly_the_bases_gate_five_refuses(tmp_path, clean_tree, planted, lineage, rule):
+    """ct-medh: the preflight judges the captures head it would append onto (snapshot 2); gate 5
+    judges that snapshot as the base of the record the append would leave (3). Each base gate 5
+    refuses, the preflight refuses first in the same words; each it accepts, the preflight passes.
+    Cannot see: a refusal gate 5 might give for a base shape not listed here."""
+    from congress_api.lake import captures
+    from viewer_publication.producer_proof import snapshot_reasons
+    metadata = tmp_path / 'm.metadata.json'
+    metadata.write_text(json.dumps({'snapshots': [{'snapshot-id': s, 'parent-snapshot-id': p, 'summary': {'operation': o}}
+                                                  for s, (p, o) in lineage.items()]}))
+    pin = lambda s: dict(metadata_location=str(metadata), table_uuid=PIN['table_uuid'], snapshot=s, schema_id=0)
+    selector = lambda s: dict(kind='native_table', **pin(s))
+    origin = dict(version=1, input='captures', selector=selector(9), job=DAILY_JOB, commit=HEAD)
+    anchor = encode(dict(version=1, input='captures', selector=selector(1), job=IMPORT, commit=HEAD, origin=dict(record=origin)))
+    records = ProducerRecords({'captures': anchor}, root=tmp_path / 'ledger')
+    data = encode(dict(dict(selector=selector(2)), **planted(selector, dict(anchor='captures', **identity(anchor)))))
+    path = tmp_path / 'ledger' / key_for(pin(2))
+    path.parent.mkdir(parents=True)
+    path.write_bytes(data)
+    reference = dict(key=key_for(pin(2)), **identity(data))
+
+    head = dict(version=1, input='captures', selector=selector(3), job=DAILY_JOB, commit=HEAD,
+                base=dict(selector=selector(2), record=reference))
+    gate = snapshot_reasons({'captures': selector(3)}, {'captures': head}, mapping_current=captures.current_version(),
+                            ledger=records)
+    chain, refusal = daily._producer_bases(records, {'captures': pin(2)})
+    if rule is None:
+        assert gate == [] and refusal is None and chain['bases'] == {'captures': reference}
+    else:
+        assert len(gate) == 1 and re.search(rule, gate[0]), gate
+        assert chain is None and refusal == dict(refused={'captures': gate})
+
+
+@pytest.mark.parametrize('job', [CAPTURES_STAGE, 'scripts/captures_ingest.py'])
+def test_after_an_operator_append_the_nightly_appends_only_what_gate_five_accepts(tmp_path, clean_tree, monkeypatch, job):
+    """ct-z4w5 on 2026-11-17: an operator appended to captures and recorded the snapshot by hand;
+    the nightly appended onto it and gate 5 then refused the chain. Now a refused base stops the
+    daily before it owes, appends or records anything, with the reason gate 5 gives after an append."""
+    from viewer_publication.producer_proof import find_records, snapshot_reasons
+    value, engine, store = native_fixture(tmp_path, 2)
+    first = daily.produce_daily(dict(value, receipt_inventory=value['receipt_inventory'][:1]), engine=engine, raw_store=store)
+    records = ProducerRecords(root=tmp_path / 'ledger')
+    for name, pin in first['pins'].items():
+        records.write(dict(version=1, input=name, selector=dict(kind='native_table', **pin),
+                           job=job if name == 'captures' else BACKFILL, commit=HEAD))
+
+    def night(work):
+        result = daily.produce_daily(dict(value, work=str(tmp_path / work)), engine=engine, raw_store=store,
+                                     producer_records=records)
+        versions = result['currentversions']
+        model = dict({name: dict(pin, kind='native_table') for name, pin in (result['pins'] or {}).items()},
+                     parser_versions=versions.get('parsers'), catalog_version=versions.get('filename_readings'))
+        return result, snapshot_reasons(model, find_records(model, records, {}), mapping_current=versions['captures'],
+                                        ledger=records)
+
+    result, gate = night('second')
+    if job == CAPTURES_STAGE:
+        assert result['status'] == 'completed' and result['pins']['captures'] != first['pins']['captures']
+        assert gate == []
+        return
+    reason = (f"producer proof: captures base {first['pins']['captures']['snapshot']}: "
+              f"job {job!r} is not a producer registered for this table")
+    assert result['status'] == 'producer_unrecorded' and result['producers'] == dict(refused={'captures': [reason]})
+    assert _heads(engine, value, tmp_path / 'after-refusal') == first['pins']
+    assert all(_owed_at(records, pin, pin['snapshot']) is None for pin in first['pins'].values())
+    assert not (tmp_path / 'second/captures').exists()
+    # Yesterday's preflight, which accepted any recorded head: it appends, and gate 5 refuses.
+    monkeypatch.setattr(daily, 'base_problems', lambda *args, **kwargs: [])
+    result, gate = night('without-the-base-check')
+    assert result['status'] == 'completed' and gate == [reason]
 
 
 def test_scoped_html_metadata_preserves_native_history_on_stop_and_resume(tmp_path, clean_tree, monkeypatch):

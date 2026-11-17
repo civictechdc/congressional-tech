@@ -12,7 +12,7 @@ import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
 from congress_api.lake import appearance_records,capture_staging,captures,committee_records,filenames,meeting_records,playlist_records,readings,tables,transcript_headings,video_records
-from congress_api.lake.producer_records import DAILY_JOB,appended_from,owed_key,pin_of
+from congress_api.lake.producer_records import DAILY_JOB,appended_from,base_problems,owed_key,pin_of
 from congress_api.lake.receipt_inventory import (LocalReceiptStore,R2ReceiptStore,copy_receipts,
     discover_receipts,select_receipts)
 from congress_api.retention.writer_identity import writer_identity
@@ -472,7 +472,9 @@ def _producer_bases(records,heads):
     """Gate 5 preflight: the commit that will append, and each head's own record.
 
     Refuses before any append: a head without a record would leave every later
-    snapshot of that table unprovable. An unrecorded head is first completed from
+    snapshot of that table unprovable, and a head gate 5 would refuse as a base
+    (`refused`: producer_records.base_problems, the gate's own rule and words)
+    would stop every later night. An unrecorded head is first completed from
     the record a stopped run owed for it (_complete_owed); the refusal names any
     owed record it could not use, and either result lists owed records completed
     but not marked (`owed_unmarked`).
@@ -480,17 +482,21 @@ def _producer_bases(records,heads):
     try:writer=writer_identity(ROOT,DAILY_JOB)
     except (ValueError,OSError,subprocess.CalledProcessError) as error:
         return None,dict(unavailable='the checkout was not clean, so no commit can be named: '+str(error))
-    bases={};missing=[];owed={};unmarked=[]
+    bases={};missing=[];refused={};owed={};unmarked=[]
     for name,pin in heads.items():
         if pin['snapshot'] is None:bases[name]=None;continue
         found=records.find(name,pin)
         if found is None:
             found,problem=_complete_owed(records,name,pin,unmarked)
             if problem is not None:owed[name]=problem
-        if found is None:missing.append(name)
-        else:bases[name]=found[1]
+        if found is None:missing.append(name);continue
+        bases[name]=found[1]
+        problems=base_problems(name,dict(selector=dict(kind='native_table',**pin),record=found[1]),records,ROOT,label=name)
+        if problems:refused[name]=problems
     marks={'owed_unmarked':unmarked} if unmarked else {}
-    if missing:return None,dict(missing=sorted(missing),**({'owed':owed} if owed else {}),**marks)
+    if missing or refused:
+        return None,dict(**({'missing':sorted(missing)} if missing else {}),**({'refused':refused} if refused else {}),
+                         **({'owed':owed} if owed else {}),**marks)
     return dict(writer=writer,bases=bases,**marks),None
 
 
