@@ -1,0 +1,14 @@
+# Action versions move by reviewed pull request, one grouped PR a week.
+# "/" scans only .github/workflows and a root action.yml, so the composite
+# actions under .github/actions are listed too.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/*
+    schedule:
+      interval: weekly
+    groups:
+      github-actions:
+        patterns: ['*']
