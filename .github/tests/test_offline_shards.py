@@ -106,6 +106,20 @@ def test_six_offline_jobs_keep_runtime_and_node_before_full_partition():
     assert setup['with']['artifact'] == '${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}'
 
 
+def test_offline_jobs_alone_build_the_declared_tesseract():
+    import tomllib
+    from congress_api.lake.reading_versions import PDF_TESSERACT_SELECTIVE_RECOVERY_DECLARATION as declared
+    pin = tomllib.loads((ROOT / 'test-suites.toml').read_text())['environment']['tesseract']
+    assert f"libtesseract {pin['version']} " in declared and pin['eng_fast_sha256'] in declared
+    steps = workflow('validate-explorer.yml')['jobs']['offline']['steps']
+    python = next(s for s in steps if s.get('uses') == './.github/actions/setup-python-project')
+    assert python['with']['tesseract'] == 'true'
+    action = yaml.load((ROOT / '.github/actions/setup-python-project/action.yml').read_text(), Loader=yaml.BaseLoader)
+    assert action['inputs']['tesseract']['default'] == 'false'  # archive and capture jobs never run OCR
+    built = [s for s in action['runs']['steps'] if 'tesseract' in s.get('name', '').lower()]
+    assert len(built) == 4 and all(s['if'].startswith("inputs.tesseract == 'true'") for s in built)
+
+
 def test_required_validate_fails_if_any_offline_job_failed_or_was_cancelled():
     validate = workflow('validate-explorer.yml')['jobs']['validate']
     assert validate['needs'] == 'offline'

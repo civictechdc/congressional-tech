@@ -78,6 +78,9 @@ jobs:
           fetch-depth: 0
           filter: blob:none
       - uses: ./.github/actions/setup-python-project
+        with:
+          # test_pdf_opt_in reads scans through the declared libtesseract 5.5.4.
+          tesseract: true
       - uses: ./.github/actions/setup-local-job-runtime
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         with:
