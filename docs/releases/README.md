@@ -21,7 +21,8 @@ Render a note with:
   --causes model/jobs/release-causes/<base12>-<candidate12>.json --base <base release dir> --candidate <candidate dir>
 ```
 
-Nothing else follows a release by hand (ct-pz32, owner decision 2026-11-17). The nightly runs in
+Nothing else follows a release by hand (ct-pz32, owner decision 2026-11-17); what to do when a
+night stops is on one page, [docs/nightly.md](../nightly.md). The nightly runs in
 GitHub Actions: the scheduled capture triggers the publish, and the hosted MCP reads the live
 pointer on its own. Gate 1 passes a night without a cause record in two cases:
 

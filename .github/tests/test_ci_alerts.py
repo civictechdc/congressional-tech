@@ -64,6 +64,8 @@ class FakeGitHub:
 
 @pytest.fixture
 def github(monkeypatch):
+    monkeypatch.setenv('GH_REPO', 'o/r')
+
     def install(**state):
         fake = FakeGitHub(**state)
         monkeypatch.setattr(alerts, 'gh', fake)
@@ -77,9 +79,11 @@ def test_first_failure_creates_the_label_and_opens_an_issue_naming_the_failed_st
     assert fake.issues == [{'number': 1, 'title': 'Capture archive sources'}]
     assert fake.labels == {'ci-failure'}
     body = next(stdin for args, stdin in fake.calls if args[:2] == ('issue', 'create'))
-    for fact in [RUN['html_url'], '`schedule`', 'a' * 40, 'capture (step: Capture from the public release)']:
+    for fact in [RUN['html_url'], '`schedule`', 'a' * 40, 'capture (step: Capture from the public release)',
+                 'What to do: https://github.com/o/r/blob/main/docs/nightly.md']:
         assert fact in body
     assert 'report' not in body and 'Post checkout' not in body
+    assert (ROOT / alerts.RUNBOOK).is_file()  # the link the issue carries leads somewhere
 
 
 def test_second_failure_comments_on_the_open_issue(github):
