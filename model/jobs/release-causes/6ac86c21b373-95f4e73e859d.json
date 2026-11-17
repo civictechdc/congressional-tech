@@ -1,0 +1,746 @@
+{
+ "version": 1,
+ "base_release_id": "6ac86c21b3732b4c546df1c282cff8e228062355152a4ef0e5252ab86fae5d2e",
+ "candidate_release_id": "95f4e73e859d83fffcb2795fcaf07145f78cee6fd3ab7e238c27ba8267274345",
+ "notes": {
+  "identifiers": [
+   {
+    "statement": "Bootstrap release for unattended data-only nights (ct-pz32, owner decision 2026-11-17). Capture night 2026-11-17 (hosted capture run 44049858500; 1178 receipts new to the release) built in hosted run 44065807228. The model definition equals the live release's except release_gate.py (b1d4d3fa: gate-policy helper extracted, refusal message reordered), which is gate policy, not content code. Entity digests and every producer version equal the live build's, every live receipt is kept, the link rule is clean, and every group is a capture-night shape inside the data-only tripwires, which CI evaluated on the real files. The only reason the night did not approve itself is that the live release's input record predates unprofiled_inputs; this release writes them.",
+    "decision": "ct-pz32, owner decision 2026-11-17"
+   }
+  ]
+ },
+ "groups": [
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 479,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +479 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed committee_keys|value differs on matched key",
+   "count": 287,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +287 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_family|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +4 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_kind|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +4 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed facts|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +4 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed filename|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +4 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_suffix|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +2 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 586,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +586 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 1097,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +1097 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 1098,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +1098 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 479,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +479 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 479,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +479 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed committee_keys|value differs on matched key",
+   "count": 287,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +287 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_family|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +4 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_kind|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +4 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed filename|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +4 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 1097,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +1097 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 16,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +16 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 81,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +81 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 58,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +58 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 57,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +57 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 151,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +151 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 55,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +55 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 75,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +75 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 44,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +44 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +6 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +0 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 1065,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +1065 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed is_saved|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +4 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 1934,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +1934 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 1934,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +1934 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|removed URLs|unexplained",
+   "count": -680,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: -680 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 690,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +690 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 248,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +248 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 488,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +488 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 487,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +487 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 477,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +477 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 448,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +448 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 435,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +435 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 443,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +443 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 487,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +487 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 69,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +69 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 2471,
+   "disposition": "explained",
+   "cause": "Capture night 2026-11-17: +2471 from the 1178 receipts new to the release (data-only night in every check but the live record's missing unprofiled_inputs; see the evidence file and notes).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/6ac86c21b373-95f4e73e859d.json",
+     "sha256": "66d14e6955d01c86f46a59ee3bb60a92b94ad9950e880d1b54e52eea7f511811",
+     "size": 7759
+    }
+   ]
+  }
+ ]
+}
