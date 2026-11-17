@@ -37,3 +37,9 @@ Considered and set aside: stop at the snapshot the live release was built from. 
 ## Acceptance Criteria
 
 Gate 5 and the pre-check together read each record at most once per run, and the number of records read per night does not grow with the number of past nights. Measured on the production chain before and after.
+
+## Notes
+
+**2026-11-17**
+
+Part one merged as pull request 195 (22db4500). Owner, 2026-11-17, on building the trust-the-pins design above: "Yes, after the night", meaning after the scheduled night of 2026-11-18 passes. Own pull request; first verify that the backfill and import jobs run the base check before they write a record.

@@ -19,3 +19,11 @@ Found doing ct-medh (2026-11-17). Lake tables are meant to be written only by `a
 ## Acceptance Criteria
 
 The local script refuses to append to a table the nightly writes unless told to explicitly, and item 2 is either built or closed with the owner's decision.
+
+## Notes
+
+**2026-11-17**
+
+Item 1 merged as pull request 196 (62f86ef1): `captures_ingest --apply` to a table named in `model/jobs/publish-daily.json` in the remote catalog is refused before any engine or storage is reached unless `--nightly-table` is passed. Local catalogs and rebuilds into a new table are unaffected. The other session had no uncommitted edits to the file.
+
+Item 2 (no hosted path for receipts older than the 14-day lookback) is the owner's decision and keeps this ticket open.
