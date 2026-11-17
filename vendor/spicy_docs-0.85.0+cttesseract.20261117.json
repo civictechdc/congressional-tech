@@ -1,0 +1,23 @@
+{
+  "version": "0.85.0+cttesseract.20261117",
+  "filename": "spicy_docs-0.85.0+cttesseract.20261117-py3-none-any.whl",
+  "sha256": "ec4ebb122a7b8eb0075747f121a2e7c78a41260c3c35dcf129ad0b518f790e44",
+  "previous_sha256": "3f17e1355a0dd1d6b3594e60d27279f4cca1f18a62588e86e9be3524fbf1bb18",
+  "base_source_commit": "c7d6ded0ff246dad7737c82fe9760e190e456e6a",
+  "upstream_tesseract_source_commit": "c5d5f2bad86cc9eed61723405c1227b318508614",
+  "source_worktree": "/Users/mikewolfd/.codex/worktrees/ct-source-quality-wheel/spicy-docs",
+  "package_member_diff": {
+    "added": [
+      "spicy_docs/extraction/tesseract.py"
+    ],
+    "removed": [],
+    "changed": [
+      "spicy_docs/extraction/ocr.py"
+    ]
+  },
+  "compatibility": "existing OCR module appends import of new module; all other pre-existing package members byte-identical; maintained upstream import path retained",
+  "qualification": "f1e2e2 page 36: old/shared config, text, raw detections and boxes equal; other inputs not certified; post-lint code has identical non-import AST and ocr.py identical AST",
+  "evidence": ".cache/archive-release/ticket-fixes-20261117/pdf/backend-comparison.json",
+  "build": "two uv build --wheel builds produced identical bytes",
+  "source_commit": "bfd3c53993e7d988e616dee3c07eb52738642748"
+}

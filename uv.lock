@@ -619,7 +619,7 @@ requires-dist = [
     { name = "pytz", marker = "extra == 'archive'", specifier = "==2026.5" },
     { name = "requests" },
     { name = "rulespec-artifacts", marker = "python_full_version < '3.13' and extra == 'archive'", path = "vendor/rulespec_artifacts-1.1.2-py3-none-any.whl" },
-    { name = "spicy-docs", marker = "python_full_version < '3.13' and extra == 'archive'", path = "vendor/spicy_docs-0.85.0+sourcequality.20261115-py3-none-any.whl" },
+    { name = "spicy-docs", marker = "python_full_version < '3.13' and extra == 'archive'", path = "vendor/spicy_docs-0.85.0+cttesseract.20261117-py3-none-any.whl" },
     { name = "surt", marker = "extra == 'archive'", specifier = ">=0.3.1,<0.4" },
     { name = "trafilatura", marker = "extra == 'archive'", specifier = "==2.0.0" },
     { name = "warcio", marker = "extra == 'archive'", specifier = "==1.7.5" },
@@ -3195,14 +3195,14 @@ wheels = [
 
 [[package]]
 name = "spicy-docs"
-version = "0.85.0+sourcequality.20261115"
-source = { path = "vendor/spicy_docs-0.85.0+sourcequality.20261115-py3-none-any.whl" }
+version = "0.85.0+cttesseract.20261117"
+source = { path = "vendor/spicy_docs-0.85.0+cttesseract.20261117-py3-none-any.whl" }
 dependencies = [
     { name = "jsonschema" },
     { name = "rulespec-artifacts" },
 ]
 wheels = [
-    { filename = "spicy_docs-0.85.0+sourcequality.20261115-py3-none-any.whl", hash = "sha256:3f17e1355a0dd1d6b3594e60d27279f4cca1f18a62588e86e9be3524fbf1bb18" },
+    { filename = "spicy_docs-0.85.0+cttesseract.20261117-py3-none-any.whl", hash = "sha256:ec4ebb122a7b8eb0075747f121a2e7c78a41260c3c35dcf129ad0b518f790e44" },
 ]
 
 [package.metadata]

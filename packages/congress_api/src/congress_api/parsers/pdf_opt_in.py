@@ -12,238 +12,30 @@ from __future__ import annotations
 
 from collections import Counter
 from contextlib import contextmanager
-import ctypes
-import ctypes.util
-import functools
-import hashlib
 from importlib.metadata import version
 import io
 import math
 import os
-from pathlib import Path
-import platform
-import threading
-from typing import Any
-import weakref
 
 from spicy_docs.extraction import DefaultReader, NativeOrOcr
 from spicy_docs.extraction.font_glyphs import counts, map_line, unmapped_by_font
 from spicy_docs.extraction.model import RAW_RGB, Box, ExtractionError, ProcessingIssue, Raster, Recognition, TextBlock
 from spicy_docs.extraction.pages import _display_box, _PDFPage
+from spicy_docs.extraction.ocr import Tesseract
 
 from congress_api.parsers.body_text import OCR_MIN_CHARS, PageRule, gpo_page, page_rule
 
 DEFAULT_TESSDATA_DIR = '/opt/homebrew/share/tessdata'
-_TESSDATA = {
-    ('eng', 'best'): ('8280aed0782fe27257a68ea10fe7ef324ca0f8d85bd2fd145d1c2b560bcb66ba', 15_400_601),
-    ('eng', 'fast'): ('7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2', 4_113_088),
-}
-_TESSERACT_PSM = frozenset({3, 4, 5, 6, 7, 8, 9, 10, 11, 13})
-_TEXTLINE, _LSTM_ONLY = 2, 1
-_P, _I = ctypes.c_void_p, ctypes.c_int
-_TESS_API = {
-    'TessVersion': ([], ctypes.c_char_p),
-    'TessBaseAPICreate': ([], _P),
-    'TessBaseAPIDelete': ([_P], None),
-    'TessBaseAPISetVariable': ([_P, ctypes.c_char_p, ctypes.c_char_p], _I),
-    'TessBaseAPIInit5': ([_P, ctypes.c_char_p, _I, ctypes.c_char_p, _I, _P, _I, _P, _P, ctypes.c_size_t, _I], _I),
-    'TessBaseAPISetPageSegMode': ([_P, _I], None),
-    'TessBaseAPISetImage': ([_P, ctypes.c_char_p, _I, _I, _I, _I], None),
-    'TessBaseAPIRecognize': ([_P, _P], _I),
-    'TessBaseAPIClear': ([_P], None),
-    'TessBaseAPIGetIterator': ([_P], _P),
-    'TessResultIteratorGetPageIterator': ([_P], _P),
-    'TessPageIteratorBoundingBox': ([_P, _I, *[ctypes.POINTER(_I)] * 4], _I),
-    'TessResultIteratorGetUTF8Text': ([_P, _I], _P),
-    'TessResultIteratorConfidence': ([_P, _I], ctypes.c_float),
-    'TessResultIteratorNext': ([_P, _I], _I),
-    'TessResultIteratorDelete': ([_P], None),
-    'TessDeleteText': ([_P], None),
-}
-_TESS_LOCK = threading.Lock()
 
 
-def _clamp01(val: float) -> float:
-    return max(0.0, min(1.0, float(val)))
+class TesseractBackend(Tesseract):
+    """Use the shared recognizer with CT's historical model-directory default."""
 
-
-def _norm_box(x0: float, y0: float, x1: float, y1: float) -> Box | None:
-    nx0, ny0, nx1, ny1 = _clamp01(x0), _clamp01(y0), _clamp01(x1), _clamp01(y1)
-    if nx1 <= nx0 or ny1 <= ny0:
-        return None
-    return Box(nx0, ny0, nx1, ny1)
-
-
-def _rgb_samples(image: Raster) -> bytes:
-    if image.media_type == RAW_RGB:
-        expected = image.width * image.height * 3
-        if len(image.data) != expected:
-            raise ExtractionError(f'RAW_RGB length {len(image.data)} != {expected}')
-        return image.data
-    from PIL import Image
-    with Image.open(io.BytesIO(image.data)) as img:
-        rgb = img.convert('RGB')
-        if (rgb.width, rgb.height) != (image.width, image.height):
-            raise ExtractionError('Decoded image dimensions differ from Raster metadata')
-        return rgb.tobytes()
-
-
-def _leptonica_version(lib) -> str | None:
-    try:
-        read, free = lib.getLeptonicaVersion, lib.lept_free
-    except AttributeError:
-        return None
-    read.restype, free.argtypes = _P, [_P]
-    text = read()
-    try:
-        return ctypes.string_at(text).decode()
-    finally:
-        free(text)
-
-
-@functools.cache
-def _load_libtesseract() -> tuple[ctypes.CDLL, dict[str, str | None]] | dict[str, str]:
-    reasons = {}
-    candidates = dict.fromkeys(
-        filter(None, (ctypes.util.find_library('tesseract'), 'libtesseract.so.5', '/opt/homebrew/lib/libtesseract.dylib'))
-    )
-    for name in candidates:
-        try:
-            lib = ctypes.CDLL(name)
-            for symbol, (arguments, result) in _TESS_API.items():
-                fn = getattr(lib, symbol)
-                fn.argtypes, fn.restype = arguments, result
-        except (OSError, AttributeError) as error:
-            reasons[name] = str(error)
-            continue
-        handle = lib.TessBaseAPICreate()
-        lib.TessBaseAPISetVariable(handle, b'debug_file', os.devnull.encode())
-        lib.TessBaseAPIDelete(handle)
-        return lib, {'version': lib.TessVersion().decode(), 'leptonica': _leptonica_version(lib)}
-    return reasons
-
-
-def _libtesseract() -> tuple[ctypes.CDLL, dict[str, str | None]]:
-    with _TESS_LOCK:
-        found = _load_libtesseract()
-    if isinstance(found, dict):
-        raise ExtractionError('Tesseract requires libtesseract 5', details={'tried': found})
-    return found
-
-
-def _tessdata(language: str, variant: str, directory: str | os.PathLike | None) -> tuple[bytes, dict[str, Any]]:
-    directory = directory if directory is not None else (os.environ.get('TESSDATA_PREFIX') or DEFAULT_TESSDATA_DIR)
-    name, origin = f'{language}.traineddata', f'github.com/tesseract-ocr/tessdata_{variant}'
-    path = Path(directory) / name
-    try:
-        data = path.read_bytes()
-    except OSError as error:
-        raise ExtractionError(f'Tesseract {variant} model {path} is unreadable ({error.strerror})',
-                              details={'path': str(path)}) from None
-    found = hashlib.sha256(data).hexdigest(), len(data)
-    if found != _TESSDATA[language, variant]:
-        raise ExtractionError(f'{path} does not match pinned {origin} {name}',
-                              details={'path': str(path), 'sha256': found[0], 'bytes': found[1]})
-    return data, {'sha256': found[0], 'bytes': found[1], 'source': origin}
-
-
-class _TesseractHandle:
-    def __init__(self, lib, data: bytes, language: str, psm: int):
-        self.lib, self.handle = lib, (handle := lib.TessBaseAPICreate())
-        self.close = weakref.finalize(self, lib.TessBaseAPIDelete, handle)
-        if lib.TessBaseAPIInit5(handle, data, len(data), language.encode(), _LSTM_ONLY, None, 0, None, None, 0, 0):
-            self.close()
-            raise ExtractionError('libtesseract refused model initialization', details={'language': language})
-        lib.TessBaseAPISetPageSegMode(handle, psm)
-
-    def __call__(self, image: Raster) -> list[tuple[str, float, list[int]]]:
-        lib, handle, detections = self.lib, self.handle, []
-        samples = _rgb_samples(image)
-        lib.TessBaseAPISetImage(handle, samples, image.width, image.height, 3, image.width * 3)
-        try:
-            if lib.TessBaseAPIRecognize(handle, None):
-                raise ExtractionError('Tesseract recognition failed', details={'width': image.width, 'height': image.height})
-            if not (lines := lib.TessBaseAPIGetIterator(handle)):
-                return detections
-            try:
-                page, edges = lib.TessResultIteratorGetPageIterator(lines), [ctypes.c_int() for _ in range(4)]
-                while True:
-                    if lib.TessPageIteratorBoundingBox(page, _TEXTLINE, *map(ctypes.byref, edges)):
-                        ptr = lib.TessResultIteratorGetUTF8Text(lines, _TEXTLINE)
-                        try:
-                            decoded = ctypes.string_at(ptr).decode('utf-8', errors='replace') if ptr else ''
-                        finally:
-                            if ptr:
-                                lib.TessDeleteText(ptr)
-                        conf = float(lib.TessResultIteratorConfidence(lines, _TEXTLINE))
-                        detections.append((decoded, conf, [e.value for e in edges]))
-                    if not lib.TessResultIteratorNext(lines, _TEXTLINE):
-                        return detections
-            finally:
-                lib.TessResultIteratorDelete(lines)
-        finally:
-            lib.TessBaseAPIClear(handle)
-
-
-class TesseractBackend:
-    """In-process libtesseract 5 LSTM recognizer pinned to ``tessdata_fast`` SHA-256."""
-
-    def __init__(self, *, language: str = 'eng', model: str = 'fast', tessdata_dir: str | None = None,
-                 page_segmentation_mode: int = 3, engine=None):
-        if (language, model) not in _TESSDATA:
-            raise ValueError(f'Unsupported Tesseract model {(language, model)!r}')
-        if type(page_segmentation_mode) is not int or page_segmentation_mode not in _TESSERACT_PSM:
-            raise ValueError(f'Unsupported page_segmentation_mode: {page_segmentation_mode}')
-        self.language, self.model, self.tessdata_dir, self.psm = language, model, tessdata_dir, page_segmentation_mode
-        self.engine, self._injected, self._model_file, self._versions = engine, engine is not None, None, {}
-
-    def configuration(self) -> dict[str, Any]:
-        return {
-            'backend': 'tesseract',
-            'version': self._versions.get('version'),
-            'leptonica': self._versions.get('leptonica'),
-            'machine': platform.machine(),
-            'language': self.language,
-            'model': self.model,
-            'model_file': self._model_file,
-            'page_segmentation_mode': self.psm,
-            'engine_mode': 'lstm-only',
-            'engine_injected': self._injected,
-        }
-
-    def require_reproducible_identity(self) -> dict[str, Any]:
-        if self._injected:
-            raise ValueError('Injected Tesseract engine has no reproducible identity')
-        self._engine()
-        return self.configuration()
-
-    def _engine(self):
-        if self.engine is None:
-            lib, versions = _libtesseract()
-            data, model_file = _tessdata(self.language, self.model, self.tessdata_dir)
-            self.engine = _TesseractHandle(lib, data, self.language, self.psm)
-            self._versions, self._model_file = versions, model_file
-        return self.engine
-
-    def recognize(self, image: Raster) -> Recognition:
-        detections = self._engine()(image)
-        width, height = image.width, image.height
-        blocks = tuple(
-            TextBlock(
-                text.rstrip('\n'),
-                _norm_box(left / width, top / height, right / width, bottom / height),
-                conf / 100.0,
-            )
-            for text, conf, (left, top, right, bottom) in detections
-            if text.strip()
-        )
-        raw = {'detections': detections, 'coordinates': 'image pixels; top-left origin; left, top, right, bottom'}
-        return Recognition('\n'.join(b.text for b in blocks), self.configuration(), raw, blocks)
-
-    def close(self) -> None:
-        if not self._injected and self.engine is not None:
-            self.engine.close()
-            self.engine, self._model_file, self._versions = None, None, {}
+    def __init__(self, *, language='eng', model='fast', tessdata_dir=None,
+                 page_segmentation_mode=3, engine=None):
+        directory = tessdata_dir if tessdata_dir is not None else (os.environ.get('TESSDATA_PREFIX') or DEFAULT_TESSDATA_DIR)
+        super().__init__(language=language, model=model, tessdata_dir=directory,
+                         page_segmentation_mode=page_segmentation_mode, engine=engine)
 
 
 class _OptInPDFPage(_PDFPage):
@@ -300,6 +92,9 @@ class _OptInPDFPage(_PDFPage):
                 eff_dpi = max(36, min(eff_dpi, int(math.floor(scale))))
                 while eff_dpi > 36 and math.ceil(w_pt * eff_dpi / 72.0) * math.ceil(h_pt * eff_dpi / 72.0) > self.reader.max_pixels:
                     eff_dpi -= 1
+        # Refuse before PyMuPDF allocates the raster, including at the minimum
+        # adaptive DPI. The post-render check still guards unexpected dimensions.
+        self.reader.check_pixels(math.ceil(w_pt * eff_dpi / 72.0), math.ceil(h_pt * eff_dpi / 72.0))
         pix = self.page.get_pixmap(dpi=eff_dpi, colorspace=pymupdf.csRGB, alpha=False)
         self.reader.check_pixels(pix.width, pix.height)
         rot_ccw = getattr(self.reader, 'rotate_ccw_pages', {}).get(self.number, 0)
@@ -378,6 +173,7 @@ def tesseract_300dpi() -> PageRule:
         reader,
         checkpoint_identity=dict(
             backend=identity,
+            backend_implementation='spicy-docs-0.85.0+cttesseract.20261117',
             reader='OptInPdfReader',
             dpi=300,
             raw_rgb=True,
@@ -398,6 +194,7 @@ def tesseract_bounded_200dpi() -> PageRule:
         reader,
         checkpoint_identity=dict(
             backend=identity,
+            backend_implementation='spicy-docs-0.85.0+cttesseract.20261117',
             reader='OptInPdfReader',
             dpi=200,
             raw_rgb=True,

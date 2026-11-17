@@ -478,7 +478,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
     from congress_shared.storage import connect_r2
     from viewer_publication.archive_controller import run_publish,_publication_directory
     runtime_factory=runtime_factory or NativeDatasets.from_config
-    storage_factory=storage_factory or connect_r2
+    from viewer_publication.client import idle_evicting
+    storage_factory=idle_evicting(storage_factory or connect_r2)
     process_runner=process_runner or subprocess.run
     engine_config,choice=choose_runtime(spec['_model'].get('engine_config'))
     if not engine_config:raise ValueError('Publication requires model engine_config or DOCSPEC_RUNTIME_CONFIG')

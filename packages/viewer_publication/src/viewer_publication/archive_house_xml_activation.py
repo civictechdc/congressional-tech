@@ -14,6 +14,7 @@ from congress_api.lake.producer_records import ProducerRecords
 from congress_api.retention.body_store import BodyStore, LocalAdapter, R2Adapter
 from congress_api.retention.provenance import durable_json, instant
 from congress_shared.storage import connect_r2
+from viewer_publication.client import evict_idle_connections
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_house_xml_dispositions import MODULES, NEW, OLD, FILE, _keys, _verified
 from viewer_publication.archive_model_job import _local, _pin
@@ -178,7 +179,7 @@ def execute_activation(spec, *, runtime_factory=None, storage_factory=None, lock
     with factory(spec['engine_config']) as engine:
         engine.verify_runtime()
         if job['catalog_root'] is None:
-            client = (storage_factory or connect_r2)(bucket=job['bucket'], retries={'total_max_attempts': 1})
+            client = evict_idle_connections((storage_factory or connect_r2)(bucket=job['bucket'], retries={'total_max_attempts': 1}))
             store = BodyStore(R2Adapter(client, job['bucket']))
             records = ProducerRecords(anchors, client=client, bucket=job['bucket'])
         else:
