@@ -1,0 +1,73 @@
+name: CI alerts
+
+# Unattended workflows report here instead of each holding issue permissions:
+# one open ci-failure issue per workflow that fails on main, commented while it
+# keeps failing and closed when it passes again, and one for a nightly archive
+# that has not completed in 30 hours. Logic and tests: .github/scripts/ci-alerts.py.
+on:
+  workflow_run:
+    workflows:
+      - Capture archive sources
+      - Archive publish, backfill and maintenance
+      - Update committee data
+      - Download and Convert CPI XLSX
+    types: [completed]
+    branches: [main]
+  # The capture's 03:23 cron starts between 10:40 and 12:00 UTC; publish follows it.
+  schedule:
+    - cron: '37 14 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+# A failure and the recovery after it update the same issue in order.
+concurrency:
+  group: ci-alerts-${{ github.event.workflow_run.name || 'freshness' }}
+  cancel-in-progress: false
+  queue: max
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  failure:
+    if: >-
+      github.event_name == 'workflow_run' &&
+      (github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'timed_out')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - run: python3 -I .github/scripts/ci-alerts.py failure
+
+  recovered:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - run: python3 -I .github/scripts/ci-alerts.py recovered
+
+  freshness:
+    if: github.event_name != 'workflow_run'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - env:
+          ARCHIVE_CAPTURE_ENABLED: ${{ vars.ARCHIVE_CAPTURE_ENABLED }}
+          ARCHIVE_NIGHTLY_DISABLED: ${{ vars.ARCHIVE_NIGHTLY_DISABLED }}
+        run: python3 -I .github/scripts/ci-alerts.py freshness
