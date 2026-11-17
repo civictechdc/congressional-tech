@@ -7,7 +7,7 @@ import pyarrow.parquet as pq
 import pytest
 
 from viewer_publication.data_only_night import (COLUMN_LOSS_FLOOR, DATA_ONLY_CAUSE, FILE_ROWS_PER_RECEIPT, GROUP_FLOOR,
-                                                GROUP_ROWS_PER_RECEIPT, NIGHT_RECEIPTS, RECAPTURED_PAGES, REMOVED_DOCUMENTS,
+                                                GROUP_ROWS_PER_RECEIPT, RECAPTURED_PAGES, REMOVED_DOCUMENTS,
                                                 column_values, data_only_causes, recaptured_pages, unattended_causes)
 
 PROFILE = dict(parser_versions={'html_metadata': 'c226'}, file_hashes={'model/sql/list.sql': 'a' * 64, 'model/sql/detail.sql': 'b' * 64})
@@ -138,9 +138,18 @@ def test_receipts_must_only_grow_and_something_new_must_have_been_read(decide):
     assert decide(report(), keys=LIVE_KEYS)[1]
     assert decide(value, records=[live(keys=[])])[1] == ['data-only night: the live release has no receipt set to compare with']
     assert decide(report(group('list.parquet', 'changed title', 3), link_ok=False))[1] == ['data-only night: the link rule failed (not ok)']
-    backlog = [f'receipts/documents/2026-11-1{n % 7}/{n}.jsonl.gz' for n in range(NIGHT_RECEIPTS + 1)]
-    assert decide(value, keys=[*LIVE_KEYS, *backlog])[1] == [
-        f'data-only night: {NIGHT_RECEIPTS + 1} receipts are new to the release, more than the {NIGHT_RECEIPTS} one night brings']
+
+
+def test_a_catch_up_approves_itself_and_only_the_share_of_a_file_bounds_a_backlog(decide):
+    """After a stopped night the next one carries two nights of receipts. No count of nights is
+    kept: the caps follow the receipts, and 2% of a file is the ceiling however many there are."""
+    two_nights = [*LIVE_KEYS, *NIGHT, *(f'receipts/senate/pages/2026-11-18/{n:04}.jsonl.gz' for n in range(1775))]
+    catch_up = report(group('list.parquet', 'changed title', 4000), group('list.parquet', 'added rows', 1200, 'no surviving link key'))
+    entries, reasons, facts = decide(catch_up, keys=two_nights)
+    assert reasons == [] and len(entries) == 2 and facts['new_receipts'] == 2948
+    backlog = [*LIVE_KEYS, *(f'receipts/documents/2026-11-0{n % 9}/{n}.jsonl.gz' for n in range(40_000))]
+    assert decide(report(group('list.parquet', 'changed title', 8000)), keys=backlog)[1] == []      # 2% of 400,000
+    assert 'more than the 8000 rows' in decide(report(group('list.parquet', 'changed title', 8001)), keys=backlog)[1][0]
 
 
 @pytest.mark.parametrize('planted', [
@@ -284,8 +293,12 @@ def test_many_groups_each_under_its_cap_still_stop_at_the_files_total(decide):
     entries, reasons, _ = decide(report(*columns))
     assert entries == [] and reasons == [
         f'data-only night: detail.parquet moves 20000 rows across its groups, more than the {FILE_ROWS_PER_RECEIPT * 1173} this night may '
-        f'({FILE_ROWS_PER_RECEIPT} for each of its 1173 new receipts)']
+        f'(the lesser of 6% of the file and {FILE_ROWS_PER_RECEIPT} for each of its 1173 new receipts)']
     assert decide(report(*columns[:3]))[1] == [] and GROUP_ROWS_PER_RECEIPT * 1173 >= 5000
+    # A backlog cannot widen a file's total past 6% of it: 18,000 of detail's 300,000 rows.
+    backlog = [*LIVE_KEYS, *(f'receipts/documents/2026-11-0{n % 9}/{n}.jsonl.gz' for n in range(40_000))]
+    assert decide(report(*columns[:3], group('detail.parquet', 'changed c9', 3000)), keys=backlog)[1] == []
+    assert '6% of the file' in decide(report(*columns[:3], group('detail.parquet', 'changed c9', 3001)), keys=backlog)[1][0]
 
 
 def test_a_column_that_empties_stops_the_night_at_any_share_of_its_file(decide, releases):

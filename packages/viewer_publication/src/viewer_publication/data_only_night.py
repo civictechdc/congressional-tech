@@ -14,8 +14,11 @@ nothing here stands in for a check that ran and refused. An additions-only night
 
 The caps are tripwires, not proof. They stop a night that moved more than its new receipts can
 explain, which is how a publisher serving wrong pages, or the right code reading the wrong table,
-would look. A night is bounded by the capture's request budget (2,000), so the caps scale with the
-receipts new to the release. Measured on three capture nights with gate reports:
+would look. The caps scale with the receipts new to the release, and no group may move more than
+2% of its file however many receipts there are. That share is the ceiling: a catch-up after a
+stopped night or an outage approves itself like any night, and a backlog large enough to move
+more than 2% of a file stops for a person. No count of nights is kept. Measured on three capture
+nights with gate reports:
 
     night (candidate)            new receipts   largest group     largest file total
     2026-11-13 (4b9a7bd126cc)    about 1,027    2,921 (2.8 each)   6,804 (6.6 each)
@@ -26,7 +29,7 @@ The only unverified removals were the fetch queue's, at most 0.056% of it; the t
 re-keyed six people, which the comparison verified. Outside the queue the most a column lost was
 0.39% of its values. The candidate that lost every html_metadata reading (08c465599d7b,
 2026-11-16) emptied whole columns of 2,561 to 12,587 values, which the column tripwire stops at
-any size, and came from a 40,257-receipt backlog, which is not a night.
+any size; its changed groups moved 3.9% to 25% of detail.parquet, above the 2% ceiling.
 
 Cannot see: wrong but non-null content served at an ordinary volume, such as an error page's
 title on a few thousand re-fetched documents (the archive records what was published); a column
@@ -39,7 +42,6 @@ checks, and the contract and canary gates run as on any night.
 """
 from pathlib import Path
 
-NIGHT_RECEIPTS = 2_500              # the 2,000-request capture budget and the weekly refresh; more is a backlog
 GROUP_SHARE, GROUP_FLOOR = 0.02, 50
 GROUP_ROWS_PER_RECEIPT, FILE_ROWS_PER_RECEIPT = 5, 15
 REMOVAL_SHARE = 0.0025
@@ -120,10 +122,16 @@ def _group_reasons(report, new_receipts):
                                    f'(the lesser of {GROUP_SHARE:.0%} of {base} and {GROUP_ROWS_PER_RECEIPT} for each of its '
                                    f'{new_receipts} new receipts)')
             totals[file] = totals.get(file, 0) + abs(count)
-    allowed = max(GROUP_FLOOR, FILE_ROWS_PER_RECEIPT * new_receipts)
-    return reasons + [f'data-only night: {file} moves {total} rows across its groups, more than the {allowed} this night may '
-                      f'({FILE_ROWS_PER_RECEIPT} for each of its {new_receipts} new receipts)'
-                      for file, total in sorted(totals.items()) if total > allowed]
+    # A file's groups together: the same two bounds as one group, three times as wide.
+    wider = FILE_ROWS_PER_RECEIPT // GROUP_ROWS_PER_RECEIPT
+    for file, total in sorted(totals.items()):
+        allowed = max(GROUP_FLOOR, min(int(report['files'][file]['rows']['base'] * GROUP_SHARE) * wider,
+                                       FILE_ROWS_PER_RECEIPT * new_receipts))
+        if total > allowed:
+            reasons.append(f'data-only night: {file} moves {total} rows across its groups, more than the {allowed} this night may '
+                           f'(the lesser of {GROUP_SHARE * wider:.0%} of the file and {FILE_ROWS_PER_RECEIPT} for each of its '
+                           f'{new_receipts} new receipts)')
+    return reasons
 
 
 def column_values(release):
@@ -276,9 +284,7 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
                        f'candidate (first {sorted(held - candidate)[:3]})')
     if not new:
         reasons.append('data-only night: the candidate read no receipt the live release did not, so nothing explains a difference')
-    if len(new) > NIGHT_RECEIPTS:
-        reasons.append(f'data-only night: {len(new)} receipts are new to the release, more than the {NIGHT_RECEIPTS} one night brings')
-    reasons += _group_reasons(report, min(len(new), NIGHT_RECEIPTS))
+    reasons += _group_reasons(report, len(new))
     lost, columns = _column_reasons(base_dir, candidate_dir)
     reasons += lost
     if reasons:
@@ -286,7 +292,7 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
     facts = dict(version=1, profile_sha256=version_digest(packages={}, files={}, values=candidate_record['profile']),
                  live_input=same[-1]['key'], live_receipts=len(held), new_receipts=len(new), new_receipt_keys=sorted(new),
                  groups=len(groups), columns_compared=columns, proven_corrections=proven, **link_facts,
-                 caps=dict(night_receipts=NIGHT_RECEIPTS, recaptured_pages=RECAPTURED_PAGES, group_share=GROUP_SHARE, group_floor=GROUP_FLOOR,
+                 caps=dict(recaptured_pages=RECAPTURED_PAGES, group_share=GROUP_SHARE, group_floor=GROUP_FLOOR,
                            group_rows_per_receipt=GROUP_ROWS_PER_RECEIPT, file_rows_per_receipt=FILE_ROWS_PER_RECEIPT,
                            removal_share=REMOVAL_SHARE, removed_documents=REMOVED_DOCUMENTS,
                            column_loss_share=COLUMN_LOSS_SHARE, column_loss_floor=COLUMN_LOSS_FLOOR))
