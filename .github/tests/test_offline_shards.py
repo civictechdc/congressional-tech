@@ -92,7 +92,7 @@ def test_six_offline_jobs_keep_runtime_and_node_before_full_partition():
     offline = value['jobs']['offline']
     assert offline['strategy']['fail-fast'] == 'false'
     assert offline['strategy']['matrix']['shard'] == ['1', '2', '3', '4', '5', '6']
-    assert offline['timeout-minutes'] == '30'
+    assert offline['timeout-minutes'] == '45'  # headroom over the 27.4-minute slowest shard
     steps = offline['steps']
     runtime = next(i for i, s in enumerate(steps) if s.get('uses') == './.github/actions/setup-local-job-runtime')
     node = next(i for i, s in enumerate(steps) if s.get('uses') == './.github/actions/setup-node-project')
