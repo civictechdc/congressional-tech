@@ -26,3 +26,13 @@ Left open after ct-pz32's CI hardening (99d4bfcc..ba607808, b8b50642). Evidence:
 
 Each item is fixed, or closed with a recorded owner decision.
 
+
+## Notes
+
+**2026-11-17T14:20:00Z**
+
+Added from the gate 5 review of 2026-11-17 (`.cache/archive-release/reviews/gate5-chain-20261117/REVIEW.md`):
+
+9. The nightly's preflight (`lake/daily.py` `_producer_bases`) accepts any existing head record, while gate 5 judges it: daily can append onto a base the gate then refuses (an operator record from an unmerged commit, a staged delta), which stops every later night after the append. Move the gate's base-acceptance check into `congress_api.lake.producer_records` and call it before daily appends.
+10. Since the fix that lets a daily chain end on another registered producer's snapshot, a chain's trust root can be a bucket record an operator script wrote (the 2026-11-17 capture integration, ct-z4w5), not only a checked-in import anchor. A stronger rule: have the capture path write a standard `base` and keep walking through it. Owner decision.
+11. Out-of-band writes to production lake tables between nightlies (operator integrations) are not coordinated with the hosted nightly; they share no lock with `raw-source-mirror`.
