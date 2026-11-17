@@ -17,7 +17,7 @@ which is how a publisher serving wrong pages, or the right code reading the wron
 look. Measured on the two capture nights with gate reports (2026-11-13 into 4b9a7bd126cc and
 2026-11-17 into c998ffa0766f; 2,000 requests each): the largest group added or changed 2,921 rows
 and 0.60% of its file; one file's groups summed to 6,792 rows; the only removals were url_state's
-queue at 0.056%; and the most a column lost was 1.3% of its values (url_state.linked_from). The
+queue at 0.056%; and outside that queue the most a column lost was 0.39% of its values. The
 candidate that lost every html_metadata reading (08c465599d7b, 2026-11-16) emptied whole columns
 of 2,561 to 12,587 values, which the column tripwire stops at any size.
 
@@ -37,6 +37,10 @@ FILE_ROWS = 10_000
 REMOVED_ROWS = 5
 QUEUE_REMOVAL_SHARE = 0.0025
 COLUMN_LOSS_SHARE, COLUMN_LOSS_FLOOR = 0.05, 50
+# The fetch queue's own columns turn over by design: a queued address that is fetched leaves
+# with its whole linked_from list (5.8% of that column's values on 2026-11-17 in run 44065807228,
+# 1.3% on 2026-11-13). The queue is bounded by its row caps above, not by the column tripwire.
+QUEUE_FILE = 'url_state.parquet'
 # The shapes a capture night's own receipts produce, from both measured nights and the 2026-11-13
 # record: rows, keys and addresses added, and a value changed on a matched key. Anything else the
 # comparison leaves unverified is for a person: a removal, a link whose file became an alternate
@@ -95,7 +99,7 @@ def _group_reasons(report):
                 reasons.append(f'data-only night: {name} ({count}) is not a difference new receipts alone explain; '
                                'it needs a cause record')
             elif count < 0:
-                cap = int(base * QUEUE_REMOVAL_SHARE) if file == 'url_state.parquet' else REMOVED_ROWS
+                cap = int(base * QUEUE_REMOVAL_SHARE) if file == QUEUE_FILE else REMOVED_ROWS
                 if -count > cap:
                     reasons.append(f'data-only night: {name} ({count}) removes more than the {cap} rows one unattended night may')
             else:
@@ -132,13 +136,15 @@ def _column_reasons(base_dir, candidate_dir):
     base, candidate = column_values(base_dir), column_values(candidate_dir)
     reasons = []
     for (file, column), held in sorted(base.items()):
+        if file == QUEUE_FILE:
+            continue
         now = candidate.get((file, column), 0)
         if held is None or now is None:
             reasons.append(f'data-only night: {file}:{column} keeps no null count, so its values cannot be compared')
         elif held - now > max(COLUMN_LOSS_FLOOR, int(held * COLUMN_LOSS_SHARE)):
             reasons.append(f'data-only night: {file}:{column} lost {held - now} of its {held} values, more than the '
                            f'{COLUMN_LOSS_SHARE:.0%} one unattended night may')
-    return reasons, len(base)
+    return reasons, sum(file != QUEUE_FILE for file, _ in base)
 
 
 def data_only_causes(report, *, candidate_record, live_records, candidate_receipt_keys, base_dir, candidate_dir):

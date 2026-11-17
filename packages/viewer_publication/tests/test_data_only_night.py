@@ -191,6 +191,24 @@ def test_a_column_that_empties_stops_the_night_at_any_share_of_its_file(decide, 
     assert column_values(wiped)['list.parquet', 'note'] == 0 and column_values(wiped)['list.parquet', 'title'] == 1000
 
 
+def test_the_fetch_queue_is_bounded_by_its_row_caps_not_by_the_column_tripwire(decide, tmp_path):
+    """A fetched address leaves the queue with its whole linked_from list (run 44065807228)."""
+    def queue(name, linked):
+        (tmp_path / name).mkdir()
+        for file in ('url_state.parquet', 'list.parquet'):
+            pq.write_table(pa.table({'linked_from': pa.array(linked, pa.list_(pa.string()))}), tmp_path / name / file)
+        return tmp_path / name
+    full, worked = queue('full', [['p'] * 10] * 100), queue('worked', [['p'] * 10] * 40 + [[]] * 60)
+    value = report(group('url_state.parquet', 'changed linked_from', 60))
+    run = lambda files: data_only_causes(value, candidate_record=INPUTS, live_records=[live()],
+                                         candidate_receipt_keys=[*LIVE_KEYS, NEW_KEY], base_dir=full, candidate_dir=files)
+    # The same loss in a content file stops the night; in the queue it does not.
+    assert run(worked)[1] == ['data-only night: list.parquet:linked_from.list.element lost 600 of its 1000 values, more than the 5% one unattended night may']
+    (worked / 'list.parquet').write_bytes((full / 'list.parquet').read_bytes())
+    entries, reasons, facts = run(worked)
+    assert reasons == [] and len(entries) == 1 and facts['columns_compared'] == 1
+
+
 def test_the_traced_proof_decides_every_night_it_can_read_and_data_only_only_the_rest():
     addition = report(group('list.parquet', 'added rows', 3, 'no surviving link key'))
     forbidden = lambda value: pytest.fail('data-only must not decide a night the traced proof can read')
