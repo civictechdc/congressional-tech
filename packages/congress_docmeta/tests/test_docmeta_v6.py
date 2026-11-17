@@ -800,3 +800,65 @@ def test_r7_subcommittee_must_be_named_or_resolve_from_code() -> None:
         "Subcommittee on Health"
     ]
     assert ground_subcommittees_v6(None, **kw) == []
+
+
+def test_compact_prompt_serializes_known_one_way() -> None:
+    """`run_records` hands spaced JSON and the parquet sweep hands compact JSON; the model must see one form."""
+    from congress_docmeta.compact_wire_v6 import build_prompt_v6_compact, compact_known_str
+
+    spaced = '{"congress": 117, "cmt": ["ssap00"], "chambers": ["senate"], "date": null}'
+    compact = '{"congress":117,"cmt":["ssap00"],"chambers":["senate"],"date":null}'
+    assert compact_known_str(spaced) == compact_known_str(compact) == compact
+    assert compact_known_str("<NONE>") == "<NONE>"
+    assert build_prompt_v6_compact(spaced, "a.pdf", "T") == build_prompt_v6_compact(compact, "a.pdf", "T")
+    assert f"Advisory known metadata: {compact}\nFilename: a.pdf\nText:\nT" in build_prompt_v6_compact(spaced, "a.pdf", "T")
+
+
+def test_compact_wire_round_trip_and_checkpoint_wire_detection(tmp_path: Path) -> None:
+    """`DocMetaV6Compact` drops defaults, expands back to a valid V4 object, and a checkpoint names its wire."""
+    from congress_docmeta import (
+        canonicalize_docmeta_v4,
+        detect_checkpoint_wire_format,
+        encode_v4_to_compact_v6,
+        expand_compact_v6_to_v4,
+        validate_docmeta_v4,
+    )
+    from congress_docmeta.cli import build_parser
+
+    sample_v4 = {
+        "status": "usable",
+        "text_quality": "native",
+        "chamber": "house",
+        "congress": 118,
+        "committees": ["House Committee on Natural Resources"],
+        "doc_date": "2024-06-04",
+        "primary_kind": "witness_statement",
+        "personas": [{"name": "Raúl Grijalva", "role": "ranking_member", "entity_type": "member"}],
+        "refs": ["bill:118:hr:1838"],
+        "fiscal_years": [2025],
+        "composed_title": "Statement of Ranking Member Raúl Grijalva",
+        "gist": "Ranking Member Grijalva outlines water conservation priorities.",
+        "topics": ["water", "conservation"],
+    }
+    comp = encode_v4_to_compact_v6(sample_v4)
+    assert "st" not in comp and "tq" not in comp and "rf" not in comp and "fy" not in comp
+    exp = canonicalize_docmeta_v4(expand_compact_v6_to_v4(comp))
+    ok_v4, err = validate_docmeta_v4(exp)
+    assert ok_v4, err
+    assert exp["personas"][0]["name"] == "Raúl Grijalva"
+
+    (tmp_path / "docmeta_wire_config.json").write_text('{"wire_format": "compact_v6"}\n', encoding="utf-8")
+    assert detect_checkpoint_wire_format(tmp_path) == "compact"
+    parsed = build_parser().parse_args(["docmeta-sweep", "in.parquet", "out.parquet", "--wire-format", "compact"])
+    assert parsed.wire_format == "compact"
+
+
+def test_run_records_defaults_match_the_engines_rolling_defaults() -> None:
+    """`PythonicEngineV6.run_records` keeps `B_slots=256` and `swa_ring_cap=512`, the engine's `run_rolling` defaults."""
+    import inspect
+
+    from congress_docmeta import PythonicEngineV6
+
+    sig = inspect.signature(PythonicEngineV6.run_records).parameters
+    assert sig["B_slots"].default == 256
+    assert sig["swa_ring_cap"].default == 512

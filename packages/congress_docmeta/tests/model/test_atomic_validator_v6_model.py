@@ -24,10 +24,9 @@ import fast_gemma4  # noqa: E402
 from congress_docmeta import (  # noqa: E402
     SCHEMA_V4_STR,
     AtomicOutputValidatorV6,
-    PerDocGrammarHelperV6,
     PreDecodeGrammarRouterV6,
-    SyncKindMatcher,
     build_doc_kind_set_schema_v6,
+    per_doc_grammar_v6,
     run_docmeta_parquet_sweep,
     score_atomic_stdlib_v6,
     score_docmeta_anomalies_v6,
@@ -37,6 +36,7 @@ from congress_docmeta.cli import build_parser  # noqa: E402
 from docmeta_test_support import VAL48_ARCHIVE_DIR, _auroc, _hw_lock, _load_docs8_pairs, _load_val48_records  # noqa: E402
 from fast_gemma4.grammar import GrammarHelper  # noqa: E402
 from fast_gemma4.paths import resolve_paths  # noqa: E402
+from fast_gemma4.per_doc_grammar import SyncMatcher  # noqa: E402
 from fast_gemma4.tokenizer import FastGemma4Tokenizer, VocabRemapper  # noqa: E402
 
 REPO_ROOT = Path(fast_gemma4.__file__).resolve().parents[2]
@@ -464,7 +464,7 @@ def test_v63_grammar_router_ane_set_locks_and_persona_role_repair() -> None:
     if not router_npz.is_file():
         pytest.skip(f"V6.3 router artifacts not present at {router_npz}")
 
-    # 1. CLI flags & multi-kind `PerDocGrammarHelperV6` set schema compilation
+    # 1. CLI flags & multi-kind `per_doc_grammar_v6` set schema compilation
     parser = build_parser()
     for gr_mode in ("none", "fast", "ane"):
         parsed = parser.parse_args(
@@ -481,14 +481,14 @@ def test_v63_grammar_router_ane_set_locks_and_persona_role_repair() -> None:
     tok = FastGemma4Tokenizer(paths.resolve_tokenizer_json())
     rem = VocabRemapper.load_or_build(paths.resolve_tokenizer_json(), paths.vocab_remap_npz)
     gh_std = GrammarHelper(tok, SCHEMA_V4_STR, rem.kept_old_ids, whitespace_flexible=False)
-    gh_set = PerDocGrammarHelperV6(
+    gh_set = per_doc_grammar_v6(
         gh_std,
         doc_order=[0],
         doc_target_kinds={0: "external_submission_letter|oversight_letter"},
         sync_ff_with_std=True,
     )
     m_set = gh_set.new_matcher()
-    assert isinstance(m_set, SyncKindMatcher)
+    assert isinstance(m_set, SyncMatcher)
 
     # 2. Evaluate `PreDecodeGrammarRouterV6` (`fast` and `ane`) on blind `val_48` + `docs_8` (56 docs, 0 training overlap!)
     gold48_raw = json.loads((VAL48_ARCHIVE_DIR / "lookups_and_gold" / "eval_val48_v4_gold.json").read_text(encoding="utf-8"))

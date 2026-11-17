@@ -98,7 +98,6 @@ if __package__:
         TTF_SCHEMA_V4_STR,
         V4_TIER1_SIGNATURE_TO_KIND,
         VOTE_ALLOWED_ROLES,
-        SyncKindMatcher,
         _build_triage_result,
         _extract_bulleted_witness_personas,
         _has_congressional_proceeding_cue,
@@ -123,7 +122,6 @@ if __package__:
         canonicalize_docmeta_v4,
         classify_hsru_host_status,
         committee_code_to_canonical,
-        compute_rolling_doc_order,
         detect_all_tier1_signatures_v5,
         detect_exact_tier1_signature_v5,
         detect_exact_ttf_form,
@@ -208,7 +206,6 @@ else:
         TTF_SCHEMA_V4_STR,
         V4_TIER1_SIGNATURE_TO_KIND,
         VOTE_ALLOWED_ROLES,
-        SyncKindMatcher,
         _build_triage_result,
         _extract_bulleted_witness_personas,
         _has_congressional_proceeding_cue,
@@ -233,7 +230,6 @@ else:
         canonicalize_docmeta_v4,
         classify_hsru_host_status,
         committee_code_to_canonical,
-        compute_rolling_doc_order,
         detect_all_tier1_signatures_v5,
         detect_exact_tier1_signature_v5,
         detect_exact_ttf_form,
@@ -1793,49 +1789,49 @@ def post_pass_v6(
 # ---------------------------------------------------------------------------
 
 
-class PerDocGrammarHelperV6(_pv5.PerDocGrammarHelperV5):
-    """V6 per-document `LLMatcher` dispatcher supporting both 1-kind and pipe-delimited Top-K enum locks."""
+def kind_schema_str_v6(target_doc_kind: str) -> str:
+    """JSON Schema for a V4-wire kind lock: one kind, or a pipe-delimited Top-K set of kinds."""
+    if "|" in target_doc_kind:
+        if __package__:
+            from .grammar_router_ane_v6 import build_doc_kind_set_schema_v6
+        else:
+            from grammar_router_ane_v6 import build_doc_kind_set_schema_v6  # type: ignore
 
-    def get_grammar_entry(self, target_doc_kind: str) -> tuple[Any, list[int]]:
-        if "|" in target_doc_kind:
-            entry = self._grammar_cache.get(target_doc_kind)
-            if entry is None:
-                if __package__:
-                    from .grammar_router_ane_v6 import build_doc_kind_set_schema_v6
-                else:
-                    from grammar_router_ane_v6 import build_doc_kind_set_schema_v6  # type: ignore
-
-                kinds = [k.strip() for k in target_doc_kind.split("|") if k.strip()]
-                schema_str = json.dumps(build_doc_kind_set_schema_v6(kinds))
-                gram = self._compiler.compile(schema_str)
-                probe_m = self._llguidance.LLMatcher(self.ltok, gram)
-                up_ff = list(probe_m.compute_ff_tokens())
-                entry = (gram, up_ff)
-                self._grammar_cache[target_doc_kind] = entry
-            return entry
-        return super().get_grammar_entry(target_doc_kind)
+        kinds = [k.strip() for k in target_doc_kind.split("|") if k.strip()]
+        return json.dumps(build_doc_kind_set_schema_v6(kinds))
+    return json.dumps(_pv5.build_doc_kind_schema_v5(target_doc_kind))
 
 
-class PerDocGrammarHelperV6Compact(_pv5.PerDocGrammarHelperV5):
-    """Compact-wire (`C4`) per-document `LLMatcher` dispatcher supporting 1-kind and multi-kind set locks."""
+def kind_schema_str_v6_compact(target_doc_kind: str) -> str:
+    """JSON Schema for a compact-wire (`C4`) kind lock: one kind or a pipe-delimited set."""
+    if __package__:
+        from .compact_wire_v6 import build_doc_kind_compact_schema_v6
+    else:
+        from compact_wire_v6 import build_doc_kind_compact_schema_v6  # type: ignore
 
-    def get_grammar_entry(self, target_doc_kind: str) -> tuple[Any, list[int]]:
-        entry = self._grammar_cache.get(target_doc_kind)
-        if entry is None:
-            if __package__:
-                from .compact_wire_v6 import build_doc_kind_compact_schema_v6
-            else:
-                from compact_wire_v6 import build_doc_kind_compact_schema_v6  # type: ignore
+    return json.dumps(build_doc_kind_compact_schema_v6(target_doc_kind), separators=(",", ":"))
 
-            schema_str = json.dumps(
-                build_doc_kind_compact_schema_v6(target_doc_kind), separators=(",", ":")
-            )
-            gram = self._compiler.compile(schema_str)
-            probe_m = self._llguidance.LLMatcher(self.ltok, gram)
-            up_ff = list(probe_m.compute_ff_tokens())
-            entry = (gram, up_ff)
-            self._grammar_cache[target_doc_kind] = entry
-        return entry
+
+def per_doc_grammar_v6(
+    gh_std: Any,
+    doc_order: Sequence[int] = (),
+    *,
+    wire_format: str = "v4",
+    doc_target_kinds: dict[int, str] | None = None,
+    grammar_cache: dict[str, tuple[Any, list[int]]] | None = None,
+    sync_ff_with_std: bool = False,
+) -> Any:
+    """The engine's per-document grammar helper with each listed document locked to its DocMeta kind."""
+    from fast_gemma4.per_doc_grammar import PerDocGrammarHelper
+
+    return PerDocGrammarHelper(
+        gh_std,
+        doc_order,
+        doc_schema_keys=doc_target_kinds,
+        schema_for_key=kind_schema_str_v6_compact if wire_format == "compact" else kind_schema_str_v6,
+        grammar_cache=grammar_cache,
+        sync_ff_with_std=sync_ff_with_std,
+    )
 
 
 class PythonicEngineV6:
@@ -1878,9 +1874,6 @@ class PythonicEngineV6:
         self.wire_format = "compact" if wf_norm in ("compact", "compact_v6") else "v4"
         self._schema_str = DOCMETA_V6_COMPACT_SCHEMA_STR if self.wire_format == "compact" else SCHEMA_V4_STR
         self._build_prompt_fn = build_prompt_v6_compact if self.wire_format == "compact" else build_prompt_v4
-        self._grammar_helper_cls = (
-            PerDocGrammarHelperV6Compact if self.wire_format == "compact" else PerDocGrammarHelperV6
-        )
 
         new_to_old = getattr(eng, "new_to_old", None)
         if new_to_old is None and hasattr(eng, "model"):
@@ -1912,10 +1905,9 @@ class PythonicEngineV6:
         self.shared_sys_ids: list[int] = ids_a[:lcp]
 
     def get_kind_grammar(self, target_doc_kind: str) -> tuple[Any, list[int]]:
-        helper = self._grammar_helper_cls(
+        helper = per_doc_grammar_v6(
             self.gh_std,
-            [],
-            doc_target_kinds={},
+            wire_format=self.wire_format,
             grammar_cache=self._kind_grammar_cache,
         )
         return helper.get_grammar_entry(target_doc_kind)
@@ -2081,6 +2073,8 @@ class PythonicEngineV6:
         out_tok_lens: list[int] = [0] * N
 
         if N_act > 0:
+            from fast_gemma4.per_doc_grammar import compute_rolling_doc_order
+
             prompts_ids = [self.tok.encode(p, add_special_tokens=False) for p in prompts]
             if N_act >= 2:
                 lcp = min(len(x) for x in prompts_ids)
@@ -2111,9 +2105,10 @@ class PythonicEngineV6:
                 sort_by_length=sort_by_length,
             )
             gh_dispatch: Any = (
-                self._grammar_helper_cls(
+                per_doc_grammar_v6(
                     self.gh_std,
                     doc_order,
+                    wire_format=self.wire_format,
                     doc_target_kinds=doc_target_kinds,
                     grammar_cache=self._kind_grammar_cache,
                     sync_ff_with_std=True,
@@ -2255,10 +2250,6 @@ class PythonicEngineV6:
 
 
 # Backwards-compatible aliases
-PerDocGrammarHelperV5 = PerDocGrammarHelperV6
-PerDocGrammarHelperV4 = PerDocGrammarHelperV6
-PythonicEngineV5 = PythonicEngineV6
-PythonicEngineV4 = PythonicEngineV6
 derive_sidecar_v6 = _pv5.derive_sidecar_v5
 derive_sidecar_v5 = _pv5.derive_sidecar_v5
 derive_sidecar_v4 = _pv5.derive_sidecar_v5
@@ -2281,7 +2272,6 @@ __all__ = [
     "HOST_CHAMBER_EXEMPT_KINDS_V6",
     "HOUSE_SELECT_2LETTER_EXTRA_V6",
     "LEGISLATIVE_DRAFT_KINDS_V6",
-    "PerDocGrammarHelperV6",
     "PythonicEngineV6",
     "build_doc_kind_schema_v6",
     "check_gist_title_grounding_v6",
@@ -2289,8 +2279,11 @@ __all__ = [
     "derive_sidecar_v6",
     "detect_cover_or_sha_lock_v6",
     "infer_is_html_v6",
+    "kind_schema_str_v6",
+    "kind_schema_str_v6_compact",
     "load_default_usc_oracle_v6",
     "norm_committee_token_v6",
+    "per_doc_grammar_v6",
     "post_pass_v6",
     "pre_pass_v6",
     "reload_v6_submodules",

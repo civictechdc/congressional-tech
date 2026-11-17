@@ -51,17 +51,15 @@ if __package__:
         _salvage_truncated_docmeta_v4,
         build_prompt_v4,
         canonicalize_docmeta_v4,
-        compute_rolling_doc_order,
         validate_docmeta_v4,
     )
     from .pythonic_v6 import (
         DOC_KINDS_SET,
-        PerDocGrammarHelperV6,
-        PerDocGrammarHelperV6Compact,
         build_doc_kind_schema_v6,
         clean_html_and_cms_v6,
         infer_is_html_v6,
         load_default_usc_oracle_v6,
+        per_doc_grammar_v6,
         post_pass_v6,
         pre_pass_v6,
     )
@@ -83,17 +81,15 @@ else:
         _salvage_truncated_docmeta_v4,
         build_prompt_v4,
         canonicalize_docmeta_v4,
-        compute_rolling_doc_order,
         validate_docmeta_v4,
     )
     from pythonic_v6 import (  # type: ignore  # noqa: E402
         DOC_KINDS_SET,
-        PerDocGrammarHelperV6,
-        PerDocGrammarHelperV6Compact,
         build_doc_kind_schema_v6,
         clean_html_and_cms_v6,
         infer_is_html_v6,
         load_default_usc_oracle_v6,
+        per_doc_grammar_v6,
         post_pass_v6,
         pre_pass_v6,
     )
@@ -749,6 +745,7 @@ def run_docmeta_parquet_sweep(
     import pyarrow as pa
     import pyarrow.parquet as pq
     from fast_gemma4.grammar import GrammarHelper
+    from fast_gemma4.per_doc_grammar import compute_rolling_doc_order
 
     if chunk_rows <= 0:
         raise ValueError(f"chunk_rows must be >= 1, got {chunk_rows}")
@@ -804,7 +801,7 @@ def run_docmeta_parquet_sweep(
     is_compact_wire = wf_norm in ("compact", "compact_v6")
     pass1_schema_str = DOCMETA_V6_COMPACT_SCHEMA_STR if is_compact_wire else SCHEMA_V4_STR
     pass1_prompt_fn = build_prompt_v6_compact if is_compact_wire else build_prompt_v4
-    pass1_gh_cls = PerDocGrammarHelperV6Compact if is_compact_wire else PerDocGrammarHelperV6
+    pass1_wire = "compact" if is_compact_wire else "v4"
 
     gh_std = GrammarHelper(tok, pass1_schema_str, new_to_old, whitespace_flexible=False)
     kind_grammar_cache: dict[str, tuple[Any, list[int]]] = {}
@@ -1169,9 +1166,10 @@ def run_docmeta_parquet_sweep(
                     sort_by_length=sort_by_length,
                 )
                 gh_dispatch: Any = (
-                    pass1_gh_cls(
+                    per_doc_grammar_v6(
                         gh_std,
                         doc_order,
+                        wire_format=pass1_wire,
                         doc_target_kinds=doc_target_kinds,
                         grammar_cache=kind_grammar_cache,
                         sync_ff_with_std=True,

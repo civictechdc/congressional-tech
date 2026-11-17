@@ -15,26 +15,25 @@ pytest.importorskip("fast_gemma4", reason="needs the fast-gemma4 engine; run scr
 
 from congress_docmeta import (  # noqa: E402
     SCHEMA_V4_STR,
-    PerDocGrammarHelperV6,
-    SyncKindMatcher,
-    compute_rolling_doc_order,
+    per_doc_grammar_v6,
     post_pass_v6,
     strict_validate_v4,
 )
 from fast_gemma4.grammar import GrammarHelper  # noqa: E402
 from fast_gemma4.paths import resolve_paths  # noqa: E402
+from fast_gemma4.per_doc_grammar import SyncMatcher, compute_rolling_doc_order  # noqa: E402
 from fast_gemma4.tokenizer import FastGemma4Tokenizer, VocabRemapper  # noqa: E402
 
 
 def test_sync_kind_matcher_and_per_doc_grammar_helper_v6() -> None:
-    """Verify `PerDocGrammarHelperV6` and `SyncKindMatcher` align upfront FF tokens and lock per-slot `primary_kind`."""
+    """Verify `per_doc_grammar_v6` and `SyncMatcher` align upfront FF tokens and lock per-slot `primary_kind`."""
     paths = resolve_paths()
     tok_json = paths.resolve_tokenizer_json()
     tok = FastGemma4Tokenizer(tok_json)
     rem = VocabRemapper.load_or_build(tok_json, paths.vocab_remap_npz)
     gh_std = GrammarHelper(tok, SCHEMA_V4_STR, rem.kept_old_ids, whitespace_flexible=False)
 
-    helper = PerDocGrammarHelperV6(
+    helper = per_doc_grammar_v6(
         gh_std,
         doc_order=[0, 1],
         doc_target_kinds={0: "truth_in_testimony_disclosure"},
@@ -45,7 +44,7 @@ def test_sync_kind_matcher_and_per_doc_grammar_helper_v6() -> None:
 
     m_locked = helper.new_matcher()
     m_open = helper.new_matcher()
-    assert isinstance(m_locked, SyncKindMatcher)
+    assert isinstance(m_locked, SyncMatcher)
 
     valid_ttf_json = json.dumps(
         {
@@ -71,7 +70,7 @@ def test_sync_kind_matcher_and_per_doc_grammar_helper_v6() -> None:
     assert m_locked.try_consume_tokens(ttf_ids[up_len:]) == len(ttf_ids[up_len:])
     assert m_locked.is_accepting()
 
-    helper_retry = PerDocGrammarHelperV6(
+    helper_retry = per_doc_grammar_v6(
         gh_std,
         doc_order=[0],
         doc_target_kinds={0: "truth_in_testimony_disclosure"},
@@ -83,7 +82,7 @@ def test_sync_kind_matcher_and_per_doc_grammar_helper_v6() -> None:
 
     # Unlocked slot accepts `hearing_transcript`
     assert m_open.try_consume_tokens(wrong_ids[up_len:]) == len(wrong_ids[up_len:])
-    # SyncKindMatcher exposes validate_tokens for GrammarHelper fallback compatibility
+    # SyncMatcher exposes validate_tokens for GrammarHelper fallback compatibility
     assert m_locked_reject.validate_tokens(wrong_ids[up_len + n_bad : up_len + n_bad + 1]) is False
     assert m_locked_reject.validate_tokens(ttf_ids[up_len + n_bad : up_len + n_bad + 1]) is True
 
@@ -91,7 +90,7 @@ def test_sync_kind_matcher_and_per_doc_grammar_helper_v6() -> None:
 
 
 def test_pythonic_engine_v6_fast_gemma4_engine_seam_cpu(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify `PythonicEngineV6` runs natively on `FastGemma4Engine` (`apply_chat_template` + `run_rolling` + `SyncKindMatcher`)."""
+    """Verify `PythonicEngineV6` runs natively on `FastGemma4Engine` (`apply_chat_template` + `run_rolling` + `SyncMatcher`)."""
     import numpy as np
 
     import fast_gemma4.speculative as fg4_spec
@@ -161,7 +160,7 @@ def test_pythonic_engine_v6_fast_gemma4_engine_seam_cpu(monkeypatch: pytest.Monk
     tok_open_full = tok.encode(valid_open, add_special_tokens=False) + [tok.eos_token_id]
 
     gh_std_ref = GrammarHelper(tok, SCHEMA_V4_STR, rem.kept_old_ids, whitespace_flexible=False)
-    helper_ref = PerDocGrammarHelperV6(
+    helper_ref = per_doc_grammar_v6(
         gh_std_ref, [0, 1], doc_target_kinds={0: "truth_in_testimony_disclosure"}, sync_ff_with_std=True
     )
 
@@ -256,7 +255,7 @@ def test_pythonic_engine_v6_fast_gemma4_engine_seam_cpu(monkeypatch: pytest.Monk
 
 
 def test_rolling_doc_order_and_pick_valid_token_sampling_kwargs() -> None:
-    """`compute_rolling_doc_order` + `PerDocGrammarHelperV6.pick_valid_token` sampling kwargs."""
+    """`compute_rolling_doc_order` + `per_doc_grammar_v6(...).pick_valid_token` sampling kwargs."""
     import numpy as np
 
     sufs = [[1, 2], [1, 2, 3, 4, 5, 6]]
@@ -267,7 +266,7 @@ def test_rolling_doc_order_and_pick_valid_token_sampling_kwargs() -> None:
     tok = FastGemma4Tokenizer(paths.resolve_tokenizer_json())
     rem = VocabRemapper.load_or_build(paths.resolve_tokenizer_json(), paths.vocab_remap_npz)
     gh_std = GrammarHelper(tok, SCHEMA_V4_STR, rem.kept_old_ids, whitespace_flexible=False)
-    helper = PerDocGrammarHelperV6(
+    helper = per_doc_grammar_v6(
         gh_std,
         doc_order=order,
         doc_target_kinds={0: "truth_in_testimony_disclosure"},
@@ -275,11 +274,11 @@ def test_rolling_doc_order_and_pick_valid_token_sampling_kwargs() -> None:
     )
     m_first = helper.new_matcher()   # corresponds to doc 1 (unlocked)
     m_second = helper.new_matcher()  # corresponds to doc 0 (locked TTF)
-    assert not isinstance(m_first, SyncKindMatcher)
-    assert isinstance(m_second, SyncKindMatcher)
+    assert not isinstance(m_first, SyncMatcher)
+    assert isinstance(m_second, SyncMatcher)
     assert helper.dispatched_doc_indices == [1, 0]
 
-    # Force fallback path with `temperature=0.5, top_p=0.9` kwargs on `SyncKindMatcher`
+    # Force fallback path with `temperature=0.5, top_p=0.9` kwargs on `SyncMatcher`
     logits_row = np.zeros(len(rem.kept_old_ids), dtype=np.float32)
     picked_tok, was_masked = helper.pick_valid_token(
         m_second,
@@ -507,3 +506,37 @@ def test_parquet_runner_v6_crash_resume_verifier_pass2_and_cli(tmp_path: Path) -
     p2_rows = [r for r in out_rows if r["pass2_escalated"] is True]
     assert len(p2_rows) == 2
     assert all(r["docmeta_source"] == "fast-gpt-oss-20b-pass2" and r["pass1_docmeta_json"] for r in p2_rows)
+
+    # The sweep's file is what the release's optional `docmeta_v6_1.llm_results` input accepts: the archive
+    # model's own check of that input reads this file's columns and names its source column.
+    import importlib.util
+
+    contract_p = Path(__file__).resolve().parents[4] / "viewer_publication/src/viewer_publication/docmeta_v6_1.py"
+    spec = importlib.util.spec_from_file_location("docmeta_v6_1_contract", contract_p)
+    contract = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(contract)
+    assert contract._require_schema_columns(
+        out_pq, contract.REQUIRED_DIRECT_COLUMNS, label="sweep output",
+        source_candidates=("docmeta_source", "zero_llm_source", "model_id"),
+    ) == "docmeta_source"
+    assert final_tbl.schema.field("link_key").type.byte_width == 8
+    assert final_tbl.schema.field("saved_body").type.byte_width == 32
+
+
+def test_compact_wire_kind_set_lock_dispatches_a_sync_matcher(tmp_path: Path) -> None:
+    """A compact-wire Top-K kind-set lock compiles and stays in step with the standard compact grammar."""
+    from congress_docmeta import DOCMETA_V6_COMPACT_SCHEMA_STR
+    from fast_gemma4.tokenizer import LATIN_EXTENDED_KEPT_VOCAB_SIZE
+
+    tok_json = resolve_paths().resolve_tokenizer_json()
+    tok = FastGemma4Tokenizer(tok_json)
+    rem_162k = VocabRemapper.load_or_build(tok_json, tmp_path / "vocab_remap.npz", target_size=LATIN_EXTENDED_KEPT_VOCAB_SIZE)
+    gh_comp = GrammarHelper(tok, DOCMETA_V6_COMPACT_SCHEMA_STR, rem_162k.kept_old_ids, whitespace_flexible=False)
+    gh_set = per_doc_grammar_v6(
+        gh_comp,
+        doc_order=[0],
+        wire_format="compact",
+        doc_target_kinds={0: "witness_statement|oversight_letter"},
+        sync_ff_with_std=True,
+    )
+    assert isinstance(gh_set.new_matcher(), SyncMatcher)

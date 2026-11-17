@@ -2,7 +2,7 @@
 """Pre-Decode Calibrated `Choice(47)` + `status(8)` Grammar Router (`grammar_router_ane_v6.py`).
 
 Top-level import is 100% Python standard library (`/usr/bin/python3 -B -I -S` clean);
-`numpy` and `_LayaAneBackend` (`CoreML` Pure ANE `W8A16`, `0` Metal GPU ops) are loaded lazily.
+`numpy` and fast-gemma4's `LayaAneBackend` (`CoreML` Pure ANE `W8A16`, `0` Metal GPU ops) are loaded lazily.
 
 Trained and out-of-fold calibrated on `train_v6_3_complete_ssot_gold.jsonl` (2,917 docs across all
 47 `primary_kind` enums and 8 `status` enums, 100% disjoint from `val_48` and `docs_8`):
@@ -28,12 +28,7 @@ import re
 from typing import Any, Literal, Mapping, Sequence
 
 if __package__:
-    from .atomic_validator_v6 import (
-        ALL_KIND_DESC_V6,
-        _ensure_laya_dylib,
-        _LayaAneBackend,
-        _resolve_default_home,
-    )
+    from .atomic_validator_v6 import ALL_KIND_DESC_V6
     from .pythonic_v5 import DOC_KINDS_SET, SCHEMA_OBJ, infer_is_html_v5, strip_html_cms_nav_v5
 else:
     import sys
@@ -41,12 +36,7 @@ else:
     _DOCMETA_DIR = Path(__file__).resolve().parent
     if str(_DOCMETA_DIR) not in sys.path:
         sys.path.insert(0, str(_DOCMETA_DIR))
-    from atomic_validator_v6 import (  # type: ignore
-        ALL_KIND_DESC_V6,
-        _ensure_laya_dylib,
-        _LayaAneBackend,
-        _resolve_default_home,
-    )
+    from atomic_validator_v6 import ALL_KIND_DESC_V6  # type: ignore
     from pythonic_v5 import DOC_KINDS_SET, SCHEMA_OBJ, infer_is_html_v5, strip_html_cms_nav_v5  # type: ignore
 
 RouterMode = Literal["fast", "ane"]
@@ -245,7 +235,9 @@ class PreDecodeGrammarRouterV6:
         self._np = np
         self.mode: RouterMode = mode
         self.allow_multi_kind_set = bool(allow_multi_kind_set)
-        self.home_dir = _resolve_default_home(home)
+        from fast_gemma4.scorers import LayaAneBackend, ensure_laya_dylib, resolve_home
+
+        self.home_dir = resolve_home(home)  # the engine checkout holds the router artifacts
         self.artifacts_dir = (
             Path(artifacts_dir).expanduser().resolve()
             if artifacts_dir is not None
@@ -278,13 +270,13 @@ class PreDecodeGrammarRouterV6:
         self.tau_top3 = float(tau_top3 if tau_top3 is not None else cal.get("ane_tau_top3", 0.93))
 
         self._owns_laya = False
-        self.laya_backend: _LayaAneBackend | None = None
+        self.laya_backend: Any = None
         if mode == "ane":
             if shared_laya_backend is not None:
                 self.laya_backend = shared_laya_backend
             else:
-                dylib_p = _ensure_laya_dylib(self.home_dir)
-                self.laya_backend = _LayaAneBackend(
+                dylib_p = ensure_laya_dylib(self.home_dir)
+                self.laya_backend = LayaAneBackend(
                     self.artifacts_dir / "laya_typed",
                     dylib_p,
                     pipe_depth=pipe_depth,
