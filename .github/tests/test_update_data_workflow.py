@@ -93,8 +93,8 @@ def test_every_snapshot_save_also_keeps_the_snapshot_in_raw(filename, count):
     for job in workflow['jobs'].values():
         for index, step in enumerate(job['steps']):
             if '.github/scripts/save-pipeline-data.sh' in step.get('run', ''):
-                assert any(prior.get('uses') in {'astral-sh/setup-uv@v6',
-                    './.github/actions/setup-python-project'} for prior in job['steps'][:index])
+                assert any(prior.get('uses', '').startswith('astral-sh/setup-uv@') or
+                    prior.get('uses') == './.github/actions/setup-python-project' for prior in job['steps'][:index])
     script = (ROOT / '.github/scripts/save-pipeline-data.sh').read_text().splitlines()
     setup = next(i for i,line in enumerate(script) if 'prepare-raw-writer.sh' in line)
     preserve = next(i for i,line in enumerate(script) if 'congress_api.cli.pipeline_raw' in line)

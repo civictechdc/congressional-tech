@@ -194,7 +194,7 @@ def test_deploy_and_validation_add_local_archive_contract_before_upload():
         assert contract > build
         assert_site_browser_pin(steps, contract)
         if name == 'deploy-pages.yml':
-            upload = next(i for i, step in enumerate(steps) if step.get('uses') == 'actions/upload-pages-artifact@v3')
+            upload = next(i for i, step in enumerate(steps) if step.get('uses', '').startswith('actions/upload-pages-artifact@'))
             assert contract < upload
 
 
@@ -390,7 +390,7 @@ def test_publish_builds_once_after_node_and_before_the_single_publisher():
 
 def test_publish_retains_only_named_run_evidence_on_success_or_failure():
     steps=workflow('archive-jobs.yml')['jobs']['publish']['steps']
-    uploads=[step for step in steps if step.get('uses')=='actions/upload-artifact@v4']
+    uploads=[step for step in steps if step.get('uses','').startswith('actions/upload-artifact@')]
     assert len(uploads)==1
     evidence=uploads[0]
     assert evidence['name']=='Retain run evidence (access follows repository)'
