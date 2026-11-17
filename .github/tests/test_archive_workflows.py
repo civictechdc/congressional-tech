@@ -463,11 +463,23 @@ def test_production_jobs_run_the_newest_validated_commit_of_main_and_never_the_t
     run = lookups.pop()
     assert 'actions/workflows/validate-explorer.yml/runs?branch=main&event=push&status=success&per_page=1' in run
     assert "jq -er '.workflow_runs[0].head_sha'" in run and 'echo "sha=$sha" >> "$GITHUB_OUTPUT"' in run
-    assert (ROOT / '.github/workflows/validate-explorer.yml').is_file()
     # The lookup fails closed: with no validated run jq exits non-zero under bash -e, before any checkout.
     result = subprocess.run(['/bin/bash', '-eo', 'pipefail', '-c', "echo '{\"workflow_runs\": []}' | jq -er '.workflow_runs[0].head_sha'"],
                             capture_output=True, text=True)
     assert result.returncode != 0
+    # Main's tip stands in for the validated commit only when everything since it is a path validation
+    # skips. The filter is validate-explorer's own push filter, restated once: keep the two together.
+    assert workflow('validate-explorer.yml')['on']['push']['paths'] == ['**', '!.tickets/**', '!docs/**', 'docs/experiments/**', '!**/*.md']
+    script = run[run.index("jq -er 'if "):].split("' || true")[0][len("jq -er '"):]
+    def tip(files, commits=({'sha': 'tip'},)):
+        payload = json.dumps(dict(files=[dict(filename=name) for name in files], commits=list(commits), base_commit=dict(sha='validated')))
+        return subprocess.run(['jq', '-er', script], input=payload, capture_output=True, text=True).stdout.strip()
+    assert tip(['.tickets/ct-pz32.md', 'docs/releases/README.md', 'AGENTS.md', 'packages/x/README.md']) == 'tip'
+    assert tip([], commits=()) == 'validated'
+    for covered in ('packages/viewer_publication/src/viewer_publication/release_gate.py', 'model/jobs/publish.json',
+                    'docs/experiments/a/test_a.py', '.github/workflows/archive-jobs.yml', 'docs.py', 'uv.lock'):
+        assert tip(['.tickets/ct-pz32.md', covered]) == '', covered
+    assert tip([f'.tickets/{n}.md' for n in range(300)]) == ''   # the API lists at most 300 files: unknown is not skipped
 
 
 def test_publish_checks_out_full_history_for_producer_commits():

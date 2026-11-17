@@ -219,12 +219,17 @@ PAGE = 'https://committee.house.gov/calendar/eventsingle.aspx?EventID=1'
 RECEIPT = 'receipts/house/pages/2026-11-17/run-1.jsonl.gz'
 
 
-def recapture(tmp_path, *, title='Hearing on Shipbuilding', status=200, url=PAGE, stores=NEWER, receipt=RECEIPT, **found):
+def recapture(tmp_path, *, title='Hearing on Shipbuilding', status=200, url=PAGE, stores=NEWER, receipt=RECEIPT,
+              title_source='page_title', media='text/html', **found):
     """One page captured again: its address, link key and lookup key all move from BODY to NEWER."""
     import gzip
     for name, titles in (('live', ['other', 'Hearing on Shipbuilding']), ('candidate', ['other', 'filler', title])):
         (tmp_path / name).mkdir(exist_ok=True)
         pq.write_table(pa.table({'title': titles}), tmp_path / name / 'list.parquet')
+        page = name == 'live' or None   # the live row is always a page; the candidate row takes the arguments
+        pq.write_table(pa.table({'title_source': pa.array([None] * (len(titles) - 1) + ['page_title' if page else title_source], pa.string()),
+                                 'saved_media_type': pa.array([None] * (len(titles) - 1) + ['text/html' if page else media], pa.string())}),
+                       tmp_path / name / 'detail.parquet')
     answers = dict(changed=1, changed_answers=[dict(key='1a56', live_row=1, live_body=BODY, candidate_row=2, candidate_body=NEWER)],
                    lookup_changed=1, lookup_changed_answers=[dict(key='6aea', live_row=1, live_body=BODY, candidate_rows=[2], candidate_bodies=[NEWER])],
                    address_changed=1, address_changed_answers=[dict(key=PAGE, live_row=1, live_body=BODY, candidate_rows=[2], candidate_bodies=[NEWER])])
@@ -261,6 +266,8 @@ def test_a_page_captured_again_at_its_own_address_under_its_title_is_proven_from
 
 @pytest.mark.parametrize('change', [
     dict(title='404 Not Found'), dict(title=None), dict(status=500), dict(url='https://committee.house.gov/other'),
+    dict(media='application/pdf'), dict(title_source='link_text'), dict(title_source=None),   # a replaced file keeps its listing's title
+    dict(address_changed_answers=[dict(key=PAGE, live_row=1, live_body=BODY, candidate_rows=[2], candidate_bodies=[None])]),
     dict(stores=OTHER), dict(receipt=LIVE_KEYS[0]),
     dict(changed_answers=[dict(key='1a56', live_row=1, live_body=BODY, candidate_row=2, candidate_body=OTHER)]),
     dict(address_changed_answers=[dict(key=PAGE, live_row=1, live_body=BODY, candidate_rows=[2, 2], candidate_bodies=[NEWER, OTHER])]),
@@ -279,7 +286,11 @@ def test_the_link_rule_on_a_data_night_stops_hard_findings_and_takes_proven_reca
         stopped = decide(dict(value, link_rule=link_rule(False, **hard)), link_proof=lambda rule: pytest.fail('a hard finding has no proof'))[1]
         assert len(stopped) == 1 and stopped[0].startswith('data-only night: the link rule failed (')
     moved = link_rule(False, address_changed=1, address_changed_answers=[dict(key=PAGE, live_row=1, live_body=BODY, candidate_rows=[2], candidate_bodies=[NEWER])])
-    assert 'no proof was supplied' in decide(dict(value, link_rule=moved))[1][0]
+    assert 'they were not examined' in decide(dict(value, link_rule=moved))[1][0]
+    # The proof scans the capture table, so a night something else already stopped does not run it.
+    over = report(group('list.parquet', 'changed title', 9000), rule=moved)
+    stopped = decide(over, link_proof=lambda rule: pytest.fail('the proof must not run on a night already stopped'))[1]
+    assert len(stopped) == 2 and 'they were not examined' in stopped[0] and 'changed title' in stopped[1]
     proof = [dict(kind='address', key=PAGE, live_body=BODY, candidate_body=NEWER)]
     entries, reasons, facts = decide(dict(value, link_rule=moved), link_proof=lambda rule: (proof, [], dict(recaptures=[dict(address=PAGE)])))
     assert reasons == [] and len(entries) == 1 and facts['proven_corrections'] == proof and facts['recaptures'] == [dict(address=PAGE)]

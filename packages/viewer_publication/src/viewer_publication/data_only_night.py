@@ -65,6 +65,9 @@ RECURRING_UNEXPLAINED = {'recoveries.parquet|changed bytes, no key or value diff
 SAME_INPUTS = ('profile', 'entity_digests', 'provenance', 'unprofiled_inputs')
 # Pages one night may capture again with new bytes; a site-wide template change would exceed it.
 RECAPTURED_PAGES = 100
+# A page: saved as HTML, with a title read from the page itself. A PDF's title is its listing's
+# link text, which does not change when the file is replaced, so an equal title proves nothing.
+PAGE_MEDIA, PAGE_TITLES = 'text/html', {'page_title', 'page_heading'}
 LINK_FINDINGS = (('link_key', '', 'link key'), ('lookup_key', 'lookup_', 'lookup key'), ('address', 'address_', 'address'))
 DATA_ONLY_CAUSE = ("data-only night: built by the live release's definition and pinned inputs from a receipt set "
                    'that only grew; not traced to individual receipts (automatic, ct-pz32)')
@@ -182,10 +185,12 @@ def recaptured_pages(rule, base_dir, candidate_dir, *, held, trace, read_receipt
       moves from the same live file to that same file;
     - a raw receipt line outside the live release's receipt set stored that file for that address
       at HTTP 200 (`trace` finds the lines holding the body, `read_receipt` reads them from raw);
-    - the document's title is the same, and not empty, in both releases.
+    - both files are HTML pages whose title is read from the page itself, and that title is the
+      same, and not empty, in both releases.
 
-    A changed title (an error page, another event), a body no new receipt stored, or a key that
-    moves somewhere else leaves the finding to a person. Returns (proven entries for the link
+    A changed title (an error page, another event), a file that is not a page (a replaced PDF keeps
+    its listing's title), a body no new receipt stored, or a key that moves somewhere else leaves
+    the finding to a person. Returns (proven entries for the link
     rule's `proven_corrections`, reasons, facts). O(pages) receipt reads and one capture scan.
     Cannot see: a publisher that changed the body under an unchanged title.
     """
@@ -195,9 +200,14 @@ def recaptured_pages(rule, base_dir, candidate_dir, *, held, trace, read_receipt
     reasons = [f"data-only night: {rule[prefix + 'changed'] - len(rule[prefix + 'changed_answers'])} live {what}s that answer "
                "another file are beyond the report's sample, so nothing can prove them"
                for _, prefix, what in LINK_FINDINGS if rule[prefix + 'changed'] > len(rule[prefix + 'changed_answers'])]
-    pages = [a for a in rule['address_changed_answers'] if len(a['candidate_bodies']) == 1 and len(a['candidate_rows']) == 1]
-    titles = {name: pq.read_table(Path(release) / 'list.parquet', columns=['title'])['title']
-              for name, release in (('live', base_dir), ('candidate', candidate_dir))} if pages else {}
+    pages = [a for a in rule['address_changed_answers']
+             if len(a['candidate_rows']) == 1 and len(a['candidate_bodies']) == 1 and a['candidate_bodies'][0]]
+
+    def facts_of(release, row):
+        """(title, where the title came from, saved media type) of one document row."""
+        title = pq.read_table(Path(release) / 'list.parquet', columns=['title']).slice(row, 1).to_pylist()
+        saved = pq.read_table(Path(release) / 'detail.parquet', columns=['title_source', 'saved_media_type']).slice(row, 1).to_pylist()
+        return (title[0]['title'], saved[0]['title_source'], saved[0]['saved_media_type']) if title and saved else (None, None, None)
     lines = trace({a['candidate_bodies'][0][:16] for a in pages}) if pages else []
     raw = {}
 
@@ -214,15 +224,16 @@ def recaptured_pages(rule, base_dir, candidate_dir, *, held, trace, read_receipt
     moved, recaptures = {}, []
     for answer in pages:
         address, body = answer['key'], answer['candidate_bodies'][0]
-        old, new = titles['live'][answer['live_row']].as_py(), titles['candidate'][answer['candidate_rows'][0]].as_py()
+        old, new = facts_of(base_dir, answer['live_row']), facts_of(candidate_dir, answer['candidate_rows'][0])
+        page = old == new and bool(old[0]) and old[1] in PAGE_TITLES and old[2] == PAGE_MEDIA
         def stores(row):
             url, status, bodies = stored(row['receipt_key'], row['receipt_line'])
             return url == address and status == 200 and body in bodies
         receipt = next((row['receipt_key'] for row in lines
                         if row['sha'] == body and row['receipt_key'] not in held and stores(row)), None)
-        if receipt is not None and old and old == new:
+        if receipt is not None and page:
             moved[answer['live_body']] = body
-            recaptures.append(dict(address=address, live_body=answer['live_body'], candidate_body=body, receipt=receipt, title=old))
+            recaptures.append(dict(address=address, live_body=answer['live_body'], candidate_body=body, receipt=receipt, title=old[0]))
     proven = []
     for kind, prefix, what in LINK_FINDINGS:
         for answer in rule[prefix + 'changed_answers']:
@@ -231,7 +242,7 @@ def recaptured_pages(rule, base_dir, candidate_dir, *, held, trace, read_receipt
                 proven.append(dict(kind=kind, key=answer['key'], live_body=answer['live_body'], candidate_body=shown[0]))
             else:
                 reasons.append(f"data-only night: live {what} {answer['key']} would open another file, and it is not a page captured "
-                               'again at its own address under an unchanged title; it needs a named correction')
+                               'again at its own address under its own unchanged title; it needs a named correction')
     if len(recaptures) > RECAPTURED_PAGES:
         reasons.append(f'data-only night: {len(recaptures)} pages were captured again with new bytes, more than the '
                        f'{RECAPTURED_PAGES} one unattended night may')
@@ -253,7 +264,7 @@ def _link_reasons(rule, link_proof):
     if not changed:
         return [], [], {}
     if link_proof is None:
-        return ['data-only night: the link rule failed (live keys would open another file, and no proof was supplied)'], [], {}
+        return ['data-only night: the link rule failed (live keys would open another file, and they were not examined)'], [], {}
     proven, reasons, facts = link_proof(rule)
     return reasons, proven, facts
 
@@ -277,8 +288,7 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
                    for name in SAME_INPUTS)]
     candidate = set(candidate_receipt_keys)
     new, groups = candidate - held, report['failing']
-    reasons, proven, link_facts = _link_reasons(report['link_rule'], link_proof)
-    reasons += [] if same else _input_reasons(candidate_record, live_records)
+    reasons = [] if same else _input_reasons(candidate_record, live_records)
     if held - candidate:
         reasons.append(f'data-only night: {len(held - candidate)} receipts the live release read are absent from the '
                        f'candidate (first {sorted(held - candidate)[:3]})')
@@ -287,6 +297,9 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
     reasons += _group_reasons(report, len(new))
     lost, columns = _column_reasons(base_dir, candidate_dir)
     reasons += lost
+    # Last: the recapture proof scans the capture table, so it runs only on a night nothing else stopped.
+    stopped, proven, link_facts = _link_reasons(report['link_rule'], link_proof if not reasons else None)
+    reasons = [*stopped, *reasons]
     if reasons:
         return [], reasons, {}
     facts = dict(version=1, profile_sha256=version_digest(packages={}, files={}, values=candidate_record['profile']),

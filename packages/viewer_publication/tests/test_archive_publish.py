@@ -606,6 +606,74 @@ def test_a_capture_night_that_changes_existing_rows_publishes_only_under_the_liv
     assert facts['new_receipt_keys']==['receipts/documents/2026-11-03/nightly.jsonl.gz'] and facts['live_receipts']==2
 
 
+@pytest.mark.parametrize('page',[True,False])
+def test_a_recaptured_page_publishes_through_the_real_gate_and_a_replaced_file_does_not(tmp_path,real_gates,page):
+    """ct-pz32 through publish_candidate, its capture scan and raw receipt: the page at one address
+    is captured again with new bytes, so its link key, lookup key and address would open the new
+    file. As an HTML page under its own unchanged title that is proven and published; as a file
+    whose title is its listing's link text it is left to a person."""
+    import gzip,os
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.receipt_pins import write_input_receipts
+    from test_archive_controller import Runtime
+    from test_release_gate import K,addresses,body,release_dir
+    def release(root,documents,saved,titles):
+        detail=pa.table({'link_key':pa.array([K(keys[0]) for keys in documents],pa.binary(8)),
+            'saved_body':pa.array([K(letter)+bytes(24) for letter in saved],pa.binary(32)),
+            'title_source':pa.array(['page_title' if page else 'link_text']*len(documents),pa.string()),
+            'saved_media_type':pa.array(['text/html' if page else 'application/pdf']*len(documents),pa.string())})
+        manifest=release_dir(root/'release',documents,saved=saved,detail=detail,
+            list=pa.table({'filename':[f'{keys}.html' for keys in documents],'title':titles}),**addresses([keys.lower() for keys in documents]))
+        result=root/'result.json'
+        result.write_bytes(encoded(dict(outputs=[f for f in manifest['files'] if f['name'].endswith('.parquet')],
+            queries=[dict(name=name,data=[dict(violation=0)]) for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']])))
+        return dict(release=root/'release',manifest_pin=pin(root/'release/manifest.json'),result_pin=pin(result)),manifest
+    _,manifest=release(tmp_path/'live',['A','B'],'AB',['Hearing','Markup']);live=manifest['release_id'];store=Store()
+    for item in manifest['files']+[dict(name='manifest.json')]:
+        store.objects['viewer-publications/releases/'+live+'/'+item['name']]=(tmp_path/'live/release'/item['name']).read_bytes()
+    store.objects['viewer-publications/manifest.json']=encoded(dict(release_id=live,previous_release_id=None))
+    def inputs(keys,**changes):
+        value=record(**changes)[0]
+        value['unprofiled_inputs']=dict(producer_versions={'captures':'c'*64},job_pins={'daily':'d'*64})
+        value['input_digest']=input_digest(receipt_keys=keys,**{key:value[key] for key in ['provenance','profile','entity_digests']})
+        return value
+    held=['receipts/house/pages/2026-11-01/live.jsonl.gz'];receipt='receipts/house/pages/2026-11-03/nightly.jsonl.gz'
+    keys=sorted([*held,receipt]);value=inputs(keys,run={'id':'nightly'})
+    # The night's raw receipt: the same address fetched again at HTTP 200, storing the new file C.
+    store.objects[receipt]=gzip.compress((json.dumps(dict(url='https://example.test/a',requested_url='https://example.test/A',
+        http_status=200,captures=[dict(sha256=body('C'),bytes=9)]))+'\n').encode(),mtime=0)
+    pq.write_table(pa.table({'receipt_key':[receipt],'receipt_line':pa.array([1],pa.int32()),
+        'sha256':pa.array([bytes.fromhex(body('C'))],pa.binary(32))}),tmp_path/'captures.parquet')
+    artifacts,_=release(tmp_path/'next',['A','B'],'CB',['Hearing','Markup'])    # row 0 now saves file C
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        engine=Runtime(native,store)
+        write_input_receipts(NativeArchiveStore(client=store,engine=engine,bucket='derived-fixture',work=tmp_path/'seed'),
+            live,inputs(held)['input_digest'],inputs(held),held)
+        pointer,etag=read_pointer(store,bucket='derived-fixture')
+        def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
+        publish=lambda:publish_candidate(client=store,engine=engine,bucket='derived-fixture',work=tmp_path/'publish',**artifacts,
+            input_record=value,receipt_keys=keys,pointer=pointer,expected_etag=etag,public_origin='https://archive.example.test',
+            contract=passed,canary=passed,base_release=tmp_path/'base-release',
+            automatic_captures=dict(kind='parquet',path=str(tmp_path/'captures.parquet')),receipt_client=store)
+        if not page:
+            with pytest.raises(ValueError,match='link rule: 1 live link keys answer another file'):publish()
+            stopped=json.loads((tmp_path/'publish/release-gate.json').read_text())['automatic_reasons']
+            assert 'would open another file, and it is not a page captured again at its own address' in stopped[0]
+            assert json.loads(store.objects['viewer-publications/manifest.json'])['release_id']==live
+            return
+        result=publish()
+    assert result['status']=='published'
+    report=json.loads((tmp_path/'publish/release-gate.json').read_text())
+    proven={(entry['kind'],entry['key']) for entry in report['link_rule']['proven_corrections']}
+    assert proven=={('link_key',K('A').hex()),('lookup_key',K('a').hex()),('address','https://example.test/a')}
+    assert all(entry['live_body']==body('A') and entry['candidate_body']==body('C') for entry in report['link_rule']['proven_corrections'])
+    facts=json.loads((tmp_path/'publish/data-only-night.json').read_text())
+    assert facts['recaptures']==[dict(address='https://example.test/a',live_body=body('A'),candidate_body=body('C'),receipt=receipt,title='Hearing')]
+    assert report['reasons']==[] and report['named_corrections']['link_key']['waived']==0
+
+
 def test_a_declared_first_release_is_checked_against_the_live_pointer_and_the_release_listing(tmp_path,real_gates):
     """M1: never replace a live release; and a missing pointer with releases already listed is
     not a first release (the declaration is verified, not trusted)."""

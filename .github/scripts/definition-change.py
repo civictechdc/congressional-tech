@@ -49,19 +49,30 @@ def notice(files, pins):
     return lines
 
 
+def compare(base_commit):
+    """(definition files, job pins) that differ between the base commit and this checkout."""
+    from viewer_publication.archive_model_profile import _definition_hashes
+    with tempfile.TemporaryDirectory() as folder:
+        base = Path(folder) / 'base'
+        subprocess.run(['git', 'worktree', 'add', '--quiet', '--detach', str(base), base_commit], cwd=ROOT, check=True)
+        try:
+            return changed(_definition_hashes(base), _definition_hashes(ROOT)), changed(job_pins(base), job_pins(ROOT))
+        finally:
+            subprocess.run(['git', 'worktree', 'remove', '--force', str(base)], cwd=ROOT, check=False)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--base', required=True, help='The pull request\'s base commit, already fetched')
     args = parser.parse_args(argv)
-    from viewer_publication.archive_model_profile import _definition_hashes
-    with tempfile.TemporaryDirectory() as folder:
-        base = Path(folder) / 'base'
-        subprocess.run(['git', 'worktree', 'add', '--quiet', '--detach', str(base), args.base], cwd=ROOT, check=True)
-        try:
-            files = changed(_definition_hashes(base), _definition_hashes(ROOT))
-            pins = changed(job_pins(base), job_pins(ROOT))
-        finally:
-            subprocess.run(['git', 'worktree', 'remove', '--force', str(base)], cwd=ROOT, check=True)
+    try:
+        files, pins = compare(args.base)
+    except Exception as error:  # a notice must never fail the job it annotates
+        # The base tree is hashed with this pull request's list of model files, so a pull request
+        # that adds one cannot be compared; that is itself a change to the definition.
+        print(f'::warning title=Model definition not compared::{type(error).__name__}: {error}. Treat this pull request as '
+              'changing the model definition: the next nightly may stop at gate 1 for a cause record.')
+        return 0
     lines = notice(files, pins)
     if not lines:
         print('The model definition and job pins are unchanged: this pull request does not stop the nightly.')
