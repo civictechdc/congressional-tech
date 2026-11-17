@@ -12,14 +12,17 @@ runs:
         enable-cache: true
     # Poppler is pinned in test-suites.toml ([environment.poppler]): the sniff
     # parser_version hashes its -v lines, and apt ships another release.
+    # The build links the image's system libraries, so the key names the OS
+    # release (ubuntu-24.04): RUNNER_OS alone cannot tell 24.04 from 26.04.
     - name: Read the Poppler pin
       id: poppler
       shell: bash
       run: |
         version=$(python -c 'import tomllib; print(tomllib.load(open("test-suites.toml", "rb"))["environment"]["poppler"]["version"])')
+        os_release=$(. /etc/os-release && echo "$ID-$VERSION_ID")
         echo "version=$version" >> "$GITHUB_OUTPUT"
         echo "prefix=$HOME/.local/poppler-$version" >> "$GITHUB_OUTPUT"
-        echo "key=poppler-$version-$RUNNER_OS-$RUNNER_ARCH-${{ hashFiles('.github/scripts/install-poppler.sh') }}" >> "$GITHUB_OUTPUT"
+        echo "key=poppler-$version-$RUNNER_OS-$os_release-$RUNNER_ARCH-${{ hashFiles('.github/scripts/install-poppler.sh') }}" >> "$GITHUB_OUTPUT"
     - name: Restore the pinned Poppler build
       id: poppler-cache
       uses: actions/cache/restore@v4

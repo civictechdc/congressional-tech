@@ -52,6 +52,9 @@ def test_meeting_validation_uses_shared_locked_setup():
     # apt's poppler-utils is another release than the sniff pin hashes (test-suites.toml).
     assert 'poppler-utils' not in commands
     assert '.github/scripts/install-poppler.sh' in commands
+    # The cached build links system libraries: an image upgrade must not restore it.
+    key = next(line for line in commands.splitlines() if line.strip().startswith('echo "key=poppler-'))
+    assert '$os_release' in key and 'os_release=$(. /etc/os-release && echo "$ID-$VERSION_ID")' in commands
     assert 'GITHUB_PATH' in commands
     assert 'scripts/dev.py prepare-baseline' in commands
 
