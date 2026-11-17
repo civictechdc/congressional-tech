@@ -1,12 +1,19 @@
 import { Container, getContainer } from "@cloudflare/containers";
 import { handleRequest } from "./gateway.ts";
+import { followPointer } from "./publication.ts";
+
+// Set by this Worker on every forwarded request; a caller's own copy is overwritten.
+const PUBLICATION_HEADER = "X-Congress-Publication";
 
 export class CongressExplorer extends Container<Env> {
   defaultPort = 8080;
   sleepAfter = "5m";
-  envVars = { CONGRESS_MCP_PUBLICATION: this.env.PUBLICATION };
 
   override async fetch(request: Request): Promise<Response> {
+    const publication = request.headers.get(PUBLICATION_HEADER);
+    if (!publication) return new Response("Missing archive release", { status: 500 });
+    // This instance is named after one immutable release; every start selects that release.
+    this.envVars = { CONGRESS_MCP_PUBLICATION: publication };
     // A fresh filesystem must download and verify the pinned metadata before
     // accepting MCP calls. The SDK's default 20 seconds is too short for this.
     await this.startAndWaitForPorts({
@@ -20,13 +27,19 @@ export class CongressExplorer extends Container<Env> {
   }
 }
 
+let publication: (() => Promise<string>) | undefined;
+
 export default {
   async fetch(request, env): Promise<Response> {
-    return handleRequest(request, env, async (boundedRequest) => {
+    publication ??= followPointer(env.ARCHIVE_POINTER);
+    return handleRequest(request, { MCP_RATE_LIMITER: env.MCP_RATE_LIMITER, publication }, async (boundedRequest) => {
+      const selected = await publication!();
       // A release change must not reach a still-running replica of the old data.
       const slot = crypto.getRandomValues(new Uint8Array(1))[0] % 2;
-      const container = getContainer(env.CONGRESS, `${env.PUBLICATION}:${slot}`);
-      return container.fetch(boundedRequest);
+      const container = getContainer(env.CONGRESS, `${selected}:${slot}`);
+      const pinned = new Request(boundedRequest);
+      pinned.headers.set(PUBLICATION_HEADER, selected);
+      return container.fetch(pinned);
     });
   },
 } satisfies ExportedHandler<Env>;

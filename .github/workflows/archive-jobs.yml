@@ -101,6 +101,22 @@ jobs:
             ${{ runner.temp }}/*-disk-admission.json
             ${{ runner.temp }}/*-watchdog.json
             ${{ runner.temp }}/*-watchdog.timeline.jsonl
+      # ct-pz32: the hosted MCP follows the pointer by itself (apps/explorer_mcp/cloudflare). It
+      # re-reads the pointer within a minute and a fresh container needs up to 90 s, so a release
+      # it still does not serve after five minutes turns this run red.
+      - name: Confirm the hosted MCP serves the selected release
+        env:
+          ARCHIVE_POINTER_URL: ${{ vars.ARCHIVE_POINTER_URL }}
+          MCP_READY_URL: https://congress-explorer-mcp.mdeeb.workers.dev/ready
+        run: |
+          release=$(curl -fsS "$ARCHIVE_POINTER_URL" | jq -er .release_id)
+          for attempt in $(seq 1 30); do
+            served=$(curl -sS -m 120 "$MCP_READY_URL" | jq -r '.release_id // empty' 2>/dev/null || true)
+            if [ "$served" = "$release" ]; then echo "Hosted MCP serves $release"; exit 0; fi
+            sleep 10
+          done
+          echo "Hosted MCP serves '$served'; the pointer names $release" >&2
+          exit 1
 
   backfill:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.operation == 'backfill'

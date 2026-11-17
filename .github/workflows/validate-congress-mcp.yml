@@ -106,7 +106,7 @@ jobs:
           image_id=$(docker image inspect --format '{{.Id}}' "$image")
           version=$(jq -er '.version' ../server.json)
           test "$(docker run --rm --network none --entrypoint congress-explorer-mcp "$image" --version)" = "congress-explorer-mcp $version"
-          publication=$(jq -er '.vars.PUBLICATION' wrangler.jsonc)
+          publication=$(jq -er '.vars.ARCHIVE_POINTER' wrangler.jsonc)
           mkdir "$RUNNER_TEMP/congress-mcp-container"
           cd "$RUNNER_TEMP/congress-mcp-container"
           docker image save "$image" | gzip > image.tar.gz

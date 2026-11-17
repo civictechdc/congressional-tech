@@ -3,8 +3,8 @@ import { test } from "node:test";
 import { handleRequest } from "../src/gateway.ts";
 
 const publication = "https://congressional-data.spicygov.ai/viewer-publications/releases/6ac86c21b3732b4c546df1c282cff8e228062355152a4ef0e5252ab86fae5d2e/manifest.json";
-const env: Pick<Env, "PUBLICATION" | "MCP_RATE_LIMITER"> = {
-  PUBLICATION: publication, MCP_RATE_LIMITER: { limit: async () => ({ success: true }) },
+const env = {
+  publication: async () => publication, MCP_RATE_LIMITER: { limit: async () => ({ success: true }) },
 };
 const endpoint = "https://congress.example/mcp";
 const mustNotForward = async (): Promise<Response> => { throw new Error("Unexpected container request"); };
@@ -57,6 +57,9 @@ test("checks origins, paths, and methods before touching the container", async (
   }
   const root = await handleRequest(new Request("https://congress.example/"), env, mustNotForward);
   assert.deepEqual(await root.json(), { name: "Congress Explorer", mcp: "/mcp", publication });
+  const unread = await handleRequest(new Request("https://congress.example/"),
+    { ...env, publication: async () => { throw new Error("pointer unread"); } }, mustNotForward);
+  assert.deepEqual(await unread.json(), { name: "Congress Explorer", mcp: "/mcp", publication: null });
 });
 
 test("preserves MCP errors and streams responses", async () => {

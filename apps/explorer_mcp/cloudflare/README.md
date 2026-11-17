@@ -19,13 +19,15 @@ receives tool results. Logs retain request and runtime diagnostics.
 
 ## Resources and behavior
 
-- Two `basic` containers at most: 1 GiB memory and 1/4 vCPU each. Requests choose
-  either replica; stateless HTTP does not require session affinity.
+- Two `basic` containers per release: 1 GiB memory and 1/4 vCPU each. Requests choose
+  either replica; stateless HTTP does not require session affinity. The cap of four
+  instances only covers the minutes after a release change, while the previous
+  release's two replicas idle out.
 - Containers stop after five idle minutes. Their disposable disks hold metadata,
   the release's SQLite text index, up to 128 MiB of extracted document text, and
   up to 512 MiB of DuckDB scratch space. Capacity must include the image and reserve.
-- Each fresh container downloads and verifies the immutable release in
-  `wrangler.jsonc` and warms the DuckDB query worker and large Parquet tables
+- Each fresh container downloads and verifies the immutable release it is named
+  after (see [Archive and software updates](#archive-and-software-updates)) and warms the DuckDB query worker and large Parquet tables
   (`member_votes`, `bill_actions`, `roll_call_votes`, `documents`, `meetings`)
   before opening its HTTP listener or reporting ready. Readiness allows up to
   90 seconds; cold connections are slower than warm connections. Clients should
@@ -41,7 +43,7 @@ receives tool results. Logs retain request and runtime diagnostics.
   Instance count and idle shutdown bound resource use, not a monthly spend cap.
   See [Container pricing](https://developers.cloudflare.com/containers/platform/pricing/).
 
-The root URL describes the service and configured publication. `GET /ready`
+The root URL describes the service and the selected publication. `GET /ready`
 opens and warms the selected worker, large Parquet tables, and text index, then
 reports its software version and exact release ID. A starting or unusable
 instance returns `503`. `smoke.py` checks readiness, actual MCP initialization
@@ -77,7 +79,7 @@ OpenAI directory.
 Deployment may make the Worker live before the container image finishes rolling
 out. Wait for `npx wrangler containers list --json` to show the application active,
 then run this check from the repository root with the URL and the full release ID
-from `wrangler.jsonc`:
+the pointer names (`curl -fsS <ARCHIVE_POINTER> | jq -r .release_id`):
 
 ```sh
 uv sync --locked --project apps/explorer_mcp
@@ -133,17 +135,22 @@ python3 scripts/archive_watchdog.py --rss-gb 2 --expect-gb 0.9 \
 
 ## Archive and software updates
 
-Change `PUBLICATION` to a verified immutable release manifest, run `npm run types`,
-and redeploy. Do not set it to the moving `viewer-publications/manifest.json`
-pointer: document references must resolve to the same release across replicas.
-Container names include the publication URL so an existing replica cannot serve
-the previous release under the new configuration. The two-instance cap can cause
-temporary `503` responses until old replicas sleep or the rollout replaces them.
+The Worker follows the archive by itself (ct-pz32). `ARCHIVE_POINTER` in `wrangler.jsonc`
+names the moving `viewer-publications/manifest.json` pointer; the Worker reads it at most once
+a minute per isolate and turns its `release_id` into that release's immutable manifest URL.
+Containers never see the pointer: each is named after one immutable manifest and started with
+it, so replicas of a release agree and document references resolve to the same release. A
+newly published release starts new containers within about a minute of the flip, with no
+commit and no deploy; the old release's containers sleep after five idle minutes, and the
+four-instance cap leaves room for both releases meanwhile. If the pointer cannot be read, an
+isolate keeps serving the last release it resolved. `GET /` reports the selected manifest and
+`GET /ready` the release a container serves; the archive publish workflow checks the latter
+against the pointer after every run.
 
 The data is not refreshed by a tool call. Software updates build from this checkout
 and its pinned dependencies; they do not depend on the PyPI release. To reverse
-an update, restore the previous source, dependency pins, and publication URL, then
-redeploy and run the same smoke check. No archive data is mutated by deployment.
+a software update, restore the previous source and dependency pins, then redeploy and run
+the same smoke check. The archive release is reversed at the pointer, not here. No archive data is mutated by deployment.
 
 See [Cloudflare's deployment guide](https://developers.cloudflare.com/containers/guides/deploy/)
 for image rollout details and `npx wrangler tail` for live diagnostics.

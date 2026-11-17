@@ -3,7 +3,7 @@ const BROWSER_ORIGINS = new Set(["https://chatgpt.com", "https://platform.openai
 
 export async function handleRequest(
   request: Request,
-  env: Pick<Env, "MCP_RATE_LIMITER" | "PUBLICATION">,
+  env: Pick<Env, "MCP_RATE_LIMITER"> & { publication: () => Promise<string> },
   forward: (request: Request) => Promise<Response>,
 ): Promise<Response> {
   const url = new URL(request.url);
@@ -19,7 +19,8 @@ export async function handleRequest(
   }
   const reply = (message: string, status: number) => new Response(message, { status, headers });
   if (url.pathname === "/" && request.method === "GET") {
-    return Response.json({ name: "Congress Explorer", mcp: "/mcp", publication: env.PUBLICATION }, { headers });
+    const publication = await env.publication().catch(() => null);
+    return Response.json({ name: "Congress Explorer", mcp: "/mcp", publication }, { headers });
   }
   if (!["/mcp", "/ready"].includes(url.pathname)) return reply("Not found", 404);
   if (url.pathname === "/ready" && request.method !== "GET") return reply("Method not allowed", 405);

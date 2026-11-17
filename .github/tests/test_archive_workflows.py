@@ -422,6 +422,19 @@ def test_publish_retains_only_named_run_evidence_on_success_or_failure():
         if step.get('run','').endswith('run-archive-job.py publish'))
 
 
+def test_publish_ends_by_checking_the_hosted_mcp_against_the_pointer():
+    """ct-pz32: nothing redeploys the hosted MCP per release, so each run proves it followed."""
+    steps=workflow('archive-jobs.yml')['jobs']['publish']['steps']
+    check=steps[-1]
+    assert check['name']=='Confirm the hosted MCP serves the selected release' and 'if' not in check
+    assert check['env']=={'ARCHIVE_POINTER_URL':'${{ vars.ARCHIVE_POINTER_URL }}',
+        'MCP_READY_URL':'https://congress-explorer-mcp.mdeeb.workers.dev/ready'}
+    assert '"$served" = "$release"' in check['run'] and check['run'].rstrip().endswith('exit 1')
+    wrangler=(ROOT/'apps/explorer_mcp/cloudflare/wrangler.jsonc').read_text()
+    assert '"ARCHIVE_POINTER": "https://congressional-data.spicygov.ai/viewer-publications/manifest.json"' in wrangler
+    assert '/releases/' not in wrangler, 'the Worker follows the pointer; no release is pinned by hand'
+
+
 def test_publish_installs_the_local_job_runtime_before_the_publisher():
     """Gate 3 needs DOCSPEC_JOB_CONFIG (local-only) when the publisher starts."""
     steps = workflow('archive-jobs.yml')['jobs']['publish']['steps']
