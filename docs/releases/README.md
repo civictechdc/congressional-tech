@@ -21,6 +21,13 @@ Render a note with:
   --causes model/jobs/release-causes/<base12>-<candidate12>.json --base <base release dir> --candidate <candidate dir>
 ```
 
+Nothing else follows a release by hand (ct-pz32). The nightly runs in GitHub Actions: the
+scheduled capture triggers the publish, an additions-only night explains itself, and the hosted
+MCP reads the live pointer on its own. A cause record still pinned in `model/jobs/publish.json`
+after its candidate went live is ignored, so unpinning it is tidying, not a step the next night
+waits on. A night whose differences need a cause record still stops at gate 1 until one is
+committed.
+
 Notes are not part of the immutable release. Their counts exist only after the build, and
 putting them in the release would force a second model run.
 

@@ -489,9 +489,12 @@ def test_no_live_release_refuses_unless_a_first_release_is_declared(tmp_path,poi
     assert json.loads(store.objects['viewer-publications/status.json'])['first_release'] is True
 
 
-def test_nightly_additions_from_new_receipts_publish_through_the_real_path(tmp_path,real_gates):
+@pytest.mark.parametrize('pinned',[None,'spent','other'])
+def test_nightly_additions_from_new_receipts_publish_through_the_real_path(tmp_path,real_gates,pinned):
     """ct-ud0b end to end in publish_candidate: live input records give the receipt set, raw
-    receipts come from the bucket, captures from its pin; no cause record is supplied."""
+    receipts come from the bucket, captures from its pin; no cause record is supplied.
+    ct-pz32: a record still pinned from the release that is now live is spent and changes nothing;
+    a record bound to any other release still refuses."""
     import gzip,os
     import pyarrow as pa
     import pyarrow.parquet as pq
@@ -519,10 +522,19 @@ def test_nightly_additions_from_new_receipts_publish_through_the_real_path(tmp_p
         value,keys=record(run={'id':'nightly'})
         pointer,etag=read_pointer(store,bucket='derived-fixture')
         def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
-        result=publish_candidate(client=store,engine=engine,bucket='derived-fixture',work=tmp_path/'publish',**artifacts,
+        causes=None
+        if pinned:
+            from test_release_gate import record_for
+            causes=record_for('f'*64,live if pinned=='spent' else 'e'*64,tmp_path,groups=[])
+        publish=lambda:publish_candidate(client=store,engine=engine,bucket='derived-fixture',work=tmp_path/'publish',**artifacts,
             input_record=value,receipt_keys=keys,pointer=pointer,expected_etag=etag,public_origin='https://archive.example.test',
-            contract=passed,canary=passed,base_release=tmp_path/'base-release',
+            contract=passed,canary=passed,base_release=tmp_path/'base-release',release_causes=causes,
             automatic_captures=dict(kind='parquet',path=str(tmp_path/'captures.parquet')),receipt_client=receipts)
+        if pinned=='other':
+            with pytest.raises(ValueError,match='cause record: bound to base'):publish()
+            assert json.loads(store.objects['viewer-publications/manifest.json'])['release_id']==live
+            return
+        result=publish()
     assert result['status']=='published' and receipts.read==[receipt]
     report=json.loads((tmp_path/'publish/release-gate.json').read_text())
     assert report['automatic_causes'] and all(e['tickets']==['ct-ud0b'] for e in report['automatic_causes'])

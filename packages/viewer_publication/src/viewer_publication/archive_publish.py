@@ -557,6 +557,9 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             automatic=lambda report:automatic_causes(report,base_release,Path(release),engine=engine,
                 captures=automatic_captures,live_receipt_keys=held,read_receipt=read_receipt,work=Path(work)/'automatic',
                 candidate_receipt_keys=receipt_keys,evidence_dir=Path(result_pin['path']).parent/'evidence')
+        # A cause record whose candidate is already live is spent: it names no later comparison,
+        # and left pinned it would refuse every unattended night after a gated release (ct-pz32).
+        if release_causes is not None and release_causes.get('candidate_release_id')==live:release_causes=None
         require_release_gates(Path(base_release) if live is not None else None,Path(release),release_causes,
             report_path=Path(work)/'release-gate.json',history=link_history_dirs,automatic=automatic)
         status['release_gates']='passed'
