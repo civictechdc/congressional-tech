@@ -3,6 +3,7 @@ name: Validate Committee Explorer
 on:
   pull_request:
     paths:
+      - "model/**"
       - "apps/committee_youtube/**"
       - "apps/site/**"
       - "apps/explorer_mcp/server.json"
@@ -38,13 +39,24 @@ on:
       - "scripts/dev.py"
       - "docs/experiments/**"
       - ".github/actions/**"
+  # Every push to main runs unless it changes only tickets, docs or Markdown.
+  # Experiment tests and fixtures under docs/experiments are lane inputs.
+  push:
+    branches: [main]
+    paths:
+      - "**"
+      - "!.tickets/**"
+      - "!docs/**"
+      - "docs/experiments/**"
+      - "!**/*.md"
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
+# A newer push or PR update supersedes the older run of the same event and ref.
 concurrency:
-  group: validate-explorer-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

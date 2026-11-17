@@ -20,6 +20,16 @@ on:
       - 'test-suites.toml'
       - '.python-version'
       - '.github/workflows/validate-congress-mcp.yml'
+  # Every push to main runs unless it changes only tickets, docs or Markdown.
+  # The package README and skills are checked by twine and plugin validate.
+  push:
+    branches: [main]
+    paths:
+      - '**'
+      - '!.tickets/**'
+      - '!docs/**'
+      - '!**/*.md'
+      - 'apps/explorer_mcp/**'
   workflow_dispatch:
     inputs:
       export_container_image:
@@ -28,6 +38,11 @@ on:
         default: false
 permissions:
   contents: read
+# A newer push or PR update supersedes the older run of the same event and ref;
+# a dispatched image export is never cancelled by a push.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   mcp:
     runs-on: ubuntu-24.04
