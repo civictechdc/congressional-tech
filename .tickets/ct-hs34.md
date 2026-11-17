@@ -46,3 +46,15 @@ More from the reviews of 2026-11-17, not done:
 14. A blind review judged gate 1 overbuilt for nights where only the data moved: with an identical definition, absolute checks (invariants, contract, canary, a column emptied, rows removed, links intact) may be enough, without a cause for every unverified difference. Owner decision; would replace the per-group shape list and caps in `data_only_night.py`.
 15. The idle-connection fix (f051364a) has not yet been exercised by a night with a long daily ingest; the retry that passed had nothing left to ingest.
 16. Item 1 again: Dependabot pull requests still cannot be validated until the engine credential is a Dependabot secret.
+
+**2026-11-17T19:10:00Z: where each item stands**
+
+Done: 5 (the two orphaned loopback tests run in CI and a guard test keeps new ones from appearing; the macOS-only skips stay as they are), 7 (CPI job installs from the lock; openpyxl was never used) and the aiohttp part of 3, all in pull request 191 (ct-na9t). 13 closed with no change: measured, the queue holds no saved address, only case variants kept apart on purpose (ct-1qr7). 15 is superseded: an unacknowledged write is now looked for before the job fails (pull request 189).
+
+In review: 9 and 11 (ct-medh, pull request 193), 12 (ct-31qi, pull request 192).
+
+Has its own ticket: the rest of 3's filelock alerts (ct-f4lk); the record-chain reads that grow by one a night (ct-k7rw).
+
+Owner only, repository settings: 1 and 16 (the engine credential as a Dependabot secret), 2 (required checks in branch protection).
+
+Waiting on evidence, no action now: 4 (the late cron is accepted and written down in docs/nightly.md), 6 (refresh shard durations when convenient), 8 (first Sunday refresh under the data-only gate), 10 and 14 (owner decisions about the gate's shape; leave the caps alone for seven scheduled nights first). The lxml and soupsieve alerts in 3 each need an equivalence decision because they move parser versions.

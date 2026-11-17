@@ -1,6 +1,6 @@
 ---
 id: ct-na9t
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-17T18:18:49Z
@@ -35,3 +35,7 @@ Done on branch ct-na9t-small-ci-gaps, one commit per item:
 2. bls-cpi-update.yml installs inflation-gsheets from uv.lock (setup-uv 0.11.21, uv sync --locked --no-dev --package, as update-data.yml). openpyxl was never used (no read_excel in the app's history). The workflow itself runs only on its schedule or dispatch, so the pull request does not exercise it; dispatch it once after merge.
 3. aiohttp 3.14.3 -> 3.14.4 in uv.lock, the only package that moved, plus an aiohttp>=3.14.4 constraint floor. definition-change.py: model definition and job pins unchanged.
 Not in scope, found while checking: 17 more Dependabot alerts on filelock 4.2.0 in uv.lock are cleared by one patch bump to 4.2.1.
+
+**2026-11-17: closed**
+
+Merged as pull request 191 (1a8bb4b1). The CPI job cannot be exercised by a pull request, so it was run once by hand on main afterwards: run 44154056803 passed in 26 seconds with the locked install and pushed its CSV update (909c5415). The filelock alerts are ct-f4lk.
