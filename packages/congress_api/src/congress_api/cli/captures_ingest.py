@@ -10,7 +10,7 @@ from docspec_client.client import NativeDatasets
 from congress_api.lake.captures import current_version
 from congress_api.lake.capture_staging import stage_captures
 from congress_api.lake.capture_comparison import compare_old
-from congress_api.lake.daily import _source_qualifications
+from congress_api.lake.daily import ROOT,_source_qualifications
 from congress_api.lake.tables import append_rows, create_table, resolve_tables, validate_catalog_authority
 from congress_api.lake.receipt_inventory import LocalReceiptStore, discover_receipts, select_receipts
 from congress_shared.custody import CONTROL_LIMITS,bounded_control_read
@@ -106,6 +106,14 @@ def _backfill(args,engine,qualifications):
         create_namespace=args.create_namespace,scratch_root=args.scratch_root)
 
 
+def _nightly_tables():
+    """The tables the hosted nightly appends to (its daily spec). Only archive-jobs.yml is
+    serialized with it; an append from here is not, and the nightly then refuses the table
+    this script left behind (run 44087092120, ct-w3dn; docs/nightly.md)."""
+    tables=json.loads((ROOT/'model/jobs/publish-daily.json').read_text())['tables']
+    return [dict(namespace=item['namespace'],name=item['name']) for item in tables.values()]
+
+
 def main(argv=None,*,engine_factory=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--receipt-inventory',type=Path,help='Explicit JSON receipt metadata inventory')
@@ -135,6 +143,8 @@ def main(argv=None,*,engine_factory=None):
     parser.add_argument('--catalog-root',type=Path,
         help='Local catalog authority; omit for an explicitly configured remote engine')
     parser.add_argument('--table')
+    parser.add_argument('--nightly-table',action='store_true',
+        help='Append to a table the hosted nightly writes in the remote catalog; nothing serializes this with the nightly')
     parser.add_argument('--create-table',action='store_true')
     parser.add_argument('--create-namespace',action='store_true',
         help='Explicitly create the namespace while creating the table; omit for an existing namespace')
@@ -181,6 +191,9 @@ def main(argv=None,*,engine_factory=None):
         if len(parts)<2 or not all(parts):
             parser.error('--table must name namespace.table')
         table=dict(namespace=parts[:-1],name=parts[-1])
+        if args.catalog_root is None and table in _nightly_tables() and not args.nightly_table:
+            parser.error(f'{args.table} is written by the hosted nightly, which this append is not serialized with: '
+                         'put the receipts in raw and let the nightly ingest them (docs/nightly.md), or pass --nightly-table')
     if args.create_table and (not args.apply or not args.table_location):
         parser.error('--create-table requires --apply and --table-location')
     if args.create_namespace and not args.create_table:

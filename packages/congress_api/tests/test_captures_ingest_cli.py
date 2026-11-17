@@ -108,3 +108,23 @@ def test_source_qualification_map_is_validated_before_configuration_or_inventory
     assert error.value.code==2
     assert 'source qualifications must map source paths to manifest paths' in capsys.readouterr().err
     assert not (tmp_path/'work').exists()
+
+
+def test_an_append_to_a_table_the_hosted_nightly_writes_needs_an_explicit_flag(tmp_path,capsys):
+    """ct-w3dn: on 2026-11-17 a local --apply to the nightly's captures table left a head the nightly
+    refused. Refused before any engine or storage is reached; a local catalog of the same name is not."""
+    from congress_api.cli.captures_ingest import ROOT,main
+    class Reached(Exception):pass
+    def engine(config):raise Reached
+    tables=json.loads((ROOT/'model/jobs/publish-daily.json').read_text())['tables']
+    assert 'captures' in tables and len(tables)>=9
+    inventory=tmp_path/'inventory.json';inventory.write_text('[]')
+    for item in tables.values():
+        name='.'.join([*item['namespace'],item['name']])
+        common=['--receipt-inventory',str(inventory),'--engine-config','remote.json','--work',str(tmp_path/'work'),'--apply','--table',name]
+        with pytest.raises(SystemExit) as stopped:main(common,engine_factory=engine)
+        assert stopped.value.code==2 and f'{name} is written by the hosted nightly' in capsys.readouterr().err
+        for allowed in (['--nightly-table'],['--catalog-root',str(tmp_path/'catalog')]):
+            with pytest.raises(Reached):main(common+allowed,engine_factory=engine)
+    with pytest.raises(Reached):
+        main(common[:-1]+['archive_r1b.captures_rebuild_candidate'],engine_factory=engine)
