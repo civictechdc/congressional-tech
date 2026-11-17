@@ -511,7 +511,7 @@ def test_parquet_runner_v6_crash_resume_verifier_pass2_and_cli(tmp_path: Path) -
     # model's own check of that input reads this file's columns and names its source column.
     import importlib.util
 
-    contract_p = Path(__file__).resolve().parents[4] / "viewer_publication/src/viewer_publication/docmeta_v6_1.py"
+    contract_p = Path(__file__).resolve().parents[3] / "viewer_publication/src/viewer_publication/docmeta_v6_1.py"
     spec = importlib.util.spec_from_file_location("docmeta_v6_1_contract", contract_p)
     contract = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(contract)

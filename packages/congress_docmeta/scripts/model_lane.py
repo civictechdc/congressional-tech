@@ -30,7 +30,9 @@ def main():
     if not python.is_file():
         raise SystemExit(f'No fast-gemma4 interpreter at {python}; set FAST_GEMMA4_PYTHON. This lane runs only '
                          'where the engine is installed (Apple Silicon).')
-    env = dict(os.environ, PYTHONPATH=str(PACKAGE / 'src'), PYTHONDONTWRITEBYTECODE='1')
+    # This checkout's package first; a caller's PYTHONPATH may follow (an engine worktree's src, say).
+    path = os.pathsep.join(filter(None, [str(PACKAGE / 'src'), os.environ.get('PYTHONPATH')]))
+    env = dict(os.environ, PYTHONPATH=path, PYTHONDONTWRITEBYTECODE='1')
     probe = subprocess.run([str(python), '-c', 'import congress_docmeta, fast_gemma4; print(congress_docmeta.__file__)'],
                            capture_output=True, text=True, env=env)
     if probe.returncode or not Path(probe.stdout.strip()).resolve().is_relative_to(PACKAGE / 'src'):
