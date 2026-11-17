@@ -50,21 +50,20 @@ def writer(monkeypatch):
     import congress_api.retention.writer_identity as identity
     monkeypatch.setattr(identity, 'writer_identity', lambda *a: value)
 
-    # This fixture replays the historical House-only change (transition.NEW).
-    # Its pinned predecessor never produced later Senate, MODS, or House generations.
+    # This fixture replays the historical House-only change (transition.NEW) on
+    # all three tables. Its pinned predecessor never produced later Senate, MODS,
+    # or House generations; the live producers refuse it (see the test below).
     from viewer_publication import producer_proof
     versions_at = producer_proof.versions_at
-    historical = versions_at(HOUSE_ORIGIN)['appearance_records']
-    house_fixture_versions = dict(historical, house_xml=transition.NEW['appearance_records'])
-    committee_fixture_versions = dict(house_xml=transition.NEW['committee_records'])
-    monkeypatch.setattr(transition.appearance_records, 'current_versions', lambda **kw: dict(house_fixture_versions))
-    monkeypatch.setattr(transition.committee_records, 'current_versions', lambda **kw: dict(committee_fixture_versions))
+    historical = versions_at(HOUSE_ORIGIN)
+    fixture_versions = {name: dict(historical[name], house_xml=transition.NEW[name]) for name in transition.MODULES}
+    for name, module in transition.MODULES.items():
+        monkeypatch.setattr(module, 'current_versions', lambda name=name, **kw: dict(fixture_versions[name]))
 
     def fixture_versions_at(revision, **kw):
         versions = versions_at(revision, **kw)
         if revision == commit:
-            return dict(versions, appearance_records=dict(house_fixture_versions),
-                        committee_records=dict(committee_fixture_versions))
+            return dict(versions, **{name: dict(value) for name, value in fixture_versions.items()})
         return versions
 
     monkeypatch.setattr(producer_proof, 'versions_at', fixture_versions_at)
@@ -305,6 +304,17 @@ def test_unsupported_operations_and_pins_remain_guarded(tmp_path):
     spec['house_xml_disposition']['limits']['max_body_bytes'] = 0
     with pytest.raises(ValueError, match='positive finite'):
         transition.load_dispositions(spec, base=tmp_path)
+
+
+def test_live_producers_refuse_the_completed_transition(tmp_path):
+    # ct-yr9o ran this transition once (2026-11-06); every House producer has since
+    # moved past transition.NEW, so the job refuses before touching work or raw bytes.
+    assert all(module.current_versions()['house_xml'] != transition.NEW[name]
+               for name, module in transition.MODULES.items())
+    spec = make_spec(tmp_path)
+    with pytest.raises(ValueError, match='only supports the reviewed syntax change'):
+        execute(spec)
+    assert not Path(spec['work']).exists()
 
 
 def activation_fixture(tmp_path, writer, monkeypatch, *, conflict=False):
