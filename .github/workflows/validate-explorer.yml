@@ -16,6 +16,7 @@ on:
       - "packages/youtube_api/**"
       - "packages/corpus_recovery/**"
       - "packages/news_lake/**"
+      - "packages/congress_docmeta/**"
       - "packages/news-lake/**"
       - "packages/viewer_publication/**"
       - "packages/source-fetch/**"
