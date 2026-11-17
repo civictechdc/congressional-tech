@@ -1165,6 +1165,22 @@ def write_meeting_updates(report, base_dir, candidate_dir, folder, refused=()):
     return line
 
 
+def untraceable_groups(report):
+    """The differences the traced addition proof cannot decide: it stops on them before any check.
+
+    Everything but an addition it knows how to trace: a changed value, a removal, a group outside
+    its lists. Re-fetch groups change no content and have their own check, so they are not here.
+    `data_only_night` decides a night only when this is non-empty, so it never stands in for a
+    proof that ran and refused.
+    """
+    known = lambda g: (
+        (g['file'] == 'url_state.parquet' and (g['group'], g['cause']) in URL_STATE_GROUPS)
+        or (g['file'], g['group'], g['cause']) in RECORDING_ADD_GROUPS | VERSION_KEY_ADD_GROUPS | SHARED_ADDRESS_ADD_GROUPS)
+    return [g for g in (dict(group, file=name) for name, facts in report['files'].items() for group in facts['groups'])
+            if not g.get('refetch_only') and not known(g) and (
+                g.get('value') or g['count'] <= 0 or (g['file'], g['group']) not in AUTOMATIC_GROUPS)]
+
+
 def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work,
                      candidate_receipt_keys=None, evidence_dir=None):
     """Cause entries for a difference whose every row comes from receipts new to the release.
@@ -1207,9 +1223,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     recording_adds = [g for g in differences if (g['file'], g['group'], g['cause']) in RECORDING_ADD_GROUPS]
     version_key_adds = [g for g in differences if (g['file'], g['group'], g['cause']) in VERSION_KEY_ADD_GROUPS]
     shared_addr_adds = [g for g in differences if (g['file'], g['group'], g['cause']) in SHARED_ADDRESS_ADD_GROUPS]
-    other = [g for g in differences if g not in url_state and g not in recording_adds and g not in version_key_adds
-             and g not in shared_addr_adds and (
-        g.get('value') or g['count'] <= 0 or (g['file'], g['group']) not in AUTOMATIC_GROUPS)]
+    other = untraceable_groups(report)
     if other:
         return [], [f'automatic causes: {group_id(g)} ({g["count"]}) is not an addition that can be traced' for g in other]
     if len(every) == 0:
@@ -1518,7 +1532,10 @@ def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evide
     # ct-rhqw: the morning report, written once the night's outcome is known.
     write_meeting_updates(report, base_dir, candidate_dir, report_path.parent, refused=report['reasons'])
     if report['reasons']:
-        raise ValueError('Release gates refused (report ' + str(report_path) + '):\n' + '\n'.join(report['reasons']))
+        # Why no automatic rule took the night comes first: the per-group lines below follow from it.
+        raise ValueError('Release gates refused (report ' + str(report_path) + '):\n' + '\n'.join(
+            [*(r for r in (report.get('automatic_reasons', []) if causes is None else []) if r not in report['reasons']),
+             *report['reasons']]))
     return report
 
 

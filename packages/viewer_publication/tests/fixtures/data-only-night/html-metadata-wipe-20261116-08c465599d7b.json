@@ -1,0 +1,1910 @@
+{
+ "base_release": "4b9a7bd126cc17e39dfbe7f8fabafbdb7251dcd32576277f308916f469c9bab1",
+ "candidate_release": "08c465599d7bf4012cc2d57789b3cf06253cb9e71b77954d21b2b57c0b23cfa8",
+ "failing": [
+  {
+   "cause": "unexplained",
+   "count": 21,
+   "file": "bills.parquet",
+   "group": "added bills",
+   "status": "unexplained"
+  },
+  {
+   "cause": "unexplained",
+   "count": -3,
+   "file": "bills.parquet",
+   "group": "removed bills",
+   "status": "unexplained"
+  },
+  {
+   "cause": "no surviving link key",
+   "count": -1,
+   "file": "detail.parquet",
+   "group": "removed rows",
+   "status": "unverified"
+  },
+  {
+   "cause": "no surviving link key",
+   "count": 379,
+   "file": "detail.parquet",
+   "group": "added rows",
+   "status": "unverified"
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 60168,
+   "file": "detail.parquet",
+   "group": "changed chambers",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 80608,
+   "file": "detail.parquet",
+   "group": "changed committee_keys",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 19,
+   "file": "detail.parquet",
+   "group": "changed congress",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "detail.parquet",
+   "group": "changed date_kind",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 5592,
+   "file": "detail.parquet",
+   "group": "changed description",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 3,
+   "file": "detail.parquet",
+   "group": "changed document_date",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 2,
+   "file": "detail.parquet",
+   "group": "changed document_date_source",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "detail.parquet",
+   "group": "changed document_date_status",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 63,
+   "file": "detail.parquet",
+   "group": "changed document_family",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 63,
+   "file": "detail.parquet",
+   "group": "changed document_kind",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 36,
+   "file": "detail.parquet",
+   "group": "changed facts",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 12,
+   "file": "detail.parquet",
+   "group": "changed filename",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "detail.parquet",
+   "group": "changed first_captured",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "detail.parquet",
+   "group": "changed in_archive_since",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "detail.parquet",
+   "group": "changed link_key",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 15468,
+   "file": "detail.parquet",
+   "group": "changed main_content",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 18,
+   "file": "detail.parquet",
+   "group": "changed measure_keys",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 4,
+   "file": "detail.parquet",
+   "group": "changed meeting_keys",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 3928,
+   "file": "detail.parquet",
+   "group": "changed modified_on",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 12587,
+   "file": "detail.parquet",
+   "group": "changed page_metadata",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 5215,
+   "file": "detail.parquet",
+   "group": "changed published_on",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1469,
+   "file": "detail.parquet",
+   "group": "changed publisher_labels",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "detail.parquet",
+   "group": "changed saved_kind",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 2561,
+   "file": "detail.parquet",
+   "group": "changed selected_text",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 580,
+   "file": "detail.parquet",
+   "group": "changed src_len",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 790,
+   "file": "detail.parquet",
+   "group": "changed title",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 791,
+   "file": "detail.parquet",
+   "group": "changed title_source",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "detail.parquet",
+   "group": "changed witness_keys",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "no evidence given",
+   "count": -1,
+   "file": "links.parquet",
+   "group": "removed keys",
+   "status": "unverified"
+  },
+  {
+   "cause": "no evidence given",
+   "count": 380,
+   "file": "links.parquet",
+   "group": "added keys",
+   "status": "unverified"
+  },
+  {
+   "cause": "no surviving link key",
+   "count": -1,
+   "file": "list.parquet",
+   "group": "removed rows",
+   "status": "unverified"
+  },
+  {
+   "cause": "no surviving link key",
+   "count": 379,
+   "file": "list.parquet",
+   "group": "added rows",
+   "status": "unverified"
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 60168,
+   "file": "list.parquet",
+   "group": "changed chambers",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 80608,
+   "file": "list.parquet",
+   "group": "changed committee_keys",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 19,
+   "file": "list.parquet",
+   "group": "changed congress",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "list.parquet",
+   "group": "changed date_kind",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 3,
+   "file": "list.parquet",
+   "group": "changed document_date",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "list.parquet",
+   "group": "changed document_date_status",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 63,
+   "file": "list.parquet",
+   "group": "changed document_family",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 63,
+   "file": "list.parquet",
+   "group": "changed document_kind",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 12,
+   "file": "list.parquet",
+   "group": "changed filename",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "list.parquet",
+   "group": "changed first_captured",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 18,
+   "file": "list.parquet",
+   "group": "changed measure_keys",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 4,
+   "file": "list.parquet",
+   "group": "changed meeting_keys",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "list.parquet",
+   "group": "changed saved_kind",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 790,
+   "file": "list.parquet",
+   "group": "changed title",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "list.parquet",
+   "group": "changed witness_keys",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 9,
+   "file": "meeting_coverage.parquet",
+   "group": "changed basis",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 56,
+   "file": "meeting_coverage.parquet",
+   "group": "changed count",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 131,
+   "file": "meeting_coverage.parquet",
+   "group": "changed reason",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 107,
+   "file": "meeting_coverage.parquet",
+   "group": "changed state",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 648,
+   "file": "meetings.parquet",
+   "group": "changed committees",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 2,
+   "file": "meetings.parquet",
+   "group": "changed congress_gov_detail_observation",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 610,
+   "file": "meetings.parquet",
+   "group": "changed house_xml_updated",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 610,
+   "file": "meetings.parquet",
+   "group": "changed meeting_type",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "meetings.parquet",
+   "group": "changed outcome",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "meetings.parquet",
+   "group": "changed outcome_basis",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "meetings.parquet",
+   "group": "changed outcome_reason",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "meetings.parquet",
+   "group": "changed outcome_source_reference",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 628,
+   "file": "meetings.parquet",
+   "group": "changed publisher_status_observations",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 610,
+   "file": "meetings.parquet",
+   "group": "changed session",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 54,
+   "file": "meetings.parquet",
+   "group": "changed sittings",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 9,
+   "file": "meetings.parquet",
+   "group": "changed subject_keys",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 67,
+   "file": "meetings.parquet",
+   "group": "changed title",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 19,
+   "file": "meetings.parquet",
+   "group": "changed transcripts",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "no evidence given",
+   "count": 1,
+   "file": "people.parquet",
+   "group": "added keys",
+   "status": "unverified"
+  },
+  {
+   "cause": "no evidence given",
+   "count": 144,
+   "file": "recording_matches.parquet",
+   "group": "added keys",
+   "status": "unverified"
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 37,
+   "file": "recording_matches.parquet",
+   "group": "changed source_ref",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "with event_ids; source not traced",
+   "count": 23,
+   "file": "recordings.parquet",
+   "group": "added keys",
+   "status": "unverified"
+  },
+  {
+   "cause": "empty event_ids; source not traced",
+   "count": 15,
+   "file": "recordings.parquet",
+   "group": "added keys",
+   "status": "unverified"
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 10,
+   "file": "recordings.parquet",
+   "group": "changed event_ids",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 3,
+   "file": "recordings.parquet",
+   "group": "changed recording_scope",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "unexplained",
+   "count": 0,
+   "file": "recoveries.parquet",
+   "flag": true,
+   "group": "changed bytes, no key or value difference found",
+   "status": "unexplained"
+  },
+  {
+   "cause": "no evidence given",
+   "count": 1,
+   "file": "retired_links.parquet",
+   "group": "added keys",
+   "status": "unverified"
+  },
+  {
+   "cause": "no live row has this address",
+   "count": -1,
+   "file": "sources.parquet",
+   "group": "URLs gone",
+   "status": "unverified"
+  },
+  {
+   "cause": "no previous row has this address",
+   "count": 963,
+   "file": "sources.parquet",
+   "group": "new URLs",
+   "status": "unverified"
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 13,
+   "file": "sources.parquet",
+   "group": "changed is_saved",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1667,
+   "file": "sources.parquet",
+   "group": "changed link_text",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1667,
+   "file": "sources.parquet",
+   "group": "changed listed_on",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "unexplained",
+   "count": -697,
+   "file": "url_state.parquet",
+   "group": "removed URLs",
+   "status": "unexplained"
+  },
+  {
+   "cause": "new attempts",
+   "count": 715,
+   "file": "url_state.parquet",
+   "group": "added URLs",
+   "status": "unverified"
+  },
+  {
+   "cause": "queued link with no attempts yet",
+   "count": 241,
+   "file": "url_state.parquet",
+   "group": "added URLs",
+   "status": "unverified"
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 442,
+   "file": "url_state.parquet",
+   "group": "changed attempts",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 442,
+   "file": "url_state.parquet",
+   "group": "changed last_attempt",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 430,
+   "file": "url_state.parquet",
+   "group": "changed last_good_at",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 334,
+   "file": "url_state.parquet",
+   "group": "changed last_outcome",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 327,
+   "file": "url_state.parquet",
+   "group": "changed last_status",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 328,
+   "file": "url_state.parquet",
+   "group": "changed linked_from",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 467,
+   "file": "url_state.parquet",
+   "group": "changed next_attempt_at",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 27,
+   "file": "url_state.parquet",
+   "group": "changed recheck_meeting_date",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "every row for the key was removed",
+   "count": -1,
+   "file": "urls.parquet",
+   "group": "keys gone",
+   "status": "unverified"
+  },
+  {
+   "cause": "key absent from the previous release",
+   "count": 2471,
+   "file": "urls.parquet",
+   "group": "keys new",
+   "status": "unverified"
+  },
+  {
+   "cause": "no evidence given",
+   "count": 44,
+   "file": "videos.parquet",
+   "group": "added keys",
+   "status": "unverified"
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "videos.parquet",
+   "group": "changed available",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 9,
+   "file": "videos.parquet",
+   "group": "changed details_checked_at",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 9,
+   "file": "videos.parquet",
+   "group": "changed duration_seconds",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "videos.parquet",
+   "group": "changed has_caption",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 5,
+   "file": "videos.parquet",
+   "group": "changed published_at",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 60,
+   "file": "videos.parquet",
+   "group": "changed record_sha",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 52,
+   "file": "videos.parquet",
+   "group": "changed source_description",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 51,
+   "file": "videos.parquet",
+   "group": "changed title",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 5,
+   "file": "videos.parquet",
+   "group": "changed video_published_at",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "witnesses.parquet",
+   "group": "changed event_id",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "witnesses.parquet",
+   "group": "changed occasion",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "witnesses.parquet",
+   "group": "changed person_key",
+   "status": "unverified",
+   "value": true
+  },
+  {
+   "cause": "value differs on matched key",
+   "count": 1,
+   "file": "witnesses.parquet",
+   "group": "changed superseded_by",
+   "status": "unverified",
+   "value": true
+  }
+ ],
+ "files": {
+  "bills.parquet": {
+   "groups": [
+    {
+     "cause": "unexplained",
+     "count": 21,
+     "group": "added bills",
+     "status": "unexplained"
+    },
+    {
+     "cause": "unexplained",
+     "count": -3,
+     "group": "removed bills",
+     "status": "unexplained"
+    }
+   ],
+   "rows": {
+    "base": 52291,
+    "candidate": 52309
+   }
+  },
+  "channels.parquet": {
+   "groups": [
+    {
+     "cause": "only the file citation moved: every content column equal on the row",
+     "count": 119,
+     "group": "changed record_sha",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    }
+   ],
+   "rows": {
+    "base": 119,
+    "candidate": 119
+   }
+  },
+  "detail.parquet": {
+   "groups": [
+    {
+     "cause": "no surviving link key",
+     "count": -1,
+     "group": "removed rows",
+     "status": "unverified"
+    },
+    {
+     "cause": "no surviving link key",
+     "count": 379,
+     "group": "added rows",
+     "status": "unverified"
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 60168,
+     "group": "changed chambers",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 80608,
+     "group": "changed committee_keys",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 19,
+     "group": "changed congress",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed date_kind",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 5592,
+     "group": "changed description",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 3,
+     "group": "changed document_date",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 2,
+     "group": "changed document_date_source",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed document_date_status",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 63,
+     "group": "changed document_family",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 63,
+     "group": "changed document_kind",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 36,
+     "group": "changed facts",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 12,
+     "group": "changed filename",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed first_captured",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed in_archive_since",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed link_key",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 15468,
+     "group": "changed main_content",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 18,
+     "group": "changed measure_keys",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 4,
+     "group": "changed meeting_keys",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 3928,
+     "group": "changed modified_on",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 12587,
+     "group": "changed page_metadata",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 5215,
+     "group": "changed published_on",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1469,
+     "group": "changed publisher_labels",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed saved_kind",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 2561,
+     "group": "changed selected_text",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 580,
+     "group": "changed src_len",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 790,
+     "group": "changed title",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 791,
+     "group": "changed title_source",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed witness_keys",
+     "status": "unverified",
+     "value": true
+    }
+   ],
+   "rows": {
+    "base": 324013,
+    "candidate": 324391
+   }
+  },
+  "links.parquet": {
+   "groups": [
+    {
+     "cause": "no evidence given",
+     "count": -1,
+     "group": "removed keys",
+     "status": "unverified"
+    },
+    {
+     "cause": "no evidence given",
+     "count": 380,
+     "group": "added keys",
+     "status": "unverified"
+    }
+   ],
+   "rows": {
+    "base": 408719,
+    "candidate": 409098
+   }
+  },
+  "list.parquet": {
+   "groups": [
+    {
+     "cause": "no surviving link key",
+     "count": -1,
+     "group": "removed rows",
+     "status": "unverified"
+    },
+    {
+     "cause": "no surviving link key",
+     "count": 379,
+     "group": "added rows",
+     "status": "unverified"
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 60168,
+     "group": "changed chambers",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 80608,
+     "group": "changed committee_keys",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 19,
+     "group": "changed congress",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed date_kind",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 3,
+     "group": "changed document_date",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed document_date_status",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 63,
+     "group": "changed document_family",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 63,
+     "group": "changed document_kind",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 12,
+     "group": "changed filename",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed first_captured",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 18,
+     "group": "changed measure_keys",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 4,
+     "group": "changed meeting_keys",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed saved_kind",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 790,
+     "group": "changed title",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed witness_keys",
+     "status": "unverified",
+     "value": true
+    }
+   ],
+   "rows": {
+    "base": 324013,
+    "candidate": 324391
+   }
+  },
+  "meeting_coverage.parquet": {
+   "groups": [
+    {
+     "cause": "a meeting Congress.gov states for the first time, read from its detail record (ct-rhqw)",
+     "count": 45,
+     "group": "added keys",
+     "refetch_only": true,
+     "status": "verified"
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 9,
+     "group": "changed basis",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 1,
+     "group": "changed count",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 56,
+     "group": "changed count",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 131,
+     "group": "changed reason",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 2,
+     "group": "changed state",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 107,
+     "group": "changed state",
+     "status": "unverified",
+     "value": true
+    }
+   ],
+   "rows": {
+    "base": 93665,
+    "candidate": 93710
+   }
+  },
+  "meetings.parquet": {
+   "groups": [
+    {
+     "cause": "a meeting Congress.gov states for the first time, read from its detail record (ct-rhqw)",
+     "count": 9,
+     "group": "added keys",
+     "refetch_only": true,
+     "status": "verified"
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 648,
+     "group": "changed committees",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 5,
+     "group": "changed congress_gov_detail_observation",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "a new read of the Congress.gov detail record: every other column equal on the meeting",
+     "count": 46,
+     "group": "changed congress_gov_detail_observation",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 2,
+     "group": "changed congress_gov_detail_observation",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 5,
+     "group": "changed congress_gov_updated",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 3,
+     "group": "changed document_references",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 610,
+     "group": "changed house_xml_updated",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 610,
+     "group": "changed meeting_type",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed outcome",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed outcome_basis",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed outcome_reason",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed outcome_source_reference",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 5,
+     "group": "changed publisher_status_observations",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "a new read of the Congress.gov detail record: every other column equal on the meeting",
+     "count": 46,
+     "group": "changed publisher_status_observations",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 628,
+     "group": "changed publisher_status_observations",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 610,
+     "group": "changed session",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 1,
+     "group": "changed sittings",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 54,
+     "group": "changed sittings",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 9,
+     "group": "changed subject_keys",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 67,
+     "group": "changed title",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 19,
+     "group": "changed transcripts",
+     "status": "unverified",
+     "value": true
+    }
+   ],
+   "rows": {
+    "base": 18733,
+    "candidate": 18742
+   }
+  },
+  "people.parquet": {
+   "groups": [
+    {
+     "cause": "no evidence given",
+     "count": 1,
+     "group": "added keys",
+     "status": "unverified"
+    },
+    {
+     "cause": "new on its meeting; a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 2,
+     "group": "added keys",
+     "refetch_only": true,
+     "status": "verified"
+    }
+   ],
+   "rows": {
+    "base": 100719,
+    "candidate": 100722
+   }
+  },
+  "recording_matches.parquet": {
+   "groups": [
+    {
+     "cause": "a meeting Congress.gov states for the first time, read from its detail record (ct-rhqw)",
+     "count": 8,
+     "group": "added keys",
+     "refetch_only": true,
+     "status": "verified"
+    },
+    {
+     "cause": "no evidence given",
+     "count": 144,
+     "group": "added keys",
+     "status": "unverified"
+    },
+    {
+     "cause": "citation follows the video's record_sha: every other column equal on the row",
+     "count": 6621,
+     "group": "changed source_ref",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 37,
+     "group": "changed source_ref",
+     "status": "unverified",
+     "value": true
+    }
+   ],
+   "rows": {
+    "base": 42123,
+    "candidate": 42275
+   }
+  },
+  "recordings.parquet": {
+   "groups": [
+    {
+     "cause": "with event_ids; a meeting Congress.gov states for the first time, read from its detail record (ct-rhqw)",
+     "count": 4,
+     "group": "added keys",
+     "refetch_only": true,
+     "status": "verified"
+    },
+    {
+     "cause": "with event_ids; source not traced",
+     "count": 23,
+     "group": "added keys",
+     "status": "unverified"
+    },
+    {
+     "cause": "empty event_ids; source not traced",
+     "count": 15,
+     "group": "added keys",
+     "status": "unverified"
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 10,
+     "group": "changed event_ids",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 3,
+     "group": "changed recording_scope",
+     "status": "unverified",
+     "value": true
+    }
+   ],
+   "rows": {
+    "base": 15720,
+    "candidate": 15762
+   }
+  },
+  "recoveries.parquet": {
+   "groups": [
+    {
+     "cause": "unexplained",
+     "count": 0,
+     "flag": true,
+     "group": "changed bytes, no key or value difference found",
+     "status": "unexplained"
+    }
+   ],
+   "rows": {
+    "base": 12506,
+    "candidate": 12506
+   }
+  },
+  "retired_links.parquet": {
+   "groups": [
+    {
+     "cause": "no evidence given",
+     "count": 1,
+     "group": "added keys",
+     "status": "unverified"
+    }
+   ],
+   "rows": {
+    "base": 35486,
+    "candidate": 35487
+   }
+  },
+  "sources.parquet": {
+   "groups": [
+    {
+     "cause": "no live row has this address",
+     "count": -1,
+     "group": "URLs gone",
+     "status": "unverified"
+    },
+    {
+     "cause": "no previous row has this address",
+     "count": 963,
+     "group": "new URLs",
+     "status": "unverified"
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 13,
+     "group": "changed is_saved",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1667,
+     "group": "changed link_text",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1667,
+     "group": "changed listed_on",
+     "status": "unverified",
+     "value": true
+    }
+   ],
+   "rows": {
+    "base": 585543,
+    "candidate": 586505
+   }
+  },
+  "url_state.parquet": {
+   "groups": [
+    {
+     "cause": "unexplained",
+     "count": -697,
+     "group": "removed URLs",
+     "status": "unexplained"
+    },
+    {
+     "cause": "new attempts",
+     "count": 715,
+     "group": "added URLs",
+     "status": "unverified"
+    },
+    {
+     "cause": "queued link with no attempts yet",
+     "count": 241,
+     "group": "added URLs",
+     "status": "unverified"
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 442,
+     "group": "changed attempts",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 442,
+     "group": "changed last_attempt",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 430,
+     "group": "changed last_good_at",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 334,
+     "group": "changed last_outcome",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 327,
+     "group": "changed last_status",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 328,
+     "group": "changed linked_from",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 467,
+     "group": "changed next_attempt_at",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 27,
+     "group": "changed recheck_meeting_date",
+     "status": "unverified",
+     "value": true
+    }
+   ],
+   "rows": {
+    "base": 1204646,
+    "candidate": 1204905
+   }
+  },
+  "urls.parquet": {
+   "groups": [
+    {
+     "cause": "every row for the key was removed",
+     "count": -1,
+     "group": "keys gone",
+     "status": "unverified"
+    },
+    {
+     "cause": "key absent from the previous release",
+     "count": 2471,
+     "group": "keys new",
+     "status": "unverified"
+    }
+   ],
+   "rows": {
+    "base": 652788,
+    "candidate": 655258
+   }
+  },
+  "videos.parquet": {
+   "groups": [
+    {
+     "cause": "no evidence given",
+     "count": 44,
+     "group": "added keys",
+     "status": "unverified"
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed available",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "only the file citation moved: every content column equal on the row",
+     "count": 173,
+     "group": "changed details_checked_at",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 9,
+     "group": "changed details_checked_at",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 9,
+     "group": "changed duration_seconds",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed has_caption",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 5,
+     "group": "changed published_at",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "only the file citation moved: every content column equal on the row",
+     "count": 67346,
+     "group": "changed record_sha",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 60,
+     "group": "changed record_sha",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 52,
+     "group": "changed source_description",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 51,
+     "group": "changed title",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 5,
+     "group": "changed video_published_at",
+     "status": "unverified",
+     "value": true
+    }
+   ],
+   "rows": {
+    "base": 67424,
+    "candidate": 67468
+   }
+  },
+  "witnesses.parquet": {
+   "groups": [
+    {
+     "cause": "new on its meeting; a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 2,
+     "group": "added keys",
+     "refetch_only": true,
+     "status": "verified"
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed event_id",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed occasion",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed person_key",
+     "status": "unverified",
+     "value": true
+    },
+    {
+     "cause": "a Congress.gov update of its meeting, read again with new bytes (ct-rhqw)",
+     "count": 1,
+     "group": "changed record_sha",
+     "refetch_only": true,
+     "status": "verified",
+     "value": true
+    },
+    {
+     "cause": "value differs on matched key",
+     "count": 1,
+     "group": "changed superseded_by",
+     "status": "unverified",
+     "value": true
+    }
+   ],
+   "rows": {
+    "base": 172670,
+    "candidate": 172672
+   }
+  }
+ },
+ "link_rule": {
+  "ok": true
+ },
+ "source": "hosted run 44002952840, release-gate.json"
+}

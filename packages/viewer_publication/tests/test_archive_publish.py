@@ -540,6 +540,72 @@ def test_nightly_additions_from_new_receipts_publish_through_the_real_path(tmp_p
     assert report['automatic_causes'] and all(e['tickets']==['ct-ud0b'] for e in report['automatic_causes'])
 
 
+@pytest.mark.parametrize('night',['data_only','definition_changed','producer_changed','receipt_dropped'])
+def test_a_capture_night_that_changes_existing_rows_publishes_only_under_the_live_definition(tmp_path,real_gates,night):
+    """ct-pz32 through publish_candidate: a retitled document is no addition, so the traced proof
+    stops; the night still publishes when the live release's own definition built it from a
+    receipt set that only grew, and refuses when either is not so."""
+    import os
+    import pyarrow as pa
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.receipt_pins import write_input_receipts
+    from test_archive_controller import Runtime
+    from test_release_gate import release_dir
+    def release(root,documents,titles):
+        manifest=release_dir(root/'release',documents,list=pa.table({'filename':[f'{keys}.pdf' for keys in documents],'title':titles}))
+        result=root/'result.json'
+        result.write_bytes(encoded(dict(outputs=[f for f in manifest['files'] if f['name'].endswith('.parquet')],
+            queries=[dict(name=name,data=[dict(violation=0)]) for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']])))
+        return dict(release=root/'release',manifest_pin=pin(root/'release/manifest.json'),result_pin=pin(result)),manifest
+    _,manifest=release(tmp_path/'live',['A','B'],['first','second']);live=manifest['release_id'];store=Store()
+    for item in manifest['files']+[dict(name='manifest.json')]:
+        store.objects['viewer-publications/releases/'+live+'/'+item['name']]=(tmp_path/'live/release'/item['name']).read_bytes()
+    store.objects['viewer-publications/manifest.json']=encoded(dict(release_id=live,previous_release_id=None))
+    def inputs(keys,**changes):
+        value=record(**changes)[0]
+        value.setdefault('unprofiled_inputs',dict(producer_versions={'captures':'c'*64},job_pins={'daily':'d'*64}))
+        value['input_digest']=input_digest(receipt_keys=keys,**{key:value[key] for key in ['provenance','profile','entity_digests']})
+        return value
+    held=['receipts/documents/2026-11-01/live.jsonl.gz','receipts/house/pages/2026-11-01/live.jsonl.gz']
+    keys=sorted([*(held[:1] if night=='receipt_dropped' else held),'receipts/documents/2026-11-03/nightly.jsonl.gz'])
+    value=inputs(keys,run={'id':'nightly'},**(dict(profile={'sql':'second','parser':'pinned'}) if night=='definition_changed' else
+        dict(unprofiled_inputs=dict(producer_versions={'captures':'e'*64},job_pins={'daily':'d'*64})) if night=='producer_changed' else {}))
+    pq_path=tmp_path/'captures.parquet'
+    import pyarrow.parquet as pq
+    pq.write_table(pa.table({'receipt_key':pa.array([],pa.string()),'receipt_line':pa.array([],pa.int32()),'sha256':pa.array([],pa.binary(32))}),pq_path)
+    artifacts,_=release(tmp_path/'next',['A','B','N'],['first','second, retitled','new'])
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        engine=Runtime(native,store)
+        write_input_receipts(NativeArchiveStore(client=store,engine=engine,bucket='derived-fixture',work=tmp_path/'seed'),
+            live,inputs(held)['input_digest'],inputs(held),held)
+        pointer,etag=read_pointer(store,bucket='derived-fixture')
+        def passed(**context):return dict(status='passed',releaseId=context['release_id'],targets='owner-approved')
+        publish=lambda:publish_candidate(client=store,engine=engine,bucket='derived-fixture',work=tmp_path/'publish',**artifacts,
+            input_record=value,receipt_keys=keys,pointer=pointer,expected_etag=etag,public_origin='https://archive.example.test',
+            contract=passed,canary=passed,base_release=tmp_path/'base-release',
+            automatic_captures=dict(kind='parquet',path=str(pq_path)),receipt_client=store)
+        if night!='data_only':
+            refusal=dict(definition_changed='differs from the live release in profile.sql',
+                producer_changed='differs from the live release in unprofiled_inputs.producer_versions.captures',
+                receipt_dropped='1 receipts the live release read are absent')[night]
+            with pytest.raises(ValueError,match='no recorded cause for list.parquet.changed title') as refused:publish()
+            stopped=json.loads((tmp_path/'publish/release-gate.json').read_text())['automatic_reasons']
+            # Why the night is not a data-only night leads, in the report and in the error a person reads.
+            assert refusal in stopped[0] and stopped[-1].endswith('not additions the traced proof reads, so it ran no check')
+            assert str(refused.value).splitlines()[1]==stopped[0] and 'no recorded cause' in str(refused.value).splitlines()[-1]
+            assert not (tmp_path/'publish/data-only-night.json').exists()
+            assert json.loads(store.objects['viewer-publications/manifest.json'])['release_id']==live
+            return
+        result=publish()
+    assert result['status']=='published'
+    report=json.loads((tmp_path/'publish/release-gate.json').read_text())
+    causes={entry['id']:entry for entry in report['automatic_causes']}
+    assert causes['list.parquet|changed title|value differs on matched key']['count']==1
+    assert all(entry['tickets']==['ct-pz32'] and entry['evidence']==[report['data_only_night']] for entry in causes.values())
+    facts=json.loads((tmp_path/'publish/data-only-night.json').read_text())
+    assert facts['new_receipt_keys']==['receipts/documents/2026-11-03/nightly.jsonl.gz'] and facts['live_receipts']==2
+
+
 def test_a_declared_first_release_is_checked_against_the_live_pointer_and_the_release_listing(tmp_path,real_gates):
     """M1: never replace a live release; and a missing pointer with releases already listed is
     not a first release (the declaration is verified, not trusted)."""
