@@ -23,3 +23,7 @@ Owner ruling 2026-11-17: fast-gemma4 holds only model-related code; congressiona
 **2026-11-17T20:08:53Z**
 
 2026-11-17: 5778dd44 (verbatim move, no-model comparison identical on 34,916 items) and 451f7c4d (generic helper and scorers taken from fast-gemma4, training pairs as a file) on branch ct-docmeta-move, local only. Model proof waits on the fast-gemma4 retrain (PID 94092).
+
+**2026-11-17T20:24:19Z**
+
+2026-11-17 evening: branch ct-docmeta-move at f5e1276d (7 local commits). No-model checks done: old vs moved code identical on 34,916 items; training pairs hash the same; uv.lock +146/-0; package tests 32 pass through dev.py (partial run); docmeta-model lane 7 pass against fast-gemma4 branch refactor/docmeta-to-ct (ecbdd61). Waiting on the fast-gemma4 retrain for the eval reproduction: .cache/archive-release/docmeta-move-20261117/run_model_proof.sh. Not pushed; fast-gemma4 branch not merged.
