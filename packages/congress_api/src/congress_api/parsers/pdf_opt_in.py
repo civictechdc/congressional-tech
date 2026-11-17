@@ -357,15 +357,15 @@ class OptInPdfReader(DefaultReader):
 
     @contextmanager
     def open(self, source: bytes, media_type: str):
-        if media_type == 'application/pdf':
-            import pymupdf
-            with pymupdf.open(stream=source, filetype='pdf') as document:
-                if document.needs_pass:
-                    raise ExtractionError('encrypted PDF requires decryption before extraction')
-                yield _OptInPDF(document, self)
-        else:
-            with super().open(source, media_type) as images:
-                yield images
+        """Read supplied PDF bytes. An image is refused: every opt-in option acts on PDF pages
+        and would be silently ignored, while the rule's checkpoint identity still claimed it."""
+        if media_type != 'application/pdf':
+            raise ValueError(f'OptInPdfReader reads application/pdf only, not {media_type}')
+        import pymupdf
+        with pymupdf.Document(stream=source, filetype='pdf') as document:
+            if document.needs_pass:
+                raise ExtractionError('encrypted PDF requires decryption before extraction')
+            yield _OptInPDF(document, self)
 
 
 def tesseract_300dpi() -> PageRule:

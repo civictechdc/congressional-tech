@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import pymupdf
+import pytest
+from spicy_docs.extraction.model import ExtractionError
 
 from congress_api.parsers import body_text
 from congress_api.parsers.pdf_opt_in import (
@@ -102,3 +104,17 @@ def test_native_inhibit_spaces_opt_in_rule_preserves_native_prose():
     assert reading.status == "completed"
     assert reading.ocr_pages == ()
     assert "Intellectual Property" in reading.text
+
+
+def test_opt_in_reader_opens_only_unencrypted_pdf_bytes():
+    reader = OptInPdfReader(native_inhibit_spaces=True)
+    with pytest.raises(ValueError, match="application/pdf only"):
+        with reader.open(b"\x89PNG\r\n\x1a\n", "image/png"):
+            pytest.fail("an image must not open")
+    doc = pymupdf.open()
+    doc.new_page()
+    locked = doc.tobytes(encryption=pymupdf.PDF_ENCRYPT_AES_256, owner_pw="owner", user_pw="user")
+    doc.close()
+    with pytest.raises(ExtractionError, match="encrypted PDF"):
+        with reader.open(locked, "application/pdf"):
+            pytest.fail("an encrypted PDF must not open")

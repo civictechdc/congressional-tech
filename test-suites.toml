@@ -11,6 +11,16 @@ python_version_file = ".python-version"
 version = "26.10.0"
 source_sha256 = "6792cb7c69205007ad87d2e936cecc5b3a31fac29ab54ffc3175fdb6b2a6ce35"
 
+# The opt-in Tesseract recovery (parsers/pdf_opt_in.py) declares libtesseract
+# 5.5.4 with tessdata_fast 4.1.0 eng, both as Homebrew's tesseract formula pins
+# them; macOS runs Homebrew's. Only the offline regressions use it, so doctor does
+# not require it. CI builds it (.github/scripts/install-tesseract.sh): Ubuntu
+# 24.04 ships 5.3.4.
+[environment.tesseract]
+version = "5.5.4"
+source_sha256 = "a8dbf8b8c8ee427ff6ad1d99116502feaf59440af1adb893caf60a6576826cf4"
+eng_fast_sha256 = "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"
+
 [environment.native.pdfinfo]
 arguments = ["-v"]
 first_line = "pdfinfo version {poppler}"

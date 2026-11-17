@@ -564,6 +564,12 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                 if spec.get('resume'):
                     options['check_current_daily']=lambda:_require_current_daily(
                         spec['_daily'],daily,engine=model,raw_store=raw_store,work=directory/'resume-daily')
+            if daily is not None:
+                # What decides content beside the profile and the receipts: the producers' current
+                # versions (captures is in no profile) and the committed specs that pin tables by hand.
+                options['unprofiled_inputs']=dict(producer_versions=daily['daily']['currentversions'],
+                    job_pins=dict(model_spec=spec['model_spec']['sha256'],daily=spec['daily']['sha256'],
+                        producers={name:pin['sha256'] for name,pin in sorted(spec.get('producers',{}).items())}))
             causes=None
             if 'release_causes' in spec:
                 from viewer_publication.release_gate import load_causes

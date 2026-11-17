@@ -1,5 +1,6 @@
 """The public publisher command plans safely and refuses before external effects."""
 import json
+import re
 import os
 from pathlib import Path
 
@@ -671,6 +672,11 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
     if outcome=='completed':
         assert len(commands)==2 and 'viewer-publications/manifest.json' in store.objects
         assert result['daily']['receipt_keys']==sorted(row['key'] for row in daily['receipt_inventory'])
+        # ct-pz32: the published input record names the inputs no profile does, for the next night to compare.
+        (kept,)=[json.loads(body) for key,body in store.objects.items() if re.fullmatch('viewer-publications/releases/[0-9a-f]{64}/inputs/[0-9a-f]{64}[.]json',key)]
+        assert kept['unprofiled_inputs']==dict(producer_versions=result['daily']['currentversions'],
+            job_pins=dict(model_spec=spec['model_spec']['sha256'],daily=spec['daily']['sha256'],producers={}))
+        assert 'captures' in kept['unprofiled_inputs']['producer_versions']
     else:
         assert commands==[] and not Path(model['output']).exists() and not Path(model['scratch']).exists()
         assert not any(key.startswith('viewer-publications/') for key in store.objects)

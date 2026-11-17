@@ -554,9 +554,22 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                 body=(receipt_client or client).get_object(Bucket=bucket,Key=key)['Body']
                 try:return body.read()
                 finally:body.close()
-            automatic=lambda report:automatic_causes(report,base_release,Path(release),engine=engine,
-                captures=automatic_captures,live_receipt_keys=held,read_receipt=read_receipt,work=Path(work)/'automatic',
-                candidate_receipt_keys=receipt_keys,evidence_dir=Path(result_pin['path']).parent/'evidence')
+            def automatic(report):
+                # The traced proof decides every night it can read; a night that also changed existing
+                # rows goes to the data-only rule (ct-pz32). See data_only_night.unattended_causes.
+                from viewer_publication.data_only_night import data_only_causes,unattended_causes
+                found,stopped,facts=unattended_causes(report,
+                    traced=lambda value:automatic_causes(value,base_release,Path(release),engine=engine,
+                        captures=automatic_captures,live_receipt_keys=held,read_receipt=read_receipt,work=Path(work)/'automatic',
+                        candidate_receipt_keys=receipt_keys,evidence_dir=Path(result_pin['path']).parent/'evidence'),
+                    data_only=lambda value:data_only_causes(value,candidate_record=input_record,live_records=entries,
+                        candidate_receipt_keys=receipt_keys,base_dir=base_release,candidate_dir=Path(release)))
+                if facts is None:return found,stopped
+                evidence=Path(work)/'data-only-night.json'
+                write_atomic_bytes(evidence,(json.dumps(facts,indent=1)+'\n').encode())
+                from congress_api.retention.provenance import file_pin
+                report['data_only_night']=dict(path=str(evidence),**file_pin(evidence))
+                return [dict(entry,evidence=[report['data_only_night']]) for entry in found],[]
         # A cause record whose candidate is already live is spent: it names no later comparison,
         # and left pinned it would refuse every unattended night after a gated release (ct-pz32).
         if release_causes is not None and release_causes.get('candidate_release_id')==live:release_causes=None

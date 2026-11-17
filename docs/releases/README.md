@@ -1,8 +1,8 @@
 # Release notes
 
-Latest: [November 17, 2026 — archive 6ac86c21b373](2026-11-17-6ac86c21b373.md).
+Latest: [November 17, 2026 — archive 95f4e73e859d](2026-11-17-95f4e73e859d.md).
 
-Previous: [November 14, 2026 — archive 4b9a7bd126cc](2026-11-14-4b9a7bd126cc.md).
+Previous: [November 17, 2026 — archive 6ac86c21b373](2026-11-17-6ac86c21b373.md).
 
 Each published archive release that changes keys or values against the live release gets
 a note here, named `<YYYY-MM-DD>-<release id, first 12>.md`. The publisher's gates write
@@ -21,12 +21,22 @@ Render a note with:
   --causes model/jobs/release-causes/<base12>-<candidate12>.json --base <base release dir> --candidate <candidate dir>
 ```
 
-Nothing else follows a release by hand (ct-pz32). The nightly runs in GitHub Actions: the
-scheduled capture triggers the publish, an additions-only night explains itself, and the hosted
-MCP reads the live pointer on its own. A cause record still pinned in `model/jobs/publish.json`
-after its candidate went live is ignored, so unpinning it is tidying, not a step the next night
-waits on. A night whose differences need a cause record still stops at gate 1 until one is
-committed.
+Nothing else follows a release by hand (ct-pz32, owner decision 2026-11-17). The nightly runs in
+GitHub Actions: the scheduled capture triggers the publish, and the hosted MCP reads the live
+pointer on its own. Gate 1 passes a night without a cause record in two cases:
+
+- an additions-only night whose every new row traces to raw receipts new to the release (the
+  traced proof, `release_gate.automatic_causes`, at most 250 documents); and
+- a data-only night (`viewer_publication/data_only_night.py`): the candidate was built from the
+  live release's own definition and pinned inputs (profile, entity digests, decision records,
+  producer versions, committed job pins), its receipt set only grew, and nothing moved more than
+  a capture night moves. Its evidence is `data-only-night.json` beside the gate report.
+
+Any change to model code, a parser, a pin or a decision record stops the next night at gate 1
+until a cause record is committed; the refusal's first line says which input differed. A cause
+record still pinned in `model/jobs/publish.json` after its candidate went live is ignored, so
+unpinning it is tidying, not a step the next night waits on. A failed or missing nightly opens a
+`ci-failure` issue (`.github/workflows/ci-alerts.yml`).
 
 Notes are not part of the immutable release. Their counts exist only after the build, and
 putting them in the release would force a second model run.

@@ -1,5 +1,9 @@
 name: Set up the Python workspace
 description: Install native PDF tools and the locked eight-member Python environment.
+inputs:
+  tesseract:
+    description: Also build the libtesseract release test-suites.toml pins, for the opt-in OCR regressions.
+    default: "false"
 runs:
   using: composite
   steps:
@@ -53,6 +57,52 @@ runs:
       with:
         path: ${{ steps.poppler.outputs.prefix }}
         key: ${{ steps.poppler.outputs.key }}
+    # libtesseract is pinned in test-suites.toml ([environment.tesseract]): the
+    # opt-in recovery declares 5.5.4 and apt ships 5.3.4. Production jobs never
+    # run Tesseract, so only callers that ask build it. Keyed like Poppler.
+    - name: Read the Tesseract pin
+      id: tesseract
+      if: inputs.tesseract == 'true'
+      shell: bash
+      run: |
+        version=$(python -c 'import tomllib; print(tomllib.load(open("test-suites.toml", "rb"))["environment"]["tesseract"]["version"])')
+        os_release=$(. /etc/os-release && echo "$ID-$VERSION_ID")
+        echo "prefix=$HOME/.local/tesseract-$version" >> "$GITHUB_OUTPUT"
+        echo "key=tesseract-$version-$RUNNER_OS-$os_release-$RUNNER_ARCH-${{ hashFiles('.github/scripts/install-tesseract.sh') }}" >> "$GITHUB_OUTPUT"
+    - name: Restore the pinned Tesseract build
+      id: tesseract-cache
+      if: inputs.tesseract == 'true'
+      uses: actions/cache/restore@v4
+      with:
+        path: ${{ steps.tesseract.outputs.prefix }}
+        key: ${{ steps.tesseract.outputs.key }}
+    - name: Install Tesseract
+      if: inputs.tesseract == 'true'
+      shell: bash
+      env:
+        TESSERACT_PREFIX: ${{ steps.tesseract.outputs.prefix }}
+        TESSERACT_CACHED: ${{ steps.tesseract-cache.outputs.cache-hit }}
+      run: |
+        packages=libleptonica-dev
+        if [ "$TESSERACT_CACHED" != true ]; then
+          packages="$packages autoconf automake libtool pkg-config"
+        fi
+        sudo apt-get install -y --no-install-recommends $packages
+        if [ "$TESSERACT_CACHED" != true ]; then
+          .github/scripts/install-tesseract.sh "$TESSERACT_PREFIX"
+        fi
+        # The backend loads libtesseract.so.5 through the loader cache and reads
+        # the model from TESSDATA_PREFIX, which it checks against its own pin.
+        echo "$TESSERACT_PREFIX/lib" | sudo tee /etc/ld.so.conf.d/ct-tesseract.conf
+        sudo ldconfig
+        echo "TESSDATA_PREFIX=$TESSERACT_PREFIX/share/tessdata" >> "$GITHUB_ENV"
+    - name: Save the pinned Tesseract build
+      if: inputs.tesseract == 'true' && steps.tesseract-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v4
+      continue-on-error: true  # Parallel shards race for the same key; one save suffices.
+      with:
+        path: ${{ steps.tesseract.outputs.prefix }}
+        key: ${{ steps.tesseract.outputs.key }}
     - name: Sync the locked workspace
       shell: bash
       run: |

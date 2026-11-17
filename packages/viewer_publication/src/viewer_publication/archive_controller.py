@@ -195,6 +195,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 public_origin,contract,canary,verified_files=None,measured_release_id=None,comparison_acceptance=None,
                 resume=False,release_causes=None,link_history=(),first_release=False,automatic_causes=False,
                 daily_summary_sha256=None,check_current_daily=None,receipt_client=None,engine_runtime=None,
+                unprofiled_inputs=None,
                 carried_html_metadata=0):
     """Prepare once, admit before a skip, otherwise export once and publish.
 
@@ -377,6 +378,9 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             provenance=provenance,entity_digests=entity_digests,run=run,
             # Engine limits sit beside the run, outside the semantic profile and digest (C3).
             engine_limits=json.loads(engine.limits.read_text()))
+        # Inputs the semantic profile does not name (producer versions, committed job pins). They stay
+        # out of the input identity; data_only_night compares them between releases (ct-pz32).
+        if unprofiled_inputs is not None:record['unprofiled_inputs']=unprofiled_inputs
         candidate_id=json.loads(Path(stage['output'],'manifest.json').read_text())['release_id']
         # A resume after the flip finds its own candidate live: publish_candidate records it as
         # unchanged and runs no gate, so the old base (now superseded) is not fetched.
