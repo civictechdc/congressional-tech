@@ -14,6 +14,11 @@ def workflow(name):
     return yaml.load((ROOT / '.github/workflows' / name).read_text(), Loader=yaml.BaseLoader)
 
 
+def publisher_index(steps):
+    """The one hosted publisher step; it resumes a kept candidate when it is this run's (ct-31qi)."""
+    return next(i for i, step in enumerate(steps) if step.get('run', '').endswith('run-archive-job.py publish --keep-candidate'))
+
+
 def assert_site_browser_pin(steps, consumer):
     """ct-3vub: Chromium follows the site lock's playwright; nothing overrides it."""
     uses = [step.get('uses') for step in steps[:consumer]]
@@ -34,7 +39,7 @@ def test_publish_backfill_maintenance_share_one_non_canceling_group():
         assert 'gh ' not in commands and 'git push' not in commands
         assert 'github.ref' in job['if'] or 'head_branch' in job['if']
     steps = value['jobs']['publish']['steps']
-    invocation = next(step for step in steps if step.get('run', '').endswith('run-archive-job.py publish'))
+    invocation = steps[publisher_index(steps)]
     assert 'canary:' not in invocation['run'] and 'contract:' not in invocation['run'], 'Publisher owns stages once'
     assert_site_browser_pin(steps, steps.index(invocation))
 
@@ -285,6 +290,8 @@ def test_hosted_publish_runs_backfill_once_when_daily_reports_backfill_required(
         report_idx = cmd.index('--report') + 1
         report_name = Path(cmd[report_idx]).name
         invocations.append(report_name)
+        # The hosted flag reaches the publisher on both attempts; backfill never sees it.
+        assert (cmd[-1] == '--keep-candidate') == report_name.startswith('publish')
         daily_dir = root / 'output/archive-daily'
         pub_dir = root / 'output/archive-publish'
         if report_name == 'publish-watchdog.json':
@@ -303,7 +310,7 @@ def test_hosted_publish_runs_backfill_once_when_daily_reports_backfill_required(
         raise AssertionError(f'Unexpected invocation: {cmd}')
 
     monkeypatch.setattr(runner.subprocess, 'run', fake_run)
-    monkeypatch.setattr(sys, 'argv', ['run-archive-job.py', 'publish'])
+    monkeypatch.setattr(sys, 'argv', ['run-archive-job.py', 'publish', '--keep-candidate'])
     assert runner.main() == 0
     assert rlimit_calls == [True]
     assert invocations == ['publish-watchdog.json', 'backfill-watchdog.json', 'publish-after-backfill-watchdog.json']
@@ -383,8 +390,7 @@ def test_publish_builds_once_after_node_and_before_the_single_publisher():
     builds=[i for i,step in enumerate(steps) if step.get('run','').strip()=='npm run build']
     assert len(builds)==1
     node=next(i for i,step in enumerate(steps) if step.get('uses')=='./.github/actions/setup-node-project')
-    publish=next(i for i,step in enumerate(steps) if step.get('run','').endswith('run-archive-job.py publish'))
-    assert node<builds[0]<publish
+    assert node<builds[0]<publisher_index(steps)
     assert steps[builds[0]]['working-directory']=='apps/site' and 'env' not in steps[builds[0]]
 
 
@@ -419,8 +425,7 @@ def test_publish_retains_only_named_run_evidence_on_success_or_failure():
         '${{ runner.temp }}/*-watchdog.timeline.jsonl',
     ]
     assert 'env' not in evidence
-    assert steps.index(evidence)>next(i for i,step in enumerate(steps)
-        if step.get('run','').endswith('run-archive-job.py publish'))
+    assert steps.index(evidence)>publisher_index(steps)
 
 
 def test_publish_ends_by_checking_the_hosted_mcp_against_the_pointer():
@@ -440,9 +445,43 @@ def test_publish_installs_the_local_job_runtime_before_the_publisher():
     """Gate 3 needs DOCSPEC_JOB_CONFIG (local-only) when the publisher starts."""
     steps = workflow('archive-jobs.yml')['jobs']['publish']['steps']
     local = next(i for i, step in enumerate(steps) if step.get('uses') == './.github/actions/setup-local-job-runtime')
-    publisher = next(i for i, step in enumerate(steps) if step.get('run', '').endswith('run-archive-job.py publish'))
-    assert local < publisher
+    assert local < publisher_index(steps)
     assert steps[local]['with']['credentials'] == '${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}'
+
+
+def test_publish_keeps_its_built_candidate_for_a_rerun():
+    """ct-31qi: the newest kept candidate is restored just before the publisher, which decides whether
+    it is this run's, and the built one is saved just after it, above all when the gates stopped it."""
+    from viewer_publication.archive_publish_job import kept_candidate_paths
+    steps = workflow('archive-jobs.yml')['jobs']['publish']['steps']
+    publisher = publisher_index(steps)
+    restore, save = steps[publisher - 1], steps[publisher + 1]
+    assert restore['uses'] == 'actions/cache/restore@v6' and save['uses'] == 'actions/cache/save@v6'
+    assert steps[publisher - 2]['uses'] == './.github/actions/setup-local-job-runtime'
+    # No saved key equals or begins with the restore key: GitHub falls back to the newest by prefix.
+    assert restore['with']['key'] == 'archive-publish-candidate-run-${{ github.run_id }}-${{ github.run_attempt }}'
+    assert restore['with']['restore-keys'] == 'archive-publish-candidate-'
+    checkpoint = "hashFiles('output/archive-publish/completed-model.json')"
+    assert save['if'] == "${{ always() && " + checkpoint + " != '' }}"
+    assert save['with']['key'] == 'archive-publish-candidate-${{ ' + checkpoint + ' }}'
+    assert save['continue-on-error'] == 'true'
+    # A different path list is a different cache version: restore and save name the same paths,
+    # the ones the publisher reads on a resume, from the shipped specs.
+    assert restore['with']['path'] == save['with']['path']
+    jobs = ROOT.resolve() / 'model/jobs'
+    spec = json.loads((jobs / 'publish.json').read_text())
+    model = json.loads((jobs / spec['model_spec']['path']).read_text())
+    model = {name: (jobs / model[name]).resolve() for name in ('output', 'scratch')}
+    kept = [path.relative_to(ROOT.resolve()).as_posix() for path in kept_candidate_paths((jobs / spec['work']).resolve(), model)]
+    assert save['with']['path'].splitlines() == kept and kept[0] in checkpoint
+
+
+def test_keep_candidate_is_a_hosted_publish_execution_only(tmp_path):
+    for args in (['backfill', '--keep-candidate'], ['publish', '--check-binding', '--keep-candidate'],
+                 ['publish', '--keep-candidate', '--nightly-work', str(tmp_path)]):
+        result = subprocess.run([sys.executable, '-I', str(ROOT / '.github/scripts/run-archive-job.py'), *args],
+            cwd=tmp_path, capture_output=True, text=True, timeout=15)
+        assert result.returncode == 2 and '--keep-candidate requires a hosted publish execution' in result.stderr
 
 
 def test_production_jobs_run_the_newest_validated_commit_of_main_and_never_the_tip():

@@ -92,6 +92,23 @@ jobs:
           artifact: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
           credentials: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
           account-id: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+      # ct-31qi: a re-run after a gate stop resumes the built candidate at the gates instead of
+      # rebuilding it (about 22 minutes and 10 GiB). The run's identity is known only after the daily
+      # ingest, so this restores the newest kept candidate by prefix (no key equals this run's) and
+      # the publisher decides: it resumes a candidate whose inputs, definitions and selected release
+      # are this run's, and otherwise deletes it and builds fresh. Paths: kept_candidate_paths in
+      # archive_publish_job.py, about 178 MiB (release with manifest 170, native result 7, evidence 0.6).
+      - name: Restore the newest kept publish candidate
+        uses: actions/cache/restore@v6
+        with:
+          key: archive-publish-candidate-run-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: archive-publish-candidate-
+          path: |
+            output/archive-publish/completed-model.json
+            output/archive-publish/base-release-record.json
+            output/archive-release
+            output/archive-model/result.json
+            output/archive-model/evidence/recording_video_links.parquet
       - name: Run the single publisher with its local contract and HTTPS canary gates
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
@@ -99,7 +116,22 @@ jobs:
           DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-        run: .venv/bin/python -I .github/scripts/run-archive-job.py publish
+        run: .venv/bin/python -I .github/scripts/run-archive-job.py publish --keep-candidate
+      # Saved whenever a completed model exists, above all when the gates stopped the run. The key is
+      # the checkpoint's content, so a resumed run saves nothing new. GitHub evicts an entry unused
+      # for 7 days and the oldest first past the repository's 10 GB; only the newest is ever restored.
+      - name: Keep the built candidate for a re-run
+        if: ${{ always() && hashFiles('output/archive-publish/completed-model.json') != '' }}
+        uses: actions/cache/save@v6
+        continue-on-error: true  # A lost save costs the next re-run one rebuild, nothing more.
+        with:
+          key: archive-publish-candidate-${{ hashFiles('output/archive-publish/completed-model.json') }}
+          path: |
+            output/archive-publish/completed-model.json
+            output/archive-publish/base-release-record.json
+            output/archive-release
+            output/archive-model/result.json
+            output/archive-model/evidence/recording_video_links.parquet
       - name: Retain run evidence (access follows repository)
         if: ${{ always() && steps.publisher_binding.outputs.publisher_work != '' }}
         uses: actions/upload-artifact@v7

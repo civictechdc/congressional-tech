@@ -144,11 +144,15 @@ def main():
     parser.add_argument('--nightly-work', type=Path, help='Retain the scheduled Mac candidate here')
     parser.add_argument('--nightly-lock-fd', type=int, help=argparse.SUPPRESS)
     parser.add_argument('--check-disk', action='store_true', help='Report disk admission without launching the owner')
+    parser.add_argument('--keep-candidate', action='store_true',
+                        help='Resume the publish candidate an earlier hosted run kept, when it is this run\'s (ct-31qi)')
     args = parser.parse_args()
     if args.check_disk and args.check_binding:
         parser.error('--check-disk and --check-binding are separate checks')
     if args.nightly_work is not None and (args.operation != 'publish' or args.check_binding):
         parser.error('--nightly-work requires a publish execution')
+    if args.keep_candidate and (args.operation != 'publish' or args.check_binding or args.nightly_work is not None):
+        parser.error('--keep-candidate requires a hosted publish execution')
     if args.github_output is not None and (not args.check_binding or args.operation != 'publish'):
         parser.error('--github-output requires publish --check-binding')
     binding = json.loads((ROOT / '.github/archive-jobs.json').read_text())[args.operation]
@@ -169,6 +173,8 @@ def main():
         return export_publisher_work(command, args.github_output) if args.github_output is not None else 0
     if args.nightly_work is not None:
         command.extend(['--nightly-work', str(args.nightly_work.resolve())])
+    if args.keep_candidate:
+        command.append('--keep-candidate')
     temp = os.environ.get('RUNNER_TEMP') or tempfile.gettempdir()
     disk = runpy.run_path(str(ROOT / 'scripts/archive_disk.py'))
     admission = disk['job_admission'](ROOT, args.operation, spec, temp=temp, nightly_work=args.nightly_work)
