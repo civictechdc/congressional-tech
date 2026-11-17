@@ -5,7 +5,7 @@
 | Workflow | Trigger | Operation |
 | --- | --- | --- |
 | `capture-archive.yml` | Daily at `03:23 UTC` or `workflow_dispatch` (when `vars.ARCHIVE_CAPTURE_ENABLED == 'true'` on `main`) | Relist Congress.gov committee meetings updated in the last 7 days (`congress_api.cli.fetch_meetings --since-days 7`), then run `congress_api.cli.capture_schedule` against the release selected by the public pointer |
-| `archive-jobs.yml` (`publish`) | `workflow_dispatch` on `main` with `operation=publish` | Execute the committed model publish specification (`viewer_publication.archive_publish_job`), run local browser contract and HTTPS canary gates, and atomically advance the release pointer |
+| `archive-jobs.yml` (`publish`) | `workflow_run` after `Capture archive sources` completes on `main` (unless `vars.ARCHIVE_NIGHTLY_DISABLED == 'true'`) or `workflow_dispatch` on `main` with `operation=publish` | Execute the committed model publish specification (`viewer_publication.archive_publish_job`), run local browser contract and HTTPS canary gates, and atomically advance the release pointer |
 | `archive-jobs.yml` (`backfill`) | `workflow_dispatch` on `main` with `operation=backfill` | Execute the committed producer backfill specification (`viewer_publication.archive_backfill_job`) |
 | `archive-jobs.yml` (`maintenance`) | Weekly on Sundays at `07:17 UTC` or `workflow_dispatch` on `main` with `operation=maintenance` | Verify raw archive integrity, check retained receipt evidence, and prune unreferenced derived releases (`viewer_publication.archive_maintenance`) |
 

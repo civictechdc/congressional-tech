@@ -56,8 +56,17 @@ def test_new_capture_uses_scheduler_and_common_lock_with_explicit_switch():
     assert 'doctor' in (ROOT / '.github/scripts/setup-local-job-runtime.py').read_text()
     assert job['steps'][effect]['env']['DATA_GOV_API_KEY'] == '${{ secrets.DATA_GOV_API_KEY }}'
     publisher = workflow('archive-jobs.yml')
-    assert 'workflow_run' not in publisher['on']
-    assert publisher['jobs']['publish']['if'].startswith("github.event_name == 'workflow_dispatch'")
+    assert publisher['on']['workflow_run'] == {
+        'workflows': ['Capture archive sources'],
+        'types': ['completed'],
+        'branches': ['main'],
+    }
+    publish_if = publisher['jobs']['publish']['if']
+    assert "github.ref == 'refs/heads/main'" in publish_if
+    assert "github.event.workflow_run.head_branch == 'main'" in publish_if
+    assert "github.event.workflow_run.conclusion != 'cancelled'" in publish_if
+    assert "github.event.workflow_run.conclusion != 'skipped'" in publish_if
+    assert "vars.ARCHIVE_NIGHTLY_DISABLED != 'true'" in publish_if
 
 
 def test_obsolete_viewer_workflow_and_thirty_minute_cron_are_absent():
@@ -212,8 +221,94 @@ def test_workflow_command_invokes_the_owner_module_once_in_execute_mode():
     path=Path('/local/owner-job.json')
     owner=[sys.executable,'-I','-m','viewer_publication.archive_publish_job','--spec',str(path),'--execute']
     assert runner.binding_command(binding,path)==owner
-    assert runner.watched_command(owner,binding,'publish','/runner-temp')==[sys.executable,'-I',str(ROOT/'scripts/archive_watchdog.py'),
-        '--rss-gb','12','--report','/runner-temp/publish-watchdog.json','--timeline','--min-disk-gb','15','--',*owner]
+    assert runner.watched_command(owner, binding, 'publish', '/runner-temp', env={}) == [
+        sys.executable, '-I', str(ROOT / 'scripts/archive_watchdog.py'),
+        '--rss-gb', '12', '--report', '/runner-temp/publish-watchdog.json', '--timeline', '--min-disk-gb', '15',
+        '--', *owner]
+    assert runner.watched_command(owner, binding, 'publish', '/runner-temp', env={'GITHUB_ACTIONS': 'true'}) == [
+        sys.executable, '-I', str(ROOT / 'scripts/archive_watchdog.py'),
+        '--rss-gb', '12', '--report', '/runner-temp/publish-watchdog.json', '--timeline', '--min-disk-gb', '15',
+        '--min-available-gb', '0', '--', *owner]
+
+
+def test_hosted_publish_runs_backfill_once_when_daily_reports_backfill_required(tmp_path, monkeypatch):
+    import importlib.util
+    from types import SimpleNamespace
+
+    spec = importlib.util.spec_from_file_location('archive_job', ROOT / '.github/scripts/run-archive-job.py')
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+
+    root = tmp_path / 'repo'
+    jobs_dir = root / 'model/jobs'
+    jobs_dir.mkdir(parents=True)
+    (root / '.github').mkdir()
+    (root / 'scripts').mkdir()
+    (root / 'scripts/archive_disk.py').write_bytes((ROOT / 'scripts/archive_disk.py').read_bytes())
+
+    (jobs_dir / 'publish-model.json').write_text(json.dumps({
+        'output': '../../output/archive-release',
+        'scratch': '../../output/archive-model',
+    }))
+    (jobs_dir / 'publish-daily.json').write_text(json.dumps({'work': '../../output/archive-daily'}))
+    (jobs_dir / 'publish.json').write_text(json.dumps({
+        'work': '../../output/archive-publish',
+        'model_spec': {'path': 'publish-model.json'},
+        'daily': {'path': 'publish-daily.json'},
+    }))
+    (jobs_dir / 'backfill.json').write_text(json.dumps({'work': '../../output/archive-backfill'}))
+    (root / '.github/archive-jobs.json').write_text(json.dumps({
+        'publish': {'module': 'viewer_publication.archive_publish_job', 'spec': 'model/jobs/publish.json', 'argv': ['--execute'], 'rss_gb': 14},
+        'backfill': {'module': 'viewer_publication.archive_backfill_job', 'spec': 'model/jobs/backfill.json', 'argv': ['--execute'], 'rss_gb': 12},
+    }))
+
+    monkeypatch.setenv('GITHUB_ACTIONS', 'true')
+    monkeypatch.delenv('ARCHIVE_DISK_BUDGETS', raising=False)
+    monkeypatch.setenv('RUNNER_TEMP', str(tmp_path / 'runner-temp'))
+
+    import shutil
+
+    monkeypatch.setattr(runner, 'ROOT', root)
+    rlimit_calls = []
+    monkeypatch.setattr(runner, 'raise_file_limit', lambda: rlimit_calls.append(True) or (256, 65536))
+    monkeypatch.setattr(shutil, 'disk_usage', lambda _: SimpleNamespace(free=80 * 2**30))
+    orig_run_path = runner.runpy.run_path
+    def fake_run_path(path):
+        mod = orig_run_path(path)
+        mod['job_admission'].__globals__['revision'] = lambda _: 'a' * 40
+        return mod
+    monkeypatch.setattr(runner.runpy, 'run_path', fake_run_path)
+
+    invocations = []
+    def fake_run(cmd, cwd=None, pass_fds=()):
+        assert '--min-available-gb' in cmd and cmd[cmd.index('--min-available-gb') + 1] == '0'
+        report_idx = cmd.index('--report') + 1
+        report_name = Path(cmd[report_idx]).name
+        invocations.append(report_name)
+        daily_dir = root / 'output/archive-daily'
+        pub_dir = root / 'output/archive-publish'
+        if report_name == 'publish-watchdog.json':
+            daily_dir.mkdir(parents=True)
+            pub_dir.mkdir(parents=True)
+            (daily_dir / 'daily-summary.json').write_text(json.dumps({'status': 'backfill_required'}))
+            return SimpleNamespace(returncode=2)
+        if report_name == 'backfill-watchdog.json':
+            assert not pub_dir.exists() and not daily_dir.exists()
+            assert (tmp_path / 'runner-temp/before-backfill/archive-daily/daily-summary.json').is_file()
+            return SimpleNamespace(returncode=0)
+        if report_name == 'publish-after-backfill-watchdog.json':
+            daily_dir.mkdir(parents=True)
+            (daily_dir / 'daily-summary.json').write_text(json.dumps({'status': 'completed'}))
+            return SimpleNamespace(returncode=0)
+        raise AssertionError(f'Unexpected invocation: {cmd}')
+
+    monkeypatch.setattr(runner.subprocess, 'run', fake_run)
+    monkeypatch.setattr(sys, 'argv', ['run-archive-job.py', 'publish'])
+    assert runner.main() == 0
+    assert rlimit_calls == [True]
+    assert invocations == ['publish-watchdog.json', 'backfill-watchdog.json', 'publish-after-backfill-watchdog.json']
+    assert (tmp_path / 'runner-temp/backfill-disk-admission.json').is_file()
+    assert (tmp_path / 'runner-temp/publish-after-backfill-disk-admission.json').is_file()
 
 
 def test_an_active_binding_without_a_measured_rss_limit_refuses():
@@ -302,8 +397,26 @@ def test_publish_retains_only_named_run_evidence_on_success_or_failure():
     assert evidence['if']=="${{ always() && steps.publisher_binding.outputs.publisher_work != '' }}"
     assert evidence['with']['if-no-files-found']=='ignore'
     assert evidence['with']['path'].splitlines()==[
-        '${{ steps.publisher_binding.outputs.publisher_work }}/'+name
-        for name in ['outgoing-pointer.json','outgoing-pointer.response.json','contract.json','canary.json']]
+        *[
+            '${{ steps.publisher_binding.outputs.publisher_work }}/'+name
+            for name in [
+                'outgoing-pointer.json',
+                'outgoing-pointer.response.json',
+                'contract.json',
+                'canary.json',
+                'completed-model.json',
+                'model-intent.json',
+                'candidate-*/release-gate.json',
+                'candidate-*/automatic/automatic-trace.json',
+                'candidate-*/meeting-updates.*',
+            ]
+        ],
+        'output/archive-daily/daily-summary.json',
+        'output/archive-release/manifest.json',
+        '${{ runner.temp }}/*-disk-admission.json',
+        '${{ runner.temp }}/*-watchdog.json',
+        '${{ runner.temp }}/*-watchdog.timeline.jsonl',
+    ]
     assert 'env' not in evidence
     assert steps.index(evidence)>next(i for i,step in enumerate(steps)
         if step.get('run','').endswith('run-archive-job.py publish'))

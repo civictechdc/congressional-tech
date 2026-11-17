@@ -314,6 +314,8 @@ def load_spec(path):
             raise ValueError('Daily publication selects provenance from the current raw inventory')
         if daily.get('catalog_root','missing') is not None:
             raise ValueError('Daily publisher requires its configured remote lake catalog')
+        from congress_api.lake.daily import derived_scopes
+        derived_scopes(daily)
         # body_inventory and local_root are optional (daily reads bodies through raw_store
         # unless the spec pins an inventory); only paths that are given are resolved.
         for name in ['work','body_inventory','local_root']:

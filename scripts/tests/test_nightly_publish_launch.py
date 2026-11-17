@@ -46,3 +46,22 @@ def test_the_launch_agent_runs_at_normal_priority_with_the_file_limit(tmp_path, 
     assert agent['ProcessType'] == 'Standard'
     assert agent['SoftResourceLimits'] == {'NumberOfFiles': nightly.FILE_LIMIT}
     assert [command[1] for command in calls] == ['bootout', 'bootstrap']
+
+
+def test_uninstall_boots_out_and_removes_launch_agent_plists(tmp_path, monkeypatch, capsys):
+    calls = []
+    monkeypatch.setattr(nightly.Path, 'home', classmethod(lambda cls: tmp_path))
+    monkeypatch.setattr(nightly.subprocess, 'run', lambda command, **options: calls.append(command))
+    agents = tmp_path / 'Library/LaunchAgents'
+    agents.mkdir(parents=True)
+    main_plist = agents / f'{nightly.LABEL}.plist'
+    watch_plist = agents / f'{nightly.WATCH_LABEL}.plist'
+    main_plist.write_bytes(b'plist')
+    watch_plist.write_bytes(b'watch')
+
+    assert nightly.uninstall() == 0
+    assert [command[:2] for command in calls] == [['launchctl', 'bootout'], ['launchctl', 'bootout']]
+    assert not main_plist.exists() and not watch_plist.exists()
+    output = json.loads(capsys.readouterr().out)
+    assert output['labels'] == [nightly.LABEL, nightly.WATCH_LABEL]
+    assert output['uninstalled'] == [str(main_plist), str(watch_plist)]

@@ -10,7 +10,7 @@ import re
 import subprocess
 import sys
 
-from congress_api.retention.derived_files import copy_checked
+from congress_api.retention.derived_files import check_identity, copy_checked, file_identity
 from docspec_client import (
     QUALIFIED_DOCSPEC_RUNTIME,
     REQUIRED_LOOPBACK_CAPABILITIES,
@@ -102,8 +102,27 @@ def job_limits(path, label):
     return limits
 
 
+def reusable_binary(artifact, env=None):
+    """Return an already-verified docspec binary from DOCSPEC_RUNTIME_CONFIG when bytes match."""
+    runtime_cfg = (os.environ if env is None else env).get('DOCSPEC_RUNTIME_CONFIG')
+    if not runtime_cfg:
+        return None
+    cfg_path = Path(runtime_cfg)
+    if cfg_path.is_symlink() or not cfg_path.is_file():
+        return None
+    candidate = cfg_path.parent / 'docspec'
+    if candidate.is_symlink() or not candidate.is_file():
+        return None
+    try:
+        if candidate.stat().st_size == artifact['bytes']:
+            return candidate
+    except OSError:
+        return None
+    return None
+
+
 def install(artifact, credentials, remote, directory, *, client, local_limits=None, host_limits=None,
-            timeout_seconds=120, pin_file=RUNTIME_PIN_FILE):
+            timeout_seconds=120, pin_file=RUNTIME_PIN_FILE, reuse_binary=None):
     """Read exactly one selected private object; create no native workspace/provider state.
 
     Remote jobs that run engine specs need host_limits; local jobs always carry local_limits.
@@ -130,6 +149,13 @@ def install(artifact, credentials, remote, directory, *, client, local_limits=No
         references = remote_value.get('secret_env') if isinstance(remote_value, dict) else None
         if not isinstance(references, dict) or set(references.values()) != SECRET_NAMES:
             raise SetupFailure('DocSpec remote configuration must declare the three engine secret references')
+    reuse_path = None
+    if local_limits is not None and reuse_binary is not None:
+        reuse_path = Path(reuse_binary)
+        if reuse_path.is_symlink() or not reuse_path.is_file():
+            raise SetupFailure('Reusable runtime binary must be a regular file')
+    elif client is None:
+        raise SetupFailure('Runtime download requires an S3 client')
     directory.mkdir(mode=0o700, parents=True, exist_ok=False)
     if local_limits is None:
         private_write(directory / 'credentials.json', json.dumps(credentials).encode())
@@ -157,13 +183,27 @@ def install(artifact, credentials, remote, directory, *, client, local_limits=No
     private_write(config, (json.dumps(configuration, indent=2) + '\n').encode())
     NativeDatasets.from_config(config)  # Existing runtime format and secret validation own this boundary.
     binary = directory / 'docspec'
-    response = client.get_object(Bucket=artifact['bucket'], Key=artifact['key'])
-    with closing(response['Body']) as source:
-        if type(response.get('ContentLength')) is not int or response['ContentLength'] != artifact['bytes']:
-            raise SetupFailure('Private runtime artifact length differs from its approved descriptor')
-        proof = copy_checked(source, binary, size=artifact['bytes'], expected=artifact,
-                             key='private native runtime', exclusive=True)
-    proof.require(binary)
+    if reuse_path is not None:
+        try:
+            os.link(reuse_path, binary)
+        except OSError:
+            with reuse_path.open('rb') as source:
+                proof = copy_checked(source, binary, size=artifact['bytes'], expected=artifact,
+                                     key='private native runtime', exclusive=True)
+            proof.require(binary)
+        identity = file_identity(binary)
+        check_identity(identity, dict(sha256=artifact['sha256'], bytes=artifact['bytes']), 'private native runtime')
+        identity.require(binary)
+        downloaded = False
+    else:
+        response = client.get_object(Bucket=artifact['bucket'], Key=artifact['key'])
+        with closing(response['Body']) as source:
+            if type(response.get('ContentLength')) is not int or response['ContentLength'] != artifact['bytes']:
+                raise SetupFailure('Private runtime artifact length differs from its approved descriptor')
+            proof = copy_checked(source, binary, size=artifact['bytes'], expected=artifact,
+                                 key='private native runtime', exclusive=True)
+        proof.require(binary)
+        downloaded = True
     binary.chmod(0o700)  # No executable file exists before complete size/hash verification.
     spec = importlib.util.spec_from_file_location('installed_native_check', Path(__file__).with_name('check-native-runtime.py'))
     checker = importlib.util.module_from_spec(spec)
@@ -179,7 +219,7 @@ def install(artifact, credentials, remote, directory, *, client, local_limits=No
     )
     report.update(platform=artifact['platform'], source_revision=artifact['source_revision'],
                   build_features=build_features, required_capabilities=required_capabilities,
-                  artifact_bytes=artifact['bytes'], artifact_downloaded=True, native_provider_accessed=False,
+                  artifact_bytes=artifact['bytes'], artifact_downloaded=downloaded, native_provider_accessed=False,
                   **({'remote_sha256': sha256(remote_raw).hexdigest()} if remote_raw is not None else {}))
     return config, report
 
@@ -221,10 +261,13 @@ def main(argv=None):
         credentials = engine_credentials(args.credentials_file.read_text() if args.credentials_file else os.environ.get('DOCSPEC_ENGINE_CREDENTIALS'))
         if args.credentials_file and args.credentials_file.stat().st_mode & 0o077:
             raise SetupFailure('Local DocSpec credentials require private file permissions (0600)')
+        reuse = reusable_binary(artifact) if args.local else None
         config, report = install(artifact, credentials, args.remote, args.directory,
-            client=make_client(credentials), local_limits=args.local_limits if args.local else None,
+            client=None if reuse is not None else make_client(credentials),
+            local_limits=args.local_limits if args.local else None,
             host_limits=None if args.local else args.host_limits,
-            timeout_seconds=120 if args.local else args.timeout_seconds, pin_file=args.pin_file)
+            timeout_seconds=120 if args.local else args.timeout_seconds, pin_file=args.pin_file,
+            reuse_binary=reuse)
         if args.local:
             subprocess.run([sys.executable, str(Path(__file__).resolve().parents[2]/'scripts/dev.py'),
                 'doctor', '--lane', 'production-offline'],

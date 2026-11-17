@@ -15,12 +15,18 @@ from urllib.parse import unquote, urlsplit
 
 METADATA_LIMIT = 8 * 1024 * 1024
 DISK_FLOOR = 15 * 2**30
+LIVE_OPERATION_PEAKS = {
+    'publish-fresh': 10 * 2**30,
+    'publish-resume': 8 * 2**30,
+    'backfill': 10 * 2**30,
+    'maintenance': 10 * 2**30,
+}
 # A budget measured at one revision stays valid for a descendant that leaves
-# these untouched: the engine, its limits, the job bindings and the installed
-# dependencies. Ticket, doc and model commits keep it; the 15 GiB headroom and
-# the runtime disk floor cover model drift.
+# these untouched: the engine, its limits and the job bindings. Dependency lockfile
+# bumps (uv.lock, apps/site/package-lock.json), ticket, doc and model commits
+# keep it; the 15 GiB headroom and the runtime disk floor cover drift.
 RESOURCE_PATHS = ('model/docspec-runtime-pin.json', '.github/docspec-local-limits.json',
-                  '.github/archive-jobs.json', 'uv.lock', 'apps/site/package-lock.json')
+                  '.github/archive-jobs.json')
 
 
 def metadata(path):
@@ -153,13 +159,51 @@ def job_roots(operation, spec_path, *, temp, nightly_work=None, env=None):
     return mode, roots
 
 
+def admit_live(operation, roots, *, commit, floor=DISK_FLOOR):
+    """Check each actual writing filesystem against live operation peaks on ephemeral CI runners."""
+    if operation not in LIVE_OPERATION_PEAKS:
+        raise ValueError(f'Disk budget unavailable for {operation}: hosted-ephemeral')
+    if not roots:
+        raise ValueError(f'Disk budget needs filesystems for {operation}')
+    paths = {name: existing_parent(path) for name, path in roots.items()}
+    by_device = {}
+    for name in sorted(paths):
+        by_device.setdefault(paths[name].stat().st_dev, []).append(name)
+    peak = LIVE_OPERATION_PEAKS[operation]
+    headroom = max(1, floor)
+    observations = []
+    for device, names in sorted(by_device.items(), key=lambda item: item[1][0]):
+        free = min(shutil.disk_usage(paths[name]).free for name in names)
+        observations.append(dict(
+            roots={name: str(roots[name]) for name in names},
+            device=device,
+            free_bytes=free,
+            required_bytes=peak + headroom,
+            peak_additional_bytes=peak,
+            headroom_bytes=headroom,
+        ))
+    return dict(
+        operation=operation,
+        mode='hosted-ephemeral',
+        revision=commit,
+        measurement='LIVE_OPERATION_PEAKS + DISK_FLOOR live filesystem check',
+        workload='ephemeral GitHub Actions runner',
+        filesystems=observations,
+        status='admitted' if all(row['free_bytes'] >= row['required_bytes'] for row in observations) else 'refused',
+    )
+
+
 def job_admission(root, operation, spec, *, temp, nightly_work=None, env=None, commit=None, mode=None):
     env = os.environ if env is None else env
     roots = {}
     try:
         selected, roots = job_roots(operation, spec, temp=temp, nightly_work=nightly_work, env=env)
+        target_op = mode or selected
+        rev = commit or revision(root)
+        if 'ARCHIVE_DISK_BUDGETS' not in env and env.get('GITHUB_ACTIONS') == 'true' and nightly_work is None:
+            return admit_live(target_op, roots, commit=rev, floor=DISK_FLOOR)
         budgets = Path(env.get('ARCHIVE_DISK_BUDGETS', Path(root) / '.cache/archive-release/disk-budgets.json'))
-        return admit(budgets, mode or selected, roots, commit=commit or revision(root), root=root)
+        return admit(budgets, target_op, roots, commit=rev, root=root)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         return dict(status='refused', operation=mode or operation, reason=str(error),
                     roots={name: str(path) for name, path in roots.items()})

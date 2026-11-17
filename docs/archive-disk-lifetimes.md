@@ -7,9 +7,13 @@ check remains a separate read-only check.
 
 The default budget file is `.cache/archive-release/disk-budgets.json`. The Mac
 wrapper uses the main checkout's file; `ARCHIVE_DISK_BUDGETS` can name another
-operator-qualified file. Budget records stay outside Git with their measurements.
-Operation names are `setup`, `publish-fresh`, `publish-resume` and `backfill`.
-An active maintenance binding would also require `maintenance`.
+operator-qualified file. Hosted GitHub Actions runs (`GITHUB_ACTIONS=true`
+without an `ARCHIVE_DISK_BUDGETS` override) admit ephemeral runners directly from
+live per-filesystem free space against `LIVE_OPERATION_PEAKS + 15 GiB DISK_FLOOR`
+(`25 GiB` free for `publish-fresh`, `backfill`, and `maintenance`; `23 GiB` free
+for `publish-resume`). Local budget records stay outside Git with their
+measurements. Operation names are `setup`, `publish-fresh`, `publish-resume`,
+`backfill`, and `maintenance`.
 
 Each record names the exact selected Git revision, durable measurement evidence,
 qualified input population and work limits, and peak **additional** allocation
@@ -68,12 +72,12 @@ Do not convert a sampled shared-volume drawdown into an isolated allocation clai
 A record's `revision` is the measured revision. Admission accepts it for that
 revision and for any descendant that leaves `RESOURCE_PATHS` in
 `scripts/archive_disk.py` unchanged: `model/docspec-runtime-pin.json` (the engine
-pin), `.github/docspec-local-limits.json` (its local limits),
-`.github/archive-jobs.json` (the job bindings), `uv.lock`, and
-`apps/site/package-lock.json` (the site lockfile). Ticket, documentation and model commits
-therefore keep the nightly admitted; the 15 GiB headroom and the runtime disk floor
-cover model drift. The admission report records both `revision` and
-`budget_revision`.
+pin), `.github/docspec-local-limits.json` (its local limits), and
+`.github/archive-jobs.json` (the job bindings). Dependency lockfile updates in
+`uv.lock` and `apps/site/package-lock.json`, ticket, documentation, and model
+commits therefore keep the nightly admitted; the 15 GiB headroom and the
+runtime disk floor cover dependency and model drift. The admission report
+records both `revision` and `budget_revision`.
 
 When a resource path changes, admission refuses until the release owner writes a
 new record: either a bounded measurement at the new revision, or a reviewed

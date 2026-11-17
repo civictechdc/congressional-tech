@@ -90,8 +90,12 @@ def test_remote_install_carries_the_committed_hosted_limits(tmp_path, inputs, mo
     assert native._remote_secrets == credentials
     assert native.limits is not None and native.timeout == 3600
     assert json.loads((tmp_path / 'runtime/limits.json').read_text()) == json.loads(hosted.read_text())
-    # The watchdog stops publish at its rss_gb; the engine pool must leave room under it.
-    assert json.loads(hosted.read_text())['memory_bytes'] < json.loads((ROOT / '.github/archive-jobs.json').read_text())['publish']['rss_gb'] * 1024**3
+    hosted_limits = json.loads(hosted.read_text())
+    archive_jobs = json.loads((ROOT / '.github/archive-jobs.json').read_text())
+    assert hosted_limits['compute_threads'] == 2
+    assert hosted_limits['memory_bytes'] == 24 << 30
+    assert hosted_limits['scratch_bytes'] == 32 << 30
+    assert archive_jobs['publish']['rss_gb'] == 14
 
 
 def test_remote_install_refuses_malformed_hosted_limits_before_any_download(tmp_path, inputs):
@@ -337,3 +341,38 @@ def test_local_private_runtime_rejects_test_util_before_download(tmp_path, input
         value.install(descriptor,credentials,tmp_path/'absent',tmp_path/'installed',
                       client=client,local_limits=policy)
     assert client.calls==[] and not (tmp_path/'installed').exists()
+
+
+def test_local_cli_reuses_verified_remote_binary_without_second_download(tmp_path, inputs, monkeypatch):
+    value = module()
+    binary, descriptor, credentials = inputs
+    monkeypatch.setattr(subprocess, 'run', lambda *a, **k: pytest.fail('Native process started'))
+    remote_config, _ = value.install(
+        descriptor, credentials, ROOT / '.github/docspec-remote.json',
+        tmp_path / 'remote', client=ArtifactClient(binary),
+        host_limits=ROOT / '.github/docspec-hosted-limits.json', timeout_seconds=3600,
+    )
+    monkeypatch.setenv('DOCSPEC_RUNTIME_CONFIG', str(remote_config))
+    monkeypatch.setenv('DOCSPEC_RUNTIME_ARTIFACT', json.dumps(descriptor))
+    monkeypatch.setenv('DOCSPEC_ENGINE_CREDENTIALS', json.dumps(credentials))
+    monkeypatch.setattr(value, 'make_client', lambda creds: pytest.fail('Downloaded binary twice'))
+
+    calls = []
+    def doctor(command, **kwargs):
+        calls.append(command)
+        assert command[-3:] == ['doctor', '--lane', 'production-offline']
+        local = json.loads(Path(kwargs['env']['DOCSPEC_JOB_CONFIG']).read_text())
+        assert 'remote' not in local and 'credentials' not in local
+    monkeypatch.setattr(subprocess, 'run', doctor)
+
+    envfile = tmp_path / 'github-env'
+    envfile.touch()
+    report_path = tmp_path / 'local-report.json'
+    exit_code = value.main([
+        '--local', '--directory', str(tmp_path / 'local'),
+        '--output', str(report_path), '--github-env', str(envfile),
+    ])
+    assert exit_code == 0 and calls
+    report = json.loads(report_path.read_text())
+    assert report['artifact_downloaded'] is False and report['verified'] is True
+    assert (tmp_path / 'local/docspec').read_bytes() == binary

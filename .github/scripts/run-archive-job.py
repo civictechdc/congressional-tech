@@ -7,12 +7,27 @@ import argparse
 import json
 import os
 from pathlib import Path
+import resource
 import runpy
+import shutil
 import subprocess
 import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[2]
+FILE_LIMIT = 65536
+
+
+def raise_file_limit(target=FILE_LIMIT):
+    """Raise the soft open-file limit to `target` (or the hard limit, if lower); children inherit it."""
+    soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+    wanted = target if hard == resource.RLIM_INFINITY else min(target, hard)
+    if soft != resource.RLIM_INFINITY and soft < wanted:
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (wanted, hard))
+        except (ValueError, OSError):
+            resource.setrlimit(resource.RLIMIT_NOFILE, (min(wanted, 10240), hard))
+    return soft, resource.getrlimit(resource.RLIMIT_NOFILE)[0]
 
 
 def binding_command(binding, spec):
@@ -24,12 +39,81 @@ def binding_command(binding, spec):
     return [sys.executable, '-I', '-m', binding['module'], '--spec', str(spec), *binding['argv']]
 
 
-def watched_command(command, binding, operation, temp, *, lock_fd=None):
+def watched_command(command, binding, operation, temp, *, lock_fd=None, env=None):
     """The owner command under the watchdog, with its report and timeline in the runner's temp."""
+    active_env = os.environ if env is None else env
+    hosted_args = ['--min-available-gb', '0'] if active_env.get('GITHUB_ACTIONS') == 'true' else []
     lock_args = [] if lock_fd is None else ['--hold-fd', str(lock_fd)]
     return [sys.executable, '-I', str(ROOT / 'scripts/archive_watchdog.py'), '--rss-gb', str(binding['rss_gb']),
             '--report', str(Path(temp) / f'{operation}-watchdog.json'), '--timeline', '--min-disk-gb', '15',
-            *lock_args, '--', *command]
+            *hosted_args, *lock_args, '--', *command]
+
+
+def _daily_work_dir(spec_path):
+    spec_path = Path(spec_path).resolve()
+    spec_value = json.loads(spec_path.read_text())
+    daily_entry = spec_value.get('daily')
+    if not isinstance(daily_entry, dict) or not isinstance(daily_entry.get('path'), str):
+        return None
+    daily_spec_path = (spec_path.parent / daily_entry['path']).resolve()
+    daily_spec = json.loads(daily_spec_path.read_text())
+    return (daily_spec_path.parent / daily_spec['work']).resolve()
+
+
+def daily_backfill_required(spec_path):
+    """Return True when the daily producer wrote a `backfill_required` summary."""
+    try:
+        daily_work = _daily_work_dir(spec_path)
+        if daily_work is None:
+            return False
+        summary = daily_work / 'daily-summary.json'
+        if not summary.is_file() or summary.is_symlink():
+            return False
+        value = json.loads(summary.read_text())
+        return isinstance(value, dict) and value.get('status') == 'backfill_required'
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
+def retire_for_backfill(spec_path, archive_dir, *, backfill_spec_path=None):
+    """Move prior publish/daily/backfill directories aside so backfill and retry start fresh."""
+    spec_path = Path(spec_path).resolve()
+    spec_value = json.loads(spec_path.read_text())
+    targets = [
+        (spec_path.parent / spec_value['work']).resolve(),
+        (ROOT / 'output/archive-backfill').resolve(),
+    ]
+    model_entry = spec_value.get('model_spec')
+    if isinstance(model_entry, dict) and isinstance(model_entry.get('path'), str):
+        model_path = (spec_path.parent / model_entry['path']).resolve()
+        model_value = json.loads(model_path.read_text())
+        targets.extend([
+            (model_path.parent / model_value['output']).resolve(),
+            (model_path.parent / model_value['scratch']).resolve(),
+        ])
+    daily_work = _daily_work_dir(spec_path)
+    if daily_work is not None:
+        targets.extend([daily_work, daily_work.with_name(daily_work.name + '-provenance')])
+    if backfill_spec_path is not None:
+        bf_path = Path(backfill_spec_path).resolve()
+        bf_value = json.loads(bf_path.read_text())
+        if isinstance(bf_value.get('work'), str):
+            targets.append((bf_path.parent / bf_value['work']).resolve())
+
+    archive_dir = Path(archive_dir)
+    archive_dir.mkdir(parents=True, exist_ok=True)
+    seen = set()
+    for target in targets:
+        if target in seen:
+            continue
+        seen.add(target)
+        if target.is_symlink():
+            raise ValueError(f'Refusing to move symlinked work directory before backfill: {target}')
+        if target.exists():
+            destination = archive_dir / target.name
+            if destination.exists() or destination.is_symlink():
+                shutil.rmtree(destination)
+            shutil.move(str(target), str(destination))
 
 
 def export_publisher_work(command, output):
@@ -97,9 +181,44 @@ def main():
         return 2
     if args.check_disk:
         return 0
+    raise_file_limit()
     pass_fds = () if args.nightly_lock_fd is None else (args.nightly_lock_fd,)
     watched = watched_command(command, binding, args.operation, temp, lock_fd=args.nightly_lock_fd)
-    return subprocess.run(watched, cwd=ROOT, pass_fds=pass_fds).returncode
+    code = subprocess.run(watched, cwd=ROOT, pass_fds=pass_fds).returncode
+    if code != 0 and args.operation == 'publish' and args.nightly_work is None and daily_backfill_required(spec):
+        bindings = json.loads((ROOT / '.github/archive-jobs.json').read_text())
+        backfill_binding = bindings['backfill']
+        backfill_spec = ROOT / backfill_binding['spec']
+        backfill_value = json.loads(backfill_spec.read_text())
+        if backfill_value.get('status') == 'blocked':
+            print('Archive job refused: ' + backfill_value['reason'], file=sys.stderr)
+            return 2
+        if not backfill_binding['module']:
+            print('Archive job refused: owner CLI is not bound', file=sys.stderr)
+            return 2
+        try:
+            backfill_cmd = binding_command(backfill_binding, backfill_spec)
+        except ValueError as error:
+            print('Archive job refused: ' + str(error), file=sys.stderr)
+            return 2
+        bf_admission = disk['job_admission'](ROOT, 'backfill', backfill_spec, temp=temp)
+        print(json.dumps(dict(disk_admission=bf_admission), sort_keys=True), flush=True)
+        (Path(temp) / 'backfill-disk-admission.json').write_text(json.dumps(bf_admission, indent=2) + '\n')
+        if bf_admission['status'] != 'admitted':
+            return 2
+        retire_for_backfill(spec, Path(temp) / 'before-backfill', backfill_spec_path=backfill_spec)
+        backfill_code = subprocess.run(watched_command(backfill_cmd, backfill_binding, 'backfill', temp), cwd=ROOT).returncode
+        if backfill_code != 0:
+            return backfill_code
+        retry_admission = disk['job_admission'](ROOT, 'publish', spec, temp=temp)
+        print(json.dumps(dict(disk_admission=retry_admission), sort_keys=True), flush=True)
+        (Path(temp) / 'publish-after-backfill-disk-admission.json').write_text(json.dumps(retry_admission, indent=2) + '\n')
+        if retry_admission['status'] != 'admitted':
+            return 2
+        code = subprocess.run(watched_command(command, binding, 'publish-after-backfill', temp), cwd=ROOT).returncode
+        if code == 0 and daily_backfill_required(spec):
+            return 2
+    return code
 
 
 if __name__ == '__main__':

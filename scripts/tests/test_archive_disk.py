@@ -65,9 +65,10 @@ def test_budget_carries_to_descendants_that_keep_resource_pins(tmp_path, monkeyp
         git('add', '-A'); git('commit', '-qm', path)
         return git('rev-parse', 'HEAD')
     git('init', '-q')
-    measured = commit('uv.lock', 'v1')
+    measured = commit('model/docspec-runtime-pin.json', 'v1')
     ticket = commit('.tickets/t.md', 'note')
     lock = commit('uv.lock', 'v2')
+    pin = commit('model/docspec-runtime-pin.json', 'v2')
     git('checkout', '-q', '-b', 'side', measured)
     side = commit('docs/x.md', 'side')
     monkeypatch.setattr(disk.shutil, 'disk_usage', lambda _: SimpleNamespace(free=60))
@@ -75,13 +76,59 @@ def test_budget_carries_to_descendants_that_keep_resource_pins(tmp_path, monkeyp
     roots = dict(work=tmp_path)
     result = disk.admit(path, 'fixture', roots, commit=ticket, floor=20, root=repo)
     assert result['status'] == 'admitted' and result['budget_revision'] == measured
+    assert disk.admit(path, 'fixture', roots, commit=lock, floor=20, root=repo)['status'] == 'admitted'
     assert disk.admit(path, 'fixture', roots, commit=side, floor=20, root=repo)['status'] == 'admitted'
     with pytest.raises(ValueError, match='revision differs'):
-        disk.admit(path, 'fixture', roots, commit=lock, floor=20, root=repo)
+        disk.admit(path, 'fixture', roots, commit=pin, floor=20, root=repo)
     with pytest.raises(ValueError, match='revision differs'):  # no checkout to compare
         disk.admit(path, 'fixture', roots, commit=ticket, floor=20)
     with pytest.raises(ValueError, match='revision differs'):  # not a descendant
         disk.admit(budget(tmp_path, revision=ticket), 'fixture', roots, commit=side, floor=20, root=repo)
+
+
+def test_hosted_github_actions_admits_from_live_disk_without_budget_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(disk.shutil, 'disk_usage', lambda _: SimpleNamespace(free=30 * 2**30))
+    admitted = disk.job_admission(
+        ROOT, 'publish', ROOT / 'model/jobs/publish.json',
+        temp=tmp_path / 'temp', env={'GITHUB_ACTIONS': 'true'}, commit='a' * 40,
+    )
+    assert admitted['status'] == 'admitted'
+    assert admitted['mode'] == 'hosted-ephemeral'
+    assert admitted['filesystems'][0]['required_bytes'] == 25 * 2**30
+
+    monkeypatch.setattr(disk.shutil, 'disk_usage', lambda _: SimpleNamespace(free=24 * 2**30))
+    refused = disk.job_admission(
+        ROOT, 'publish', ROOT / 'model/jobs/publish.json',
+        temp=tmp_path / 'temp', env={'GITHUB_ACTIONS': 'true'}, commit='a' * 40,
+    )
+    assert refused['status'] == 'refused'
+    assert refused['mode'] == 'hosted-ephemeral'
+
+    # Distinct st_dev filesystems (e.g., python_temp on another mount) are each checked.
+    py_temp = tmp_path / 'python-temp'
+    monkeypatch.setattr(disk.tempfile, 'gettempdir', lambda: str(py_temp))
+    class Probe:
+        def __init__(self, path): self.second = Path(path) == py_temp
+        def stat(self): return SimpleNamespace(st_dev=2 if self.second else 1)
+    monkeypatch.setattr(disk, 'existing_parent', lambda path: Probe(path))
+    monkeypatch.setattr(
+        disk.shutil, 'disk_usage',
+        lambda probe: SimpleNamespace(free=24 * 2**30 if probe.second else 30 * 2**30),
+    )
+    split = disk.job_admission(
+        ROOT, 'publish', ROOT / 'model/jobs/publish.json',
+        temp=tmp_path / 'temp', env={'GITHUB_ACTIONS': 'true'}, commit='a' * 40,
+    )
+    assert split['status'] == 'refused' and len(split['filesystems']) == 2
+
+    # Explicit ARCHIVE_DISK_BUDGETS still overrides hosted live mode.
+    override = disk.job_admission(
+        ROOT, 'publish', ROOT / 'model/jobs/publish.json',
+        temp=tmp_path / 'temp',
+        env={'GITHUB_ACTIONS': 'true', 'ARCHIVE_DISK_BUDGETS': str(tmp_path / 'missing.json')},
+        commit='a' * 40,
+    )
+    assert override['status'] == 'refused' and 'unavailable' in override['reason'].lower()
 
 
 def test_missing_operation_or_writing_root_refuses(tmp_path):

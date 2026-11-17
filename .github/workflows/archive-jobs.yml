@@ -1,10 +1,15 @@
 name: Archive publish, backfill and maintenance
 
-# The nightly publish runs on the owner's Mac (scripts/nightly_publish.py, owner decision
-# 2026-11-04); a hosted publish is a manual dispatch only, so the two never write together.
+# Nightly publication runs automatically in GitHub Actions when "Capture archive sources"
+# completes on main (serialized by raw-source-mirror; pause via vars.ARCHIVE_NIGHTLY_DISABLED == 'true'),
+# and via workflow_dispatch.
 # The weekly maintenance schedule is off until the hosted job has a measured disk budget for
 # `maintenance` (ct-fskn): every scheduled run was refused before doing any work.
 on:
+  workflow_run:
+    workflows: ["Capture archive sources"]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       operation:
@@ -25,7 +30,15 @@ concurrency:
 
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.operation == 'publish'
+    if: >-
+      github.ref == 'refs/heads/main' && (
+        (github.event_name == 'workflow_dispatch' && inputs.operation == 'publish') ||
+        (github.event_name == 'workflow_run' &&
+         github.event.workflow_run.head_branch == 'main' &&
+         github.event.workflow_run.conclusion != 'cancelled' &&
+         github.event.workflow_run.conclusion != 'skipped' &&
+         vars.ARCHIVE_NIGHTLY_DISABLED != 'true')
+      )
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     environment: archive-publish
@@ -36,8 +49,6 @@ jobs:
           persist-credentials: false
           fetch-depth: 0  # gate 5 checks each producing commit is reachable from HEAD
       - uses: ./.github/actions/setup-python-project
-      - name: Install the locked corpus text preparation runtime
-        run: uv sync --frozen --python 3.12.13 --project apps/explorer_mcp
       - name: Admit the model binding before runtime or storage access
         id: publisher_binding
         run: .venv/bin/python -I .github/scripts/run-archive-job.py publish --check-binding --github-output "$GITHUB_OUTPUT"
@@ -80,6 +91,16 @@ jobs:
             ${{ steps.publisher_binding.outputs.publisher_work }}/outgoing-pointer.response.json
             ${{ steps.publisher_binding.outputs.publisher_work }}/contract.json
             ${{ steps.publisher_binding.outputs.publisher_work }}/canary.json
+            ${{ steps.publisher_binding.outputs.publisher_work }}/completed-model.json
+            ${{ steps.publisher_binding.outputs.publisher_work }}/model-intent.json
+            ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/release-gate.json
+            ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/automatic/automatic-trace.json
+            ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/meeting-updates.*
+            output/archive-daily/daily-summary.json
+            output/archive-release/manifest.json
+            ${{ runner.temp }}/*-disk-admission.json
+            ${{ runner.temp }}/*-watchdog.json
+            ${{ runner.temp }}/*-watchdog.timeline.jsonl
 
   backfill:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.operation == 'backfill'

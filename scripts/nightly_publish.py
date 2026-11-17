@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Run the committed archive publish once on this Mac, from a clean checkout of origin/main.
 
-The nightly publish runs here on a launchd schedule, not on a hosted runner (owner decision
-2026-11-04, ct-ud0b). Each run updates one dedicated detached worktree to origin/main and
+Scheduled nightly publication moved to GitHub Actions (`.github/workflows/archive-jobs.yml`).
+This wrapper remains available for manual local fallback runs (and `--uninstall` removes the
+legacy Mac launchd agents so this machine cannot race hosted CI). Each run updates one dedicated detached worktree to origin/main and
 re-executes that worktree's copy of this script, so the code that publishes is always a pushed
 commit (gate 5) in a tree with no other work. It then prepares what the hosted job's setup steps
 prepare and runs `.github/scripts/run-archive-job.py publish` under its watchdog, with this
@@ -18,10 +19,11 @@ or refusal. Completed and superseded candidates leave their evidence in the run 
 A directory ending in `-retiring` contains detached work from an interrupted archive or cleanup.
 It stays outside automatic reuse. An operator can reclaim it after confirming its evidence is retained.
 
+    python3 scripts/nightly_publish.py --uninstall      # boot out and remove local launchd agents
     python3 scripts/nightly_publish.py --install        # write and load the launchd agent
     python3 scripts/nightly_publish.py --install-watch  # write and load the durable post-run watch agent
     python3 scripts/nightly_publish.py --status         # check durable status/freshness (exit 1 on failed/stale)
-    python3 scripts/nightly_publish.py                  # one run now (what launchd calls)
+    python3 scripts/nightly_publish.py                  # one run now (manual fallback)
 """
 import argparse
 import datetime
@@ -760,9 +762,26 @@ def install_watch(main, hour, minute, max_age_hours=DEFAULT_MAX_AGE_HOURS):
     return 0
 
 
+def uninstall():
+    """Boot out and remove local launchd agents so this Mac cannot race hosted CI."""
+    domain = f'gui/{os.getuid()}'
+    removed = []
+    agents_dir = Path.home() / 'Library/LaunchAgents'
+    for label in (LABEL, WATCH_LABEL):
+        subprocess.run(['launchctl', 'bootout', f'{domain}/{label}'], stderr=subprocess.DEVNULL)
+        plist = agents_dir / f'{label}.plist'
+        if plist.exists() or plist.is_symlink():
+            plist.unlink()
+            removed.append(str(plist))
+    print(json.dumps(dict(uninstalled=removed, labels=[LABEL, WATCH_LABEL]), sort_keys=True))
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--install', action='store_true', help='Write and load the launchd agent, then exit')
+    parser.add_argument('--uninstall', action='store_true',
+                        help='Boot out and remove local launchd nightly agents, then exit')
     parser.add_argument('--install-watch', action='store_true',
                         help='Write and load the durable launchd post-run watcher agent, then exit')
     parser.add_argument('--status', action='store_true',
@@ -779,6 +798,8 @@ def main(argv=None):
     parser.add_argument('--in-worktree', action='store_true', help=argparse.SUPPRESS)
     parser.add_argument('--lock-fd', type=int, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
+    if args.uninstall:
+        return uninstall()
     here = Path(__file__).resolve().parents[1]
     main_root = main_checkout(here)
     if args.install:
