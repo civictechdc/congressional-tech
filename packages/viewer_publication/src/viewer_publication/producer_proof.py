@@ -284,7 +284,8 @@ def _import_reasons(name, record, model, mapping_current, root, *, label, versio
 
 
 def _chain_reasons(name, record, model, mapping_current, root, ledger, *, label):
-    """A daily record's bases, back to a checked-in anchor or the table's first snapshot.
+    """A daily record's bases, back to a checked-in anchor, the table's first snapshot, or a
+    snapshot another registered producer wrote.
 
     Each link: the base is the same table, an ancestor of the head reached by appends only
     (the head's Iceberg metadata), and its record is the one pinned by hash. Older links
@@ -323,11 +324,17 @@ def _chain_reasons(name, record, model, mapping_current, root, ledger, *, label)
                 return [f'producer proof: {link}: an import record in the chain must be checked in beside the publish spec']
             return (_record_reasons(name, prior, model, mapping_current, root, label=link, versions=False)
                     or _import_reasons(name, prior, model, mapping_current, root, label=link, versions=False))
+        # A base another registered producer wrote (a capture stage, a backfill) ends the chain:
+        # snapshot_reasons accepts that record for its own snapshot and asks it for no base.
+        # Refusing it here stopped the first nightly after a reviewed capture integration (run
+        # 44087092120: daily.py at 8017288381133952975 on captures_ingest.py at 5877413658015059876,
+        # the snapshot the live release was published from). Like every link, it is not
+        # version-checked: its rows' versions are the row rule's concern.
         found_reasons = _record_reasons(name, prior, model, mapping_current, root, label=link, versions=False)
-        if found_reasons:
+        if not found_reasons and prior.get('input') != name:
+            found_reasons = [f'producer proof: {link}: the base record names another table']
+        if found_reasons or prior.get('job') != DAILY:
             return found_reasons
-        if prior.get('job') != DAILY:
-            return [f'producer proof: {link}: only daily records chain to a base']
         current = prior
 
 

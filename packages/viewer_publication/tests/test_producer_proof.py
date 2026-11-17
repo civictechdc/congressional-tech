@@ -179,6 +179,32 @@ def test_a_broken_daily_chain_refuses(tmp_path, lineage, change, rule):
     assert len(reasons) == 1 and __import__('re').search(rule, reasons[0])
 
 
+@pytest.mark.parametrize('change,rule', [
+    (None, None),
+    (lambda r: r.update(job='scripts/one_off_fix.py'), "base 2: job 'scripts/one_off_fix.py' is not a producer registered for this table"),
+    (lambda r: r.update(commit='0' * 40), 'base 2: producing commit 000000000000 is not reachable from HEAD'),
+    (lambda r: r.update(commit=None), 'base 2: the producer record has no full commit'),
+    (lambda r: r.update(input='readings'), 'base 2: the base record names another table'),
+])
+def test_a_daily_append_on_a_snapshot_another_registered_producer_wrote_ends_its_chain_there(tmp_path, change, rule):
+    """Run 44087092120: the nightly appended onto a reviewed capture-stage append. That stage record
+    is what the gate accepts at the head, so it is what the chain ends on, checked the same way."""
+    from congress_api.lake.producer_records import ProducerRecords
+    from viewer_publication.producer_proof import BACKFILL, snapshot_reasons
+    model, _, head_record = daily_chain(tmp_path, APPENDS)
+    pin = head_record['base']['selector']
+    staged = dict(version=1, input='meeting_records', selector=pin, job=BACKFILL, commit=head())  # names no base
+    if change is not None:
+        change(staged)
+    ledger = ProducerRecords({}, root=tmp_path / 'staged-ledger')
+    record = dict(head_record, base=dict(selector=pin, record=ledger.write(staged)))
+    reasons = snapshot_reasons(model, {'meeting_records': record}, ledger=ledger)
+    assert reasons == ([] if rule is None else [f'producer proof: meeting_records {rule}'])
+    # The same record at the head refuses in the same cases.
+    at_head = snapshot_reasons(dict(model, meeting_records=pin), {'meeting_records': staged}, ledger=ledger)
+    assert bool(at_head) == bool(reasons)
+
+
 def test_an_import_in_the_chain_must_be_checked_in_and_the_chain_needs_its_store(tmp_path):
     from viewer_publication.producer_proof import snapshot_reasons
     model, ledger, record = daily_chain(tmp_path, APPENDS, anchor_in_store=True)
