@@ -373,6 +373,18 @@ The retained receipt directory is
 This bounded equivalence decision reuses earlier manual source reviews; it
 does not certify unread corpus content or trigger recomputation.
 
+The 2026-11-17 Tesseract backport pins `spicy-docs==0.85.0+cttesseract.20261117`
+(wheel SHA-256 `ec4ebb122a7b8eb0075747f121a2e7c78a41260c3c35dcf129ad0b518f790e44`).
+The wheel adds the upstream recognizer and appends its import to `ocr.py`; all
+other existing package members match the previous wheel byte for byte. CT keeps
+its model-directory default and uses the upstream import path. On one retained
+PDF page the old and shared backends produced the same model and library identity,
+text, detections, boxes, and confidence. The PDF, HTML, XML, and House feed fixed
+fixtures also matched. The maintainer retains their existing reading versions;
+this bounded decision does not establish equivalence for every OCR input or
+authorize selection of new results. The wheel receipt is in `vendor/` and the
+comparison is under `.cache/archive-release/ticket-fixes-20261117/pdf/`.
+
 The 2026-11-16 opt-in CMS selection and PDF recovery policies also retain all
 default reading versions. `markup_text` routes `select_publisher_content` to
 `congressional-cms-main-content/001` only when explicitly requested, and

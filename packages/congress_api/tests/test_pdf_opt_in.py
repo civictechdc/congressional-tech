@@ -51,7 +51,9 @@ def test_tesseract_backend_identity_and_selective_scan_ocr():
             "Submitted for the Hearing Record on March 18, 2024.",
         ]
     )
-    reading = body_text.pdf_text(pdf_bytes, strategy=tesseract_300dpi(), page_deadline_seconds=30)
+    rule = tesseract_300dpi()
+    assert rule.checkpoint_identity['backend_implementation'] == 'spicy-docs-0.85.0+cttesseract.20261117'
+    reading = body_text.pdf_text(pdf_bytes, strategy=rule, page_deadline_seconds=30)
     assert reading.status == "completed"
     assert reading.ocr_pages == (1,)
     assert "COMMITTEE ON ENERGY AND COMMERCE" in reading.text.upper()
@@ -79,6 +81,33 @@ def test_adaptive_max_pixels_reads_oversized_page_box_without_exceeding_pixel_ce
     assert reading.status == "completed"
     assert reading.ocr_pages == (1,)
     assert "DISCLOSURE" in reading.text.upper()
+
+
+@pytest.mark.parametrize("adaptive", [False, True])
+def test_oversized_page_refuses_before_pixmap_allocation(adaptive):
+    from congress_api.parsers.pdf_opt_in import _OptInPDFPage
+
+    class Page:
+        rect = pymupdf.Rect(0, 0, 10_000, 10_000)
+        cropbox = mediabox = rect
+        rotation = 0
+
+        def get_pixmap(self, **kwargs):
+            pytest.fail("oversized raster must not be allocated")
+
+    reader = OptInPdfReader(dpi=200, max_pixels=20_000_000, adaptive_max_pixels=adaptive)
+    with pytest.raises(ExtractionError, match="max_pixels"):
+        _OptInPDFPage(Page(), 1, reader, {}).render()
+
+    # Exercise real PyMuPDF geometry without allocating its oversized raster.
+    document = pymupdf.open()
+    document.new_page(width=10_000, height=10_000)
+    try:
+        with reader.open(document.tobytes(), "application/pdf") as opened:
+            with pytest.raises(ExtractionError, match="max_pixels"):
+                opened.page(1).render()
+    finally:
+        document.close()
 
 
 def test_native_inhibit_spaces_opt_in_rule_preserves_native_prose():
