@@ -189,6 +189,57 @@ def test_frozen_receipt_reconciles_lost_ack_and_reuses_exact_bytes(tmp_path, has
     assert json.loads((frozen/'receipt.json').read_bytes()) == dict(key=key, sha256=hashlib.sha256(first).hexdigest())
 
 
+@pytest.mark.parametrize('lands_after,retry_fails,stored', [
+    (2, False, True),      # the first attempt settles while we wait: no second create
+    (None, False, True),   # it never lands: the one retry creates it
+    (None, True, False),   # the retry fails too and nothing is stored: the original error stands
+])
+def test_an_unacknowledged_receipt_create_is_looked_for_as_it_settles_then_retried_once(tmp_path, monkeypatch, lands_after, retry_fails, stored):
+    """Capture 44132068232: R2 refused the create as a concurrent request for the same object
+    while an earlier attempt was still settling, and one immediate look was too early."""
+    from congress_api.models.raw_fetch import FetchResult
+    from congress_api.retention import receipt_writer
+    from congress_api.retention.receipt_writer import ReceiptWriter
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    waits, creates = [], []
+    class Settling(LocalAdapter):
+        """The first receipt create raises; its object appears only after `lands_after` looks."""
+        pending = None
+        def create(self, key, source, **facts):
+            if not key.startswith('receipts/'):
+                return super().create(key, source, **facts)
+            creates.append(key)
+            if len(creates) == 1:
+                data = source.read() if hasattr(source, 'read') else Path(source).read_bytes()
+                if hasattr(source, 'seek'):
+                    source.seek(0)
+                type(self).pending = (key, data)
+                raise OSError('503 Reduce your concurrent request rate for the same object')
+            if retry_fails:
+                raise OSError('503 again')
+            return super().create(key, source, **facts)
+        def head(self, key):
+            if lands_after is not None and self.pending and len(waits) > lands_after:
+                target = self.root / self.pending[0]
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(self.pending[1])
+            return super().head(key)
+    monkeypatch.setattr(receipt_writer.time, 'sleep', waits.append)
+    writer = ReceiptWriter(BodyStore(Settling(tmp_path / 'raw')), identity=WRITER, run_id='run', write_date='2026-10-27', archive_limits=None)
+    options = dict(family='documents', operation_id='op1', freeze_dir=tmp_path / 'frozen')
+    if not stored:
+        with pytest.raises(OSError, match='Reduce your concurrent request rate'):
+            writer.write(FetchResult(attempt(tmp_path)), **options)
+        assert waits == list(ReceiptWriter.SETTLE_SECONDS) and len(creates) == 2
+        return
+    key, line = writer.write(FetchResult(attempt(tmp_path)), **options)
+    assert (tmp_path / 'raw' / key).read_bytes() == (tmp_path / 'frozen/op1/receipt.gz').read_bytes()
+    if lands_after is not None:
+        assert len(creates) == 1 and waits == list(ReceiptWriter.SETTLE_SECONDS[:lands_after + 1])
+    else:
+        assert len(creates) == 2 and waits == list(ReceiptWriter.SETTLE_SECONDS)
+
+
 @pytest.mark.parametrize('has_metadata', [True, False], ids=['pinned', 'gzip-only'])
 def test_frozen_receipt_refuses_a_nested_local_path_before_adapter_io(tmp_path, has_metadata):
     from unittest.mock import Mock

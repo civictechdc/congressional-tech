@@ -855,3 +855,36 @@ def test_target_schema_mismatch_refuses_before_any_producer_record_write_or_body
     assert effects == []
     assert not ledger.exists() or list(ledger.rglob('*')) == []
 
+
+
+@pytest.mark.parametrize('stored,passes', [('same', True), ('nothing', False), ('other', False)])
+def test_an_unacknowledged_producer_record_write_is_looked_for_before_it_fails(stored, passes):
+    """Run 44087092120: the record's PUT timed out after the table had moved. The record is
+    create-once with known bytes, so a lost response is checked against the store, not assumed lost."""
+    from io import BytesIO
+    from congress_api.lake.producer_records import ProducerRecords, encode, key_for
+    record = dict(version=1, input='captures', job='packages/congress_api/src/congress_api/lake/daily.py', commit='a' * 40,
+                  selector=dict(kind='native_table', table_uuid='abcdef01', snapshot=7, schema_id=0, metadata_location='s3://b/m.json'))
+    data, key = encode(record), key_for(record['selector'])
+
+    class Missing(Exception):
+        response = {'Error': {'Code': 'NoSuchKey'}}
+
+    class Client:
+        puts = 0
+        def put_object(self, **request):
+            self.puts += 1
+            assert request['Key'] == key and request['IfNoneMatch'] == '*'
+            raise TimeoutError('Read timeout on endpoint URL')
+        def get_object(self, *, Bucket, Key):
+            if stored == 'nothing':
+                raise Missing()
+            return dict(Body=BytesIO(data if stored == 'same' else b'{"another": "record"}'), ETag='"e"')
+
+    client = Client()
+    ledger = ProducerRecords({}, client=client, bucket='raw')
+    if passes:
+        assert ledger.write(record)['key'] == key and client.puts == 1
+    else:
+        with pytest.raises(TimeoutError, match='Read timeout'):
+            ledger.write(record)
