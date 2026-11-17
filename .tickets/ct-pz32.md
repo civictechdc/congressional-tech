@@ -56,3 +56,15 @@ First schedule-triggered night (capture 44080162359 at 12:07Z, publish 440870921
 - The tripwires now scale with the night's new receipts (5 rows a receipt per group, 15 per file, at most 2,500 receipts a night, 2% of a file), verified removals outside the document tables are capped at 0.25%, and every refusal is reported together. All three real gate reports are fixtures; the third is stopped only by the link rule and two single unverified removals.
 
 Open, for the owner (ct-hs34 has the CI side): a page captured again at the same address changes its link key whenever its sidebar changes, and each one needs a named correction today. A standing rule could prove these from receipts (same address, HTTP 200, receipt new to the release, title unchanged). Single unverified entity removals (a person key gone ambiguous, a recording match replaced) also stop a night.
+
+**2026-11-17T15:20:00Z**
+
+Release 2ec7ae83a852 went live at 15:08Z from the first schedule-triggered night (run 44087092120, fourth attempt, hand-recorded). No night has yet published without a signed record.
+
+A blind review (`.cache/archive-release/reviews/greybeard-ci-20261117/REVIEW.md`) found the effort was fitting the gate to the night being judged and running production on unvalidated commits. Owner decisions the same hour:
+- a page captured again at its own address under an unchanged title moves its links without a person, proven from the raw receipt (`data_only_night.recaptured_pages`; replayed on the real night: all three findings proven, a receipt already live refuses);
+- an unverified removal keeps stopping the night;
+- capture, publish, backfill and maintenance check out the newest commit of main whose push validation passed, and changes reach main through pull requests;
+- a pull request now says whether it changes the model definition (`.github/scripts/definition-change.py`), which is the merge-time signal for a code-caused stop. A data-caused stop cannot be rehearsed before the night's data exists.
+
+Still open with the owner: a night after a stopped night carries two nights of receipts and exceeds `NIGHT_RECEIPTS`, so one stop forces a second signed night. Also found: the fetch queue held a case variant of an address already saved (`EventSingle.aspx` beside `eventsingle.aspx`), so the capture fetched the same page again; that is what produced tonight's recapture.

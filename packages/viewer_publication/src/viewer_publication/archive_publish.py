@@ -557,14 +557,20 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             def automatic(report):
                 # The traced proof decides every night it can read; a night that also changed existing
                 # rows goes to the data-only rule (ct-pz32). See data_only_night.unattended_causes.
-                from viewer_publication.data_only_night import data_only_causes,unattended_causes
+                from viewer_publication.data_only_night import data_only_causes,recaptured_pages,unattended_causes
+                from viewer_publication.release_gate import capture_job
                 found,stopped,facts=unattended_causes(report,
                     traced=lambda value:automatic_causes(value,base_release,Path(release),engine=engine,
                         captures=automatic_captures,live_receipt_keys=held,read_receipt=read_receipt,work=Path(work)/'automatic',
                         candidate_receipt_keys=receipt_keys,evidence_dir=Path(result_pin['path']).parent/'evidence'),
                     data_only=lambda value:data_only_causes(value,candidate_record=input_record,live_records=entries,
-                        candidate_receipt_keys=receipt_keys,base_dir=base_release,candidate_dir=Path(release)))
+                        candidate_receipt_keys=receipt_keys,base_dir=base_release,candidate_dir=Path(release),
+                        # A page captured again at its own address is proven from the raw receipt that stored it.
+                        link_proof=lambda rule:recaptured_pages(rule,base_release,Path(release),held=held,read_receipt=read_receipt,
+                            trace=lambda keys:capture_job(Path(work)/'recaptures',engine,automatic_captures,keys=keys)['trace'])))
                 if facts is None:return found,stopped
+                # The gate's own verdict reads these as it reads the model's published corrections.
+                report['link_rule']['proven_corrections']=[*report['link_rule'].get('proven_corrections',[]),*facts['proven_corrections']]
                 evidence=Path(work)/'data-only-night.json'
                 write_atomic_bytes(evidence,(json.dumps(facts,indent=1)+'\n').encode())
                 from congress_api.retention.provenance import file_pin

@@ -118,6 +118,15 @@ jobs:
           artifact: ${{ vars.DOCSPEC_RUNTIME_ARTIFACT }}
           credentials: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
           account-id: "174055408ff1560e60601c4d12c561c4"
+      # A smoke signal at review time: a change to the model definition stops the next nightly at
+      # gate 1 for a cause record. Never fails the job.
+      - name: Say whether this pull request changes the nightly's model definition
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags --depth 1 origin "$BASE_SHA"
+          python -I .github/scripts/definition-change.py --base "$BASE_SHA"
       - name: Test active experiment fixtures and historical PDF worker
         run: python scripts/dev.py test active-experiment-regression
       - name: Build the native loopback transport
