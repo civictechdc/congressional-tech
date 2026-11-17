@@ -65,6 +65,7 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: apps/site/dist
+          include-hidden-files: false  # v3 shipped dotfiles; the site publishes none
 
   deploy:
     needs: build
