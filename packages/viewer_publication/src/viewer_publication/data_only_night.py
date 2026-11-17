@@ -12,14 +12,21 @@ This rule decides only a night the traced addition proof (`release_gate.automati
 read, one with a changed or removed row. That proof stops on such a night before any check, so
 nothing here stands in for a check that ran and refused. An additions-only night stays with it.
 
-The caps are tripwires, not proof. They stop a night that moved more than a capture night moves,
-which is how a publisher serving wrong pages, or the right code reading the wrong table, would
-look. Measured on the two capture nights with gate reports (2026-11-13 into 4b9a7bd126cc and
-2026-11-17 into c998ffa0766f; 2,000 requests each): the largest group added or changed 2,921 rows
-and 0.60% of its file; one file's groups summed to 6,792 rows; the only removals were url_state's
-queue at 0.056%; and outside that queue the most a column lost was 0.39% of its values. The
-candidate that lost every html_metadata reading (08c465599d7b, 2026-11-16) emptied whole columns
-of 2,561 to 12,587 values, which the column tripwire stops at any size.
+The caps are tripwires, not proof. They stop a night that moved more than its new receipts can
+explain, which is how a publisher serving wrong pages, or the right code reading the wrong table,
+would look. A night is bounded by the capture's request budget (2,000), so the caps scale with the
+receipts new to the release. Measured on three capture nights with gate reports:
+
+    night (candidate)            new receipts   largest group     largest file total
+    2026-11-13 (4b9a7bd126cc)    about 1,027    2,921 (2.8 each)   6,804 (6.6 each)
+    2026-11-17 (c998ffa0766f)    1,173          2,468 (2.1 each)   4,945 (4.2 each)
+    2026-11-17 (2ec7ae83a852)    1,775          6,489 (3.7 each)  18,481 (10.4 each)
+
+The only unverified removals were the fetch queue's, at most 0.056% of it; the third night also
+re-keyed six people, which the comparison verified. Outside the queue the most a column lost was
+0.39% of its values. The candidate that lost every html_metadata reading (08c465599d7b,
+2026-11-16) emptied whole columns of 2,561 to 12,587 values, which the column tripwire stops at
+any size, and came from a 40,257-receipt backlog, which is not a night.
 
 Cannot see: wrong but non-null content served at an ordinary volume, such as an error page's
 title on a few thousand re-fetched documents (the archive records what was published); a column
@@ -32,10 +39,11 @@ checks, and the contract and canary gates run as on any night.
 """
 from pathlib import Path
 
-GROUP_SHARE, GROUP_FLOOR, GROUP_ROWS = 0.02, 50, 5_000
-FILE_ROWS = 10_000
-REMOVED_ROWS = 5
-QUEUE_REMOVAL_SHARE = 0.0025
+NIGHT_RECEIPTS = 2_500              # the 2,000-request capture budget and the weekly refresh; more is a backlog
+GROUP_SHARE, GROUP_FLOOR = 0.02, 50
+GROUP_ROWS_PER_RECEIPT, FILE_ROWS_PER_RECEIPT = 5, 15
+REMOVAL_SHARE = 0.0025
+DOCUMENT_FILES, REMOVED_DOCUMENTS = {'detail.parquet', 'list.parquet', 'links.parquet'}, 5
 COLUMN_LOSS_SHARE, COLUMN_LOSS_FLOOR = 0.05, 50
 # The fetch queue's own columns turn over by design: a queued address that is fetched leaves
 # with its whole linked_from list (5.8% of that column's values on 2026-11-17 in run 44065807228,
@@ -81,7 +89,7 @@ def _input_reasons(candidate, live_records):
                         if candidate[name] != record[name])]
 
 
-def _group_reasons(report):
+def _group_reasons(report, new_receipts):
     """Every difference a data night may not carry, then every cap it passes.
 
     All of the comparison's groups but the re-fetch ones are read, verified or not: a verified
@@ -99,17 +107,20 @@ def _group_reasons(report):
                 reasons.append(f'data-only night: {name} ({count}) is not a difference new receipts alone explain; '
                                'it needs a cause record')
             elif count < 0:
-                cap = int(base * QUEUE_REMOVAL_SHARE) if file == QUEUE_FILE else REMOVED_ROWS
+                cap = REMOVED_DOCUMENTS if file in DOCUMENT_FILES else max(GROUP_FLOOR, int(base * REMOVAL_SHARE))
                 if -count > cap:
                     reasons.append(f'data-only night: {name} ({count}) removes more than the {cap} rows one unattended night may')
             else:
-                cap = min(GROUP_ROWS, max(GROUP_FLOOR, int(base * GROUP_SHARE)))
+                cap = max(GROUP_FLOOR, min(int(base * GROUP_SHARE), GROUP_ROWS_PER_RECEIPT * new_receipts))
                 if count > cap:
-                    reasons.append(f'data-only night: {name} ({count}) is more than the {cap} rows one unattended night '
-                                   f'may add or change (the lesser of {GROUP_ROWS} and {GROUP_SHARE:.0%} of {base})')
+                    reasons.append(f'data-only night: {name} ({count}) is more than the {cap} rows this night may add or change '
+                                   f'(the lesser of {GROUP_SHARE:.0%} of {base} and {GROUP_ROWS_PER_RECEIPT} for each of its '
+                                   f'{new_receipts} new receipts)')
             totals[file] = totals.get(file, 0) + abs(count)
-    return reasons + [f'data-only night: {file} moves {total} rows across its groups, more than the {FILE_ROWS} one '
-                      'unattended night may' for file, total in sorted(totals.items()) if total > FILE_ROWS]
+    allowed = max(GROUP_FLOOR, FILE_ROWS_PER_RECEIPT * new_receipts)
+    return reasons + [f'data-only night: {file} moves {total} rows across its groups, more than the {allowed} this night may '
+                      f'({FILE_ROWS_PER_RECEIPT} for each of its {new_receipts} new receipts)'
+                      for file, total in sorted(totals.items()) if total > allowed]
 
 
 def column_values(release):
@@ -156,8 +167,6 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
     """
     from congress_api.lake.versions import version_digest
     from viewer_publication.release_gate import group_id
-    if not report['link_rule']['ok']:
-        return [], ['data-only night: the link rule failed'], {}
     # The same receipt set the traced proof calls live: every key any kept input of the release read.
     held = {key for entry in live_records for key in entry['receipt_keys']}
     if not held:
@@ -167,13 +176,16 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
                    for name in SAME_INPUTS)]
     candidate = set(candidate_receipt_keys)
     new, groups = candidate - held, report['failing']
-    reasons = [] if same else _input_reasons(candidate_record, live_records)
+    reasons = [] if report['link_rule']['ok'] else ['data-only night: the link rule failed']
+    reasons += [] if same else _input_reasons(candidate_record, live_records)
     if held - candidate:
         reasons.append(f'data-only night: {len(held - candidate)} receipts the live release read are absent from the '
                        f'candidate (first {sorted(held - candidate)[:3]})')
     if not new:
         reasons.append('data-only night: the candidate read no receipt the live release did not, so nothing explains a difference')
-    reasons += _group_reasons(report)
+    if len(new) > NIGHT_RECEIPTS:
+        reasons.append(f'data-only night: {len(new)} receipts are new to the release, more than the {NIGHT_RECEIPTS} one night brings')
+    reasons += _group_reasons(report, min(len(new), NIGHT_RECEIPTS))
     lost, columns = _column_reasons(base_dir, candidate_dir)
     reasons += lost
     if reasons:
@@ -181,8 +193,9 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
     facts = dict(version=1, profile_sha256=version_digest(packages={}, files={}, values=candidate_record['profile']),
                  live_input=same[-1]['key'], live_receipts=len(held), new_receipts=len(new), new_receipt_keys=sorted(new),
                  groups=len(groups), columns_compared=columns,
-                 caps=dict(group_share=GROUP_SHARE, group_floor=GROUP_FLOOR, group_rows=GROUP_ROWS, file_rows=FILE_ROWS,
-                           removed_rows=REMOVED_ROWS, queue_removal_share=QUEUE_REMOVAL_SHARE,
+                 caps=dict(night_receipts=NIGHT_RECEIPTS, group_share=GROUP_SHARE, group_floor=GROUP_FLOOR,
+                           group_rows_per_receipt=GROUP_ROWS_PER_RECEIPT, file_rows_per_receipt=FILE_ROWS_PER_RECEIPT,
+                           removal_share=REMOVAL_SHARE, removed_documents=REMOVED_DOCUMENTS,
                            column_loss_share=COLUMN_LOSS_SHARE, column_loss_floor=COLUMN_LOSS_FLOOR))
     return [dict(id=group_id(group), count=group['count'], disposition='explained', automatic=True,
                  cause=DATA_ONLY_CAUSE, tickets=['ct-pz32']) for group in groups], [], facts

@@ -46,3 +46,13 @@ Built and reviewed twice by independent Opus reviewers (`.cache/archive-release/
 Known limits, accepted: wrong but non-null content at ordinary volume; columns of 50 or fewer values; losses that add up across nights; a lake table rewritten at an unchanged version; no per-document link caps on this path. First Sunday (weekly pipeline-data refresh) may exceed the caps and stop for a record; tune from that report.
 
 CI hardening the same day (99d4bfcc..ba607808): pushes to main are validated, `ci-alerts.yml` opens one `ci-failure` issue per failing unattended workflow and a stale-nightly alarm, every job has a timeout and a pinned runner, Dependabot proposes action bumps weekly.
+
+**2026-11-17T15:10:00Z**
+
+First schedule-triggered night (capture 44080162359 at 12:07Z, publish 44087092120). It exposed three faults, all fixed the same day, and one real stop:
+- attempt 1: R2 read timeout writing a producer record after a long engine step. f051364a: every archive job's client evicts its pooled sockets before a call that follows 120 s of silence (`client.evict_idle_connections`), replacing the one close() after the model build.
+- attempt 2: gate 5 refused the daily append made on top of a reviewed capture-stage append (ct-z4w5 ran `captures_ingest.py` against production at about 10:20Z). 6c0e5c89: a daily chain may end on a snapshot another registered producer wrote; reviewed against the real records (`.cache/archive-release/reviews/gate5-chain-20261117/REVIEW.md`).
+- attempt 3: gate 1 stopped, correctly, on one House Transportation event page captured again at the same address with a different latest-news sidebar (its link now opens the newer capture), and on the night's size: 1,775 receipts, about 1.6 times the two nights the caps were measured on. Record 95f4e73e859d -> 2ec7ae83a852 names the correction and each exceeded tripwire (9728be78).
+- The tripwires now scale with the night's new receipts (5 rows a receipt per group, 15 per file, at most 2,500 receipts a night, 2% of a file), verified removals outside the document tables are capped at 0.25%, and every refusal is reported together. All three real gate reports are fixtures; the third is stopped only by the link rule and two single unverified removals.
+
+Open, for the owner (ct-hs34 has the CI side): a page captured again at the same address changes its link key whenever its sidebar changes, and each one needs a named correction today. A standing rule could prove these from receipts (same address, HTTP 200, receipt new to the release, title unchanged). Single unverified entity removals (a person key gone ambiguous, a recording match replaced) also stop a night.

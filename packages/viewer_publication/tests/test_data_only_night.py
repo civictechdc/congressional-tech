@@ -6,14 +6,16 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from viewer_publication.data_only_night import (COLUMN_LOSS_FLOOR, DATA_ONLY_CAUSE, FILE_ROWS, GROUP_FLOOR, GROUP_ROWS,
-                                                REMOVED_ROWS, column_values, data_only_causes, unattended_causes)
+from viewer_publication.data_only_night import (COLUMN_LOSS_FLOOR, DATA_ONLY_CAUSE, FILE_ROWS_PER_RECEIPT, GROUP_FLOOR,
+                                                GROUP_ROWS_PER_RECEIPT, NIGHT_RECEIPTS, REMOVED_DOCUMENTS, column_values,
+                                                data_only_causes, unattended_causes)
 
 PROFILE = dict(parser_versions={'html_metadata': 'c226'}, file_hashes={'model/sql/list.sql': 'a' * 64, 'model/sql/detail.sql': 'b' * 64})
 INPUTS = dict(profile=PROFILE, entity_digests={'members': 'm' * 64}, provenance=[dict(key='provenance/reviews/r.jsonl', etag='"1"')],
               unprofiled_inputs=dict(producer_versions={'captures': 'c' * 64}, job_pins={'model_spec': 's' * 64, 'daily': 'd' * 64}))
 LIVE_KEYS = ['receipts/documents/2026-11-16/a.jsonl.gz', 'receipts/house/pages/2026-11-16/b.jsonl.gz']
 NEW_KEY = 'receipts/documents/2026-11-17/c.jsonl.gz'
+NIGHT = [f'receipts/house/pages/2026-11-17/{n:04}.jsonl.gz' for n in range(1173)]   # the first measured night's size
 REAL = Path(__file__).parent / 'fixtures/data-only-night'
 ROWS = {'list.parquet': 400_000, 'detail.parquet': 300_000, 'url_state.parquet': 1_200_000, 'recoveries.parquet': 12_000,
         'channels.parquet': 100}
@@ -53,7 +55,7 @@ def releases(tmp_path):
 def decide(releases):
     base = releases('base', ['t'] * 1000, ['n'] * 200 + [None] * 800)
     same = releases('same', ['t'] * 1000, ['n'] * 200 + [None] * 800)
-    def run(value, *, record=INPUTS, records=None, keys=(*LIVE_KEYS, NEW_KEY), candidate_dir=same):
+    def run(value, *, record=INPUTS, records=None, keys=(*LIVE_KEYS, *NIGHT), candidate_dir=same):
         return data_only_causes(value, candidate_record=record, live_records=[live()] if records is None else records,
                                 candidate_receipt_keys=list(keys), base_dir=base, candidate_dir=candidate_dir)
     return run
@@ -71,7 +73,7 @@ def test_every_group_of_a_night_built_from_the_live_inputs_is_attributed_without
         ('recoveries.parquet|changed bytes, no key or value difference found|unexplained', 0)]
     assert all(e['cause'] == DATA_ONLY_CAUSE and e['disposition'] == 'explained' and e['automatic'] and e['tickets'] == ['ct-pz32']
                for e in entries)
-    assert (facts['live_receipts'], facts['new_receipt_keys'], facts['groups'], facts['columns_compared']) == (2, [NEW_KEY], 4, 3)
+    assert (facts['live_receipts'], facts['new_receipt_keys'], facts['groups'], facts['columns_compared']) == (2, NIGHT, 4, 3)
     from congress_api.lake.versions import version_digest
     assert facts['profile_sha256'] == version_digest(packages={}, files={}, values=PROFILE)
 
@@ -91,7 +93,8 @@ def test_a_changed_definition_pin_decision_or_producer_is_not_a_data_only_night(
     entries, reasons, _ = decide(report(group('list.parquet', 'changed title', 3)), record=dict(INPUTS, **change))
     assert entries == [] and reasons == [f'data-only night: the candidate differs from the live release in {names}']
     # Every refusal found is named, not only the first: here also a night over its cap.
-    assert len(decide(report(group('list.parquet', 'changed title', 9000)), record=dict(INPUTS, **change))[1]) == 2
+    stopped = decide(report(group('list.parquet', 'changed title', 9000), link_ok=False), record=dict(INPUTS, **change))[1]
+    assert len(stopped) == 3 and stopped[0] == 'data-only night: the link rule failed'
 
 
 def test_an_input_neither_side_names_cannot_be_called_equal(decide):
@@ -126,6 +129,9 @@ def test_receipts_must_only_grow_and_something_new_must_have_been_read(decide):
     assert decide(report(), keys=LIVE_KEYS)[1]
     assert decide(value, records=[live(keys=[])])[1] == ['data-only night: the live release has no receipt set to compare with']
     assert decide(report(group('list.parquet', 'changed title', 3), link_ok=False))[1] == ['data-only night: the link rule failed']
+    backlog = [f'receipts/documents/2026-11-1{n % 7}/{n}.jsonl.gz' for n in range(NIGHT_RECEIPTS + 1)]
+    assert decide(value, keys=[*LIVE_KEYS, *backlog])[1] == [
+        f'data-only night: {NIGHT_RECEIPTS + 1} receipts are new to the release, more than the {NIGHT_RECEIPTS} one night brings']
 
 
 @pytest.mark.parametrize('planted', [
@@ -144,24 +150,29 @@ def test_only_the_shapes_a_capture_night_makes_are_explained_and_the_rest_wait_f
     assert planted['group'] in reasons[0]
 
 
-@pytest.mark.parametrize('file,name,count,status,passes', [
-    ('list.parquet', 'added rows', GROUP_ROWS, 'unverified', True), ('list.parquet', 'added rows', GROUP_ROWS + 1, 'unverified', False),  # 2% is 8,000: the row cap binds
-    ('recoveries.parquet', 'added keys', 240, 'unverified', True), ('recoveries.parquet', 'added keys', 241, 'unverified', False),      # 2% of 12,000
-    ('channels.parquet', 'added keys', GROUP_FLOOR, 'unverified', True), ('channels.parquet', 'added keys', GROUP_FLOOR + 1, 'unverified', False),
+@pytest.mark.parametrize('file,name,count,status,new,passes', [
+    # Five rows for each new receipt: a night of 1,173 may move 5,865 in one group, a night of 400 only 2,000.
+    ('url_state.parquet', 'added URLs', 5865, 'unverified', 1173, True), ('url_state.parquet', 'added URLs', 5866, 'unverified', 1173, False),
+    ('url_state.parquet', 'added URLs', 2000, 'unverified', 400, True), ('url_state.parquet', 'added URLs', 2001, 'unverified', 400, False),
+    # Never more than 2% of the file, however many receipts: 240 of recoveries' 12,000 rows.
+    ('recoveries.parquet', 'added keys', 240, 'unverified', 1173, True), ('recoveries.parquet', 'added keys', 241, 'unverified', 1173, False),
+    ('channels.parquet', 'added keys', GROUP_FLOOR, 'unverified', 1, True), ('channels.parquet', 'added keys', GROUP_FLOOR + 1, 'unverified', 1, False),
     # A verified group is proven to be what it says, not to be small.
-    ('list.parquet', 'removed rows', -REMOVED_ROWS, 'verified', True), ('list.parquet', 'removed rows', -REMOVED_ROWS - 1, 'verified', False),
-    ('url_state.parquet', 'removed URLs', -3000, 'verified', True), ('url_state.parquet', 'removed URLs', -40_000, 'verified', False),  # 0.25% of the queue
-    ('list.parquet', 'added keys', GROUP_ROWS + 1, 'verified', False),
+    ('list.parquet', 'removed rows', -REMOVED_DOCUMENTS, 'verified', 1173, True), ('list.parquet', 'removed rows', -REMOVED_DOCUMENTS - 1, 'verified', 1173, False),
+    ('url_state.parquet', 'removed URLs', -3000, 'verified', 1173, True), ('url_state.parquet', 'removed URLs', -40_000, 'verified', 1173, False),  # 0.25% of the queue
+    ('recoveries.parquet', 'removed keys', -GROUP_FLOOR, 'verified', 1173, True), ('recoveries.parquet', 'removed keys', -GROUP_FLOOR - 1, 'verified', 1173, False),
+    ('list.parquet', 'added keys', 8001, 'verified', 2000, False),
 ])
-def test_tripwires_use_each_files_own_rows_and_stop_more_than_a_capture_night_moves(decide, file, name, count, status, passes):
-    changed = group('list.parquet', 'changed title', 5, value=True)
-    entries, reasons, _ = decide(report(changed, group(file, name, count, 'fixture', status)))
+def test_tripwires_scale_with_the_nights_receipts_and_each_files_own_rows(decide, file, name, count, status, new, passes):
+    changed = group('list.parquet', 'changed title', 5)
+    entries, reasons, _ = decide(report(changed, group(file, name, count, 'fixture', status)), keys=[*LIVE_KEYS, *NIGHT[:new], *(
+        f'receipts/senate/pages/2026-11-17/{n}.jsonl.gz' for n in range(max(0, new - len(NIGHT))))])
     assert bool(entries) == passes and bool(reasons) != passes
 
 
 def test_the_real_capture_night_passes_every_group_check_and_the_real_wipe_stops_on_them_alone(decide):
     night = json.loads((REAL / 'capture-night-20261117-c998ffa0766f.json').read_text())
-    entries, reasons, facts = decide(night)
+    entries, reasons, facts = decide(night)                                    # 1,173 receipts new, as that night had
     assert reasons == [] and len(entries) == len(night['failing']) == 42 and facts['groups'] == 42
     assert {e['id']: e['count'] for e in entries} == {f"{g['file']}|{g['group']}|{g['cause']}": g['count'] for g in night['failing']}
     wipe = json.loads((REAL / 'html-metadata-wipe-20261116-08c465599d7b.json').read_text())
@@ -170,12 +181,27 @@ def test_the_real_capture_night_passes_every_group_check_and_the_real_wipe_stops
     assert any('detail.parquet|changed page_metadata|value differs on matched key (12587)' in reason for reason in reasons)
 
 
+def test_the_larger_real_night_is_stopped_only_by_what_a_person_must_see(decide):
+    """Run 44087092120: 1,775 receipts. Its size is within what its receipts explain; a recaptured
+    page (the link rule) and two single unverified removals are for a person."""
+    night = json.loads((REAL / 'larger-capture-night-20261117-2ec7ae83a852.json').read_text())
+    larger = [*LIVE_KEYS, *(f'receipts/senate/pages/2026-11-17/{n:04}.jsonl.gz' for n in range(1775))]
+    entries, reasons, _ = decide(night, keys=larger)
+    assert entries == [] and reasons == [
+        'data-only night: the link rule failed',
+        'data-only night: people.parquet|removed keys|person_aliases states the key ambiguous (-1) is not a difference new receipts alone explain; it needs a cause record',
+        'data-only night: recording_matches.parquet|removed keys|no evidence given (-1) is not a difference new receipts alone explain; it needs a cause record']
+    # Measured on the smaller nights' fixed caps this night also tripped on its size; scaled to its receipts it does not.
+    assert not any('more than' in reason for reason in reasons)
+
+
 def test_many_groups_each_under_its_cap_still_stop_at_the_files_total(decide):
-    columns = [group('detail.parquet', f'changed c{i}', 4000, value=True) for i in range(3)]
+    columns = [group('detail.parquet', f'changed c{i}', 5000) for i in range(4)]     # 1,173 receipts: 17,595 a file
     entries, reasons, _ = decide(report(*columns))
     assert entries == [] and reasons == [
-        f'data-only night: detail.parquet moves 12000 rows across its groups, more than the {FILE_ROWS} one unattended night may']
-    assert decide(report(*columns[:2]))[1] == []
+        f'data-only night: detail.parquet moves 20000 rows across its groups, more than the {FILE_ROWS_PER_RECEIPT * 1173} this night may '
+        f'({FILE_ROWS_PER_RECEIPT} for each of its 1173 new receipts)']
+    assert decide(report(*columns[:3]))[1] == [] and GROUP_ROWS_PER_RECEIPT * 1173 >= 5000
 
 
 def test_a_column_that_empties_stops_the_night_at_any_share_of_its_file(decide, releases):
@@ -201,7 +227,7 @@ def test_the_fetch_queue_is_bounded_by_its_row_caps_not_by_the_column_tripwire(d
     full, worked = queue('full', [['p'] * 10] * 100), queue('worked', [['p'] * 10] * 40 + [[]] * 60)
     value = report(group('url_state.parquet', 'changed linked_from', 60))
     run = lambda files: data_only_causes(value, candidate_record=INPUTS, live_records=[live()],
-                                         candidate_receipt_keys=[*LIVE_KEYS, NEW_KEY], base_dir=full, candidate_dir=files)
+                                         candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=full, candidate_dir=files)
     # The same loss in a content file stops the night; in the queue it does not.
     assert run(worked)[1] == ['data-only night: list.parquet:linked_from.list.element lost 600 of its 1000 values, more than the 5% one unattended night may']
     (worked / 'list.parquet').write_bytes((full / 'list.parquet').read_bytes())
