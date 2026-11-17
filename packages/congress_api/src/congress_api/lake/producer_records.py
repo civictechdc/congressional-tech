@@ -122,6 +122,7 @@ class ProducerRecords:
         self.anchors = dict(anchors or {})
         self.client, self.bucket = client, bucket
         self.root = Path(root).resolve() if root is not None else None
+        self._records = {}
 
     def _read(self, key):
         """(bytes, version) or None; the version is the local bytes or the R2 ETag."""
@@ -148,6 +149,19 @@ class ProducerRecords:
         found = self._read(key)
         return None if found is None else found[0]
 
+    def _record(self, key):
+        """A record's bytes, read once per store (ct-k7rw): records are create-once, each link is
+        pinned by hash, and gate 5 walks the chain the daily's pre-check just walked. Absence is
+        never kept, because a run writes records; write() reads storage itself.
+        Cannot see: a record replaced in storage after this store first read it; the next run's
+        store does, and refuses it by its pin."""
+        if key not in self._records:
+            data = self._get(key)
+            if data is None:
+                return None
+            self._records[key] = data
+        return self._records[key]
+
     def at(self, name, table_uuid, snapshot):
         """(record, reference) naming this table's snapshot, by id alone, or None."""
         data = self.anchors.get(name)
@@ -157,7 +171,7 @@ class ProducerRecords:
             if (selector.get('table_uuid'), selector.get('snapshot')) == (table_uuid, snapshot):
                 return record, dict(anchor=name, **identity(data))
         key = key_for(dict(table_uuid=table_uuid, snapshot=snapshot))
-        data = self._get(key)
+        data = self._record(key)
         return None if data is None else (json.loads(data), dict(key=key, **identity(data)))
 
     def owed(self, base):
@@ -204,7 +218,7 @@ class ProducerRecords:
         if pin.get('snapshot') is None:
             return None
         key = key_for(pin)
-        data = self._get(key)
+        data = self._record(key)
         if data is None:
             return None
         return json.loads(data), dict(key=key, **identity(data))
