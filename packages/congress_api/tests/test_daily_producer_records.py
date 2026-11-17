@@ -390,7 +390,9 @@ def test_gate_five_accepts_the_chain_a_daily_run_wrote(tmp_path, clean_tree):
     first_key = json.loads(encode(found['captures']))['base']['record']['key']
     (tmp_path / 'ledger' / first_key).write_text(json.dumps(dict(json.loads((tmp_path / 'ledger' / first_key).read_text()),
                                                                  lockfile_digest='c' * 64)))
-    assert snapshot_reasons(model, found, mapping_current=versions['captures'], ledger=records) == [
+    # A store reads each record once (ct-k7rw), so the replacement is judged by the next run's store.
+    assert snapshot_reasons(model, found, mapping_current=versions['captures'], ledger=records) == []
+    assert snapshot_reasons(model, found, mapping_current=versions['captures'], ledger=ProducerRecords(root=tmp_path / 'ledger')) == [
         'producer proof: captures: the record of base snapshot '
         f"{found['captures']['base']['selector']['snapshot']} is missing or differs from its pin"]
 
@@ -465,6 +467,39 @@ def test_the_daily_refuses_exactly_the_bases_gate_five_refuses(tmp_path, clean_t
     else:
         assert len(gate) == 1 and re.search(rule, gate[0]), gate
         assert chain is None and refusal == dict(refused={'captures': gate})
+
+
+def test_the_pre_check_and_gate_five_together_read_each_record_once(tmp_path, clean_tree, monkeypatch):
+    """ct-k7rw: one store serves the daily's pre-check and gate 5 in a publish run. A chain of 30
+    nightly appends costs 31 record reads for both walks, not 62; a record absent when first asked
+    for is found once the run has written it. Cannot see: the reads still grow by one a night."""
+    from congress_api.lake.producer_records import base_problems
+    nights = 30
+    metadata = tmp_path / 'm.metadata.json'
+    metadata.write_text(json.dumps({'snapshots': [{'snapshot-id': s, 'parent-snapshot-id': s - 1 if s > 1 else None,
+                                                  'summary': {'operation': 'append'}} for s in range(1, nights + 3)]}))
+    pin = lambda s: dict(metadata_location=str(metadata), table_uuid=PIN['table_uuid'], snapshot=s, schema_id=0)
+    selector = lambda s: dict(kind='native_table', **pin(s))
+    records = ProducerRecords(root=tmp_path / 'ledger')
+    reference = records.write(_stage(selector=selector(1)))
+    for snapshot in range(2, nights + 2):
+        reference = records.write(dict(version=1, input='captures', selector=selector(snapshot), job=DAILY_JOB, commit=HEAD,
+                                       base=dict(selector=selector(snapshot - 1), record=reference)))
+    head = nights + 1
+    reads = []
+    read = ProducerRecords._read
+    monkeypatch.setattr(ProducerRecords, '_read', lambda self, key: reads.append(key) or read(self, key))
+
+    assert records.find('captures', pin(head + 1)) is None
+    chain, refusal = daily._producer_bases(records, {'captures': pin(head)})
+    assert refusal is None and chain['bases'] == {'captures': reference}
+    assert base_problems('captures', dict(selector=selector(head), record=reference), records, daily.ROOT, label='captures') == []
+    walked = [key for key in reads if key != key_for(pin(head + 1))]
+    assert len(walked) == len(set(walked)) == nights + 1
+
+    written = records.write(dict(version=1, input='captures', selector=selector(head + 1), job=DAILY_JOB, commit=HEAD,
+                                 base=dict(selector=selector(head), record=reference)))
+    assert records.find('captures', pin(head + 1))[1] == written
 
 
 @pytest.mark.parametrize('job', [CAPTURES_STAGE, 'scripts/captures_ingest.py'])
