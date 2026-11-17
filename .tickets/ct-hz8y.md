@@ -2,28 +2,44 @@
 id: ct-hz8y
 status: in_progress
 deps: []
-links: [ct-kfsd, ct-n3ik, ct-a73a, ct-yy07, ct-55qo, ct-aitp]
+links: [ct-kfsd, ct-n3ik, ct-a73a, ct-yy07, ct-55qo, ct-aitp, ct-m704]
 created: 2026-11-13T17:46:16Z
 type: bug
 priority: 1
 assignee: mikewolfd
 tags: [body_text, pdf, ocr, routing]
 ---
-# Route incomplete native PDF layers and vector-only writing to OCR
+# Finish selective PDF omission recovery using shared SpicyDocs backends
 
-Accepted-set-v11 preserves the ee7, f6 native-spacing and 4f6 regional repairs; Mahoney adds a separately reviewed three-page form improvement. VFW page 105, three handwriting outputs and other source-loss cases remain held. The 1,208-page report exposes both old strip-boundary behavior and recognition omissions. Five same-raster Tesseract results retain useful source prose; qualify them through the existing SpicyDocs backend before selecting a fallback. The main native-first Apple Vision policy remains unchanged.
+## Implementation update — 17 November 2026
 
-## Design
+CT now imports the maintained SpicyDocs Tesseract implementation through a narrow qualified backport, removing 220 duplicate implementation lines. The final wheel is built from source commit `bfd3c53993e7d988e616dee3c07eb52738642748`, SHA `ec4ebb122a7b8eb0075747f121a2e7c78a41260c3c35dcf129ad0b518f790e44`. Existing default reading IDs remain unchanged under the documented bounded equivalence decision; new opt-in Tesseract checkpoint identity records the backend implementation.
 
-Spicy-docs owns reusable page evidence and routing hooks; CT owns the versioned congressional policy. Reuse the retained text/offset census for candidate ranking and maintained native/region/OCR capabilities. The census has no image/font/vector features and is not a completeness or typeset classifier. Consider X and Y coverage, orientation, repeated furniture, vector/raster content and source role. The central 80%-height proxy already misclassifies Q010. Keep incomplete accurate native fragments distinct from corrupt native text and new OCR errors; qualify composition order and overlap before combining native answers with OCR questions.
+Terra-medium raw/intermediate/output review found that report pages 450, 772 and 1129 are sparse, redacted or short, without substantial visible prose loss at those sampled positions. This does not clear prior known omissions or unread pages. The f1 partial candidate reuses 43 successful page results exactly; pages 7–8 remain materially omitted/garbled after bounded Vision and Tesseract comparisons, so it remains held. No whole-corpus OCR was run.
+
+Remaining: source-confirmed omissions, named handwriting/VFW/source-loss holds, and rotated-source fidelity. This ticket also takes the remaining generic adaptive/rotation raster consolidation from closed ct-yy07; that adapter remains local to CT, and any refactor must demonstrate a concrete simplification without changing default behavior. Evidence: `<main checkout>/.cache/archive-release/ticket-fixes-20261117/pdf/`.
+
+## Audit baseline — 17 November 2026
+
+Earlier native/regional and named-page repairs remain selected. v12 adds a selective Tesseract repair of the 1,208-page report `251ea1a6d6819b6f01e471cf4d22e924beea8e831c38ae1a4313c6bdd79b01cf`; direct review confirms substantial prose restored on sampled pages. Its staging comparison tests ten positions and inherits 1,198 other positions from older Vision output. Preserve partial-repair limits until a cheap screen and targeted review address remaining substantive omissions. This is not a requirement to manually read or OCR every page again.
+
+The newer CT `pdf_opt_in.py` duplicates the Tesseract C API loader, trained-data pins, handle and recognition wrapper already in SpicyDocs `extraction/ocr.py`. CT's pinned backport wheel lacks that newer backend; use a qualified shared dependency update/backport, not an import to a missing API. Native-first Apple Vision remains the default policy.
+
+## Scope and ownership
+
+Own content-based fallback selection, recognition/composition qualification and reuse of the shared Tesseract backend. ct-yy07 owns rendering/geometry bounds; ct-a73a owns resource/source outcome accounting. Keep exact page policy, reading versions and acceptance in CT. Reuse regional/page APIs, completed checkpoints and existing source reviews. Character count, vector ink and output length alone do not prove completeness.
 
 ## Acceptance Criteria
 
-1. Recover useful searchable prose and labels on Q005 pages70-72, Q007 pages6/12/16, Q009 pages37/47 and Q010 pages2/9/16, plus S167 and S188. Record remaining table, number, signature and script omissions rather than requiring exact structured transcription.
-2. Independently read actual source, intermediate and output examples. Reject substantial invented or missing content, retain the substantive-omission failure control and document tolerable spelling/order/number defects under the user's practical FTS standard.
-3. Preserve legitimate repeated amendments/covers, roll-call forms, blank/logo-only pages, short covers, redacted grids, rotated tables, sidebars and non-Latin text. Vector ink or low density alone cannot establish an omission.
-4. Report routing reasons, reading versions, accuracy/omissions, peak memory and reread cost separately. Reuse prior census work and reread only the qualified affected set.
+1. Reconcile the existing Q005/Q007/Q009/Q010 and S167/S188 criteria against already selected repairs; retain named VFW page 105, handwriting, table/script and source-loss holds without reopening accepted work. Useful searchable prose is the target, not perfect structured transcription.
+2. Record exactly which long-report positions changed and which remain inherited. Use cheap existing measurements to nominate remaining losses, then read bounded raw -> actual intermediate -> final examples. Substantial invented or omitted prose fails; ordinary spelling, order or numeric limitations stay explicit.
+3. Replace the duplicate CT Tesseract implementation with the qualified shared backend. Preserve effective trained-data/library/configuration identity and compare actual consumer outputs before keeping or deliberately changing declared versions. Coordinate the shared-reader pin with ct-yy07.
+4. Preserve legitimate blank/short pages, covers, repeated amendments, roll-call forms, redacted grids, rotated tables, sidebars and non-Latin content. A planted substantive omission must be caught; source evidence must justify page selection and composition order.
+5. Apply only qualified changed keys through ct-m704, retaining partial-output limitations and old refusal history. Bulk manual PDF/page reviews use gpt-6.1-terra at medium reasoning. Do not change the default OCR engine or replay the corpus as a side effect.
 
+## Audit evidence
+
+17 November manual audit: `<main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md`; PDF sample: the sibling `pdf-manual-review.md`. New v12 files: `<main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/body-text-ssot-20261116/`. These evidence files retain the exact inputs, identities and sampled/unread scope. Historical notes below are dated evidence; the current scope and criteria above supersede their unfinished-work summaries.
 
 ## Notes
 
@@ -86,3 +102,11 @@ Accepted-set-v10 selection SHA eb8473ab6163d3ab4b16f4fa56754a5b72b9391065aeedf31
 **2026-11-15T13:34:45Z**
 
 The large-report pilot used the intentionally frozen pre-PR31 merger; replaying the maintained fix restores two readable boundary lines and one garbled fragment but does not repair larger Vision omissions. 300-DPI/one-band Vision has no uniform advantage. Direct Terra review of Tesseract pages 7/302/604/906/1208 supports a bounded fallback investigation: useful substantive passages, with a lost sender title and email/timezone errors on the control plus minor word/citation defects. Shared SpicyDocs already implements Tesseract fast/eng/PSM3; its actual consumer output must be checked because it estimates resolution whereas the diagnostic CLI specified 300 DPI. No corpus-wide engine change or whole-report acceptance occurred.
+
+**2026-11-17T09:17:02Z**
+
+Manual audit credits v12 selective Tesseract improvements and prior named/regional repairs. Rewritten to retain limits on the 1,198 inherited long-report positions, existing named holds, and a qualified shared Tesseract backend adoption. CT currently duplicates upstream code because its pinned backport wheel lacks that backend; a qualified pin/backport is required. No default engine switch or corpus-wide OCR is implied. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.
+
+**2026-11-17T10:28:52Z**
+
+Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved.

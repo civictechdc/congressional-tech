@@ -1,32 +1,42 @@
 ---
 id: ct-yy07
-status: in_progress
+status: closed
 deps: []
-links: [ct-a73a, ct-hz8y, ct-55qo, ct-aitp]
+links: [ct-a73a, ct-hz8y, ct-55qo, ct-aitp, ct-m704]
 created: 2026-11-13T17:46:16Z
 type: bug
 priority: 1
 assignee: mikewolfd
 tags: [body_text, pdf, ocr, geometry]
 ---
-# Qualify PDF geometry repairs using native text or selective OCR
+# Bound PDF rendering before allocation and finish geometry qualification
 
-The geometry recovery remains selected in accepted-set-v11: the preceding eight bodies and final 196-body group retain complete outputs and explicit source limits. The final group has 4,445 slots and 414 OCR markers; Terra directly read 56 source pages, including all nominated empty roles, plus all 41 pages of the preceding group. Optional typed-error compatibility is merged in CT PR180 with prior declared versions and fixture outputs unchanged. A separate seventeen-body memory cohort now has 84 oversized render failures and five ordinary-page failures; its bounded geometry/orientation pilot is not part of the accepted group. Strict global geometry stays unchanged.
+## Implementation update — 17 November 2026
 
-SpicyDocs PR28 merged an explicit native plain-text inspection option for finite, ordered zero-area bounds wholly inside the page. Strict defaults remain. The c848 letter and 156 biography recover useful native text but retain split words and omitted graphic text/signatures; d128 and 924 also have damaged source structure/fonts. The two useful candidates are accepted at explicit retained-native-replay versions. CT has not adopted the native option as its default reader. Any new candidate uses the separately authorized targeted lane and retains its exact source, policy, intermediate and final identities.
+Closed the completed geometry and rendering-bound scope. The opt-in reader checks predicted dimensions before allocating a raster and verifies actual dimensions afterward. Both fixed and adaptive paths refuse an over-cap page even at minimum DPI. The focused PDF tests pass against the final shared dependency; original accepted geometry recoveries remain credited.
 
-## Design
+The remaining generic adaptive-DPI/rotation adapter consolidation and unreviewed rotated-source fidelity are explicitly transferred to ct-hz8y's shared-reader/quality scope. That raster adapter still lives in CT. No remaining geometry correctness failure was demonstrated in the reviewed scope. The f1 pages 7–8 content omissions remain held under ct-hz8y/ct-a73a; closure does not certify their text.
 
-Preserve the original source, native refusal, numerical geometry and candidate text. Distinguish zero-area spans, genuinely external text, crop/rotation, invisible spans and damaged source bytes. Inspect a maintained native representation where applicable before proposing page-specific recognition. A geometry repair or structurally valid rewrite must not imply complete or accurate text.
+## Audit baseline — 17 November 2026
 
-Reuse the shared reader's explicit reason-specific policies and existing render/recognizer path. Keep native inspection, actual CT consumer qualification, declared-version compatibility and accepted selection separate. The 14 November explicit user authorization permits targeted recognition and reviewed refetch; it does not justify repeating OCR for the whole corpus or resuming the old frozen worker.
+The original 204-body geometry recovery is accepted and carried forward; do not repeat that cohort. Retain the earlier zero-area/native inspection qualification, exact versions and source limitations. The later 17-body memory cohort now has 15 accepted v12 outputs, one rejected photo-slide candidate and one unresolved ordinary-page source. ct-a73a owns reconciliation of those outcomes.
+
+The new opt-in renderer has a concrete resource defect: `_OptInPDFPage.render` in `packages/congress_api/src/congress_api/parsers/pdf_opt_in.py:290` calls `get_pixmap` before `check_pixels`. Adaptive DPI stops at 36 even if the page still exceeds the cap. A no-allocation probe with a 10,000 × 10,000 point page and a 20-million-pixel limit reached a 36-DPI allocation request for 25 million pixels. The existing shared reader checks predicted dimensions before rendering.
+
+## Scope and ownership
+
+Own the pre-allocation bound and remaining opt-in native geometry/rotation behavior. Put reusable rendering behavior in SpicyDocs and leave CT's exact source/page selection policy local. ct-hz8y owns Tesseract backend reuse and recognition routing; coordinate the dependency update instead of implementing two shared-reader migrations. CT's current backport wheel lacks the newer upstream backend/options, so a qualified pin/backport is part of adoption.
 
 ## Acceptance Criteria
 
-1. Classify the remaining 204 bodies / 1,344 failed-page records from actual source and span geometry; retain every uninspected or unresolved record in the original inventory.
-2. Source-confirm a candidate for the c848 case through the real CT consumer, preserving numbers, names, reading order and visible content. Native and OCR alternatives need their own exact policy and output identities.
-3. Cover zero-area, out-of-bounds, crop/rotation, invisible-text, damaged-source and unrelated-error controls. Unrelated failures retain their reasons; invisible native text is not assumed visible.
-4. Preserve source hashes, refusal history, page offsets and recognition provenance when used. Independently review source/intermediary/output content and a planted omission before affected-body rereads or publication; qualify versions and selection separately.
+1. Check predicted raster dimensions before allocation, then verify actual dimensions afterward. At the minimum DPI, a page still over the cap refuses before rendering. Cover adaptive and fixed-DPI paths without raising the global pixel limit.
+2. Preserve source hashes, original refusal evidence, strict defaults and actual reader/checkpoint identities. Keep zero-area, out-of-bounds, invisible-text, crop/rotation, damaged-source and unrelated-error controls distinct.
+3. Qualify changed geometry/orientation behavior through the actual CT consumer and maintained shared implementation. Directly read a bounded source -> raster/native intermediate -> final sample, including relevant controls; bulk PDF review uses gpt-6.1-terra at medium reasoning. A useful repair does not certify unread pages.
+4. Prove prior accepted text and selection are unchanged unless an explicitly qualified affected key changes. Hand source-outcome accounting to ct-a73a and export/quality adoption to ct-m704. Retain the original 204-body evidence without rerunning it.
+
+## Audit evidence
+
+17 November manual audit: `<main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md`; PDF sample: the sibling `pdf-manual-review.md`. New v12 files: `<main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/body-text-ssot-20261116/`. These evidence files retain the exact inputs, identities and sampled/unread scope. Historical notes below are dated evidence; the current scope and criteria above supersede their unfinished-work summaries.
 
 ## Notes
 
@@ -115,3 +125,11 @@ Accepted-set-v10 selection SHA eb8473ab6163d3ab4b16f4fa56754a5b72b9391065aeedf31
 **2026-11-15T13:34:46Z**
 
 CT PR180 merged at 293469c55cc9571c5471878891d902b7e89286d5 after six offline shards, validation and MCP checks passed. Accepted-set-v11 preserves the prior geometry choices; no new geometry data was adopted. The separate memory17 preflight has exact original custody and source-reviewed samples: two oversized pages contain approximately 72-DPI scans, so rendering at 200 DPI causes unnecessary enlargement. Whole-page 65/71-DPI samples are readable, including the native 079 overlay; the form is sideways. The prepared pilot preserves overlays, uses an explicit whole-raster rotation and inverse coordinate map where needed, retains the 20-million-pixel guard and strict native defaults, and gives partial probes no completed-body status. Evidence: repairs/memory17-source-preflight-20261115/source-review-samples/.
+
+**2026-11-17T09:17:02Z**
+
+Manual audit credits the accepted original 204 bodies and later 15 memory-cohort recoveries. Rewritten around the confirmed allocation-before-pixel-check bug and remaining shared rendering/geometry qualification. A no-allocation probe reached 25 million predicted pixels at 36 DPI despite a 20-million limit. ct-hz8y owns shared Tesseract reuse; ct-a73a owns unresolved/rejected source accounting. Do not repeat accepted geometry recovery. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.
+
+**2026-11-17T10:28:52Z**
+
+Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved. Geometry/render-bound scope closed; generic adaptive/rotation consolidation and remaining source-fidelity review explicitly transferred to ct-hz8y.

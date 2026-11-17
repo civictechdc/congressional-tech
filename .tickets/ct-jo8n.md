@@ -71,3 +71,7 @@ Final root-cause review: credit the delivered release reader; focus remaining wo
 **2026-11-11T14:41:33Z**
 
 validated 2026-11-11, left open: parked News Lake work, nothing changed since the 2026-11-08 simplification (no commit names ct-jo8n; last packages/news_lake commit d4d53baa is ct-xu1o's).
+
+**2026-11-17T09:17:02Z**
+
+17 November manual current-code audit: KEEP OPEN, PARKED. Exact-release reader/CLI delivery remains credited. storage/docspec/views.py:219 still substitutes mutable latest bridge state during incremental refresh; _base_version also falls back to latest. Fresh-process A/B/A and old-release-after-compaction acceptance remain unproved on the intended runtime. Reuse ct-d8cf's recovery/maintenance scenario; do not revive completed backend migration work. No scheduled News Lake run or OCR dependency was introduced. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.

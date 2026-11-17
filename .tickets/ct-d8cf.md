@@ -55,3 +55,7 @@ Final root-cause review: credit the existing backend and focus on writer fencing
 **2026-11-11T14:41:33Z**
 
 validated 2026-11-11, left open: parked News Lake work, nothing changed. The last News Lake commit on origin/main is d4d53baa (ct-xu1o, 2026-11-08); no commit names ct-d8cf since its 2026-11-08 criteria simplification. No scheduled news run exists yet, so the first criterion is still ahead of it.
+
+**2026-11-17T09:17:02Z**
+
+17 November manual current-code audit: KEEP OPEN, PARKED. ControlStore.claim reads self.epoch() after its write transaction, allowing another claimant to intervene. abandon_cycle rolls back/marks abandoned without clearing _known_upsert_records. Last inspected News Lake source commit remains d4d53baa; current schedules do not launch it. Writer fencing, cached-state cleanup and failed-cycle preservation still need qualification. Exact reads remain ct-jo8n; export rights remain ct-4nyy. This is not an OCR delivery blocker. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.

@@ -1,29 +1,44 @@
 ---
 id: ct-z4w5
 status: in_progress
-deps: [ct-en4n]
-links: [ct-en4n, ct-saqg, ct-4jms, ct-6v77, ct-5cdu]
+deps: []
+links: [ct-en4n, ct-saqg, ct-4jms, ct-6v77, ct-5cdu, ct-m704]
 created: 2026-11-13T17:46:16Z
 type: task
 priority: 3
 assignee: mikewolfd
 tags: [body_text, captures, refetch]
 ---
-# Refetch reviewed damaged or missing publisher sources and preserve new evidence
+# Recover qualified damaged or missing sources and reconcile each attempt
 
-The current invalid-source inventory keeps 450 recovery records open: 56 PDF/empty-response cases need source recovery, while 394 error-response records need URL/history reconciliation before requests. All 47 actual refetches from the 49 damaged zero-page PDFs returned the same invalid bytes; two GovInfo alternatives still need document/revision comparison. HTTP 200 or complete=True does not resolve those failures. The short bill has a verified selected replacement and stays covered. Mahoney is selected in accepted-set-v11; Mast still needs receipt ingestion and a supported document association. Use docs/plans/ocr-source-recovery-inventory.json for the durable per-source worklist and evidence.
+## Implementation update — 17 November 2026
 
-## Design
+Three selected alternatives now have direct Terra-medium source/native/selected-output reviews and scoped search-coverage records. Their later-edition or missing-original limits remain explicit. Original invalid bytes and recovery obligations are preserved; identical failed requests were not repeated.
 
-The user has resumed this work. Continue through measured, explicit target batches. Depend on the response-role/capture-history qualification and reuse acquisition/recovery components. Preserve every original response, header, partial body, hash and receipt. A new complete or alternate publisher response receives its own capture/body identity. Preserve accepted official-hearing and URL-variant fallbacks; encrypted, unavailable or irreparable inputs keep named unresolved outcomes.
+The maintained guarded integration uploaded ten exact create-only raw objects (297,472 bytes) and appended five retained receipts to authoritative captures. Snapshot advanced `729090216083851021` -> `5877413658015059876`; exact five-row native readback, unchanged other heads and the producer Gate-5 check passed. Failed HTTP 410 and HTTP 200/empty outcomes remain failed. One older Mast error receipt is held because its gzip representation differs from the immutable stored representation; neither was overwritten. Evidence: `<main checkout>/.cache/archive-release/ticket-fixes-20261117/inventory/capture-integration/`.
+
+Remaining: Mast's recovered PDF is now captured but still needs normal model document association and reviewed-text adoption, as specified in `mast-association.md`. Exact-original recovery remains open for 454 inventory records, with backoff/history eligibility and scoped alternative coverage kept separate. The final handoff pins the successor inventory and completed capture integration.
+
+## Audit baseline — 17 November 2026
+
+The current inventory has 450 open records: 56 PDF/empty-response recovery cases and 394 error-response cases needing capture-history review. All 47 actual requests in the 49-source zero-page batch returned the same invalid bytes; two GovInfo alternatives still need document/revision comparison. A selected replacement covers the truncated short bill. Mahoney is selected; Mast's receipt/document association and Cornwell's empty response have no verified closeout in the reviewed evidence.
+
+ct-en4n owns adding four newer publisher error bodies and linking two archive wrappers to existing failures. Those additions require reconciliation before revised unresolved counts or requests. v12 prose exclusion is not source recovery, and historical `needs_refetch=null` means unresolved history, not success.
+
+## Scope and ownership
+
+Own acquisition attempts, alternative-copy qualification, receipt ingestion, intended-document association and recovery closeout. Consume the canonical inventory owned by ct-en4n. Its eligibility gate applies per source: work on already qualified targets need not wait for every unrelated history review. The 14 November user authorization permits targeted OCR/refetch; preserve originals, partial bytes, headers, receipts, prior accepted fallbacks and historical outcomes.
 
 ## Acceptance Criteria
 
-1. The prerequisite supplies a deduplicated, evidence-backed list excluding already selected complete captures and accepted recoveries. Record the 14 November authorization and current capture eligibility before publisher requests.
-2. For each resumed request, retain transfer completion evidence, source identity, old/new hashes and receipts; verify actual PDF/markup readability and source completeness before selection.
-3. Reconcile every requested item to a selected qualified copy, accepted scoped fallback or explicit unresolved reason. Preserve logical document associations and prior evidence.
-4. Publish qualified results through existing gates and independently read back them without treating HTTP success or OCR completion as proof of completeness.
+1. For each requested source, retain current URL/history eligibility, old/new hashes, receipt and completion evidence. Reuse maintained acquisition/recovery components; avoid immediate same-byte retry loops and preserve backoff.
+2. Compare the two GovInfo alternatives against the intended document/revision. Reconcile Mast receipt ingestion/association and Cornwell or record an explicit unresolved cause. HTTP 200 and complete=True cannot close damaged content.
+3. Every processed item ends in a reviewed usable selected replacement, explicitly accepted scoped coverage or a named unresolved state. Do not erase invalid originals or count an exclusion as a replacement.
+4. Hand changed reading/source identities to ct-m704 for delivery and readback; keep logical associations intact. Directly read bounded raw -> intermediate -> output examples for candidate replacements, using gpt-6.1-terra at medium reasoning for bulk PDF review. No blanket request over all 394 history cases or corpus-wide OCR.
 
+## Audit evidence
+
+17 November manual audit: `<main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md`; PDF sample: the sibling `pdf-manual-review.md`. New v12 files: `<main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/body-text-ssot-20261116/`. These evidence files retain the exact inputs, identities and sampled/unread scope. Historical notes below are dated evidence; the current scope and criteria above supersede their unfinished-work summaries.
 
 ## Notes
 
@@ -70,3 +85,11 @@ Mahoney selected 4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a
 **2026-11-15T15:42:25Z**
 
 Updated the invalid-source inventory at the user's request so successful transfers cannot hide unusable files. Durable generation: repairs/source-recovery-inventory-20261115/{invalid-sources.jsonl,invalid-sources.csv,summary.json,verification.json,README.md}; tracked entry point: docs/plans/ocr-source-recovery-inventory.json. There are 451 exact invalid-source records: 56 damaged PDF bodies, one empty Cornwell response, and 394 error responses (384 existing template examples plus ten reviewed excluded errors). The short bill is covered by e5de955c; all other 450 stay open. All 49 zero-page cases retain needs_refetch=true, including the two pending alternate comparisons. The 47 actual refetches preserve timestamps, URLs, HTTP status, returned hashes, receipt keys and same-invalid-source refusals. Four wrappers link to three existing damaged bodies. HTTP/transfer/parser success does not close recovery; require reviewed usable replacement or accepted scoped coverage tied to the intended document/revision. Error responses remain history-review work, not 394 automatic requests. Metadata verification passed with exact 49/47/2 conservation, input/output pins, deduplication and preserved valid controls. No OCR, fetch, catalog or selected-text mutation. Updated corpus-recovery instructions to consume this worklist. Earlier notes describing the 47 requests as unrun are superseded; URL counts are 51 requested, 54 final, 56 across all four URL fields.
+
+**2026-11-17T09:17:02Z**
+
+Manual audit keeps this open: exclusions and successful HTTP transfers do not recover source content. Preserve 47 same-byte failed requests, two alternative-revision reviews, the named Mast/Cornwell obligations and per-attempt evidence. ct-en4n owns new invalid-source inventory reconciliation. Replaced its whole-ticket dependency with a per-source eligibility requirement so qualified targets can proceed while unrelated history remains open; no fetch was launched by this ticket update. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.
+
+**2026-11-17T10:28:53Z**
+
+Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved.

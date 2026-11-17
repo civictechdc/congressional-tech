@@ -2,36 +2,43 @@
 id: ct-en4n
 status: in_progress
 deps: [ct-fb7k]
-links: [ct-chc4, ct-z4w5, ct-f6hr, ct-0a35, ct-n3ik]
+links: [ct-chc4, ct-z4w5, ct-f6hr, ct-0a35, ct-n3ik, ct-m704]
 created: 2026-11-13T17:46:16Z
 type: task
 priority: 1
 assignee: mikewolfd
 tags: [body_text, quality, captures, html, xml]
 ---
-# Qualify document, feed, error and landing roles against retained capture history
+# Reconcile source roles, capture history and newly excluded error responses
 
-Accepted-set-v11 preserves the 26 reviewed source exclusions and separately qualified document text. The current invalid-source inventory now consolidates 451 exact known failures and retains 450 open recovery records; one truncated short bill is covered by its verified selected replacement. It keeps source validity separate from extraction and transfer success. All 49 damaged zero-page bodies remain open, including two alternate-revision comparisons; 394 historical error responses require requested-URL/existing-recovery reconciliation. Feeds, viewer wrappers, the separately resolved challenge, valid empty pages and ordinary/unassessed controls are not labeled invalid. See docs/plans/ocr-source-recovery-inventory.json; ct-z4w5 owns the recovery attempts.
+## Implementation update — 17 November 2026
 
-## Design
+The successor inventory preserves all prior records, adds the four Natural Resources error bodies (five document targets), and links the two archive wrappers without duplicate recovery requests. It contains 455 known-source records and 454 open exact-original obligations. Existing capture/detail history resolves targets for 267 records; 188 historical error hashes still lack a requested URL. Three directly reviewed selected alternatives provide scoped search coverage while preserving revision limits.
 
-Reuse the link reader, retained captures, queues, selection/recovery history and maintained content-quality measurements through narrow adapters. Version body-role and quality findings separately from historical parser completion. Distinguish substantive documents, Atom/RSS feeds, error/wait/empty responses, metadata, containers, justified empty and unassessed bodies. A complete feed is valid source data: keep its entry identities, updates and links separately from document prose. Preserve accepted requested_content_in_official_hearing and user_accepted_url_variant recoveries and every logical association. Inventory portfolio attachments separately. The user authorized targeted publisher refetch on 14 November; source/history qualification still determines the exact request queue.
+Current manifest: `<main checkout>/.cache/archive-release/ticket-fixes-20261117/inventory/post-capture-append/manifest.json`, SHA `33af1264b175251d5544e1d44f44c2df861633e4816b7a6545217dcf5af444e9`. Every predecessor field remains preserved; two records gain native receipt-integration facts. The final text handoff pins this generation.
 
-## Immediate implementation and scope
+Remaining: resolve the named historical URL/role gaps where evidence becomes available, preserve per-target eligibility and distinguish unsupported/unassociated sources from failed document extraction. Actual requests, source replacement and native recovery remain ct-z4w5.
 
-ct-fb7k owns the focused House Meeting Not Found / File Not Found detector extension using the 400 retained examples. Reuse its versioned observations here; do not implement a second detector. This parent retains source-role qualification beyond those templates, retained capture-history reconciliation and the evidence-backed unresolved-source list. ct-n3ik consumes the role observations in the cheap review queue, while ct-0a35 checks accepted content through real search.
+## Audit baseline — 17 November 2026
 
-The example set annotates existing inventory bodies: 384 error-template instances, two directly reviewed ordinary metadata/landing controls and 14 unassessed records. Neither extraction completion nor example membership authorizes document-text selection or publisher refetch. The broader source-role work must not block the already authorized CPU reparse. Current public metadata independently confirms zero document associations for the 400 examples, but two other known error-page bodies have unhidden document references. This establishes exposure, not accepted reading selection or indexed search.
+Shared detection and explicit selected-text exclusions are implemented. v12 records 416 exclusions (390 newly added) and retained verification reports no excluded body leaked into its export. Valid feeds, statute viewers, resolved challenges and useful metadata remain distinct from invalid publisher sources. The 400 example bodies are template examples with explicit review limits, not 400 individually reviewed documents or 400 fetch requests.
 
-Manifest version 2 now implements an explicit reviewed source-body exclusion decision, independently approved at fcab04f08b8891f08a1f1beba12a2fd7bfbd7701. It excludes error/wait/feed bodies only from the document-text export while preserving actual-key validation, completed readings and planner state. A private native replay excludes the actual T001/T002 errors and preserves M005 byte-for-byte. Corpus adoption and hosted search eligibility remain to be applied. Preserve completed extraction rows and original response history; do not fake a parser failure to exclude an error page. A detector result alone neither selects a substitute nor initiates refetch.
+The durable invalid-source inventory still records 451 sources / 450 open recovery records. Four newly excluded Natural Resources error bodies are missing: `0df2d0da7fa6…` (Westerman amendment), `3192a4c231de…` (Whipps testimony), `34c58155d0ed…` (Nau résumé), `5d1f51c93c7f…` (Bakst testimony). v12 selection/review pins hold the full digests. Two excluded archive bodies, `6eea94ddc3e7…` and `b6aaf0d8fdba…`, wrap already-known error payloads and need association with existing records, not duplicate requests.
+
+## Scope and ownership
+
+Own source-role qualification, capture-history reconciliation and the canonical invalid-source inventory, including these four additions and two wrapper links. ct-z4w5 owns eligible acquisition attempts and their outcomes. ct-m704 consumes the pinned inventory with selected text/quality state; ct-0a35 checks the actual search consumer. Reuse SpicyDocs observations and qualified House detector evidence rather than build another detector. Completed extraction remains historical evidence even when prose selection excludes its source.
 
 ## Acceptance Criteria
 
-1. Independently qualify known error families with real documents quoting error phrases, legitimate short/empty content, XML manifests/playlists, valid Atom/RSS feeds, PDF portfolios and accepted whole-hearing fallbacks as controls. Do not reuse a generic text-length threshold as proof.
-2. Trace all eight landing URLs through link readings, capture attempts, retained copies, selection and accepted recovery. Reconcile both missing and existing outcomes; do not count successful captures as unresolved.
-3. Preserve raw identity and refusal evidence, report selected versus unselected effects, and plant false-positive and missed-error cases that the independent check catches.
-4. Produce a deduplicated unresolved-source list with reasons and evidence for the targeted refetch ticket. Classification alone does not initiate retrieval.
-5. Apply an explicit, reviewable source-role/search-eligibility decision to accepted export/index inputs. Preserve completed response evidence and useful alternative readings. Verify known error bodies are excluded from substantive search while ordinary short, metadata and feed controls retain their intended roles.
+1. Add the four exact error-body records with URLs, evidence and source role; link the two archive wrappers to known payload failures. Reconcile existing captures/recoveries before choosing retry status. Do not blindly increase unresolved counts, duplicate requests or classify valid wrappers/feeds as invalid.
+2. Finish requested-URL/history review for the existing 394 error-response records and remaining landing-source obligations, reusing resolved viewer/PDF associations. Distinguish recordings/playlists, documents, metadata, valid empties and unresolved source roles; a successful transfer alone does not resolve source quality.
+3. Preserve source/version identity, refusal history, review limits and explicit unresolved reasons. Check false-positive/missed-error controls using legitimate documents quoting error phrases, short/empty documents, feeds/manifests and accepted alternative coverage.
+4. Apply the reviewed roles through existing exact-body selection/exclusion policy and verify intended-release exposure. Deliver a deduplicated inventory and per-source capture eligibility to ct-z4w5 and ct-m704. Classification alone does not start a fetch; already qualified targets do not wait for unrelated history reviews.
+
+## Audit evidence
+
+17 November manual audit: `<main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md`; PDF sample: the sibling `pdf-manual-review.md`. New v12 files: `<main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/body-text-ssot-20261116/`. These evidence files retain the exact inputs, identities and sampled/unread scope. Historical notes below are dated evidence; the current scope and criteria above supersede their unfinished-work summaries.
 
 ## Notes
 
@@ -116,3 +123,11 @@ Accepted-set-v6 is independently qualified: selection SHA 95fad5e005670ce150ce4d
 **2026-11-15T15:42:25Z**
 
 Consolidated known invalid source records into the current source-recovery inventory without overwriting frozen body triage, Q5, captures or readings. The new worklist binds old diagnoses and latest actual fetch receipts, preserves the covered short bill, keeps all 49 zero-page cases unresolved, and carries 394 error-response bodies forward for URL/history review. Two GovInfo candidates remain alternate_revision_review_pending until source identity/revision review establishes coverage. A null needs_refetch on an error response means unresolved history, never resolved/forgotten; feeds and wrappers are excluded from this invalid-file list. The old inventory directory now has current-source-recovery.json pointing to the new generation. This is a known-failure inventory, not a corpus-wide audit, and reuses the 384 examples' representative-template review limits. Source/input/output metadata checks pass; no new raw-source semantic review or network/OCR action.
+
+**2026-11-17T09:17:02Z**
+
+Manual audit credits v12 source exclusions and shared detection. Own the missing inventory entries for four Natural Resources error bodies and links for two archive wrappers of existing errors; do not create duplicate recovery requests or include valid feeds/viewers. Capture-history and role qualification still remain. ct-z4w5 consumes per-source eligibility, so unrelated unresolved history must not block already-qualified recovery targets. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.
+
+**2026-11-17T10:28:52Z**
+
+Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved.
