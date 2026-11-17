@@ -408,6 +408,7 @@ def test_publish_retains_only_named_run_evidence_on_success_or_failure():
                 'model-intent.json',
                 'candidate-*/release-gate.json',
                 'candidate-*/automatic/automatic-trace.json',
+                'candidate-*/data-only-night.json',
                 'candidate-*/meeting-updates.*',
             ]
         ],

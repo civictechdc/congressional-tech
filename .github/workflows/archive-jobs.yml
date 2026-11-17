@@ -95,6 +95,7 @@ jobs:
             ${{ steps.publisher_binding.outputs.publisher_work }}/model-intent.json
             ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/release-gate.json
             ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/automatic/automatic-trace.json
+            ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/data-only-night.json
             ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/meeting-updates.*
             output/archive-daily/daily-summary.json
             output/archive-release/manifest.json
