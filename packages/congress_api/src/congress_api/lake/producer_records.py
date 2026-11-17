@@ -201,8 +201,16 @@ class ProducerRecords:
                                    ContentMD5=base64.b64encode(hashlib.md5(data).digest()).decode())
         except Exception as error:
             if _code(error) not in {'PreconditionFailed', '412'}:
-                raise
-            if self._get(key) != data:
+                # A lost response is not a failed write (run 44087092120 died here on a read
+                # timeout after the table had moved). The record is create-once and its bytes are
+                # known, so look before failing; the caller's append is not repeated either way.
+                try:
+                    stored = self._get(key)
+                except Exception:
+                    stored = None
+                if stored != data:
+                    raise
+            elif self._get(key) != data:
                 raise ValueError('Another producer record already names this snapshot: ' + key) from None
         return dict(key=key, **identity(data))
 

@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 from tempfile import TemporaryDirectory
 import threading
+import time
 
 from congress_api.lake.receipt_metadata import document_status, empty_body, whole_range
 from congress_api.models.raw_fetch import FetchResult
@@ -238,11 +239,31 @@ class ReceiptWriter:
         try:
             self.store.put(metadata['key'],path,'application/x-ndjson')
         except Exception:
-            existing=self.store.adapter.head(metadata['key'])
-            if (existing is None or existing.get('size')!=len(raw)
-                    or existing.get('etag','').strip('"')!=hashlib.md5(raw).hexdigest()):
+            if not self._settled(metadata['key'],path,raw):
                 raise
         return metadata['key'],line
+
+    # Seconds to wait before each look at the store after a create that was not acknowledged.
+    SETTLE_SECONDS=(0,2,5,15)
+
+    def _settled(self, key, path, raw):
+        """Whether this create-only receipt is in the store after a write that raised.
+
+        A lost response is not a failed write, and R2 answers 503 "Reduce your concurrent request
+        rate for the same object" while an earlier attempt at the same key is still settling:
+        capture 44132068232 looked once, at once, and stopped 22 minutes in. The receipt's key,
+        size and MD5 are known, so look again as it settles, then try the create once more.
+        """
+        expected=(len(raw),hashlib.md5(raw).hexdigest())
+        def stored():
+            existing=self.store.adapter.head(key)
+            return existing is not None and (existing.get('size'),existing.get('etag','').strip('"'))==expected
+        for wait in self.SETTLE_SECONDS:
+            time.sleep(wait)
+            if stored():return True
+        try:self.store.put(key,path,'application/x-ndjson')
+        except Exception:return stored()
+        return True
 
     @staticmethod
     def _capture(body,attempt,index,stored,member_path,entry_index,fidelity):

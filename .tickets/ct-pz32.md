@@ -1,6 +1,6 @@
 ---
 id: ct-pz32
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-17T08:49:41Z
@@ -74,3 +74,9 @@ Catch-up nights (owner 2026-11-17: the simplest thing that works and adds no lon
 Pull request 187 merged as 0e1f5643; main's validation of it passed, and the nightly's commit selection, run against the live API, picks it. In it: recaptured pages proven from raw receipts (HTML pages under their own unchanged title only), production on validated commits (main's tip when only tickets, docs or Markdown changed since), catch-up nights approving themselves with a file's share as the only ceiling, the pull-request notice for definition changes, and the test session's nightly alert switched off (local test runs had been posting real "Archive nightly publish" notifications).
 
 Left open on purpose: this ticket stays in progress until one scheduled night publishes with no signed record and no re-run. The next scheduled capture is due around 11:00Z on 2026-11-18. If it stops, the `ci-failure` issue names the run and the refusal's first line names the reason.
+
+**2026-11-17T18:10:00Z**
+
+First unattended publish. Capture 44132068232 (dispatched at 17:00Z to test the path) triggered publish 44136775404 through workflow_run. With no cause record pinned it built candidate eb6710bb1a14 from the validated commit, the data-only rule attributed all 28 groups to 843 receipts new to the release (link rule clean, no reasons, 545 columns compared), the pointer flipped at 17:56:56Z on the first attempt, and the run's own check saw the hosted MCP serve it. Evidence: `.cache/archive-release/hosted-runs/44136775404/` (`release-gate.json`, `data-only-night.json`).
+
+Acceptance met. What this run did not show: a capture started by the schedule rather than by dispatch (the schedule has fired on its own every day since 2026-11-13; the next is due about 11:00Z on 2026-11-18), and a night that needs the recapture proof (none occurred). The capture itself stopped 22 minutes in on an R2 write error; the publish used the receipts it had stored. That write path is fixed in the pull request that carries this note, and the remaining work is on ct-hs34 and in `.cache/archive-release/investigations/etl-rca-20261117/RCA.md`.
