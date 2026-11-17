@@ -60,6 +60,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
+          # v5+ caches npm by default from the root packageManager, which has no lock file.
+          package-manager-cache: false
       - run: uv sync --locked --project apps/explorer_mcp
       - run: apps/explorer_mcp/.venv/bin/python scripts/dev.py test explorer-mcp -- -q
       - run: uv build apps/explorer_mcp --out-dir dist

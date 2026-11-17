@@ -34,6 +34,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
+          # v5+ caches npm by default from the root packageManager, which has no lock file.
+          package-manager-cache: false
       - id: release
         name: Validate the release version
         env:
