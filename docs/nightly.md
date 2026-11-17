@@ -69,6 +69,10 @@ Repository variables, under Settings → Secrets and variables → Actions:
 ## Rules that keep it boring
 
 - Merge nothing to main while a capture or publish is running (`gh run list --limit 5`).
+- A pull request merges only when its **merge-gate** check is green. That check waits for the
+  real validation and fails if any of it failed; it also passes pull requests that need no
+  validation (tickets, docs). The rule is `.github/rulesets/main.json`. Repository admins can
+  still push tickets and docs straight to main, and can override with `gh pr merge --admin`.
 - A pull request that changes the model's definition says so in its checks. Expect the next
   night to stop for a cause record, and merge it when you have time to write one.
 - Do not write to production lake tables from a laptop. To add data, put the receipts in raw
