@@ -17,6 +17,10 @@ _SPEC.loader.exec_module(dev)
 
 
 def pytest_configure(config):
+    # A test of the nightly's failure path must not alert the person at this Mac: notify_failure
+    # posts a real "Archive nightly publish" notification unless this is set (2026-11-17: each
+    # local run of test_archive_publish_job.py popped one, and read as a nightly failing here).
+    os.environ['ARCHIVE_NIGHTLY_NO_MACOS_NOTIFY'] = '1'
     declaration = dev.declaration()
     errors = dev.checkout_errors(declaration)
     for lane, spec in declaration['lanes'].items():

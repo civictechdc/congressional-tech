@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  actions: read  # to find the newest validated commit
 
 concurrency:
   group: raw-source-mirror
@@ -22,9 +23,28 @@ jobs:
     timeout-minutes: 120
     environment: archive-capture
     steps:
+      # Production runs the newest commit of main that passed validation, never an untested tip
+      # (run 44087092120's first attempt ran a commit whose validation had failed). A capture and
+      # the publish after it both take this commit, so a producing commit is an ancestor of the
+      # publisher's, as gate 5 requires.
+      - name: Select the newest validated commit of main
+        id: validated
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
+          get() { curl -fsS --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$1"; }
+          sha=$(get "$api/actions/workflows/validate-explorer.yml/runs?branch=main&event=push&status=success&per_page=1" | jq -er '.workflow_runs[0].head_sha')
+          # A push that touches only tickets, docs or Markdown runs no validation. When nothing else
+          # has landed since the validated commit, main's tip is the same code: take it, so a
+          # producer record written at that tip is still an ancestor of this checkout (gate 5).
+          tip=$(get "$api/compare/$sha...main" | jq -er 'if (.files | length) < 300 and all(.files[]; .filename | test("^\\.tickets/|\\.md$") or (test("^docs/") and (test("^docs/experiments/") | not))) then (.commits[-1].sha // .base_commit.sha) else empty end' || true)
+          sha=${tip:-$sha}
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Validated commit: $sha" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ steps.validated.outputs.sha }}
           persist-credentials: false
       - uses: ./.github/actions/setup-python-project
       - uses: ./.github/actions/setup-local-job-runtime

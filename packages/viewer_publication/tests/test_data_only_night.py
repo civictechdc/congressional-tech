@@ -7,8 +7,8 @@ import pyarrow.parquet as pq
 import pytest
 
 from viewer_publication.data_only_night import (COLUMN_LOSS_FLOOR, DATA_ONLY_CAUSE, FILE_ROWS_PER_RECEIPT, GROUP_FLOOR,
-                                                GROUP_ROWS_PER_RECEIPT, NIGHT_RECEIPTS, REMOVED_DOCUMENTS, column_values,
-                                                data_only_causes, unattended_causes)
+                                                GROUP_ROWS_PER_RECEIPT, RECAPTURED_PAGES, REMOVED_DOCUMENTS,
+                                                column_values, data_only_causes, recaptured_pages, unattended_causes)
 
 PROFILE = dict(parser_versions={'html_metadata': 'c226'}, file_hashes={'model/sql/list.sql': 'a' * 64, 'model/sql/detail.sql': 'b' * 64})
 INPUTS = dict(profile=PROFILE, entity_digests={'members': 'm' * 64}, provenance=[dict(key='provenance/reviews/r.jsonl', etag='"1"')],
@@ -27,8 +27,17 @@ def group(file, name, count, cause='value differs on matched key', status='unver
     return dict(file=file, group=name, cause=cause, count=count, status=status, **extra)
 
 
-def report(*groups, link_ok=True):
-    return dict(link_rule=dict(ok=link_ok), failing=[g for g in groups if g['status'] != 'verified'],
+def link_rule(ok=True, **found):
+    """The link rule's report: counts and answers for each kind, as release_comparison writes it."""
+    rule = dict(ok=ok, missing=0, dangling=0, published_and_retired=0, demoted=0, unchecked=[])
+    for prefix in ('', 'lookup_', 'address_'):
+        rule.update({prefix + 'changed': 0, prefix + 'changed_answers': []})
+    rule.update(found)
+    return rule
+
+
+def report(*groups, link_ok=True, rule=None):
+    return dict(link_rule=rule or link_rule(link_ok), failing=[g for g in groups if g['status'] != 'verified'],
                 files={name: dict(rows=dict(base=rows, candidate=rows), groups=[{k: v for k, v in g.items() if k != 'file'}
                                                                                  for g in groups if g['file'] == name])
                        for name, rows in ROWS.items()})
@@ -55,9 +64,9 @@ def releases(tmp_path):
 def decide(releases):
     base = releases('base', ['t'] * 1000, ['n'] * 200 + [None] * 800)
     same = releases('same', ['t'] * 1000, ['n'] * 200 + [None] * 800)
-    def run(value, *, record=INPUTS, records=None, keys=(*LIVE_KEYS, *NIGHT), candidate_dir=same):
+    def run(value, *, record=INPUTS, records=None, keys=(*LIVE_KEYS, *NIGHT), candidate_dir=same, link_proof=None):
         return data_only_causes(value, candidate_record=record, live_records=[live()] if records is None else records,
-                                candidate_receipt_keys=list(keys), base_dir=base, candidate_dir=candidate_dir)
+                                candidate_receipt_keys=list(keys), base_dir=base, candidate_dir=candidate_dir, link_proof=link_proof)
     return run
 
 
@@ -94,7 +103,7 @@ def test_a_changed_definition_pin_decision_or_producer_is_not_a_data_only_night(
     assert entries == [] and reasons == [f'data-only night: the candidate differs from the live release in {names}']
     # Every refusal found is named, not only the first: here also a night over its cap.
     stopped = decide(report(group('list.parquet', 'changed title', 9000), link_ok=False), record=dict(INPUTS, **change))[1]
-    assert len(stopped) == 3 and stopped[0] == 'data-only night: the link rule failed'
+    assert len(stopped) == 3 and stopped[0] == 'data-only night: the link rule failed (not ok)'
 
 
 def test_an_input_neither_side_names_cannot_be_called_equal(decide):
@@ -128,10 +137,19 @@ def test_receipts_must_only_grow_and_something_new_must_have_been_read(decide):
     # Even with nothing failing: a difference-free night is the traced proof's, and no receipt is no explanation.
     assert decide(report(), keys=LIVE_KEYS)[1]
     assert decide(value, records=[live(keys=[])])[1] == ['data-only night: the live release has no receipt set to compare with']
-    assert decide(report(group('list.parquet', 'changed title', 3), link_ok=False))[1] == ['data-only night: the link rule failed']
-    backlog = [f'receipts/documents/2026-11-1{n % 7}/{n}.jsonl.gz' for n in range(NIGHT_RECEIPTS + 1)]
-    assert decide(value, keys=[*LIVE_KEYS, *backlog])[1] == [
-        f'data-only night: {NIGHT_RECEIPTS + 1} receipts are new to the release, more than the {NIGHT_RECEIPTS} one night brings']
+    assert decide(report(group('list.parquet', 'changed title', 3), link_ok=False))[1] == ['data-only night: the link rule failed (not ok)']
+
+
+def test_a_catch_up_approves_itself_and_only_the_share_of_a_file_bounds_a_backlog(decide):
+    """After a stopped night the next one carries two nights of receipts. No count of nights is
+    kept: the caps follow the receipts, and 2% of a file is the ceiling however many there are."""
+    two_nights = [*LIVE_KEYS, *NIGHT, *(f'receipts/senate/pages/2026-11-18/{n:04}.jsonl.gz' for n in range(1775))]
+    catch_up = report(group('list.parquet', 'changed title', 4000), group('list.parquet', 'added rows', 1200, 'no surviving link key'))
+    entries, reasons, facts = decide(catch_up, keys=two_nights)
+    assert reasons == [] and len(entries) == 2 and facts['new_receipts'] == 2948
+    backlog = [*LIVE_KEYS, *(f'receipts/documents/2026-11-0{n % 9}/{n}.jsonl.gz' for n in range(40_000))]
+    assert decide(report(group('list.parquet', 'changed title', 8000)), keys=backlog)[1] == []      # 2% of 400,000
+    assert 'more than the 8000 rows' in decide(report(group('list.parquet', 'changed title', 8001)), keys=backlog)[1][0]
 
 
 @pytest.mark.parametrize('planted', [
@@ -183,16 +201,102 @@ def test_the_real_capture_night_passes_every_group_check_and_the_real_wipe_stops
 
 def test_the_larger_real_night_is_stopped_only_by_what_a_person_must_see(decide):
     """Run 44087092120: 1,775 receipts. Its size is within what its receipts explain; a recaptured
-    page (the link rule) and two single unverified removals are for a person."""
+    page (the link rule, until proven) and two single unverified removals are for a person."""
     night = json.loads((REAL / 'larger-capture-night-20261117-2ec7ae83a852.json').read_text())
     larger = [*LIVE_KEYS, *(f'receipts/senate/pages/2026-11-17/{n:04}.jsonl.gz' for n in range(1775))]
-    entries, reasons, _ = decide(night, keys=larger)
-    assert entries == [] and reasons == [
-        'data-only night: the link rule failed',
+    removals = [
         'data-only night: people.parquet|removed keys|person_aliases states the key ambiguous (-1) is not a difference new receipts alone explain; it needs a cause record',
         'data-only night: recording_matches.parquet|removed keys|no evidence given (-1) is not a difference new receipts alone explain; it needs a cause record']
+    entries, reasons, _ = decide(dict(night, link_rule=link_rule(False)), keys=larger)
+    assert entries == [] and reasons == ['data-only night: the link rule failed (not ok)', *removals]
     # Measured on the smaller nights' fixed caps this night also tripped on its size; scaled to its receipts it does not.
     assert not any('more than' in reason for reason in reasons)
+    assert decide(dict(night, link_rule=link_rule()), keys=larger)[1] == removals
+
+
+BODY, NEWER, OTHER = 'a' * 64, 'b' * 64, 'c' * 64
+PAGE = 'https://committee.house.gov/calendar/eventsingle.aspx?EventID=1'
+RECEIPT = 'receipts/house/pages/2026-11-17/run-1.jsonl.gz'
+
+
+def recapture(tmp_path, *, title='Hearing on Shipbuilding', status=200, url=PAGE, stores=NEWER, receipt=RECEIPT,
+              title_source='page_title', media='text/html', **found):
+    """One page captured again: its address, link key and lookup key all move from BODY to NEWER."""
+    import gzip
+    for name, titles in (('live', ['other', 'Hearing on Shipbuilding']), ('candidate', ['other', 'filler', title])):
+        (tmp_path / name).mkdir(exist_ok=True)
+        pq.write_table(pa.table({'title': titles}), tmp_path / name / 'list.parquet')
+        page = name == 'live' or None   # the live row is always a page; the candidate row takes the arguments
+        pq.write_table(pa.table({'title_source': pa.array([None] * (len(titles) - 1) + ['page_title' if page else title_source], pa.string()),
+                                 'saved_media_type': pa.array([None] * (len(titles) - 1) + ['text/html' if page else media], pa.string())}),
+                       tmp_path / name / 'detail.parquet')
+    answers = dict(changed=1, changed_answers=[dict(key='1a56', live_row=1, live_body=BODY, candidate_row=2, candidate_body=NEWER)],
+                   lookup_changed=1, lookup_changed_answers=[dict(key='6aea', live_row=1, live_body=BODY, candidate_rows=[2], candidate_bodies=[NEWER])],
+                   address_changed=1, address_changed_answers=[dict(key=PAGE, live_row=1, live_body=BODY, candidate_rows=[2], candidate_bodies=[NEWER])])
+    answers.update(found)
+    line = json.dumps(dict(url=url, requested_url=url.replace('eventsingle', 'EventSingle'), http_status=status,
+                           captures=[dict(sha256=stores, bytes=10)]))
+    raw = {RECEIPT: gzip.compress(('{"url": "https://elsewhere"}\n' + line + '\n').encode())}
+    read = []
+    def read_receipt(key):
+        read.append(key)
+        return raw[key]
+    proven, reasons, facts = recaptured_pages(link_rule(False, **answers), tmp_path / 'live', tmp_path / 'candidate', held=set(LIVE_KEYS),
+        trace=lambda keys: [dict(prefix=NEWER[:16], receipt_key=receipt, receipt_line=2, sha=NEWER)] if keys == {NEWER[:16]} else [],
+        read_receipt=read_receipt)
+    return proven, reasons, facts, read
+
+
+def test_a_page_captured_again_at_its_own_address_under_its_title_is_proven_from_the_raw_receipt(tmp_path):
+    proven, reasons, facts, read = recapture(tmp_path)
+    assert reasons == [] and read == [RECEIPT]
+    assert proven == [dict(kind='link_key', key='1a56', live_body=BODY, candidate_body=NEWER),
+                      dict(kind='lookup_key', key='6aea', live_body=BODY, candidate_body=NEWER),
+                      dict(kind='address', key=PAGE, live_body=BODY, candidate_body=NEWER)]
+    assert facts['recaptures'] == [dict(address=PAGE, live_body=BODY, candidate_body=NEWER, receipt=RECEIPT, title='Hearing on Shipbuilding')]
+    # The gate's own matcher accepts exactly these as proven and leaves nothing unnamed.
+    from viewer_publication.release_gate import named_corrections
+    rule = link_rule(False, changed=1, changed_answers=[dict(key='1a56', live_body=BODY, candidate_body=NEWER)],
+                     lookup_changed=1, lookup_changed_answers=[dict(key='6aea', live_body=BODY, candidate_bodies=[NEWER])],
+                     address_changed=1, address_changed_answers=[dict(key=PAGE, live_body=BODY, candidate_bodies=[NEWER])],
+                     proven_corrections=proven)
+    assert named_corrections(rule, [])[2] == dict(link_key=[], lookup_key=[], address=[])
+    assert named_corrections(dict(rule, proven_corrections=[]), [])[2]['address']
+
+
+@pytest.mark.parametrize('change', [
+    dict(title='404 Not Found'), dict(title=None), dict(status=500), dict(url='https://committee.house.gov/other'),
+    dict(media='application/pdf'), dict(title_source='link_text'), dict(title_source=None),   # a replaced file keeps its listing's title
+    dict(address_changed_answers=[dict(key=PAGE, live_row=1, live_body=BODY, candidate_rows=[2], candidate_bodies=[None])]),
+    dict(stores=OTHER), dict(receipt=LIVE_KEYS[0]),
+    dict(changed_answers=[dict(key='1a56', live_row=1, live_body=BODY, candidate_row=2, candidate_body=OTHER)]),
+    dict(address_changed_answers=[dict(key=PAGE, live_row=1, live_body=BODY, candidate_rows=[2, 2], candidate_bodies=[NEWER, OTHER])]),
+    dict(address_changed=2),
+])
+def test_anything_but_that_page_under_that_title_from_a_new_receipt_is_left_to_a_person(tmp_path, change):
+    proven, reasons, _, _ = recapture(tmp_path, **change)
+    assert reasons and all(reason.startswith('data-only night: ') for reason in reasons)
+    # Findings beyond the report's sample refuse the night even though the sampled page is proven.
+    assert len(proven) < 3 or change == dict(address_changed=2)
+
+
+def test_the_link_rule_on_a_data_night_stops_hard_findings_and_takes_proven_recaptures(decide, tmp_path):
+    value = report(group('list.parquet', 'changed title', 3))
+    for hard in (dict(missing=2), dict(dangling=1), dict(published_and_retired=1), dict(demoted=1), dict(unchecked=['links.parquet absent'])):
+        stopped = decide(dict(value, link_rule=link_rule(False, **hard)), link_proof=lambda rule: pytest.fail('a hard finding has no proof'))[1]
+        assert len(stopped) == 1 and stopped[0].startswith('data-only night: the link rule failed (')
+    moved = link_rule(False, address_changed=1, address_changed_answers=[dict(key=PAGE, live_row=1, live_body=BODY, candidate_rows=[2], candidate_bodies=[NEWER])])
+    assert 'they were not examined' in decide(dict(value, link_rule=moved))[1][0]
+    # The proof scans the capture table, so a night something else already stopped does not run it.
+    over = report(group('list.parquet', 'changed title', 9000), rule=moved)
+    stopped = decide(over, link_proof=lambda rule: pytest.fail('the proof must not run on a night already stopped'))[1]
+    assert len(stopped) == 2 and 'they were not examined' in stopped[0] and 'changed title' in stopped[1]
+    proof = [dict(kind='address', key=PAGE, live_body=BODY, candidate_body=NEWER)]
+    entries, reasons, facts = decide(dict(value, link_rule=moved), link_proof=lambda rule: (proof, [], dict(recaptures=[dict(address=PAGE)])))
+    assert reasons == [] and len(entries) == 1 and facts['proven_corrections'] == proof and facts['recaptures'] == [dict(address=PAGE)]
+    assert decide(dict(value, link_rule=moved), link_proof=lambda rule: ([], ['data-only night: live address would open another file'], {}))[1] == [
+        'data-only night: live address would open another file']
+    assert RECAPTURED_PAGES == 100
 
 
 def test_many_groups_each_under_its_cap_still_stop_at_the_files_total(decide):
@@ -200,8 +304,12 @@ def test_many_groups_each_under_its_cap_still_stop_at_the_files_total(decide):
     entries, reasons, _ = decide(report(*columns))
     assert entries == [] and reasons == [
         f'data-only night: detail.parquet moves 20000 rows across its groups, more than the {FILE_ROWS_PER_RECEIPT * 1173} this night may '
-        f'({FILE_ROWS_PER_RECEIPT} for each of its 1173 new receipts)']
+        f'(the lesser of 6% of the file and {FILE_ROWS_PER_RECEIPT} for each of its 1173 new receipts)']
     assert decide(report(*columns[:3]))[1] == [] and GROUP_ROWS_PER_RECEIPT * 1173 >= 5000
+    # A backlog cannot widen a file's total past 6% of it: 18,000 of detail's 300,000 rows.
+    backlog = [*LIVE_KEYS, *(f'receipts/documents/2026-11-0{n % 9}/{n}.jsonl.gz' for n in range(40_000))]
+    assert decide(report(*columns[:3], group('detail.parquet', 'changed c9', 3000)), keys=backlog)[1] == []
+    assert '6% of the file' in decide(report(*columns[:3], group('detail.parquet', 'changed c9', 3001)), keys=backlog)[1][0]
 
 
 def test_a_column_that_empties_stops_the_night_at_any_share_of_its_file(decide, releases):

@@ -106,6 +106,23 @@ def test_check_status_detects_missing_failed_stale_running_and_healthy_runs(tmp_
     assert code == 1 and bad_shape['status'] == 'failed' and 'corrupt nightly state' in bad_shape['reason']
 
 
+def test_no_test_session_can_post_a_real_macos_notification(tmp_path, monkeypatch):
+    """conftest.py switches the alert off for every session; with no config file, where the default
+    is on for macOS, notify_failure must not reach osascript."""
+    import os
+    import subprocess
+    assert os.environ.get('ARCHIVE_NIGHTLY_NO_MACOS_NOTIFY') == '1'
+    ran = []
+    monkeypatch.setattr(subprocess, 'run', lambda argv, **options: ran.append(argv))
+    monkeypatch.setattr(nightly.shutil, 'which', lambda name: '/usr/bin/' + name)
+    assert nightly.notify_failure(tmp_path, dict(step='publish', exit=1)) == {} and ran == []
+    # The switch is what holds it back: without it this same call would run osascript on a Mac.
+    monkeypatch.delenv('ARCHIVE_NIGHTLY_NO_MACOS_NOTIFY')
+    monkeypatch.setattr(nightly.sys, 'platform', 'darwin')
+    nightly.notify_failure(tmp_path, dict(step='publish', exit=1))
+    assert [argv[0] for argv in ran] == ['osascript']
+
+
 def test_notify_failure_posts_webhook_runs_command_and_never_raises(tmp_path, monkeypatch):
     main = tmp_path / 'main'
     remote_runtime = main / '.cache/archive-release/remote-runtime'

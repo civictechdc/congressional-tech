@@ -1,8 +1,8 @@
 # Release notes
 
-Latest: [November 17, 2026 — archive 95f4e73e859d](2026-11-17-95f4e73e859d.md).
+Latest: [November 17, 2026 — archive 2ec7ae83a852](2026-11-17-2ec7ae83a852.md).
 
-Previous: [November 17, 2026 — archive 6ac86c21b373](2026-11-17-6ac86c21b373.md).
+Previous: [November 17, 2026 — archive 95f4e73e859d](2026-11-17-95f4e73e859d.md).
 
 Each published archive release that changes keys or values against the live release gets
 a note here, named `<YYYY-MM-DD>-<release id, first 12>.md`. The publisher's gates write
@@ -30,10 +30,16 @@ pointer on its own. Gate 1 passes a night without a cause record in two cases:
 - a data-only night (`viewer_publication/data_only_night.py`): the candidate was built from the
   live release's own definition and pinned inputs (profile, entity digests, decision records,
   producer versions, committed job pins), its receipt set only grew, and nothing moved more than
-  a capture night moves. Its evidence is `data-only-night.json` beside the gate report.
+  its receipts explain. A page captured again at its own address under an unchanged title moves
+  its links to the new capture, proven from the raw receipt that stored it. Its evidence is
+  `data-only-night.json` beside the gate report.
 
 Any change to model code, a parser, a pin or a decision record stops the next night at gate 1
-until a cause record is committed; the refusal's first line says which input differed. A cause
+until a cause record is committed; the refusal's first line says which input differed, and the
+pull request that makes such a change says so before it merges (`.github/scripts/definition-change.py`).
+An unverified removal, a link that vanishes or is demoted, and a night larger than its receipts
+explain also stop for a person. Capture and publish run the newest commit of main whose push
+validation passed, never an untested tip. A cause
 record still pinned in `model/jobs/publish.json` after its candidate went live is ignored, so
 unpinning it is tidying, not a step the next night waits on. A failed or missing nightly opens a
 `ci-failure` issue (`.github/workflows/ci-alerts.yml`).

@@ -27,7 +27,7 @@ def test_publish_backfill_maintenance_share_one_non_canceling_group():
     for name in ['archive-jobs.yml','update-data.yml']:
         assert workflow(name)['concurrency'] == {'group': 'raw-source-mirror', 'cancel-in-progress': 'false', 'queue': 'max'}
     assert set(value['jobs']) == {'publish', 'backfill', 'maintenance'}
-    assert value['permissions'] == {'contents': 'read'}
+    assert value['permissions'] == {'contents': 'read', 'actions': 'read'}  # actions: the validated-commit lookup
     for operation, job in value['jobs'].items():
         commands = '\n'.join(step.get('run', '') for step in job['steps'])
         assert f'run-archive-job.py {operation}' in commands
@@ -44,7 +44,7 @@ def test_new_capture_uses_scheduler_and_common_lock_with_explicit_switch():
     assert value['concurrency'] == {'group': 'raw-source-mirror', 'cancel-in-progress': 'false', 'queue': 'max'}
     job = value['jobs']['capture']
     assert "vars.ARCHIVE_CAPTURE_ENABLED == 'true'" in job['if']
-    assert value['permissions'] == {'contents': 'read'}
+    assert value['permissions'] == {'contents': 'read', 'actions': 'read'}  # actions: the validated-commit lookup
     command = '\n'.join(step.get('run', '') for step in job['steps'])
     assert 'congress_api.cli.capture_schedule' in command
     assert '--seed-inventory' not in command
@@ -443,6 +443,43 @@ def test_publish_installs_the_local_job_runtime_before_the_publisher():
     publisher = next(i for i, step in enumerate(steps) if step.get('run', '').endswith('run-archive-job.py publish'))
     assert local < publisher
     assert steps[local]['with']['credentials'] == '${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}'
+
+
+def test_production_jobs_run_the_newest_validated_commit_of_main_and_never_the_tip():
+    """Owner decision 2026-11-17: capture, publish, backfill and maintenance check out the newest
+    commit whose push validation passed. One identical lookup, placed before the checkout."""
+    jobs = {**{f'archive-jobs:{name}': job for name, job in workflow('archive-jobs.yml')['jobs'].items()},
+            'capture': workflow('capture-archive.yml')['jobs']['capture']}
+    lookups = set()
+    for name, job in jobs.items():
+        steps = job['steps']
+        select = next(i for i, step in enumerate(steps) if step.get('id') == 'validated')
+        checkouts = [i for i, step in enumerate(steps) if step.get('uses', '').startswith('actions/checkout@')]
+        assert checkouts == [select + 1], name
+        assert steps[checkouts[0]]['with']['ref'] == '${{ steps.validated.outputs.sha }}', name
+        assert steps[select]['env'] == {'GH_TOKEN': '${{ github.token }}'}
+        lookups.add(steps[select]['run'])
+    assert len(lookups) == 1
+    run = lookups.pop()
+    assert 'actions/workflows/validate-explorer.yml/runs?branch=main&event=push&status=success&per_page=1' in run
+    assert "jq -er '.workflow_runs[0].head_sha'" in run and 'echo "sha=$sha" >> "$GITHUB_OUTPUT"' in run
+    # The lookup fails closed: with no validated run jq exits non-zero under bash -e, before any checkout.
+    result = subprocess.run(['/bin/bash', '-eo', 'pipefail', '-c', "echo '{\"workflow_runs\": []}' | jq -er '.workflow_runs[0].head_sha'"],
+                            capture_output=True, text=True)
+    assert result.returncode != 0
+    # Main's tip stands in for the validated commit only when everything since it is a path validation
+    # skips. The filter is validate-explorer's own push filter, restated once: keep the two together.
+    assert workflow('validate-explorer.yml')['on']['push']['paths'] == ['**', '!.tickets/**', '!docs/**', 'docs/experiments/**', '!**/*.md']
+    script = run[run.index("jq -er 'if "):].split("' || true")[0][len("jq -er '"):]
+    def tip(files, commits=({'sha': 'tip'},)):
+        payload = json.dumps(dict(files=[dict(filename=name) for name in files], commits=list(commits), base_commit=dict(sha='validated')))
+        return subprocess.run(['jq', '-er', script], input=payload, capture_output=True, text=True).stdout.strip()
+    assert tip(['.tickets/ct-pz32.md', 'docs/releases/README.md', 'AGENTS.md', 'packages/x/README.md']) == 'tip'
+    assert tip([], commits=()) == 'validated'
+    for covered in ('packages/viewer_publication/src/viewer_publication/release_gate.py', 'model/jobs/publish.json',
+                    'docs/experiments/a/test_a.py', '.github/workflows/archive-jobs.yml', 'docs.py', 'uv.lock'):
+        assert tip(['.tickets/ct-pz32.md', covered]) == '', covered
+    assert tip([f'.tickets/{n}.md' for n in range(300)]) == ''   # the API lists at most 300 files: unknown is not skipped
 
 
 def test_publish_checks_out_full_history_for_producer_commits():

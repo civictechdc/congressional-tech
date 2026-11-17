@@ -14,8 +14,11 @@ nothing here stands in for a check that ran and refused. An additions-only night
 
 The caps are tripwires, not proof. They stop a night that moved more than its new receipts can
 explain, which is how a publisher serving wrong pages, or the right code reading the wrong table,
-would look. A night is bounded by the capture's request budget (2,000), so the caps scale with the
-receipts new to the release. Measured on three capture nights with gate reports:
+would look. The caps scale with the receipts new to the release, and no group may move more than
+2% of its file however many receipts there are. That share is the ceiling: a catch-up after a
+stopped night or an outage approves itself like any night, and a backlog large enough to move
+more than 2% of a file stops for a person. No count of nights is kept. Measured on three capture
+nights with gate reports:
 
     night (candidate)            new receipts   largest group     largest file total
     2026-11-13 (4b9a7bd126cc)    about 1,027    2,921 (2.8 each)   6,804 (6.6 each)
@@ -26,7 +29,7 @@ The only unverified removals were the fetch queue's, at most 0.056% of it; the t
 re-keyed six people, which the comparison verified. Outside the queue the most a column lost was
 0.39% of its values. The candidate that lost every html_metadata reading (08c465599d7b,
 2026-11-16) emptied whole columns of 2,561 to 12,587 values, which the column tripwire stops at
-any size, and came from a 40,257-receipt backlog, which is not a night.
+any size; its changed groups moved 3.9% to 25% of detail.parquet, above the 2% ceiling.
 
 Cannot see: wrong but non-null content served at an ordinary volume, such as an error page's
 title on a few thousand re-fetched documents (the archive records what was published); a column
@@ -39,7 +42,6 @@ checks, and the contract and canary gates run as on any night.
 """
 from pathlib import Path
 
-NIGHT_RECEIPTS = 2_500              # the 2,000-request capture budget and the weekly refresh; more is a backlog
 GROUP_SHARE, GROUP_FLOOR = 0.02, 50
 GROUP_ROWS_PER_RECEIPT, FILE_ROWS_PER_RECEIPT = 5, 15
 REMOVAL_SHARE = 0.0025
@@ -61,6 +63,12 @@ EXPLAINABLE = {'added rows', 'added keys', 'added URLs', 'keys new', 'new URLs'}
 RECURRING_UNEXPLAINED = {'recoveries.parquet|changed bytes, no key or value difference found|unexplained',
                          'url_state.parquet|removed URLs|unexplained'}
 SAME_INPUTS = ('profile', 'entity_digests', 'provenance', 'unprofiled_inputs')
+# Pages one night may capture again with new bytes; a site-wide template change would exceed it.
+RECAPTURED_PAGES = 100
+# A page: saved as HTML, with a title read from the page itself. A PDF's title is its listing's
+# link text, which does not change when the file is replaced, so an equal title proves nothing.
+PAGE_MEDIA, PAGE_TITLES = 'text/html', {'page_title', 'page_heading'}
+LINK_FINDINGS = (('link_key', '', 'link key'), ('lookup_key', 'lookup_', 'lookup key'), ('address', 'address_', 'address'))
 DATA_ONLY_CAUSE = ("data-only night: built by the live release's definition and pinned inputs from a receipt set "
                    'that only grew; not traced to individual receipts (automatic, ct-pz32)')
 
@@ -117,10 +125,16 @@ def _group_reasons(report, new_receipts):
                                    f'(the lesser of {GROUP_SHARE:.0%} of {base} and {GROUP_ROWS_PER_RECEIPT} for each of its '
                                    f'{new_receipts} new receipts)')
             totals[file] = totals.get(file, 0) + abs(count)
-    allowed = max(GROUP_FLOOR, FILE_ROWS_PER_RECEIPT * new_receipts)
-    return reasons + [f'data-only night: {file} moves {total} rows across its groups, more than the {allowed} this night may '
-                      f'({FILE_ROWS_PER_RECEIPT} for each of its {new_receipts} new receipts)'
-                      for file, total in sorted(totals.items()) if total > allowed]
+    # A file's groups together: the same two bounds as one group, three times as wide.
+    wider = FILE_ROWS_PER_RECEIPT // GROUP_ROWS_PER_RECEIPT
+    for file, total in sorted(totals.items()):
+        allowed = max(GROUP_FLOOR, min(int(report['files'][file]['rows']['base'] * GROUP_SHARE) * wider,
+                                       FILE_ROWS_PER_RECEIPT * new_receipts))
+        if total > allowed:
+            reasons.append(f'data-only night: {file} moves {total} rows across its groups, more than the {allowed} this night may '
+                           f'(the lesser of {GROUP_SHARE * wider:.0%} of the file and {FILE_ROWS_PER_RECEIPT} for each of its '
+                           f'{new_receipts} new receipts)')
+    return reasons
 
 
 def column_values(release):
@@ -158,12 +172,110 @@ def _column_reasons(base_dir, candidate_dir):
     return reasons, sum(file != QUEUE_FILE for file, _ in base)
 
 
-def data_only_causes(report, *, candidate_record, live_records, candidate_receipt_keys, base_dir, candidate_dir):
+def recaptured_pages(rule, base_dir, candidate_dir, *, held, trace, read_receipt):
+    """Corrections a night proves for itself: a page captured again at its own address.
+
+    Owner decision 2026-11-17 (ct-pz32). The link rule reports each live link key, lookup key and
+    address that would open another file, and leaves it to a named correction (ct-4nax). A page
+    whose publisher changed its bytes is the ordinary case: run 44087092120 stopped on one House
+    event page whose only change was the site's latest-news sidebar. Its findings are proven, and
+    need no person, when all of this holds:
+
+    - the address answers exactly one candidate file, and each of the page's link and lookup keys
+      moves from the same live file to that same file;
+    - a raw receipt line outside the live release's receipt set stored that file for that address
+      at HTTP 200 (`trace` finds the lines holding the body, `read_receipt` reads them from raw);
+    - both files are HTML pages whose title is read from the page itself, and that title is the
+      same, and not empty, in both releases.
+
+    A changed title (an error page, another event), a file that is not a page (a replaced PDF keeps
+    its listing's title), a body no new receipt stored, or a key that moves somewhere else leaves
+    the finding to a person. Returns (proven entries for the link
+    rule's `proven_corrections`, reasons, facts). O(pages) receipt reads and one capture scan.
+    Cannot see: a publisher that changed the body under an unchanged title.
+    """
+    import gzip
+    import json
+    import pyarrow.parquet as pq
+    reasons = [f"data-only night: {rule[prefix + 'changed'] - len(rule[prefix + 'changed_answers'])} live {what}s that answer "
+               "another file are beyond the report's sample, so nothing can prove them"
+               for _, prefix, what in LINK_FINDINGS if rule[prefix + 'changed'] > len(rule[prefix + 'changed_answers'])]
+    pages = [a for a in rule['address_changed_answers']
+             if len(a['candidate_rows']) == 1 and len(a['candidate_bodies']) == 1 and a['candidate_bodies'][0]]
+
+    def facts_of(release, row):
+        """(title, where the title came from, saved media type) of one document row."""
+        title = pq.read_table(Path(release) / 'list.parquet', columns=['title']).slice(row, 1).to_pylist()
+        saved = pq.read_table(Path(release) / 'detail.parquet', columns=['title_source', 'saved_media_type']).slice(row, 1).to_pylist()
+        return (title[0]['title'], saved[0]['title_source'], saved[0]['saved_media_type']) if title and saved else (None, None, None)
+    lines = trace({a['candidate_bodies'][0][:16] for a in pages}) if pages else []
+    raw = {}
+
+    def stored(key, line):
+        """The raw receipt line as (address, HTTP status, bodies it stored); each receipt read once."""
+        if key not in raw:
+            raw[key] = gzip.decompress(read_receipt(key)).decode('utf-8', 'replace').splitlines()
+        if not isinstance(line, int) or not 1 <= line <= len(raw[key]):
+            return None, None, set()
+        row = json.loads(raw[key][line - 1])
+        row = row if 'captures' in row or not isinstance(row.get('record'), dict) else row['record']
+        return row.get('url'), row.get('http_status'), {c.get('sha256') for c in row.get('captures') or []}
+
+    moved, recaptures = {}, []
+    for answer in pages:
+        address, body = answer['key'], answer['candidate_bodies'][0]
+        old, new = facts_of(base_dir, answer['live_row']), facts_of(candidate_dir, answer['candidate_rows'][0])
+        page = old == new and bool(old[0]) and old[1] in PAGE_TITLES and old[2] == PAGE_MEDIA
+        def stores(row):
+            url, status, bodies = stored(row['receipt_key'], row['receipt_line'])
+            return url == address and status == 200 and body in bodies
+        receipt = next((row['receipt_key'] for row in lines
+                        if row['sha'] == body and row['receipt_key'] not in held and stores(row)), None)
+        if receipt is not None and page:
+            moved[answer['live_body']] = body
+            recaptures.append(dict(address=address, live_body=answer['live_body'], candidate_body=body, receipt=receipt, title=old[0]))
+    proven = []
+    for kind, prefix, what in LINK_FINDINGS:
+        for answer in rule[prefix + 'changed_answers']:
+            shown = [answer['candidate_body']] if kind == 'link_key' else answer['candidate_bodies']
+            if shown == [moved.get(answer['live_body'])]:
+                proven.append(dict(kind=kind, key=answer['key'], live_body=answer['live_body'], candidate_body=shown[0]))
+            else:
+                reasons.append(f"data-only night: live {what} {answer['key']} would open another file, and it is not a page captured "
+                               'again at its own address under its own unchanged title; it needs a named correction')
+    if len(recaptures) > RECAPTURED_PAGES:
+        reasons.append(f'data-only night: {len(recaptures)} pages were captured again with new bytes, more than the '
+                       f'{RECAPTURED_PAGES} one unattended night may')
+    return proven, reasons, dict(recaptures=recaptures)
+
+
+def _link_reasons(rule, link_proof):
+    """(reasons, proven corrections, facts) for the link rule on a data night.
+
+    A key that vanishes, dangles, is retired while published or is demoted to an alternate, and a
+    check that could not run, stop any night. A key that would open another file stops it unless
+    `link_proof` proves it.
+    """
+    hard = [f'{rule[name]} {name}' for name in ('missing', 'dangling', 'published_and_retired', 'demoted') if rule.get(name)]
+    hard += [f'unchecked: {item}' for item in rule.get('unchecked') or []]
+    changed = any(rule.get(prefix + 'changed') for _, prefix, _ in LINK_FINDINGS)
+    if hard or (not changed and not rule['ok']):
+        return [f"data-only night: the link rule failed ({', '.join(hard) or 'not ok'})"], [], {}
+    if not changed:
+        return [], [], {}
+    if link_proof is None:
+        return ['data-only night: the link rule failed (live keys would open another file, and they were not examined)'], [], {}
+    proven, reasons, facts = link_proof(rule)
+    return reasons, proven, facts
+
+
+def data_only_causes(report, *, candidate_record, live_records, candidate_receipt_keys, base_dir, candidate_dir, link_proof=None):
     """Cause entries for every failing group of a night only new receipts can explain.
 
     `live_records` are the live release's kept input records (`receipt_pins.kept_input_records`).
     Returns (entries, reasons, facts); entries is empty unless every check passes, and every
-    refusal found is returned, so a stopped night names all of it.
+    refusal found is returned, so a stopped night names all of it. `link_proof(rule)` may prove
+    link findings (`recaptured_pages`); facts then carries `proven_corrections` for the link rule.
     """
     from congress_api.lake.versions import version_digest
     from viewer_publication.release_gate import group_id
@@ -176,24 +288,24 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
                    for name in SAME_INPUTS)]
     candidate = set(candidate_receipt_keys)
     new, groups = candidate - held, report['failing']
-    reasons = [] if report['link_rule']['ok'] else ['data-only night: the link rule failed']
-    reasons += [] if same else _input_reasons(candidate_record, live_records)
+    reasons = [] if same else _input_reasons(candidate_record, live_records)
     if held - candidate:
         reasons.append(f'data-only night: {len(held - candidate)} receipts the live release read are absent from the '
                        f'candidate (first {sorted(held - candidate)[:3]})')
     if not new:
         reasons.append('data-only night: the candidate read no receipt the live release did not, so nothing explains a difference')
-    if len(new) > NIGHT_RECEIPTS:
-        reasons.append(f'data-only night: {len(new)} receipts are new to the release, more than the {NIGHT_RECEIPTS} one night brings')
-    reasons += _group_reasons(report, min(len(new), NIGHT_RECEIPTS))
+    reasons += _group_reasons(report, len(new))
     lost, columns = _column_reasons(base_dir, candidate_dir)
     reasons += lost
+    # Last: the recapture proof scans the capture table, so it runs only on a night nothing else stopped.
+    stopped, proven, link_facts = _link_reasons(report['link_rule'], link_proof if not reasons else None)
+    reasons = [*stopped, *reasons]
     if reasons:
         return [], reasons, {}
     facts = dict(version=1, profile_sha256=version_digest(packages={}, files={}, values=candidate_record['profile']),
                  live_input=same[-1]['key'], live_receipts=len(held), new_receipts=len(new), new_receipt_keys=sorted(new),
-                 groups=len(groups), columns_compared=columns,
-                 caps=dict(night_receipts=NIGHT_RECEIPTS, group_share=GROUP_SHARE, group_floor=GROUP_FLOOR,
+                 groups=len(groups), columns_compared=columns, proven_corrections=proven, **link_facts,
+                 caps=dict(recaptured_pages=RECAPTURED_PAGES, group_share=GROUP_SHARE, group_floor=GROUP_FLOOR,
                            group_rows_per_receipt=GROUP_ROWS_PER_RECEIPT, file_rows_per_receipt=FILE_ROWS_PER_RECEIPT,
                            removal_share=REMOVAL_SHARE, removed_documents=REMOVED_DOCUMENTS,
                            column_loss_share=COLUMN_LOSS_SHARE, column_loss_floor=COLUMN_LOSS_FLOOR))
