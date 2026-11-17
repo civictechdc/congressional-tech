@@ -27,7 +27,11 @@ package = false
 constraint-dependencies = [
     "aiohttp>=3.14.4",
     "certifi>=2026.10.23",
+    "filelock>=4.2.1",
     "httplib2>=0.32.0",
+    "protobuf>=6.33.5",
+    "pyasn1>=0.6.5",
+    "setuptools>=84.1.0",
     "urllib3>=2.8.0",
     # One PyObjC release across the core and the frameworks AppleVision's bindings pull in:
     # the release spicy-docs measured Vision on (congress-api's archive extra names Vision and Quartz).
