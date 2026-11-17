@@ -36,3 +36,13 @@ Added from the gate 5 review of 2026-11-17 (`.cache/archive-release/reviews/gate
 9. The nightly's preflight (`lake/daily.py` `_producer_bases`) accepts any existing head record, while gate 5 judges it: daily can append onto a base the gate then refuses (an operator record from an unmerged commit, a staged delta), which stops every later night after the append. Move the gate's base-acceptance check into `congress_api.lake.producer_records` and call it before daily appends.
 10. Since the fix that lets a daily chain end on another registered producer's snapshot, a chain's trust root can be a bucket record an operator script wrote (the 2026-11-17 capture integration, ct-z4w5), not only a checked-in import anchor. A stronger rule: have the capture path write a standard `base` and keep walking through it. Owner decision.
 11. Out-of-band writes to production lake tables between nightlies (operator integrations) are not coordinated with the hosted nightly; they share no lock with `raw-source-mirror`.
+
+**2026-11-17T17:05:00Z**
+
+More from the reviews of 2026-11-17, not done:
+
+12. Every retry of a stopped night rebuilds the model (about 22 minutes, 10 GiB): hosted runners keep nothing, so committing a cause record and re-running repeats the build of an identical candidate. Six of the day's eight publish runs did. Keep the built candidate (about 170 MB) keyed by its input identity and resume at the gates.
+13. The fetch queue holds case variants of addresses already saved (`EventSingle.aspx` beside `eventsingle.aspx`), so the capture fetches the same page again and its link key changes. This produced the 2026-11-17 recapture. Do not queue an address whose normalized form is already saved.
+14. A blind review judged gate 1 overbuilt for nights where only the data moved: with an identical definition, absolute checks (invariants, contract, canary, a column emptied, rows removed, links intact) may be enough, without a cause for every unverified difference. Owner decision; would replace the per-group shape list and caps in `data_only_night.py`.
+15. The idle-connection fix (f051364a) has not yet been exercised by a night with a long daily ingest; the retry that passed had nothing left to ingest.
+16. Item 1 again: Dependabot pull requests still cannot be validated until the engine credential is a Dependabot secret.

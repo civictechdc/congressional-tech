@@ -68,3 +68,9 @@ A blind review (`.cache/archive-release/reviews/greybeard-ci-20261117/REVIEW.md`
 - a pull request now says whether it changes the model definition (`.github/scripts/definition-change.py`), which is the merge-time signal for a code-caused stop. A data-caused stop cannot be rehearsed before the night's data exists.
 
 Catch-up nights (owner 2026-11-17: the simplest thing that works and adds no long-term debt): the receipt limit is removed, not replaced by a count of nights. The caps follow the receipts, and 2% of a file for a group, 6% for a file's groups together, is the ceiling however many receipts there are, so a catch-up after a stopped night approves itself and only a backlog that moves that much stops. Also found: the fetch queue held a case variant of an address already saved (`EventSingle.aspx` beside `eventsingle.aspx`), so the capture fetched the same page again; that is what produced tonight's recapture.
+
+**2026-11-17T17:05:00Z**
+
+Pull request 187 merged as 0e1f5643; main's validation of it passed, and the nightly's commit selection, run against the live API, picks it. In it: recaptured pages proven from raw receipts (HTML pages under their own unchanged title only), production on validated commits (main's tip when only tickets, docs or Markdown changed since), catch-up nights approving themselves with a file's share as the only ceiling, the pull-request notice for definition changes, and the test session's nightly alert switched off (local test runs had been posting real "Archive nightly publish" notifications).
+
+Left open on purpose: this ticket stays in progress until one scheduled night publishes with no signed record and no re-run. The next scheduled capture is due around 11:00Z on 2026-11-18. If it stops, the `ci-failure` issue names the run and the refusal's first line names the reason.
