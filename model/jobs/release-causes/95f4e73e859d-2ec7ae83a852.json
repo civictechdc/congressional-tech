@@ -1,0 +1,1019 @@
+{
+ "version": 1,
+ "base_release_id": "95f4e73e859d83fffcb2795fcaf07145f78cee6fd3ab7e238c27ba8267274345",
+ "candidate_release_id": "2ec7ae83a852dc1c6e791f59ea829aea12ab04d77c96781f15ee3d6d916d4767",
+ "notes": {
+  "identifiers": [
+   {
+    "statement": "Capture night 2026-11-17 (scheduled capture; 1775 receipts new to the release), built in hosted run folder 44087092120-3 by the live release's own model definition, entity digests, producer versions and job pins (ct-pz32). It did not approve itself because 1 page(s) captured again at the same address changed bytes, which the link rule leaves to a named correction, and because the night is larger than the tripwires allow: links first seen on the 1,571 pages captured tonight (4.1 a page), queued and not yet fetched; the queue: 1,739 addresses fetched (the request budget), each counted once per attempt column, plus the newly queued links; listing rows of the re-captured pages: link text and listed-on for 4,796 rows, counted in two columns, and 738 new addresses; six person keys re-keyed; the comparison verified each successor, and person_aliases publishes the seven retired keys; one person key the new appearances make ambiguous; person_aliases states it, so the key resolves to a notice, not to nothing; one recording match replaced as 117 matches were added and 119 re-sourced from the night's meeting and video receipts.",
+    "decision": "ct-pz32, owner decision 2026-11-17; ct-4nax named corrections"
+   }
+  ]
+ },
+ "corrections": [
+  {
+   "kind": "link_key",
+   "key": "1a5683edbb6252f5",
+   "live_body": "1a5683edbb6252f5a799f346c69d6c6d1fa934d962ac6c3b9432a7ea8e4f03bb",
+   "candidate_body": "3e5423c21597af88eb3efd037f2d05725ecdf7df0c8cc7bdd935334aa355836e",
+   "decision": "Live link key 1a5683edbb6252f5 showed the earlier capture 1a5683edbb62 of https://transportation.house.gov/calendar/eventsingle.aspx?EventID=409450 (eventsingle.aspx, live row 291751). The scheduled capture 20261117T120858Z-54fa7e067e15 fetched that same address again at HTTP 200 on 2026-11-17 (receipt receipts/house/pages/2026-11-17/20261117T120858Z-54fa7e067e15-4d6d93f96312d4fc0cd7ad406daad9201c5933c81268d643c22f7140ca463bec.jsonl.gz), and the page's saved body is now that capture, 3e5423c21597 (row 291815). Read side by side on 2026-11-17, the two captures have the same title and event text and differ only in the site's latest-news sidebar. Same address, same page, newer bytes: the document shows its newest capture, as in the 62 recapture corrections of release ede659a056c0 (ct-fa2h).",
+   "tickets": [
+    "ct-4nax",
+    "ct-pz32"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "6aeaba12c32a074a",
+   "live_body": "1a5683edbb6252f5a799f346c69d6c6d1fa934d962ac6c3b9432a7ea8e4f03bb",
+   "candidate_body": "3e5423c21597af88eb3efd037f2d05725ecdf7df0c8cc7bdd935334aa355836e",
+   "decision": "Live lookup key 6aeaba12c32a074a showed the earlier capture 1a5683edbb62 of https://transportation.house.gov/calendar/eventsingle.aspx?EventID=409450 (eventsingle.aspx, live row 291751). The scheduled capture 20261117T120858Z-54fa7e067e15 fetched that same address again at HTTP 200 on 2026-11-17 (receipt receipts/house/pages/2026-11-17/20261117T120858Z-54fa7e067e15-4d6d93f96312d4fc0cd7ad406daad9201c5933c81268d643c22f7140ca463bec.jsonl.gz), and the page's saved body is now that capture, 3e5423c21597 (row 291815). Read side by side on 2026-11-17, the two captures have the same title and event text and differ only in the site's latest-news sidebar. Same address, same page, newer bytes: the document shows its newest capture, as in the 62 recapture corrections of release ede659a056c0 (ct-fa2h).",
+   "tickets": [
+    "ct-4nax",
+    "ct-pz32"
+   ]
+  },
+  {
+   "kind": "address",
+   "key": "https://transportation.house.gov/calendar/eventsingle.aspx?EventID=409450",
+   "live_body": "1a5683edbb6252f5a799f346c69d6c6d1fa934d962ac6c3b9432a7ea8e4f03bb",
+   "candidate_body": "3e5423c21597af88eb3efd037f2d05725ecdf7df0c8cc7bdd935334aa355836e",
+   "decision": "Live address https://transportation.house.gov/calendar/eventsingle.aspx?EventID=409450 showed the earlier capture 1a5683edbb62 of https://transportation.house.gov/calendar/eventsingle.aspx?EventID=409450 (eventsingle.aspx, live row 291751). The scheduled capture 20261117T120858Z-54fa7e067e15 fetched that same address again at HTTP 200 on 2026-11-17 (receipt receipts/house/pages/2026-11-17/20261117T120858Z-54fa7e067e15-4d6d93f96312d4fc0cd7ad406daad9201c5933c81268d643c22f7140ca463bec.jsonl.gz), and the page's saved body is now that capture, 3e5423c21597 (row 291815). Read side by side on 2026-11-17, the two captures have the same title and event text and differ only in the site's latest-news sidebar. Same address, same page, newer bytes: the document shows its newest capture, as in the 62 recapture corrections of release ede659a056c0 (ct-fa2h).",
+   "tickets": [
+    "ct-4nax",
+    "ct-pz32"
+   ]
+  }
+ ],
+ "groups": [
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 731,
+   "disposition": "explained",
+   "cause": "Capture night: +731 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed chambers|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Capture night: +2 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed committee_keys|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Capture night: +2 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed link_key|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture night: +1 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed page_metadata|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture night: +1 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_body|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture night: +1 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_bytes|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture night: +1 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "Capture night: +3 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 2420,
+   "disposition": "explained",
+   "cause": "Capture night: +2420 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 2515,
+   "disposition": "explained",
+   "cause": "Capture night: +2515 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed witness_keys|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Capture night: +4 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 732,
+   "disposition": "explained",
+   "cause": "Capture night: +732 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 731,
+   "disposition": "explained",
+   "cause": "Capture night: +731 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed chambers|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Capture night: +2 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed committee_keys|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Capture night: +2 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 2420,
+   "disposition": "explained",
+   "cause": "Capture night: +2420 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed witness_keys|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Capture night: +4 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 18,
+   "disposition": "explained",
+   "cause": "Capture night: +18 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 80,
+   "disposition": "explained",
+   "cause": "Capture night: +80 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 35,
+   "disposition": "explained",
+   "cause": "Capture night: +35 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 33,
+   "disposition": "explained",
+   "cause": "Capture night: +33 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|removed keys|person_aliases states the key ambiguous",
+   "count": -1,
+   "disposition": "explained",
+   "cause": "Capture night: -1 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs; over the unattended tripwire and accepted by hand: one person key the new appearances make ambiguous; person_aliases states it, so the key resolves to a notice, not to nothing.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|added keys|no evidence given",
+   "count": 18,
+   "disposition": "explained",
+   "cause": "Capture night: +18 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed appearance_count|value differs on matched key",
+   "count": 8,
+   "disposition": "explained",
+   "cause": "Capture night: +8 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed first_seen_date|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture night: +1 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed hearing_count|value differs on matched key",
+   "count": 8,
+   "disposition": "explained",
+   "cause": "Capture night: +8 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed last_seen_date|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture night: +1 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed name|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture night: +1 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed organization|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture night: +1 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed organizations|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture night: +1 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed positions|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Capture night: +5 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed witness_keys|value differs on matched key",
+   "count": 18,
+   "disposition": "explained",
+   "cause": "Capture night: +18 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|removed keys|no evidence given",
+   "count": -1,
+   "disposition": "explained",
+   "cause": "Capture night: -1 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs; over the unattended tripwire and accepted by hand: one recording match replaced as 117 matches were added and 119 re-sourced from the night's meeting and video receipts.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 117,
+   "disposition": "explained",
+   "cause": "Capture night: +117 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 119,
+   "disposition": "explained",
+   "cause": "Capture night: +119 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 78,
+   "disposition": "explained",
+   "cause": "Capture night: +78 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 87,
+   "disposition": "explained",
+   "cause": "Capture night: +87 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 15,
+   "disposition": "explained",
+   "cause": "Capture night: +15 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "Capture night: +0 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 738,
+   "disposition": "explained",
+   "cause": "Capture night: +738 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 4796,
+   "disposition": "explained",
+   "cause": "Capture night: +4796 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 4796,
+   "disposition": "explained",
+   "cause": "Capture night: +4796 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|removed URLs|unexplained",
+   "count": -32,
+   "disposition": "explained",
+   "cause": "Capture night: -32 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 36,
+   "disposition": "explained",
+   "cause": "Capture night: +36 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 6489,
+   "disposition": "explained",
+   "cause": "Capture night: +6489 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs; over the unattended tripwire and accepted by hand: links first seen on the 1,571 pages captured tonight (4.1 a page), queued and not yet fetched.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 1739,
+   "disposition": "explained",
+   "cause": "Capture night: +1739 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 1739,
+   "disposition": "explained",
+   "cause": "Capture night: +1739 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 1506,
+   "disposition": "explained",
+   "cause": "Capture night: +1506 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 1705,
+   "disposition": "explained",
+   "cause": "Capture night: +1705 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 1684,
+   "disposition": "explained",
+   "cause": "Capture night: +1684 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 1688,
+   "disposition": "explained",
+   "cause": "Capture night: +1688 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 1739,
+   "disposition": "explained",
+   "cause": "Capture night: +1739 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 124,
+   "disposition": "explained",
+   "cause": "Capture night: +124 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 853,
+   "disposition": "explained",
+   "cause": "Capture night: +853 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|added keys|no evidence given",
+   "count": 38,
+   "disposition": "explained",
+   "cause": "Capture night: +38 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed person_key|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Capture night: +4 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed superseded_by|value differs on matched key",
+   "count": 19,
+   "disposition": "explained",
+   "cause": "Capture night: +19 from the 1775 receipts new to the release, built by the live release's definition and pinned inputs.",
+   "tickets": [
+    "ct-pz32",
+    "ct-4jms"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/95f4e73e859d-2ec7ae83a852.json",
+     "sha256": "e7d58e076d739cd1da7a1c270d632a0f2d68a5a480f316a9d2fa884f38b9396b",
+     "size": 10773
+    }
+   ]
+  }
+ ]
+}
