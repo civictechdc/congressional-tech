@@ -108,10 +108,6 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - name: Require every offline shard to pass
-        env:
-          OFFLINE_RESULT: ${{ needs.offline.result }}
-        run: test "$OFFLINE_RESULT" = success
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
@@ -149,3 +145,11 @@ jobs:
         run: python scripts/dev.py test native-loopback
       - name: Require the archive contract against native hand releases
         run: .venv/bin/python -I .github/scripts/verify-archive-contract.py --work "$RUNNER_TEMP/archive-contract"
+      # Last, and always: this job is the one verdict for the run, but its own lanes are
+      # independent of the shards. Gated first, one red shard hid them all on main
+      # (run 44065749125), so a second break stayed unseen until the first was fixed.
+      - name: Require every offline shard to pass
+        if: always()
+        env:
+          OFFLINE_RESULT: ${{ needs.offline.result }}
+        run: test "$OFFLINE_RESULT" = success

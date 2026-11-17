@@ -124,9 +124,11 @@ def test_required_validate_fails_if_any_offline_job_failed_or_was_cancelled():
     validate = workflow('validate-explorer.yml')['jobs']['validate']
     assert validate['needs'] == 'offline'
     assert validate['if'] == 'always()'
-    first = validate['steps'][0]
-    assert first['env']['OFFLINE_RESULT'] == '${{ needs.offline.result }}'
-    assert first['run'] == 'test "$OFFLINE_RESULT" = success'
+    # The verdict comes last and always runs, so this job's own lanes report even when a shard is red.
+    gate = validate['steps'][-1]
+    assert gate['if'] == 'always()' and gate['env']['OFFLINE_RESULT'] == '${{ needs.offline.result }}'
+    assert gate['run'] == 'test "$OFFLINE_RESULT" = success'
+    assert not any('if' in step and 'OFFLINE_RESULT' in str(step['if']) for step in validate['steps'][:-1])
     assert not any('production-offline' in step.get('run', '') for step in validate['steps'])
     # Other lanes still receive the same native runtime; their skips cannot grow.
     assert any(s.get('uses') == './.github/actions/setup-local-job-runtime' for s in validate['steps'])
@@ -135,9 +137,9 @@ def test_required_validate_fails_if_any_offline_job_failed_or_was_cancelled():
 
 @pytest.mark.parametrize('status,expected', [('success', 0), ('failure', 1), ('cancelled', 1), ('skipped', 1)])
 def test_actual_required_gate_propagates_every_matrix_result(status, expected):
-    first = workflow('validate-explorer.yml')['jobs']['validate']['steps'][0]
-    assert 'OFFLINE_RESULT' in first['env']
-    result = subprocess.run(['/bin/bash', '-c', first['run']],
+    gate = workflow('validate-explorer.yml')['jobs']['validate']['steps'][-1]
+    assert 'OFFLINE_RESULT' in gate['env']
+    result = subprocess.run(['/bin/bash', '-c', gate['run']],
                             env={**os.environ, 'OFFLINE_RESULT': status})
     assert result.returncode == expected
 
