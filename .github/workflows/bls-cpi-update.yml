@@ -5,9 +5,13 @@ on:
     - cron: "0 6 3 * *" # 6am UTC on the 3rd of each month
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   update-cpi:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repo
@@ -16,8 +20,10 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: "3.x"
+          python-version-file: ".python-version"
 
+      # openpyxl is not a declared dependency of apps/inflation_gsheets, so the
+      # locked workspace cannot install this job's packages yet.
       - name: Install dependencies
         run: pip install pandas openpyxl requests
 
@@ -32,17 +38,10 @@ jobs:
       - name: Build multi-source inflation table
         run: python apps/inflation_gsheets/src/fetch-inflation-sources.py --aggregate
 
+      # Another scheduled workflow may push to main first: the script rebases and
+      # retries, and fails the step when the last push is still rejected.
       - name: Commit and push CSVs
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add apps/inflation_gsheets/src/data/historical-cpi.csv
-          git add apps/inflation_gsheets/src/data/inflation-sources.csv
-          git commit -m "Auto-updated CPI + multi-source inflation CSVs" || echo "No changes"
-          # Resilient push: another scheduled workflow may push to main
-          # between checkout and now (non-fast-forward). Rebase and retry.
-          for attempt in 1 2 3; do
-            git push && break
-            echo "push rejected (attempt $attempt) -- rebasing on origin/main"
-            git pull --rebase --autostash origin main
-          done
+          .github/scripts/commit-and-push.sh "Auto-updated CPI + multi-source inflation CSVs" \
+            apps/inflation_gsheets/src/data/historical-cpi.csv \
+            apps/inflation_gsheets/src/data/inflation-sources.csv
