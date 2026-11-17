@@ -37,7 +37,8 @@ import os
 import shutil
 from pathlib import Path
 
-from congress_api.lake.producer_records import PIN_FIELDS
+from congress_api.lake.producer_records import (BACKFILL, DAILY_JOB as DAILY, IMPORT, base_problems, import_problems,
+    link_problems, record_problems)
 from congress_api.lake.tables import table_input
 from congress_api.retention.provenance import run_job
 
@@ -99,22 +100,6 @@ RULES = {
 }
 
 
-CAPTURES_STAGE = 'packages/congress_api/src/congress_api/cli/captures_ingest.py'
-DAILY = 'packages/congress_api/src/congress_api/lake/daily.py'
-BACKFILL = 'packages/viewer_publication/src/viewer_publication/archive_backfill_job.py'
-IMPORT = 'packages/viewer_publication/src/viewer_publication/archive_import_job.py'
-# The checked-in jobs that may produce each table; a record naming any other file refuses.
-PRODUCERS = {
-    'captures': {CAPTURES_STAGE, DAILY, BACKFILL, IMPORT},
-    'readings': {'packages/congress_api/src/congress_api/cli/readings.py', DAILY, BACKFILL, IMPORT},
-    'filename_readings': {DAILY, BACKFILL, IMPORT},
-    'meeting_records': {DAILY, BACKFILL, IMPORT},
-    'appearance_records': {DAILY, BACKFILL, IMPORT},
-    'video_records': {DAILY, BACKFILL, IMPORT},
-    'committee_records': {DAILY, BACKFILL, IMPORT},
-    'playlist_records': {DAILY, BACKFILL, IMPORT},
-    'transcript_headings': {DAILY, BACKFILL, IMPORT},
-}
 # Older producers hashed installed library versions (sniff: pypdf, lxml), so report the versions
 # the commit's own uv.lock pins rather than today's environment.
 VERSIONS_AT_COMMIT = """import importlib, importlib.metadata, json, tomllib
@@ -207,135 +192,43 @@ def expected_versions(name, model, mapping_current):
     return model['parser_versions'].get(name)
 
 
-def _git(root, *args):
-    import subprocess
-    return subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True)
-
-
-def _is_delta(record):
-    return record.get('delta_only') is True or record.get('final_reconciliation_required') is True
-
-
-def import_origin_problem(name, source, origin):
-    """Check that a pinned origin can account for the complete file being imported."""
-    if not isinstance(origin, dict):
-        return 'an import needs a producer record object'
-    if origin.get('input') != name:
-        return 'the import origin names another table'
-    if _is_delta(origin):
-        return 'a staged delta cannot be the origin of a complete table'
-    selector = origin.get('selector')
-    if not isinstance(selector, dict) or selector.get('kind') not in ('parquet', 'native_table'):
-        return 'the import origin must name a Parquet artifact or native snapshot'
-    if selector['kind'] == 'native_table':
-        try:
-            table_input(name, {key: selector[key] for key in PIN_FIELDS})
-        except (KeyError, ValueError):
-            return 'the import origin needs an exact native table pin'
-    elif (not isinstance(source, dict)
-          or any(source.get(key) is None or source[key] != selector.get(key) for key in ('sha256', 'size'))):
-        return 'the Parquet origin does not match the import source pin'
-    return None
-
-
-def _record_reasons(name, record, model, mapping_current, root, *, label, selector=None, versions=True, allow_delta=False):
-    """One record's refusals: version, registered job, full reachable commit, job checked in
-    there and, when the record's code produced the rows, the versions recomputed there."""
-    import re
-    reasons = []
-    if not allow_delta and _is_delta(record):
-        return [f'producer proof: {label}: a staged delta cannot produce a complete table']
-    if selector is not None and (record.get('input') != name or record.get('selector') != selector):
-        reasons.append(f'producer proof: {label}: the producer record names another selector')
-    commit, job = record.get('commit'), record.get('job')
-    if record.get('version') != 1:
-        return reasons + [f'producer proof: {label}: unknown producer record version {record.get("version")!r}']
-    if job not in PRODUCERS.get(name, ()):
-        return reasons + [f'producer proof: {label}: job {job!r} is not a producer registered for this table']
-    if not isinstance(commit, str) or re.fullmatch('[0-9a-f]{40}', commit) is None:
-        return reasons + [f'producer proof: {label}: the producer record has no full commit']
-    if _git(root, 'merge-base', '--is-ancestor', commit, 'HEAD').returncode != 0:
-        return reasons + [f'producer proof: {label}: producing commit {commit[:12]} is not reachable from HEAD']
-    if _git(root, 'cat-file', '-e', f'{commit}:{job}').returncode != 0:
-        return reasons + [f'producer proof: {label}: job {job!r} is not a file checked in at {commit[:12]}']
-    if versions:
+def _versions(name, model, mapping_current, root):
+    """record_problems' `versions` for gate 5: the record's code computes the versions the pinned rows carry."""
+    def check(record, label):
+        commit = record['commit']
         try:
             computed = versions_at(commit, root=root).get(name)
         except ValueError as error:
-            return reasons + [f'producer proof: {label}: {error}']
+            return [f'producer proof: {label}: {error}']
         expected = expected_versions(name, model, mapping_current)
         if name == 'readings' and isinstance(computed, dict):
             # A capable writer can also produce a release that omits derived metadata.
             computed = {parser: value for parser, value in computed.items() if parser in expected}
         if computed != expected:
-            reasons.append(f'producer proof: {label}: the code at {commit[:12]} computes another version than the pinned rows carry')
-    return reasons
+            return [f'producer proof: {label}: the code at {commit[:12]} computes another version than the pinned rows carry']
+        return []
+    return check
 
 
-def _import_reasons(name, record, model, mapping_current, root, *, label, versions=True):
-    origin = record.get('origin')
-    if not isinstance(origin, dict) or not isinstance(origin.get('record'), dict):
-        return [f'producer proof: {label}: an import record needs the origin record of the job that produced the rows']
-    if origin['record'].get('job') == IMPORT:
-        return [f'producer proof: {label}: an import cannot name another import as its origin']
-    if problem := import_origin_problem(name, record.get('source'), origin['record']):
-        return [f'producer proof: {label} origin: {problem}']
-    return _record_reasons(name, origin['record'], model, mapping_current, root, label=f'{label} origin', versions=versions)
+def _record_reasons(name, record, model, mapping_current, root, *, label, selector=None, versions=True, allow_delta=False):
+    """One record's refusals (producer_records.record_problems), bound to `selector` when given and,
+    when the record's code produced the rows, with the versions recomputed at its commit."""
+    reasons = []
+    if selector is not None and (record.get('input') != name or record.get('selector') != selector):
+        reasons.append(f'producer proof: {label}: the producer record names another selector')
+    return reasons + record_problems(name, record, root, label=label, allow_delta=allow_delta,
+                                     versions=_versions(name, model, mapping_current, root) if versions else None)
 
 
-def _chain_reasons(name, record, model, mapping_current, root, ledger, *, label):
-    """A daily record's bases, back to a checked-in anchor, the table's first snapshot, or a
-    snapshot another registered producer wrote.
-
-    Each link: the base is the same table, an ancestor of the head reached by appends only
-    (the head's Iceberg metadata), and its record is the one pinned by hash. Older links
-    are not version-checked: their rows' versions are the row rule's concern.
-    """
-    from congress_api.lake.producer_records import appended_from, pin_of
+def _chain_reasons(name, record, root, ledger, *, label):
+    """A daily record's link to its base, then the base by the rule the daily preflight also
+    applies before it appends (producer_records.base_problems); the head's Iceberg metadata
+    gives the lineage."""
     if ledger is None:
         return [f'producer proof: {label}: a daily record\'s base cannot be read without the producer record store']
-    head = record['selector']
-    lineage = ledger.lineage(head['metadata_location'])
-    current, seen = record, set()
-    while True:
-        base = current.get('base')
-        if not isinstance(base, dict) or not isinstance(base.get('selector'), dict):
-            return [f'producer proof: {label}: a daily record must name the base snapshot it appended onto']
-        selector, pinned = base['selector'], base.get('record')
-        if selector.get('table_uuid') != head.get('table_uuid'):
-            return [f'producer proof: {label}: the base snapshot belongs to another table']
-        if not appended_from(lineage, current['selector']['snapshot'], selector.get('snapshot')):
-            return [f'producer proof: {label}: base snapshot {selector.get("snapshot")} is not an ancestor reached by appends only']
-        if selector.get('snapshot') is None:
-            return [] if pinned is None else [f'producer proof: {label}: an empty base has no record']
-        if selector['snapshot'] in seen:
-            return [f'producer proof: {label}: the base chain repeats a snapshot']
-        seen.add(selector['snapshot'])
-        found = ledger.find(name, selector)
-        if (found is None or not isinstance(pinned, dict)
-                or {k: found[1].get(k) for k in ('sha256', 'size')} != {k: pinned.get(k) for k in ('sha256', 'size')}):
-            return [f'producer proof: {label}: the record of base snapshot {selector["snapshot"]} is missing or differs from its pin']
-        prior, reference = found
-        if pin_of(prior.get('selector') or {}) != pin_of(selector):
-            return [f'producer proof: {label}: the base record names another snapshot']
-        link = f'{label} base {selector["snapshot"]}'
-        if prior.get('job') == IMPORT:
-            if 'anchor' not in reference:
-                return [f'producer proof: {link}: an import record in the chain must be checked in beside the publish spec']
-            return (_record_reasons(name, prior, model, mapping_current, root, label=link, versions=False)
-                    or _import_reasons(name, prior, model, mapping_current, root, label=link, versions=False))
-        # A base another registered producer wrote (a capture stage, a backfill) ends the chain:
-        # snapshot_reasons accepts that record for its own snapshot and asks it for no base.
-        # Refusing it here stopped the first nightly after a reviewed capture integration (run
-        # 44087092120: daily.py at 8017288381133952975 on captures_ingest.py at 5877413658015059876,
-        # the snapshot the live release was published from). Like every link, it is not
-        # version-checked: its rows' versions are the row rule's concern.
-        found_reasons = _record_reasons(name, prior, model, mapping_current, root, label=link, versions=False)
-        if not found_reasons and prior.get('input') != name:
-            found_reasons = [f'producer proof: {link}: the base record names another table']
-        if found_reasons or prior.get('job') != DAILY:
-            return found_reasons
-        current = prior
+    lineage = ledger.lineage(record['selector']['metadata_location'])
+    return (link_problems(record, lineage, label=label)
+            or base_problems(name, record['base'], ledger, root, label=label, lineage=lineage))
 
 
 def snapshot_reasons(model, records, *, root=ROOT, mapping_current=None, ledger=None):
@@ -360,9 +253,9 @@ def snapshot_reasons(model, records, *, root=ROOT, mapping_current=None, ledger=
         if found:
             continue
         if imported:
-            reasons += _import_reasons(name, record, model, mapping_current, root, label=name)
+            reasons += import_problems(name, record, root, label=name, versions=_versions(name, model, mapping_current, root))
         elif record.get('job') == DAILY and selector.get('kind') == 'native_table':
-            reasons += _chain_reasons(name, record, model, mapping_current, root, ledger, label=name)
+            reasons += _chain_reasons(name, record, root, ledger, label=name)
     return reasons
 
 

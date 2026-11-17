@@ -3,6 +3,7 @@ import json
 import re
 import os
 from pathlib import Path
+import subprocess
 
 import pytest
 
@@ -577,7 +578,9 @@ def test_actual_execute_daily_path_publishes_only_completed_work(tmp_path,outcom
     from test_daily_producers import native_fixture
     from docspec_client.client import NativeDatasets
     from congress_api.lake import daily as daily_module,tables
-    monkeypatch.setattr(daily_module,'writer_identity',lambda root,job:dict(job=job,commit='c'*40,lockfile_digest='d'*64))
+    # A commit gate 5 accepts: a second night's preflight judges the first night's records (ct-medh).
+    head=subprocess.run(['git','rev-parse','HEAD'],check=True,capture_output=True,text=True).stdout.strip()
+    monkeypatch.setattr(daily_module,'writer_identity',lambda root,job:dict(job=job,commit=head,lockfile_digest='d'*64))
     from test_archive_publish import Store,Native
     from viewer_publication.archive_publish_job import load_spec,execute
     nightly=outcome.startswith('nightly-');hosted=outcome.startswith('hosted-')
@@ -730,7 +733,6 @@ def _interrupt_nightly_wrapper(tmp_path,spec_path,options,store,receipts,outcome
     """Run the scheduled wrapper and actual bound CLI with local external-service substitutes."""
     import importlib.util
     import fcntl
-    import subprocess
     import sys
     from types import SimpleNamespace
     from viewer_publication import archive_controller,archive_publish_job
@@ -965,7 +967,6 @@ def test_nightly_interrupted_retirement_cannot_leave_an_active_checkpoint(tmp_pa
 
 
 def test_nightly_lock_survives_a_dead_launcher(tmp_path):
-    import subprocess
     import sys
     import time
 
@@ -1018,7 +1019,6 @@ raise SystemExit(nightly.main([]))
 
 @pytest.mark.parametrize('change',['basis','profile','raw_runs','harness','median'])
 def test_seed_target_metadata_uses_shared_validator_before_runtime(tmp_path,change):
-    import subprocess
     from viewer_publication.archive_publish_job import execute,load_spec,SITE
     value=publish_spec(tmp_path);target=Path(value['targets']['path'])
     script="""import {writeTargets,measurementProfiles} from './scripts/archive-targets.mjs';
@@ -1215,7 +1215,6 @@ def test_daily_produce_to_publish_handoff_to_completeness_checks_end_to_end(tmp_
 
 
 def test_failing_end_to_end_gate_refuses_before_any_runtime_or_sdk(tmp_path,monkeypatch):
-    import subprocess
     from viewer_publication.archive_publish_job import execute,load_spec
     value=publish_spec(tmp_path);path=tmp_path/'publish.json';path.write_text(json.dumps(value))
     remote=remote_config(tmp_path)
