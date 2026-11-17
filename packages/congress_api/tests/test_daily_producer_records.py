@@ -643,6 +643,40 @@ def test_scoped_html_metadata_preserves_native_history_on_stop_and_resume(tmp_pa
     assert no_op['producers'] == {} and no_op['pins'] == complete['pins']
 
 
+def test_scoped_html_metadata_bounds_stored_bytes_before_row_limit(tmp_path, clean_tree):
+    payloads = [f'<html><head><title>Byte bound {i}</title></head><body>{i}</body></html>'.encode()
+                for i in range(6)]
+    value, engine, store = native_fixture(tmp_path, len(payloads), payloads=payloads, url_suffix='.html')
+    records = ProducerRecords(root=tmp_path/'ledger')
+    baseline = daily.produce_daily(value, engine=engine, raw_store=store, producer_records=records)
+    table_specs = {name: value['tables'][name] for name in ('captures', 'readings')}
+    scope = tmp_path/'scope.parquet'
+    pq.write_table(pa.table({'body_sha': sorted(sha256(data).hexdigest() for data in payloads)}), scope)
+    options = dict(engine=engine, catalog_root=value['catalog_root'], raw_store=store,
+        producer_records=records, tables_spec=table_specs,
+        expected_heads={name: baseline['pins'][name] for name in table_specs},
+        scope=dict(path=str(scope), **file_pin(scope)), batch_size=100,
+        decided_at=value['decided_at'],
+        unreadable_snapshot=unreadable_inventory(store, work=tmp_path/'unreadable'))
+    with pytest.raises(ValueError, match='batch_bytes'):
+        daily.produce_html_metadata(**options, batch_bytes=0, work=tmp_path/'invalid')
+    assert not (tmp_path/'invalid').exists()
+
+    # All six fit the row limit. A byte target smaller than their combined
+    # stored size must instead produce multiple durable batches.
+    stored = pq.read_table(value['body_inventory'], columns=['stored_bytes']).column('stored_bytes').to_pylist()
+    bound = sum(stored)//2
+    result = daily.produce_html_metadata(**options, batch_bytes=bound, work=tmp_path/'bounded')
+    assert result['status'] == 'completed'
+    batches = result['readings']['batches']
+    assert 1 < len(batches) < len(payloads)
+    assert sum(batch['work_items'] for batch in batches) == len(payloads)
+    rows = [row for batch in batches for row in pq.read_table(batch['readings']).to_pylist()]
+    assert {row['body_sha'] for row in rows} == {sha256(data).digest() for data in payloads}
+    assert all(row['parser'] == 'html_metadata' and row['status'] == 'completed' for row in rows)
+    assert result['pins']['captures'] == baseline['pins']['captures']
+
+
 def test_scoped_html_metadata_uses_pinned_r2_listing_for_older_captures(tmp_path, clean_tree):
     from congress_api.retention.provenance_inventory import UnreadableInventory
     from test_daily_raw_listing import body_gets, body_key, fixture
