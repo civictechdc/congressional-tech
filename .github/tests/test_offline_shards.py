@@ -2,6 +2,7 @@
 import importlib.util
 import os
 from pathlib import Path
+import re
 import subprocess
 from types import SimpleNamespace
 
@@ -133,6 +134,40 @@ def test_required_validate_fails_if_any_offline_job_failed_or_was_cancelled():
     # Other lanes still receive the same native runtime; their skips cannot grow.
     assert any(s.get('uses') == './.github/actions/setup-local-job-runtime' for s in validate['steps'])
     assert any('native-loopback' in s.get('run', '') for s in validate['steps'])
+
+
+def lanes_workflows_run_whole():
+    """Lanes some workflow step runs with `scripts/dev.py test <lane>`, not narrowed by --path."""
+    runs = [step.get('run', '') for path in (ROOT / '.github/workflows').glob('*.yml')
+            for job in workflow(path.name)['jobs'].values() for step in job.get('steps', [])]
+    return {lane for run in runs if '--path' not in run for lane in re.findall(r'scripts/dev\.py test ([\w-]+)', run)}
+
+
+def under(path, roots):
+    return any(path == root or path.startswith(root.rstrip('/') + '/') for root in roots)
+
+
+def test_a_lane_no_workflow_runs_holds_only_files_a_run_lane_selects():
+    lanes, run = dev.declaration()['lanes'], lanes_workflows_run_whole()
+    assert run <= lanes.keys()
+    for name in lanes.keys() - run:
+        covering = [root for other in run if lanes[other].get('marker') == lanes[name].get('marker')
+                    for root in lanes[other]['roots']]
+        assert not [root for root in lanes[name]['roots'] if not under(root, covering)], name
+
+
+def test_every_loopback_test_file_is_in_a_loopback_lane_a_workflow_runs():
+    """production-offline deselects `loopback` tests, so a file outside these roots never runs in CI (ct-na9t).
+
+    The scan reads markers written in the test file; one a conftest adds would not be seen."""
+    config, run = dev.declaration(), lanes_workflows_run_whole()
+    roots = [root for name in run if config['lanes'][name].get('marker') == 'loopback'
+             for root in config['lanes'][name]['roots']]
+    marked = {path for path in dev.inventory(config) if re.search(r'\bmark\.loopback\b', (ROOT / path).read_text())}
+    # Both forms: a decorated function and a module-level pytestmark.
+    assert {'packages/viewer_publication/tests/test_upload_byte_identity.py',
+            'packages/viewer_publication/tests/test_archive_multipart.py'} <= marked
+    assert sorted(path for path in marked if not under(path, roots)) == []
 
 
 @pytest.mark.parametrize('status,expected', [('success', 0), ('failure', 1), ('cancelled', 1), ('skipped', 1)])

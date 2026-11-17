@@ -22,12 +22,17 @@ jobs:
         with:
           python-version-file: ".python-version"
 
-      # openpyxl is not a declared dependency of apps/inflation_gsheets, so the
-      # locked workspace cannot install this job's packages yet.
-      - name: Install dependencies
-        run: pip install pandas openpyxl requests
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.21"
+      - name: Install the locked inflation-gsheets packages
+        run: |
+          uv sync --locked --no-dev --package inflation-gsheets
+          echo "$GITHUB_WORKSPACE/.venv/bin" >> "$GITHUB_PATH"
 
-      - name: Download XLSX from BLS and convert to CSV
+      # The workflow name stays (ci-alerts.yml watches it), but no step reads a
+      # spreadsheet: the BLS JSON API fills a CSV, so the job needs no openpyxl.
+      - name: Fetch CPI from the BLS API and append it to the CSV
         run: python apps/inflation_gsheets/src/fetch-cpi-convert-csv.py
 
       # Runs AFTER the BLS step so the multi-source table reads the freshly

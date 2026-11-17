@@ -35,6 +35,7 @@ def test_cpi_update_pins_its_environment_and_pushes_through_the_shared_script():
     python = next(step for step in job['steps'] if step.get('uses', '').startswith('actions/setup-python@'))
     assert python['with'] == {'python-version-file': '.python-version'}
     commands = '\n'.join(step.get('run', '') for step in job['steps'])
+    assert 'uv sync --locked --no-dev --package inflation-gsheets' in commands and 'pip install' not in commands
     assert '.github/scripts/commit-and-push.sh' in commands and 'git push' not in commands
 
 
