@@ -1,6 +1,6 @@
 ---
 id: ct-b1jj
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-13T15:25:44Z
@@ -23,3 +23,7 @@ Either (a) a committed hosted budget for publish-fresh/publish-resume measured o
 **2026-11-17T02:01:44Z**
 
 Verified run 43448096066 df -B1 output: ubuntu-24.04 had 80.54 GiB (86,474,792,960 bytes) free on /dev/root right before publish (far above the 14 GiB private-runner figure). Implemented hosted live-disk admission in scripts/archive_disk.py (LIVE_OPERATION_PEAKS + 15 GiB DISK_FLOOR when GITHUB_ACTIONS=true without ARCHIVE_DISK_BUDGETS) and dropped uv.lock/package-lock.json from RESOURCE_PATHS; updated .github/docspec-hosted-limits.json to 24 GiB / 2 threads / 32 GiB scratch (ct-64t4); updated .github/scripts/run-archive-job.py to raise RLIMIT_NOFILE, pass --min-available-gb 0 in CI, and auto-retry backfill_required; reused the remote docspec binary in setup-native-runtime.py --local; wired archive-jobs.yml publish to workflow_run on Capture archive sources with Gate 1 / daily / watchdog artifact retention; and uninstalled ai.spicygov.archive-nightly from Mac launchd via scripts/nightly_publish.py --uninstall.
+
+**2026-11-17T08:45:00Z**
+
+Closed by hosted publish run 44044028272 (commit 210e38c9): disk admission passed with live measurement (90.3 GiB free, 26.8 GiB required), the model built in 20 min at 10.1 GiB peak RSS, Gates 1-5 passed, and the pointer flipped to 6ac86c21b373 at 08:34:20Z. Run 44031131350 had built the same candidate and died on a 180 s R2 read timeout after the build (socket idled past the runner's NAT timeout with zero GetObject retries); 210e38c9 gives the publication client GetObject-only retries and closes pooled sockets after the build. Acceptance (a) is met: the hosted job reads a live disk budget and publishes.
