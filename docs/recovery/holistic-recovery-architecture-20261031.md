@@ -170,9 +170,12 @@ One-worker decoder probes measured approximately **52.9 MiB** peak process resid
 | Origin 429/503 or applicable `Retry-After` | Defer the origin; do not immediately bypass cooldown through another provider |
 | Provider quota/rate limit, exhausted credits, or invalid credentials | Stop admission to that provider and defer; no automatic fallback spend |
 | Unknown provider completion/timeout | Reconcile attempt and reservation before a bounded retry |
-| Clean origin 404/410 at any rung | Preserve response; proceed to bounded archive/discovery without more scrape calls on that URL |
+| Clean origin 404/410 at any rung, or a body that fails qualification | Preserve response; walk the discovery ladder below without more scrape calls on that URL |
+| Origin 200 whose body fails qualification | Preserve the body and receipt and walk the discovery ladder; fetch that address again only when its ETag, Last-Modified or declared size changes. Not yet enforced: the capture runner does not qualify bodies, and URL state carries no qualification fact |
 | Out-of-scope redirect, invalid provider response, or resource ceiling | Stop the attempt with a recorded reason |
 | Exhausted allowed rungs/discovery | Leave unresolved with evidence and retry/review status |
+
+The discovery ladder runs in this order: Web Harvest (the exact address, then the file name on the publisher's site), Wayback, same-site neighboring folder, publisher listing candidate, relocated search by file-name stem, descriptive search through the government index, GovInfo package mapping. Each rung yields leads that still need acquisition, qualification and identity acceptance. The Web Harvest name lookup cannot tell a different document with the same name on the same site, misses renamed copies, and holds only what the next harvest saw for documents published between two harvests. The neighboring folder cannot see renamed copies, other folder layouts or other hosts. The government index cannot see documents outside it, cannot filter hosts on the server, and returns at most `k` rows; a hit is usually the hearing that contains the testimony. Details: [recovery ladder](../../packages/corpus_recovery/README.md#recovery-ladder). After the ladder, a capped manual SerpApi Google search, deliberately outside the pipeline, is the standing last step for edge cases before a target is called unrecoverable. The Library of Congress web archive answers plain clients with a bot check (HTTP 403), so it is not a rung and must not be worked around.
 
 Implement these supporting changes:
 

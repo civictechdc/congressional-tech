@@ -25,6 +25,7 @@ from corpus_recovery.discovery import Response, wayback_lookup
 from corpus_recovery.discovery_runtime import DiscoveryRuntime
 from corpus_recovery.inventory import build_target_inventory, scan_receipt_history
 from corpus_recovery.pipeline import (
+    cutoff_size_hint,
     discover_target_candidates,
     evaluate_campaign_url_state,
     import_accepted_candidates,
@@ -1270,15 +1271,19 @@ def test_discovery_probes_every_repair_and_retains_lookup_diagnostics(tmp_path: 
 
 def test_write_candidates_parquet_accepts_discovery_rows_and_preserves_metadata(tmp_path: Path):
     """R2-F6: raw discovery `url` rows keep listing, mapping, version, and identity metadata."""
-    from corpus_recovery.discovery import govinfo_bill_candidate, house_listing_candidate
+    from corpus_recovery.discovery import govinfo_bill_candidate, house_listing_candidate, neighbor_folder_candidates
     xml = 'https://docs.house.gov/meetings/PW/PW00/20230315/115432/HHRG-118-PW00-20230315-SD001.xml'
     pdf = xml[:-4] + '.pdf'
     listing = 'https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=115432'
     identity = {'congress': 118, 'bill_type': 'hr', 'number': 4775, 'version': 'ih'}
+    upload = 'https://oversight.house.gov/wp-content/uploads/2012/01/report.pdf'
     rows = [
         house_listing_candidate(xml, pdf, listing_url=listing, listing_urls={xml, pdf}, evidence='ev:l',
                                 target_version='v1', candidate_version='v1'),
         govinfo_bill_candidate(xml, 118, 'hr', 4775, 'ih', source_identity=identity, evidence='ev:b'),
+        neighbor_folder_candidates(upload)[0],
+        {'target_url': upload, 'url': 'https://www.govinfo.gov/app/details/CHRG-112hhrg68046',
+         'source': 'descriptive_search', 'phrase': 'report May 2011 hearing', 'evidence': 'ev:s'},
     ]
     out = write_candidates_parquet(rows, tmp_path / 'c.parquet')
     persisted = pq.read_table(out).to_pylist()
@@ -1286,9 +1291,30 @@ def test_write_candidates_parquet_accepts_discovery_rows_and_preserves_metadata(
     assert (persisted[0]['listing_url'], persisted[0]['version'], persisted[0]['mapping']) == (
         listing, 'v1', 'house-listed-sibling-v1')
     assert json.loads(persisted[1]['identity']) == identity
+    assert (persisted[2]['source'], persisted[2]['mapping']) == ('neighbor_folder', 'same-host-file-name-adjacent-upload-month-v1')
+    assert (persisted[3]['source'], persisted[3]['phrase']) == ('descriptive_search', 'report May 2011 hearing')
     for bad in ({'target_url': xml, 'url': ''}, {'target_url': xml, 'candidate_url': None}, {'url': pdf}):
         with pytest.raises(ValueError, match='non-empty target_url'):
             write_candidates_parquet([bad], tmp_path / 'bad.parquet')
+
+
+def test_cutoff_size_hint_reads_stored_size_of_failed_pdfs_only(tmp_path: Path):
+    """A round stored size on a failed PDF is a hint; it never changes the result."""
+    records = {}
+    for size in (32 * 1024, 32 * 1024 + 1):  # planted cut-off size and an ordinary size
+        body = tmp_path / f'{size}.pdf'
+        body.write_bytes(b'%PDF-1.4\n' + b'0' * (size - 9))
+        records[size] = qualify_candidate_body(body, tmp_path / 'qualification-cache')[1]
+    assert records[32 * 1024]['status'] == records[32 * 1024 + 1]['status'] == 'unresolved'
+    assert cutoff_size_hint(records[32 * 1024]) == '32 KiB'
+    assert cutoff_size_hint(records[32 * 1024 + 1]) is None
+    failed = {'status': 'unresolved', 'media_type': 'application/pdf'}
+    # Sizes from ct-z4w5 damaged files, then a sibling short by exactly 32,768 bytes.
+    for size, hint in ((3 << 20, '1 MiB'), (655_360, '64 KiB'), (116_736, '1 KiB'),
+                       (64_000, 'round thousand'), (170_422, None), (0, None)):
+        assert cutoff_size_hint({**failed, 'body_bytes': size}) == hint, size
+    assert cutoff_size_hint({**failed, 'status': 'qualified', 'body_bytes': 1 << 20}) is None
+    assert cutoff_size_hint({**failed, 'media_type': 'text/html', 'body_bytes': 1 << 20}) is None
 
 
 def test_usable_direct_row_requires_complete_intact_document_evidence():

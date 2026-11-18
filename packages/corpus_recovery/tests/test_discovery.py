@@ -7,7 +7,9 @@ import subprocess
 import sys
 import pytest
 from corpus_recovery.discovery import (Response, webharvest_lookup, wayback_lookup, acquire_wayback,
-    acquire_candidates, house_listing_candidate, relocated_search, govinfo_document_candidate, govinfo_bill_candidate)
+    acquire_candidates, house_listing_candidate, relocated_search, govinfo_document_candidate, govinfo_bill_candidate,
+    neighbor_folder_candidates, MAX_NEIGHBOR_MONTHS, webharvest_name_lookup, webharvest_collections, shared_prefix)
+from pathlib import Path
 from corpus_recovery.cdx import key, parse_cdx
 from corpus_recovery.discovery import campaign_lookup
 
@@ -55,6 +57,55 @@ def test_scoped_deduplicated_search_and_limits():
     assert result['complete'] and len(calls)==1 and [c['url'] for c in result['candidates']]==['https://example.gov/new.pdf']
     result=relocated_search(TARGET, ['report', 'other'], {'example.gov'}, search, set(), max_queries=1, max_pages=1, max_candidates=1)
     assert not result['complete'] and result['reason'] == 'candidate_limit'
+
+UPLOADS = 'https://oversight.house.gov/wp-content/uploads'
+
+def test_neighbor_folder_proposes_same_name_in_adjacent_months_across_year_ends():
+    january = f'{UPLOADS}/2012/01/20100318Witness.pdf'
+    found = neighbor_folder_candidates(january)
+    assert [c['url'] for c in found] == [f'{UPLOADS}/2012/02/20100318Witness.pdf', f'{UPLOADS}/2011/12/20100318Witness.pdf']
+    assert found[0] == {'target_url': january, 'url': found[0]['url'], 'source': 'neighbor_folder',
+                        'mapping': 'same-host-file-name-adjacent-upload-month-v1'}
+    december = f'{UPLOADS}/2011/12/a%20b.pdf'
+    assert [c['url'] for c in neighbor_folder_candidates(december, months=2)] == [
+        f'{UPLOADS}/2012/01/a%20b.pdf', f'{UPLOADS}/2011/11/a%20b.pdf',
+        f'{UPLOADS}/2012/02/a%20b.pdf', f'{UPLOADS}/2011/10/a%20b.pdf']
+    nested = 'http://example.gov:8080/site/wp-content/uploads/2015/06/x.pdf'
+    assert neighbor_folder_candidates(nested)[1]['url'] == 'http://example.gov:8080/site/wp-content/uploads/2015/05/x.pdf'
+
+def test_neighbor_folder_ignores_targets_outside_dated_upload_folders():
+    for target in [TARGET, f'{UPLOADS}/report.pdf', f'{UPLOADS}/2012/report.pdf', f'{UPLOADS}/2012/13/report.pdf',
+                   f'{UPLOADS}/1899/01/report.pdf', f'{UPLOADS}/2012/01/extra/report.pdf', f'{UPLOADS}/2012/01/',
+                   f'{UPLOADS}/2012/01/report.pdf?ver=2', 'https://example.gov/files/2012/01/report.pdf',
+                   'mailto:nobody@example.gov', f'{UPLOADS}/2012/01/report.pdf#page=2']:
+        assert neighbor_folder_candidates(target) == [], target
+
+def test_neighbor_folder_month_bound_is_enforced():
+    target = f'{UPLOADS}/2012/01/report.pdf'
+    widest = neighbor_folder_candidates(target, months=MAX_NEIGHBOR_MONTHS)
+    assert len(widest) == 2 * MAX_NEIGHBOR_MONTHS and widest[-1]['url'] == f'{UPLOADS}/2011/07/report.pdf'
+    for months in (0, -1, MAX_NEIGHBOR_MONTHS + 1, True, 1.0, '1'):
+        with pytest.raises(ValueError, match='month bound'):
+            neighbor_folder_candidates(target, months=months)
+
+def test_descriptive_phrases_search_without_loosening_stems():
+    phrase = 'Medicaid Fraud  December 7 2011 House Oversight Committee hearing testimony'
+    calls = []
+    def search(q, page, hosts):
+        calls.append(q)
+        return {'complete': False, 'evidence': 'search:1', 'next_page': None,
+                'candidates': ['https://www.govinfo.gov/app/details/CHRG-112hhrg73451', 'https://elsewhere.gov/a.pdf']}
+    stems = relocated_search(TARGET, [phrase], {'www.govinfo.gov'}, search, set(), max_queries=1, max_pages=1, max_candidates=2)
+    assert calls == [] and stems['candidates'] == [] and stems['reason'] == 'query_limit_or_no_query'
+    found = relocated_search(TARGET, [phrase, ' '.join(phrase.split()), 'x\x00y z'], {'www.govinfo.gov'}, search, set(),
+                             max_queries=2, max_pages=2, max_candidates=2, kind='phrase')
+    assert calls == [' '.join(phrase.split())] and found['reason'] == 'incomplete_search'
+    assert found['candidates'] == [{'target_url': TARGET, 'url': 'https://www.govinfo.gov/app/details/CHRG-112hhrg73451',
+                                    'source': 'descriptive_search', 'phrase': calls[0], 'evidence': 'search:1'}]
+    assert relocated_search(TARGET, ['a' * 257], {'example.gov'}, search, set(), max_queries=1, max_pages=1,
+                            max_candidates=1, kind='phrase')['candidates'] == [] and len(calls) == 1
+    with pytest.raises(ValueError, match='search kind'):
+        relocated_search(TARGET, ['report'], {'example.gov'}, search, set(), max_queries=1, max_pages=1, max_candidates=1, kind='words')
 
 def test_govinfo_identifier_mismatch():
     assert govinfo_document_candidate(TARGET, 'CDOC-105hdoc123', expected_package_id='CDOC-105hdoc124', evidence='source:1') is None
@@ -215,3 +266,104 @@ def test_cli_fixture_replays_binary_and_makes_no_network_calls(tmp_path):
                             check=True, capture_output=True, text=True, env=os.environ.copy())
     output = json.loads(result.stdout)
     assert base64.b64decode(output['acquired'][0]['body_base64']) == body
+
+
+# Web Harvest name lookup. The fixture is the raw CDX answer recorded 2026-11-18 (ct-z4w5)
+# for this file name on the publisher site in the 111th-Congress harvest.
+NAMED_TARGET = 'https://oversight.house.gov/wp-content/uploads/2012/01/20090212GAO.pdf'
+OLD_ADDRESS = 'http://oversight.house.gov/images/stories/Hearings/pdfs/20090212GAO.pdf'
+DAMAGED_DIGEST = 'FKQNQA3PGSFSKABHJ3EHJMCQIW7LWNYP'
+RECORDED = (Path(__file__).parent / 'fixtures/webharvest-name-20090212gao-congress111th.txt').read_bytes()
+
+def named(body, damaged=DAMAGED_DIGEST, target=NAMED_TARGET):
+    calls = []
+    def call(kind, url):
+        calls.append(url)
+        return Response(200, body, True, 'index:1', 'text/plain', final_url=url)
+    return webharvest_name_lookup(target, 'congress111th', call, damaged_digest=damaged, max_pages=1), calls
+
+def cdx_line(url, digest, mime='application/pdf'):
+    return f'{key(url)} 20110106212806 {url} {mime} 200 {digest} - - 155843 0 harvest.warc.gz\n'.encode()
+
+def test_harvest_name_lookup_finds_the_old_address_copy_with_another_digest():
+    found, calls = named(RECORDED)
+    assert calls == ['https://webharvest.gov/congress111th/timemap/cdx?url=oversight.house.gov&matchType=domain'
+                     '&filter=urlkey%3A.%2A20090212gao.%2A&filter=statuscode%3A200&limit=20&showResumeKey=true']
+    assert found['complete'] and len(found['candidates']) == 1
+    candidate = found['candidates'][0]
+    assert candidate == {'target_url': NAMED_TARGET, 'original_url': OLD_ADDRESS, 'timestamp': '20110106212806',
+                         'url': 'https://webharvest.gov/congress111th/20110106212806id_/' + OLD_ADDRESS,
+                         'digest': '4BZWKJVGRI2MKA56XHVVG7KNDYOSPIZH', 'source': 'webharvest_name',
+                         'collection': 'congress111th', 'evidence': 'index:1', 'mapping': 'same-site-file-name-harvest-v1'}
+
+def test_harvest_name_lookup_skips_the_damaged_digest():
+    found, _ = named(RECORDED, damaged='4BZWKJVGRI2MKA56XHVVG7KNDYOSPIZH')
+    assert found['complete'] and found['candidates'] == []
+
+def test_harvest_name_lookup_requires_exact_name_pdf_type_and_another_address():
+    other = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
+    for url, mime in [('http://oversight.house.gov/images/stories/Hearings/pdfs/20090212GAO_appendix.pdf', 'application/pdf'),
+                      ('http://oversight.house.gov/images/stories/Hearings/pdfs/x20090212GAO.pdf', 'application/pdf'),
+                      (OLD_ADDRESS, 'text/html'), (NAMED_TARGET, 'application/pdf')]:
+        found, _ = named(cdx_line(url, other, mime))
+        assert found['complete'] and found['candidates'] == [], url
+    upper = named(cdx_line('http://www.oversight.house.gov/Images/20090212gao.PDF', other))[0]
+    assert [c['original_url'] for c in upper['candidates']] == ['http://www.oversight.house.gov/Images/20090212gao.PDF']
+    found, _ = named(RECORDED + cdx_line('http://www.gao.gov/images/20090212GAO.pdf', other))
+    assert not found['complete'] and found['reason'] == 'invalid_index_response' and found['candidates'] == []
+    with pytest.raises(ValueError, match='damaged digest'):
+        named(RECORDED, damaged='not-a-digest')
+
+def test_webharvest_collections_follow_the_congress_of_the_year():
+    assert webharvest_collections(2004) == ['congress109th']
+    assert webharvest_collections(2005) == ['congress109th', 'congress110th']
+    assert webharvest_collections(2010) == ['congress111th', 'congress112th']
+    assert webharvest_collections(2011) == ['congress112th', 'congress113th']
+    assert webharvest_collections(2023) == webharvest_collections(2024) == ['congress118th']
+    assert webharvest_collections(2002) == webharvest_collections(2025) == []
+    for year in ('2010', True, 2010.0):
+        with pytest.raises(ValueError, match='year'):
+            webharvest_collections(year)
+
+def pseudo_bytes(seed, size):
+    out, block = bytearray(), seed.encode()
+    while len(out) < size:
+        block = hashlib.sha256(block).digest()
+        out += block
+    return bytes(out[:size])
+
+def test_shared_prefix_measures_cut_dropped_chunk_and_unrelated_files():
+    intact = b'%PDF-1.4\n' + pseudo_bytes('intact', 200_000)
+    assert shared_prefix(intact[:116_736], intact) == {'shared_prefix_bytes': 116_736, 'damaged_bytes': 116_736,
+                                                       'candidate_bytes': len(intact)}
+    dropped = intact[:100_000] + intact[132_768:]
+    assert intact[100_000] != intact[132_768] and shared_prefix(dropped, intact)['shared_prefix_bytes'] == 100_000
+    unrelated = b'%PDF-1.4\n' + pseudo_bytes('other', 50_000)
+    assert shared_prefix(unrelated, intact)['shared_prefix_bytes'] == len(b'%PDF-1.4\n')
+    assert shared_prefix(b'', intact)['shared_prefix_bytes'] == 0
+
+def test_name_match_acquisition_replays_only_the_recorded_harvest_address():
+    body = b'%PDF-1.4\n' + pseudo_bytes('harvested', 4_000)
+    digest = base64.b32encode(hashlib.sha1(body).digest()).decode()
+    candidate = named(cdx_line(OLD_ADDRESS, digest))[0]['candidates'][0]
+    requests = []
+    def capture(kind, url):
+        requests.append(url)
+        return Response(200, body, True, 'replay:1', final_url=url)
+    out = acquire_candidates([candidate], capture, allowed_targets={NAMED_TARGET}, allowed_candidate_urls={candidate['url']},
+                             seen_identities=set(), max_candidates=1, damaged_body=body[:2048])
+    assert out['results'][0]['response'].body == body and requests == [candidate['url']]
+    assert out['results'][0]['shared_prefix'] == {'shared_prefix_bytes': 2048, 'damaged_bytes': 2048, 'candidate_bytes': len(body)}
+    elsewhere = 'http://www.gao.gov/images/20090212GAO.pdf'
+    renamed = 'http://oversight.house.gov/images/stories/Hearings/pdfs/20090212GAO1.pdf'
+    replay = 'https://webharvest.gov/congress111th/20110106212806id_/'
+    for bad, message in [({'url': replay + NAMED_TARGET}, 'replay identity'),
+                         ({'url': candidate['url'].replace('20110106212806', '20110106212807')}, 'replay identity'),
+                         ({'original_url': elsewhere, 'url': replay + elsewhere}, 'name match identity'),
+                         ({'original_url': renamed, 'url': replay + renamed}, 'name match identity')]:
+        with pytest.raises(ValueError, match=message):
+            acquire_candidates([{**candidate, **bad}], capture, allowed_targets={NAMED_TARGET},
+                               allowed_candidate_urls={bad['url']}, seen_identities=set(), max_candidates=1)
+    assert acquire_candidates([{**candidate, 'url': replay + NAMED_TARGET}], capture, allowed_targets={NAMED_TARGET},
+                              allowed_candidate_urls={candidate['url']}, seen_identities=set(), max_candidates=1)['results'] == []
+    assert requests == [candidate['url']]

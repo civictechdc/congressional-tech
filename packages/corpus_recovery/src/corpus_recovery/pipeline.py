@@ -169,7 +169,7 @@ def discover_target_candidates(
 
 _OPTIONAL_CANDIDATE_COLUMNS = (
     'original_url', 'timestamp', 'digest', 'collection', 'package_id', 'evidence',
-    'listing_url', 'version', 'mapping', 'identifier_evidence', 'identity', 'stem',
+    'listing_url', 'version', 'mapping', 'identifier_evidence', 'identity', 'stem', 'phrase',
 )
 
 
@@ -240,6 +240,30 @@ def qualify_candidate_body(
             config=cfg, require_qualified=True,
         )
     return verified, record
+
+
+_SIZE_BOUNDARIES = (('1 MiB', 1 << 20), ('64 KiB', 64 << 10), ('32 KiB', 32 << 10), ('1 KiB', 1 << 10))
+
+
+def cutoff_size_hint(record: Mapping[str, Any]) -> str | None:
+    """Name the round boundary a failed PDF's stored `body_bytes` sits on, if any.
+
+    Returns the largest of 1 MiB, 64 KiB, 32 KiB and 1 KiB that divides the size,
+    else 'round thousand' for sizes such as 64,000, else None. A PDF that fails
+    qualification at such a size is probably a cut-off transfer or stored copy.
+    This is a hint only, never a pass or a fail: intact files can have round
+    sizes, and a copy that lost a chunk mid-file at a size that is not round
+    (ct-z4w5: copies exactly 32,768 bytes short of their siblings) shows nothing.
+    It reads the stored fields only; verifying the record is the caller's job.
+    """
+    size = record.get('body_bytes')
+    if (record.get('status') == 'qualified' or record.get('media_type') != 'application/pdf'
+            or type(size) is not int or size <= 0):
+        return None
+    for name, boundary in _SIZE_BOUNDARIES:
+        if size % boundary == 0:
+            return name
+    return 'round thousand' if size % 1000 == 0 else None
 
 
 def write_campaign_descriptor(
@@ -506,6 +530,7 @@ def resume_recovery_campaign(
 
 
 __all__ = [
+    'cutoff_size_hint',
     'discover_target_candidates',
     'evaluate_campaign_url_state',
     'import_accepted_candidates',

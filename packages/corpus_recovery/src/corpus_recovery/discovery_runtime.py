@@ -19,7 +19,7 @@ from congress_api.acquisition.capture_journal import DurableCapture,durable_json
 from congress_api.acquisition.fetcher import CaptureScope,Fetcher
 from congress_api.transport.raw_adapters import DirectAdapter,network_outcome_unknown
 from congress_shared.custody import canonical_json_bytes,verify_local_file
-from corpus_recovery.discovery import Response,campaign_lookup,wayback_lookup,relocated_search,validate_wayback_replay
+from corpus_recovery.discovery import Response,campaign_lookup,wayback_lookup,relocated_search,validate_wayback_replay,validate_webharvest_replay
 
 
 class Budgeted:
@@ -74,10 +74,9 @@ class DiscoveryRuntime:
         if source=='wayback':
             if not validate_wayback_replay(url,original,timestamp):
                 raise ValueError('Invalid Wayback replay identity')
-        elif (source!='webharvest' or not re.fullmatch(r'congress(?:109|11[0-8])th',candidate.get('collection',''))
-              or not re.fullmatch(r'\d{14}',timestamp)
-              or url!=f"https://webharvest.gov/{candidate['collection']}/{timestamp}id_/{original}"):
-            raise ValueError('Invalid Web Harvest replay identity')
+        else:
+            try:validate_webharvest_replay(candidate)
+            except ValueError as error:raise ValueError('Invalid Web Harvest replay identity') from error
         result,operation=self._fetch(url,adapter=Budgeted(DirectAdapter(self.session),self.admission,'replay',0),
             limit=body_limit,definition=dict(kind='replay',candidate=candidate,limit=body_limit))
         final=result.final
@@ -92,30 +91,47 @@ class DiscoveryRuntime:
                 raise ValueError('Archive replay digest mismatch')
         return result,operation
 
+    def _post_search(self,url,payload,*,kind,cost,result_limit,headers):
+        """POST one search through the journal, scope and admission; rows are leads."""
+        runtime=self
+        class PostSession:
+            def get(self,url,**kwargs):
+                kwargs['headers']={**kwargs['headers'],**headers}
+                return runtime.session.post(url,json=payload,**kwargs)
+        result,operation=self._fetch(url,adapter=Budgeted(DirectAdapter(PostSession()),self.admission,'search',cost),
+            limit=self.control_limit,definition=dict(kind=kind,payload=payload,upper_cost=cost))
+        final=result.final
+        candidates=[]
+        if final.http_status==200 and final.complete and final.body:
+            value=json.loads(final.body.path.read_bytes())
+            if value.get('success') is True:
+                rows=value.get('data',{}).get('web',[])
+                if not isinstance(rows,list) or len(rows)>result_limit:raise ValueError('Search response exceeded selected result bound')
+                candidates=[r['url'] for r in rows if isinstance(r,dict) and isinstance(r.get('url'),str)]
+        return dict(candidates=candidates,evidence=operation,complete=False,next_page=None)
+
     def search(self,*,api_key,upper_cost,result_limit=10):
         if not isinstance(api_key,str) or not api_key or type(upper_cost) is not int or upper_cost<=0:
             raise ValueError('Paid search needs a credential and explicit positive price bound')
         if type(result_limit) is not int or not 1<=result_limit<=100:raise ValueError('Search result limit must be 1..100')
-        runtime=self
         def call(query,page,hosts):
             if page is not None:raise ValueError('Firecrawl search does not provide this pagination cursor')
             payload=dict(query=query,limit=result_limit,sources=['web'],includeDomains=list(hosts))
-            class PostSession:
-                def get(self,url,**kwargs):
-                    kwargs['headers']={**kwargs['headers'],'Authorization':'Bearer '+api_key}
-                    return runtime.session.post(url,json=payload,**kwargs)
-            url='https://api.firecrawl.dev/v2/search'
-            result,operation=runtime._fetch(url,adapter=Budgeted(DirectAdapter(PostSession()),runtime.admission,'search',upper_cost),
-                limit=runtime.control_limit,definition=dict(kind='firecrawl-search-v2',payload=payload,upper_cost=upper_cost))
-            final=result.final
-            candidates=[]
-            if final.http_status==200 and final.complete and final.body:
-                value=json.loads(final.body.path.read_bytes())
-                if value.get('success') is True:
-                    rows=value.get('data',{}).get('web',[])
-                    if not isinstance(rows,list) or len(rows)>result_limit:raise ValueError('Search response exceeded selected result bound')
-                    candidates=[r['url'] for r in rows if isinstance(r,dict) and isinstance(r.get('url'),str)]
-            return dict(candidates=candidates,evidence=operation,complete=False,next_page=None)
+            return self._post_search('https://api.firecrawl.dev/v2/search',payload,kind='firecrawl-search-v2',
+                cost=upper_cost,result_limit=result_limit,headers={'Authorization':'Bearer '+api_key})
+        return call
+
+    def gov_search(self,*,result_limit=10):
+        """Free Firecrawl government index: no credential, no credits, no domain filter.
+
+        Sends only query and k (the endpoint rejects unknown fields), so the hosts
+        argument is unused here; relocated_search applies the caller's allowed hosts.
+        """
+        if type(result_limit) is not int or not 1<=result_limit<=100:raise ValueError('Search result limit must be 1..100')
+        def call(query,page,hosts):
+            if page is not None:raise ValueError('Government index search does not provide this pagination cursor')
+            return self._post_search('https://api.firecrawl.dev/v2/search/gov',dict(query=query,k=result_limit),
+                kind='firecrawl-search-gov-v2',cost=0,result_limit=result_limit,headers={})
         return call
 
 
