@@ -40,3 +40,7 @@ Held on purpose: archive_controller.py is in the model definition hash, so mergi
 **2026-11-18T20:15:22Z**
 
 2026-11-18 20:15 UTC: pull request 207 merged (df37d3b2) on the owner's decision 'Merge now'. Plan the same evening: once main validates it, a capture and publish by hand; that publish stops at gate 1 for the definition change (archive_controller.py), the cause record is merged, and the re-run is the first real test of the resume. Expected re-run log line: 'Resuming the kept candidate if its inputs are this run's' with no 'Building fresh'. If it still rebuilds, the refusal now names the differing inputs.
+
+**2026-11-18T22:03:24Z**
+
+2026-11-18 22:00Z: publish run 44399856473 (after capture 44395592746 failed on an R2 503) stopped at gate 1 and KEPT its candidate; it built fresh because the old kept candidate predated PR 207 (expected). Not recorded: Codex RCA (.cache/archive-release/investigations/publish-stop-44399856473/codex-rca.md) says FIX FIRST: a recording-to-hearing matching defect (branch recording-match-hearing-date). Plan: merge that fix with PR 211 together, dispatch publish, one cause record, re-run; pass = 'Resuming the kept candidate'. Handoff: .cache/archive-release/reviews/TONIGHT-HANDOFF-20261118.md
