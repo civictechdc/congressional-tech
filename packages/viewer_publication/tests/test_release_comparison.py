@@ -604,6 +604,19 @@ def test_a_planted_change_beside_a_cache_refresh_is_not_proven(tmp_path, change,
     assert not result['ok'] and {g['file'] for g in result['failing']} >= {f'{table}.parquet'}
 
 
+def test_a_few_removed_keys_are_named_in_the_report_and_many_are_not(tmp_path, monkeypatch):
+    def case(name, change=None):
+        (tmp_path / name).mkdir()
+        return refresh(tmp_path / name, change)
+    removed = case('one', lambda tables: tables['recording_matches'].pop(0))
+    assert removed['files']['recording_matches.parquet']['removed_keys'] == [{'match_id': 'm1'}]
+    assert 'removed_keys' not in case('none')['files']['recording_matches.parquet']
+    monkeypatch.setattr(release_diff, 'REMOVED_KEYS_NAMED', 1)
+    many = case('two', lambda tables: [tables['recording_matches'].pop(0) for _ in range(2)])
+    assert counts(many, 'recording_matches')[('removed keys', 'no evidence given')] == -2
+    assert 'removed_keys' not in many['files']['recording_matches.parquet']
+
+
 def test_an_earlier_check_time_is_not_a_refresh(tmp_path):
     result = refresh(tmp_path, checked=1, change=lambda tables: [v.update(details_checked_at=v['details_checked_at'].replace(month=10))
                                                                   for v in tables['videos'] if v['video_key'] != 'api'])
