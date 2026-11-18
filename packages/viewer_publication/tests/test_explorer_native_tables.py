@@ -501,6 +501,13 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
             UNION ALL SELECT 115900,'house',cast('2023-03-08' AS DATE),'Hearing','Clearing the Air: Science-Based Strategies to Protect Workers from COVID-19 Infections',false,
               make_array(named_struct('system_code','hsed00','role','host')),
               arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'),
+              array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
+            -- ct-mwod: two generically titled markups, matched only by "one page on that date".
+            UNION ALL SELECT 117471,'house',cast('2024-07-10' AS DATE),'Markup','Markup',false,
+              make_array(named_struct('system_code','hssy00','role','host')),arrow_cast(make_array('118-hr-8958'),'List(Utf8)'),
+              array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
+            UNION ALL SELECT 117999,'house',cast('2024-08-01' AS DATE),'Markup','Markup',false,
+              make_array(named_struct('system_code','hssy00','role','host')),arrow_cast(make_array('118-hr-9999'),'List(Utf8)'),
               array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0))""", materialize=True),
         dict(name='meetings_export', sql="""SELECT event_id,chamber,meeting_type,title,
             array_slice(make_array(named_struct('source',cast(NULL AS VARCHAR),'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
@@ -512,18 +519,32 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
             UNION ALL SELECT repeat('22',32),'youtube:xv-3QApZs7o'
             UNION ALL SELECT repeat('33',32),'youtube:ezLNq2qeJxU'
             UNION ALL SELECT repeat('44',32),'youtube:e8tGWFo6s2c'
-            UNION ALL SELECT repeat('55',32),'youtube:29FzR1Hadpk'""", materialize=True),
+            UNION ALL SELECT repeat('55',32),'youtube:29FzR1Hadpk'
+            UNION ALL SELECT repeat('66',32),'youtube:SBp0UXikw8w'
+            UNION ALL SELECT repeat('77',32),'youtube:SBp0UXikw8w'
+            UNION ALL SELECT repeat('88',32),'youtube:markupAAAAA'
+            UNION ALL SELECT repeat('99',32),'youtube:statementBB'""", materialize=True),
         dict(name='recording_video_pages', sql="SELECT DISTINCT page_body,arrow_cast(decode(page_body,'hex'),'FixedSizeBinary(32)') AS body_sha FROM recording_video_links", materialize=True),
         dict(name='capture_source_contexts', sql="""SELECT 's1' AS source_id,repeat('11',32) AS body_sha
             UNION ALL SELECT 's2',repeat('22',32)
             UNION ALL SELECT 's3',repeat('33',32)
             UNION ALL SELECT 's4',repeat('44',32)
-            UNION ALL SELECT 's5',repeat('55',32)""", materialize=True),
+            UNION ALL SELECT 's5',repeat('55',32)
+            UNION ALL SELECT 's6',repeat('66',32)
+            UNION ALL SELECT 's7',repeat('77',32)
+            UNION ALL SELECT 's8',repeat('88',32)
+            UNION ALL SELECT 's9',repeat('99',32)""", materialize=True),
         dict(name='source_addresses', sql="""SELECT 's1' AS source_id,'https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=7972' AS url
             UNION ALL SELECT 's2','https://republicans-science.house.gov/markups?ID=409C'
             UNION ALL SELECT 's3','https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=3123'
             UNION ALL SELECT 's4','https://edworkforce.house.gov/calendar/eventsingle.aspx?EventID=407227'
-            UNION ALL SELECT 's5','https://democrats-veterans.house.gov/events/hearings/econ-06252026'""", materialize=True),
+            UNION ALL SELECT 's5','https://democrats-veterans.house.gov/events/hearings/econ-06252026'
+            -- One page saved from its party host and again from the committee's bare host, with new bytes.
+            UNION ALL SELECT 's6','https://republicans-science.house.gov/markups?ID=F6543C82'
+            UNION ALL SELECT 's7','https://science.house.gov/markups?ID=F6543C82'
+            -- Two different pages on one date: neither is provably the proceeding.
+            UNION ALL SELECT 's8','https://republicans-science.house.gov/markups?ID=AAAA'
+            UNION ALL SELECT 's9','https://republicans-science.house.gov/opening-statements?ID=BBBB'""", materialize=True),
         dict(name='recording_page_sources', sql="SELECT DISTINCT c.source_id,c.body_sha AS page_body FROM recording_video_pages vp JOIN capture_source_contexts c ON c.body_sha=vp.page_body", materialize=True),
         dict(name='page_facts', sql="""SELECT arrow_cast(decode(repeat('11',32),'hex'),'FixedSizeBinary(32)') AS body_sha,'completed' AS status,
               'Exploring State Options in SNAP | House Agriculture Committee' AS title,'Exploring State Options in SNAP' AS heading,
@@ -539,7 +560,19 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
               '2023-03-08','March 8, 2023',arrow_cast(NULL,'List(Int64)')
             UNION ALL SELECT arrow_cast(decode(repeat('55',32),'hex'),'FixedSizeBinary(32)'),'completed',
               'The House Committee on Veterans Affairs','Economic Opportunity Hearing',
-              cast(NULL AS VARCHAR),'Date: 06.25.26',arrow_cast(NULL,'List(Int64)')""", materialize=True),
+              cast(NULL AS VARCHAR),'Date: 06.25.26',arrow_cast(NULL,'List(Int64)')
+            UNION ALL SELECT arrow_cast(decode(repeat('66',32),'hex'),'FixedSizeBinary(32)'),'completed',
+              'Full Committee Markup of the NASA Reauthorization Act of 2024','Full Committee Markup of the NASA Reauthorization Act of 2024',
+              '2024-07-10','July 10, 2024',arrow_cast(NULL,'List(Int64)')
+            UNION ALL SELECT arrow_cast(decode(repeat('77',32),'hex'),'FixedSizeBinary(32)'),'completed',
+              'Full Committee Markup of the NASA Reauthorization Act of 2024','Full Committee Markup of the NASA Reauthorization Act of 2024',
+              '2024-07-10','July 10, 2024',arrow_cast(NULL,'List(Int64)')
+            UNION ALL SELECT arrow_cast(decode(repeat('88',32),'hex'),'FixedSizeBinary(32)'),'completed',
+              'Full Committee Markup of the Weather Act','Full Committee Markup of the Weather Act',
+              '2024-08-01','August 1, 2024',arrow_cast(NULL,'List(Int64)')
+            UNION ALL SELECT arrow_cast(decode(repeat('99',32),'hex'),'FixedSizeBinary(32)'),'completed',
+              'Opening Statement at the Markup of the Weather Act','Opening Statement at the Markup of the Weather Act',
+              '2024-08-01','August 1, 2024',arrow_cast(NULL,'List(Int64)')""", materialize=True),
         dict(name='publisher_links', sql="SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS VARCHAR) AS source_id WHERE false", materialize=True),
         dict(name='document_members', sql="SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS BIGINT) AS component,cast(NULL AS VARCHAR) AS filename,cast(NULL AS VARCHAR) AS source_url WHERE false", materialize=True),
         dict(name='component_meeting_links', sql="SELECT cast(NULL AS BIGINT) AS component,arrow_cast(NULL,'List(Utf8)') AS meeting_keys WHERE false", materialize=True),
@@ -567,7 +600,13 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
             UNION ALL SELECT 'youtube:e8tGWFo6s2c',arrow_cast(decode(repeat('a4',32),'hex'),'FixedSizeBinary(32)'),
               arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(241 AS INT),'Meeting to Approve New Subcommittee Assignments'
             UNION ALL SELECT 'youtube:29FzR1Hadpk',arrow_cast(decode(repeat('a5',32),'hex'),'FixedSizeBinary(32)'),
-              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(0 AS INT),'Subcommittee Hearing 6.25.2026'""", materialize=True),
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(0 AS INT),'Subcommittee Hearing 6.25.2026'
+            UNION ALL SELECT 'youtube:SBp0UXikw8w',arrow_cast(decode(repeat('a6',32),'hex'),'FixedSizeBinary(32)'),
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(9000 AS INT),'Full Committee Markup of the NASA Reauthorization Act'
+            UNION ALL SELECT 'youtube:markupAAAAA',arrow_cast(decode(repeat('a8',32),'hex'),'FixedSizeBinary(32)'),
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(7000 AS INT),'Full Committee Markup of the Weather Act'
+            UNION ALL SELECT 'youtube:statementBB',arrow_cast(decode(repeat('a9',32),'hex'),'FixedSizeBinary(32)'),
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(300 AS INT),'Opening Statement'""", materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='package_meeting_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='package_mods_facts', sql="SELECT cast(NULL AS VARCHAR) AS package_id,arrow_cast(NULL,'List(Int64)') AS named_meetings WHERE false", materialize=True),
@@ -593,6 +632,9 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
     assert rec['youtube:e8tGWFo6s2c']['event_ids'] == []
     assert rec['youtube:e8tGWFo6s2c']['recording_scope'] == 'full'
     assert rec['youtube:29FzR1Hadpk']['recording_scope'] == 'unknown'
+    # ct-mwod: one page under two host aliases is still one page on its date; two pages are not.
+    assert rec['youtube:SBp0UXikw8w']['event_ids'] == [117471]
+    assert rec['youtube:markupAAAAA']['event_ids'] == [] and rec['youtube:statementBB']['event_ids'] == []
 
     cov = {(r['event_id'], r['aspect']): (r['state'], r['reason']) for r in rows(tmp_path, 'meeting_coverage')}
     assert cov[118500, 'recording'] == ('partial', 'excerpts_only')
