@@ -198,10 +198,10 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
     p2_bytes = json.dumps(p2).encode("utf-8")
     (pages_dir / "page-0001.json").write_bytes(p1_bytes)
     (pages_dir / "page-0002.json").write_bytes(p2_bytes)
-    (pages_dir / "page-0001.meta.json").write_text(
-        json.dumps({"requested_url": MODULE.LCWA_SEED, "sha256": MODULE.sha256_bytes(p1_bytes)}),
-        encoding="utf-8",
-    )
+    p1_meta = json.dumps({"requested_url": MODULE.LCWA_SEED, "sha256": MODULE.sha256_bytes(p1_bytes)})
+    p2_meta = json.dumps({"requested_url": p2_url, "sha256": MODULE.sha256_bytes(p2_bytes)})
+    (pages_dir / "page-0001.meta.json").write_text(p1_meta, encoding="utf-8")
+    (pages_dir / "page-0002.meta.json").write_text(p2_meta, encoding="utf-8")
 
     with pytest.raises(ValueError, match="Refusing delay"):
         MODULE.build_catalog(out_dir, offline=False, delay=2.0)
@@ -211,9 +211,16 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
     assert partial_manifest["complete"] is False
     assert partial_manifest["incomplete_reason"] == "max_pages_reached"
 
-    # Full run marks complete=True
+    # Missing sidecar on any cached page is refused before admitting the page
+    (pages_dir / "page-0002.meta.json").unlink()
+    with pytest.raises(ValueError, match="Missing required sidecar"):
+        MODULE.build_catalog(out_dir, offline=True)
+    (pages_dir / "page-0002.meta.json").write_text(p2_meta, encoding="utf-8")
+
+    # Full run with verified sidecars marks complete=True
     manifest = MODULE.build_catalog(out_dir, offline=True)
     assert manifest["complete"] is True
+    assert manifest["all_pages_sidecar_verified"] is True
     assert manifest["incomplete_reason"] is None
     assert manifest["unique_records"] == 2
     assert manifest["pages_collected"] == 2
@@ -231,7 +238,7 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
     )
     with pytest.raises(ValueError, match="URL mismatch"):
         MODULE.build_catalog(out_dir, offline=True)
-    (pages_dir / "page-0001.meta.json").unlink()
+    (pages_dir / "page-0001.meta.json").write_text(p1_meta, encoding="utf-8")
 
     coverage = json.loads((out_dir / "domain-coverage.json").read_text(encoding="utf-8"))
 
@@ -248,6 +255,7 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
     tsv.write_text(
         "case\tgroup\tsha256\tbytes\tsha1_b32\tpublisher_last_modified\tdeclared_bytes\trefetch_identical\turls\n"
         "zero-page-reuter\trefetched47\t05fc\t116736\tAAA\tTue\t297535\tTrue\thttps://oversight.house.gov/wp-content/uploads/2012/01/20090519Reuter.pdf\n"
+        "zero-page-boushey\trefetched47\t65b6\t100\tAAA\tTue\t200\tTrue\thttps://oversight.house.gov/wp-content/uploads/2012/01/9-13-2011_BousheyTestimony.pdf\n"
         "zero-page-howle\trefetched47\t25b3\t337920\tAAA\tTue\t507030\tTrue\thttps://oversight.house.gov/wp-content/uploads/2012/01/20100305Howle1.pdf\n"
         "zero-page-locqueued\trefetched47\t08ca\t100\tBBB\tTue\t200\tTrue\thttps://oversight.house.gov/wp-content/uploads/2012/01/12-7-11_Testimony.pdf\n"
         "zero-page-missing\trefetched47\ta38b\t100\tCCC\tFri\t200\tTrue\thttps://www.congress.gov/116/meeting/house/110128/documents/HHRG-116-VR03.pdf\n",
@@ -272,8 +280,10 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
     # pagination.next=None when pages_collected < reported_total_pages marks complete=False
     inc_dir = tmp_path / "inc_catalog"
     (inc_dir / "pages").mkdir(parents=True)
-    (inc_dir / "pages/page-0001.json").write_text(
-        json.dumps({"results": [item_a], "pagination": {"of": 200, "total": 3, "next": None}}),
+    inc_bytes = json.dumps({"results": [item_a], "pagination": {"of": 200, "total": 3, "next": None}}).encode("utf-8")
+    (inc_dir / "pages/page-0001.json").write_bytes(inc_bytes)
+    (inc_dir / "pages/page-0001.meta.json").write_text(
+        json.dumps({"requested_url": MODULE.LCWA_SEED, "sha256": MODULE.sha256_bytes(inc_bytes)}),
         encoding="utf-8",
     )
     inc_manifest = MODULE.build_catalog(inc_dir, offline=True)
@@ -316,7 +326,7 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
     remaining_loc = tmp_path / "remaining_loc.json"
     remaining_loc.write_text(json.dumps([{"case_id": "zero-page-locqueued"}]), encoding="utf-8")
 
-    # Open inventory testing known-year overlap, unknown-year, year-mismatch, and matched-only host crediting
+    # Open inventory testing known-year overlap, upload-path-only overlap, unknown-year, year-mismatch, and matched-only host crediting
     inv = tmp_path / "invalid-sources.jsonl"
     inv.write_text(
         "\n".join([
@@ -330,6 +340,14 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
                     "https://unmatched.example.gov/alias.pdf",
                 ],
                 "release_associations_20261117": [{"document_date": "2011-12-07"}],
+            }),
+            # CMS upload-path-only year (must NOT be inflated into known_year_overlap!)
+            json.dumps({
+                "record_id": "body:upload_only",
+                "recovery_open": True,
+                "failure_category": "incomplete_pdf",
+                "source_urls": ["https://oversight.house.gov/wp-content/uploads/2012/01/Schimmel_Testimony_Boral_Bricks.pdf"],
+                "release_associations_20261117": [],
             }),
             # Unknown year on matched host
             json.dumps({
@@ -365,10 +383,13 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
         remaining_loc_targets=remaining_loc,
     )
 
-    # Best Howle candidate selected (337920B exact prefix, not 8B), and Reuter extracts 2009 from filename (not 2012 upload dir)
+    # Best Howle candidate selected (337920B exact prefix, not 8B); Reuter (YYYYMMDD) & Boushey (M-D-YYYY) extract filename years over 2012 upload dir
     reuter_row = next(r for r in res["damaged_49_rows"] if r["case"] == "zero-page-reuter")
     assert reuter_row["year_hint"] == 2009
     assert reuter_row["year_hint_source"] == "url_filename_date"
+    boushey_row = next(r for r in res["damaged_49_rows"] if r["case"] == "zero-page-boushey")
+    assert boushey_row["year_hint"] == 2011
+    assert boushey_row["year_hint_source"] == "url_filename_date"
     howle_row = next(r for r in res["damaged_49_rows"] if r["case"] == "zero-page-howle")
     assert howle_row["selected_non_loc"]["operation_id"] == "op_exact"
     assert howle_row["selected_non_loc"]["shared_prefix_bytes"] == 337920
@@ -379,17 +400,18 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
     assert "zero-page-missing" in unresolved_cases
     assert "zero-page-howle" not in unresolved_cases
 
-    # Exact year breakdown (1 known overlap, 1 unknown year, 1 year mismatch)
+    # Exact year breakdown (1 known overlap, 1 upload-path-only overlap, 1 unknown year, 1 year mismatch)
     counts = res["invalid_sources_open_summary"]["counts"]
-    assert counts["open_total"] == 4
+    assert counts["open_total"] == 5
     assert counts["open_missing_source_url"] == 1
-    assert counts["open_matched_lcwa_host_any_year"] == 3
+    assert counts["open_matched_lcwa_host_any_year"] == 4
     assert counts["open_matched_lcwa_known_year_overlap"] == 1
+    assert counts["open_matched_lcwa_upload_path_year_overlap"] == 1
     assert counts["open_matched_lcwa_unknown_year"] == 1
     assert counts["open_matched_lcwa_year_mismatch"] == 1
 
     # Host crediting excludes unmatched alias host
     matched_hosts = res["invalid_sources_open_summary"]["matched_lcwa_hosts"]
-    assert matched_hosts == {"oversight.house.gov": 2, "www.foreign.senate.gov": 1}
+    assert matched_hosts == {"oversight.house.gov": 3, "www.foreign.senate.gov": 1}
     assert "unmatched.example.gov" not in matched_hosts
     assert (overlap_dir / "SUMMARY.md").exists()

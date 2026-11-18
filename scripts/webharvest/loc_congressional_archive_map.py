@@ -507,24 +507,25 @@ def build_catalog(
         page_path = pages_dir / f"page-{page_num:04d}.json"
         meta_path = pages_dir / f"page-{page_num:04d}.meta.json"
         if page_path.exists():
+            if not meta_path.is_file():
+                raise ValueError(f"Missing required sidecar metadata for cached page: {meta_path}")
             raw = page_path.read_bytes()
             raw_sha = sha256_bytes(raw)
-            if meta_path.exists():
-                sidecar = json.loads(meta_path.read_text(encoding="utf-8"))
-                if sidecar.get("sha256") != raw_sha:
-                    raise ValueError(
-                        f"Cached page digest mismatch for {page_path}: expected {sidecar.get('sha256')}, got {raw_sha}"
-                    )
-                sidecar_urls = {sidecar.get("requested_url"), sidecar.get("final_url")}
-                if next_url not in sidecar_urls:
-                    raise ValueError(
-                        f"Cached page URL mismatch for {page_path}: expected {next_url}, sidecar has {sorted(u for u in sidecar_urls if u)}"
-                    )
+            sidecar = json.loads(meta_path.read_text(encoding="utf-8"))
+            if sidecar.get("sha256") != raw_sha:
+                raise ValueError(
+                    f"Cached page digest mismatch for {page_path}: expected {sidecar.get('sha256')}, got {raw_sha}"
+                )
+            sidecar_urls = {sidecar.get("requested_url"), sidecar.get("final_url")}
+            if next_url not in sidecar_urls:
+                raise ValueError(
+                    f"Cached page URL mismatch for {page_path}: expected {next_url}, sidecar has {sorted(u for u in sidecar_urls if u)}"
+                )
             payload = json.loads(raw.decode("utf-8"))
             if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
                 raise ValueError(f"Cached page {page_path} missing list 'results'")
             source_mode = "cached"
-            sidecar_verified = meta_path.exists()
+            sidecar_verified = True
         else:
             if offline:
                 raise ValueError(f"Missing cached LoC page in --offline mode: {page_path}")
@@ -670,18 +671,29 @@ def _extract_year_with_source(url: str, date_str: str | None = None) -> tuple[in
         m = _YEAR_RE.search(date_str)
         if m:
             return int(m.group(1)), "document_date"
-    # Explicit congressional-file filename patterns like YYYYMMDD (including 20090519Reuter.pdf) or M-D-YY
+    path = urlsplit(url).path
+    # Explicit congressional-file filename patterns like YYYYMMDD (including 20090519Reuter.pdf),
+    # M-D-YYYY / M.D.YYYY (including 9-13-2011_BousheyTestimony.pdf), or M-D-YY / M.D.YY
     m_full = re.search(
         r"(?:^|[/_-])((?:19|20)\d{2})(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])(?=[A-Za-z._-]|$)",
-        url,
+        path,
         re.I,
     )
     if m_full:
         return int(m_full.group(1)), "url_filename_date"
-    m_short = re.search(r"(?:^|[/_-])\d{1,2}[-_]\d{1,2}[-_](1\d|2\d|0\d)(?:[_.-]|$)", url)
+    m_mdy4 = re.search(
+        r"(?:^|[/_.-])(?:0?[1-9]|1[0-2])(?P<sep4>[-_.])(?:0?[1-9]|[12]\d|3[01])(?P=sep4)((?:19|20)\d{2})(?=[A-Za-z._-]|$)",
+        path,
+    )
+    if m_mdy4:
+        return int(m_mdy4.group(2)), "url_filename_date"
+    m_short = re.search(
+        r"(?:^|[/_.-])(?:0?[1-9]|1[0-2])(?P<sep2>[-_.])(?:0?[1-9]|[12]\d|3[01])(?P=sep2)(1\d|2\d|0\d)(?=[A-Za-z._-]|$)",
+        path,
+    )
     if m_short:
-        return 2000 + int(m_short.group(1)), "url_filename_date"
-    m_ymd = re.search(r"/((?:20\d{2}))/(?:0?\d|1[0-2])/", url)
+        return 2000 + int(m_short.group(2)), "url_filename_date"
+    m_ymd = re.search(r"/((?:20\d{2}))/(?:0?\d|1[0-2])/", path)
     if m_ymd:
         return int(m_ymd.group(1)), "url_upload_path"
     return None, None
@@ -860,6 +872,13 @@ def cross_match_inventory(
                 if year_hint is None:
                     year_status = "unknown_year"
                     open_counts["open_matched_lcwa_unknown_year"] += 1
+                elif year_hint_source == "url_upload_path":
+                    if any_lcwa_known_year:
+                        year_status = "upload_path_year_overlap"
+                        open_counts["open_matched_lcwa_upload_path_year_overlap"] += 1
+                    else:
+                        year_status = "upload_path_year_mismatch"
+                        open_counts["open_matched_lcwa_upload_path_year_mismatch"] += 1
                 elif any_lcwa_known_year:
                     year_status = "known_year_overlap"
                     open_counts["open_matched_lcwa_known_year_overlap"] += 1
@@ -968,7 +987,8 @@ def cross_match_inventory(
         f"- Open records missing `source_urls` (`house-meeting-not-found` etc.): {open_counts.get('open_missing_source_url', 0)}",
         f"- Open records with URLs: {open_counts.get('open_with_urls', 0)}",
         f"- Open records whose host matches LCWA (any year): {open_counts.get('open_matched_lcwa_host_any_year', 0)}",
-        f"- Open records with known target year overlapping LCWA: {open_counts.get('open_matched_lcwa_known_year_overlap', 0)}",
+        f"- Open records with known target year (`document_date` / filename) overlapping LCWA: {open_counts.get('open_matched_lcwa_known_year_overlap', 0)}",
+        f"- Open records relying solely on CMS upload-directory year (`/YYYY/MM/`) overlapping LCWA: {open_counts.get('open_matched_lcwa_upload_path_year_overlap', 0)}",
         f"- Open records matching LCWA host with unknown target year: {open_counts.get('open_matched_lcwa_unknown_year', 0)}",
         f"- Open records matching LCWA host with known year outside LCWA range: {open_counts.get('open_matched_lcwa_year_mismatch', 0)}",
         f"- Open records with URLs not in LCWA: {open_counts.get('open_unmatched_in_lcwa', 0)}",

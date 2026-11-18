@@ -32,7 +32,7 @@ from corpus_recovery.discovery import shared_prefix
 from corpus_recovery.pipeline import cutoff_size_hint, qualify_candidate_body
 
 LOC_REPLAY_ID_RE = re.compile(r"^/all/[0-9]{14}id_/(https?://.+)$")
-LOC_REPLAY_SELECTOR_RE = re.compile(r"^/all/[0-9]{4,14}id_/(https?://.+)$")
+LOC_REPLAY_LEGACY_SELECTOR_RE = re.compile(r"^/all/[0-9]{4,13}id_/(https?://.+)$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 ALLOWED_PDF_MEDIA_TYPES = frozenset({"application/pdf", "application/octet-stream"})
 TRANSPORT_NAME = "browser_same_origin"
@@ -107,6 +107,8 @@ _SNIPPET_TEMPLATE = r"""(() => {
   let capturedCaseIds = new Set();
   let nextIndex = 0;
   let cooldownUntil = 0;
+  let captureInFlight = false;
+  let folderPickInFlight = false;
 
   async function sha256Hex(buffer) {
     const digest = await crypto.subtle.digest('SHA-256', buffer);
@@ -132,12 +134,12 @@ _SNIPPET_TEMPLATE = r"""(() => {
     await writable.close();
   }
 
-  async function persistManifest() {
-    await writeTextFile(dirHandle, 'browser-captures.jsonl', existingLines.join('\n') + '\n');
+  async function persistManifest(targetDir = dirHandle) {
+    await writeTextFile(targetDir, 'browser-captures.jsonl', existingLines.join('\n') + '\n');
   }
 
-  async function persistErrors() {
-    await writeTextFile(dirHandle, 'browser-captures.errors.jsonl', existingErrors.join('\n') + '\n');
+  async function persistErrors(targetDir = dirHandle) {
+    await writeTextFile(targetDir, 'browser-captures.errors.jsonl', existingErrors.join('\n') + '\n');
   }
 
   function advanceToNextUncaptured() {
@@ -148,6 +150,11 @@ _SNIPPET_TEMPLATE = r"""(() => {
 
   function refreshStepButton() {
     advanceToNextUncaptured();
+    if (captureInFlight || folderPickInFlight) {
+      stepBtn.disabled = true;
+      stepBtn.style.opacity = '0.5';
+      return;
+    }
     if (!dirHandle || window.location.origin !== EXPECTED_ORIGIN) {
       stepBtn.disabled = true;
       stepBtn.style.opacity = '0.5';
@@ -211,64 +218,81 @@ _SNIPPET_TEMPLATE = r"""(() => {
   }
 
   pickBtn.addEventListener('click', async () => {
-    if (window.location.origin !== EXPECTED_ORIGIN) return;
+    if (captureInFlight || folderPickInFlight || window.location.origin !== EXPECTED_ORIGIN) return;
     if (typeof window.showDirectoryPicker !== 'function') {
       statusEl.textContent = 'File System Access API (window.showDirectoryPicker) is unavailable in this browser.';
       return;
     }
+    folderPickInFlight = true;
+    pickBtn.disabled = true;
+    pickBtn.style.opacity = '0.5';
     stepBtn.disabled = true;
     stepBtn.style.opacity = '0.5';
 
-    let nextHandle;
     try {
-      nextHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-    } catch (err) {
-      statusEl.textContent = `Folder selection canceled: ${err && err.message ? err.message : err}`;
-      refreshStepButton();
-      return;
-    }
-
-    // Read proposed folder into temporaries FIRST; if reading fails, clear active folder so
-    // neither the previous folder nor the new folder can ever be overwritten with stale state.
-    try {
-      const nextLines = await readExistingLines(nextHandle, 'browser-captures.jsonl');
-      const nextErrors = await readExistingLines(nextHandle, 'browser-captures.errors.jsonl');
-      const nextCaptured = new Set();
-      for (const ln of nextLines) {
-        const parsed = JSON.parse(ln);
-        if (!parsed || typeof parsed.case_id !== 'string' || !parsed.case_id.trim()) {
-          throw new Error('Malformed existing browser-captures.jsonl row');
-        }
-        nextCaptured.add(parsed.case_id);
+      let nextHandle;
+      try {
+        nextHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      } catch (err) {
+        statusEl.textContent = `Folder selection canceled: ${err && err.message ? err.message : err}`;
+        return;
       }
-      dirHandle = nextHandle;
-      existingLines = nextLines;
-      existingErrors = nextErrors;
-      capturedCaseIds = nextCaptured;
-      nextIndex = 0;
-      advanceToNextUncaptured();
-      const previewTarget = nextIndex < TARGETS.length ? `\nNext URL: ${TARGETS[nextIndex].fetch_url}` : '';
-      statusEl.textContent = `Folder ready (${existingLines.length} prior capture(s) preserved).${previewTarget}`;
+      if (captureInFlight) return;
+
+      // Read proposed folder into temporaries FIRST; if reading fails, clear active folder so
+      // neither the previous folder nor the new folder can ever be overwritten with stale state.
+      try {
+        const nextLines = await readExistingLines(nextHandle, 'browser-captures.jsonl');
+        const nextErrors = await readExistingLines(nextHandle, 'browser-captures.errors.jsonl');
+        const nextCaptured = new Set();
+        for (const ln of nextLines) {
+          const parsed = JSON.parse(ln);
+          if (!parsed || typeof parsed.case_id !== 'string' || !parsed.case_id.trim()) {
+            throw new Error('Malformed existing browser-captures.jsonl row');
+          }
+          nextCaptured.add(parsed.case_id);
+        }
+        if (captureInFlight) return;
+        dirHandle = nextHandle;
+        existingLines = nextLines;
+        existingErrors = nextErrors;
+        capturedCaseIds = nextCaptured;
+        nextIndex = 0;
+        advanceToNextUncaptured();
+        const previewTarget = nextIndex < TARGETS.length ? `\nNext URL: ${TARGETS[nextIndex].fetch_url}` : '';
+        statusEl.textContent = `Folder ready (${existingLines.length} prior capture(s) preserved).${previewTarget}`;
+      } catch (err) {
+        if (captureInFlight) return;
+        dirHandle = null;
+        existingLines = [];
+        existingErrors = [];
+        capturedCaseIds = new Set();
+        nextIndex = 0;
+        statusEl.textContent = `Failed to read existing manifest in selected folder (capture disabled): ${err && err.message ? err.message : err}`;
+      }
+    } finally {
+      folderPickInFlight = false;
+      if (!captureInFlight && window.location.origin === EXPECTED_ORIGIN) {
+        pickBtn.disabled = false;
+        pickBtn.style.opacity = '1';
+      }
       refreshStepButton();
-    } catch (err) {
-      dirHandle = null;
-      existingLines = [];
-      existingErrors = [];
-      capturedCaseIds = new Set();
-      nextIndex = 0;
-      refreshStepButton();
-      statusEl.textContent = `Failed to read existing manifest in selected folder (capture disabled): ${err && err.message ? err.message : err}`;
     }
   });
 
   stepBtn.addEventListener('click', async () => {
-    if (!dirHandle || window.location.origin !== EXPECTED_ORIGIN) return;
+    if (captureInFlight || folderPickInFlight || !dirHandle || window.location.origin !== EXPECTED_ORIGIN) return;
     advanceToNextUncaptured();
     if (nextIndex >= TARGETS.length) {
       refreshStepButton();
       return;
     }
     const target = TARGETS[nextIndex];
+    const activeDir = dirHandle;
+    let captureSucceeded = false;
+    captureInFlight = true;
+    pickBtn.disabled = true;
+    pickBtn.style.opacity = '0.5';
     stepBtn.disabled = true;
     stepBtn.style.opacity = '0.5';
     statusEl.textContent = `Fetching [${nextIndex + 1}/${TARGETS.length}] ${target.case_id}...\n${target.fetch_url}`;
@@ -286,7 +310,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
         const loc = res.headers ? res.headers.get('location') : null;
         const msg = `Redirect refused under redirect:'manual' (type=${res.type}, status=${res.status}, location=${loc || 'opaque'}). Supply a resolved canonical 14-digit URL on ${EXPECTED_ORIGIN}.`;
         existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, error: msg, at: new Date().toISOString() }));
-        await persistErrors();
+        await persistErrors(activeDir);
         statusEl.textContent = `STOPPED: ${msg}`;
         return;
       }
@@ -308,7 +332,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
       ) {
         const reason = `status=${res.status} cf=${cfMitigated || '-'} ct=${contentType || '-'} range=${headers['content-range'] || '-'}`;
         existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, final_url: res.url, reason, headers, at: new Date().toISOString() }));
-        await persistErrors();
+        await persistErrors(activeDir);
         statusEl.textContent = `STOPPED (${reason}) on ${target.case_id}. ${existingLines.length} prior capture(s) preserved.`;
         return;
       }
@@ -317,14 +341,14 @@ _SNIPPET_TEMPLATE = r"""(() => {
       if (finalUrlObj.origin !== EXPECTED_ORIGIN) {
         const msg = `Cross-origin response URL refused: ${res.url}`;
         existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, error: msg, at: new Date().toISOString() }));
-        await persistErrors();
+        await persistErrors(activeDir);
         statusEl.textContent = `STOPPED: ${msg}`;
         return;
       }
       if (finalUrlObj.hostname === 'webarchive.loc.gov' && !LOC_REPLAY_RE.test(finalUrlObj.pathname)) {
         const msg = `Non-14-digit or non-id_ replay URL refused: ${res.url}`;
         existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, error: msg, at: new Date().toISOString() }));
-        await persistErrors();
+        await persistErrors(activeDir);
         statusEl.textContent = `STOPPED: ${msg}`;
         return;
       }
@@ -333,13 +357,13 @@ _SNIPPET_TEMPLATE = r"""(() => {
       if (!hasValidPdfHeader(buf)) {
         const msg = `Response is not a PDF (${buf.byteLength} bytes) for ${target.case_id}`;
         existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, final_url: res.url, error: msg, at: new Date().toISOString() }));
-        await persistErrors();
+        await persistErrors(activeDir);
         statusEl.textContent = `STOPPED: ${msg}`;
         return;
       }
 
       const sha256 = await sha256Hex(buf);
-      const pdfHandle = await dirHandle.getFileHandle(`${sha256}.pdf`, { create: true });
+      const pdfHandle = await activeDir.getFileHandle(`${sha256}.pdf`, { create: true });
       const pdfWritable = await pdfHandle.createWritable();
       await pdfWritable.write(buf);
       await pdfWritable.close();
@@ -355,7 +379,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
         sha256,
         bytes: buf.byteLength,
       }));
-      await persistManifest();
+      await persistManifest(activeDir);
       capturedCaseIds.add(target.case_id);
       nextIndex += 1;
       cooldownUntil = Date.now() + INTERVAL_MS;
@@ -364,14 +388,22 @@ _SNIPPET_TEMPLATE = r"""(() => {
         ? `\nNext (${Math.round(INTERVAL_MS / 1000)}s cooldown): ${TARGETS[nextIndex].case_id}\n${TARGETS[nextIndex].fetch_url}`
         : '\nAll targets captured.';
       statusEl.textContent = `Saved ${target.case_id} (${buf.byteLength} bytes, ${sha256.slice(0, 12)}). Total: ${capturedCaseIds.size}/${TARGETS.length}.${nextNote}`;
-      refreshStepButton();
+      captureSucceeded = true;
     } catch (err) {
       const msg = `Capture failed on ${target.case_id}: ${err && err.message ? err.message : err}`;
       existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, error: msg, at: new Date().toISOString() }));
-      await persistErrors();
+      await persistErrors(activeDir);
       statusEl.textContent = `STOPPED: ${msg}`;
     } finally {
       clearTimeout(timer);
+      captureInFlight = false;
+      if (window.location.origin === EXPECTED_ORIGIN) {
+        pickBtn.disabled = false;
+        pickBtn.style.opacity = '1';
+      }
+      if (captureSucceeded) {
+        refreshStepButton();
+      }
     }
   });
 })();
@@ -509,11 +541,13 @@ def _validate_requested_url(requested_url: str, final_url: str, case_id: str) ->
         raise ValueError(f"Record {case_id} requested_url carries credentials or fragment: {requested_url}")
     if requested_url == final_url:
         return requested_url
-    # Allow explicit LoC year-selector shorthand ONLY when embedded original URL matches final_url;
-    # never allow requested_url for file A to pair with final_url for file B.
+    # Allow explicit unresolved (<14-digit) LoC selector shorthand ONLY when embedded original URL
+    # (including full query string) matches final_url; resolved 14-digit URLs require exact equality.
     if (req_parts.hostname or "").lower() == "webarchive.loc.gov":
-        req_m = LOC_REPLAY_SELECTOR_RE.fullmatch(req_parts.path)
-        fin_m = LOC_REPLAY_ID_RE.fullmatch(fin_parts.path)
+        req_full = req_parts.path + (f"?{req_parts.query}" if req_parts.query else "")
+        fin_full = fin_parts.path + (f"?{fin_parts.query}" if fin_parts.query else "")
+        req_m = LOC_REPLAY_LEGACY_SELECTOR_RE.fullmatch(req_full)
+        fin_m = LOC_REPLAY_ID_RE.fullmatch(fin_full)
         if req_m and fin_m and req_m.group(1) == fin_m.group(1):
             return requested_url
     raise ValueError(

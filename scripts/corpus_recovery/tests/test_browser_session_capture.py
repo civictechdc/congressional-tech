@@ -98,6 +98,7 @@ class BrowserSessionCaptureTests(unittest.TestCase):
         targets_path = self.root / "js_targets.json"
         t1_url = "https://webarchive.loc.gov/all/20111102120000id_/http://oversight.house.gov/images/stories/Testimony/One.pdf"
         t2_url = "https://webarchive.loc.gov/all/20111102120500id_/http://oversight.house.gov/images/stories/Testimony/Two.pdf"
+        t3_url = "https://webarchive.loc.gov/all/20111102121000id_/http://oversight.house.gov/images/stories/Testimony/Three.pdf"
         targets_path.write_text(json.dumps([
             {
                 "case_id": "case-1",
@@ -109,6 +110,12 @@ class BrowserSessionCaptureTests(unittest.TestCase):
                 "case_id": "case-2",
                 "original_url": "https://oversight.house.gov/wp-content/uploads/2012/01/Two.pdf",
                 "fetch_url": t2_url,
+                "expected_origin": "https://webarchive.loc.gov",
+            },
+            {
+                "case_id": "case-3",
+                "original_url": "https://oversight.house.gov/wp-content/uploads/2012/01/Three.pdf",
+                "fetch_url": t3_url,
                 "expected_origin": "https://webarchive.loc.gov",
             },
         ]))
@@ -126,6 +133,14 @@ class FakeDir {{
   constructor(initial = {{}}, failReadOn = new Set()) {{
     this.files = new Map(Object.entries(initial));
     this.failReadOn = failReadOn;
+    this.pauseNextPdfClose = false;
+    this.pdfCloseStarted = null;
+    this.releasePdfClose = null;
+  }}
+  armPdfClosePause() {{
+    this.pauseNextPdfClose = true;
+    this.pdfCloseStarted = new Promise((resolve) => {{ this._markPdfCloseStarted = resolve; }});
+    this._pdfCloseGate = new Promise((resolve) => {{ this.releasePdfClose = resolve; }});
   }}
   async getFileHandle(name, opts = {{}}) {{
     if (!this.files.has(name)) {{
@@ -154,7 +169,14 @@ class FakeDir {{
         let pending = null;
         return {{
           async write(data) {{ pending = data; }},
-          async close() {{ dir.files.set(name, pending); }}
+          async close() {{
+            if (dir.pauseNextPdfClose && name.endsWith('.pdf')) {{
+              dir.pauseNextPdfClose = false;
+              dir._markPdfCloseStarted();
+              await dir._pdfCloseGate;
+            }}
+            dir.files.set(name, pending);
+          }}
         }};
       }}
     }};
@@ -171,12 +193,16 @@ function makeEl(tag) {{
     disabled: false,
     textContent: '',
     set id(v) {{ this._id = v; elements.set(v, this); }},
-    get id() {{ return this._id; }},
+    get id( ) {{ return this._id; }},
     appendChild(c) {{ this.children.push(c); }},
     remove() {{ elements.delete(this._id); }},
     addEventListener(ev, fn) {{ listeners.set(ev, fn); }},
     async click() {{
       if (this.disabled) return;
+      const fn = listeners.get('click');
+      if (fn) await fn();
+    }},
+    async forceListenerClick() {{
       const fn = listeners.get('click');
       if (fn) await fn();
     }}
@@ -199,9 +225,10 @@ globalThis.window = {{
 
 const pdf1 = new TextEncoder().encode('%PDF-1.4\\nFake PDF 1\\n%%EOF\\n');
 const pdf2 = new TextEncoder().encode('%PDF-1.4\\nFake PDF 2\\n%%EOF\\n');
+const pdf3 = new TextEncoder().encode('%PDF-1.4\\nFake PDF 3\\n%%EOF\\n');
 globalThis.fetch = async (url, opts) => {{
   assert.equal(opts.redirect, 'manual');
-  const payload = url.endsWith('One.pdf') ? pdf1 : pdf2;
+  const payload = url.endsWith('One.pdf') ? pdf1 : (url.endsWith('Two.pdf') ? pdf2 : pdf3);
   return {{
     type: 'basic',
     status: 200,
@@ -250,10 +277,37 @@ await pickBtn.click();
 assert.equal(stepBtn.disabled, false);
 assert.ok(stepBtn.textContent.includes('case-2'));
 await stepBtn.click();
-const aLines = folderA.files.get('browser-captures.jsonl').trim().split('\\n');
-assert.equal(aLines.length, 2);
-assert.equal(JSON.parse(aLines[0]).case_id, 'case-1');
-assert.equal(JSON.parse(aLines[1]).case_id, 'case-2');
+const aLinesAfter2 = folderA.files.get('browser-captures.jsonl').trim().split('\\n');
+assert.equal(aLinesAfter2.length, 2);
+assert.equal(JSON.parse(aLinesAfter2[0]).case_id, 'case-1');
+assert.equal(JSON.parse(aLinesAfter2[1]).case_id, 'case-2');
+
+// 4. In-flight folder-switch interleaving during case-3 PDF write:
+// Pause PDF close() in Folder A, attempt to switch to Folder C mid-capture (both normal click and raw listener),
+// then release the write and verify Folder C stays empty while Folder A holds both PDF and manifest row!
+await new Promise((r) => setTimeout(r, 5));
+assert.equal(stepBtn.disabled, false);
+assert.ok(stepBtn.textContent.includes('case-3'));
+folderA.armPdfClosePause();
+const folderC = new FakeDir();
+currentPickerResult = folderC;
+
+const inFlightCapture = stepBtn.click();
+await folderA.pdfCloseStarted;
+assert.equal(pickBtn.disabled, true, 'pickBtn must be disabled throughout in-flight capture');
+assert.equal(stepBtn.disabled, true, 'stepBtn must be disabled throughout in-flight capture');
+await pickBtn.click(); // ignored while disabled
+await pickBtn.forceListenerClick(); // also blocked by captureInFlight guard
+folderA.releasePdfClose();
+await inFlightCapture;
+
+assert.equal(pickBtn.disabled, false, 'pickBtn re-enabled after capture finishes');
+assert.equal(folderC.files.size, 0, 'Folder C must remain completely empty after blocked in-flight switch');
+const aLinesAfter3 = folderA.files.get('browser-captures.jsonl').trim().split('\\n');
+assert.equal(aLinesAfter3.length, 3);
+const row3 = JSON.parse(aLinesAfter3[2]);
+assert.equal(row3.case_id, 'case-3');
+assert.ok(folderA.files.has(`${{row3.sha256}}.pdf`), 'Folder A must hold case-3 PDF alongside its manifest row');
 console.log('JS_SNIPPET_BEHAVIOR_OK');
 """,
             encoding="utf-8",
@@ -454,6 +508,33 @@ console.log('JS_SNIPPET_BEHAVIOR_OK');
         }
         with self.assertRaisesRegex(ValueError, "does not match final_url target"):
             self._run_ingest_single(a_to_b, ok_bytes)
+
+        # Query-string file mismatch on legacy selector (download?file=A.pdf -> download?file=B.pdf) must be rejected!
+        query_a_to_b = {
+            **base,
+            "requested_url": "https://webarchive.loc.gov/all/2011id_/http://oversight.house.gov/download?file=A.pdf",
+            "final_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/download?file=B.pdf",
+        }
+        with self.assertRaisesRegex(ValueError, "does not match final_url target"):
+            self._run_ingest_single(query_a_to_b, ok_bytes)
+
+        # Two DIFFERENT 14-digit timestamps for the same path must be rejected (resolved replays require exact equality)!
+        diff_14digit_ts = {
+            **base,
+            "requested_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/images/stories/Testimony/A.pdf",
+            "final_url": "https://webarchive.loc.gov/all/20111102120000id_/http://oversight.house.gov/images/stories/Testimony/A.pdf",
+        }
+        with self.assertRaisesRegex(ValueError, "does not match final_url target"):
+            self._run_ingest_single(diff_14digit_ts, ok_bytes)
+
+        # Matching legacy selector + query string (download?file=A.pdf -> download?file=A.pdf) succeeds without --targets
+        matching_legacy_query = {
+            **base,
+            "requested_url": "https://webarchive.loc.gov/all/2011id_/http://oversight.house.gov/download?file=A.pdf",
+            "final_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/download?file=A.pdf",
+        }
+        ok_legacy_report = self._run_ingest_single(matching_legacy_query, ok_bytes)
+        self.assertEqual(ok_legacy_report["qualified"], 1)
 
         # Trusted --targets rejects wrong case_id or wrong original_url
         targets_file = self.root / "targets_bind.json"
