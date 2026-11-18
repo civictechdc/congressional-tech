@@ -68,7 +68,6 @@ export function SubjectDetail({
   const relatedBills:any[]=Array.isArray(subject.related_bills)?subject.related_bills:[];
   const nominees:any[]=Array.isArray(subject.nominees)?subject.nominees:[];
   const hearings:any[]=Array.isArray(subject.hearings)?subject.hearings:[];
-  const laws:any[]=Array.isArray(subject.laws)?subject.laws:[];
   const documents:any[]=Array.isArray(subject.documents)?subject.documents:[];
   const sponsorDisplay=subject.sponsor_name||subject.sponsor_bioguide_id||'';
 
@@ -119,12 +118,12 @@ export function SubjectDetail({
       {(subject.latest_action_date||subject.latest_action_text)&&<p className="archive-source-meta">
         <strong>Latest action{subject.latest_action_date?` (${day(subject.latest_action_date)})`:''}:</strong> {subject.latest_action_text||'Recorded'}
       </p>}
-      {laws.length>0&&<p className="archive-source-meta">
-        <strong>Public Law:</strong> {laws.map((l:any)=>typeof l==='string'?l:`${l.type||'P.L.'} ${l.number||''}`).join(', ')}
+      {subject.public_law_number!=null&&subject.public_law_number!==''&&<p className="archive-source-meta">
+        <strong>Public Law:</strong> {subject.public_law_number}
       </p>}
     </header>
 
-    {nominees.length>0&&<div className="archive-entity-section">
+    {nominees.length>0?<div className="archive-entity-section">
       <h3>Nominees ({nominees.length})</h3>
       <ul className="archive-entity-list">
         {(compact?nominees.slice(0,5):nominees).map((nom:any,i:number)=><li key={i}>
@@ -134,6 +133,9 @@ export function SubjectDetail({
           </span>
         </li>)}
       </ul>
+    </div>:isNom&&<div className="archive-entity-section">
+      <h3>Nominees</h3>
+      <p>Individual nominee details are unavailable in this release.</p>
     </div>}
 
     {(committees.length>0||billActivities.length>0)&&<div className="archive-entity-section">

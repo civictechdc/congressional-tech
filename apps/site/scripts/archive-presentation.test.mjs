@@ -284,7 +284,22 @@ test('nomination committee actions retain publisher precision and stay separate 
     floor_votes:[{vote_id:'119-s-1-225',date:'2026-08-07',result:'Confirmed'}],
   }}));
   assert(html.includes('2026-07-22T14:47:05Z'));
+  assert(html.includes('Individual nominee details are unavailable in this release.'));
+  assert(!html.includes('Nominees (0)'));
   assert(html.indexOf('Committee activities') < html.indexOf('Floor Votes'));
+
+  const emptyNomineesHtml=renderToStaticMarkup(React.createElement(SubjectDetail,{subject:{
+    nomination_id:'119-pn-1012',kind:'nomination',description:'Alex Smith',nominees:[],
+  }}));
+  assert(emptyNomineesHtml.includes('Individual nominee details are unavailable in this release.'));
+  assert(!emptyNomineesHtml.includes('Nominees (0)'));
+
+  const populatedNomineesHtml=renderToStaticMarkup(React.createElement(SubjectDetail,{subject:{
+    nomination_id:'118-pn-730-2',kind:'nomination',nominees:[{name:'Jane Doe',position_title:'Administrator'}],
+  }}));
+  assert(populatedNomineesHtml.includes('Nominees (1)'));
+  assert(populatedNomineesHtml.includes('Jane Doe'));
+  assert(!populatedNomineesHtml.includes('Individual nominee details are unavailable in this release.'));
 });
 
 test('Phase-2 entity detail components render hearings, committees, witnesses, members, bills, and nominations with cross-links',()=>{
@@ -300,7 +315,7 @@ test('Phase-2 entity detail components render hearings, committees, witnesses, m
       sittings:[{datetime:'2024-05-01T10:00:00Z',building:'Rayburn',room:'2167'}],
       committees:[{committee_key:'hspw00',system_code:'hspw00',name:'House Committee on Transportation and Infrastructure'}],
       subjects:[{subject_key:'118-hr-1234',short_title:'Surface Transportation Modernization Act'},{subject_key:'118-pn-730-2',citation:'PN730-2',title:'Jane Doe nomination'}],
-      videos:[{video_key:'youtube:yt118001',source:'youtube',url:'https://www.youtube.com/watch?v=yt118001',title:'Hearing Livestream',duration_s:5420,tracks:[{label:'English captions',url:'https://fixture.test/captions.vtt'}]}],
+      videos:[{video_key:'youtube:yt118001',source:'youtube',url:'https://www.youtube.com/watch?v=yt118001',title:'Hearing Livestream',duration_seconds:5420,tracks:[{label:'English captions',url:'https://fixture.test/captions.vtt'}]}],
       transcripts:[{jacket_number:'55-123',title:'Official Hearing Transcript',list_row:0}],
       witnesses:[{witness_key:'smith_jane',name:'Dr. Jane Smith',organization:'National Transit Institute',position:'Director',panel:1,documents:[row]}],
     },
@@ -411,6 +426,7 @@ test('Phase-2 entity detail components render hearings, committees, witnesses, m
       status:'Reported by Committee',
       latest_action_date:'2024-05-02',
       latest_action_text:'Ordered to be Reported.',
+      public_law_number:'118-42',
       committees:['hspw00'],
       cbo_estimates:[{title:'CBO Estimate for H.R. 1234',pub_date:'2024-05-10',url:'https://www.cbo.gov/publication/59999'}],
       votes:[{chamber:'house',roll_number:210,date:'2024-05-15',question:'On Passage',result:'Passed',yea:310,nay:110,url:'https://clerk.house.gov/evs/2024/roll210.xml'}],
@@ -427,6 +443,8 @@ test('Phase-2 entity detail components render hearings, committees, witnesses, m
   for(const text of [
     'H.R. 1234 — Surface Transportation Modernization Act',
     'Rep. Smith, Adam',
+    'Public Law:',
+    '118-42',
     'CBO Estimate for H.R. 1234',
     'Roll #210',
     '310–110',
@@ -436,6 +454,11 @@ test('Phase-2 entity detail components render hearings, committees, witnesses, m
     'GPO GovInfo',
     'spicy-regs',
   ])assert(billHtml.includes(text),`Missing in SubjectDetail: ${text}`);
+  assert(!billHtml.includes('Individual nominee details are unavailable in this release.'));
+  const pendingBillHtml=renderToStaticMarkup(React.createElement(SubjectDetail,{
+    subject:{kind:'bill',subject_key:'118-hr-9999',congress:118,title:'Pending bill',public_law_number:null},
+  }));
+  assert(!pendingBillHtml.includes('Public Law:'));
 });
 
 test('Phase-2 entity browse tabs, navigation parser, and inspector document-filter actions render cleanly',async()=>{
