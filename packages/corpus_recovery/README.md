@@ -218,6 +218,10 @@ order. Each yields leads only; a lead counts after acquisition, qualification
 leads enter the campaign candidate table (`run_recovery_campaign(candidates=...)`)
 and are fetched by `capture_schedule --campaign`.
 
+`pipeline.cutoff_size_hint(record)` reads a failed PDF's stored `body_bytes` and
+names a round boundary (1 MiB, 64 KiB, 32 KiB, 1 KiB or a round thousand) that
+usually marks a cut-off copy; it is a hint only and never passes or fails a body.
+
 **Neighboring folder.** For a `/wp-content/uploads/YYYY/MM/<file>` target it
 proposes the same file name one month either side (at most six) on the same
 host, without a request. Its `mapping` records the only claim: same host, same

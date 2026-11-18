@@ -25,6 +25,7 @@ from corpus_recovery.discovery import Response, wayback_lookup
 from corpus_recovery.discovery_runtime import DiscoveryRuntime
 from corpus_recovery.inventory import build_target_inventory, scan_receipt_history
 from corpus_recovery.pipeline import (
+    cutoff_size_hint,
     discover_target_candidates,
     evaluate_campaign_url_state,
     import_accepted_candidates,
@@ -1295,6 +1296,25 @@ def test_write_candidates_parquet_accepts_discovery_rows_and_preserves_metadata(
     for bad in ({'target_url': xml, 'url': ''}, {'target_url': xml, 'candidate_url': None}, {'url': pdf}):
         with pytest.raises(ValueError, match='non-empty target_url'):
             write_candidates_parquet([bad], tmp_path / 'bad.parquet')
+
+
+def test_cutoff_size_hint_reads_stored_size_of_failed_pdfs_only(tmp_path: Path):
+    """A round stored size on a failed PDF is a hint; it never changes the result."""
+    records = {}
+    for size in (32 * 1024, 32 * 1024 + 1):  # planted cut-off size and an ordinary size
+        body = tmp_path / f'{size}.pdf'
+        body.write_bytes(b'%PDF-1.4\n' + b'0' * (size - 9))
+        records[size] = qualify_candidate_body(body, tmp_path / 'qualification-cache')[1]
+    assert records[32 * 1024]['status'] == records[32 * 1024 + 1]['status'] == 'unresolved'
+    assert cutoff_size_hint(records[32 * 1024]) == '32 KiB'
+    assert cutoff_size_hint(records[32 * 1024 + 1]) is None
+    failed = {'status': 'unresolved', 'media_type': 'application/pdf'}
+    # Sizes from ct-z4w5 damaged files, then a sibling short by exactly 32,768 bytes.
+    for size, hint in ((3 << 20, '1 MiB'), (655_360, '64 KiB'), (116_736, '1 KiB'),
+                       (64_000, 'round thousand'), (170_422, None), (0, None)):
+        assert cutoff_size_hint({**failed, 'body_bytes': size}) == hint, size
+    assert cutoff_size_hint({**failed, 'status': 'qualified', 'body_bytes': 1 << 20}) is None
+    assert cutoff_size_hint({**failed, 'media_type': 'text/html', 'body_bytes': 1 << 20}) is None
 
 
 def test_usable_direct_row_requires_complete_intact_document_evidence():
