@@ -1081,7 +1081,7 @@ def appearance_records_have_rank_credentials(value,*,root=ROOT):
 EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS event_ids,
  array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'format',cast(NULL AS VARCHAR),
   'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks,cast(NULL AS VARCHAR) AS recording_scope WHERE false"""
-EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL="SELECT cast(NULL AS VARCHAR) AS video_key,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source_ref WHERE false"
+EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL="SELECT cast(NULL AS VARCHAR) AS video_key,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source_ref,cast(NULL AS VARCHAR) AS link_rule,cast(NULL AS VARCHAR) AS match_note WHERE false"
 
 
 def recordings_export_sql(*,root=ROOT,explorer_inputs=False):
@@ -1574,7 +1574,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         ]
     if prepared.get('explorer_inputs'):
         steps += _sql_steps(['youtube-cache-bodies','youtube-api-bodies'],root=root)+[
-            dict(name='known_meetings',sql="""SELECT k.event_id,r.meeting_type,r.title
+            dict(name='known_meetings',sql="""SELECT k.event_id,r.meeting_type,r.title,
+                coalesce(r.subject_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys
                 FROM meetings_resolved r
                 RIGHT JOIN (
                     SELECT DISTINCT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM normalized WHERE meeting_keys IS NOT NULL
@@ -1619,18 +1620,49 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             dict(name='recording_page_sources',sql="""SELECT DISTINCT c.source_id,c.body_sha AS page_body
                 FROM recording_video_pages vp JOIN capture_source_contexts c ON c.body_sha=vp.page_body""",materialize=True),
             dict(name='house_page_meeting_links',sql=(Path(root)/'model/sql/house-page-meeting-links.sql').read_text(),materialize=True),
-            dict(name='recording_page_meetings',sql="""SELECT vp.page_body,unnest(pf.named_meetings) AS event_id
+            dict(name='recording_page_meetings',sql="""WITH raw_routes AS (
+                SELECT vp.page_body,unnest(pf.named_meetings) AS event_id,
+                    cast(0 AS INT) AS route_priority,
+                    cast('page_named_meeting' AS VARCHAR) AS link_rule,
+                    cast('page_named_meeting' AS VARCHAR) AS match_note
                 FROM recording_video_pages vp JOIN page_facts pf ON pf.body_sha=vp.body_sha
                 WHERE pf.status='completed' AND pf.named_meetings IS NOT NULL
-                UNION
-                SELECT DISTINCT vps.page_body,try_cast(a.meeting_key AS BIGINT) AS event_id
+                UNION ALL
+                SELECT DISTINCT vps.page_body,try_cast(a.meeting_key AS BIGINT) AS event_id,
+                    cast(1 AS INT) AS route_priority,
+                    cast('source_annotation' AS VARCHAR) AS link_rule,
+                    cast('source_annotation' AS VARCHAR) AS match_note
                 FROM recording_page_sources vps JOIN source_annotation_addresses a ON a.source_id=vps.source_id
                 WHERE try_cast(a.meeting_key AS BIGINT) IS NOT NULL
-                UNION
-                SELECT vp.page_body,s.event_id
+                UNION ALL
+                SELECT vp.page_body,s.event_id,
+                    cast(2 AS INT) AS route_priority,
+                    cast('senate_page' AS VARCHAR) AS link_rule,
+                    cast('senate_page' AS VARCHAR) AS match_note
                 FROM recording_video_pages vp JOIN senate_page_meeting_links s ON s.record_sha_hex=vp.page_body
-                UNION
-                SELECT page_body,event_id FROM house_page_meeting_links""",materialize=True),
+                UNION ALL
+                SELECT page_body,event_id,
+                    CASE link_rule
+                        WHEN 'house_doc_link' THEN cast(3 AS INT)
+                        WHEN 'house_title_words' THEN cast(4 AS INT)
+                        WHEN 'house_title_and_full_words' THEN cast(5 AS INT)
+                        WHEN 'house_text_head_strong' THEN cast(6 AS INT)
+                        WHEN 'house_single_day_title' THEN cast(7 AS INT)
+                        WHEN 'house_single_day_generic' THEN cast(8 AS INT)
+                        ELSE cast(9 AS INT)
+                    END AS route_priority,
+                    link_rule,
+                    match_note
+                FROM house_page_meeting_links
+            ), ranked AS (
+                SELECT page_body,event_id,route_priority,link_rule,match_note,
+                    row_number() OVER (PARTITION BY page_body,event_id ORDER BY route_priority ASC,match_note ASC) AS rn
+                FROM raw_routes
+                WHERE event_id IS NOT NULL
+            )
+            SELECT page_body,event_id,route_priority,link_rule,match_note
+            FROM ranked
+            WHERE rn=1""",materialize=True),
             dict(name='recording_fetch_candidates',sql=f"""SELECT c.receipt_key,c.receipt_line,c.capture_index,c.sha256,
                 coalesce(c.stored_suffix,'.gz') AS suffix,
                 coalesce(c.sniffed_format,CASE lower(split_part(c.media_type,';',1)) WHEN 'text/vtt' THEN 'vtt' WHEN 'application/vnd.apple.mpegurl' THEN 'm3u8' WHEN 'application/x-mpegurl' THEN 'm3u8' END) AS body_format,
@@ -1714,11 +1746,20 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             dict(name='caption_resources',sql=(Path(root)/'model/sql/caption-resources.sql').read_text(),materialize=True),
             dict(name='retained_caption_tracks',sql="SELECT DISTINCT video_key,track_body FROM caption_resources WHERE status='retained' AND ordinal>0 AND format IN ('vtt','srt','ttml')",materialize=True),
             dict(name='recordings_entity',sql=(Path(root)/'model/sql/entity-recordings.sql').read_text(),materialize=True),
-            dict(name='recording_page_video_events',sql="""SELECT video_key,event_id,'committee_page:'||min(page_body) AS source_ref
-                FROM (SELECT pvl.page_body,pvl.extracted_key AS video_key,pm.event_id
-                      FROM recording_page_meetings pm JOIN recording_video_links pvl ON pvl.page_body=pm.page_body
-                      WHERE pvl.extracted_key IS NOT NULL AND pm.event_id IS NOT NULL)
-                GROUP BY video_key,event_id""",materialize=True)]
+            dict(name='recording_page_video_events',sql="""WITH pairs AS (
+                SELECT pvl.page_body,pvl.extracted_key AS video_key,pm.event_id,
+                    pm.route_priority,pm.link_rule,pm.match_note
+                FROM recording_page_meetings pm JOIN recording_video_links pvl ON pvl.page_body=pm.page_body
+                WHERE pvl.extracted_key IS NOT NULL AND pm.event_id IS NOT NULL
+            ), ranked AS (
+                SELECT video_key,event_id,link_rule,match_note,
+                    min(page_body) OVER (PARTITION BY video_key,event_id) AS min_page_body,
+                    row_number() OVER (PARTITION BY video_key,event_id ORDER BY route_priority ASC,page_body ASC) AS rn
+                FROM pairs
+            )
+            SELECT video_key,event_id,'committee_page:'||min_page_body AS source_ref,link_rule,match_note
+            FROM ranked
+            WHERE rn=1""",materialize=True)]
         auxiliary += [
             ('recordings',recordings_export_sql(root=root,explorer_inputs=bool(prepared.get('explorer_inputs'))),['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production','recording_scope']),
             ('meetings',(Path(root)/'model/sql/entity-meetings.sql').read_text(),['event_id'],MEETING_DICTIONARY),
