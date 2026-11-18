@@ -1,0 +1,73 @@
+{
+  "repo": "LibraryOfCongress/api.congress.gov",
+  "reviewed_at": "2026-11-18",
+  "ticket": "ct-xh3f",
+  "changelog": {
+    "path": "ChangeLog.md",
+    "blob_sha": "dc22db035ba18c3d4603555c0dbf0b93b93d259f",
+    "bytes": 83837,
+    "latest_commit_sha": "bf9417c07d1a49cc211cba71756f4bd367561642",
+    "latest_commit_date": "2026-11-16T13:19:55Z",
+    "latest_heading": "# UPCOMING December 2026 | [Milestone](https://github.com/LibraryOfCongress/api.congress.gov/milestone/67)"
+  },
+  "docs": {
+    "Documentation/CommitteeMeetingEndpoint.md": {
+      "blob_sha": "e4044cf11536941535c2e773949406280657911f",
+      "bytes": 13744
+    },
+    "Documentation/CommitteeEndpoint.md": {
+      "blob_sha": "303af850ba53ec0a09aa3972f5674ddca16dbdc8",
+      "bytes": 19079
+    }
+  },
+  "reviewed_issues": [
+    {
+      "number": 435,
+      "state": "open",
+      "title": "Committee meeting eventIds starting with `LC` are not listed or found",
+      "impact": "committee-meeting covers House>=115 and Senate>=116 only; LC* ids are pre-API hearing transcripts with no jacket-number mapping"
+    },
+    {
+      "number": 176,
+      "state": "open",
+      "title": "Senate markup meetings do not have the associated meeting documents",
+      "impact": "Senate business/markup meetings lack meetingDocuments and relatedBills upstream"
+    },
+    {
+      "number": 171,
+      "state": "open",
+      "title": "Hearing API data not fresh/accurate",
+      "impact": "/v3/hearing/senate freshness lag and Senate hearing vs business-meeting classification awaiting Senate structured data"
+    },
+    {
+      "number": 364,
+      "state": "open",
+      "title": "Relating Committee Meetings to Bills",
+      "impact": "relatedItems.bills remains sparse upstream"
+    },
+    {
+      "number": 190,
+      "state": "open",
+      "title": "(committee-meeting details API): conferee meetings",
+      "impact": "conferee meetings can omit committees list"
+    },
+    {
+      "number": 182,
+      "state": "open",
+      "title": "Include Committee Amendments, Votes",
+      "impact": "not present in Congress.gov API"
+    },
+    {
+      "number": 159,
+      "state": "open",
+      "title": "Feature: (more easily) get the upcoming week's committee hearings",
+      "impact": "no upcoming-week endpoint/filter; pagination required"
+    },
+    {
+      "number": 484,
+      "state": "open",
+      "title": "Clarification on Member API response fields, private retention, and rate limits",
+      "impact": "general API field/rate-limit question; does not affect meetings/hearings"
+    }
+  ]
+}

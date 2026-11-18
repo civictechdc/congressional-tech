@@ -25,4 +25,6 @@ Run from the repository root:
 
 **`webharvest_recovery.py`** fetches approved Web Harvest HTML into a local receipt directory. You pass an explicit queue. A URL that appeared in an older queue is not treated as done. The command plans, paginates, acquires, aggregates, and qualifies. It stops at local receipts.
 
+**`loc_congressional_archive_map.py`** builds and queries a coverage map of the Library of Congress's [United States Congressional Web Archive](https://www.loc.gov/collections/united-states-congressional-web-archive/) using only `https://www.loc.gov/.../?fo=json` metadata endpoints (`build`, `lookup`, `cross-match`). Never hits `webarchive.loc.gov` or HTML pages; produces normalized host/path-scope mappings and browser lookup URLs (`https://webarchive.loc.gov/all/*/...`) for manual or browser-session workflows.
+
 **`webharvest_validation.py`** checks fetched HTML and PDFs before anyone treats them as recovered documents. HTML must look like document text rather than a challenge page, a rate-limit page, or an empty shell. A PDF must pass both a pypdf stream check and a full-page Poppler render. Passing validation still does not import the file.
