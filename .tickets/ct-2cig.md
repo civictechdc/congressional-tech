@@ -2,7 +2,7 @@
 id: ct-2cig
 status: open
 deps: []
-links: []
+links: [ct-bwyj, ct-69ly]
 created: 2026-11-18T14:01:54Z
 type: bug
 priority: 2
