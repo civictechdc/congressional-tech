@@ -54,7 +54,7 @@ def test_pure_stdlib_import_isolation_and_zero_scratch_paths() -> None:
         "    mod = importlib.import_module(mod_name)\n"
         "    for exp in getattr(mod, '__all__', ()):\n"
         "        assert hasattr(mod, exp), f'{mod_name} missing {exp}'\n"
-        "for banned in ('mlx', 'numpy', 'pyarrow', 'tokenizers', 'llguidance'):\n"
+        "for banned in ('jsonschema', 'mlx', 'numpy', 'pyarrow', 'tokenizers', 'llguidance'):\n"
         "    assert banned not in sys.modules, f'Unexpected third-party import: {banned}'\n"
         "enr, pmeta = dm.pre_pass_v6(None, 'HHRG-118-JU00-Wstate-DoeJ-20230510.pdf', 'Testimony of Jane Doe, May 10, 2023.')\n"
         "assert '118' in enr and pmeta['triage'] is None\n"
@@ -918,6 +918,7 @@ def test_single_strict_v4_validator_planted_faults_and_parity() -> None:
 
     from congress_docmeta import (
         NON_USABLE_TRIAGE_STATUSES,
+        anomaly_router_v6,
         canonicalize_docmeta_v4,
         parquet_runner_v6,
         prompt_v4,
@@ -946,13 +947,15 @@ def test_single_strict_v4_validator_planted_faults_and_parity() -> None:
             else:
                 os.environ[k] = prev
 
-    # Single-validator wiring across package, sweep runner, and sidecar builder
+    # Single-validator wiring across package, sweep runner, anomaly router, prompt, and sidecar builder
     assert strict_validate_v4 is validate_docmeta_v4
     assert pythonic_v6.strict_validate_v4 is pythonic_v5.validate_docmeta_v4
     assert validate_docmeta_v4_all is pythonic_v5.validate_docmeta_v4_all
     assert parquet_runner_v6.validate_docmeta_v4 is validate_docmeta_v4
     assert sidecar_mod.strict_validate_v4 is validate_docmeta_v4_all
     assert sidecar_mod.NON_USABLE_TRIAGE_STATUSES is NON_USABLE_TRIAGE_STATUSES
+    assert prompt_v4.NON_USABLE_TRIAGE_STATUSES is NON_USABLE_TRIAGE_STATUSES
+    assert anomaly_router_v6.NON_USABLE_STATUSES_V6 is NON_USABLE_TRIAGE_STATUSES
 
     def _valid_usable() -> dict[str, Any]:
         return {
@@ -1121,3 +1124,294 @@ def test_single_strict_v4_validator_planted_faults_and_parity() -> None:
     bad_gist = _valid_usable()
     bad_gist["gist"] = " ".join(["word"] * 26)
     _assert_all_reject(bad_gist, "gist_exceeds_word_budget:26")
+
+    # 8. Unhashable `status` (`[]`, `{}`) returns `(False, ...)` instead of raising `TypeError`
+    for bad_status in ([], {}):
+        bad_status_doc: dict[str, Any] = {"status": bad_status, "text_quality": "native"}
+        _assert_all_reject(bad_status_doc, "$.status: expected string")
+        _assert_all_reject(json.dumps(bad_status_doc, separators=(",", ":")), "$.status: expected string")
+        # Canonicalizers also tolerate unhashable status/text_quality without TypeError
+        unhash_usable = _valid_usable()
+        unhash_usable["status"] = bad_status
+        unhash_usable["text_quality"] = bad_status
+        assert canonicalize_docmeta_v4(unhash_usable)["status"] == "usable"
+        assert prompt_v4.canonicalize_v4(unhash_usable)["status"] == "usable"
+
+    # 9. Public keyword-argument compatibility (`obj=...`) preserved on wrappers
+    assert validate_docmeta_v4(obj=valid_usable) == (True, None)
+    assert strict_validate_v4(obj=valid_usable) == (True, None)
+    assert pythonic_v6.strict_validate_v4(obj=valid_usable) == (True, None)
+    assert prompt_v4.validate_v4(obj=valid_usable) == (True, None)
+    ok_kw, err_kw = validate_docmeta_v4(obj=bad_top_order)
+    assert ok_kw is False and err_kw is not None and "top_key_order_violation" in err_kw
+    assert pythonic_v6.strict_validate_v4(obj=bad_top_order) == (ok_kw, err_kw)
+
+    # 10. `prompt_v4.canonicalize_v4` matches strict validation & excludes `bool` from `int`, with no eager `jsonschema`
+    with pytest.raises(ValueError, match="usable_missing_primary_kind"):
+        prompt_v4.canonicalize_v4({})
+    with pytest.raises(ValueError, match="usable_missing_primary_kind"):
+        canonicalize_docmeta_v4({})
+    bool_int_raw = _valid_usable()
+    bool_int_raw["congress"] = True
+    bool_int_raw["signatory_count"] = True
+    bool_int_raw["fiscal_years"] = [True, 2024]
+    canon_bool_p4 = prompt_v4.canonicalize_v4(bool_int_raw)
+    assert "congress" not in canon_bool_p4
+    assert "signatory_count" not in canon_bool_p4
+    assert canon_bool_p4["fiscal_years"] == [2024]
+    _assert_all_pass(canon_bool_p4)
+
+    # Even in the full checkout venv (where `jsonschema` is installed), importing & validating stays pure stdlib
+    no_js_code = (
+        "import sys\n"
+        f"sys.path.insert(0, {str(SRC_DIR)!r})\n"
+        "import congress_docmeta as dm\n"
+        "from congress_docmeta import prompt_v4\n"
+        "ok, err = dm.validate_docmeta_v4(obj={'status': 'usable', 'text_quality': 'native'})\n"
+        "assert not ok and err == 'usable_missing_primary_kind'\n"
+        "c = prompt_v4.canonicalize_v4({'status': 'error_or_block', 'text_quality': 'garbled'})\n"
+        "assert c['error_reason'] == 'error_or_block'\n"
+        "assert 'jsonschema' not in sys.modules, 'Unexpected eager jsonschema import'\n"
+    )
+    proc_js = subprocess.run([sys.executable, "-B", "-c", no_js_code], capture_output=True, text=True, check=False)
+    assert proc_js.returncode == 0, f"stdout={proc_js.stdout}\nstderr={proc_js.stderr}"
+
+
+def test_sweep_and_teacher_recover_from_strict_v4_validation_failures(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One invalid Pass-1 or Pass-2 prediction must not abort a sweep; valid neighbors & Pass-1 survive (ct-07y3)."""
+    import sys
+    import types
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from congress_docmeta import (
+        escalate_anomalies_gpt_oss,
+        run_docmeta_parquet_sweep,
+        validate_docmeta_v4,
+        validate_docmeta_v4_all,
+    )
+
+    valid_doc = {
+        "status": "usable",
+        "text_quality": "native",
+        "chamber": "house",
+        "congress": 118,
+        "committees": ["Committee on Science, Space, and Technology"],
+        "primary_kind": "witness_statement",
+        "personas": [{"name": "Jane Doe", "role": "witness", "entity_type": "non_gov_person"}],
+        "composed_title": "Testimony of Jane Doe on Grid Reliability",
+        "gist": "Jane Doe testifies on electric grid reliability.",
+        "topics": ["electric grid"],
+    }
+    bad_gist_doc = dict(
+        valid_doc,
+        gist=(
+            "June 11, 2015 House Health Subcommittee majority staff memo for a June 11 hearing on "
+            "H.R. 1786, extending the James Zadroga 9/11 Health and Compensation Act."
+        ),
+    )
+    missing_kind_doc = {k: v for k, v in valid_doc.items() if k != "primary_kind"}
+
+    # A. 3-record Pass-1 sweep: row 0 emits 26-word gist, row 1 is valid, row 2 omits primary_kind
+    class _ByteTokenizer:
+        def apply_chat_template(self, msgs: list[dict[str, str]], **_: Any) -> str:
+            return msgs[0]["content"]
+
+        def encode(self, text: str, **_: Any) -> list[int]:
+            return list(text.encode("utf-8"))
+
+        def decode(self, ids: list[int], **_: Any) -> str:
+            return bytes(ids).decode("utf-8")
+
+    class _StubGrammarHelper:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            self.upfront_ff: list[int] = []
+
+    fg4_pkg = types.ModuleType("fast_gemma4")
+    fg4_grammar = types.ModuleType("fast_gemma4.grammar")
+    fg4_grammar.GrammarHelper = _StubGrammarHelper  # type: ignore[attr-defined]
+    fg4_pdg = types.ModuleType("fast_gemma4.per_doc_grammar")
+    fg4_pdg.compute_rolling_doc_order = lambda suf_ids, **_: list(range(len(suf_ids)))  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "fast_gemma4", fg4_pkg)
+    monkeypatch.setitem(sys.modules, "fast_gemma4.grammar", fg4_grammar)
+    monkeypatch.setitem(sys.modules, "fast_gemma4.per_doc_grammar", fg4_pdg)
+
+    tok = _ByteTokenizer()
+    outputs_by_slot = [
+        json.dumps(bad_gist_doc, separators=(",", ":")),
+        json.dumps(valid_doc, separators=(",", ":")),
+        json.dumps(missing_kind_doc, separators=(",", ":")),
+    ]
+
+    class _FakeSweepEngine:
+        def __init__(self) -> None:
+            self.tokenizer = tok
+            self.new_to_old = list(range(256))
+
+        def run_rolling(self, **kwargs: Any) -> dict[str, Any]:
+            n = len(kwargs["suf_ids_list"])
+            assert n == len(outputs_by_slot)
+            return {
+                "gen_toks": [tok.encode(s) for s in outputs_by_slot],
+                "prefill_sec": 0.01,
+                "decode_sec": 0.01,
+                "mask_fallbacks": 0,
+                "llm_steps": 3,
+                "ff_early14_steps": 0,
+            }
+
+    queue_rows = []
+    for i in range(3):
+        lk = f"{i + 1:016x}"
+        sb = f"{i + 1:064x}"
+        queue_rows.append(
+            {
+                "list_row": i,
+                "link_key": bytes.fromhex(lk),
+                "link_key_hex": lk,
+                "doc_key": f"doc-{i:04d}",
+                "saved_body": bytes.fromhex(sb),
+                "saved_body_hex": sb,
+                "effective_body_sha_hex": sb,
+                "package_id": None,
+                "rn": i,
+                "disposition": "llm_queue",
+                "v6_route": "deterministic_enriched_open_kind",
+                "filename": f"HHRG-118-SY00-Wstate-DoeJ-202405{i + 10:02d}.pdf",
+                "effective_format": "pdf",
+                "text_source": "body_text_ssot_v12_head_tail_9000",
+                "p12_raw_text": "Statement of Jane Doe before the House Committee on Science, Space, and Technology on electric grid reliability.",
+                "p12_clean_text": "Statement of Jane Doe before the House Committee on Science, Space, and Technology on electric grid reliability.",
+                "known_json": json.dumps({"congress": 118, "cmt": ["hssy00"], "chambers": ["house"]}),
+                "locked_primary_kind": None,
+                "grammar_lock_source": None,
+                "lock_id": None,
+                "rel_congress": 118,
+                "rel_chamber": "house",
+                "rel_committees": ["Committee on Science, Space, and Technology"],
+                "rel_event_id": "ev1",
+                "rel_event_date": "2024-05-15",
+                "rel_event_title": "Electric Grid Reliability",
+                "rel_event_type": "hearing",
+                "rel_venue": None,
+                "personas_seed_json": None,
+                "det_refs": [],
+                "det_short_titles": [],
+                "det_fiscal_years": [],
+                "usc_oracle_invalid_refs": [],
+                "hsru_host_status": "not_hsru",
+                "is_cover_roster_p12": False,
+                "p3_toc_or_gavel_slice": None,
+                "stapled_ttf_disclosure_json": None,
+            }
+        )
+
+    in_pq = tmp_path / "queue_strict_recovery.parquet"
+    out_pq = tmp_path / "results_strict_recovery.parquet"
+    pq.write_table(pa.Table.from_pylist(queue_rows), in_pq)
+
+    summary = run_docmeta_parquet_sweep(
+        _FakeSweepEngine(),
+        in_pq,
+        out_pq,
+        chunk_rows=4,
+        b_slots=4,
+        wire_format="v4",
+        use_ane_ring=False,
+    )
+    assert summary.docs_processed == 3
+    assert summary.strict_v4_valid_docs == 3
+    rows_out = sorted(pq.read_table(out_pq).to_pylist(), key=lambda r: r["list_row"])
+    assert len(rows_out) == 3
+    # Row 0 (26-word gist) and Row 2 (missing primary_kind) recovered via valid triage fallback
+    for bad_idx in (0, 2):
+        assert rows_out[bad_idx]["status"] == "stub_or_blank"
+        assert rows_out[bad_idx]["strict_v4_valid"] is True
+        assert validate_docmeta_v4_all(rows_out[bad_idx]["docmeta_json"]) == (True, [])
+    # Row 1 (valid neighbor) survived intact
+    assert rows_out[1]["status"] == "usable"
+    assert rows_out[1]["primary_kind"] == "witness_statement"
+    assert rows_out[1]["strict_v4_valid"] is True
+    assert validate_docmeta_v4_all(rows_out[1]["docmeta_json"]) == (True, [])
+
+    # B. Pass-2 teacher escalation skips invalid teacher candidates and retains Pass-1
+    class _FakeTeacherItem:
+        def __init__(self, obj: dict[str, Any]) -> None:
+            self.parsed = obj
+            self.text = json.dumps(obj, separators=(",", ":"))
+
+    class _FakeTeacherEngine:
+        def __init__(self, payloads: list[dict[str, Any]]) -> None:
+            self._payloads = payloads
+
+        def generate_batch(self, prompts: list[str], *, per_doc_grammars: Any = None, **_: Any) -> Any:
+            assert len(prompts) == len(self._payloads)
+            return types.SimpleNamespace(items=[_FakeTeacherItem(p) for p in self._payloads])
+
+    pass1_objs = [dict(valid_doc), dict(valid_doc)]
+    pass1_texts = [json.dumps(o, separators=(",", ":")) for o in pass1_objs]
+    pass1_anoms = [
+        {"anomaly_score": 1.5, "escalate_to_teacher": True, "anomaly_codes": ["fallback_primary_kind_other"]},
+        {"anomaly_score": 1.5, "escalate_to_teacher": True, "anomaly_codes": ["fallback_primary_kind_other"]},
+    ]
+    pmetas_p2 = [
+        {"known_dict": {"congress": 118}, "p12_lines": queue_rows[0]["p12_clean_text"]},
+        {"known_dict": {"congress": 118}, "p12_lines": queue_rows[1]["p12_clean_text"]},
+    ]
+
+    esc_bad, acc_bad, backups_bad = escalate_anomalies_gpt_oss(
+        _FakeTeacherEngine([missing_kind_doc, bad_gist_doc]),
+        flagged_indices=[0, 1],
+        prompts_user_content=["p0", "p1"],
+        rows=queue_rows[:2],
+        pmetas=pmetas_p2,
+        current_objs=pass1_objs,
+        current_texts=pass1_texts,
+        current_anomalies=pass1_anoms,
+    )
+    assert esc_bad == 2
+    assert acc_bad == 0
+    assert backups_bad == {}
+    assert pass1_objs == [valid_doc, valid_doc]
+    assert all(validate_docmeta_v4_all(t) == (True, []) for t in pass1_texts)
+
+    # Mixed teacher batch: row 0 invalid (skipped, Pass-1 kept) and row 1 valid lower-anomaly (accepted)
+    upgraded_doc = dict(valid_doc, gist="Jane Doe testifies on grid reliability.")
+    esc_mix, acc_mix, backups_mix = escalate_anomalies_gpt_oss(
+        _FakeTeacherEngine([missing_kind_doc, upgraded_doc]),
+        flagged_indices=[0, 1],
+        prompts_user_content=["p0", "p1"],
+        rows=queue_rows[:2],
+        pmetas=pmetas_p2,
+        current_objs=pass1_objs,
+        current_texts=pass1_texts,
+        current_anomalies=pass1_anoms,
+    )
+    assert esc_mix == 2
+    assert acc_mix == 1
+    assert set(backups_mix.keys()) == {1}
+    assert pass1_objs[0] == valid_doc
+    assert pass1_objs[1]["gist"] == upgraded_doc["gist"]
+    assert all(validate_docmeta_v4(o) == (True, None) for o in pass1_objs)
+
+    # C. `post_pass_v6` allows downstream relational `topics` fill while still rejecting unrepairable missing `primary_kind`
+    no_topics_doc = {k: v for k, v in valid_doc.items() if k != "topics"}
+    repaired_obj, _ = post_pass_v6(
+        no_topics_doc,
+        filename=queue_rows[0]["filename"],
+        text=queue_rows[0]["p12_clean_text"],
+        relational={"rel_bill_policy_areas": ["Energy"]},
+    )
+    assert repaired_obj["topics"] == ["energy"]
+    assert validate_docmeta_v4(repaired_obj) == (True, None)
+
+    with pytest.raises(ValueError, match="usable_missing_primary_kind"):
+        post_pass_v6(
+            missing_kind_doc,
+            filename=queue_rows[0]["filename"],
+            text=queue_rows[0]["p12_clean_text"],
+        )

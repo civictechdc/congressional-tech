@@ -111,13 +111,7 @@ from congress_docmeta import (  # noqa: E402
 
 SCHEMA_OBJ: dict[str, Any] = pv5.SCHEMA_OBJ
 
-TOP_KEYS_ORDER: tuple[str, ...] = zb6.TOP_KEYS_ORDER_V6
 PERSONA_KEYS_ORDER: tuple[str, ...] = zb6.PERSONA_KEYS_ORDER_V6
-DISCLOSURE_KEYS_ORDER: tuple[str, ...] = zb6.DISCLOSURE_KEYS_ORDER_V6
-
-TOP_ORDER_IDX = {k: i for i, k in enumerate(TOP_KEYS_ORDER)}
-PERSONA_ORDER_IDX = {k: i for i, k in enumerate(PERSONA_KEYS_ORDER)}
-DISCLOSURE_ORDER_IDX = {k: i for i, k in enumerate(DISCLOSURE_KEYS_ORDER)}
 
 VALID_ROLES_SET = frozenset(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["role"]["enum"])
 VALID_ETYPES_SET = frozenset(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["entity_type"]["enum"])
@@ -280,9 +274,6 @@ def finalize_and_validate_docmeta(raw_obj: Mapping[str, Any]) -> tuple[dict[str,
             working["gist"] = " ".join(gw)
 
     canon = pv5.canonicalize_docmeta_v4(working)
-    ok_v5, err_v5 = pv5.validate_docmeta_v4(canon)
-    if not ok_v5:
-        raise ValueError(f"validate_docmeta_v4 failed: {err_v5}")
     j_str = json.dumps(canon, separators=(",", ":"), ensure_ascii=False)
     ok_s, errs_s = strict_validate_v4(j_str)
     if not ok_s:

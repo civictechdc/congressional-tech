@@ -40,6 +40,8 @@ import sys
 import unicodedata
 from typing import Any, Mapping, Sequence
 
+from .prompt_v4 import NON_USABLE_TRIAGE_STATUSES
+
 ACTOR_REQUIRED_KINDS_V6 = frozenset(
     {
         "witness_statement",
@@ -169,9 +171,7 @@ BACKBENCH_LEAK_TARGET_KINDS_V6 = frozenset(
     }
 )
 
-NON_USABLE_STATUSES_V6 = frozenset(
-    {"error_or_block", "stub_or_blank", "ocr_unreadable"}
-)
+NON_USABLE_STATUSES_V6 = NON_USABLE_TRIAGE_STATUSES
 
 _SD_SUPPLEMENTAL_RE = re.compile(r"(?:^|[-_])SD\d{2,4}(?:[-_.]|$)", re.I)
 _EXHIBIT_FILENAME_RE = re.compile(
@@ -1110,7 +1110,7 @@ def score_docmeta_anomalies_v6(
     text = _extract_row_text_v6(det)
     raw_text_stripped = (text or "").strip()
 
-    if status in NON_USABLE_STATUSES_V6:
+    if isinstance(status, str) and status in NON_USABLE_STATUSES_V6:
         # Check if deterministic lock proved document was actually usable
         locked_pk = det.get("v6_locked_primary_kind") or det.get("v5_locked_primary_kind") or det.get("locked_primary_kind")
         if isinstance(locked_pk, str) and locked_pk:

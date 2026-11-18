@@ -65,7 +65,7 @@ TEXT_QUALITY_SET = set(SCHEMA_OBJ["properties"]["text_quality"]["enum"])
 ROLES_SET = set(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["role"]["enum"])
 ETYPES_SET = set(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["entity_type"]["enum"])
 
-from .prompt_v4 import SYS_DOCMETA_V4, build_prompt_v4
+from .prompt_v4 import NON_USABLE_TRIAGE_STATUSES, SYS_DOCMETA_V4, build_prompt_v4
 from . import expanded_rules_v5 as _exv5
 from . import multipage_rules_v5 as _mpv5
 from . import provenance_rules_v5 as _prv5
@@ -889,9 +889,6 @@ def _is_empty_val(v: Any) -> bool:
     return False
 
 
-NON_USABLE_TRIAGE_STATUSES = frozenset({"error_or_block", "stub_or_blank", "ocr_unreadable"})
-
-
 class _DuplicateKeyError(ValueError):
     """Raised when a JSON object string contains duplicate keys."""
 
@@ -1021,7 +1018,7 @@ def validate_docmeta_v4_all(obj_or_json: str | Mapping[str, Any] | None) -> tupl
                 errs.append(f"$.disclosure: disclosure_key_order_violation:{d_keys}")
 
     st = obj.get("status")
-    if st in NON_USABLE_TRIAGE_STATUSES:
+    if isinstance(st, str) and st in NON_USABLE_TRIAGE_STATUSES:
         extra = [k for k in obj.keys() if k not in ("status", "text_quality", "error_reason")]
         if extra:
             errs.append(f"non_usable_has_extra_keys:{extra}")
@@ -1041,26 +1038,27 @@ def validate_docmeta_v4_all(obj_or_json: str | Mapping[str, Any] | None) -> tupl
     return len(errs) == 0, errs
 
 
-def validate_docmeta_v4(obj_or_json: str | Mapping[str, Any] | None) -> tuple[bool, str | None]:
-    """Validate `obj_or_json` against the single strict DocMetaV4Causal validator (100% stdlib)."""
-    ok, errs = validate_docmeta_v4_all(obj_or_json)
+def validate_docmeta_v4(obj: str | Mapping[str, Any] | None) -> tuple[bool, str | None]:
+    """Validate `obj` against the single strict DocMetaV4Causal validator (100% stdlib)."""
+    ok, errs = validate_docmeta_v4_all(obj)
     return ok, (errs[0] if errs else None)
 
 
-def canonicalize_docmeta_v4(raw_obj: dict[str, Any]) -> dict[str, Any]:
+def canonicalize_docmeta_v4(raw_obj: dict[str, Any], *, validate: bool = True) -> dict[str, Any]:
     """Order keys causally at all levels, strip empty/null values, enforce caps, and validate."""
     out: dict[str, Any] = {}
     st = raw_obj.get("status", "usable")
     tq = raw_obj.get("text_quality", "native")
-    out["status"] = st if st in STATUS_SET else "usable"
-    out["text_quality"] = tq if tq in TEXT_QUALITY_SET else "native"
+    out["status"] = st if isinstance(st, str) and st in STATUS_SET else "usable"
+    out["text_quality"] = tq if isinstance(tq, str) and tq in TEXT_QUALITY_SET else "native"
 
     if out["status"] in NON_USABLE_TRIAGE_STATUSES:
         er = raw_obj.get("error_reason")
         out["error_reason"] = er.strip()[:200] if isinstance(er, str) and er.strip() else out["status"]
-        ok, err = validate_docmeta_v4(out)
-        if not ok:
-            raise ValueError(f"Invalid error-status DocMetaV4: {err}")
+        if validate:
+            ok, err = validate_docmeta_v4(out)
+            if not ok:
+                raise ValueError(f"Invalid error-status DocMetaV4: {err}")
         return out
 
     max_caps = {
@@ -1092,10 +1090,10 @@ def canonicalize_docmeta_v4(raw_obj: dict[str, Any]) -> dict[str, Any]:
                     role = "author_or_speaker"
                 elif role == "submitter":
                     role = "sender"
-                if role not in ROLES_SET:
+                if not isinstance(role, str) or role not in ROLES_SET:
                     continue
                 etype = item.get("entity_type", "non_gov_person")
-                if etype not in ETYPES_SET:
+                if not isinstance(etype, str) or etype not in ETYPES_SET:
                     etype = "non_gov_person"
                 p_item: dict[str, Any] = {}
                 for pk in PERSONA_KEYS_ORDER:
@@ -1170,13 +1168,13 @@ def canonicalize_docmeta_v4(raw_obj: dict[str, Any]) -> dict[str, Any]:
                 }
 
         elif k == "primary_kind":
-            out[k] = val if val in DOC_KINDS_SET else "other"
+            out[k] = val if isinstance(val, str) and val in DOC_KINDS_SET else "other"
 
         elif k == "secondary_kinds" and isinstance(val, list):
             sk = []
             seen_sk = set()
             for x in val:
-                if x in DOC_KINDS_SET and x != out.get("primary_kind") and x not in seen_sk:
+                if isinstance(x, str) and x in DOC_KINDS_SET and x != out.get("primary_kind") and x not in seen_sk:
                     sk.append(x)
                     seen_sk.add(x)
             if sk:
@@ -1221,9 +1219,10 @@ def canonicalize_docmeta_v4(raw_obj: dict[str, Any]) -> dict[str, Any]:
             else:
                 out[k] = s
 
-    ok, err = validate_docmeta_v4(out)
-    if not ok:
-        raise ValueError(f"Canonicalized DocMetaV4 failed validation: {err}")
+    if validate:
+        ok, err = validate_docmeta_v4(out)
+        if not ok:
+            raise ValueError(f"Canonicalized DocMetaV4 failed validation: {err}")
     return out
 
 
@@ -1697,9 +1696,12 @@ def post_pass_v5(
             triage=triage,
         )
 
-    obj = canonicalize_docmeta_v4(raw_obj)
+    obj = canonicalize_docmeta_v4(raw_obj, validate=False)
 
-    if obj["status"] in ("error_or_block", "stub_or_blank", "ocr_unreadable"):
+    if obj["status"] in NON_USABLE_TRIAGE_STATUSES:
+        ok_t, err_t = validate_docmeta_v4(obj)
+        if not ok_t:
+            raise ValueError(f"Invalid error-status DocMetaV4: {err_t}")
         return obj, derive_sidecar_v5(
             obj,
             filename=filename,
@@ -1993,7 +1995,7 @@ def post_pass_v5(
                 if cur_pers:
                     obj["personas"] = cur_pers
 
-    clean_obj = canonicalize_docmeta_v4(obj)
+    clean_obj = canonicalize_docmeta_v4(obj, validate=not skip_sidecar)
     if skip_sidecar:
         hsru_st = (
             resolved_prov.get("hsru_host_status")

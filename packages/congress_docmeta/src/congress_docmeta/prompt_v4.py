@@ -5,18 +5,14 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from pathlib import Path
-
-try:
-    import jsonschema
-except ImportError:  # Allow importing SYS_DOCMETA_V4 / build_prompt_v4 in envs without jsonschema
-    jsonschema = None
+from typing import Any
 
 DOCMETA_DIR = Path(__file__).resolve().parent
 SCHEMA_PATH = DOCMETA_DIR / "docmeta_v4_causal.schema.json"
 DOCMETA_V4_SCHEMA_PATH = SCHEMA_PATH
 SCHEMA_OBJ = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
-VALIDATOR = jsonschema.Draft202012Validator(SCHEMA_OBJ) if jsonschema is not None else None
 
 TOP_KEYS_ORDER = list(SCHEMA_OBJ["properties"].keys())
 PERSONA_KEYS_ORDER = list(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"].keys())
@@ -27,6 +23,9 @@ STATUS_SET = set(SCHEMA_OBJ["properties"]["status"]["enum"])
 TEXT_QUALITY_SET = set(SCHEMA_OBJ["properties"]["text_quality"]["enum"])
 ROLES_SET = set(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["role"]["enum"])
 ETYPES_SET = set(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["entity_type"]["enum"])
+
+NON_USABLE_TRIAGE_STATUSES = frozenset({"error_or_block", "stub_or_blank", "ocr_unreadable"})
+assert NON_USABLE_TRIAGE_STATUSES <= STATUS_SET
 
 # Frozen pipe order used in V4 LoRA training prompts (train_v4_all360.jsonl; ct-1lpr).
 V4_TRAINED_STATUS_ORDER = (
@@ -86,14 +85,15 @@ def canonicalize_v4(raw_obj: dict) -> dict:
     out: dict = {}
     st = raw_obj.get("status", "usable")
     tq = raw_obj.get("text_quality", "native")
-    out["status"] = st if st in STATUS_SET else "usable"
-    out["text_quality"] = tq if tq in TEXT_QUALITY_SET else "native"
+    out["status"] = st if isinstance(st, str) and st in STATUS_SET else "usable"
+    out["text_quality"] = tq if isinstance(tq, str) and tq in TEXT_QUALITY_SET else "native"
 
-    if out["status"] in ("error_or_block", "stub_or_blank", "ocr_unreadable"):
+    if out["status"] in NON_USABLE_TRIAGE_STATUSES:
         er = raw_obj.get("error_reason")
         out["error_reason"] = er.strip()[:200] if isinstance(er, str) and er.strip() else out["status"]
-        if VALIDATOR is not None:
-            VALIDATOR.validate(out)
+        ok, err = validate_v4(out)
+        if not ok:
+            raise ValueError(f"Invalid error-status DocMetaV4: {err}")
         return out
 
     max_caps = {
@@ -125,10 +125,10 @@ def canonicalize_v4(raw_obj: dict) -> dict:
                 role = item.get("role", "witness")
                 if role == "member":
                     role = "author_or_speaker"
-                if role not in ROLES_SET:
+                if not isinstance(role, str) or role not in ROLES_SET:
                     continue
                 etype = item.get("entity_type", "non_gov_person")
-                if etype not in ETYPES_SET:
+                if not isinstance(etype, str) or etype not in ETYPES_SET:
                     etype = "non_gov_person"
                 p_item = {}
                 for pk in PERSONA_KEYS_ORDER:
@@ -185,17 +185,17 @@ def canonicalize_v4(raw_obj: dict) -> dict:
                 out["disclosure"] = d_obj
 
         elif k == "primary_kind":
-            out[k] = val if val in DOC_KINDS_SET else "other"
+            out[k] = val if isinstance(val, str) and val in DOC_KINDS_SET else "other"
 
         elif k == "secondary_kinds" and isinstance(val, list):
-            sk = [x for x in val if x in DOC_KINDS_SET and x != out.get("primary_kind")]
+            sk = [x for x in val if isinstance(x, str) and x in DOC_KINDS_SET and x != out.get("primary_kind")]
             if sk:
                 out[k] = sk
 
         elif k == "fiscal_years" and isinstance(val, list):
             fys = []
             for x in val:
-                if isinstance(x, int) and 1900 <= x <= 2100:
+                if not isinstance(x, bool) and isinstance(x, int) and 1900 <= x <= 2100:
                     fys.append(x)
                 elif isinstance(x, str) and re.fullmatch(r"\d{4}", x.strip()):
                     yr = int(x.strip())
@@ -205,13 +205,13 @@ def canonicalize_v4(raw_obj: dict) -> dict:
                 out[k] = fys[:12]
 
         elif k == "congress":
-            if isinstance(val, int) and 1 <= val <= 130:
+            if not isinstance(val, bool) and isinstance(val, int) and 1 <= val <= 130:
                 out[k] = val
             elif isinstance(val, str) and val.strip().isdigit() and 1 <= int(val.strip()) <= 130:
                 out[k] = int(val.strip())
 
         elif k == "signatory_count":
-            if isinstance(val, int) and val >= 1:
+            if not isinstance(val, bool) and isinstance(val, int) and val >= 1:
                 out[k] = val
 
         elif isinstance(val, list):
@@ -231,12 +231,13 @@ def canonicalize_v4(raw_obj: dict) -> dict:
             else:
                 out[k] = s
 
-    if VALIDATOR is not None:
-        VALIDATOR.validate(out)
+    ok, err = validate_v4(out)
+    if not ok:
+        raise ValueError(f"Canonicalized DocMetaV4 failed validation: {err}")
     return out
 
 
-def validate_v4(obj: dict) -> tuple[bool, str | None]:
+def validate_v4(obj: str | Mapping[str, Any] | None) -> tuple[bool, str | None]:
     """Validate an object against DocMetaV4Causal using the single strict validator."""
     from .pythonic_v5 import validate_docmeta_v4
 
