@@ -78,6 +78,37 @@ def test_a_stopped_run_resumes_at_the_gates_without_a_rebuild_and_a_live_one_is_
     assert len(gated['builds'])==1 and gated['store'].events.count(('put',POINTER))==flips
 
 
+def test_a_record_downloaded_to_another_path_is_the_same_input_and_a_changed_record_is_not():
+    """Run 44373468129 rebuilt an identical candidate: each hosted run downloads its provenance
+    records under a fresh file name, and that name was part of the compared inputs."""
+    from viewer_publication.archive_controller import _continuation_digest,_identity_inputs,_identity_parts
+    from viewer_publication.archive_model_job import PROVENANCE
+    record=dict(key='reviews/2026/decisions.jsonl',path='/run-1/abc-1111.jsonl',sha256='a'*64,size=10)
+    spec={**{name:[] for name in PROVENANCE},'review_files':[record],'captures':dict(path='/lake/captures.parquet')}
+    def identity(model):return _continuation_digest(_identity_parts(_identity_inputs(model,receipt_keys=['k'],run={'id':'r'})))
+    assert identity(dict(spec,review_files=[dict(record,path='/run-2/abc-2222.jsonl')]))==identity(spec)
+    for changed in (dict(record,sha256='b'*64),dict(record,size=11),dict(record,key='reviews/2026/other.jsonl')):
+        assert identity(dict(spec,review_files=[changed]))!=identity(spec)
+    # Only a provenance row's own path is a download location; any other path still counts.
+    assert identity(dict(spec,captures=dict(path='/lake/other.parquet')))!=identity(spec)
+    assert identity(dict(spec,review_files=[]))!=identity(spec)
+
+
+def test_a_refused_resume_names_the_inputs_that_differ(gated):
+    with pytest.raises(ValueError,match='no recorded cause'):publish(gated)
+    kept=json.loads((gated['tmp_path']/'publish/completed-model.json').read_text())
+    assert set(kept['identity_parts'])>={'model.captures','receipt_keys','provenance','run'}
+    next_runner(gated)
+    from viewer_publication.archive_controller import PublicationInputsChanged,run_publish
+    from viewer_publication.archive_model_job import load_spec
+    model=load_spec(gated['tmp_path']/'model-spec.json')
+    with pytest.raises(PublicationInputsChanged,match='differ from the completed model: run$'):
+        run_publish(model,resume=True,client=gated['store'],engine=gated['engine'],bucket='derived-fixture',
+            work=gated['tmp_path']/'publish',receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],provenance=[],
+            run={'id':'another'},public_origin='https://archive.fixture.test',contract=None,canary=None,
+            link_history=[gated['ids']['history']])
+
+
 @pytest.mark.parametrize('change',['inputs','definitions','checkpoint_missing','checkpoint_corrupt','release_file','evidence'])
 def test_a_kept_candidate_that_is_not_this_runs_is_deleted_and_rebuilt_never_published(gated,monkeypatch,change):
     from viewer_publication import archive_model_profile
