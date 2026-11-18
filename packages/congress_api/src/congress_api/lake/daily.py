@@ -864,7 +864,7 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
 
 def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, work, decided_at,
                           tables_spec, expected_heads, scope, unreadable_snapshot, batch_size,
-                          parser_workers=1, max_get_workers=64, body_listing=None):
+                          batch_bytes=64 << 20, parser_workers=1, max_get_workers=64, body_listing=None):
     """Append missing HTML metadata for a pinned body scope in bounded batches.
 
     The caller holds the archive writer lock across this call and supplies the complete
@@ -874,7 +874,10 @@ def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, 
     of bodies to be read.
     Otherwise reads use the capture's own stored size and MD5 for conditional GETs.
     The result describes this scope only. The maintained cache limit applies to each
-    batch. After a stop that unwinds this call, resolve fresh heads and replan.
+    batch. Batches close at the row limit or once their stored bytes reach
+    batch_bytes, matching the nightly byte-bounded path. The final body can
+    exceed that target by at most the maintained per-body read limit.
+    After a stop that unwinds this call, resolve fresh heads and replan.
     """
     names = {'captures', 'readings'}
     if (not isinstance(tables_spec, dict) or tables_spec.keys() != names
@@ -891,6 +894,7 @@ def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, 
     if body_listing is not None and not isinstance(raw_store.adapter, R2Adapter):
         raise ValueError('HTML metadata body listings require an R2 raw store')
     readings._positive(batch_size, 'batch_size')
+    readings._positive(batch_bytes, 'batch_bytes')
     instant(decided_at)
     authority = dict(engine=engine, catalog_root=catalog_root)
     tables.validate_catalog_authority(**authority)
@@ -926,7 +930,7 @@ def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, 
         result = readings.run(engine=engine, work=reading_work, mode='backfill', execute=True,
             table=tables_spec['readings'], catalog_root=catalog_root, parser='html_metadata',
             captures=scoped/'captures.parquet', read_current=lambda **_: scoped/'readings.parquet',
-            batch_size=batch_size,
+            batch_size=batch_size, batch_bytes=batch_bytes,
             decided_at=decided_at, unreadable_store=raw_store, unreadable_snapshot=unreadable_snapshot,
             parser_workers=parser_workers, max_get_workers=max_get_workers, **source)
         report.update(status=result['status'], readings=result)
