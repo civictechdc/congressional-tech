@@ -1,6 +1,6 @@
 ---
 id: ct-1lpr
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-17T20:17:27Z
@@ -18,3 +18,9 @@ prompt_v4.py builds STATUS_CSV with '|'.join(STATUS_SET), a Python set, so SYS_D
 
 SYS_DOCMETA_V4 is the same string in every process and equals the order the V4 model was trained on; a test runs two hash seeds.
 
+
+## Notes
+
+**2026-11-18T22:35:03Z**
+
+2026-11-18 closing (branch docmeta-dry-20261118): froze V4_TRAINED_STATUS_ORDER = ('error_or_block', 'index_or_listing', 'govinfo_wrapper', 'ocr_unreadable', 'usable', 'cover_or_toc', 'stub_or_blank', 'catalog_xml') in packages/congress_docmeta/src/congress_docmeta/prompt_v4.py (asserted equal to STATUS_SET) and built STATUS_CSV from it so SYS_DOCMETA_V4 is process-invariant and matches train_v4_all360.jsonl. Added subprocess PYTHONHASHSEED=1 vs PYTHONHASHSEED=2 byte-identity and STATUS_CSV order regression test test_sys_docmeta_v4_deterministic_across_hash_seeds_and_trained_status_order in packages/congress_docmeta/tests/test_docmeta_v6.py. Verified /usr/bin/python3 -B -I -S stdlib isolation and targeted production-offline suite (42 passed, 1 skipped).

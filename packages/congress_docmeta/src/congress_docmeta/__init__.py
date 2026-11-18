@@ -98,6 +98,7 @@ from .pythonic_v6 import (
     FORMAL_COMMITTEE_KINDS,
     HOUSE_CLERK_2LETTER_TO_CODE,
     HOUSE_SELECT_2LETTER_EXTRA_V6,
+    NON_USABLE_TRIAGE_STATUSES,
     PROVENANCE_SAFE_COMMITTEE_KINDS,
     SCHEMA_OBJ,
     SCHEMA_V4_STR,
@@ -142,6 +143,7 @@ from .pythonic_v6 import (
     try_zero_llm_bypass_v6,
     unwrap_archive_url,
     validate_docmeta_v4,
+    validate_docmeta_v4_all,
 )
 from .relational_rules_v6 import (
     apply_relational_post_pass_v6,
@@ -188,6 +190,7 @@ __all__ = [
     "HOUSE_CLERK_2LETTER_TO_CODE",
     "HOUSE_SELECT_2LETTER_EXTRA_V6",
     "LEGISLATIVE_DRAFT_KINDS_V6",
+    "NON_USABLE_TRIAGE_STATUSES",
     "PROVENANCE_SAFE_COMMITTEE_KINDS",
     "PreDecodeGrammarRouterV6",
     "PythonicEngineV6",
@@ -302,4 +305,5 @@ __all__ = [
     "unwrap_archive_url",
     "valid_cong_surnames",
     "validate_docmeta_v4",
+    "validate_docmeta_v4_all",
 ]

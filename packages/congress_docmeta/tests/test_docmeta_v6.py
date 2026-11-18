@@ -860,3 +860,264 @@ def test_run_records_defaults_match_the_engines_rolling_defaults() -> None:
     sig = inspect.signature(PythonicEngineV6.run_records).parameters
     assert sig["B_slots"].default == 256
     assert sig["swa_ring_cap"].default == 512
+
+
+def test_sys_docmeta_v4_deterministic_across_hash_seeds_and_trained_status_order() -> None:
+    """`SYS_DOCMETA_V4` is byte-identical across PYTHONHASHSEED values and matches the V4 trained STATUS_CSV order (ct-1lpr)."""
+    import os
+    import sys
+
+    from congress_docmeta import SYS_DOCMETA_V4
+    from congress_docmeta.prompt_v4 import (
+        STATUS_CSV,
+        SYS_DOCMETA_V4 as PROMPT_SYS_DOCMETA_V4,
+        V4_TRAINED_STATUS_ORDER,
+    )
+
+    expected_status_csv = (
+        "error_or_block|index_or_listing|govinfo_wrapper|ocr_unreadable|"
+        "usable|cover_or_toc|stub_or_blank|catalog_xml"
+    )
+    assert STATUS_CSV == expected_status_csv
+    assert V4_TRAINED_STATUS_ORDER == tuple(expected_status_csv.split("|"))
+    assert f"1. status ({expected_status_csv})," in SYS_DOCMETA_V4
+    assert SYS_DOCMETA_V4 == PROMPT_SYS_DOCMETA_V4
+
+    code = (
+        "import sys\n"
+        f"sys.path.insert(0, {str(SRC_DIR)!r})\n"
+        "from congress_docmeta import SYS_DOCMETA_V4\n"
+        "from congress_docmeta.prompt_v4 import STATUS_CSV, SYS_DOCMETA_V4 as PROMPT_SYS\n"
+        "assert SYS_DOCMETA_V4 == PROMPT_SYS\n"
+        "sys.stdout.buffer.write(STATUS_CSV.encode('utf-8') + b'\\n---\\n' + SYS_DOCMETA_V4.encode('utf-8'))\n"
+    )
+    outputs: dict[str, bytes] = {}
+    for seed in ("1", "2"):
+        env = dict(os.environ)
+        env["PYTHONHASHSEED"] = seed
+        proc = subprocess.run(
+            [sys.executable, "-B", "-c", code],
+            env=env,
+            capture_output=True,
+            check=False,
+        )
+        assert proc.returncode == 0, f"seed={seed} stderr={proc.stderr.decode('utf-8', errors='replace')}"
+        outputs[seed] = proc.stdout
+
+    assert outputs["1"] == outputs["2"]
+    status_bytes, sys_bytes = outputs["1"].split(b"\n---\n", 1)
+    assert status_bytes.decode("utf-8") == expected_status_csv
+    assert sys_bytes == SYS_DOCMETA_V4.encode("utf-8")
+
+
+def test_single_strict_v4_validator_planted_faults_and_parity() -> None:
+    """All V4 validator entrypoints share one strict validator and agree on valid records and planted faults (ct-07y3)."""
+    import importlib.util
+    import os
+    import sys
+
+    from congress_docmeta import (
+        NON_USABLE_TRIAGE_STATUSES,
+        canonicalize_docmeta_v4,
+        parquet_runner_v6,
+        prompt_v4,
+        pythonic_v5,
+        pythonic_v6,
+        strict_validate_v4,
+        validate_docmeta_v4,
+        validate_docmeta_v4_all,
+    )
+
+    sidecar_script = REPO_ROOT / "scripts" / "build_v6_2_ssot_sidecar.py"
+    assert sidecar_script.is_file()
+    env_keys = ("DOCMETA_V6_DATA_DIR", "HF_HUB_OFFLINE", "TRANSFORMERS_OFFLINE", "TOKENIZERS_OFFLINE")
+    saved_env = {k: os.environ.get(k) for k in env_keys}
+    mod_name = "_test_build_v6_2_ssot_sidecar_mod"
+    try:
+        spec = importlib.util.spec_from_file_location(mod_name, sidecar_script)
+        assert spec is not None and spec.loader is not None
+        sidecar_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(sidecar_mod)
+    finally:
+        sys.modules.pop(mod_name, None)
+        for k, prev in saved_env.items():
+            if prev is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = prev
+
+    # Single-validator wiring across package, sweep runner, and sidecar builder
+    assert strict_validate_v4 is validate_docmeta_v4
+    assert pythonic_v6.strict_validate_v4 is pythonic_v5.validate_docmeta_v4
+    assert validate_docmeta_v4_all is pythonic_v5.validate_docmeta_v4_all
+    assert parquet_runner_v6.validate_docmeta_v4 is validate_docmeta_v4
+    assert sidecar_mod.strict_validate_v4 is validate_docmeta_v4_all
+    assert sidecar_mod.NON_USABLE_TRIAGE_STATUSES is NON_USABLE_TRIAGE_STATUSES
+
+    def _valid_usable() -> dict[str, Any]:
+        return {
+            "status": "usable",
+            "text_quality": "native",
+            "chamber": "house",
+            "congress": 118,
+            "primary_kind": "truth_in_testimony_disclosure",
+            "personas": [
+                {
+                    "name": "Elena Vance",
+                    "title": "Senior Fellow",
+                    "role": "witness",
+                    "entity_type": "non_gov_person",
+                }
+            ],
+            "fiscal_years": [2024],
+            "signatory_count": 1,
+            "disclosure": {
+                "capacity": "organization",
+                "gov_witness": False,
+                "has_federal_grants": False,
+            },
+            "composed_title": "Truth in Testimony Disclosure of Elena Vance",
+            "gist": " ".join(["word"] * 25),
+            "topics": ["oversight"],
+        }
+
+    def _assert_all_pass(payload: dict[str, Any] | str) -> None:
+        for fn in (validate_docmeta_v4, pythonic_v6.strict_validate_v4):
+            ok, err = fn(payload)
+            assert ok is True and err is None, f"{fn} rejected valid payload: {err}"
+        for fn_all in (validate_docmeta_v4_all, sidecar_mod.strict_validate_v4):
+            ok_all, errs_all = fn_all(payload)
+            assert ok_all is True and errs_all == [], f"{fn_all} rejected valid payload: {errs_all}"
+        if isinstance(payload, dict):
+            ok_p4, err_p4 = prompt_v4.validate_v4(payload)
+            assert ok_p4 is True and err_p4 is None
+
+    def _assert_all_reject(payload: dict[str, Any] | str, expected_substring: str) -> None:
+        ok_all, errs_all = validate_docmeta_v4_all(payload)
+        assert ok_all is False, f"validate_docmeta_v4_all accepted fault expecting {expected_substring!r}"
+        assert isinstance(errs_all, list) and errs_all
+        assert any(expected_substring in e for e in errs_all), (
+            f"Expected {expected_substring!r} in {errs_all}"
+        )
+
+        ok_sc, errs_sc = sidecar_mod.strict_validate_v4(payload)
+        assert (ok_sc, errs_sc) == (ok_all, errs_all)
+
+        for fn in (validate_docmeta_v4, pythonic_v6.strict_validate_v4):
+            ok_one, err_one = fn(payload)
+            assert ok_one is False
+            assert isinstance(err_one, str)
+            assert err_one == errs_all[0]
+
+        if isinstance(payload, dict):
+            ok_p4, err_p4 = prompt_v4.validate_v4(payload)
+            assert (ok_p4, err_p4) == (False, errs_all[0])
+
+    # Baseline valid payloads (usable, all triage statuses, non-triage non-usable) pass as dict and JSON
+    valid_usable = _valid_usable()
+    _assert_all_pass(valid_usable)
+    _assert_all_pass(json.dumps(valid_usable, separators=(",", ":")))
+    for st in sorted(NON_USABLE_TRIAGE_STATUSES):
+        triage_doc = {"status": st, "text_quality": "garbled", "error_reason": "blocked response"}
+        _assert_all_pass(triage_doc)
+        _assert_all_pass(json.dumps(triage_doc, separators=(",", ":")))
+        # Canonicalizers default missing error_reason to status so output passes strict validation
+        canon_v5 = canonicalize_docmeta_v4({"status": st, "text_quality": "garbled"})
+        assert canon_v5["error_reason"] == st
+        _assert_all_pass(canon_v5)
+        canon_p4 = prompt_v4.canonicalize_v4({"status": st, "text_quality": "garbled"})
+        assert canon_p4["error_reason"] == st
+        _assert_all_pass(canon_p4)
+    _assert_all_pass({"status": "cover_or_toc", "text_quality": "native"})
+
+    # 1. `usable` missing required semantic fields
+    for req_key in ("primary_kind", "composed_title", "gist", "topics"):
+        faulty = _valid_usable()
+        del faulty[req_key]
+        _assert_all_reject(faulty, f"usable_missing_{req_key}")
+        _assert_all_reject(json.dumps(faulty, separators=(",", ":")), f"usable_missing_{req_key}")
+
+    # 2. `usable` with `error_reason`
+    usable_with_err = {
+        "status": "usable",
+        "text_quality": "native",
+        "error_reason": "should not be present",
+        "primary_kind": "witness_statement",
+        "composed_title": "Testimony",
+        "gist": "Summary.",
+        "topics": ["oversight"],
+    }
+    _assert_all_reject(usable_with_err, "usable_status_has_error_reason")
+
+    # 3. Non-usable triage status missing `error_reason` (absent or blank) or with extra keys
+    for st in sorted(NON_USABLE_TRIAGE_STATUSES):
+        _assert_all_reject({"status": st, "text_quality": "garbled"}, "non_usable_missing_error_reason")
+        _assert_all_reject(
+            {"status": st, "text_quality": "garbled", "error_reason": "   "},
+            "non_usable_missing_error_reason",
+        )
+        _assert_all_reject(
+            {
+                "status": st,
+                "text_quality": "garbled",
+                "error_reason": "blocked",
+                "primary_kind": "error_or_non_document",
+            },
+            "non_usable_has_extra_keys",
+        )
+
+    # 4. Causal key-order violations at all 3 levels: top (`$`), `personas[]`, and `disclosure`
+    bad_top_order = {
+        "text_quality": "native",
+        "status": "usable",
+        "primary_kind": "witness_statement",
+        "composed_title": "Testimony",
+        "gist": "Summary.",
+        "topics": ["oversight"],
+    }
+    _assert_all_reject(bad_top_order, "top_key_order_violation")
+
+    bad_persona_order = _valid_usable()
+    bad_persona_order["personas"] = [
+        {"role": "witness", "name": "Elena Vance", "entity_type": "non_gov_person"}
+    ]
+    _assert_all_reject(bad_persona_order, "persona_key_order_violation")
+
+    bad_disclosure_order = _valid_usable()
+    bad_disclosure_order["disclosure"] = {
+        "gov_witness": False,
+        "capacity": "organization",
+    }
+    _assert_all_reject(bad_disclosure_order, "disclosure_key_order_violation")
+
+    # 5. Duplicate JSON keys (top-level and nested)
+    dup_top_json = (
+        '{"status":"error_or_block","status":"error_or_block",'
+        '"text_quality":"garbled","error_reason":"blocked"}'
+    )
+    _assert_all_reject(dup_top_json, "duplicate_key:status")
+
+    dup_nested_json = (
+        '{"status":"usable","text_quality":"native","primary_kind":"witness_statement",'
+        '"personas":[{"name":"A","name":"B","role":"witness","entity_type":"non_gov_person"}],'
+        '"composed_title":"T","gist":"Summary.","topics":["oversight"]}'
+    )
+    _assert_all_reject(dup_nested_json, "duplicate_key:name")
+
+    # 6. `bool` passed for `integer` fields (`congress`, `signatory_count`, `fiscal_years[]`)
+    bad_bool_congress = _valid_usable()
+    bad_bool_congress["congress"] = True
+    _assert_all_reject(bad_bool_congress, "$.congress: expected integer, got bool")
+
+    bad_bool_sig = _valid_usable()
+    bad_bool_sig["signatory_count"] = True
+    _assert_all_reject(bad_bool_sig, "$.signatory_count: expected integer, got bool")
+
+    bad_bool_fy = _valid_usable()
+    bad_bool_fy["fiscal_years"] = [False]
+    _assert_all_reject(bad_bool_fy, "$.fiscal_years[0]: expected integer, got bool")
+
+    # 7. `>25`-word `gist` (25-word boundary passed above; 26 words must fail)
+    bad_gist = _valid_usable()
+    bad_gist["gist"] = " ".join(["word"] * 26)
+    _assert_all_reject(bad_gist, "gist_exceeds_word_budget:26")

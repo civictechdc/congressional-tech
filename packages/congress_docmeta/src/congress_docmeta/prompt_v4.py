@@ -28,8 +28,21 @@ TEXT_QUALITY_SET = set(SCHEMA_OBJ["properties"]["text_quality"]["enum"])
 ROLES_SET = set(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["role"]["enum"])
 ETYPES_SET = set(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["entity_type"]["enum"])
 
+# Frozen pipe order used in V4 LoRA training prompts (train_v4_all360.jsonl; ct-1lpr).
+V4_TRAINED_STATUS_ORDER = (
+    "error_or_block",
+    "index_or_listing",
+    "govinfo_wrapper",
+    "ocr_unreadable",
+    "usable",
+    "cover_or_toc",
+    "stub_or_blank",
+    "catalog_xml",
+)
+assert len(V4_TRAINED_STATUS_ORDER) == len(STATUS_SET) and set(V4_TRAINED_STATUS_ORDER) == STATUS_SET
+
 DOC_KINDS_CSV = "|".join(SCHEMA_OBJ["$defs"]["doc_kind"]["enum"])
-STATUS_CSV = "|".join(STATUS_SET)
+STATUS_CSV = "|".join(V4_TRAINED_STATUS_ORDER)
 ROLES_CSV = "|".join(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["role"]["enum"])
 ETYPES_CSV = "|".join(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["entity_type"]["enum"])
 
@@ -78,8 +91,7 @@ def canonicalize_v4(raw_obj: dict) -> dict:
 
     if out["status"] in ("error_or_block", "stub_or_blank", "ocr_unreadable"):
         er = raw_obj.get("error_reason")
-        if isinstance(er, str) and er.strip():
-            out["error_reason"] = er.strip()[:200]
+        out["error_reason"] = er.strip()[:200] if isinstance(er, str) and er.strip() else out["status"]
         if VALIDATOR is not None:
             VALIDATOR.validate(out)
         return out
@@ -225,16 +237,7 @@ def canonicalize_v4(raw_obj: dict) -> dict:
 
 
 def validate_v4(obj: dict) -> tuple[bool, str | None]:
-    """Validate an object against DocMetaV4Causal and verify causal key order."""
-    if VALIDATOR is None:
-        from .pythonic_v5 import validate_docmeta_v4
-        return validate_docmeta_v4(obj)
-    try:
-        VALIDATOR.validate(obj)
-        keys = list(obj.keys())
-        order_idx = {k: i for i, k in enumerate(TOP_KEYS_ORDER)}
-        if keys != sorted(keys, key=lambda k: order_idx.get(k, 999)):
-            return False, f"Keys out of causal order: {keys}"
-        return True, None
-    except jsonschema.ValidationError as e:
-        return False, str(e.message)
+    """Validate an object against DocMetaV4Causal using the single strict validator."""
+    from .pythonic_v5 import validate_docmeta_v4
+
+    return validate_docmeta_v4(obj)
