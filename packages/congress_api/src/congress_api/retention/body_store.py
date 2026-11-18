@@ -22,8 +22,10 @@ from congress_api.retention.receipt_privacy import credential_parameters
 RAW_PREFIXES = ('bodies/', 'receipts/', 'provenance/')
 BODY = re.compile(r'bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})(\.gz|\.pdf)?')
 LEGACY_MULTIPART_ETAG = re.compile(r'("?)[0-9a-fA-F]{32}-[1-9][0-9]{0,4}\1')
-# Seconds to wait before each HEAD look after an unacknowledged create (22s total before one replay).
+# Seconds to wait before each HEAD look after an unacknowledged create (22s max per object).
 SETTLE_SECONDS = (0, 2, 5, 15)
+# Maximum cumulative reconciliation sleep seconds per writer instance before failing fast (3 full 22s polls).
+RECONCILE_BUDGET_SECONDS = 66
 _TRANSIENT_R2_CODES = frozenset({
     'ServiceUnavailable', 'SlowDown', 'InternalError', 'RequestTimeout',
     'RequestTimeoutException', 'BadGateway', 'GatewayTimeout',
@@ -36,6 +38,51 @@ _NONTRANSIENT_R2_CODES = frozenset({
     'SignatureDoesNotMatch', 'NoSuchBucket', 'BadDigest', 'InvalidDigest',
     'InvalidArgument', 'MalformedXML', 'EntityTooLarge',
 })
+
+
+class ReconcileBudget:
+    """Thread-safe per-writer cap on cumulative reconciliation wait seconds."""
+
+    def __init__(self, seconds=RECONCILE_BUDGET_SECONDS):
+        if isinstance(seconds, bool) or not isinstance(seconds, (int, float)) or seconds < 0:
+            raise ValueError('Reconciliation budget must be nonnegative')
+        self.limit_seconds = float(seconds)
+        self._remaining = float(seconds)
+        self._exhausted = self._remaining <= 0
+        self._lock = threading.Lock()
+
+    @property
+    def remaining_seconds(self):
+        with self._lock:
+            return self._remaining
+
+    @property
+    def exhausted(self):
+        with self._lock:
+            return self._exhausted
+
+    def consume(self, wait):
+        with self._lock:
+            if self._exhausted or wait > self._remaining:
+                self._exhausted = True
+                return False
+            self._remaining -= wait
+            if self._remaining <= 0:
+                self._exhausted = True
+            return True
+
+
+def _coerce_reconcile_budget(budget):
+    if budget is None:
+        return ReconcileBudget()
+    if isinstance(budget, ReconcileBudget):
+        return budget
+    return ReconcileBudget(budget)
+
+
+def _content_addressed_body_key(key):
+    match = BODY.fullmatch(key) if isinstance(key, str) else None
+    return match is not None and match[1] == match[2][:2]
 
 
 def confirm_stored(existing, key, *, md5, size):
@@ -52,8 +99,10 @@ def confirm_stored(existing, key, *, md5, size):
 
 
 def reconcile_create(head, replay, key, *, md5, size, replay_recoverable,
-                     head_recoverable=lambda _: False, waits=SETTLE_SECONDS, sleep=None):
-    """Poll HEAD across a bounded 22s backoff after an ambiguous create, then replay once."""
+                     head_recoverable=lambda _: False, waits=SETTLE_SECONDS, sleep=None, budget=None):
+    """Poll HEAD across SETTLE_SECONDS (0, 2, 5, 15; 22s max per object) within the writer's
+    RECONCILE_BUDGET_SECONDS (66s max total sleep per writer), then replay once only when HEAD
+    established absence (404 or NoSuchKey)."""
     pause = time.sleep if sleep is None else sleep
 
     def lookup():
@@ -61,20 +110,29 @@ def reconcile_create(head, replay, key, *, md5, size, replay_recoverable,
             existing = head(key)
         except Exception as error:
             if head_recoverable(error):
-                return False
+                return 'unknown'
             raise
-        return confirm_stored(existing, key, md5=md5, size=size)
+        if existing is None:
+            return 'absent'
+        confirm_stored(existing, key, md5=md5, size=size)
+        return 'stored'
 
+    state = 'unknown'
     for wait in waits:
+        if budget is not None and not budget.consume(wait):
+            return False
         pause(wait)
-        if lookup():
+        state = lookup()
+        if state == 'stored':
             return True
+    if state != 'absent':
+        return False
     try:
         return bool(replay())
     except Exception as error:
         if not replay_recoverable(error):
             raise
-        return lookup()
+        return lookup() == 'stored'
 
 
 def _precondition_failed(error):
@@ -205,10 +263,20 @@ def compressible(media):
 
 
 class BodyStore:
-    def __init__(self, adapter):
+    def __init__(self, adapter, *, reconcile_budget=None):
         self.adapter, self.known, self._lock = adapter, {}, threading.Lock()
         self._other_body_copies = {}
         self._provenance_cache,self._provenance_acks,self._provenance_epoch={},{},0
+        adapter_budget = getattr(adapter, 'reconcile_budget', None)
+        if reconcile_budget is not None:
+            budget = _coerce_reconcile_budget(reconcile_budget)
+            if isinstance(adapter_budget, ReconcileBudget):
+                adapter.reconcile_budget = budget
+        elif isinstance(adapter_budget, ReconcileBudget):
+            budget = adapter_budget
+        else:
+            budget = ReconcileBudget()
+        self.reconcile_budget = budget
 
     def remember_provenance(self,public,custody):
         """Keep checked opaque cache metadata; each inventory still lists afresh."""
@@ -389,12 +457,16 @@ class R2Source:
 
 
 class R2Adapter(R2Source):
+    def __init__(self, client, bucket, *, reconcile_budget=None):
+        super().__init__(client, bucket)
+        self.reconcile_budget = _coerce_reconcile_budget(reconcile_budget)
+
     def head(self, key):
         from botocore.exceptions import ClientError
         try:
             value = self.client.head_object(Bucket=self.bucket, Key=key)
         except ClientError as error:
-            if error.response['Error']['Code'] in {'404', 'NoSuchKey', 'NotFound'}:
+            if error.response.get('Error', {}).get('Code') in {'404', 'NoSuchKey'}:
                 return None
             raise
         if 'ContentLength' not in value or 'ETag' not in value:
@@ -425,6 +497,8 @@ class R2Adapter(R2Source):
         return True
 
     def create(self, key, source, **facts):
+        """Create one object conditionally; reconcile transient ambiguity only for content-addressed
+        bodies within 22s per object (SETTLE_SECONDS) and 66s total per writer (RECONCILE_BUDGET_SECONDS)."""
         def replay():
             source.seek(0)
             return self.verify(self.client.put_object(**self.parameters(key, source, **facts)), facts['md5'])
@@ -434,7 +508,7 @@ class R2Adapter(R2Source):
         except Exception as error:
             if _precondition_failed(error):
                 return False
-            if not _transient_r2_error(error):
+            if not _content_addressed_body_key(key) or not _transient_r2_error(error):
                 raise
             if not reconcile_create(
                 self.head,
@@ -444,6 +518,7 @@ class R2Adapter(R2Source):
                 size=facts['size'],
                 replay_recoverable=lambda exc: _precondition_failed(exc) or _transient_r2_error(exc),
                 head_recoverable=_transient_r2_error,
+                budget=self.reconcile_budget,
             ):
                 raise
             return True
