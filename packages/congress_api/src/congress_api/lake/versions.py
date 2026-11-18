@@ -27,8 +27,24 @@ import tomllib
 # ct-29n4, ct-eofd, cat2-ddas) intentionally bumps all four appearance_records
 # sources, committee_records.house_xml, and filename_readings, so their prior
 # entries are removed; meeting_records, playlist_records, and video_records keep
-# their published IDs under reviewed equivalence.
+# their published IDs under reviewed equivalence. lxml 6.0.2 -> 6.1.0
+# (2026-11-18, the dependency batch) moved the four appearance_records sources
+# and nothing else; 66,490 published records re-produced under 6.1.0 equal their
+# published rows in every column (evidence: .cache/archive-release/reviews/
+# deps-batch-20261117/producers-new.json), so each keeps its published ID.
 _REVIEWED_PRODUCER_VERSIONS = {
+    # appearance_records.congress_gov
+    "f7f818b8ad74af414003ef9f94b7ed44399a7a0413dc2af12230fda4b6f80c39":
+        "f306c3df6098936b7a336e31e434805d927d4e60c126a5cf3b68a0bc75c831b7",
+    # appearance_records.house_xml
+    "87262c51ba8babe0d45384d2482726d0aaacf81403a09866fde478e2f0034a7b":
+        "108f7ab966e3df646b9bc982e58c66f0f53b6f16abbf90336d670f4cda166bd9",
+    # appearance_records.mods
+    "506d288669c57a05390e66dbe941221f88f513bb690b1d7ba88ebb6b620ff4f4":
+        "610bb71978173326dc605a7b86e60124d951f8b03fa2e8f69e53b221fe1a37a0",
+    # appearance_records.senate_page
+    "25959da2bd10f2ad22f265beaa7c82a85b3a8671027d3f437210cef70adad666":
+        "4456507ba7600802801882568674a27c75000a3fe9dc151f8cd8a5fbb534b5c5",
     # meeting_records.congress_gov
     "d3ffb805e7de5cf81e785b401dbd35d43579287644c4edb2c15cd9ebbcede3e6":
         "325702c1794f246323ed30d7430650355121dd4891a7cea62b44a34a8ae5084d",
