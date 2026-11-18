@@ -20,3 +20,9 @@ Scope: one named constant for the limit across the JSON schema, SCHEMA_OBJ, the 
 
 A 26-person label validates and round-trips through the compact format; 27 is rejected by schema, validator and (if testable without a model) the grammar; a 10-person label validates unchanged. Package offline tests pass through scripts/dev.py. Engine tests (docmeta-model lane) listed for a GPU run, not run here.
 
+
+## Notes
+
+**2026-11-18T20:15:35Z**
+
+Branch docmeta-people-limit-26 (local, not pushed). Limit is now schema_v4.MAX_PERSONAS (schema personas maxItems 26); roster guard is role-based (anomaly_router_v6.roster_shaped_members_v6 > 10, shared with eval_blind roster_spam_docs); MAX_OUTPUT_TOKENS 768 -> 1536; WIRE_CONFIG records max_personas. Offline package tests pass (40 passed, 2 skipped). Measured 2026-11-18 (tokenizer only): no training pair moves over 3,584 (28 of 3,449 over at full text before and after, all fit after windowing); largest 26-person transcript pair 3,456; R5 now adds 64 cosponsors past 10 on 5 training bills. Open: run docmeta-model lane (new grammar test) and the blind eval with v6_4 on this branch before any sweep (v6_4 was trained on 10 and now reads the 26 prompt and grammar); update ANNOTATION_RUBRIC.md personas <=10 line in docmeta-v65-raretypes-20261118; fast-gemma4 train_lora.py adapter_meta version label v6_4_c2_c4_bf16 is hard-coded.
