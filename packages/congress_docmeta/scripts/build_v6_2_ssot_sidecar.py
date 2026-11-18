@@ -108,6 +108,7 @@ from congress_docmeta import (  # noqa: E402
     relational_rules_v6 as rv6,
     zero_llm_bypass_v6 as zb6,
 )
+from congress_docmeta.schema_v4 import MAX_PERSONAS  # noqa: E402
 
 SCHEMA_OBJ: dict[str, Any] = pv5.SCHEMA_OBJ
 
@@ -228,14 +229,14 @@ def sanitize_personas_json_str(
         return None
     if primary_kind or text:
         cleaned = rv6.disambiguate_persona_roles_v6(
-            cleaned[:10],
+            cleaned[:MAX_PERSONAS],
             primary_kind=primary_kind,
             text=text or "",
         )
         cleaned = [sp for p in cleaned for sp in [sanitize_persona_dict(p)] if sp is not None]
     if not cleaned:
         return None
-    return json.dumps(cleaned[:10], separators=(",", ":"), ensure_ascii=False)
+    return json.dumps(cleaned[:MAX_PERSONAS], separators=(",", ":"), ensure_ascii=False)
 
 
 def finalize_and_validate_docmeta(raw_obj: Mapping[str, Any]) -> tuple[dict[str, Any], str]:
@@ -246,7 +247,7 @@ def finalize_and_validate_docmeta(raw_obj: Mapping[str, Any]) -> tuple[dict[str,
     if "personas" in working and isinstance(working["personas"], Sequence) and not isinstance(working["personas"], str):
         ps = [sp for item in working["personas"] if isinstance(item, Mapping) for sp in [sanitize_persona_dict(item)] if sp is not None]
         if ps:
-            working["personas"] = ps[:10]
+            working["personas"] = ps[:MAX_PERSONAS]
         else:
             working.pop("personas", None)
     if "subcommittees" in working and isinstance(working["subcommittees"], Sequence) and not isinstance(working["subcommittees"], str):

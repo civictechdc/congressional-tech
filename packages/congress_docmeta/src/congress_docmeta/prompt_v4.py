@@ -3,16 +3,15 @@
 
 from __future__ import annotations
 
-import json
 import re
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from .schema_v4 import ARRAY_MAX_ITEMS, MAX_PERSONAS, SCHEMA_OBJ, SCHEMA_PATH
+
 DOCMETA_DIR = Path(__file__).resolve().parent
-SCHEMA_PATH = DOCMETA_DIR / "docmeta_v4_causal.schema.json"
 DOCMETA_V4_SCHEMA_PATH = SCHEMA_PATH
-SCHEMA_OBJ = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
 
 TOP_KEYS_ORDER = list(SCHEMA_OBJ["properties"].keys())
 PERSONA_KEYS_ORDER = list(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"].keys())
@@ -54,12 +53,12 @@ SYS_DOCMETA_V4 = (
     "- MEMBER vs WITNESS: Chair/member opening remarks -> `member_opening_statement`. A Member testifying before another committee -> `witness_statement` (role=`witness`, entity_type=`member`).\n"
     "- AMENDMENTS vs VOTES vs REPORTS: ALL amendments (floor, Senate, ANS, committee, report amendments) -> `committee_amendment`. Roll-call tallies -> `committee_vote`. Formal committee reports -> `committee_report`.\n"
     "- EXHIBITS vs ERRORS: Redacted/internal emails, chat logs, org charts, and news clips entered as exhibits are `status:\"usable\"` (`investigative_exhibit` or `news_clip_or_article`), NEVER `error_or_block`. Use `error_or_block`/`stub_or_blank` ONLY for unreadable/blank/JS-only stubs.\n"
-    "- PERSONAS <= 10: Active actors in reading order ONLY (witnesses, speakers, chairs, ranking members, sponsors, offerors, nominees, senders, recipients, named staff).\n"
+    f"- PERSONAS <= {MAX_PERSONAS}: Active actors in reading order ONLY (witnesses, speakers, chairs, ranking members, sponsors, offerors, nominees, senders, recipients, named staff).\n"
     "Keys in order:\n"
     f"1. status ({STATUS_CSV}), text_quality (native|clean_ocr|noisy_ocr|garbled), error_reason (ONLY if error_or_block|stub_or_blank|ocr_unreadable; omit remaining keys).\n"
     "2. verbatim_title, short_titles ([]<=8), chamber (house|senate|joint|commission|executive_or_external), congress (1..130), committees ([]), subcommittees ([]), issuer_org, event_type (hearing|field_hearing|nomination_hearing|markup|business_meeting|roundtable_or_briefing|floor_or_other), event_title, venue_kind (capitol_room|field_site|virtual|hybrid), venue, event_time, date_spans ([]<=8), doc_date, event_date, due_date (YYYY-MM-DD or YYYY-MM).\n"
     f"3. primary_kind ({DOC_KINDS_CSV}), secondary_kinds ([]), subkind.\n"
-    f"4. personas ([]<=10: name FIRST, creds, title, org, sub_org, secondary_orgs, on_behalf_of, party_state, panel, role [{ROLES_CSV}], entity_type [{ETYPES_CSV}], work_addr, official_contact, prior_roles, education, redacted_personal_pii).\n"
+    f"4. personas ([]<={MAX_PERSONAS}: name FIRST, creds, title, org, sub_org, secondary_orgs, on_behalf_of, party_state, panel, role [{ROLES_CSV}], entity_type [{ETYPES_CSV}], work_addr, official_contact, prior_roles, education, redacted_personal_pii).\n"
     "5. refs ([]<=25 prefixed bill:|amdt:|law:|usc:|cfr:|fr:|docket:|eo:|rule:|treaty:|nom:|rept:|hrg:|jct:|gao:|crs:|cbo:|olc:|gsa:|sudoc:|gpo:|grant:|advisory:|exhibit:|id:), programs ([]<=10), orgs_mentioned ([]<=12), places ([]<=10), fiscal_years ([]<=12 int), correspondence_flow (committee_to_witness|witness_to_committee|congress_to_agency|agency_to_congress|member_to_committee|committee_to_member|external_to_committee|foreign_gov_to_congress|internal_exhibit_chain), signatory_count, action_summary, disclosure.\n"
     "6. LAST: composed_title (<110 chars), gist (<=22 words), topics ([]<=6).\n"
     "Output raw JSON only."
@@ -98,17 +97,7 @@ def canonicalize_v4(raw_obj: dict) -> dict:
             raise DocMetaValidationError(f"Invalid error-status DocMetaV4: {err}")
         return out
 
-    max_caps = {
-        "short_titles": 8,
-        "date_spans": 8,
-        "personas": 10,
-        "refs": 25,
-        "programs": 10,
-        "orgs_mentioned": 12,
-        "places": 10,
-        "fiscal_years": 12,
-        "topics": 6,
-    }
+    max_caps = ARRAY_MAX_ITEMS
 
     for k in TOP_KEYS_ORDER:
         if k in ("status", "text_quality", "error_reason"):
@@ -162,7 +151,7 @@ def canonicalize_v4(raw_obj: dict) -> dict:
                         p_item[pk] = pv
                 if "name" in p_item and "role" in p_item and "entity_type" in p_item:
                     clean_p.append(p_item)
-                if len(clean_p) >= 10:
+                if len(clean_p) >= MAX_PERSONAS:
                     break
             if clean_p:
                 out["personas"] = clean_p

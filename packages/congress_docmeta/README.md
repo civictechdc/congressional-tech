@@ -45,7 +45,8 @@ See **[`BENCHMARKS.md`](BENCHMARKS.md)** for the full `26`-sweep leaderboards, p
 
 | Module | What it does |
 |---|---|
-| `docmeta_v4_causal.schema.json`, `prompt_v4.py`, `compact_wire_v6.py` | Output schema, the V4 prompt, and the compact wire format the current model is trained on |
+| `docmeta_v4_causal.schema.json`, `schema_v4.py` | Output schema, and the one module that reads it: every limit (people per record, array caps) comes from there |
+| `prompt_v4.py`, `compact_wire_v6.py` | The V4 prompt, and the compact wire format the current model is trained on |
 | `pythonic_v6.py` | `pre_pass_v6`, `post_pass_v6`, `PythonicEngineV6.run_records` (records in, DocMeta out), and shared-prefix clamp guards |
 | `pythonic_v5.py`, `expanded_rules_v5.py`, `provenance_rules_v5.py`, `multipage_rules_v5.py` | Validation, canonical key order, triage, Tier-1 signatures, URL and multi-page rules that V6 builds on |
 | `hygiene_and_line_parsers_v6.py`, `cover_locks_v6.py`, `zero_llm_bypass_v6.py` | Text clean-up, line parsers, cover locks, and documents answered with no model call |

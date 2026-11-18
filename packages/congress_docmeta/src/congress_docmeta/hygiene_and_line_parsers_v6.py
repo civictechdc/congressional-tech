@@ -38,6 +38,8 @@ from html.parser import HTMLParser
 from typing import Any, Literal
 from urllib.parse import unquote, urlsplit, urlunsplit
 
+from .schema_v4 import MAX_PERSONAS
+
 __all__ = [
     # N1: GPO page & glyph normalization
     "METADATA_RULES",
@@ -2300,7 +2302,7 @@ def parse_witness_list_personas_v6(
         p_obj["entity_type"] = etype
         personas.append(p_obj)
 
-    return personas[:10]
+    return personas[:MAX_PERSONAS]
 
 
 # ===========================================================================
@@ -2602,7 +2604,7 @@ def parse_gpo_p12_personas_v6(p12_lines: str) -> list[dict[str, Any]]:
                 if parsed["organization"] and not is_mem:
                     p_obj["org"] = _format_gpo_allcaps_name(parsed["organization"]) if parsed["organization"].isupper() else parsed["organization"]
                 out.append(p_obj)
-    return out[:10]
+    return out[:MAX_PERSONAS]
 
 
 _TOC_STOP_SECTION_RE = re.compile(
@@ -2745,7 +2747,7 @@ def parse_gpo_p3_slice_personas_v6(p3_slice: str) -> list[dict[str, Any]]:
                 p_obj["org"] = _format_gpo_allcaps_name(parsed["organization"]) if parsed["organization"].isupper() else parsed["organization"]
             out.append(p_obj)
 
-    return out[:10]
+    return out[:MAX_PERSONAS]
 
 
 # ===========================================================================
@@ -3517,7 +3519,7 @@ def parse_gao_requesters_v6(
 
     canon_cmts = [_canonicalize_gao_committee(c) for c in req.committees]
     personas: list[dict[str, Any]] = []
-    for mem in req.members[:10]:
+    for mem in req.members[:MAX_PERSONAS]:
         if ", " in mem:
             nm, rl = mem.rsplit(", ", 1)
             personas.append({"name": nm.strip(), "title": rl.strip(), "role": "recipient", "entity_type": "member"})

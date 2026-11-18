@@ -15,9 +15,9 @@ import json
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from .schema_v4 import MAX_PERSONAS, SCHEMA_OBJ as _V4_SCHEMA_OBJ, SCHEMA_PATH as V4_SCHEMA_PATH
+
 DOCMETA_DIR = Path(__file__).resolve().parent
-V4_SCHEMA_PATH = DOCMETA_DIR / "docmeta_v4_causal.schema.json"
-_V4_SCHEMA_OBJ: dict[str, Any] = json.loads(V4_SCHEMA_PATH.read_text(encoding="utf-8"))
 
 # 100% bijective top-level, persona, and disclosure short keys (preserving exact causal order!)
 COMPACT_TOP_KEY_MAP: dict[str, str] = {
@@ -106,7 +106,7 @@ SYS_DOCMETA_V6_COMPACT: str = (
     "hearing HTML->event_web_page; Chair remarks->member_opening_statement; Member witness->witness_statement r:witness e:member; "
     "amendment->committee_amendment; exhibit/email->investigative_exhibit).\n"
     "Keys: st,tq,er(non-usable only),vt,sts,ch,cg,cm,sc,io,et,ev,vk,vn,tm,ds,dd,ed,du,pk,sk,sb,"
-    "ps(<=10: n,cr,t,o,so,s2,ob,ps,pn,r,e,wa,oc,pr,ed,pii),pg,om,pl,cf,sn,as,dc,ct(<110c),gi(<=22w),tp(<=6)."
+    f"ps(<={MAX_PERSONAS}: n,cr,t,o,so,s2,ob,ps,pn,r,e,wa,oc,pr,ed,pii),pg,om,pl,cf,sn,as,dc,ct(<110c),gi(<=22w),tp(<=6)."
 )
 
 

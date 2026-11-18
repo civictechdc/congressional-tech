@@ -34,6 +34,7 @@ from .gold import (
     parse_gold_rows,
     select_val_indices,
 )
+from .schema_v4 import MAX_OUTPUT_TOKENS
 
 KIND_FAMILIES = {
     "qfr_request": "qfr",
@@ -615,7 +616,7 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--extra-sweep-set", action="append", default=[], metavar="NAME=GOLD_JSONL",
                     help="score every queue doc of another labeled file as its own sweep set (repeatable)")
     ap.add_argument("--gold-jsonl", type=Path, default=DEFAULT_GOLD_JSONL)
-    ap.add_argument("--max-tokens", type=int, default=768)
+    ap.add_argument("--max-tokens", type=int, default=MAX_OUTPUT_TOKENS)
     ap.add_argument("--chunk-rows", type=int, default=4096)
     ap.add_argument(
         "--b-slots",

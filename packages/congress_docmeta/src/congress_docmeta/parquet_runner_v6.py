@@ -55,6 +55,7 @@ from .pythonic_v5 import (
     canonicalize_docmeta_v4,
     validate_docmeta_v4,
 )
+from .schema_v4 import MAX_OUTPUT_TOKENS
 from .pythonic_v6 import (
     DOC_KINDS_SET,
     build_doc_kind_schema_v6,
@@ -513,7 +514,7 @@ def escalate_anomalies_gpt_oss(
     external_verifier: ExternalVerifierFn | None = None,
     current_verdicts: Sequence[Mapping[str, Any] | None] | None = None,
     current_verdicts_json: list[str | None] | None = None,
-    max_tokens: int = 768,
+    max_tokens: int = MAX_OUTPUT_TOKENS,
     batch_size: int = 8,
     k: int = 1,
 ) -> tuple[int, int, dict[int, str]]:
@@ -793,7 +794,7 @@ def run_docmeta_parquet_sweep(
     chunk_rows: int = 4096,
     b_slots: int | None = None,
     refill_min: int = 32,
-    max_tokens: int = 768,
+    max_tokens: int = MAX_OUTPUT_TOKENS,
     doc_cap_full: int = 2048,
     swa_ring_cap: int = 512,
     sort_by_length: bool = True,

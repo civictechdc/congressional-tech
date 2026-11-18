@@ -44,6 +44,9 @@ from typing import Any, Iterable, Mapping, Sequence
 import unicodedata
 from urllib.parse import unquote
 
+from .schema_v4 import MAX_PERSONAS
+
+
 def _discover_main_checkout_root(start: Path | None = None) -> Path:
     """Resolve `<main checkout>` from `start` without spawning git (`-B -I -S` stdlib safe, worktree-aware)."""
     here = (start or Path(__file__)).resolve()
@@ -1979,7 +1982,7 @@ def salutation_chair_personas_v6(text: str, *, window: int = 4000) -> list[tuple
 
 
 def add_salutation_chair_personas_v6(
-    personas: Sequence[Mapping[str, Any]] | None, text: str, *, max_personas: int = 10
+    personas: Sequence[Mapping[str, Any]] | None, text: str, *, max_personas: int = MAX_PERSONAS
 ) -> list[dict[str, Any]]:
     """List the addressed chair / ranking member after the witnesses when no persona has that surname."""
     cur = [dict(p) for p in (personas or []) if isinstance(p, Mapping) and p.get("name")]
@@ -2098,7 +2101,7 @@ def add_text_grounded_personas_v6(
     *,
     primary_kind: str | None,
     text: str,
-    max_personas: int = 10,
+    max_personas: int = MAX_PERSONAS,
     additive_only: bool = False,
 ) -> list[dict[str, Any]]:
     """R4-R6: list the actors the document names in a fixed form when the model left them out.
@@ -2428,7 +2431,7 @@ def enrich_personas_from_relational_v6(
         wp = dict(w_personas[0])
         wsur = _surname_token(wp["name"])
         existing_surs = {_surname_token(str(p.get("name") or "")) for p in cur}
-        if wsur and wsur not in existing_surs and len(cur) < 10:
+        if wsur and wsur not in existing_surs and len(cur) < MAX_PERSONAS:
             if allow_ungrounded_qfr_witness or (norm_txt and wsur in norm_txt):
                 cur.append(wp)
 
@@ -2437,7 +2440,7 @@ def enrich_personas_from_relational_v6(
     elif primary_kind == "committee_amendment":
         has_offeror = any(p.get("role") in ("amendment_offeror", "sponsor") for p in cur)
         cand_bg = amdt_bg or (bgs[0] if len(bgs) == 1 else None)
-        if not has_offeror and cand_bg and len(cur) < 10:
+        if not has_offeror and cand_bg and len(cur) < MAX_PERSONAS:
             m_info = lookup_member_by_bioguide_v6(cand_bg, congress=eff_cong, lookup=db)
             if m_info:
                 msur = m_info["surname"]
@@ -2460,7 +2463,7 @@ def enrich_personas_from_relational_v6(
         congress=eff_cong if isinstance(eff_cong, int) else congress,
         lookup=db,
     )
-    return [_order_persona_dict(p) for p in cur[:10]]
+    return [_order_persona_dict(p) for p in cur[:MAX_PERSONAS]]
 
 
 # ---------------------------------------------------------------------------

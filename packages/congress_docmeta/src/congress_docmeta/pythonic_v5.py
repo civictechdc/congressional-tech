@@ -52,8 +52,7 @@ DOCMETA_DIR = Path(__file__).resolve().parent
 DET_V5_DIR = DOCMETA_DIR
 V4_DIR = DOCMETA_DIR
 
-SCHEMA_V4_STR = (DOCMETA_DIR / "docmeta_v4_causal.schema.json").read_text(encoding="utf-8")
-SCHEMA_OBJ: dict[str, Any] = json.loads(SCHEMA_V4_STR)
+from .schema_v4 import ARRAY_MAX_ITEMS, MAX_PERSONAS, SCHEMA_OBJ, SCHEMA_V4_STR
 
 TOP_KEYS_ORDER = list(SCHEMA_OBJ["properties"].keys())
 PERSONA_KEYS_ORDER = list(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"].keys())
@@ -1076,17 +1075,7 @@ def canonicalize_docmeta_v4(
             raise DocMetaValidationError(f"Invalid error-status DocMetaV4: {err}")
         return out
 
-    max_caps = {
-        "short_titles": 8,
-        "date_spans": 8,
-        "personas": 10,
-        "refs": 25,
-        "programs": 10,
-        "orgs_mentioned": 12,
-        "places": 10,
-        "fiscal_years": 12,
-        "topics": 6,
-    }
+    max_caps = ARRAY_MAX_ITEMS
 
     for k in TOP_KEYS_ORDER:
         if k in ("status", "text_quality", "error_reason") or k not in raw_obj:
@@ -1147,7 +1136,7 @@ def canonicalize_docmeta_v4(
                         p_item[pk] = pv
                 if "name" in p_item and "role" in p_item and "entity_type" in p_item:
                     clean_p.append(p_item)
-                if len(clean_p) >= 10:
+                if len(clean_p) >= MAX_PERSONAS:
                     break
             if clean_p:
                 out["personas"] = clean_p

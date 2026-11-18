@@ -58,11 +58,11 @@ from .relational_rules_v6 import (
     resolve_docmeta_v6_data_dir,
 )
 
-DOCMETA_V4_SCHEMA_PATH = DOCMETA_DIR / "docmeta_v4_causal.schema.json"
 DEFAULT_DOCMETA_V6_DATA_DIR = resolve_docmeta_v6_data_dir()
 DEFAULT_DOCMETA_V6_DATA_DIR_STR = str(DEFAULT_DOCMETA_V6_DATA_DIR)
 
 from . import pythonic_v5 as _pv5
+from .schema_v4 import MAX_OUTPUT_TOKENS, MAX_PERSONAS, SCHEMA_PATH as DOCMETA_V4_SCHEMA_PATH
 from .pythonic_v5 import (
     CANONICAL_COMMITTEES_V5,
     CMS_STRIPPER_FAMILIES_V5,
@@ -1216,7 +1216,7 @@ def post_pass_v6(
                         seen_s = {_surname_token(str(p.get("name") or "")) for p in cur_p}
                         for wp in w_resc:
                             ws = _surname_token(str(wp.get("name") or ""))
-                            if ws and ws not in seen_s and ws in norm_txt and len(cur_p) < 10:
+                            if ws and ws not in seen_s and ws in norm_txt and len(cur_p) < MAX_PERSONAS:
                                 seen_s.add(ws)
                                 cur_p.append(wp)
                         if cur_p:
@@ -1438,7 +1438,7 @@ def post_pass_v6(
                         for m_ch in re.finditer(r"\bChair(?:man|woman|person)?\s+([A-Z][A-Za-z'\u00C0-\u024F-]+)", head_sal):
                             sur_ch = surname_token_v6(m_ch.group(1))
                             hits_ch = [x for x in roster_sal["chairs"] if x.get("surname") == sur_ch]
-                            if len({x.get("bioguide_id") for x in hits_ch}) == 1 and sur_ch not in seen_surs_sal and len(cur_p_sal) < 10:
+                            if len({x.get("bioguide_id") for x in hits_ch}) == 1 and sur_ch not in seen_surs_sal and len(cur_p_sal) < MAX_PERSONAS:
                                 seen_surs_sal.add(sur_ch)
                                 cur_p_sal.append({"name": hits_ch[0]["name"], "role": "chair", "entity_type": "member"})
                                 added_sal = True
@@ -1465,12 +1465,12 @@ def post_pass_v6(
                                 ]
                                 if len(cand_mems) == 1 and isinstance(cand_mems[0]["name"], str):
                                     hits_rm = cand_mems
-                            if len({x.get("bioguide_id") for x in hits_rm}) == 1 and sur_rm not in seen_surs_sal and len(cur_p_sal) < 10:
+                            if len({x.get("bioguide_id") for x in hits_rm}) == 1 and sur_rm not in seen_surs_sal and len(cur_p_sal) < MAX_PERSONAS:
                                 seen_surs_sal.add(sur_rm)
                                 cur_p_sal.append({"name": hits_rm[0]["name"], "role": "ranking_member", "entity_type": "member"})
                                 added_sal = True
                     if added_sal:
-                        obj["personas"] = cur_p_sal[:10]
+                        obj["personas"] = cur_p_sal[:MAX_PERSONAS]
                 except Exception:
                     pass
 
@@ -1762,7 +1762,7 @@ class PythonicEngineV6:
     def run_records(
         self,
         records: list[dict[str, Any]],
-        max_tokens: int = 768,
+        max_tokens: int = MAX_OUTPUT_TOKENS,
         B_slots: int = 256,
         refill_min: int = 32,
         doc_cap_full: int = 2048,

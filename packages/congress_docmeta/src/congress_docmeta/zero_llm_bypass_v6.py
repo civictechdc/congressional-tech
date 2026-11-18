@@ -27,6 +27,8 @@ import unicodedata
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+from .schema_v4 import ARRAY_MAX_ITEMS as _ARRAY_MAX_ITEMS, MAX_PERSONAS
+
 __all__ = [
     "BYPASS_SUPPORTED_KINDS_V6",
     "DISCLOSURE_KEYS_ORDER_V6",
@@ -168,17 +170,6 @@ _VALID_ENTITY_TYPES = frozenset(
     }
 )
 _VALID_CAPACITY = frozenset({"self", "organization", "government"})
-_ARRAY_MAX_ITEMS: dict[str, int] = {
-    "short_titles": 8,
-    "date_spans": 8,
-    "personas": 10,
-    "refs": 25,
-    "programs": 10,
-    "orgs_mentioned": 12,
-    "places": 10,
-    "fiscal_years": 12,
-    "topics": 6,
-}
 
 
 def _dedup_nonempty_strs(items: Sequence[Any] | None, *, max_items: int | None = None, max_len: int = 220) -> list[str]:
@@ -293,7 +284,7 @@ def order_and_validate_docmeta_v6(raw: Mapping[str, Any]) -> dict[str, Any] | No
         elif k == "personas":
             if not isinstance(v, Sequence) or isinstance(v, str):
                 continue
-            ps = [op for item in v if isinstance(item, Mapping) for op in [_order_persona(item)] if op is not None][:10]
+            ps = [op for item in v if isinstance(item, Mapping) for op in [_order_persona(item)] if op is not None][:MAX_PERSONAS]
             if ps:
                 ordered[k] = ps
         elif k == "disclosure":
@@ -2491,9 +2482,9 @@ def _synthesize_witness_list_v6(
     if not filtered_items:
         return None
 
-    budget = 10 - len(leaders)
+    budget = MAX_PERSONAS - len(leaders)
     if len(filtered_items) > budget:
-        # Drop `Accompanied by:` secondary aides first when exceeding the 10-persona cap
+        # Drop `Accompanied by:` secondary aides first when exceeding the people cap
         non_acc = [(pos, acc, w) for pos, acc, w in filtered_items if not acc]
         if len(non_acc) >= budget:
             filtered_items = non_acc

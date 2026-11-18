@@ -241,12 +241,18 @@ def _extract_entity_context(clean_text: str, entity_name: str, window_chars: int
     return " ... ".join(snippets)
 
 
+# People the validators are shown, not the format's people limit (`schema_v4.MAX_PERSONAS`). The validators were
+# trained on lists of at most 10, and Laya's question head is 128 tokens at S=256 (fast-gemma4 `scorers.py`
+# `encode_item`), which a longer list would push the question out of.
+VALIDATOR_ACTORS_SHOWN = 10
+
+
 def _compact_personas_summary(docmeta: Mapping[str, Any]) -> str:
     raw = docmeta.get("personas")
     if not isinstance(raw, list) or not raw:
         return "<NONE>"
     parts: list[str] = []
-    for px in raw[:10]:
+    for px in raw[:VALIDATOR_ACTORS_SHOWN]:
         if isinstance(px, Mapping) and px.get("name"):
             nm = str(px["name"]).strip()
             rl = str(px.get("role") or "witness")

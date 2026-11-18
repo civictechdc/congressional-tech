@@ -9,6 +9,8 @@ from __future__ import annotations
 import argparse
 import json
 
+from .schema_v4 import MAX_OUTPUT_TOKENS
+
 
 def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
     from fast_gemma4.engine import FastGemma4Engine
@@ -146,7 +148,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Rolling slot/batch size (default: auto: 128 on <=24 GiB Macs, 256 otherwise)",
     )
     dm_p.add_argument("--refill-min", type=int, default=32)
-    dm_p.add_argument("--max-tokens", type=int, default=768)
+    dm_p.add_argument("--max-tokens", type=int, default=MAX_OUTPUT_TOKENS)
     dm_p.add_argument("--mode", choices=("auto", "gpu", "hetero"), default="auto")
     dm_p.add_argument("--ane-variant", choices=("fp16", "w8"), default="fp16")
     dm_p.add_argument("--use-ane-ring", choices=("auto", "true", "false"), default="auto")
