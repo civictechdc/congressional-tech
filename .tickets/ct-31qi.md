@@ -26,3 +26,7 @@ Merged as pull request 192 (ad2e2efe): the publish job restores the newest kept 
 Kept open for the second half of the acceptance: one real stopped-then-resumed run. On the next night the gates stop, after the cause record is merged and main has validated it, the re-run's log should say "Resuming the kept candidate" and its publisher step should take minutes, not about 25. If it says "Building fresh; kept candidate discarded: ...", the reason names what differed; record it here.
 
 Every normal night now passes through this code too (yesterday's candidate is restored, found to be another night's, deleted, and a fresh build runs), so the first scheduled night after the merge is its first production check.
+
+**2026-11-18T19:13:34Z**
+
+2026-11-18: first real stop-then-re-run, and it did NOT resume. Run 44356863837 (commit b15dca5b) built candidate ca6e7adbfacf and stopped at the checks; the cause record merged as 48c49900; run 44373468129 restored the cache (key archive-publish-candidate-5cd22df7…), printed 'Resuming the kept candidate if its inputs are this run's' and then 'Building fresh; kept candidate discarded: Publication continuation inputs differ from the completed model', rebuilt (about 13 minutes), produced the same candidate id and published. No capture ran in between. So the saving this ticket exists for did not happen in its main use. Root-cause analysis by Codex is running (.cache/archive-release/investigations/kept-candidate-not-resumed-20261118/).

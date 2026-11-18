@@ -69,3 +69,7 @@ Implemented selected 80/20 scope via subagents. The current implementation updat
 **2026-11-18T15:24:52Z**
 
 2026-11-18: the PDF cover-evidence model input this ticket describes (c572cfec) existed only on an unpushed local main; it is now pull request 203. It changes the model definition, so its first publish needs a cause record; expected difference is the kind of three documents.
+
+**2026-11-18T19:13:34Z**
+
+2026-11-18: the three reviewed cover corrections are live in ca6e7adbfacf, read back from the public detail file: 0201014207ca witness-biography to testimony-disclosure; 00472521603f and 008bdb052fca witness-support to testimony-disclosure. Six documents changed kind in that release in total; the other three came from the night's new data.

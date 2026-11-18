@@ -1,6 +1,6 @@
 ---
 id: ct-mwod
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-18T14:19:09Z
@@ -35,3 +35,7 @@ The alias pair matches its meeting in test_explorer_native_tables; two different
 **2026-11-18T14:39:04Z**
 
 2026-11-18 independent root-cause analysis by Codex (gpt-6.2-astra, xhigh; greybeard + etl-workflow; briefed with the symptom only, in a clean checkout of main). Report: .cache/archive-release/investigations/removed-recording-match-20261118/codex-rca.md. It reached the same row, the same input change and the same rule on its own, and judged the removal wrong with high confidence. Added on its advice and the Opus review's: the two party sites are different publishers, so a date holding both a democrats- and a republicans- page is never one page (party_site), with a test that fails without the guard. Its claim that nine queued Science addresses with stored Republican-host twins all returned 200 on 2026-11-17 while one match disappeared is its own measurement, not re-derived here. Senate exposure split out as ct-k7j4. Its verdicts: the gate made the right call; fix the matcher's definition of a competing page; keep both saved copies.
+
+**2026-11-18T19:13:34Z**
+
+2026-11-18 published and read back. Release ca6e7adbfacf (live 19:10 UTC, run 44373468129) carries match ed3de8ff15b0 again: event 117471 to youtube:SBp0UXikw8w, basis committee_page, now cited to the lower of the two saved bodies (212ccf9b4a94); the recording's event_ids are [117471] again. Read from the public files, whose hashes match the published manifest. Exactly one match id left the release, the false one tracked on ct-414r. The Senate rules' same exposure is ct-k7j4.
