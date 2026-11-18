@@ -1,0 +1,321 @@
+{
+ "version": 1,
+ "base_release_id": "eb6710bb1a141d780a2fb1ad96a272a6c0a6e8a88dd902a70a3ad4a86ebcc3ba",
+ "candidate_release_id": "ca6e7adbfacf213af89c242ea636f31fd627b945019dc3ea0833f415cf6f2702",
+ "stopped_for": [
+  "data-only night: the candidate differs from the live release in profile.file_hashes.model/sql/body-cover-kinds.sql, unprofiled_inputs.job_pins.model_spec",
+  "data-only night: recording_matches.parquet|removed keys|no evidence given (-1) is not a difference new receipts alone explain; it needs a cause record",
+  "automatic causes: 46 differences are not additions the traced proof reads, so it ran no check"
+ ],
+ "failing_groups": [
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 581,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed committee_keys|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed document_date_source|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed document_family|value differs on matched key",
+   "count": 3,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed document_kind|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed meeting_keys|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 422,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 819,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 819,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed witness_keys|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 928,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 581,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed committee_keys|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed document_family|value differs on matched key",
+   "count": 3,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed document_kind|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed meeting_keys|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 819,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed witness_keys|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 13,
+   "status": "unverified"
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 50,
+   "status": "unverified"
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 54,
+   "status": "unverified"
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 52,
+   "status": "unverified"
+  },
+  {
+   "id": "meetings.parquet|changed outcome|value differs on matched key",
+   "count": 5,
+   "status": "unverified"
+  },
+  {
+   "id": "meetings.parquet|changed outcome_basis|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "meetings.parquet|changed outcome_reason|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "meetings.parquet|changed outcome_source_reference|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "meetings.parquet|changed transcripts|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "people.parquet|changed appearance_count|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "people.parquet|changed hearing_count|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "people.parquet|changed last_seen_date|value differs on matched key",
+   "count": 1,
+   "status": "unverified"
+  },
+  {
+   "id": "people.parquet|changed name|value differs on matched key",
+   "count": 1,
+   "status": "unverified"
+  },
+  {
+   "id": "people.parquet|changed organizations|value differs on matched key",
+   "count": 3,
+   "status": "unverified"
+  },
+  {
+   "id": "people.parquet|changed witness_keys|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "recording_matches.parquet|removed keys|no evidence given",
+   "count": -1,
+   "status": "unverified"
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 87,
+   "status": "unverified"
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 42,
+   "status": "unverified"
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 46,
+   "status": "unverified"
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 23,
+   "status": "unverified"
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 5,
+   "status": "unverified"
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "status": "unexplained"
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 1003,
+   "status": "unverified"
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 2251,
+   "status": "unverified"
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 2251,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|removed URLs|unexplained",
+   "count": -643,
+   "status": "unexplained"
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 526,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 663,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 697,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 697,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 694,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 656,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 634,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 652,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 710,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 140,
+   "status": "unverified"
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 2379,
+   "status": "unverified"
+  },
+  {
+   "id": "witnesses.parquet|changed event_id|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "witnesses.parquet|changed occasion|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "witnesses.parquet|changed person_key|value differs on matched key",
+   "count": 1,
+   "status": "unverified"
+  },
+  {
+   "id": "witnesses.parquet|changed superseded_by|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  }
+ ],
+ "link_rule": {
+  "missing": 0,
+  "dangling": 0,
+  "published_and_retired": 0,
+  "changed": 0,
+  "changed_answers": [],
+  "lookup_changed": 0,
+  "lookup_changed_answers": [],
+  "address_changed": 0,
+  "address_changed_answers": [],
+  "demoted": 0,
+  "demoted_answers": [],
+  "ok": true
+ }
+}

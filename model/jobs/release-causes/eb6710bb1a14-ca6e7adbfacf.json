@@ -1,0 +1,1195 @@
+{
+ "version": 1,
+ "base_release_id": "eb6710bb1a141d780a2fb1ad96a272a6c0a6e8a88dd902a70a3ad4a86ebcc3ba",
+ "candidate_release_id": "ca6e7adbfacf213af89c242ea636f31fd627b945019dc3ea0833f415cf6f2702",
+ "notes": {
+  "identifiers": [
+   {
+    "statement": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+    "decision": "ct-mwod, ct-fk4w, ct-414r, ct-hs34, ct-pz32"
+   }
+  ]
+ },
+ "groups": [
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 581,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed committee_keys|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_source|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_family|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_kind|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed meeting_keys|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 422,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 819,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 819,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed witness_keys|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 928,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 581,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed committee_keys|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_family|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_kind|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed meeting_keys|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 819,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed witness_keys|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 13,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 50,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 54,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 52,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_basis|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_reason|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_source_reference|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed transcripts|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed appearance_count|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed hearing_count|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed last_seen_date|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed name|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed organizations|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed witness_keys|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|removed keys|no evidence given",
+   "count": -1,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 87,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 42,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 46,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 23,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 1003,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 2251,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 2251,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|removed URLs|unexplained",
+   "count": -643,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 526,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 663,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 697,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 697,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 694,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 656,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 634,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 652,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 710,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 140,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 2379,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed event_id|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed occasion|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed person_key|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed superseded_by|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "Capture night with three reviewed definition changes merged on 2026-11-18, each with a predicted effect that this report shows and nothing beyond it. (1) lxml 6.1.0 under reviewed producer equivalence (pull request 197: 66,490 published records re-produced, 0 differ): no difference expected, none seen. (2) One page under two host aliases counts as one page (ct-mwod, pull request 201): restores the match of event 117471 to youtube:SBp0UXikw8w that was wrongly dropped on 2026-11-17, which is one added recording match, one recording regaining its event, one meeting regaining recording coverage, and four matches now cited to the lower of two saved page bodies. (3) Three source-reviewed PDF cover corrections (ct-fk4w, pull request 203): the kind and family of exactly three documents. The single removed key, recording match 38a1cd0bf65d, tied a shipbuilding roundtable video to an unrelated hearing (ct-414r); the hearing keeps its own recording and the removal is correct. Every other difference is the night's new receipts: compared group by group with run 44326289806 (same base, built before changes 2 and 3), the only groups that moved beyond those named here are ones new receipts feed.",
+   "tickets": [
+    "ct-mwod",
+    "ct-fk4w",
+    "ct-414r",
+    "ct-hs34",
+    "ct-pz32"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/eb6710bb1a14-ca6e7adbfacf.json",
+     "sha256": "458609a90c053f383f86005c6d710d52b2e0cc60882affce3f539cd8415cb92f",
+     "size": 8439
+    }
+   ]
+  }
+ ]
+}
