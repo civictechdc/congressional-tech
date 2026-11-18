@@ -1,8 +1,10 @@
--- Link House committee proceeding pages holding recordings to canonical meetings (ct-ywz2).
+-- Link House committee proceeding pages holding recordings to canonical meetings (ct-ywz2, ct-9vwc).
 -- Pages resolve either by a unique single-meeting proceeding document linked from the page
 -- (HHRG/HMKP/HMTG or docs.house.gov/meetings/ address) or by parent committee (.house.gov host)
--- and proceeding date, corroborated by substantive title/heading/measure word overlap (or unique
--- same-kind proceeding when one side carries only a generic kind label).
+-- and hearing date (explicit Hearing Date: label, else proceeding text, else address), corroborated
+-- by substantive title/heading/measure word overlap (or unique same-kind proceeding when one side
+-- carries only a generic kind label). The page's declared publication date (pf.content_date) is
+-- kept separately as page_date, and meetings marked not_held are excluded.
 -- "One page on that date" counts pages, not addresses: a committee serves one page under its bare
 -- host and its party host (science.house.gov, republicans-science.house.gov), and the queue fetching
 -- the second address removed a correct match on 2026-11-17 (ct-mwod). page_key is host_stem (the
@@ -103,18 +105,28 @@ WITH stopwords AS (
  JOIN house_hosts hh ON hh.host=u.host_stem
 ), pages_text_dates AS (
  SELECT r.*,
+  CASE WHEN h_full IS NOT NULL THEN try_cast(h_full[3]||'-'||lpad(cast(array_position(full_m,lower(h_full[1])) AS VARCHAR),2,'0')||'-'||lpad(h_full[2],2,'0') AS DATE) END AS hearing_full_date,
+  CASE WHEN h_abbr IS NOT NULL THEN try_cast(h_abbr[3]||'-'||lpad(cast(array_position(abbr_m,substr(lower(h_abbr[1]),1,3)) AS VARCHAR),2,'0')||'-'||lpad(h_abbr[2],2,'0') AS DATE) END AS hearing_abbr_date,
+  CASE WHEN h_slash4 IS NOT NULL THEN try_cast(h_slash4[3]||'-'||lpad(h_slash4[1],2,'0')||'-'||lpad(h_slash4[2],2,'0') AS DATE) END AS hearing_slash_date,
+  CASE WHEN h_dot2 IS NOT NULL THEN try_cast('20'||h_dot2[3]||'-'||h_dot2[1]||'-'||h_dot2[2] AS DATE) END AS hearing_dot2_date,
   CASE WHEN t_full IS NOT NULL THEN try_cast(t_full[3]||'-'||lpad(cast(array_position(full_m,lower(t_full[1])) AS VARCHAR),2,'0')||'-'||lpad(t_full[2],2,'0') AS DATE) END AS text_full_date,
   CASE WHEN t_abbr IS NOT NULL THEN try_cast(t_abbr[3]||'-'||lpad(cast(array_position(abbr_m,substr(lower(t_abbr[1]),1,3)) AS VARCHAR),2,'0')||'-'||lpad(t_abbr[2],2,'0') AS DATE) END AS text_abbr_date,
   CASE WHEN t_slash4 IS NOT NULL THEN try_cast(t_slash4[3]||'-'||lpad(t_slash4[1],2,'0')||'-'||lpad(t_slash4[2],2,'0') AS DATE) END AS text_slash_date,
-  CASE WHEN t_dot2 IS NOT NULL THEN try_cast('20'||t_dot2[3]||'-'||t_dot2[1]||'-'||t_dot2[2] AS DATE) END AS text_dot2_date
+  CASE WHEN t_dot2 IS NOT NULL THEN try_cast('20'||t_dot2[3]||'-'||t_dot2[1]||'-'||t_dot2[2] AS DATE) END AS text_dot2_date,
+  CASE WHEN t_iso IS NOT NULL THEN try_cast(t_iso[1] AS DATE) END AS text_iso_date
  FROM (
   SELECT *,
    make_array('january','february','march','april','may','june','july','august','september','october','november','december') AS full_m,
    make_array('jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec') AS abbr_m,
+   regexp_match(text_head,'(?i)\bHearing\s+Date\s*:\s*(?:[A-Za-z]+,?\s+)?(January|February|March|April|May|June|July|August|September|October|November|December)\s+([0-9]{1,2}),?\s+(20[0-9]{2})\b') AS h_full,
+   regexp_match(text_head,'(?i)\bHearing\s+Date\s*:\s*(?:[A-Za-z]+,?\s+)?(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[.]?\s+([0-9]{1,2}),?\s+(20[0-9]{2})\b') AS h_abbr,
+   regexp_match(text_head,'(?i)\bHearing\s+Date\s*:\s*(?:[A-Za-z]+,?\s+)?([0-9]{1,2})/([0-9]{1,2})/(20[0-9]{2})\b') AS h_slash4,
+   regexp_match(text_head,'(?i)\bHearing\s+Date\s*:\s*(?:[A-Za-z]+,?\s+)?([0-9]{2})[.]([0-9]{2})[.]([0-9]{2})\b') AS h_dot2,
    regexp_match(text_head,'(?i)\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+([0-9]{1,2}),?\s+(20[0-9]{2})\b') AS t_full,
    regexp_match(text_head,'(?i)\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[.]?\s+([0-9]{1,2}),?\s+(20[0-9]{2})\b') AS t_abbr,
    regexp_match(text_head,'\b([0-9]{1,2})/([0-9]{1,2})/(20[0-9]{2})\b') AS t_slash4,
-   regexp_match(text_head,'\b([0-9]{2})[.]([0-9]{2})[.]([0-9]{2})\b') AS t_dot2
+   regexp_match(text_head,'\b([0-9]{2})[.]([0-9]{2})[.]([0-9]{2})\b') AS t_dot2,
+   regexp_match(text_head,'\b(20[0-9]{2}-[0-9]{2}-[0-9]{2})\b') AS t_iso
   FROM pages_raw
  ) r
 ), pages_grouped AS (
@@ -126,23 +138,29 @@ WITH stopwords AS (
   max(party_site) AS party_hi,
   min(title_text) AS title_text,
   min(title_text||' '||text_head) AS full_text,
+  min(pf_date) AS page_date,
   coalesce(
-   min(pf_date),
+   min(hearing_full_date),
+   min(hearing_abbr_date),
+   min(hearing_slash_date),
+   min(hearing_dot2_date),
    min(text_full_date),
    min(text_abbr_date),
    min(text_slash_date),
    min(text_dot2_date),
+   min(text_iso_date),
    min(CASE WHEN u_mdy_slash IS NOT NULL THEN try_cast(u_mdy_slash[3]||'-'||u_mdy_slash[1]||'-'||u_mdy_slash[2] AS DATE) END),
    min(CASE WHEN u_mdy_dot4 IS NOT NULL THEN try_cast(u_mdy_dot4[3]||'-'||lpad(u_mdy_dot4[1],2,'0')||'-'||lpad(u_mdy_dot4[2],2,'0') AS DATE) END),
    min(CASE WHEN u_mdy8 IS NOT NULL THEN try_cast(u_mdy8[3]||'-'||u_mdy8[1]||'-'||u_mdy8[2] AS DATE) END),
    min(CASE WHEN u_mdy7 IS NOT NULL THEN try_cast(u_mdy7[3]||'-0'||u_mdy7[1]||'-'||u_mdy7[2] AS DATE) END)
-  ) AS page_date
+  ) AS hearing_date
  FROM pages_text_dates
  GROUP BY page_body,parent_committee
 ), house_pages AS (
  SELECT
   g.page_body,
   g.parent_committee,
+  g.hearing_date,
   g.page_date,
   regexp_like(g.title_text,'(?i)\b(markup|business\s+meeting)\b') AS is_markup,
   array_distinct(array_except(
@@ -153,26 +171,25 @@ WITH stopwords AS (
    string_to_array(trim(regexp_replace(regexp_replace(lower(g.full_text),'[^a-z0-9]+',' ','g'),'\b[a-z0-9]{1,2}\b',' ','g')),' '),
    sw.sw
   )) AS full_words,
-  min(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee)=
-   max(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee)
-   AND coalesce(min(g.party_lo) OVER (PARTITION BY g.page_date,g.parent_committee)=
-    max(g.party_hi) OVER (PARTITION BY g.page_date,g.parent_committee),true) AS single_page_on_date
+  min(g.page_key) OVER (PARTITION BY g.hearing_date,g.parent_committee)=
+   max(g.page_key) OVER (PARTITION BY g.hearing_date,g.parent_committee)
+   AND coalesce(min(g.party_lo) OVER (PARTITION BY g.hearing_date,g.parent_committee)=
+    max(g.party_hi) OVER (PARTITION BY g.hearing_date,g.parent_committee),true) AS single_page_on_date
  FROM pages_grouped g
  CROSS JOIN stopwords sw
- WHERE g.page_date IS NOT NULL
+ WHERE g.hearing_date IS NOT NULL
 ), raw_house_meetings AS (
  SELECT DISTINCT
   m.event_id,
   m.meeting_date,
   coalesce(m.title,'') AS title,
   coalesce(m.title,'')||' '||coalesce(array_to_string(m.subject_keys,' '),'') AS title_and_subjects,
-  coalesce(m.not_held,false) AS not_held,
   lower(coalesce(m.meeting_type,''))='markup' OR regexp_like(coalesce(m.title,''),'(?i)\b(markup|business\s+meeting)\b') AS is_markup,
   substr(lower(c['system_code']),1,4)||'00' AS parent_committee
  FROM (
-  SELECT event_id,meeting_date,meeting_type,title,subject_keys,not_held,unnest(committees) AS c
+  SELECT event_id,meeting_date,meeting_type,title,subject_keys,unnest(committees) AS c
   FROM meetings_resolved
-  WHERE chamber='house' AND meeting_date IS NOT NULL AND committees IS NOT NULL
+  WHERE chamber='house' AND meeting_date IS NOT NULL AND NOT coalesce(not_held,false) AND committees IS NOT NULL
  ) m
  WHERE c['system_code'] IS NOT NULL AND trim(c['system_code'])<>''
 ), house_meetings AS (
@@ -180,7 +197,6 @@ WITH stopwords AS (
   m.event_id,
   m.meeting_date,
   m.parent_committee,
-  m.not_held,
   m.is_markup,
   array_distinct(array_except(
    string_to_array(trim(regexp_replace(regexp_replace(lower(m.title_and_subjects),'[^a-z0-9]+',' ','g'),'\b[a-z0-9]{1,2}\b',' ','g')),' '),
@@ -198,22 +214,24 @@ WITH stopwords AS (
  SELECT
   p.page_body,
   m.event_id,
+  p.hearing_date,
+  p.page_date,
   p.single_page_on_date,
   m.single_kind_on_date,
   p.is_markup=m.is_markup AS same_kind,
-  NOT m.not_held AS held_ok,
   cardinality(p.title_words)=0 OR cardinality(m.title_only_words)=0 AS generic_side,
   cast(cardinality(array_intersect(p.title_words,m.words)) AS BIGINT) AS shared_title_words,
   cast(cardinality(array_intersect(p.full_words,m.words)) AS BIGINT) AS shared_full_words
  FROM house_pages p
- JOIN house_meetings m ON m.parent_committee=p.parent_committee AND m.meeting_date=p.page_date
+ JOIN house_meetings m ON m.parent_committee=p.parent_committee AND m.meeting_date=p.hearing_date
 ), dated_scored AS (
  SELECT
   page_body,
   event_id,
+  hearing_date,
+  page_date,
   shared_title_words*cast(20 AS BIGINT)+shared_full_words*cast(5 AS BIGINT)
-   +(CASE WHEN same_kind THEN cast(4 AS BIGINT) ELSE cast(0 AS BIGINT) END)
-   +(CASE WHEN held_ok THEN cast(1 AS BIGINT) ELSE cast(0 AS BIGINT) END) AS score
+   +(CASE WHEN same_kind THEN cast(4 AS BIGINT) ELSE cast(0 AS BIGINT) END) AS score
  FROM dated_candidates
  WHERE shared_title_words>=2
   OR (shared_full_words>=2 AND same_kind)
@@ -222,23 +240,27 @@ WITH stopwords AS (
  SELECT
   page_body,
   event_id,
+  hearing_date,
+  page_date,
   score,
   row_number() OVER (PARTITION BY page_body ORDER BY score DESC,event_id ASC) AS rn,
   lead(score) OVER (PARTITION BY page_body ORDER BY score DESC,event_id ASC) AS next_score
  FROM dated_scored
 ), dated_winners AS (
- SELECT page_body,event_id
+ SELECT page_body,event_id,hearing_date,page_date
  FROM dated_ranked
  WHERE rn=1 AND (next_score IS NULL OR next_score<score)
 ), all_candidates AS (
- SELECT page_body,event_id,0 AS priority FROM unique_doc_events
+ SELECT page_body,event_id,0 AS priority,cast(NULL AS DATE) AS hearing_date,cast(NULL AS DATE) AS page_date FROM unique_doc_events
  UNION ALL
- SELECT page_body,event_id,1 AS priority FROM dated_winners
+ SELECT page_body,event_id,1 AS priority,hearing_date,page_date FROM dated_winners
 ), chosen AS (
- SELECT page_body,event_id,
-  row_number() OVER (PARTITION BY page_body ORDER BY priority ASC,event_id ASC) AS rn
+ SELECT page_body,
+  (array_agg(event_id ORDER BY priority ASC,event_id ASC))[1] AS event_id,
+  max(hearing_date) AS hearing_date,
+  max(page_date) AS page_date
  FROM all_candidates
+ GROUP BY page_body
 )
-SELECT page_body,event_id
+SELECT page_body,event_id,hearing_date,page_date
 FROM chosen
-WHERE rn=1

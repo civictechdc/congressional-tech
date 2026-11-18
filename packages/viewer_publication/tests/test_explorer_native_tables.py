@@ -69,12 +69,16 @@ def tables(tmp_path_factory):
         dict(name='package_meeting_links', sql=f"""SELECT '{CONFLICT_PKG}' AS package_id,cast(1001 AS BIGINT) AS event_id
             UNION ALL SELECT '{SOLO_PKG}',1002 UNION ALL SELECT 'CHRG-alone',1005 UNION ALL SELECT 'CHRG-disputed',1006 UNION ALL SELECT 'CHRG-qualified',1002 UNION ALL SELECT 'CHRG-qualified',1004""", materialize=True),
         dict(name='meeting_document_urls', sql="SELECT cast(1009 AS BIGINT) AS event_id,'https://docs.house.gov/x.pdf' AS url", materialize=True),
-        dict(name='videos_export', sql="""SELECT 'youtube:pub' AS video_key,arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,arrow_cast(make_array(cast(777777 AS BIGINT)),'List(Int64)') AS stated_event_ids,true AS has_caption,cast(3600 AS INT) AS duration_seconds,cast('Hearing' AS VARCHAR) AS title
+        dict(name='videos_export', sql="""SELECT *,cast(NULL AS VARCHAR) AS source_description,cast(NULL AS VARCHAR) AS system_code,
+              arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))') AS published_at FROM (
+            SELECT 'youtube:pub' AS video_key,arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,arrow_cast(make_array(cast(777777 AS BIGINT)),'List(Int64)') AS stated_event_ids,true AS has_caption,cast(3600 AS INT) AS duration_seconds,cast('Hearing' AS VARCHAR) AS title
             UNION ALL SELECT 'youtube:nocaption',arrow_cast(decode(repeat('ac',32),'hex'),'FixedSizeBinary(32)'),
               arrow_cast(make_array(cast(1003 AS BIGINT)),'List(Int64)'),false,cast(3600 AS INT) AS duration_seconds,cast('Hearing' AS VARCHAR) AS title
-            UNION ALL SELECT 'youtube:unmatched',arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(1 AS BIGINT)),1,0),'List(Int64)'),false,cast(NULL AS INT) AS duration_seconds,cast(NULL AS VARCHAR) AS title""", materialize=True),
+            UNION ALL SELECT 'youtube:unmatched',arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(1 AS BIGINT)),1,0),'List(Int64)'),false,cast(NULL AS INT) AS duration_seconds,cast(NULL AS VARCHAR) AS title)""", materialize=True),
         dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
-        dict(name='known_meetings', sql='SELECT event_id,meeting_type,title FROM meetings_export', materialize=True),
+        dict(name='known_meetings', sql="""SELECT event_id,cast(NULL AS DATE) AS meeting_date,false AS not_held,meeting_type,title,
+            array_slice(make_array(named_struct('system_code',cast(NULL AS VARCHAR),'role',cast(NULL AS VARCHAR))),1,0) AS committees,
+            arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS subject_keys FROM meetings_export""", materialize=True),
         dict(name='video_key_aliases', sql='SELECT cast(NULL AS VARCHAR) AS alias_key,cast(NULL AS VARCHAR) AS canonical_key WHERE false', materialize=True),
         dict(name='recording_page_video_events', sql="SELECT cast(NULL AS VARCHAR) AS video_key,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source_ref WHERE false", materialize=True),
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
@@ -417,7 +421,10 @@ def test_recording_matches_is_single_owner_of_video_to_meeting_links(tmp_path):
             UNION ALL SELECT 1004,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
             UNION ALL SELECT 1005,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
             UNION ALL SELECT 119546,array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)""", materialize=True),
-        dict(name='known_meetings', sql="SELECT event_id,cast('Hearing' AS VARCHAR) AS meeting_type,cast('Hearing' AS VARCHAR) AS title FROM meetings_resolved", materialize=True),
+        dict(name='known_meetings', sql="""SELECT event_id,cast(NULL AS DATE) AS meeting_date,false AS not_held,
+            cast('Hearing' AS VARCHAR) AS meeting_type,cast('Hearing' AS VARCHAR) AS title,
+            array_slice(make_array(named_struct('system_code',cast(NULL AS VARCHAR),'role',cast(NULL AS VARCHAR))),1,0) AS committees,
+            arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS subject_keys FROM meetings_resolved""", materialize=True),
         dict(name='video_key_aliases', sql="SELECT cast(NULL AS VARCHAR) AS alias_key,cast(NULL AS VARCHAR) AS canonical_key WHERE false", materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT 'CHRG-pkg' AS package_id,cast(1004 AS BIGINT) AS event_id", materialize=True),
         dict(name='package_meeting_links', sql="SELECT 'CHRG-pkg' AS package_id,cast(1004 AS BIGINT) AS event_id", materialize=True),
@@ -437,7 +444,9 @@ def test_recording_matches_is_single_owner_of_video_to_meeting_links(tmp_path):
         dict(name='videos_export', sql="""SELECT 'youtube:0YtytQuMCT8' AS video_key,
             arrow_cast(decode(repeat('ab',32),'hex'),'FixedSizeBinary(32)') AS record_sha,
             arrow_cast(make_array(cast(119546 AS BIGINT)),'List(Int64)') AS stated_event_ids,false AS has_caption,
-            cast(5400 AS INT) AS duration_seconds,cast('Hearing' AS VARCHAR) AS title""", materialize=True),
+            cast(5400 AS INT) AS duration_seconds,cast('Hearing' AS VARCHAR) AS title,
+            cast(NULL AS VARCHAR) AS source_description,cast(NULL AS VARCHAR) AS system_code,
+            arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))') AS published_at""", materialize=True),
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
         dict(name='recordings_export', sql=recordings_sql, materialize=True),
     ]
@@ -516,7 +525,7 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
             array_slice(make_array(named_struct('source',cast(NULL AS VARCHAR),'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
              'video_key',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS transcripts
             FROM meetings_resolved""", materialize=True),
-        dict(name='known_meetings', sql="SELECT event_id,meeting_type,title FROM meetings_resolved", materialize=True),
+        dict(name='known_meetings', sql="SELECT event_id,meeting_date,not_held,meeting_type,title,committees,subject_keys FROM meetings_resolved", materialize=True),
         dict(name='video_key_aliases', sql="SELECT cast(NULL AS VARCHAR) AS alias_key,cast(NULL AS VARCHAR) AS canonical_key WHERE false", materialize=True),
         dict(name='recording_video_links', sql="""SELECT repeat('11',32) AS page_body,'youtube:-Ii51ySKWUc' AS extracted_key
             UNION ALL SELECT repeat('22',32),'youtube:xv-3QApZs7o'
@@ -606,7 +615,9 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
                   FROM recording_page_meetings pm JOIN recording_video_links pvl ON pvl.page_body=pm.page_body
                   WHERE pvl.extracted_key IS NOT NULL AND pm.event_id IS NOT NULL)
             GROUP BY video_key,event_id""", materialize=True),
-        dict(name='videos_export', sql="""SELECT 'youtube:-Ii51ySKWUc' AS video_key,arrow_cast(decode(repeat('a1',32),'hex'),'FixedSizeBinary(32)') AS record_sha,
+        dict(name='videos_export', sql="""SELECT *,cast(NULL AS VARCHAR) AS source_description,cast(NULL AS VARCHAR) AS system_code,
+              arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))') AS published_at FROM (
+              SELECT 'youtube:-Ii51ySKWUc' AS video_key,arrow_cast(decode(repeat('a1',32),'hex'),'FixedSizeBinary(32)') AS record_sha,
               arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS stated_event_ids,false AS has_caption,
               cast(461 AS INT) AS duration_seconds,'Hearing Highlights | Exploring State Options in SNAP' AS title
             UNION ALL SELECT 'youtube:xv-3QApZs7o',arrow_cast(decode(repeat('a2',32),'hex'),'FixedSizeBinary(32)'),
@@ -626,7 +637,7 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
             UNION ALL SELECT 'youtube:majorityCCC',arrow_cast(decode(repeat('b1',32),'hex'),'FixedSizeBinary(32)'),
               arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(7000 AS INT),'Full Committee Markup of the Fusion Act'
             UNION ALL SELECT 'youtube:minorityCCC',arrow_cast(decode(repeat('b2',32),'hex'),'FixedSizeBinary(32)'),
-              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(7000 AS INT),'Full Committee Markup of the Fusion Act'""", materialize=True),
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(7000 AS INT),'Full Committee Markup of the Fusion Act')""", materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='package_meeting_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='package_mods_facts', sql="SELECT cast(NULL AS VARCHAR) AS package_id,arrow_cast(NULL,'List(Int64)') AS named_meetings WHERE false", materialize=True),
@@ -723,7 +734,7 @@ def test_meetings_transcripts_and_video_aliases_follow_recordings_export_and_ign
               (2007,'house','Forestry Management Review','2025-05-15','forestry management','hsag00',NULL,NULL)
             ) AS t(event_id,chamber,title,day,title_key,committee_key,vid_url,vid_key)""", materialize=True),
         dict(name='ordered', sql="SELECT arrow_cast(NULL,'List(Utf8)') AS meeting_keys,arrow_cast(NULL,'List(Utf8)') AS measure_keys,cast(NULL AS VARCHAR) AS filename,cast(NULL AS VARCHAR) AS format,cast(NULL AS INT) AS list_row,arrow_cast(NULL,'List(Utf8)') AS chambers,arrow_cast(NULL,'List(Utf8)') AS committee_keys,cast(NULL AS SMALLINT) AS congress,cast(NULL AS DATE) AS document_date,cast(NULL AS VARCHAR) AS document_date_status,false AS hidden WHERE false", materialize=True),
-        dict(name='known_meetings', sql="SELECT event_id,meeting_type,title FROM meetings_resolved", materialize=True),
+        dict(name='known_meetings', sql="SELECT event_id,meeting_date,not_held,meeting_type,title,committees,subject_keys FROM meetings_resolved", materialize=True),
         dict(name='video_key_aliases', sql="""WITH raw_meeting_videos AS (
             SELECT m.event_id,m.video_url AS url,m.explicit_key,
                 min(regexp_replace((regexp_match(m.video_url,rs.pattern))[1],'^(.+)$',rs.key_template)) AS extracted_key
@@ -767,11 +778,13 @@ def test_meetings_transcripts_and_video_aliases_follow_recordings_export_and_ign
                   FROM recording_page_meetings pm JOIN recording_video_links pvl ON pvl.page_body=pm.page_body
                   WHERE pvl.extracted_key IS NOT NULL AND pm.event_id IS NOT NULL)
             GROUP BY video_key,event_id""", materialize=True),
-        dict(name='videos_export', sql="""SELECT 'youtube:vetoMarkup1' AS video_key,arrow_cast(decode(repeat('b1',32),'hex'),'FixedSizeBinary(32)') AS record_sha,
+        dict(name='videos_export', sql="""SELECT *,cast(NULL AS VARCHAR) AS source_description,cast(NULL AS VARCHAR) AS system_code,
+              arrow_cast(NULL,'Timestamp(Microsecond, Some("UTC"))') AS published_at FROM (
+              SELECT 'youtube:vetoMarkup1' AS video_key,arrow_cast(decode(repeat('b1',32),'hex'),'FixedSizeBinary(32)') AS record_sha,
               arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS stated_event_ids,true AS has_caption,cast(3600 AS INT) AS duration_seconds,'Full Committee Markup of H.R. 1' AS title
             UNION ALL SELECT 'youtube:curatedCapt',arrow_cast(decode(repeat('b2',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),true,3600,'Clean Water Hearing'
             UNION ALL SELECT 'youtube:statedCapt1',arrow_cast(decode(repeat('b3',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(make_array(cast(2003 AS BIGINT)),'List(Int64)'),true,3600,'Rural Broadband Hearing'
-            UNION ALL SELECT 'youtube:cropVid0006',arrow_cast(decode(repeat('b4',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,3600,'Crop Insurance Modernization'""", materialize=True),
+            UNION ALL SELECT 'youtube:cropVid0006',arrow_cast(decode(repeat('b4',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,3600,'Crop Insurance Modernization')""", materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='package_meeting_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='package_mods_facts', sql="SELECT cast(NULL AS VARCHAR) AS package_id WHERE false", materialize=True),
@@ -810,4 +823,406 @@ def test_meetings_transcripts_and_video_aliases_follow_recordings_export_and_ign
     # 4. CRPT-119hrpt1.pdf did not steal cropVid0006 from 2006 to 2007:
     assert rec['youtube:cropVid0006']['event_ids'] == [2006]
 
+
+def _run_ct9vwc_fixture(tmp_path):
+    """Run the ct-9vwc planted fixture (six wrong associations, postponed 117329, and 18-clip 102893)."""
+    from datetime import date
+    from viewer_publication import archive_model
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    clips_102893 = [
+        ('0espD3CTTr0', 141, 'Congresswoman Carolyn Maloney Opening Statement at FHFA Hearing - 01/27/2015', '2015-03-02T23:58:32Z', []),
+        ('1TPrXLmKpto', 287, 'Ranking Member Waters Q&A with FHFA Director Watt - 01/27/2015', '2015-03-03T00:09:50Z', []),
+        ('1-vACvU1_Eo', 324, 'Congressman Rubén Hinojosa Q&A with FHFA Director Watt - 01/27/2015', '2015-03-09T15:05:25Z', []),
+        ('1FgIwKoJcCA', 431, 'Congressman Denny Heck Q&A with FHFA Director Watt - 01/27/2015', '2015-03-09T16:40:20Z', []),
+        ('5dpxtLrJtT4', 323, 'Congressman Al Green Q&A with FHFA Director Watt - 01/27/2015', '2015-03-09T14:33:52Z', []),
+        ('9WDyhtrJj_c', 314, 'Congressman Dan Kildee Q&A with FHFA Director Watt - 01/27/2015', '2015-03-09T15:49:18Z', []),
+        ('D4zgnAz5eME', 315, 'Congressman Emanuel Cleaver Q&A with FHFA Director Watt - 01/27/2015', '2015-03-09T14:52:09Z', []),
+        ('DOEyHDlDlMA', 319, 'Congressman Keith Ellison Q&A with FHFA Director Watt - 01/27/2015', '2015-03-09T15:32:20Z', []),
+        ('RXeDPdy4sV4', 287, 'Congresswoman Nydia M. Velázquez Q&A with FHFA Directory Watt - 01/27/2015', '2015-03-06T23:06:41Z', []),
+        ('__QCdAtdXw0', 316, 'Congressman David Scott Q&A with FHFA Director Watt - 01/27/2015', '2015-03-09T14:28:30Z', []),
+        ('idDtyIrs0AA', 256, 'Congressman Stephen Lynch  Q&A with FHFA Director Watt - 01/27/2015', '2015-03-09T14:19:31Z', []),
+        ('juBpnukHapQ', 333, 'Congresswoman Gwen Moore Q&A with FHFA Director Watt - 01/27/2015', '2015-03-09T15:26:09Z', []),
+        ('l1lHBzhvTbc', 194, 'Congressman Brad Sherman Q&A with FHFA Director Watt - 01/27/2015', '2015-03-09T15:20:51Z', []),
+        ('pmxo-puHkzY', 307, 'Congressman John C. Carney, Jr. Q&A with FHFA Director Watt 01 27 2015', '2015-03-09T15:36:55Z', []),
+        ('pywCc7Wbays', 309, 'Congresswoman Joyce Beatty Q&A with FHFA Director Watt - 01/27/2015', '2015-03-09T16:00:32Z', []),
+        ('vJke-ki7-9c', 157, 'Ranking Member Waters Opening Statement for Hearing on “Sustainable Housing Finance” - 01/27/2015', '2015-01-27T15:25:22Z', [102893]),
+        ('wMVovRuvx0I', 321, 'Congresswoman Maloney Q&A with FHFA Director Watt - 01/27/2015', '2015-03-06T22:47:49Z', []),
+        ('xQ37j9ntlLA', 311, 'Congressman Wm. Lacy Clay Q&A with FHFA Director Watt - 01/27/2015', '2015-03-09T15:12:27Z', []),
+    ]
+    from congress_api.retention.provenance import list_of, struct
+    meetings = [
+        # Pair 1: July 18 Indo-Pacific hearing (115676) vs June 7 page-date Western Hemisphere hearing (116027)
+        dict(event_id=116027, chamber='house', meeting_date='2023-06-07', meeting_type='Hearing',
+             title="Ignoring Our Allies in the Western Hemisphere: Reviewing President Biden's FY24 Budget Request",
+             not_held=False, committees=[dict(system_code='hsfa07', role=None)], subject_keys=[]),
+        dict(event_id=115676, chamber='house', meeting_date='2023-07-18', meeting_type='Hearing',
+             title='Achieving Peace through Strength in the Indo-Pacific: Examining the FY24 Budget Priorities',
+             not_held=False, committees=[dict(system_code='hsfa05', role=None)], subject_keys=[]),
+        # Pair 2: June 14 Belt and Road hearing (116025) vs June 7 page-date Consular Affairs hearing (116028)
+        dict(event_id=116028, chamber='house', meeting_date='2023-06-07', meeting_type='Hearing',
+             title='Examining the Fiscal Year 24 Bureau of Consular Affairs Budget',
+             not_held=False, committees=[dict(system_code='hsfa17', role=None)], subject_keys=[]),
+        dict(event_id=116025, chamber='house', meeting_date='2023-06-14', meeting_type='Hearing',
+             title='Assessing U.S. Efforts to Counter China’s Coercive Belt and Road Diplomacy',
+             not_held=False, committees=[dict(system_code='hsfa00', role=None)], subject_keys=[]),
+        # Pair 3: May 21 State Posture hearing (118286) vs May 14 page-date Economic Security hearing (118242)
+        dict(event_id=118242, chamber='house', meeting_date='2025-05-14', meeting_type='Hearing',
+             title='National Economic Security, Advancing US Interests Abroad',
+             not_held=False, committees=[dict(system_code='hsfa05', role=None)], subject_keys=[]),
+        dict(event_id=118286, chamber='house', meeting_date='2025-05-21', meeting_type='Hearing',
+             title='FY26 State Department Posture: Protecting American Interests',
+             not_held=False, committees=[dict(system_code='hsfa00', role=None)], subject_keys=[]),
+        # Pair 4: May 23 Abducted Children hearing (116007) vs May 17 page-date American Influence hearing (115919)
+        dict(event_id=115919, chamber='house', meeting_date='2023-05-17', meeting_type='Hearing',
+             title='The State Of American Influence In 2023: Great Power Competition And Persistent Crises In An Era Of Budget Constraints',
+             not_held=False, committees=[dict(system_code='hsfa00', role=None)], subject_keys=[]),
+        dict(event_id=116007, chamber='house', meeting_date='2023-05-23', meeting_type='Hearing',
+             title='Bring Abducted Children Home',
+             not_held=False, committees=[dict(system_code='hsfa06', role=None)], subject_keys=[]),
+        # Pair 5: May 14 Financial Data Security hearing (103494) whose page also embeds May 13 Dodd-Frank clip (103492)
+        dict(event_id=103494, chamber='house', meeting_date='2015-05-14', meeting_type='HHRG',
+             title='“Protecting Consumers: Financial Data Security in the Age of Computer Hackers”',
+             not_held=False, committees=[dict(system_code='hsba00', role='host')], subject_keys=[]),
+        dict(event_id=103492, chamber='house', meeting_date='2015-05-13', meeting_type='HHRG',
+             title='“The Dodd-Frank Act and Regulatory Overreach"',
+             not_held=False, committees=[dict(system_code='hsba09', role='subcommittee')], subject_keys=[]),
+        # Pair 6: Postponed May 23 VA hearing (117329, not_held=True) vs Sept 10 rescheduled VA hearing (117557)
+        dict(event_id=117329, chamber='house', meeting_date='2024-05-23', meeting_type='Hearing',
+             title='Outstanding or Unsatisfactory?: Examining Whether the Biden \r\nAdministration is Holding VA’s Leaders Accountable',
+             not_held=True, committees=[dict(system_code='hsvr08', role=None)], subject_keys=[]),
+        dict(event_id=117557, chamber='house', meeting_date='2024-09-10', meeting_type='Hearing',
+             title='Accountable or Absent?: Examining VA Leadership Under the Biden-Harris Administration',
+             not_held=False, committees=[dict(system_code='hsvr00', role=None)], subject_keys=[]),
+        # Legitimate case: 102893 rising from 1 claimed clip to 18 committee-page excerpt clips
+        dict(event_id=102893, chamber='house', meeting_date='2015-01-27', meeting_type='HHRG',
+             title='“Sustainable Housing Finance: An Update from the Director of the Federal Housing Finance Agency”',
+             not_held=False, committees=[dict(system_code='hsba00', role='host')], subject_keys=[]),
+    ]
+    pages = [
+        dict(body='d1' * 32, src='s1',
+             url='https://foreignaffairs.house.gov/committee-activity/hearings/achieving-peace-through-strength-in-the-indo-pacific-examining-the-fy24-budget-priorities',
+             title='Achieving Peace through Strength in the Indo-Pacific: Examining the FY24 Budget Priorities | Republican Foreign Affairs Committee',
+             heading='Achieving Peace through Strength in the Indo-Pacific: Examining the FY24 Budget Priorities',
+             content_date='2023-06-07',
+             text_head='Subcommittees East Asia and Pacific Subcommittee Western Hemisphere Subcommittee Home Committee Activity Upcoming Hearings Achieving Peace through Strength in the Indo-Pacific: Examining the FY24 Budget Priorities Hearing Date: Tue, 07/18/2023 - 10:00 AM Location: U.S. Capitol, HVC-210',
+             videos=['youtube:4rSy_EReGYg']),
+        dict(body='d2' * 32, src='s2',
+             url='https://foreignaffairs.house.gov/committee-activity/hearings/assessing-u-s-efforts-counter-china-s-coercive-belt-and-road-diplomacy',
+             title="Assessing U.S. Efforts to Counter China's Coercive Belt and Road Diplomacy | Republican Foreign Affairs Committee",
+             heading="Assessing U.S. Efforts to Counter China's Coercive Belt and Road Diplomacy",
+             content_date='2023-06-07',
+             text_head="Home Committee Activity Upcoming Hearings Assessing U.S. Efforts to Counter China's Coercive Belt and Road Diplomacy Hearing Date: Wed, 06/14/2023 - 2:00 PM Location: HVC-210 Witnesses The Honorable Geoffrey Pyatt Assistant Secretary Bureau of Energy Resources U.S. Department of State Subcommittees Committee on Foreign Affairs (118th Congress)",
+             videos=['youtube:73UihZi8neM']),
+        dict(body='d3' * 32, src='s3',
+             url='https://foreignaffairs.house.gov/committee-activity/hearings/fy26-state-department-posture-protecting-american-interests',
+             title='FY26 State Department Posture: Protecting American Interests | Republican Foreign Affairs Committee',
+             heading='FY26 State Department Posture: Protecting American Interests',
+             content_date='2025-05-14',
+             text_head='Home Committee Activity Upcoming Hearings FY26 State Department Posture: Protecting American Interests Hearing Date: Wed, 05/21/2025 - 10:00 AM Location: 2172 Rayburn Witnesses The Honorable Marco Rubio Secretary of State Subcommittees Committee on Foreign Affairs (119th Congress)',
+             videos=['youtube:_lyoHuKNhU4']),
+        dict(body='d4' * 32, src='s4',
+             url='https://foreignaffairs.house.gov/committee-activity/hearings/bring-abducted-children-home',
+             title='Bring Abducted Children Home | Republican Foreign Affairs Committee',
+             heading='Bring Abducted Children Home',
+             content_date='2023-05-17',
+             text_head='Home Committee Activity Upcoming Hearings Bring Abducted Children Home Hearing Date: Tue, 05/23/2023 - 10:00 AM Location: RHOB 2200 Subcommittees Middle East and North Africa Subcommittee (118th Congress)',
+             videos=['youtube:aFfFblwBffg']),
+        dict(body='d5' * 32, src='s5',
+             url='https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=399071',
+             title='Hearing entitled “Protecting Consumers: Financial Data Security in the Age of Computer Hackers” | U.S. House Committee on Financial Services Democrats',
+             heading='Hearings',
+             content_date=None,
+             text_head='Hearings Hearing entitled “Protecting Consumers: Financial Data Security in the Age of Computer Hackers” Thursday, May 14, 2015 | 10:00 | 2128 Rayburn HOB Tags: Full Committee',
+             videos=['youtube:ky1SY6BoL74', 'youtube:AB2kz1aIsS8']),
+        dict(body='d6' * 32, src='s6',
+             url='https://democrats-veterans.house.gov/events/hearings/postponedoutstanding-or-unsatisfactory-examining-whether-the-biden-administration-is-holding-vas-leaders-accountable',
+             title="The House Committee on Veterans' Affairs",
+             heading='POSTPONED:“Outstanding or Unsatisfactory?: Examining Whether the Biden Administration is Holding VA’s Leaders Accountable”',
+             content_date=None,
+             text_head='MENU POSTPONED:“Outstanding or Unsatisfactory?: Examining Whether the Biden Administration is Holding VA’s Leaders Accountable” Date: 05.20.24 Time: 02:30 PM Location: Cannon 360 On Thursday, May 23, 2024, at 2:30 pm the Subcommittee on Oversight and Investigations will hold an Oversight Hearing on “Outstanding or Unsatisfactory?: Examining Whether the Biden Administration is Holding VA’s Leaders Accountable”.',
+             videos=['youtube:qeiE8Y79bHw']),
+        dict(body='d7' * 32, src='s7',
+             url='https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=398893',
+             title='Hearing entitled “Sustainable Housing Finance: An Update from the Director of the Federal Housing Finance Agency” | U.S. House Committee on Financial Services Democrats',
+             heading='Hearings',
+             content_date=None,
+             text_head='Hearings Hearing entitled “Sustainable Housing Finance: An Update from the Director of the Federal Housing Finance Agency” Tuesday, January 27, 2015 | 10:00 | 2175 Rayburn HOB Tags: Full Committee Witness List The Honorable Melvin L. Watt, Director, Federal Housing Finance Agency',
+             videos=['youtube:' + vid for vid, *_ in clips_102893]),
+    ]
+    videos = [
+        dict(video_key='youtube:4rSy_EReGYg', sha='c1' * 32, stated_event_ids=[], duration_seconds=7248, system_code='hsfa00',
+             published_at='2023-07-19T04:14:36Z', source_description=None,
+             title='Achieving Peace through Strength in the Indo-Pacific: Examining the FY24 Budget Priorities'),
+        dict(video_key='youtube:73UihZi8neM', sha='c2' * 32, stated_event_ids=[], duration_seconds=15111, system_code='hsfa00',
+             published_at='2023-06-15T04:05:05Z', source_description=None,
+             title='Full Committee Hearing on Assessing U.S. Efforts to Counter China’s Coercive Belt and Road Diplomacy'),
+        dict(video_key='youtube:_lyoHuKNhU4', sha='c3' * 32, stated_event_ids=[], duration_seconds=11055, system_code='hsfa00',
+             published_at='2025-05-21T18:34:26Z',
+             source_description='The House Foreign Affairs Committee holds a hearing titled, "FY26 State Department Posture: Protecting American Interests," featuring Secretary of State Marco Rubio.',
+             title='Secretary Rubio testifies before the House Foreign Affairs Committee: Protecting American Interests'),
+        dict(video_key='youtube:aFfFblwBffg', sha='c4' * 32, stated_event_ids=[], duration_seconds=9467, system_code='hsfa00',
+             published_at='2023-05-24T20:52:53Z', source_description=None,
+             title='HFAC Subcommittee Hearing on Bringing Abducted Children Home'),
+        dict(video_key='youtube:ky1SY6BoL74', sha='c5' * 32, stated_event_ids=[], duration_seconds=133, system_code='hsba00',
+             published_at='2015-05-13T14:02:37Z', source_description=None,
+             title='Ranking Member Waters Opening Statement at O&I Dodd Frank Hearing - 05/13/2015'),
+        dict(video_key='youtube:AB2kz1aIsS8', sha='c6' * 32, stated_event_ids=[], duration_seconds=130, system_code='hsba00',
+             published_at='2015-05-14T17:54:02Z', source_description=None,
+             title='Congressman John C. Carney Opening Statement at Data and Cybersecurity Hearing - 05/14/2015'),
+        dict(video_key='youtube:qeiE8Y79bHw', sha='c7' * 32, stated_event_ids=[117557], duration_seconds=14095, system_code='hsvr00',
+             published_at='2024-09-11T06:33:45Z', source_description=None,
+             title='“Accountable or Absent?: Examining VA Leadership Under the Biden-Harris Administration".'),
+    ] + [
+        dict(video_key='youtube:' + vid, sha=f'{idx + 10:02x}' * 32, stated_event_ids=stated, duration_seconds=dur,
+             system_code='hsba00', published_at=pub, source_description=None, title=vtitle)
+        for idx, (vid, dur, vtitle, pub, stated) in enumerate(clips_102893)
+    ]
+
+    inputs = [
+        json_input(tmp_path, 'active_recording_decisions', [],
+                   id='Utf8', subject_kind='Utf8', subject_id='Utf8', verdict='Utf8', video_refs=_list(),
+                   note='Utf8', disputed_by='Utf8', decided_at='Utf8', supersedes='Utf8'),
+        json_input(tmp_path, 'recording_sources',
+                   json.loads((ROOT / 'model/registries/recording-sources.json').read_text()),
+                   id='Utf8', kind='Utf8', pattern='Utf8', key_template='Utf8',
+                   format='Utf8', default_language='Utf8', default_production='Utf8'),
+        json_input(tmp_path, 'meetings_in', meetings,
+                   event_id='Int64', chamber='Utf8', meeting_date='Utf8', meeting_type='Utf8', title='Utf8',
+                   not_held='Boolean', committees=list_of(struct(system_code='Utf8', role='Utf8')), subject_keys=_list()),
+        json_input(tmp_path, 'pages_in', pages,
+                   body='Utf8', src='Utf8', url='Utf8', title='Utf8', heading='Utf8',
+                   content_date='Utf8', text_head='Utf8', videos=_list()),
+        json_input(tmp_path, 'videos_in', videos,
+                   video_key='Utf8', sha='Utf8', stated_event_ids=list_of('Int64'), duration_seconds='Int32',
+                   system_code='Utf8', published_at='Utf8', source_description='Utf8', title='Utf8'),
+    ]
+    steps = [
+        dict(name='recording_url_sources', sql="SELECT id,pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'", materialize=True),
+        dict(name='meetings_resolved', sql="""SELECT event_id,chamber,cast(meeting_date AS DATE) AS meeting_date,meeting_type,title,not_held,committees,subject_keys,
+            arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS transcript_jackets,
+            array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0) AS videos
+            FROM meetings_in""", materialize=True),
+        dict(name='meetings_export', sql="""SELECT event_id,chamber,meeting_type,title,
+            array_slice(make_array(named_struct('source',cast(NULL AS VARCHAR),'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
+             'video_key',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS transcripts
+            FROM meetings_resolved""", materialize=True),
+        dict(name='known_meetings', sql="SELECT event_id,meeting_date,not_held,meeting_type,title,committees,subject_keys FROM meetings_resolved", materialize=True),
+        dict(name='video_key_aliases', sql="SELECT cast(NULL AS VARCHAR) AS alias_key,cast(NULL AS VARCHAR) AS canonical_key WHERE false", materialize=True),
+        dict(name='recording_video_links', sql="SELECT body AS page_body,unnest(videos) AS extracted_key FROM pages_in", materialize=True),
+        dict(name='recording_video_pages', sql="SELECT DISTINCT page_body,arrow_cast(decode(page_body,'hex'),'FixedSizeBinary(32)') AS body_sha FROM recording_video_links", materialize=True),
+        dict(name='capture_source_contexts', sql="SELECT src AS source_id,body AS body_sha FROM pages_in", materialize=True),
+        dict(name='source_addresses', sql="SELECT src AS source_id,url FROM pages_in", materialize=True),
+        dict(name='recording_page_sources', sql="SELECT DISTINCT c.source_id,c.body_sha AS page_body FROM recording_video_pages vp JOIN capture_source_contexts c ON c.body_sha=vp.page_body", materialize=True),
+        dict(name='page_facts', sql="""SELECT arrow_cast(decode(body,'hex'),'FixedSizeBinary(32)') AS body_sha,'completed' AS status,
+            title,heading,content_date,text_head,arrow_cast(NULL,'List(Int64)') AS named_meetings FROM pages_in""", materialize=True),
+        dict(name='publisher_links', sql="SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS VARCHAR) AS source_id WHERE false", materialize=True),
+        dict(name='document_members', sql="SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS BIGINT) AS component,cast(NULL AS VARCHAR) AS filename,cast(NULL AS VARCHAR) AS source_url WHERE false", materialize=True),
+        dict(name='component_meeting_links', sql="SELECT cast(NULL AS BIGINT) AS component,arrow_cast(NULL,'List(Utf8)') AS meeting_keys WHERE false", materialize=True),
+        dict(name='senate_page_meeting_links', sql="SELECT cast(NULL AS VARCHAR) AS record_sha_hex,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS banking_hearing_url WHERE false", materialize=True),
+        dict(name='house_page_meeting_links', sql=sql('house-page-meeting-links'), materialize=True),
+        dict(name='recording_page_meetings', sql="SELECT page_body,event_id FROM house_page_meeting_links", materialize=True),
+        dict(name='recording_tracks', sql="""SELECT cast(NULL AS VARCHAR) AS video_key,
+            array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),
+             'format',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks WHERE false""", materialize=True),
+        dict(name='recordings_entity', sql=sql('entity-recordings'), materialize=True),
+        dict(name='recording_page_video_events', sql="""SELECT video_key,event_id,'committee_page:'||min(page_body) AS source_ref
+            FROM (SELECT pvl.page_body,pvl.extracted_key AS video_key,pm.event_id
+                  FROM recording_page_meetings pm JOIN recording_video_links pvl ON pvl.page_body=pm.page_body
+                  WHERE pvl.extracted_key IS NOT NULL AND pm.event_id IS NOT NULL)
+            GROUP BY video_key,event_id""", materialize=True),
+        dict(name='videos_export', sql="""SELECT video_key,arrow_cast(decode(sha,'hex'),'FixedSizeBinary(32)') AS record_sha,
+            stated_event_ids,false AS has_caption,duration_seconds,title,source_description,system_code,
+            arrow_cast(try_cast(published_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') AS published_at
+            FROM videos_in""", materialize=True),
+        dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
+        dict(name='package_meeting_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
+        dict(name='package_mods_facts', sql="SELECT cast(NULL AS VARCHAR) AS package_id,arrow_cast(NULL,'List(Int64)') AS named_meetings WHERE false", materialize=True),
+        dict(name='meeting_document_urls', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS url WHERE false", materialize=True),
+        dict(name='ordered', sql="SELECT arrow_cast(NULL,'List(Utf8)') AS meeting_keys WHERE false", materialize=True),
+        dict(name='witnesses_export', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS package_id,cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by,cast(NULL AS VARCHAR) AS listing_status WHERE false", materialize=True),
+        dict(name='selected_appearance_records', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS status,cast(NULL AS VARCHAR) AS collection_state,arrow_cast(NULL,'List(Utf8)') AS appearances WHERE false", materialize=True),
+        dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
+        dict(name='recordings_export', sql=archive_model.recordings_export_sql(root=ROOT, explorer_inputs=True), materialize=True),
+        dict(name='meeting_coverage_export', sql=sql('entity-meeting-coverage'), materialize=True),
+    ]
+    result = run_job(tmp_path / 'job', engine, inputs=inputs, steps=steps, outputs=[
+        parquet_output(tmp_path, 'recordings', 'SELECT * FROM recordings_export', ['video_key']),
+        parquet_output(tmp_path, 'meeting_coverage', 'SELECT * FROM meeting_coverage_export', ['event_id', 'aspect']),
+        parquet_output(tmp_path, 'recording_matches', 'SELECT * FROM recording_matches_export', ['match_id']),
+    ], queries=[dict(name='page_links', sql='SELECT * FROM house_page_meeting_links ORDER BY page_body')])
+    return result, clips_102893, date
+
+
+def test_house_page_links_use_hearing_date_and_reject_six_wrong_associations(tmp_path):
+    """ct-9vwc: match on hearing date, keep page publication date separately, reject wrong embeds, keep 102893's 18 clips."""
+    result, clips_102893, _ = _run_ct9vwc_fixture(tmp_path)
+    rec = {r['video_key']: r for r in rows(tmp_path, 'recordings')}
+    cov = {(r['event_id'], r['aspect']): (r['state'], r['basis'], r['count'], r['reason'])
+           for r in rows(tmp_path, 'meeting_coverage')}
+
+    # None of the six wrong associations (116027, 116028, 118242, 115919, 103494, 117329) may match:
+    assert {k: rec[k]['event_ids'] for k in (
+        'youtube:4rSy_EReGYg',
+        'youtube:73UihZi8neM',
+        'youtube:_lyoHuKNhU4',
+        'youtube:aFfFblwBffg',
+        'youtube:ky1SY6BoL74',
+        'youtube:qeiE8Y79bHw',
+        'youtube:AB2kz1aIsS8',
+    )} == {
+        'youtube:4rSy_EReGYg': [115676],
+        'youtube:73UihZi8neM': [116025],
+        'youtube:_lyoHuKNhU4': [118286],
+        'youtube:aFfFblwBffg': [116007],
+        'youtube:ky1SY6BoL74': [],
+        'youtube:qeiE8Y79bHw': [117557],
+        'youtube:AB2kz1aIsS8': [103494],
+    }
+
+    # Postponed hearing 117329 stays unknown (never present); legitimate 102893 rises to 18 excerpt clips:
+    assert cov[117329, 'recording'] == ('unknown', 'none', 0, None)
+    assert cov[102893, 'recording'] == ('partial', 'recording_matches', 18, 'excerpts_only')
+    for vid, *_ in clips_102893:
+        assert rec['youtube:' + vid]['event_ids'] == [102893]
+        assert rec['youtube:' + vid]['recording_scope'] == 'excerpt'
+
+    # Page publication date is kept as its own field beside hearing_date:
+    by_body = {r['page_body']: r for r in result['page_links']}
+    assert (by_body['d1' * 32]['event_id'], str(by_body['d1' * 32]['hearing_date']), str(by_body['d1' * 32]['page_date'])) == (
+        115676, '2023-07-18', '2023-06-07'
+    )
+    assert (by_body['d2' * 32]['event_id'], str(by_body['d2' * 32]['hearing_date']), str(by_body['d2' * 32]['page_date'])) == (
+        116025, '2023-06-14', '2023-06-07'
+    )
+    assert (by_body['d3' * 32]['event_id'], str(by_body['d3' * 32]['hearing_date']), str(by_body['d3' * 32]['page_date'])) == (
+        118286, '2025-05-21', '2025-05-14'
+    )
+    assert (by_body['d4' * 32]['event_id'], str(by_body['d4' * 32]['hearing_date']), str(by_body['d4' * 32]['page_date'])) == (
+        116007, '2023-05-23', '2023-05-17'
+    )
+    assert 'd6' * 32 not in by_body
+
+
+def test_committee_page_rejects_embeds_contradicting_hearing_identity(tmp_path):
+    """ct-9vwc: even when a page already links to a meeting, embeds contradicting its date, committee, or title are rejected."""
+    from congress_api.retention.provenance import list_of, struct
+    from viewer_publication import archive_model
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    meetings = [
+        dict(event_id=116027, chamber='house', meeting_date='2023-06-07', meeting_type='Hearing',
+             title="Ignoring Our Allies in the Western Hemisphere: Reviewing President Biden's FY24 Budget Request",
+             not_held=False, committees=[dict(system_code='hsfa07', role=None)], subject_keys=[]),
+        dict(event_id=118242, chamber='house', meeting_date='2025-05-14', meeting_type='Hearing',
+             title='National Economic Security, Advancing US Interests Abroad',
+             not_held=False, committees=[dict(system_code='hsfa05', role=None)], subject_keys=[]),
+        dict(event_id=103494, chamber='house', meeting_date='2015-05-14', meeting_type='HHRG',
+             title='“Protecting Consumers: Financial Data Security in the Age of Computer Hackers”',
+             not_held=False, committees=[dict(system_code='hsba00', role='host')], subject_keys=[]),
+        dict(event_id=115918, chamber='house', meeting_date='2023-05-16', meeting_type='Hearing',
+             title='Member Day',
+             not_held=False, committees=[dict(system_code='hsas00', role='host')], subject_keys=[]),
+        dict(event_id=117329, chamber='house', meeting_date='2024-05-23', meeting_type='Hearing',
+             title='Outstanding or Unsatisfactory?: Examining Whether the Biden Administration is Holding VA’s Leaders Accountable',
+             not_held=True, committees=[dict(system_code='hsvr08', role=None)], subject_keys=[]),
+    ]
+    videos = [
+        # Contradicts title (Indo-Pacific vs Western Hemisphere)
+        dict(video_key='youtube:4rSy_EReGYg', sha='d1' * 32, stated_event_ids=[], duration_seconds=7248, system_code='hsfa00',
+             published_at='2023-07-19T04:14:36Z', source_description=None,
+             title='Achieving Peace through Strength in the Indo-Pacific: Examining the FY24 Budget Priorities'),
+        # Contradicts committee level (Full Committee vs hsfa05 subcommittee)
+        dict(video_key='youtube:_lyoHuKNhU4', sha='d2' * 32, stated_event_ids=[], duration_seconds=11055, system_code='hsfa00',
+             published_at='2025-05-21T18:34:26Z', source_description=None,
+             title='Secretary Rubio testifies before the House Foreign Affairs Committee: Protecting American Interests'),
+        # Contradicts date (05/13/2015 vs 2015-05-14)
+        dict(video_key='youtube:ky1SY6BoL74', sha='d3' * 32, stated_event_ids=[], duration_seconds=133, system_code='hsba00',
+             published_at='2015-05-13T14:02:37Z', source_description=None,
+             title='Ranking Member Waters Opening Statement at O&I Dodd Frank Hearing - 05/13/2015'),
+        # Contradicts channel committee (hsvr00 Veterans Affairs channel on hsas00 Armed Services Member Day)
+        dict(video_key='youtube:aF5hFzGeolQ', sha='d4' * 32, stated_event_ids=[], duration_seconds=4200, system_code='hsvr00',
+             published_at='2023-05-16T18:00:00Z', source_description=None,
+             title='118th Congress Member Day Hearing'),
+        # Contradicts held status and stated event ID on postponed 117329
+        dict(video_key='youtube:qeiE8Y79bHw', sha='d5' * 32, stated_event_ids=[117557], duration_seconds=14095, system_code='hsvr00',
+             published_at='2024-09-11T06:33:45Z', source_description=None,
+             title='“Accountable or Absent?: Examining VA Leadership Under the Biden-Harris Administration".'),
+    ]
+    inputs = [
+        json_input(tmp_path, 'active_recording_decisions', [],
+                   id='Utf8', subject_kind='Utf8', subject_id='Utf8', verdict='Utf8', video_refs=_list(),
+                   note='Utf8', disputed_by='Utf8', decided_at='Utf8', supersedes='Utf8'),
+        json_input(tmp_path, 'recording_sources',
+                   json.loads((ROOT / 'model/registries/recording-sources.json').read_text()),
+                   id='Utf8', kind='Utf8', pattern='Utf8', key_template='Utf8',
+                   format='Utf8', default_language='Utf8', default_production='Utf8'),
+        json_input(tmp_path, 'meetings_in', meetings,
+                   event_id='Int64', chamber='Utf8', meeting_date='Utf8', meeting_type='Utf8', title='Utf8',
+                   not_held='Boolean', committees=list_of(struct(system_code='Utf8', role='Utf8')), subject_keys=_list()),
+        json_input(tmp_path, 'videos_in', videos,
+                   video_key='Utf8', sha='Utf8', stated_event_ids=list_of('Int64'), duration_seconds='Int32',
+                   system_code='Utf8', published_at='Utf8', source_description='Utf8', title='Utf8'),
+    ]
+    steps = [
+        dict(name='recording_url_sources', sql="SELECT id,pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'", materialize=True),
+        dict(name='meetings_resolved', sql="""SELECT event_id,chamber,cast(meeting_date AS DATE) AS meeting_date,meeting_type,title,not_held,committees,subject_keys,
+            arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS transcript_jackets,
+            array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0) AS videos
+            FROM meetings_in""", materialize=True),
+        dict(name='meetings_export', sql="""SELECT event_id,chamber,meeting_type,title,
+            array_slice(make_array(named_struct('source',cast(NULL AS VARCHAR),'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
+             'video_key',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS transcripts
+            FROM meetings_resolved""", materialize=True),
+        dict(name='known_meetings', sql="SELECT event_id,meeting_date,not_held,meeting_type,title,committees,subject_keys FROM meetings_resolved", materialize=True),
+        dict(name='video_key_aliases', sql="SELECT cast(NULL AS VARCHAR) AS alias_key,cast(NULL AS VARCHAR) AS canonical_key WHERE false", materialize=True),
+        dict(name='recording_video_links', sql="""SELECT 'e1' AS page_body,'youtube:4rSy_EReGYg' AS extracted_key
+            UNION ALL SELECT 'e2','youtube:_lyoHuKNhU4'
+            UNION ALL SELECT 'e3','youtube:ky1SY6BoL74'
+            UNION ALL SELECT 'e4','youtube:aF5hFzGeolQ'
+            UNION ALL SELECT 'e5','youtube:qeiE8Y79bHw'""", materialize=True),
+        dict(name='recording_page_meetings', sql="""SELECT 'e1' AS page_body,cast(116027 AS BIGINT) AS event_id
+            UNION ALL SELECT 'e2',118242
+            UNION ALL SELECT 'e3',103494
+            UNION ALL SELECT 'e4',115918
+            UNION ALL SELECT 'e5',117329""", materialize=True),
+        dict(name='recording_tracks', sql="""SELECT cast(NULL AS VARCHAR) AS video_key,
+            array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),
+             'format',cast(NULL AS VARCHAR),'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks WHERE false""", materialize=True),
+        dict(name='recordings_entity', sql=sql('entity-recordings'), materialize=True),
+        dict(name='recording_page_video_events', sql="""SELECT video_key,event_id,'committee_page:'||min(page_body) AS source_ref
+            FROM (SELECT pvl.page_body,pvl.extracted_key AS video_key,pm.event_id
+                  FROM recording_page_meetings pm JOIN recording_video_links pvl ON pvl.page_body=pm.page_body)
+            GROUP BY video_key,event_id""", materialize=True),
+        dict(name='videos_export', sql="""SELECT video_key,arrow_cast(decode(sha,'hex'),'FixedSizeBinary(32)') AS record_sha,
+            stated_event_ids,false AS has_caption,duration_seconds,title,source_description,system_code,
+            arrow_cast(try_cast(published_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') AS published_at
+            FROM videos_in""", materialize=True),
+        dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
+        dict(name='package_meeting_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
+        dict(name='package_mods_facts', sql="SELECT cast(NULL AS VARCHAR) AS package_id,arrow_cast(NULL,'List(Int64)') AS named_meetings WHERE false", materialize=True),
+        dict(name='meeting_document_urls', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS url WHERE false", materialize=True),
+        dict(name='ordered', sql="SELECT arrow_cast(NULL,'List(Utf8)') AS meeting_keys WHERE false", materialize=True),
+        dict(name='witnesses_export', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS name,cast(NULL AS VARCHAR) AS package_id,cast(NULL AS VARCHAR) AS witness_type,cast(NULL AS VARCHAR) AS superseded_by,cast(NULL AS VARCHAR) AS listing_status WHERE false", materialize=True),
+        dict(name='selected_appearance_records', sql="SELECT cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS status,cast(NULL AS VARCHAR) AS collection_state,arrow_cast(NULL,'List(Utf8)') AS appearances WHERE false", materialize=True),
+        dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
+        dict(name='recordings_export', sql=archive_model.recordings_export_sql(root=ROOT, explorer_inputs=True), materialize=True),
+        dict(name='meeting_coverage_export', sql=sql('entity-meeting-coverage'), materialize=True),
+    ]
+    run_job(tmp_path / 'job', engine, inputs=inputs, steps=steps, outputs=[
+        parquet_output(tmp_path, 'recordings', 'SELECT * FROM recordings_export', ['video_key']),
+        parquet_output(tmp_path, 'meeting_coverage', 'SELECT * FROM meeting_coverage_export', ['event_id', 'aspect']),
+        parquet_output(tmp_path, 'recording_matches', 'SELECT * FROM recording_matches_export', ['match_id']),
+    ], queries=[])
+    rec = {r['video_key']: r['event_ids'] for r in rows(tmp_path, 'recordings')}
+    cov = {(r['event_id'], r['aspect']): (r['state'], r['basis'], r['count'], r['reason'])
+           for r in rows(tmp_path, 'meeting_coverage')}
+    assert rec == {
+        'youtube:4rSy_EReGYg': [],
+        'youtube:_lyoHuKNhU4': [],
+        'youtube:ky1SY6BoL74': [],
+        'youtube:aF5hFzGeolQ': [],
+        'youtube:qeiE8Y79bHw': [],
+    }
+    assert cov[117329, 'recording'] == ('unknown', 'none', 0, None)
 
