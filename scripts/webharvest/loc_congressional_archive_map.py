@@ -45,19 +45,23 @@ def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _write_text_atomic(path: Path, text: str) -> None:
+def _write_bytes_atomic(path: Path, data: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     tmp_path = Path(tmp_name)
     try:
-        with os.fdopen(fd, "w", encoding="utf-8") as stream:
-            stream.write(text)
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
         os.replace(tmp_path, path)
     except BaseException:
         tmp_path.unlink(missing_ok=True)
         raise
+
+
+def _write_text_atomic(path: Path, text: str) -> None:
+    _write_bytes_atomic(path, text.encode("utf-8"))
 
 
 def save_json(path: Path, value: Any) -> None:
@@ -520,15 +524,17 @@ def build_catalog(
             if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
                 raise ValueError(f"Cached page {page_path} missing list 'results'")
             source_mode = "cached"
+            sidecar_verified = meta_path.exists()
         else:
             if offline:
                 raise ValueError(f"Missing cached LoC page in --offline mode: {page_path}")
             if page_num > 1:
                 time.sleep(delay)
             payload, raw, fetch_meta = fetch_loc_json(http, next_url, delay=delay)
-            page_path.write_bytes(raw)
-            source_mode = "fetched"
             save_json(meta_path, fetch_meta)
+            _write_bytes_atomic(page_path, raw)
+            source_mode = "fetched"
+            sidecar_verified = True
 
         page_payloads.append(payload)
         pagination = payload.get("pagination") if isinstance(payload.get("pagination"), dict) else {}
@@ -545,6 +551,7 @@ def build_catalog(
                 "sha256": sha256_bytes(raw),
                 "results_count": len(payload["results"]),
                 "source_mode": source_mode,
+                "sidecar_verified": sidecar_verified,
                 "next": pagination.get("next"),
             }
         )
@@ -553,12 +560,20 @@ def build_catalog(
         next_url = _ensure_fo_json(raw_next) if isinstance(raw_next, str) and raw_next.strip() else None
         page_num += 1
 
-    complete = next_url is None and not repeated_next_url
-    incomplete_reason = (
-        "repeated_next_url" if repeated_next_url else ("max_pages_reached" if next_url is not None else None)
-    )
+    pages_complete = reported_total_pages is None or len(page_manifest) >= reported_total_pages
+    complete = next_url is None and not repeated_next_url and pages_complete
+    if repeated_next_url:
+        incomplete_reason: str | None = "repeated_next_url"
+    elif next_url is not None:
+        incomplete_reason = "max_pages_reached"
+    elif not pages_complete:
+        incomplete_reason = "fewer_pages_than_reported_total"
+    else:
+        incomplete_reason = None
 
     records = _collect_items_from_pages(page_payloads, collection="united-states-congressional-web-archive")
+    archive_item_records = sum(1 for r in records if "/item/" in str(r.get("url") or ""))
+    collection_info_records = len(records) - archive_item_records
     coverage = build_domain_coverage(records)
     manifest = {
         "schema_version": "loc-lcwa-manifest-v1",
@@ -566,10 +581,13 @@ def build_catalog(
         "seed": seed,
         "complete": complete,
         "incomplete_reason": incomplete_reason,
+        "all_pages_sidecar_verified": all(p["sidecar_verified"] for p in page_manifest),
         "pages_collected": len(page_manifest),
         "reported_total_hits": reported_total_hits,
         "reported_total_pages": reported_total_pages,
         "unique_records": len(records),
+        "archive_item_records": archive_item_records,
+        "collection_info_records": collection_info_records,
         "unique_hosts": coverage["unique_hosts"],
         "pages": page_manifest,
     }
@@ -596,8 +614,10 @@ def _non_loc_candidate_rank(row: dict[str, Any]) -> tuple:
 
 
 def _load_non_loc_outcomes(path: Path | None) -> dict[str, dict[str, Any]]:
-    if path is None or not path.exists():
+    if path is None:
         return {}
+    if not path.is_file():
+        raise FileNotFoundError(f"Missing non_loc_results file: {path}")
     by_case: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for row in json.loads(path.read_text(encoding="utf-8")):
         by_case[row["case"]].append(row)
@@ -637,28 +657,38 @@ def _load_non_loc_outcomes(path: Path | None) -> dict[str, dict[str, Any]]:
 
 
 def _load_hearing_print_outcomes(path: Path | None) -> dict[str, dict[str, Any]]:
-    if path is None or not path.exists():
+    if path is None:
         return {}
+    if not path.is_file():
+        raise FileNotFoundError(f"Missing hearing_prints file: {path}")
     payload = json.loads(path.read_text(encoding="utf-8"))
     return {row["case"]: row for row in payload.get("cases", [])}
 
 
-def _extract_year_from_url_or_date(url: str, date_str: str | None = None) -> int | None:
+def _extract_year_with_source(url: str, date_str: str | None = None) -> tuple[int | None, str | None]:
     if date_str:
         m = _YEAR_RE.search(date_str)
         if m:
-            return int(m.group(1))
-    # Explicit congressional-file filename patterns like YYYYMMDD or M-D-YY
-    m_full = re.search(r"(?:^|[/_-])((?:19|20)\d{2})(?:\d{4})(?:\.pdf|$|[/_-])", url, re.I)
+            return int(m.group(1)), "document_date"
+    # Explicit congressional-file filename patterns like YYYYMMDD (including 20090519Reuter.pdf) or M-D-YY
+    m_full = re.search(
+        r"(?:^|[/_-])((?:19|20)\d{2})(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])(?=[A-Za-z._-]|$)",
+        url,
+        re.I,
+    )
     if m_full:
-        return int(m_full.group(1))
-    m_ymd = re.search(r"/((?:20\d{2}))/(?:0?\d|1[0-2])/", url)
-    if m_ymd:
-        return int(m_ymd.group(1))
+        return int(m_full.group(1)), "url_filename_date"
     m_short = re.search(r"(?:^|[/_-])\d{1,2}[-_]\d{1,2}[-_](1\d|2\d|0\d)(?:[_.-]|$)", url)
     if m_short:
-        return 2000 + int(m_short.group(1))
-    return None
+        return 2000 + int(m_short.group(1)), "url_filename_date"
+    m_ymd = re.search(r"/((?:20\d{2}))/(?:0?\d|1[0-2])/", url)
+    if m_ymd:
+        return int(m_ymd.group(1)), "url_upload_path"
+    return None, None
+
+
+def _extract_year_from_url_or_date(url: str, date_str: str | None = None) -> int | None:
+    return _extract_year_with_source(url, date_str)[0]
 
 
 def cross_match_inventory(
@@ -705,7 +735,9 @@ def cross_match_inventory(
     non_loc_by_case = _load_non_loc_outcomes(non_loc_results)
     prints_by_case = _load_hearing_print_outcomes(hearing_prints)
     manual_loc_cases: set[str] = set()
-    if remaining_loc_targets and remaining_loc_targets.exists():
+    if remaining_loc_targets is not None:
+        if not remaining_loc_targets.is_file():
+            raise FileNotFoundError(f"Missing remaining_loc_targets file: {remaining_loc_targets}")
         for t in json.loads(remaining_loc_targets.read_text(encoding="utf-8")):
             manual_loc_cases.add(t["case_id"])
 
@@ -715,8 +747,9 @@ def cross_match_inventory(
             case_id = row["case"]
             urls = [u for u in (row.get("urls") or "").split() if u]
             year_hint = None
+            year_hint_source = None
             for u in urls:
-                year_hint = _extract_year_from_url_or_date(u)
+                year_hint, year_hint_source = _extract_year_with_source(u)
                 if year_hint is not None:
                     break
             # Look up against LCWA catalog first, then augmented coverage (general web archives)
@@ -747,6 +780,7 @@ def cross_match_inventory(
                     "case": case_id,
                     "urls": urls,
                     "year_hint": year_hint,
+                    "year_hint_source": year_hint_source,
                     "resolution_state": resolution_state,
                     "selected_non_loc": non_loc_by_case.get(case_id),
                     "lcwa_matched": any(m["matched"] for m in lcwa_matches),
@@ -802,7 +836,7 @@ def cross_match_inventory(
                 if rel.get("document_date"):
                     doc_date = str(rel["document_date"])
                     break
-            year_hint = _extract_year_from_url_or_date(urls[0], doc_date)
+            year_hint, year_hint_source = _extract_year_with_source(urls[0], doc_date)
 
             rec_matches_lcwa_any_year = [lookup_url(coverage, u, year=None) for u in urls]
             rec_matches_lcwa_known_year = (
@@ -837,6 +871,7 @@ def cross_match_inventory(
                         "record_id": rec["record_id"],
                         "failure_category": fcat,
                         "year_hint": year_hint,
+                        "year_hint_source": year_hint_source,
                         "year_status": year_status,
                         "urls": urls,
                         "matched_hosts": matched_hosts,
@@ -853,6 +888,7 @@ def cross_match_inventory(
                         "record_id": rec["record_id"],
                         "failure_category": fcat,
                         "year_hint": year_hint,
+                        "year_hint_source": year_hint_source,
                         "urls": urls,
                         "matched_in_supplemental_general_archives": any_aug,
                     }
@@ -863,10 +899,16 @@ def cross_match_inventory(
     state_counts = Counter(r["resolution_state"] for r in damaged_rows)
     still_missing = [r for r in damaged_rows if r["resolution_state"] != "qualified_non_loc"]
 
+    lcwa_item_records = sum(1 for r in coverage.get("items", {}).values() if "/item/" in str(r.get("url") or ""))
+    lcwa_info_records = coverage["total_items"] - lcwa_item_records
+
     overlap = {
         "schema_version": "loc-inventory-overlap-v1",
         "generated_at": now_iso(),
         "catalog_summary": {
+            "lcwa_total_results": coverage["total_items"],
+            "lcwa_archive_items": lcwa_item_records,
+            "lcwa_collection_info_pages": lcwa_info_records,
             "lcwa_items": coverage["total_items"],
             "lcwa_unique_hosts": coverage["unique_hosts"],
             "supplemental_extra_items": len(extra_items),
@@ -897,7 +939,7 @@ def cross_match_inventory(
         "# LoC Congressional Web Archive Coverage & Inventory Cross-Match",
         "",
         f"- Generated: {overlap['generated_at']}",
-        f"- LCWA catalog items indexed: {coverage['total_items']} across {coverage['unique_hosts']} unique normalized hosts/subdomains",
+        f"- LCWA catalog results indexed: {coverage['total_items']} ({lcwa_item_records} `lcwa*` archive item records + {lcwa_info_records} collection info pages) across {coverage['unique_hosts']} unique normalized hosts/subdomains",
         f"- Supplemental `web-archives` items inspected: {len(extra_items)}",
         "",
         "## 49 Damaged Zero-Page PDFs — Current Standing + LoC Coverage",

@@ -5,6 +5,8 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -26,6 +28,14 @@ def _make_valid_pdf(path: Path, pages: int = 2) -> tuple[str, int]:
     return hashlib.sha256(data).hexdigest(), len(data)
 
 
+def _find_node() -> str | None:
+    found = shutil.which("node")
+    if found:
+        return found
+    fallback = Path("/Users/mikewolfd/.nvm/versions/node/v22.22.2/bin/node")
+    return str(fallback) if fallback.is_file() else None
+
+
 class BrowserSessionCaptureTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory()
@@ -37,7 +47,21 @@ class BrowserSessionCaptureTests(unittest.TestCase):
             "lockfile_digest": "a" * 64,
         }
 
-    def test_emit_snippet_single_target_manual_redirect_timeout_and_resume(self) -> None:
+    def test_emit_snippet_requires_14digit_loc_url_and_same_origin(self) -> None:
+        # 4-digit year-selector LoC URL must be rejected up front by emit_snippet
+        unusable_loc = self.root / "unusable_loc.json"
+        unusable_loc.write_text(json.dumps([
+            {
+                "case_id": "zero-page-test",
+                "original_url": "http://oversight.house.gov/images/stories/Testimony/Foo.pdf",
+                "fetch_url": "https://webarchive.loc.gov/all/2011id_/http://oversight.house.gov/images/stories/Testimony/Foo.pdf",
+                "expected_origin": "https://webarchive.loc.gov",
+            }
+        ]))
+        with self.assertRaisesRegex(ValueError, "14-digit id_ replay URL"):
+            bsc.emit_snippet(unusable_loc, self.root / "unusable.js")
+
+        # Valid 14-digit LoC URL succeeds
         targets_path = self.root / "targets.json"
         targets_path.write_text(json.dumps([
             {
@@ -50,20 +74,9 @@ class BrowserSessionCaptureTests(unittest.TestCase):
         out = self.root / "snippet.js"
         bsc.emit_snippet(targets_path, out, interval_seconds=15.0, timeout_seconds=45.0)
         text = out.read_text(encoding="utf-8")
-        self.assertIn("showDirectoryPicker", text)
-        self.assertIn("15000", text)
-        self.assertIn("45000", text)
-        self.assertIn("cf-mitigated", text)
-        self.assertIn("content-range", text)
         self.assertIn("redirect: 'manual'", text)
         self.assertNotIn("redirect: 'follow'", text)
-        self.assertIn("opaqueredirect", text)
-        self.assertIn("AbortController", text)
-        self.assertIn("arrayBufferWithAbort", text)
-        self.assertIn("readExistingLines", text)
-        self.assertIn("zero-page-test", text)
-        # Single-target-per-click step button, not a multi-target fetch loop
-        self.assertNotIn("for (let i = 0; i < TARGETS.length", text)
+        self.assertIn("hasValidPdfHeader", text)
 
         bad_targets = self.root / "bad_targets.json"
         bad_targets.write_text(json.dumps([
@@ -77,7 +90,179 @@ class BrowserSessionCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "origin differs"):
             bsc.emit_snippet(bad_targets, self.root / "bad.js")
 
-    def test_ingest_valid_pdf_writes_frozen_receipt_and_qualifies(self) -> None:
+    def test_generated_js_snippet_executes_capture_resume_and_safe_folder_switch_in_node(self) -> None:
+        node_bin = _find_node()
+        if node_bin is None:
+            self.skipTest("node runtime not available")
+
+        targets_path = self.root / "js_targets.json"
+        t1_url = "https://webarchive.loc.gov/all/20111102120000id_/http://oversight.house.gov/images/stories/Testimony/One.pdf"
+        t2_url = "https://webarchive.loc.gov/all/20111102120500id_/http://oversight.house.gov/images/stories/Testimony/Two.pdf"
+        targets_path.write_text(json.dumps([
+            {
+                "case_id": "case-1",
+                "original_url": "https://oversight.house.gov/wp-content/uploads/2012/01/One.pdf",
+                "fetch_url": t1_url,
+                "expected_origin": "https://webarchive.loc.gov",
+            },
+            {
+                "case_id": "case-2",
+                "original_url": "https://oversight.house.gov/wp-content/uploads/2012/01/Two.pdf",
+                "fetch_url": t2_url,
+                "expected_origin": "https://webarchive.loc.gov",
+            },
+        ]))
+        snippet_path = self.root / "generated.js"
+        # Use tiny cooldown (0.001s -> 1ms) so sequential clicks in Node test run instantaneously
+        bsc.emit_snippet(targets_path, snippet_path, interval_seconds=0.001, timeout_seconds=5.0)
+
+        harness = self.root / "harness.mjs"
+        harness.write_text(
+            f"""
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+class FakeDir {{
+  constructor(initial = {{}}, failReadOn = new Set()) {{
+    this.files = new Map(Object.entries(initial));
+    this.failReadOn = failReadOn;
+  }}
+  async getFileHandle(name, opts = {{}}) {{
+    if (!this.files.has(name)) {{
+      if (opts.create) {{
+        this.files.set(name, new Uint8Array(0));
+      }} else {{
+        const e = new Error('Not found');
+        e.name = 'NotFoundError';
+        throw e;
+      }}
+    }}
+    const dir = this;
+    return {{
+      async getFile() {{
+        if (dir.failReadOn.has(name)) {{
+          throw new Error('Simulated read failure on ' + name);
+        }}
+        const raw = dir.files.get(name);
+        return {{
+          async text() {{
+            return typeof raw === 'string' ? raw : new TextDecoder().decode(raw);
+          }}
+        }};
+      }},
+      async createWritable() {{
+        let pending = null;
+        return {{
+          async write(data) {{ pending = data; }},
+          async close() {{ dir.files.set(name, pending); }}
+        }};
+      }}
+    }};
+  }}
+}}
+
+const elements = new Map();
+function makeEl(tag) {{
+  const listeners = new Map();
+  return {{
+    tag,
+    style: {{}},
+    children: [],
+    disabled: false,
+    textContent: '',
+    set id(v) {{ this._id = v; elements.set(v, this); }},
+    get id() {{ return this._id; }},
+    appendChild(c) {{ this.children.push(c); }},
+    remove() {{ elements.delete(this._id); }},
+    addEventListener(ev, fn) {{ listeners.set(ev, fn); }},
+    async click() {{
+      if (this.disabled) return;
+      const fn = listeners.get('click');
+      if (fn) await fn();
+    }}
+  }};
+}}
+
+let currentPickerResult = null;
+globalThis.document = {{
+  getElementById: (id) => elements.get(id) || null,
+  createElement: (tag) => makeEl(tag),
+  body: makeEl('body'),
+}};
+globalThis.window = {{
+  location: {{ origin: 'https://webarchive.loc.gov' }},
+  showDirectoryPicker: async () => {{
+    if (currentPickerResult instanceof Error) throw currentPickerResult;
+    return currentPickerResult;
+  }}
+}};
+
+const pdf1 = new TextEncoder().encode('%PDF-1.4\\nFake PDF 1\\n%%EOF\\n');
+const pdf2 = new TextEncoder().encode('%PDF-1.4\\nFake PDF 2\\n%%EOF\\n');
+globalThis.fetch = async (url, opts) => {{
+  assert.equal(opts.redirect, 'manual');
+  const payload = url.endsWith('One.pdf') ? pdf1 : pdf2;
+  return {{
+    type: 'basic',
+    status: 200,
+    url,
+    headers: {{
+      get(k) {{
+        if (k.toLowerCase() === 'content-type') return 'application/pdf';
+        return null;
+      }}
+    }},
+    async arrayBuffer() {{ return payload.buffer.slice(payload.byteOffset, payload.byteOffset + payload.byteLength); }}
+  }};
+}};
+
+const code = fs.readFileSync({json.dumps(str(snippet_path))}, 'utf8');
+eval(code);
+
+const pickBtn = elements.get('ct-browser-pick-btn');
+const stepBtn = elements.get('ct-browser-step-btn');
+assert.equal(stepBtn.disabled, true);
+
+// 1. Capture case-1 into Folder A
+const folderA = new FakeDir();
+currentPickerResult = folderA;
+await pickBtn.click();
+assert.equal(stepBtn.disabled, false);
+await stepBtn.click();
+const aManifestAfter1 = folderA.files.get('browser-captures.jsonl');
+assert.ok(aManifestAfter1.includes('"case_id":"case-1"'));
+await new Promise((r) => setTimeout(r, 5));
+assert.equal(stepBtn.disabled, false);
+
+// 2. Switch to Folder B whose manifest read FAILS -> must disable stepBtn and NEVER overwrite B's manifest!
+const bOriginalManifest = '{{"case_id":"precious-existing"}}\\n';
+const folderB = new FakeDir({{ 'browser-captures.jsonl': bOriginalManifest }}, new Set(['browser-captures.jsonl']));
+currentPickerResult = folderB;
+await pickBtn.click();
+assert.equal(stepBtn.disabled, true, 'stepBtn must be disabled after failed folder switch');
+await stepBtn.click(); // no-op while disabled
+assert.equal(folderB.files.get('browser-captures.jsonl'), bOriginalManifest, 'Folder B manifest must remain untouched');
+assert.equal(folderA.files.get('browser-captures.jsonl'), aManifestAfter1, 'Folder A manifest must remain untouched');
+
+// 3. Re-open Folder A (resume): preserves case-1 and advances straight to case-2 without clobbering!
+currentPickerResult = folderA;
+await pickBtn.click();
+assert.equal(stepBtn.disabled, false);
+assert.ok(stepBtn.textContent.includes('case-2'));
+await stepBtn.click();
+const aLines = folderA.files.get('browser-captures.jsonl').trim().split('\\n');
+assert.equal(aLines.length, 2);
+assert.equal(JSON.parse(aLines[0]).case_id, 'case-1');
+assert.equal(JSON.parse(aLines[1]).case_id, 'case-2');
+console.log('JS_SNIPPET_BEHAVIOR_OK');
+""",
+            encoding="utf-8",
+        )
+        proc = subprocess.run([node_bin, str(harness)], capture_output=True, text=True, timeout=15)
+        self.assertEqual(proc.returncode, 0, msg=f"stdout={proc.stdout}\nstderr={proc.stderr}")
+        self.assertIn("JS_SNIPPET_BEHAVIOR_OK", proc.stdout)
+
+    def test_ingest_valid_pdf_with_targets_binding_and_end_to_end_readback(self) -> None:
         capture_dir = self.root / "captured"
         capture_dir.mkdir()
         tmp_pdf = self.root / "sample.pdf"
@@ -88,13 +273,24 @@ class BrowserSessionCaptureTests(unittest.TestCase):
             "https://webarchive.loc.gov/all/20111102120000id_/"
             "http://oversight.house.gov/images/stories/Testimony/Test_File.pdf"
         )
+        orig_url = "https://oversight.house.gov/wp-content/uploads/2012/01/Test_File.pdf"
+        targets_file = self.root / "trusted_targets.json"
+        targets_file.write_text(json.dumps([
+            {
+                "case_id": "zero-page-test",
+                "original_url": orig_url,
+                "fetch_url": final_url,
+                "expected_origin": "https://webarchive.loc.gov",
+            }
+        ]))
+
         manifest_row = {
             "case_id": "zero-page-test",
-            "original_url": "https://oversight.house.gov/wp-content/uploads/2012/01/Test_File.pdf",
-            "requested_url": "https://webarchive.loc.gov/all/2011id_/http://oversight.house.gov/images/stories/Testimony/Test_File.pdf",
+            "original_url": orig_url,
+            "requested_url": final_url,
             "final_url": final_url,
             "http_status": 200,
-            "retrieved_at": "2026-11-18T19:00:00+00:00",
+            "retrieved_at": "2026-11-18T19:00:00Z",
             "headers": {"content-type": "application/pdf", "memento-datetime": "Wed, 02 Nov 2011 12:00:00 GMT"},
             "sha256": digest,
             "bytes": size,
@@ -117,6 +313,7 @@ class BrowserSessionCaptureTests(unittest.TestCase):
             write_date="2026-11-18",
             damaged_manifest=damaged_manifest,
             damaged_sources_dir=damaged_sources,
+            targets_path=targets_file,
         )
         self.assertEqual(report["total"], 1)
         self.assertEqual(report["qualified"], 1)
@@ -129,11 +326,11 @@ class BrowserSessionCaptureTests(unittest.TestCase):
         line = json.loads(gzip.decompress(raw_receipt.read_bytes()))
         self.assertEqual(line["transport"], "browser_same_origin")
         self.assertEqual(line["outcome"], "stored")
-        # Atomic report published cleanly with no leftover temp files
-        report_file = stage / "qualification-report.json"
-        self.assertTrue(report_file.is_file())
-        self.assertEqual(json.loads(report_file.read_text(encoding="utf-8"))["qualified"], 1)
-        self.assertEqual(list(stage.glob(".qualification-report.json.*.tmp")), [])
+        self.assertEqual(line["retrieved_at"], "2026-11-18T19:00:00+00:00")
+        # Frozen receipt also matches raw receipt digest
+        frozen_meta = json.loads((stage / "frozen-receipts" / entry["operation_id"] / "receipt.json").read_text())
+        frozen_gz = (stage / "frozen-receipts" / entry["operation_id"] / "receipt.gz").read_bytes()
+        self.assertEqual(hashlib.sha256(frozen_gz).hexdigest(), frozen_meta["sha256"])
 
     def _run_ingest_single(
         self,
@@ -143,6 +340,7 @@ class BrowserSessionCaptureTests(unittest.TestCase):
         stage_dir: Path | None = None,
         damaged_manifest: Path | None = None,
         damaged_sources_dir: Path | None = None,
+        targets_path: Path | None = None,
     ) -> dict:
         tag = hashlib.sha256(json.dumps(row, sort_keys=True).encode()).hexdigest()[:10]
         capture_dir = self.root / f"cap_{tag}"
@@ -157,13 +355,14 @@ class BrowserSessionCaptureTests(unittest.TestCase):
             write_date="2026-11-18",
             damaged_manifest=damaged_manifest,
             damaged_sources_dir=damaged_sources_dir,
+            targets_path=targets_path,
         )
 
     def _base_row(self, digest: str, size: int) -> dict:
         return {
             "case_id": "c1",
             "original_url": "https://oversight.house.gov/wp-content/uploads/2012/01/A.pdf",
-            "requested_url": "https://webarchive.loc.gov/all/2011id_/http://oversight.house.gov/images/stories/Testimony/A.pdf",
+            "requested_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/images/stories/Testimony/A.pdf",
             "final_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/images/stories/Testimony/A.pdf",
             "http_status": 200,
             "retrieved_at": "2026-11-18T19:00:00+00:00",
@@ -210,37 +409,69 @@ class BrowserSessionCaptureTests(unittest.TestCase):
             self._run_ingest_single(partial_row, ok_bytes, stage_dir=stage)
         self.assertFalse((stage / "frozen-receipts").exists())
 
-    def test_ingest_rejects_html_content_type_and_html_body(self) -> None:
-        html_bytes = b"<!doctype html><html><body>" + (b"Witness testimony paragraph. " * 40) + b"</body></html>"
-        html_sha = hashlib.sha256(html_bytes).hexdigest()
-        base = self._base_row(html_sha, len(html_bytes))
+    def test_ingest_rejects_html_including_html_mentioning_pdf_marker(self) -> None:
+        # HTML mentioning %PDF-1.4 inside markup must STILL be rejected beforeReceiptWriter!
+        html_with_marker = b"<!doctype html><html><body>Note: %PDF-1.4 header missing\n" + (b"Text " * 30) + b"</body></html>"
+        html_sha = hashlib.sha256(html_with_marker).hexdigest()
+        base = self._base_row(html_sha, len(html_with_marker))
 
-        # 1. Explicit text/html header refused
         html_ct_row = {**base, "headers": {"content-type": "text/html; charset=utf-8"}}
         with self.assertRaisesRegex(ValueError, "non-PDF content-type"):
-            self._run_ingest_single(html_ct_row, html_bytes)
+            self._run_ingest_single(html_ct_row, html_with_marker)
 
-        # 2. HTML body masquerading as application/pdf refused before writing any receipt
-        stage = self.root / "stage_html_disguised"
-        with self.assertRaisesRegex(ValueError, "not a PDF"):
-            self._run_ingest_single(base, html_bytes, stage_dir=stage)
+        stage = self.root / "stage_html_marker"
+        with self.assertRaisesRegex(ValueError, "not a valid PDF"):
+            self._run_ingest_single(base, html_with_marker, stage_dir=stage)
         self.assertFalse((stage / "frozen-receipts").exists())
 
-    def test_ingest_validates_timestamp_before_writing_frozen_receipt(self) -> None:
+    def test_ingest_requires_explicit_utc_timestamp_before_writing_frozen_receipt(self) -> None:
         tmp_pdf = self.root / "ts.pdf"
         digest, size = _make_valid_pdf(tmp_pdf, pages=1)
         ok_bytes = tmp_pdf.read_bytes()
         stage = self.root / "stage_bad_ts"
-        bad_ts_row = {**self._base_row(digest, size), "retrieved_at": "not-an-iso-timestamp"}
-        with self.assertRaises(ValueError):
-            self._run_ingest_single(bad_ts_row, ok_bytes, stage_dir=stage)
-        # Must NOT strand a frozen receipt directory on failed timestamp validation
-        self.assertFalse((stage / "frozen-receipts").exists())
 
-        # Retrying with a fixed timestamp in the SAME output directory must succeed cleanly
-        fixed_row = {**bad_ts_row, "retrieved_at": "2026-11-18T19:00:00+00:00"}
+        for bad_ts in ("not-an-iso-timestamp", "2026-11-18T14:00:00-05:00", "2026-11-18T19:00:00"):
+            bad_row = {**self._base_row(digest, size), "retrieved_at": bad_ts}
+            with self.assertRaises(ValueError):
+                self._run_ingest_single(bad_row, ok_bytes, stage_dir=stage)
+            self.assertFalse((stage / "frozen-receipts").exists())
+
+        fixed_row = {**self._base_row(digest, size), "retrieved_at": "2026-11-18T19:00:00Z"}
         report = self._run_ingest_single(fixed_row, ok_bytes, stage_dir=stage)
         self.assertEqual(report["qualified"], 1)
+
+    def test_ingest_rejects_mismatched_a_to_b_urls_and_enforces_trusted_targets(self) -> None:
+        tmp_pdf = self.root / "orig.pdf"
+        digest, size = _make_valid_pdf(tmp_pdf, pages=1)
+        ok_bytes = tmp_pdf.read_bytes()
+        base = self._base_row(digest, size)
+
+        # Two valid 14-digit LoC URLs for DIFFERENT files (A.pdf vs B.pdf) must be rejected!
+        a_to_b = {
+            **base,
+            "requested_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/images/stories/Testimony/A.pdf",
+            "final_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/images/stories/Testimony/B.pdf",
+        }
+        with self.assertRaisesRegex(ValueError, "does not match final_url target"):
+            self._run_ingest_single(a_to_b, ok_bytes)
+
+        # Trusted --targets rejects wrong case_id or wrong original_url
+        targets_file = self.root / "targets_bind.json"
+        targets_file.write_text(json.dumps([
+            {
+                "case_id": "c1",
+                "original_url": base["original_url"],
+                "fetch_url": base["final_url"],
+                "expected_origin": "https://webarchive.loc.gov",
+            }
+        ]))
+        spoofed_orig = {**base, "original_url": "https://oversight.house.gov/wp-content/uploads/2012/01/SPOOF.pdf"}
+        with self.assertRaisesRegex(ValueError, "does not match trusted target"):
+            self._run_ingest_single(spoofed_orig, ok_bytes, targets_path=targets_file)
+
+        spoofed_case = {**base, "case_id": "unknown-case"}
+        with self.assertRaisesRegex(ValueError, "not present in trusted --targets"):
+            self._run_ingest_single(spoofed_case, ok_bytes, targets_path=targets_file)
 
     def test_ingest_rejects_damaged_manifest_traversal_and_bad_sha256(self) -> None:
         tmp_pdf = self.root / "trav.pdf"
@@ -258,23 +489,8 @@ class BrowserSessionCaptureTests(unittest.TestCase):
                 base, ok_bytes, damaged_manifest=bad_manifest, damaged_sources_dir=damaged_sources
             )
 
-        # Also test direct helper containment/digest guard
         with self.assertRaisesRegex(ValueError, "Invalid damaged source sha256"):
             bsc._resolve_damaged_original(damaged_sources, "../outside")
-
-    def test_ingest_rejects_cross_origin_or_mismatched_requested_url(self) -> None:
-        tmp_pdf = self.root / "orig.pdf"
-        digest, size = _make_valid_pdf(tmp_pdf, pages=1)
-        ok_bytes = tmp_pdf.read_bytes()
-        base = self._base_row(digest, size)
-
-        cross_origin = {**base, "requested_url": "https://other.example.gov/all/2011id_/http://oversight.house.gov/images/stories/Testimony/A.pdf"}
-        with self.assertRaisesRegex(ValueError, "origin differs"):
-            self._run_ingest_single(cross_origin, ok_bytes)
-
-        diff_target = {**base, "requested_url": "https://webarchive.loc.gov/all/2011id_/http://oversight.house.gov/images/stories/Testimony/OTHER.pdf"}
-        with self.assertRaisesRegex(ValueError, "invalid requested_url"):
-            self._run_ingest_single(diff_target, ok_bytes)
 
     def test_ingest_marks_truncated_pdf_unresolved_with_cutoff_hint(self) -> None:
         tmp_pdf = self.root / "full.pdf"

@@ -235,7 +235,7 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
 
     coverage = json.loads((out_dir / "domain-coverage.json").read_text(encoding="utf-8"))
 
-    # Missing required inputs fail fast
+    # Missing required inputs or explicitly supplied optional files fail fast
     with pytest.raises(FileNotFoundError, match="damaged_manifest"):
         MODULE.cross_match_inventory(
             coverage,
@@ -247,11 +247,38 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
     tsv = tmp_path / "g_manifest.tsv"
     tsv.write_text(
         "case\tgroup\tsha256\tbytes\tsha1_b32\tpublisher_last_modified\tdeclared_bytes\trefetch_identical\turls\n"
+        "zero-page-reuter\trefetched47\t05fc\t116736\tAAA\tTue\t297535\tTrue\thttps://oversight.house.gov/wp-content/uploads/2012/01/20090519Reuter.pdf\n"
         "zero-page-howle\trefetched47\t25b3\t337920\tAAA\tTue\t507030\tTrue\thttps://oversight.house.gov/wp-content/uploads/2012/01/20100305Howle1.pdf\n"
         "zero-page-locqueued\trefetched47\t08ca\t100\tBBB\tTue\t200\tTrue\thttps://oversight.house.gov/wp-content/uploads/2012/01/12-7-11_Testimony.pdf\n"
         "zero-page-missing\trefetched47\ta38b\t100\tCCC\tFri\t200\tTrue\thttps://www.congress.gov/116/meeting/house/110128/documents/HHRG-116-VR03.pdf\n",
         encoding="utf-8",
     )
+    inv_dummy = tmp_path / "dummy.jsonl"
+    inv_dummy.write_text("", encoding="utf-8")
+    for kw in (
+        {"non_loc_results": tmp_path / "absent_non_loc.json"},
+        {"hearing_prints": tmp_path / "absent_prints.json"},
+        {"remaining_loc_targets": tmp_path / "absent_loc.json"},
+    ):
+        with pytest.raises(FileNotFoundError):
+            MODULE.cross_match_inventory(
+                coverage,
+                damaged_manifest=tsv,
+                invalid_sources=inv_dummy,
+                output=tmp_path / "fail_opt",
+                **kw,
+            )
+
+    # pagination.next=None when pages_collected < reported_total_pages marks complete=False
+    inc_dir = tmp_path / "inc_catalog"
+    (inc_dir / "pages").mkdir(parents=True)
+    (inc_dir / "pages/page-0001.json").write_text(
+        json.dumps({"results": [item_a], "pagination": {"of": 200, "total": 3, "next": None}}),
+        encoding="utf-8",
+    )
+    inc_manifest = MODULE.build_catalog(inc_dir, offline=True)
+    assert inc_manifest["complete"] is False
+    assert inc_manifest["incomplete_reason"] == "fewer_pages_than_reported_total"
     # Non-LoC results: 2nd Howle candidate has exact prefix + exact declared length vs 1st's 8B prefix
     non_loc = tmp_path / "results.json"
     non_loc.write_text(json.dumps([
@@ -338,7 +365,10 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
         remaining_loc_targets=remaining_loc,
     )
 
-    # Best Howle candidate selected (337920B exact prefix, not 8B)
+    # Best Howle candidate selected (337920B exact prefix, not 8B), and Reuter extracts 2009 from filename (not 2012 upload dir)
+    reuter_row = next(r for r in res["damaged_49_rows"] if r["case"] == "zero-page-reuter")
+    assert reuter_row["year_hint"] == 2009
+    assert reuter_row["year_hint_source"] == "url_filename_date"
     howle_row = next(r for r in res["damaged_49_rows"] if r["case"] == "zero-page-howle")
     assert howle_row["selected_non_loc"]["operation_id"] == "op_exact"
     assert howle_row["selected_non_loc"]["shared_prefix_bytes"] == 337920

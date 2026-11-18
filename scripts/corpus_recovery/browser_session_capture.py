@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import argparse
 import csv
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
@@ -23,6 +23,7 @@ from urllib.parse import urlsplit
 
 from congress_api.models.raw_fetch import BodyFile, FetchAttempt, FetchResult
 from congress_api.parsers.archive_links import ARCHIVE_REPLAY_PATHS, allowed_url
+from congress_api.parsers.document_links import binary_pdf_header
 from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_record
 from congress_api.retention.provenance import instant, verify_local_file
 from congress_api.retention.receipt_writer import ReceiptWriter
@@ -70,6 +71,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
   btnRow.style.flexWrap = 'wrap';
 
   const pickBtn = document.createElement('button');
+  pickBtn.id = 'ct-browser-pick-btn';
   pickBtn.textContent = '1. Pick output folder';
   Object.assign(pickBtn.style, {
     background: '#374151', color: '#ffffff', border: '0', borderRadius: '6px',
@@ -77,6 +79,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
   });
 
   const stepBtn = document.createElement('button');
+  stepBtn.id = 'ct-browser-step-btn';
   stepBtn.textContent = '2. Capture next target (pick folder first)';
   stepBtn.disabled = true;
   Object.assign(stepBtn.style, {
@@ -148,6 +151,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
     if (!dirHandle || window.location.origin !== EXPECTED_ORIGIN) {
       stepBtn.disabled = true;
       stepBtn.style.opacity = '0.5';
+      stepBtn.textContent = '2. Capture next target (pick folder first)';
       return;
     }
     if (nextIndex >= TARGETS.length) {
@@ -168,6 +172,22 @@ _SNIPPET_TEMPLATE = r"""(() => {
     stepBtn.disabled = false;
     stepBtn.style.opacity = '1';
     stepBtn.textContent = `2. Capture [${nextIndex + 1}/${TARGETS.length}] ${target.case_id}`;
+  }
+
+  function hasValidPdfHeader(buf) {
+    const bytes = new Uint8Array(buf.slice(0, 1024));
+    const head = new TextDecoder('latin1').decode(bytes);
+    const trimmed = head.replace(/^(?:\u00ef\u00bb\u00bf|[ \t\r\n])+/, '');
+    if (trimmed.startsWith('%PDF-')) return true;
+    const m = /%PDF-[12]\.\d(?:\r|\n)/.exec(head);
+    if (!m || m.index === 0) return false;
+    const preamble = bytes.subarray(0, m.index);
+    let hasBinary = false;
+    for (let i = 0; i < preamble.length; i++) {
+      if (preamble[i] === 0x3c) return false; // '<' markup forbidden before %PDF-
+      if (preamble[i] >= 128 || preamble[i] < 9) hasBinary = true;
+    }
+    return hasBinary;
   }
 
   function arrayBufferWithAbort(res, signal) {
@@ -196,24 +216,48 @@ _SNIPPET_TEMPLATE = r"""(() => {
       statusEl.textContent = 'File System Access API (window.showDirectoryPicker) is unavailable in this browser.';
       return;
     }
+    stepBtn.disabled = true;
+    stepBtn.style.opacity = '0.5';
+
+    let nextHandle;
     try {
-      dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-      existingLines = await readExistingLines(dirHandle, 'browser-captures.jsonl');
-      existingErrors = await readExistingLines(dirHandle, 'browser-captures.errors.jsonl');
-      capturedCaseIds = new Set();
-      for (const ln of existingLines) {
-        try {
-          const parsed = JSON.parse(ln);
-          if (parsed && typeof parsed.case_id === 'string') capturedCaseIds.add(parsed.case_id);
-        } catch (_ignored) {}
+      nextHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    } catch (err) {
+      statusEl.textContent = `Folder selection canceled: ${err && err.message ? err.message : err}`;
+      refreshStepButton();
+      return;
+    }
+
+    // Read proposed folder into temporaries FIRST; if reading fails, clear active folder so
+    // neither the previous folder nor the new folder can ever be overwritten with stale state.
+    try {
+      const nextLines = await readExistingLines(nextHandle, 'browser-captures.jsonl');
+      const nextErrors = await readExistingLines(nextHandle, 'browser-captures.errors.jsonl');
+      const nextCaptured = new Set();
+      for (const ln of nextLines) {
+        const parsed = JSON.parse(ln);
+        if (!parsed || typeof parsed.case_id !== 'string' || !parsed.case_id.trim()) {
+          throw new Error('Malformed existing browser-captures.jsonl row');
+        }
+        nextCaptured.add(parsed.case_id);
       }
+      dirHandle = nextHandle;
+      existingLines = nextLines;
+      existingErrors = nextErrors;
+      capturedCaseIds = nextCaptured;
       nextIndex = 0;
       advanceToNextUncaptured();
       const previewTarget = nextIndex < TARGETS.length ? `\nNext URL: ${TARGETS[nextIndex].fetch_url}` : '';
       statusEl.textContent = `Folder ready (${existingLines.length} prior capture(s) preserved).${previewTarget}`;
       refreshStepButton();
     } catch (err) {
-      statusEl.textContent = `Folder selection failed or canceled: ${err && err.message ? err.message : err}`;
+      dirHandle = null;
+      existingLines = [];
+      existingErrors = [];
+      capturedCaseIds = new Set();
+      nextIndex = 0;
+      refreshStepButton();
+      statusEl.textContent = `Failed to read existing manifest in selected folder (capture disabled): ${err && err.message ? err.message : err}`;
     }
   });
 
@@ -240,7 +284,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
 
       if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
         const loc = res.headers ? res.headers.get('location') : null;
-        const msg = `Redirect refused under redirect:'manual' (type=${res.type}, status=${res.status}, location=${loc || 'opaque'}). Use a direct canonical 14-digit URL on ${EXPECTED_ORIGIN}.`;
+        const msg = `Redirect refused under redirect:'manual' (type=${res.type}, status=${res.status}, location=${loc || 'opaque'}). Supply a resolved canonical 14-digit URL on ${EXPECTED_ORIGIN}.`;
         existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, error: msg, at: new Date().toISOString() }));
         await persistErrors();
         statusEl.textContent = `STOPPED: ${msg}`;
@@ -286,8 +330,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
       }
 
       const buf = await arrayBufferWithAbort(res, controller.signal);
-      const head = new TextDecoder('ascii').decode(new Uint8Array(buf.slice(0, 1024)));
-      if (!head.includes('%PDF-')) {
+      if (!hasValidPdfHeader(buf)) {
         const msg = `Response is not a PDF (${buf.byteLength} bytes) for ${target.case_id}`;
         existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, final_url: res.url, error: msg, at: new Date().toISOString() }));
         await persistErrors();
@@ -356,19 +399,52 @@ def _validate_target(item: Any) -> dict[str, str]:
         raise ValueError("Target entry must be an object")
     required = ("case_id", "original_url", "fetch_url", "expected_origin")
     if any(not isinstance(item.get(k), str) or not item[k].strip() for k in required):
-        raise ValueError("Target entry requires non-empty case_id, original_url, fetch_url, and expected_origin")
-    fetch_parts = urlsplit(item["fetch_url"])
-    origin_parts = urlsplit(item["expected_origin"])
+        raise ValueError(
+            "Target entry requires non-empty case_id, original_url, fetch_url, and expected_origin"
+        )
+    fetch_url = item["fetch_url"].strip()
+    expected_origin = item["expected_origin"].strip()
+    original_url = item["original_url"].strip()
+    fetch_parts = urlsplit(fetch_url)
+    origin_parts = urlsplit(expected_origin)
     if fetch_parts.scheme not in {"http", "https"} or not fetch_parts.hostname:
-        raise ValueError(f"Invalid fetch_url: {item['fetch_url']}")
+        raise ValueError(f"Invalid fetch_url: {fetch_url}")
     if origin_parts.scheme not in {"http", "https"} or not origin_parts.netloc or origin_parts.path not in {"", "/"}:
-        raise ValueError(f"Invalid expected_origin: {item['expected_origin']}")
+        raise ValueError(f"Invalid expected_origin: {expected_origin}")
     if f"{fetch_parts.scheme}://{fetch_parts.netloc}" != f"{origin_parts.scheme}://{origin_parts.netloc}":
-        raise ValueError(f"fetch_url origin differs from expected_origin: {item['fetch_url']}")
-    orig_parts = urlsplit(item["original_url"])
+        raise ValueError(f"fetch_url origin differs from expected_origin: {fetch_url}")
+    if (fetch_parts.hostname or "").lower() == "webarchive.loc.gov" and not LOC_REPLAY_ID_RE.fullmatch(fetch_parts.path):
+        raise ValueError(
+            f"webarchive.loc.gov fetch_url must be a resolved 14-digit id_ replay URL "
+            f"(/all/YYYYMMDDHHMMSSid_/http...); resolve the exact timestamp from "
+            f"https://webarchive.loc.gov/all/*/{original_url} in your browser first: {fetch_url}"
+        )
+    if allowed_url(fetch_url) is None:
+        raise ValueError(f"Target fetch_url failed archive_links.allowed_url: {fetch_url}")
+    orig_parts = urlsplit(original_url)
     if orig_parts.scheme not in {"http", "https"} or not orig_parts.hostname:
-        raise ValueError(f"Invalid original_url: {item['original_url']}")
-    return {k: item[k].strip() for k in required}
+        raise ValueError(f"Invalid original_url: {original_url}")
+    return {
+        "case_id": item["case_id"].strip(),
+        "original_url": original_url,
+        "fetch_url": fetch_url,
+        "expected_origin": expected_origin,
+    }
+
+
+def _load_validated_targets(targets_path: Path) -> list[dict[str, str]]:
+    if not targets_path.is_file():
+        raise FileNotFoundError(f"Missing targets file: {targets_path}")
+    raw = json.loads(targets_path.read_text(encoding="utf-8"))
+    if not isinstance(raw, list) or not raw:
+        raise ValueError("Targets JSON must be a non-empty array")
+    targets = [_validate_target(item) for item in raw]
+    seen_cases: set[str] = set()
+    for t in targets:
+        if t["case_id"] in seen_cases:
+            raise ValueError(f"Duplicate case_id in targets JSON: {t['case_id']}")
+        seen_cases.add(t["case_id"])
+    return targets
 
 
 def emit_snippet(
@@ -383,10 +459,7 @@ def emit_snippet(
         raise ValueError("interval_seconds must be positive")
     if timeout_seconds <= 0:
         raise ValueError("timeout_seconds must be positive")
-    raw = json.loads(targets_path.read_text(encoding="utf-8"))
-    if not isinstance(raw, list) or not raw:
-        raise ValueError("Targets JSON must be a non-empty array")
-    targets = [_validate_target(item) for item in raw]
+    targets = _load_validated_targets(targets_path)
     origins = {t["expected_origin"] for t in targets}
     if len(origins) != 1:
         raise ValueError(f"All targets in one snippet must share expected_origin; got {sorted(origins)}")
@@ -434,18 +507,39 @@ def _validate_requested_url(requested_url: str, final_url: str, case_id: str) ->
         raise ValueError(f"Record {case_id} requested_url origin differs from final_url: {requested_url}")
     if req_parts.username is not None or req_parts.password is not None or req_parts.fragment:
         raise ValueError(f"Record {case_id} requested_url carries credentials or fragment: {requested_url}")
-    if allowed_url(requested_url) is not None:
+    if requested_url == final_url:
         return requested_url
-    # Allow explicit LoC year-selector shorthand ONLY on webarchive.loc.gov when embedded target matches final_url.
+    # Allow explicit LoC year-selector shorthand ONLY when embedded original URL matches final_url;
+    # never allow requested_url for file A to pair with final_url for file B.
     if (req_parts.hostname or "").lower() == "webarchive.loc.gov":
         req_m = LOC_REPLAY_SELECTOR_RE.fullmatch(req_parts.path)
         fin_m = LOC_REPLAY_ID_RE.fullmatch(fin_parts.path)
         if req_m and fin_m and req_m.group(1) == fin_m.group(1):
             return requested_url
-    raise ValueError(f"Record {case_id} invalid requested_url: {requested_url}")
+    raise ValueError(
+        f"Record {case_id} requested_url does not match final_url target ({requested_url!r} vs {final_url!r})"
+    )
+
+
+def _validate_utc_retrieved_at(raw_ts: str, case_id: str) -> str:
+    trimmed = raw_ts.strip()
+    if not trimmed.endswith(("Z", "+00:00")):
+        raise ValueError(
+            f"Record {case_id} retrieved_at must be an explicit UTC timestamp ending in 'Z' or '+00:00': {raw_ts!r}"
+        )
+    dt = instant(trimmed)
+    if dt.utcoffset() != timedelta(0):
+        raise ValueError(f"Record {case_id} retrieved_at has non-zero UTC offset: {raw_ts!r}")
+    return dt.astimezone(timezone.utc).isoformat()
+
+
+def _has_valid_pdf_header(head: bytes) -> bool:
+    return head.lstrip(b"\xef\xbb\xbf \t\r\n").startswith(b"%PDF-") or binary_pdf_header(head)
 
 
 def _load_damaged_manifest(damaged_manifest: Path) -> dict[str, str]:
+    if not damaged_manifest.is_file():
+        raise FileNotFoundError(f"Missing damaged_manifest: {damaged_manifest}")
     damaged_by_case: dict[str, str] = {}
     with damaged_manifest.open(encoding="utf-8") as stream:
         for row in csv.DictReader(stream, delimiter="\t"):
@@ -476,6 +570,7 @@ def ingest_captures(
     write_date: str | None = None,
     damaged_manifest: Path | None = None,
     damaged_sources_dir: Path | None = None,
+    targets_path: Path | None = None,
 ) -> dict[str, Any]:
     """Verify captured browser PDFs, retain via ReceiptWriter, verify receipt_binding, and qualify."""
     manifest_path = capture_dir / "browser-captures.jsonl"
@@ -489,6 +584,10 @@ def ingest_captures(
     if damaged_manifest is not None:
         damaged_by_case = _load_damaged_manifest(damaged_manifest)
 
+    trusted_targets: dict[str, dict[str, str]] | None = None
+    if targets_path is not None:
+        trusted_targets = {t["case_id"]: t for t in _load_validated_targets(targets_path)}
+
     # Pass 1: Preflight every manifest row & local PDF before creating/freezing any receipt.
     preflight: list[dict[str, Any]] = []
     for idx, line_text in enumerate(raw_lines, 1):
@@ -497,9 +596,9 @@ def ingest_captures(
         for req in ("case_id", "original_url", "requested_url", "final_url", "retrieved_at", "sha256"):
             if not isinstance(rec.get(req), str) or not rec[req].strip():
                 raise ValueError(f"Record {idx} missing required field {req}")
-        case_id = rec["case_id"]
-        # Validate ISO-8601 UTC timestamp before calling ReceiptWriter (avoids stranding frozen op dir).
-        instant(rec["retrieved_at"])
+        case_id = rec["case_id"].strip()
+        normalized_retrieved_at = _validate_utc_retrieved_at(rec["retrieved_at"], case_id)
+
         if rec.get("http_status") != 200:
             raise ValueError(f"Record {case_id} requires http_status=200, got {rec.get('http_status')}")
         if type(rec.get("bytes")) is not int or rec["bytes"] <= 0:
@@ -516,8 +615,22 @@ def ingest_captures(
         if "content-range" in headers:
             raise ValueError(f"Record {case_id} carries content-range header (partial transfer refused)")
 
-        final_url = _validate_capture_url(rec["final_url"])
-        requested_url = _validate_requested_url(rec["requested_url"], final_url, case_id)
+        final_url = _validate_capture_url(rec["final_url"].strip())
+        requested_url = _validate_requested_url(rec["requested_url"].strip(), final_url, case_id)
+        original_url = rec["original_url"].strip()
+
+        if trusted_targets is not None:
+            if case_id not in trusted_targets:
+                raise ValueError(f"Record {case_id} is not present in trusted --targets")
+            target = trusted_targets[case_id]
+            if original_url != target["original_url"]:
+                raise ValueError(
+                    f"Record {case_id} original_url {original_url!r} does not match trusted target {target['original_url']!r}"
+                )
+            if requested_url != target["fetch_url"] or final_url != target["fetch_url"]:
+                raise ValueError(
+                    f"Record {case_id} URL ({requested_url!r} -> {final_url!r}) does not match trusted target {target['fetch_url']!r}"
+                )
 
         media_type = headers.get("content-type", "application/pdf").split(";", 1)[0].strip().lower() or "application/pdf"
         if media_type not in ALLOWED_PDF_MEDIA_TYPES:
@@ -527,11 +640,13 @@ def ingest_captures(
         verified = verify_local_file(pdf_path, expected_sha256=rec["sha256"], expected_size=rec["bytes"])
         with verified.path.open("rb") as stream:
             head = stream.read(1024)
-        if b"%PDF-" not in head:
-            raise ValueError(f"Record {case_id} body is not a PDF (missing %PDF- header)")
+        if not _has_valid_pdf_header(head):
+            raise ValueError(f"Record {case_id} body is not a valid PDF (failed leading %PDF- header check)")
 
         preflight.append({
-            "rec": rec,
+            "case_id": case_id,
+            "original_url": original_url,
+            "retrieved_at": normalized_retrieved_at,
             "headers": headers,
             "final_url": final_url,
             "requested_url": requested_url,
@@ -554,18 +669,20 @@ def ingest_captures(
 
     entries: list[dict[str, Any]] = []
     for item in preflight:
-        rec = item["rec"]
+        case_id = item["case_id"]
+        original_url = item["original_url"]
+        retrieved_at = item["retrieved_at"]
         headers = item["headers"]
         final_url = item["final_url"]
         requested_url = item["requested_url"]
         media_type = item["media_type"]
         verified = item["verified"]
 
-        op_id = hashlib.sha256(f"{rec['case_id']}|{final_url}|{verified.sha256}".encode()).hexdigest()[:24]
+        op_id = hashlib.sha256(f"{case_id}|{final_url}|{verified.sha256}".encode()).hexdigest()[:24]
         attempt = FetchAttempt(
             requested_url=requested_url,
             url=final_url,
-            retrieved_at=rec["retrieved_at"],
+            retrieved_at=retrieved_at,
             transport=TRANSPORT_NAME,
             http_status=200,
             provider_status=None,
@@ -575,7 +692,7 @@ def ingest_captures(
             body=BodyFile(verified.path, verified.sha256, verified.size_bytes, media_type, None, None, None),
         )
         observations = [
-            {"source": TRANSPORT_NAME, "case_id": rec["case_id"], "original_url": rec["original_url"]}
+            {"source": TRANSPORT_NAME, "case_id": case_id, "original_url": original_url}
         ]
         receipt_key, receipt_line = writer.write(
             FetchResult(final=attempt),
@@ -599,14 +716,14 @@ def ingest_captures(
         )
 
         prefix_info = None
-        if damaged_sources_dir is not None and rec["case_id"] in damaged_by_case:
-            orig_file = _resolve_damaged_original(damaged_sources_dir, damaged_by_case[rec["case_id"]])
+        if damaged_sources_dir is not None and case_id in damaged_by_case:
+            orig_file = _resolve_damaged_original(damaged_sources_dir, damaged_by_case[case_id])
             if orig_file.is_file():
                 prefix_info = shared_prefix(orig_file.read_bytes(), verified.path.read_bytes())
 
         entries.append({
-            "case_id": rec["case_id"],
-            "original_url": rec["original_url"],
+            "case_id": case_id,
+            "original_url": original_url,
             "final_url": final_url,
             "sha256": verified.sha256,
             "bytes": verified.size_bytes,
@@ -651,6 +768,7 @@ def main(argv: list[str] | None = None) -> int:
     p_ing.add_argument("--write-date", default=None)
     p_ing.add_argument("--damaged-manifest", type=Path, default=None)
     p_ing.add_argument("--damaged-sources-dir", type=Path, default=None)
+    p_ing.add_argument("--targets", type=Path, default=None, help="Optional trusted targets JSON to bind case_id/URLs")
 
     args = parser.parse_args(argv)
     if args.command == "emit-snippet":
@@ -671,6 +789,7 @@ def main(argv: list[str] | None = None) -> int:
         write_date=args.write_date,
         damaged_manifest=args.damaged_manifest,
         damaged_sources_dir=args.damaged_sources_dir,
+        targets_path=args.targets,
     )
     print(json.dumps({"total": report["total"], "qualified": report["qualified"]}, indent=2))
     return 0
