@@ -899,15 +899,27 @@ def recoveries(d: Diff):
     return groups, notes
 
 
+# A removal always goes to a person (data_only_night.EXPLAINABLE), and the candidate is not public
+# until it publishes, so a count alone leaves the signer nothing to look up: one removed
+# recording match stopped two of three capture nights that way (ct-618r). A few removals are
+# named in the report; each key is a row of the live release. More than this is not a lookup job.
+REMOVED_KEYS_NAMED = 20
+
+
 def generic(table):
     """Registry primary key: rows added and removed by identity, then value groups on matched rows."""
     def run(d: Diff):
         fields = d.identities[table]['fields']
         using = ','.join(f'"{f}"' for f in fields)
-        removed = d.one(f'SELECT count(*) FROM base_{table} ANTI JOIN candidate_{table} USING({using})')
+        gone = f'FROM base_{table} ANTI JOIN candidate_{table} USING({using})'
+        removed = d.one(f'SELECT count(*) {gone}')
         added = d.one(f'SELECT count(*) FROM candidate_{table} ANTI JOIN base_{table} USING({using})')
         out = [group('removed keys', 'no evidence given', -removed), group('added keys', 'no evidence given', added)]
-        return out + d.changed(table, f'base_{table} p JOIN candidate_{table} l USING({using})', exclude=set(fields)), {}
+        notes = {}
+        if 0 < removed <= REMOVED_KEYS_NAMED:
+            text = ','.join(f'CAST("{f}" AS VARCHAR)' for f in fields)
+            notes['removed_keys'] = [dict(zip(fields, row)) for row in d.rows(f'SELECT {text} {gone} ORDER BY ALL')]
+        return out + d.changed(table, f'base_{table} p JOIN candidate_{table} l USING({using})', exclude=set(fields)), notes
     return run
 
 
