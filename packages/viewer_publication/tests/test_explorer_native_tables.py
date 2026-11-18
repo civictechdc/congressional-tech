@@ -508,6 +508,9 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
               array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
             UNION ALL SELECT 117999,'house',cast('2024-08-01' AS DATE),'Markup','Markup',false,
               make_array(named_struct('system_code','hssy00','role','host')),arrow_cast(make_array('118-hr-9999'),'List(Utf8)'),
+              array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0)
+            UNION ALL SELECT 118111,'house',cast('2024-09-05' AS DATE),'Markup','Markup',false,
+              make_array(named_struct('system_code','hssy00','role','host')),arrow_cast(make_array('118-hr-7777'),'List(Utf8)'),
               array_slice(make_array(named_struct('name',cast(NULL AS VARCHAR),'url',cast(NULL AS VARCHAR),'video_key',cast(NULL AS VARCHAR))),1,0))""", materialize=True),
         dict(name='meetings_export', sql="""SELECT event_id,chamber,meeting_type,title,
             array_slice(make_array(named_struct('source',cast(NULL AS VARCHAR),'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
@@ -523,7 +526,9 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
             UNION ALL SELECT repeat('66',32),'youtube:SBp0UXikw8w'
             UNION ALL SELECT repeat('77',32),'youtube:SBp0UXikw8w'
             UNION ALL SELECT repeat('88',32),'youtube:markupAAAAA'
-            UNION ALL SELECT repeat('99',32),'youtube:statementBB'""", materialize=True),
+            UNION ALL SELECT repeat('99',32),'youtube:statementBB'
+            UNION ALL SELECT repeat('aa',32),'youtube:majorityCCC'
+            UNION ALL SELECT repeat('bb',32),'youtube:minorityCCC'""", materialize=True),
         dict(name='recording_video_pages', sql="SELECT DISTINCT page_body,arrow_cast(decode(page_body,'hex'),'FixedSizeBinary(32)') AS body_sha FROM recording_video_links", materialize=True),
         dict(name='capture_source_contexts', sql="""SELECT 's1' AS source_id,repeat('11',32) AS body_sha
             UNION ALL SELECT 's2',repeat('22',32)
@@ -533,7 +538,9 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
             UNION ALL SELECT 's6',repeat('66',32)
             UNION ALL SELECT 's7',repeat('77',32)
             UNION ALL SELECT 's8',repeat('88',32)
-            UNION ALL SELECT 's9',repeat('99',32)""", materialize=True),
+            UNION ALL SELECT 's9',repeat('99',32)
+            UNION ALL SELECT 'sa',repeat('aa',32)
+            UNION ALL SELECT 'sb',repeat('bb',32)""", materialize=True),
         dict(name='source_addresses', sql="""SELECT 's1' AS source_id,'https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=7972' AS url
             UNION ALL SELECT 's2','https://republicans-science.house.gov/markups?ID=409C'
             UNION ALL SELECT 's3','https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=3123'
@@ -544,7 +551,10 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
             UNION ALL SELECT 's7','https://science.house.gov/markups?ID=F6543C82'
             -- Two different pages on one date: neither is provably the proceeding.
             UNION ALL SELECT 's8','https://republicans-science.house.gov/markups?ID=AAAA'
-            UNION ALL SELECT 's9','https://republicans-science.house.gov/opening-statements?ID=BBBB'""", materialize=True),
+            UNION ALL SELECT 's9','https://republicans-science.house.gov/opening-statements?ID=BBBB'
+            -- The two party sites are different publishers, even with one path and query.
+            UNION ALL SELECT 'sa','https://republicans-science.house.gov/markups?ID=CCCC'
+            UNION ALL SELECT 'sb','https://democrats-science.house.gov/markups?ID=CCCC'""", materialize=True),
         dict(name='recording_page_sources', sql="SELECT DISTINCT c.source_id,c.body_sha AS page_body FROM recording_video_pages vp JOIN capture_source_contexts c ON c.body_sha=vp.page_body", materialize=True),
         dict(name='page_facts', sql="""SELECT arrow_cast(decode(repeat('11',32),'hex'),'FixedSizeBinary(32)') AS body_sha,'completed' AS status,
               'Exploring State Options in SNAP | House Agriculture Committee' AS title,'Exploring State Options in SNAP' AS heading,
@@ -572,7 +582,13 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
               '2024-08-01','August 1, 2024',arrow_cast(NULL,'List(Int64)')
             UNION ALL SELECT arrow_cast(decode(repeat('99',32),'hex'),'FixedSizeBinary(32)'),'completed',
               'Opening Statement at the Markup of the Weather Act','Opening Statement at the Markup of the Weather Act',
-              '2024-08-01','August 1, 2024',arrow_cast(NULL,'List(Int64)')""", materialize=True),
+              '2024-08-01','August 1, 2024',arrow_cast(NULL,'List(Int64)')
+            UNION ALL SELECT arrow_cast(decode(repeat('aa',32),'hex'),'FixedSizeBinary(32)'),'completed',
+              'Full Committee Markup of the Fusion Act','Full Committee Markup of the Fusion Act',
+              '2024-09-05','September 5, 2024',arrow_cast(NULL,'List(Int64)')
+            UNION ALL SELECT arrow_cast(decode(repeat('bb',32),'hex'),'FixedSizeBinary(32)'),'completed',
+              'Full Committee Markup of the Fusion Act','Full Committee Markup of the Fusion Act',
+              '2024-09-05','September 5, 2024',arrow_cast(NULL,'List(Int64)')""", materialize=True),
         dict(name='publisher_links', sql="SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS VARCHAR) AS source_id WHERE false", materialize=True),
         dict(name='document_members', sql="SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS BIGINT) AS component,cast(NULL AS VARCHAR) AS filename,cast(NULL AS VARCHAR) AS source_url WHERE false", materialize=True),
         dict(name='component_meeting_links', sql="SELECT cast(NULL AS BIGINT) AS component,arrow_cast(NULL,'List(Utf8)') AS meeting_keys WHERE false", materialize=True),
@@ -606,7 +622,11 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
             UNION ALL SELECT 'youtube:markupAAAAA',arrow_cast(decode(repeat('a8',32),'hex'),'FixedSizeBinary(32)'),
               arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(7000 AS INT),'Full Committee Markup of the Weather Act'
             UNION ALL SELECT 'youtube:statementBB',arrow_cast(decode(repeat('a9',32),'hex'),'FixedSizeBinary(32)'),
-              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(300 AS INT),'Opening Statement'""", materialize=True),
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(300 AS INT),'Opening Statement'
+            UNION ALL SELECT 'youtube:majorityCCC',arrow_cast(decode(repeat('b1',32),'hex'),'FixedSizeBinary(32)'),
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(7000 AS INT),'Full Committee Markup of the Fusion Act'
+            UNION ALL SELECT 'youtube:minorityCCC',arrow_cast(decode(repeat('b2',32),'hex'),'FixedSizeBinary(32)'),
+              arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'),false,cast(7000 AS INT),'Full Committee Markup of the Fusion Act'""", materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='package_meeting_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='package_mods_facts', sql="SELECT cast(NULL AS VARCHAR) AS package_id,arrow_cast(NULL,'List(Int64)') AS named_meetings WHERE false", materialize=True),
@@ -636,6 +656,7 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
     # ct-mwod: one page under two host aliases is still one page on its date; two pages are not.
     assert rec['youtube:SBp0UXikw8w']['event_ids'] == [117471]
     assert rec['youtube:markupAAAAA']['event_ids'] == [] and rec['youtube:statementBB']['event_ids'] == []
+    assert rec['youtube:majorityCCC']['event_ids'] == [] and rec['youtube:minorityCCC']['event_ids'] == []
     # Both saved copies win the meeting; they are one match, cited to the lower body.
     assert [(m['event_id'], m['basis'], m['source_ref']) for m in rows(tmp_path, 'recording_matches')
             if m['video_key'] == 'youtube:SBp0UXikw8w'] == [(117471, 'committee_page', 'committee_page:' + '66' * 32)]

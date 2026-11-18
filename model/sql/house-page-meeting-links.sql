@@ -7,8 +7,9 @@
 -- host and its party host (science.house.gov, republicans-science.house.gov), and the queue fetching
 -- the second address removed a correct match on 2026-11-17 (ct-mwod). page_key is host_stem (the
 -- one place the host prefixes are stripped) with the address's path and query, so the same path and
--- query on those hosts is one page. It cannot see an alias whose path or query differs, and it
--- would merge two party sites' different pages that share a path and query on one date.
+-- query on those hosts is one page. The two party sites are different publishers, so a date
+-- holding both a democrats- and a republicans- page is never one page (party_site). It cannot
+-- see an alias whose path or query differs.
 WITH stopwords AS (
  SELECT make_array(
   '','the','a','an','of','and','to','in','on','for','with','from','at','by','is','are','be','as','or','its','it','this','that',
@@ -79,6 +80,7 @@ WITH stopwords AS (
   u.page_body,
   u.source_url,
   u.host_stem||lower(regexp_replace(u.source_url,'^https?://[^/]+','')) AS page_key,
+  u.party_site,
   hh.parent_committee,
   coalesce(pf.heading,'')||' '||coalesce(pf.title,'')||' '||regexp_replace(u.source_url,'^https?://[^/]+/','') AS title_text,
   coalesce(pf.text_head,'') AS text_head,
@@ -89,9 +91,14 @@ WITH stopwords AS (
   regexp_match(u.source_url,'(?:^|-)([0-9])([0-9]{2})(20[0-9]{2})(?:[^0-9]|$)') AS u_mdy7
  FROM page_facts_matched pf
  RIGHT JOIN (
-  SELECT pu.page_body,pu.source_url,
-   regexp_replace(lower((regexp_match(pu.source_url,'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]house[.]gov'))[1]),'^(?:edit-)?(?:democrats-|republicans-|archives[0-9]*-)','') AS host_stem
-  FROM page_urls pu
+  SELECT h.page_body,h.source_url,
+   regexp_replace(h.host,'^(?:edit-)?(?:democrats-|republicans-|archives[0-9]*-)','') AS host_stem,
+   (regexp_match(h.host,'^(?:edit-)?(democrats|republicans)-'))[1] AS party_site
+  FROM (
+   SELECT pu.page_body,pu.source_url,
+    lower((regexp_match(pu.source_url,'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]house[.]gov'))[1]) AS host
+   FROM page_urls pu
+  ) h
  ) u ON pf.page_body=u.page_body
  JOIN house_hosts hh ON hh.host=u.host_stem
 ), pages_text_dates AS (
@@ -115,6 +122,8 @@ WITH stopwords AS (
   page_body,
   parent_committee,
   min(page_key) AS page_key,
+  min(party_site) AS party_lo,
+  max(party_site) AS party_hi,
   min(title_text) AS title_text,
   min(title_text||' '||text_head) AS full_text,
   coalesce(
@@ -145,7 +154,9 @@ WITH stopwords AS (
    sw.sw
   )) AS full_words,
   min(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee)=
-   max(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee) AS single_page_on_date
+   max(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee)
+   AND coalesce(min(g.party_lo) OVER (PARTITION BY g.page_date,g.parent_committee)=
+    max(g.party_hi) OVER (PARTITION BY g.page_date,g.parent_committee),true) AS single_page_on_date
  FROM pages_grouped g
  CROSS JOIN stopwords sw
  WHERE g.page_date IS NOT NULL
