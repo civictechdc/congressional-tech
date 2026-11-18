@@ -36,6 +36,8 @@ from congress_docmeta import (
     try_zero_llm_bypass_v6,
 )
 
+from congress_docmeta.schema_v4 import MAX_PERSONAS  # noqa: E402
+
 REPO_ROOT = Path(__file__).resolve().parents[1]  # this package
 SRC_DIR = REPO_ROOT / "src"
 
@@ -483,7 +485,7 @@ def test_anomaly_router_v6_and_graceful_data_degradation(
     assert ok_rep["has_anomaly"] is False
     assert ok_rep["anomaly_codes"] == []
 
-    # Anomalous doc: missing actor on witness_statement + wrong congress vs 118 slug + invalid USC ref + >10 raw personas
+    # Anomalous doc: missing actor on witness_statement + wrong congress vs 118 slug + invalid USC ref + raw personas over the cap
     bad_doc = {
         "status": "usable",
         "text_quality": "native",
@@ -497,7 +499,7 @@ def test_anomaly_router_v6_and_graceful_data_degradation(
     bad_ctx = {
         "filename": "HHRG-118-JU00-Wstate-SmithJ-20230510.pdf",
         "text": "Statement of Jane Smith, May 10, 2023.",
-        "raw_persona_count": 14,
+        "raw_persona_count": MAX_PERSONAS + 1,
         "witness_keys": ["w_smith"],
         "rel_witness_name": "Jane Smith",
         "usc_oracle_invalid_refs": ["usc:49 U.S.C. 77"],
@@ -506,6 +508,7 @@ def test_anomaly_router_v6_and_graceful_data_degradation(
     assert bad_rep["has_anomaly"] is True
     assert bad_rep["escalate_to_teacher"] is True
     assert len(bad_rep["anomaly_codes"]) >= 3
+    assert "persona_roster_leak" in bad_rep["anomaly_codes"]
 
     batch = route_batch_anomalies_v6([clean_doc, bad_doc], [clean_ctx, bad_ctx])
     assert batch["flagged_indices"] == [1]
@@ -703,7 +706,8 @@ def test_r4_witness_statement_salutation_chair_personas() -> None:
         "Stephanie Herseth Sandlin",
         "Boozman",
     ]
-    assert len(add_salutation_chair_personas_v6([witness] * 10, text)) == 10
+    # A list already at the people limit gets nothing added.
+    assert len(add_salutation_chair_personas_v6([witness] * MAX_PERSONAS, text)) == MAX_PERSONAS
 
     # Only witness statements: a letter's addressees are recipients, not chair personas.
     for kind, want in (("witness_statement", 3), ("external_submission_letter", 1)):

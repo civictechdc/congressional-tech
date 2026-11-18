@@ -89,6 +89,44 @@ def test_sync_kind_matcher_and_per_doc_grammar_helper_v6() -> None:
 
 
 
+def test_grammar_takes_the_people_limit_and_refuses_one_more() -> None:
+    """The decoding grammar built from each schema accepts `MAX_PERSONAS` people and stops the next (ct-bult)."""
+    from congress_docmeta.compact_wire_v6 import (
+        DOCMETA_V6_COMPACT_SCHEMA_STR,
+        build_doc_kind_compact_schema_v6,
+        encode_v4_to_compact_v6,
+    )
+    from congress_docmeta.schema_v4 import MAX_PERSONAS
+
+    tok = FastGemma4Tokenizer(resolve_paths().resolve_tokenizer_json())
+
+    def doc(n: int) -> dict[str, Any]:
+        return {
+            "status": "usable",
+            "text_quality": "native",
+            "primary_kind": "hearing_transcript",
+            "personas": [
+                {"name": f"Pat Lastname{i:02d}", "role": "witness", "entity_type": "non_gov_person"} for i in range(n)
+            ],
+            "composed_title": "Hearing on Federal Oversight",
+            "gist": "The committee hears witnesses.",
+            "topics": ["oversight"],
+        }
+
+    for schema, enc in (
+        (SCHEMA_V4_STR, lambda d: d),
+        (DOCMETA_V6_COMPACT_SCHEMA_STR, encode_v4_to_compact_v6),
+        (build_doc_kind_compact_schema_v6("hearing_transcript"), encode_v4_to_compact_v6),
+    ):
+        gh = GrammarHelper(tok, schema, whitespace_flexible=False)
+        up = len(gh.upfront_ff)
+        for n, fits in ((MAX_PERSONAS, True), (MAX_PERSONAS + 1, False)):
+            ids = tok.encode(json.dumps(enc(doc(n)), separators=(",", ":")), add_special_tokens=False)
+            m = gh.new_matcher()
+            took = m.try_consume_tokens(ids[up:])
+            assert (took == len(ids) - up and m.is_accepting()) is fits, (n, took, len(ids) - up)
+
+
 def test_pythonic_engine_v6_fast_gemma4_engine_seam_cpu(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify `PythonicEngineV6` runs natively on `FastGemma4Engine` (`apply_chat_template` + `run_rolling` + `SyncMatcher`)."""
     import numpy as np

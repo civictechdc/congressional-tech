@@ -19,12 +19,16 @@ import json
 from pathlib import Path
 
 from .gold import DEFAULT_DOCS8_JSON, DEFAULT_GOLD_JSONL, DEFAULT_VAL48_JSON, load_and_prepare_v64_splits
+from .schema_v4 import MAX_PERSONAS
 
 WIRE_CONFIG = {
     "wire_format": "compact_v6",
     "version": "v6_4_c2_c4_8bit_bf16mlp",
     "sys_prompt": "SYS_DOCMETA_V6_COMPACT",
     "schema": "DocMetaV6Compact",
+    # The people limit the prompt states and the labels obey. A checkpoint without this key (v6_4 and earlier)
+    # was trained on 10.
+    "max_personas": MAX_PERSONAS,
 }
 
 

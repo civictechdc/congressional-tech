@@ -170,7 +170,7 @@
     "personas": {
       "type": "array",
       "minItems": 1,
-      "maxItems": 10,
+      "maxItems": 26,
       "description": "Lead/active document actors ONLY in reading order (witnesses, speakers, chairs, ranking members, sponsors, offerors, nominees, introducers, questioners, senders, recipients, named staff). NEVER list roll-call voters or standing backbench committee members.",
       "items": {
         "type": "object",

@@ -1989,7 +1989,7 @@ def post_pass_v5(
             if rescued_w:
                 seen_surnames = {_surname_token(str(p.get("name") or "")) for p in cur_pers}
                 for wp in rescued_w:
-                    if len(cur_pers) >= 16:
+                    if len(cur_pers) >= MAX_PERSONAS:
                         break
                     wsur = _surname_token(wp["name"])
                     if wsur and wsur not in seen_surnames:
