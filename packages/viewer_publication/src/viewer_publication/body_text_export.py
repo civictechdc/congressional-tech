@@ -187,12 +187,14 @@ def export(*, engine, work, body_text, detail, readings_table=None, unreadable_f
     if counts['parser_conflicts'][0]['n']:
         raise ValueError('A saved body has body text under more than one parser')
     facts = file_facts(output)
+    detail_facts = file_facts(detail)
     digest, size = facts['sha256'], facts['size']
     by_parser = {row['parser']: row for row in counts['rows']}
     pointer = dict(version=1, key=definition['prefix'] + digest + '.parquet', sha256=digest, bytes=size,
         rows=sum(row['rows'] for row in by_parser.values()), footer_sha256=footer_sha256(output),
         row_group_rows=definition['settings']['row_group_rows'], max_text_json_bytes=definition['max_text_json_bytes'],
         body_text=body_text if isinstance(body_text, dict) else None, release_id=release_id,
+        detail=dict(sha256=detail_facts['sha256'], size=detail_facts['size']),
         parser_versions=dict(sorted(versions.items())),
         selection=accepted['identity'],
         coverage=dict(saved_bodies=counts['saved'][0]['n'],

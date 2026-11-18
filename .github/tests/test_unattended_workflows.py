@@ -29,7 +29,7 @@ def test_raw_source_mirror_holders_are_bounded_near_their_measured_runs():
 
 def test_cpi_update_pins_its_environment_and_pushes_through_the_shared_script():
     value = workflow('bls-cpi-update.yml')
-    assert value['permissions'] == {'contents': 'write'}
+    assert value['permissions'] == {'contents': 'write', 'statuses': 'write'}
     job = value['jobs']['update-cpi']
     assert job['timeout-minutes'] == '10'
     python = next(step for step in job['steps'] if step.get('uses', '').startswith('actions/setup-python@'))
@@ -96,3 +96,67 @@ def test_commit_and_push_without_changes_pushes_nothing(checkout):
     work, remote, env = checkout
     result = commit_and_push(work, env, 'data.csv')
     assert result.returncode == 0 and 'No changes' in result.stdout
+
+
+@pytest.mark.parametrize('name', ['bls-cpi-update.yml', 'update-data.yml'])
+def test_workflows_that_push_to_main_can_mark_their_commits(name):
+    value = workflow(name)
+    assert value['permissions'] == {'contents': 'write', 'statuses': 'write'}
+    assert value['env']['GH_TOKEN'] == '${{ github.token }}'
+
+
+def actions(checkout, tmp_path, *, fail_first_push=False):
+    """The checkout as a GitHub Actions job sees it, with a gh that records each status it is asked to post."""
+    work, remote, env = checkout
+    tools = tmp_path / 'tools'
+    tools.mkdir()
+    calls = tmp_path / 'gh-calls'
+    (tools / 'gh').write_text(f'#!/bin/sh\necho "$@" >> {calls}\n')
+    (tools / 'gh').chmod(0o755)
+    env = dict(env, PATH=f"{tools}{os.pathsep}{env['PATH']}", GITHUB_ACTIONS='true', GITHUB_REPOSITORY='o/r',
+               GITHUB_RUN_ID='42', GITHUB_RUN_ATTEMPT='1', GITHUB_JOB='update-cpi', GITHUB_WORKFLOW='CPI',
+               GITHUB_SERVER_URL='https://github.com')
+    return work, remote, env, calls
+
+
+def test_in_actions_a_data_commit_is_marked_on_a_side_branch_before_it_reaches_main(checkout, tmp_path):
+    work, remote, env, calls = actions(checkout, tmp_path)
+    # main accepts only a commit the side branch already holds: marked first, moved second.
+    hook = remote / 'hooks/pre-receive'
+    hook.write_text('#!/bin/sh\nwhile read old new ref; do\n  if [ "$ref" = refs/heads/main ]; then\n'
+                    '    [ "$(git rev-parse refs/heads/data-commit/42-1-update-cpi 2>/dev/null)" = "$new" ] || exit 1\n  fi\ndone\n')
+    hook.chmod(0o755)
+    (work / 'data.csv').write_text('a\nc\n')
+    result = commit_and_push(work, env, 'data.csv')
+    assert result.returncode == 0, result.stdout + result.stderr
+    head = git('rev-parse', 'main', cwd=remote, env=env).strip()
+    assert git('log', '--format=%s', 'main', cwd=remote, env=env).split() == ['update', 'seed']
+    [call] = calls.read_text().splitlines()
+    assert f'repos/o/r/statuses/{head}' in call and 'state=success' in call and 'context=merge-gate' in call
+    # The side branch is gone once the commit is on main.
+    assert git('branch', '--list', 'data-commit/*', cwd=remote, env=env).strip() == ''
+
+
+def test_a_rebased_data_commit_is_marked_again_under_its_new_identity(checkout, tmp_path):
+    work, remote, env, calls = actions(checkout, tmp_path)
+    other = tmp_path / 'other'
+    git('clone', '-q', str(remote), str(other), cwd=tmp_path, env=env)
+    (other / 'other.csv').write_text('b\n')
+    git('add', 'other.csv', cwd=other, env=env)
+    git('commit', '-q', '-m', 'concurrent', cwd=other, env=env)
+    git('push', '-q', 'origin', 'main', cwd=other, env=env)
+    (work / 'data.csv').write_text('a\nc\n')
+    result = commit_and_push(work, env, 'data.csv')
+    assert result.returncode == 0, result.stdout + result.stderr
+    head = git('rev-parse', 'main', cwd=remote, env=env).strip()
+    marked = [line.split('statuses/')[1].split()[0] for line in calls.read_text().splitlines()]
+    assert len(marked) == 2 and marked[0] != head and marked[1] == head
+    assert git('branch', '--list', 'data-commit/*', cwd=remote, env=env).strip() == ''
+
+
+def test_outside_actions_nothing_is_marked_and_no_side_branch_is_made(checkout, tmp_path):
+    work, remote, env, calls = actions(checkout, tmp_path)
+    env = {key: value for key, value in env.items() if key != 'GITHUB_ACTIONS'}
+    (work / 'data.csv').write_text('a\nc\n')
+    assert commit_and_push(work, env, 'data.csv').returncode == 0
+    assert not calls.exists() and git('branch', '--list', 'data-commit/*', cwd=remote, env=env).strip() == ''

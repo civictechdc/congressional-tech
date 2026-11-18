@@ -27,6 +27,13 @@ from viewer_publication.body_text_export import COLUMNS, file_facts, footer_sha2
 TAIL_JOINER_SINGLE_PAGE = "\n\n[... middle omitted ...]\n\n"
 
 
+def _verify_file_pin(path: Path, pin: dict[str, Any], *, label: str) -> None:
+    if path.stat().st_size != pin.get("size", pin.get("bytes")):
+        raise ValueError(f"{label} byte size differs from its pin")
+    if file_facts(path)["sha256"] != pin.get("sha256"):
+        raise ValueError(f"{label} digest differs from its pin")
+
+
 @dataclass(frozen=True, slots=True)
 class BodyTextRecord:
     """Verified single-body record from `export.parquet`."""
@@ -409,19 +416,49 @@ class BodyTextSSOT:
         verify_row_hashes: bool = True,
         batch_size: int = 512,
         limit: int | None = None,
+        handoff: str | Path | None = None,
     ) -> Iterator[dict[str, Any]]:
-        """Stream joined `(detail.parquet + export.parquet)` documents for SereneDB full-text indexing."""
+        """Read every detail row against pinned text, preserving explicit coverage outcomes.
+
+        A newer release or a legacy export without a detail pin requires an explicit
+        reconciled handoff. Missing/held/excluded text yields ``text=None`` and its
+        ``text_status``; callers can select searchable rows without losing the inventory.
+        """
         detail_p = Path(detail_parquet).resolve()
+        if batch_size <= 0 or (limit is not None and limit < 0):
+            raise ValueError("batch_size must be positive and limit nonnegative")
+        binding = self._bind_detail(detail_p, handoff=handoff)
         exp_q = str(self.export_path).replace("'", "''")
         det_q = str(detail_p).replace("'", "''")
+        coverage_join = ""
+        status_sql = "CASE WHEN e.saved_body IS NULL THEN 'missing' WHEN e.text='' THEN 'unassessed_empty' ELSE 'available' END"
+        digest_sql = "lower(hex(e.text_sha256))"
+        if handoff is not None:
+            coverage_p = Path(binding["coverage"]["path"])
+            _verify_file_pin(coverage_p, binding["coverage"], label="coverage")
+            coverage_q = str(coverage_p).replace("'", "''")
+            coverage_join = f"LEFT JOIN read_parquet('{coverage_q}') c ON d.saved_body=from_hex(c.body_sha256)"
+            status_sql = "coalesce(c.text_status, 'unassessed')"
+            digest_sql = "c.text_sha256"
         lim_sql = f"LIMIT {int(limit)}" if limit is not None else ""
         con = duckdb.connect(config={"memory_limit": "1GB", "threads": 2})
         try:
+            if handoff is not None and con.execute(
+                f"SELECT body_sha256 FROM read_parquet('{coverage_q}') GROUP BY body_sha256 HAVING count(*)<>1 LIMIT 1"
+            ).fetchone():
+                raise ValueError("Coverage contains duplicate body identities")
+            if handoff is not None and con.execute(
+                f"""SELECT 1 FROM read_parquet('{det_q}') d ANTI JOIN read_parquet('{coverage_q}') c
+                    ON d.saved_body=from_hex(c.body_sha256) WHERE d.saved_body IS NOT NULL LIMIT 1"""
+            ).fetchone():
+                raise ValueError("Coverage omits a release body identity")
             cur = con.execute(
                 f"""
                 WITH d_raw AS (
                     SELECT row_number() OVER () - 1 AS list_row, *
                     FROM read_parquet('{det_q}')
+                ), d_selected AS (
+                    SELECT * FROM d_raw ORDER BY list_row {lim_sql}
                 )
                 SELECT
                     d.list_row,
@@ -436,11 +473,13 @@ class BodyTextSSOT:
                     CAST(d.document_date AS VARCHAR) AS document_date,
                     e.text,
                     e.page_offsets,
-                    e.text_sha256
-                FROM d_raw d
-                JOIN read_parquet('{exp_q}') e ON d.saved_body = e.saved_body
+                    e.text_sha256,
+                    {status_sql} AS text_status,
+                    {digest_sql} AS selected_text_sha256
+                FROM d_selected d
+                LEFT JOIN read_parquet('{exp_q}') e ON d.saved_body = e.saved_body
+                {coverage_join}
                 ORDER BY d.list_row
-                {lim_sql}
                 """
             )
             while True:
@@ -448,14 +487,28 @@ class BodyTextSSOT:
                 if not rows:
                     break
                 for r in rows:
+                    status = r[13]
+                    if status not in {"available", "valid_empty", "missing", "excluded", "unsupported",
+                                      "held", "refused", "unassessed", "unassessed_empty"}:
+                        raise ValueError(f"Unknown text coverage outcome: {status}")
                     txt = r[10]
+                    if status in {"available", "valid_empty"} and txt is None:
+                        raise ValueError(f"Coverage claims missing text is available: {r[2]}")
+                    if status not in {"available", "valid_empty"}:
+                        txt = None
                     offs = tuple(int(x) for x in (r[11] or ()))
-                    tsha = bytes(r[12])
-                    if verify_row_hashes and sha256(txt.encode("utf-8")).digest() != tsha:
+                    tsha = bytes(r[12]) if txt is not None else None
+                    if tsha is not None and tsha.hex() != r[14]:
+                        raise ValueError(f"Selected text digest differs from coverage: {r[2]}")
+                    if status == "valid_empty" and txt:
+                        raise ValueError(f"Coverage claims nonempty text is a valid empty: {r[2]}")
+                    if status == "available" and txt == "":
+                        raise ValueError(f"Coverage claims unqualified empty text is available: {r[2]}")
+                    if verify_row_hashes and txt is not None and sha256(txt.encode("utf-8")).digest() != tsha:
                         raise ValueError(f"Integrity check failed on saved_body {r[2]}")
                     body_out = (
                         slice_pages(txt, offs, start_page=0, max_pages=max_pages)
-                        if max_pages is not None
+                        if max_pages is not None and txt is not None
                         else txt
                     )
                     yield {
@@ -470,12 +523,41 @@ class BodyTextSSOT:
                         "committee_keys": list(r[8] or ()),
                         "document_date": r[9],
                         "text": body_out,
+                        "text_status": status,
+                        "release_id": binding.get("release_id"),
                         "page_offsets": list(offs),
                         "declared_page_count": len(offs),
-                        "text_sha256": tsha.hex(),
+                        "text_sha256": tsha.hex() if tsha is not None else None,
                     }
         finally:
             con.close()
+
+    def _bind_detail(self, detail: Path, *, handoff: str | Path | None) -> dict[str, Any]:
+        pointer = self.pointer or {}
+        binding = pointer
+        if handoff is not None:
+            handoff_path = Path(handoff).resolve()
+            binding = json.loads(handoff_path.read_text())
+            if (binding.get("version") != 1
+                    or binding.get("export_sha256") != pointer.get("sha256")
+                    or binding.get("source_release_id") != pointer.get("release_id")
+                    or not binding.get("release_id")):
+                raise ValueError("Handoff does not bind this text export and its source release")
+            if binding.get("coverage") is None:
+                raise ValueError("A reconciled handoff requires explicit coverage")
+            if self.pointer_path is None or not isinstance(binding.get("export_pointer"), dict):
+                raise ValueError("A reconciled handoff requires its retained export pointer pin")
+            _verify_file_pin(self.pointer_path, binding["export_pointer"], label="export pointer")
+            binding = dict(binding)
+            binding["coverage"] = dict(binding["coverage"])
+            coverage_path = Path(binding["coverage"]["path"])
+            if not coverage_path.is_absolute():
+                binding["coverage"]["path"] = str(handoff_path.parent / coverage_path)
+        pin = binding.get("detail")
+        if not isinstance(pin, dict):
+            raise ValueError("Export has no detail binding; provide a reconciled handoff")
+        _verify_file_pin(detail, pin, label="detail/release")
+        return binding
 
     def iter_docmeta_windows(
         self,
@@ -487,6 +569,7 @@ class BodyTextSSOT:
         verify_row_hashes: bool = True,
         batch_size: int = 512,
         limit: int | None = None,
+        handoff: str | Path | None = None,
     ) -> Iterator[dict[str, Any]]:
         """Stream bounded `head_tail_window` slices per `detail.parquet` row directly from `export.parquet`."""
         for doc in self.iter_serenedb_documents(
@@ -495,8 +578,14 @@ class BodyTextSSOT:
             verify_row_hashes=verify_row_hashes,
             batch_size=batch_size,
             limit=limit,
+            handoff=handoff,
         ):
             full_text = doc.pop("text")
+            if full_text is None:
+                doc["p12_text"] = None
+                doc["full_text_chars"] = None
+                yield doc
+                continue
             offs = doc["page_offsets"]
             doc["p12_text"] = head_tail_window(
                 full_text,

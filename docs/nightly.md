@@ -27,7 +27,7 @@ Open the run the issue links, then the failed step's log. The last lines say why
 |---|---|---|
 | **Capture archive sources** failed | A source site or storage refused a request. Receipts already saved are kept. | Nothing, usually: the publish still runs on what was saved, and tomorrow's capture closes the issue. To retry now: `gh run rerun <run id> --failed`. |
 | Publish log line starts `data-only night: the candidate differs from the live release in …` | A merged change altered the model's definition (its pull request carried a "definition change" notice). The night waits for a person to say the differences are intended. | [Write a cause record](#writing-a-cause-record). |
-| Publish log line starts `data-only night:` with anything else (rows removed, more change than the new receipts explain, a live link that would open another file) | The data moved in a way the publisher will not accept by itself. | Read the listed reasons. Right: [write a cause record](#writing-a-cause-record). Wrong: leave it stopped and file a ticket; nothing was published. |
+| Publish log line starts `data-only night:` with anything else (rows removed, more change than the new receipts explain, a live link that would open another file) | The data moved in a way the publisher will not accept by itself. | Read the listed reasons. For `removed keys`, the run's `release-gate.json` names up to 20 of them under that file's `removed_keys`; each is a row of the live release, so look it up there. Right: [write a cause record](#writing-a-cause-record). Wrong: leave it stopped and file a ticket; nothing was published. |
 | `link rule:` … `vanish`, `not published keys`, `not checked` | The candidate would break links the live release serves. No record can pass this. | A code or data fault. File a ticket; the live release keeps serving. |
 | `producer proof:` | A lake table's history does not trace to committed code, usually because something wrote to it outside the nightly. The night stops before it appends anything, so the table is as that writer left it. | File a ticket with the line. Do not write to production tables by hand (below). |
 | `ReadTimeout`, `503`, `SlowDown`, a runner that vanished | Storage or GitHub hiccup. | `gh run rerun <run id> --failed`. |
@@ -69,6 +69,10 @@ Repository variables, under Settings → Secrets and variables → Actions:
 ## Rules that keep it boring
 
 - Merge nothing to main while a capture or publish is running (`gh run list --limit 5`).
+- A pull request merges only when its **merge-gate** check is green. That check waits for the
+  real validation and fails if any of it failed; it also passes pull requests that need no
+  validation (tickets, docs). The rule is `.github/rulesets/main.json`. Repository admins can
+  still push tickets and docs straight to main, and can override with `gh pr merge --admin`.
 - A pull request that changes the model's definition says so in its checks. Expect the next
   night to stop for a cause record, and merge it when you have time to write one.
 - Do not write to production lake tables from a laptop. To add data, put the receipts in raw

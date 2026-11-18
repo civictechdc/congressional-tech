@@ -77,3 +77,7 @@ Final root-cause review: bind subset export policy to pinned captures, use chron
 **2026-11-11T14:41:33Z**
 
 validated 2026-11-11, left open: parked News Lake work, nothing changed since the 2026-11-08 simplification (no commit names ct-4nyy; last packages/news_lake commit d4d53baa is ct-xu1o's).
+
+**2026-11-17T09:17:02Z**
+
+17 November manual current-code audit: KEEP OPEN, PARKED. storage/docspec/export.py:84 derives expiry only from capture rows present in the read, so subset exports can omit needed evidence. Native kind_arrow_schema("capture").field("retain_until").type is string; schema.py:280 compares it with a string instant. export.py:196 overwrites fixed destination names. Existing small acceptance criteria still apply: pinned capture evidence, chronological boundary handling and release-specific immutable output. No duplicate export ticket or implementation was created. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.

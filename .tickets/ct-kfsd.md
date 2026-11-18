@@ -1,34 +1,38 @@
 ---
 id: ct-kfsd
-status: open
-deps: [ct-55qo]
-links: [ct-a73a, ct-n3ik, ct-hz8y, ct-0a35]
+status: in_progress
+deps: [ct-55qo, ct-m704]
+links: [ct-a73a, ct-n3ik, ct-hz8y, ct-0a35, ct-m704]
 created: 2026-11-13T17:46:15Z
 type: task
 priority: 1
 assignee: mikewolfd
 tags: [body_text, pdf, ocr, publication]
 ---
-# Publish corrected historical PDF readings after GPO cleanup qualification
+# Finish historical PDF cleanup exposure and corrected-text delivery
 
-Eight GPO-corrected PDF pairs are adopted and validated in the explicit selected-text manifest; six unchanged controls retain their baseline keys. Accepted-set-v4 preserves those exact selections and adds independently reviewed repairs under ct-hz8y. The merged cleanup and 14-body/281-page source qualification remain reusable. Public text delivery and remaining historical cleanup exposure stay open; search implementation belongs to the user's SereneDB work.
+## Implementation update — 17 November 2026
 
-## Design
+Actual full-export readback passed for all 32 identified corrected/control bodies: eight earlier corrections, six unchanged controls and eighteen later cleanup repairs. Exact selected text hashes survived; the current-release handoff preserves the same export and source-review limits. Evidence: `<main checkout>/.cache/archive-release/ticket-fixes-20261117/text-handoff/cleanup-readback/result.json` and `final-report.md`.
 
-Reuse spicy-docs 0.85.0+gpo.20261113 and the existing CT reader, native tables and publication path. Declare PDF 4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8 and composed WARC 74403ab720b5cbbe72115d0825d928d492eff61ba27db03d01312ee7fc43c630 where applicable. The existing short-text queues are review samples, not a complete affected-body predicate. Historical rows without cleanup diagnostics remain unknown until qualified. Ambiguous printing labels such as JACKIE/WILDA are retained intentionally; removing them requires source/layout evidence. Measure diagnostic storage before broader retention.
+Remaining: the broader historical affected-set/exposure reconciliation. These 32 verified bodies do not establish that all historical cleanup losses have been discovered. Reuse their completed correction and delivery evidence; do not re-OCR them. Any later public readback belongs to the same ct-m704 delivery path.
 
-## First selective repair batch
+## Audit baseline — 17 November 2026
 
-Use ct-n3ik's practical queue and exact selected-release exposure to choose a bounded first batch of source-confirmed, search-visible cleanup losses. Reuse retained pre-cleanup text and the existing 14-PDF consumer evidence where identities match. Prefer renormalization; reread native text only when the needed intermediate is absent and a source-confirmed native path is supported. Do not repeat all PDF OCR or claim minor typography must be perfect.
+Eight earlier source-qualified GPO-corrected pairs and 18 additional v12 cleanup repairs are selected locally. The complete v12 export exists and includes corrected text; the old v4/no-export summary is superseded. Prior 14-body/281-page source qualification, six unchanged controls, actual keys and the newly qualified archive-file composition cohort remain reusable evidence.
 
-Retain the before/after text identity, restored substantive passages, old accepted key, actual remedy and explicit residual gaps for each chosen body. A named reviewer directly reads raw -> retained or newly produced intermediate -> candidate output; qualify selection separately. Route native/vector, geometry, recognition and missing-source cases to their existing owners instead of absorbing unrelated causes. The user authorized targeted OCR and reviewed refetch on 14 November. ct-0a35 coordinates downstream accepted-passage checks with the user's SereneDB work.
+Remaining work is the historical affected-set reconciliation and readback of corrected rows at the intended delivery boundary. The export targets release `55c14dcda87a`; ct-m704 owns its reconciliation with the newer release, quality associations, authoritative catalogs and combined handoff. This ticket owns the cleanup-specific exposure and restored-passage checks, not a second publisher or text export.
 
 ## Acceptance Criteria
 
-1. Freeze an exposure inventory with source hashes, affected predicates and explicit unassessed records; prove any carried-forward rows unaffected rather than globally restamping old output.
-2. Restore the source-confirmed S017 tail and S055/S150/S138 bullets; retain real printing-footer, valid blank, short-page and numbered-prose controls. An independent reviewer confirms planted omissions fail.
-3. Reconcile text hashes, offsets, OCR provenance, active refusals, pending work and exactly one selected version per body/parser. Qualify an actual composed-WARC cohort before claiming WARC publication acceptance.
-4. Publish through the existing gates, retain the prior reading evidence and record readback of the selected corrected rows. Record diagnostics bytes and the remaining ambiguous-label limitation.
+1. Reconcile the retained cleanup queue with current selected keys and release exposure. Name affected and unassessed records; do not globally restamp old outputs or assume a short-text sample is a complete predicate.
+2. Credit existing S017 tail and S055/S150/S138 bullet qualifications where identities match. For any additional affected set, prefer retained-text renormalization; reread or OCR only when source evidence requires it. Preserve real printing footers, legitimate blank/short pages, numbered prose and intentional ambiguous labels.
+3. Verify restored substantive passages, text hashes, offsets, OCR provenance and one selected version through ct-m704's actual delivered export. Record local versus public readback explicitly. Retain source-confirmed composed archive-file evidence where claimed, prior readings and diagnostics-size measurements.
+4. Retain a bounded direct raw -> intermediate -> final review and planted-omission rejection for changed cases; use gpt-6.1-terra at medium reasoning for bulk PDF review. Route geometry, recognition, missing sources and search behavior to their existing owners. No broad PDF OCR replay.
+
+## Audit evidence
+
+17 November manual audit: `<main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md`; PDF sample: the sibling `pdf-manual-review.md`. New v12 files: `<main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/body-text-ssot-20261116/`. These evidence files retain the exact inputs, identities and sampled/unread scope. Historical notes below are dated evidence; the current scope and criteria above supersede their unfinished-work summaries.
 
 ## Notes
 
@@ -65,3 +69,11 @@ Accepted-set-v3 preserves all eight actual 4d045589 corrections and the six base
 **2026-11-15T04:46:39Z**
 
 The current selection is accepted-text-adoption-20261114/accepted-set-v4/selection.json, SHA 0f5bfec953b7c0e0f85d92b437da3e8e4c6245e7f4c5542efac8391deb10479d. The independent delta review proves all 956 earlier overrides unchanged and all earlier native manifest references retained. Do not repeat the GPO control reviews solely because 26 unrelated empty-output repairs were appended. ct-n3ik is completing the exact-current-key corruption screen/exposure queue before selecting another bounded historical cleanup batch.
+
+**2026-11-17T09:17:02Z**
+
+Manual audit credits eight earlier corrected pairs, 18 additional v12 cleanup repairs and the complete local export. Narrowed to remaining historical exposure and cleanup-specific corrected-text readback through ct-m704 delivery. Added that delivery dependency instead of retaining a separate implicit publishing path. Existing source/printing-label controls and source-review limits remain reusable. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.
+
+**2026-11-17T10:28:52Z**
+
+Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved.

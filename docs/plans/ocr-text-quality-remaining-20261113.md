@@ -1,4 +1,71 @@
-# Remaining OCR and text-quality work — 15 November 2026 UTC
+# Remaining OCR and text-quality work
+
+## Implemented 80/20 pass — 17 November 2026 UTC
+
+The [final consumer handoff](../../.cache/archive-release/ticket-fixes-20261117/text-handoff/final-handoff-v2/handoff.json)
+preserves the existing 320,629-body export and accounts for every one of the
+323,970 bodies in release `6ac86c21b373`. Its quality state invalidates 12,990
+stale or unprovable measurement references, clears 237 unsupported bands and
+preserves their history. Remaining coverage is explicit: 2,452 missing, 817
+unsupported, 54 refused, 15 excluded and 3 held. Available text includes 57
+source-reviewed valid empty results. These counts describe coverage and
+record consistency, not a whole-corpus source-fidelity certification.
+
+The consumer now checks detail/release identity and selected digests, preserves
+missing/held outcomes, and refuses malformed coverage. Actual export readback
+verified all 32 named cleanup/control bodies. Independent review and the final
+artifact checks are retained under `ticket-fixes-20261117/text-handoff/`.
+
+The PDF allocation guard and bounded-batching maintenance work are complete;
+ct-yy07 and ct-1mq9 are closed. CT uses the shared SpicyDocs Tesseract backend.
+The generic adaptive/rotation raster adapter still lives in CT and its remaining
+consolidation/source-fidelity scope now belongs to ct-hz8y. The f1 partial PDF
+candidate remains held for material omissions on pages 7–8. Existing accepted
+readings were preserved and no corpus-wide OCR ran.
+
+The successor invalid-source inventory contains 455 records and 454 open
+original-source obligations; three reviewed alternatives provide scoped search
+coverage. Five retained receipts now appear in authoritative captures with exact
+readback and a producer record. One conflicting compressed representation remains
+held. Mast's recovered PDF still requires normal model association and text
+adoption. The final handoff pins this inventory and integration evidence.
+
+Three directly reviewed disclosure corrections are wired into the canonical model
+job through the existing kind policy. Full-release comparison, broader name/date
+conflicts, historical cleanup exposure and eligible missing-body processing remain
+open in their tickets. SereneDB search acceptance remains user-owned under ct-0a35.
+
+## Audit baseline — 17 November 2026 UTC
+
+The complete local v12 export contains 320,629 bodies. The remaining work is
+selective repair and accurate delivery accounting. The ticket scopes below
+supersede the unfinished-work summaries in the preserved 15 November snapshot.
+
+- [ct-cbkz](../../.tickets/ct-cbkz.md) is closed: HTML/XML reparse and local
+  adoption are complete. [ct-m704](../../.tickets/ct-m704.md) owns remaining
+  catalog reconciliation, text readback and delivery, including 12,794 stale
+  measurement identities and coverage against the newer release. Its 828 newly
+  associated bodies are absent from v12; the wider 3,326-body coverage gap needs
+  explicit outcomes and does not mean every missing body failed extraction.
+- [ct-yy07](../../.tickets/ct-yy07.md) owns the render limit before image
+  allocation; [ct-hz8y](../../.tickets/ct-hz8y.md) owns remaining recognition
+  omissions and shared SpicyDocs backend reuse; [ct-a73a](../../.tickets/ct-a73a.md)
+  owns residual resource failures and rejected-candidate outcomes. Completed
+  recoveries remain credited, with their sampled review limits.
+- [ct-en4n](../../.tickets/ct-en4n.md) owns source-role/history and invalid-source
+  inventory, including four new error bodies and two wrapper links.
+  [ct-z4w5](../../.tickets/ct-z4w5.md) owns recovery of individually qualified
+  sources. Unrelated unresolved history does not block those targets.
+- [ct-kfsd](../../.tickets/ct-kfsd.md) owns historical cleanup exposure and
+  corrected-passage delivery through ct-m704.
+  [ct-0a35](../../.tickets/ct-0a35.md) retains actual source-to-search acceptance
+  against the user-owned SereneDB integration.
+
+Audit evidence is retained under
+`<main checkout>/.cache/archive-release/ticket-state-review-20261117/`.
+The ticket update itself starts no OCR, refetch or publishing job.
+
+## Historical snapshot — 15 November 2026 UTC
 
 Accepted-set-v11 contains 312,114 release-associated text bodies. The new Mahoney
 replacement passes independent stored-row and selection checks and preserves all

@@ -1,0 +1,240 @@
+{
+  "artifact": {
+    "md5": "9e091c5a9b5b96ebce9a618c90c4b2d3",
+    "path": "model/jobs/inputs/pdf-cover-evidence-ct-fk4w-20261117.parquet",
+    "sha256": "920fd37ddb3190260f97435e162da4bb3c439ede510fc83d192fb1a3a0a30146",
+    "size": 2966
+  },
+  "controls": [
+    {
+      "body_sha256": "16c005f45a12eee1d45da2067ac3231042bd7ff72ff36d5a30066bececb2e637",
+      "bytes": 173170,
+      "case_id": null,
+      "cohort": "gpo_cleanup_loss_renormalized",
+      "page_slots": 66,
+      "text_sha256": "d50aba34ba54c387e01071daa44ce9e254d6616c7e1c14c6f1120dfc9a0a22d0"
+    },
+    {
+      "body_sha256": "a18a284e9a83f89ced910a2c551b3f35de0ced28a1e636bd1fcfc2dd8e967c4e",
+      "bytes": 242474,
+      "case_id": null,
+      "cohort": "gpo_cleanup_loss_renormalized",
+      "page_slots": 76,
+      "text_sha256": "3328edaee3fdf108af8874b16291b2ab77cd0b978fa0a1d87b0cdfbc9387f0a7"
+    }
+  ],
+  "controls_actual_delivery_readback": {
+    "md5": "477e162e0749ad4a9a176f85453915d2",
+    "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cleanup-readback/result.json",
+    "sha256": "89c241d87a96bd93463247d08bdcc743eb68dc2e1f53421670d70b24e404ed2c",
+    "size": 10514
+  },
+  "controls_source_review": {
+    "md5": "94e98d09324954a20f8e0ced7693dbbb",
+    "path": ".cache/archive-release/ocr-recovery-20261113/repairs/body-text-ssot-20261116/pdf_review/review.md",
+    "sha256": "0ca9341bf15f5e9f9f68e95bde4edc54dacce15ef710ecb457a973ea85ce19b4",
+    "size": 7685
+  },
+  "final_adoption": "All three exact reviewed bodies are disclosure forms. The source review supersedes the historical classifier proposal for these identities only; the general classifier remains unchanged.",
+  "limits": "Only three source-reviewed body identities adopted. Other candidates retain existing kinds. No general classifier expansion, filename changes, or association inference. Saperstein historical OCR intermediate unavailable; fresh native empty.",
+  "original_source_review": {
+    "md5": "1c448e04868d9f9a680a00fd6e041b58",
+    "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/review.md",
+    "sha256": "f4b34594c9af0bd69a9fd243ecb18b0417155fc9c15ffed692280bd0025f2c5f",
+    "size": 2522
+  },
+  "policy_result": {
+    "rows": [
+      {
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "witness-support"
+        ],
+        "body_hex": "00472521603f9b066f5fead27a3ad15f4f6c8d16fc52f066709f546b842abc69",
+        "cover_document_family": [
+          "disclosure"
+        ],
+        "filename": "HHRG-115-II13-Wstate-GudesS-20171130-SD011.pdf"
+      },
+      {
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "witness-support"
+        ],
+        "body_hex": "008bdb052fca58f4d411e3cc8a24bd3fab486cbaf753bf9549066bb1b5bc345f",
+        "cover_document_family": [
+          "disclosure"
+        ],
+        "filename": "HHRG-115-II13-Wstate-ColosimoA-20171206-SD333.pdf"
+      },
+      {
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "witness-biography"
+        ],
+        "body_hex": "0201014207ca22f3f4519fadbd5ade2f75fe23064fc1aeac629cd0eeac2eb637",
+        "cover_document_family": [
+          "disclosure"
+        ],
+        "filename": "HHRG-116-SM23-Bio-SapersteinM-20200227.pdf"
+      },
+      {
+        "after_kind": [],
+        "before_kind": [],
+        "body_hex": "16c005f45a12eee1d45da2067ac3231042bd7ff72ff36d5a30066bececb2e637",
+        "cover_document_family": null,
+        "filename": "5D351ACA-5D3B-430A-81CB-B9B56B71C8CE"
+      },
+      {
+        "after_kind": [
+          "published-hearing"
+        ],
+        "before_kind": [
+          "published-hearing"
+        ],
+        "body_hex": "a18a284e9a83f89ced910a2c551b3f35de0ced28a1e636bd1fcfc2dd8e967c4e",
+        "cover_document_family": null,
+        "filename": "CHRG-115hhrg35950.pdf"
+      }
+    ]
+  },
+  "selected_policy": {
+    "md5": "b3b5e1a9d4b373419869f43971106538",
+    "path": ".cache/archive-release/ocr-recovery-20261113/repairs/body-text-ssot-20261116/accepted-set-v12/selection.json",
+    "sha256": "c270fe1bfa190976511f9077d9ae9b1bb45cea9c44f78ae6567564cff64fa91b",
+    "size": 7878019
+  },
+  "source_release_id": "6ac86c21b3732b4c546df1c282cff8e228062355152a4ef0e5252ab86fae5d2e",
+  "source_review": {
+    "md5": "834c15722676b2762fb953c19acf0596",
+    "path": "model/jobs/inputs/pdf-cover-review-ct-fk4w-20261117.md",
+    "sha256": "096660d3f74a2b6780dcb669f376aa2c6edbbaa9236aa089fa9027edee9237d8",
+    "size": 3346
+  },
+  "source_rows": [
+    {
+      "body_sha256": "00472521603f9b066f5fead27a3ad15f4f6c8d16fc52f066709f546b842abc69",
+      "decision_basis": "Exact source first-page review; existing cover classifier unchanged",
+      "document_kind": [
+        "witness-support"
+      ],
+      "filename": "HHRG-115-II13-Wstate-GudesS-20171130-SD011.pdf",
+      "native_intermediate": {
+        "md5": "fe05bdeb4c924eeeacc6fba00946fcac",
+        "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/00472521603f-native.txt",
+        "sha256": "7cfbad3fbfbe1cb9a9ff688beb2d7e1c1c366acaf1073f365dd56359b5e7fc77",
+        "size": 1555
+      },
+      "original_classifier_action": "preserve current kind; classifier abstained",
+      "original_classifier_kind": null,
+      "parser_version": "2980a4db41cbe1f559532557c5ad59f86691527c2569e8b3746c9d32c6f8fdfd",
+      "primary_kind": "truth_in_testimony_disclosure",
+      "raw_pdf": {
+        "md5": "f3d68fdd05045f68cbb03a7e864086c2",
+        "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/raw/00472521603f9b066f5fead27a3ad15f4f6c8d16fc52f066709f546b842abc69.pdf",
+        "sha256": "00472521603f9b066f5fead27a3ad15f4f6c8d16fc52f066709f546b842abc69",
+        "size": 682566
+      },
+      "rendered_page": {
+        "md5": "8ca0306bb4b5455b5de55336d39fb739",
+        "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/00472521603f.png",
+        "sha256": "08c546249a92f3838ea36cfc870c3c905937f0c1de735b0cacc9a161d5fff895",
+        "size": 155130
+      },
+      "reviewed_kind": "testimony-disclosure",
+      "selected_text": {
+        "md5": "f939697f2651764f0e78854b0952bee7",
+        "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/00472521603f9b066f5fead27a3ad15f4f6c8d16fc52f066709f546b842abc69.selected.txt",
+        "sha256": "2c1909b67c05b41a7f11f58eafa0498505d92216fa427adba3e23475ae35f853",
+        "size": 3568
+      },
+      "text_sha256": "2c1909b67c05b41a7f11f58eafa0498505d92216fa427adba3e23475ae35f853",
+      "zero_llm_source": "zero_llm_truth_in_testimony_disclosure"
+    },
+    {
+      "body_sha256": "008bdb052fca58f4d411e3cc8a24bd3fab486cbaf753bf9549066bb1b5bc345f",
+      "decision_basis": "Exact source first-page review; existing cover classifier unchanged",
+      "document_kind": [
+        "witness-support"
+      ],
+      "filename": "HHRG-115-II13-Wstate-ColosimoA-20171206-SD333.pdf",
+      "native_intermediate": {
+        "md5": "f4b007149026295b825026655d9143b5",
+        "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/008bdb052fca-native.txt",
+        "sha256": "f97c5330dcf08c3c9c36b80b21d37dbff8122e8fe65b065369fa7af19b40dee2",
+        "size": 2111
+      },
+      "original_classifier_action": "preserve current kind; classifier abstained",
+      "original_classifier_kind": null,
+      "parser_version": "2980a4db41cbe1f559532557c5ad59f86691527c2569e8b3746c9d32c6f8fdfd",
+      "primary_kind": "truth_in_testimony_disclosure",
+      "raw_pdf": {
+        "md5": "c4bc4e89f23c9e4127ebb0b5aa89537e",
+        "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/raw/008bdb052fca58f4d411e3cc8a24bd3fab486cbaf753bf9549066bb1b5bc345f.pdf",
+        "sha256": "008bdb052fca58f4d411e3cc8a24bd3fab486cbaf753bf9549066bb1b5bc345f",
+        "size": 240322
+      },
+      "rendered_page": {
+        "md5": "9cf8d4d19b391c3a39d226f8e8831b4f",
+        "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/008bdb052fca.png",
+        "sha256": "16f6322116da8214bdf0414137674d4cd87beac017e6868253ec5b60be875261",
+        "size": 205344
+      },
+      "reviewed_kind": "testimony-disclosure",
+      "selected_text": {
+        "md5": "93a10865a6f36656fe6c2dff4bfc2bc5",
+        "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/008bdb052fca58f4d411e3cc8a24bd3fab486cbaf753bf9549066bb1b5bc345f.selected.txt",
+        "sha256": "08beff5a1a3131c2719ab85616083956470ecaf018614e87fece1206f2db608a",
+        "size": 5840
+      },
+      "text_sha256": "08beff5a1a3131c2719ab85616083956470ecaf018614e87fece1206f2db608a",
+      "zero_llm_source": "zero_llm_truth_in_testimony_disclosure"
+    },
+    {
+      "body_sha256": "0201014207ca22f3f4519fadbd5ade2f75fe23064fc1aeac629cd0eeac2eb637",
+      "decision_basis": "Exact source first-page review; existing cover classifier unchanged",
+      "document_kind": [
+        "witness-biography"
+      ],
+      "filename": "HHRG-116-SM23-Bio-SapersteinM-20200227.pdf",
+      "native_intermediate": {
+        "md5": "d41d8cd98f00b204e9800998ecf8427e",
+        "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/0201014207ca-native.txt",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "size": 0
+      },
+      "original_classifier_action": "correct kind/family only",
+      "original_classifier_kind": "testimony-disclosure",
+      "parser_version": "2980a4db41cbe1f559532557c5ad59f86691527c2569e8b3746c9d32c6f8fdfd",
+      "primary_kind": "truth_in_testimony_disclosure",
+      "raw_pdf": {
+        "md5": "30371be58c9c7a088c250be6c5678c0d",
+        "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/raw/0201014207ca22f3f4519fadbd5ade2f75fe23064fc1aeac629cd0eeac2eb637.pdf",
+        "sha256": "0201014207ca22f3f4519fadbd5ade2f75fe23064fc1aeac629cd0eeac2eb637",
+        "size": 101039
+      },
+      "rendered_page": {
+        "md5": "7e760cc70dec4eca076d835ff4942d75",
+        "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/0201014207ca.png",
+        "sha256": "5e824068e158e0955e78e40d7e0b125846b37ae83d1cd8ef287691f46b66828f",
+        "size": 277838
+      },
+      "reviewed_kind": "testimony-disclosure",
+      "selected_text": {
+        "md5": "50efff9c755efde95d136a54ea65482d",
+        "path": ".cache/archive-release/ticket-fixes-20261117/text-handoff/cover-review/0201014207ca22f3f4519fadbd5ade2f75fe23064fc1aeac629cd0eeac2eb637.selected.txt",
+        "sha256": "a680883d8bc7f667d670408ba70e7f39e56a8c4825543c7dcbf85ac66ce4bdf5",
+        "size": 3496
+      },
+      "text_sha256": "a680883d8bc7f667d670408ba70e7f39e56a8c4825543c7dcbf85ac66ce4bdf5",
+      "zero_llm_source": "zero_llm_truth_in_testimony_disclosure"
+    }
+  ],
+  "version": 1
+}

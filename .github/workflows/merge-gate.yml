@@ -1,0 +1,33 @@
+name: Merge gate
+
+# The one check main requires (.github/rulesets/main.json, owner decision 2026-11-17).
+# The validation workflows skip a pull request that touches none of their paths, and GitHub
+# leaves a required check pending forever when its workflow is skipped. So main requires this
+# job instead: it runs on every pull request, waits for the other workflow runs on the same
+# commit, and passes only if none failed. No path filter may be added here.
+on:
+  pull_request:
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: merge-gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  merge-gate:
+    runs-on: ubuntu-24.04
+    # Longer than the slowest validation: six 45-minute shards, then the validate job.
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          sparse-checkout: .github/scripts
+      - name: Wait for this commit's other workflow runs and pass only if none failed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 .github/scripts/merge-gate.py

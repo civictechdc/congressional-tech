@@ -1,6 +1,6 @@
 ---
 id: ct-1mq9
-status: open
+status: closed
 deps: []
 links: [ct-z4i9, ct-yndj]
 created: 2026-11-11T04:24:14Z
@@ -9,21 +9,50 @@ priority: 3
 assignee: mikewolfd
 tags: [lake, maintenance, perf]
 ---
-# readings regrows after compaction: every commit adds files and every append re-reads them all
+# Bound readings-file regrowth after the completed November 12 compaction
 
-Follow-up to ct-yndj (measured 2026-11-11 from retained run folders, read-only). Each readings append anti-joins the whole table: seconds = 1.39 + 14.81 ms per existing data file (n=1,267 remote appends, 599..1,909 files, r=0.79; exact file counts from each run's readings/plan native_inputs, maintenance-prep/append-cost.tsv). The pinned writer never merges files, so every commit adds at least one file per partition it touches, and a compacted table (ct-yndj runbook, about one file per (parser, parser_version)) regrows. Rate today: since ct-z4i9 the nightly commits once per producer pass (daily.py:1041 leaf parsers in mode daily, one batch; daily.py:813-814 HTML metadata with the byte bound): 2 commits and +3 files from 2026-11-09T20:20Z to 2026-11-10T19:16Z. Before that fix one run (nightly 20261109T195731) made 832 appends, 1,072 -> 1,907 files. At 3 files a night the 256-file threshold in model/jobs/maintenance.json is crossed in about 77 nights. Two gaps keep the recurrence manual: (1) maintenance_decision needs file_count, manifest_count and scan_planning_seconds, but the engine's native_inputs report manifest_count and planning_seconds as null (all 252 retained remote records), so lake_maintenance.observations can only be hand-filled; (2) produce_html_metadata (daily.py:822-886, operator path, only tests call it) still takes a plain batch_size with no byte bound, so a batch_size of 1 (d2ec0211) would again make one commit per row.
+## Implementation update — 17 November 2026
 
-## Design
+Closed after the operator path gained a 64 MiB default byte target through the existing readings batching implementation. Three focused native consumer/resume/custody tests passed; no separate scheduler or batch implementation was added.
 
-Options, cheapest first: (a) repeat the ct-yndj move by hand when data files pass the threshold, measured by mp_readings_move.py measure; (b) let the weekly job decide from data_file_count and snapshot_count once the engine reports manifest_count (engine ask), still starting the move only on an owner's word; (c) give produce_html_metadata the same byte bound as the nightly derived pass. Measure files added per nightly for two weeks after the first move before choosing a cadence.
+Measured current readings storage is 74 data files / 33 snapshots versus 35 / 1 after November 12. The increase is mixed incremental/backfill activity, not a measured per-night rate. File count remains below the existing 256-file review threshold; manifest/planning measurements are unavailable. The evidence-backed decision is to retain manual maintenance and existing thresholds. No repeat compaction or history deletion occurred.
+
+Evidence: `<main checkout>/.cache/archive-release/ticket-fixes-20261117/growth/decision.json`, `observation.json`, `README.md` and focused-test receipts. No required recurrence/batching work remains in this scoped ticket.
+
+## Audit baseline — 17 November 2026
+
+The first ct-yndj compaction completed on November 12: 1,910 -> 35 data files and 1,296 -> 1 snapshots, with 1,654,201 rows preserved and exact-value/model-output checks retained. Earlier notes here saying the move has not run are superseded. The new active table is `archive_r1b.readings_compact_20261112`.
+
+The recurrence mechanism remains: each append checks existing keys and adds files. Historical remote measurements linked append time to file count; the old estimate of three files/night is not a current post-compaction measurement. `produce_html_metadata` in `lake/daily.py:859` still accepts only a row batch size; the nightly derived path already has a byte bound. Maintenance observations remain empty, and earlier engine reports lacked manifest/planning metrics.
 
 ## Acceptance Criteria
 
-The owner picks a trigger and cadence (or records why it stays manual), based on two weeks of measured files-per-nightly after the first ct-yndj move; produce_html_metadata either takes a byte bound or records why not.
+1. Reuse retained post-move run metadata to measure files added per nightly and distinguish ordinary incremental growth from backfills. Complete the original two-week observation window (November 12–26) before selecting the cadence, or explicitly record an evidence-backed decision to retain manual operation. No repeat compaction just to measure growth.
+2. Give the operator HTML-metadata path a meaningful byte bound aligned with the maintained nightly path, or record a specific reason it is unnecessary. Preserve batching that avoids one commit per row; measure relevant append/file effects without claiming an unmeasured speedup.
+3. Record the trigger/cadence and unavailable metrics honestly. Reuse existing maintenance and recovery facilities, preserve release-pinned history and keep the schedule manual until its stated adoption requirements are met. Do not invent a second maintenance scheduler.
 
+## Evidence
+
+Completed move: `<main checkout>/.cache/archive-release/maintenance/readings-move-20261112T0110Z/` and ct-yndj closeout. Current helper: `packages/congress_api/src/congress_api/lake/daily.py`; current observations/config: `model/jobs/maintenance.json`. Historical append-cost data remains valid only for its dated population.
+
+## Audit evidence
+
+17 November manual audit: `<main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md`. Historical notes below are retained; the current scope and criteria above supersede their dated unfinished-work summaries.
 
 ## Notes
 
 **2026-11-11T14:31:18Z**
 
 validated 2026-11-11, left open: depends on the first ct-yndj move, which has not run, and then two weeks of files-per-nightly before the owner picks a cadence; produce_html_metadata still takes a plain batch_size (lake/daily.py).
+
+**2026-11-17T09:17:02Z**
+
+Manual audit corrects the stale prerequisite: ct-yndj completed the first move on November 12 (1,910 -> 35 files; 1,296 -> 1 snapshots). Remaining work is measured post-move growth/cadence and the operator helper's byte bound. Historical three-files/night and cost estimates are dated evidence, not a new measurement. Schedule stays manual under existing requirements. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.
+
+**2026-11-17T10:28:53Z**
+
+Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved. Byte-bound implementation and measured manual-maintenance decision complete; closed.
+
+**2026-11-18T15:24:52Z**
+
+2026-11-18: this ticket was closed on 2026-11-17 citing the byte bound on produce_html_metadata, but that commit (4c87b9f6) existed only on an unpushed local main. It is now pull request 202. Measured today from hosted pins: readings takes 2 commits a night (metadata 00039 on 11-17, 00041 on 11-18), about 40 since the 11-12 compaction, so under 10 s a night by this ticket's formula. There is still no automatic compaction and no file-count alarm; archive-jobs.yml maintenance is dispatch-only and model/jobs/maintenance.json has an empty lake_maintenance.

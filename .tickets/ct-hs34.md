@@ -58,3 +58,14 @@ Has its own ticket: the rest of 3's filelock alerts (ct-f4lk); the record-chain 
 Owner only, repository settings: 1 and 16 (the engine credential as a Dependabot secret), 2 (required checks in branch protection).
 
 Waiting on evidence, no action now: 4 (the late cron is accepted and written down in docs/nightly.md), 6 (refresh shard durations when convenient), 8 (first Sunday refresh under the data-only gate), 10 and 14 (owner decisions about the gate's shape; leave the caps alone for seven scheduled nights first). The lxml and soupsieve alerts in 3 each need an equivalence decision because they move parser versions.
+
+**2026-11-17T21:25:00Z**
+
+Item 6, tried and taken back out: refreshed from main's green run 44162145022, `packages/viewer_publication/tests/test_archive_selective.py` measures 1,093 s by itself (879 s recorded before), over the 1,050 s a shard may hold, and the guard test refused the refresh. One file cannot be split across shards. Split that file (64 cases; `test_fresh_process_resume_matches_an_uninterrupted_run` is 213 s over five cases) and then refresh; do not raise the budget to fit it.
+
+Item 3: 23 more alerts cleared by pull request 194 (ct-f4lk closed); what is left is listed there.
+
+**2026-11-17T22:20:00Z: owner decisions (questions tool) on the owner-only items**
+
+- Items 1 and 16 (Dependabot pull requests cannot be validated): no Dependabot secret. Dependency updates are gathered into one squashed change, tested and merged ("Squash all locally, test and merge"). First such batch: pull request 197, every open alert that has a fix (lxml, soupsieve, idna, requests, dnspython, rustls, astro with Node 22.23.5), with a 400-body reader comparison for the lxml and soupsieve move. picomatch has no patched release.
+- Item 2 (branch protection requires no checks): "Require checks to merge". Pull request 198 adds the always-running merge gate and the rule file `.github/rulesets/main.json`; the rule is applied after it merges.

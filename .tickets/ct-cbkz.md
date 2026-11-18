@@ -1,6 +1,6 @@
 ---
 id: ct-cbkz
-status: in_progress
+status: closed
 deps: [ct-55qo, ct-tpwm]
 links: [ct-chc4, ct-m704, ct-f6hr, ct-0a35, ct-n3ik, ct-tpwm, ct-l47f, ct-6v77, ct-082q, ct-g4yz]
 created: 2026-11-12T15:38:26Z
@@ -10,32 +10,29 @@ assignee: mikewolfd
 external-ref: ss-mkxe
 tags: [congress_api, body_text, spicy-docs, html, xml, post-wave-6]
 ---
-# Finish the HTML/XML reparse and adopt qualified text
+# Complete HTML/XML reparse and local adoption; transfer remaining delivery work
 
-The complete 310,964-body HTML/XML cohort is processed and locally adopted: 310,928 completed texts, 35 retained refusals and one dedicated valid feed. All 310,963 reading rows are reconciled. Seventeen repaired and six useful older markup readings remain selected at actual versions. The complete text corruption screen has finished; its source-role candidates still need current-selection/exposure reconciliation under ct-n3ik. Accepted data handoff and downstream delivery remain separate.
+## Completed scope — 17 November 2026
 
-## Design
+The full 310,964-body HTML/XML cohort is processed and locally adopted: 310,928 text rows, 35 retained refusals and one valid House feed handled by its dedicated structured reader. All 310,963 reading rows and their keys/hashes are reconciled. The 400 retained-copy cases remain tied to observed storage size/ETag and decoded identity. Original captures, historical readings, refusals and actual selected versions are preserved.
 
-Reuse the qualified composed spicy-docs wheel, merged GPO cleanup and maintained markup readers. ct-f6hr owns residual encoding and XML-policy compatibility; ct-55qo supplies the implemented selected-reading mechanism. Apply those accepted components to this real cohort, keeping historical readings and refusal evidence until exact retained-table reconciliation passes. Compaction does not establish selection.
+The existing composed-reader controls, measured CPU run, bounded append/readback checks and direct source/intermediate/output reviews satisfy the original reparse/adoption scope. Seventeen repaired and six useful older markup readings retain their qualified versions. Later v12 work adds 12,771 CMS selections and a separately qualified 8,505-body archive-file composition cohort; it does not reopen the completed reparse.
 
-The retained inventory names 310,964 unique HTML/XML bodies (310,047 completed baseline plus 917 recovery targets), with 11.92 GB of historical text. Reuse the frozen completed run and its representative/largest-input reviews. Adopt its exact staged rows through bounded native append. WARC remains outside this cohort pending separate payload and saved-body reachability qualification. This lane does not rerun PDF OCR. The user separately authorized the remaining 206 targeted PDF keys and reviewed refetch on 14 November.
+## Remaining requirements transferred before closure
 
-## Current execution and remaining work
+- ct-m704 owns authoritative catalog reconciliation for subsequent jobs, consistent text/quality state, intended-release coverage, the combined delivery package and actual selected-text readback. Its acceptance criteria explicitly carry the former delivery requirements here.
+- ct-en4n owns source-role/capture-history reconciliation and additions to the invalid-source inventory; ct-z4w5 owns qualified recovery attempts.
+- ct-0a35 retains actual SereneDB search/snippet/citation acceptance. This is separate from local reparsing.
 
-The frozen cohort contains 310,964 body/parser keys: 310,563 in the unchanged bulk lane, 400 completed in the separate verified-retained-copy lane and one House feed with an existing dedicated structured reading. The feed is not an xml_text completion and its zero prose bytes are not a failed extraction. The 400 remain bound to observed archive size/ETag and decoded identity; do not invent missing original capture metadata or restamp historical readings.
+With those transfers recorded, closure covers the completed reparse/local-adoption scope. No broad HTML/XML replay, PDF OCR or refetch is needed. Closure does not claim current-release text publication or completed source recovery.
 
-Run evidence and final collector: <main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/markup-reparse-20261114/. Preserve the completed source/policy pins and final reconciliation hashes. Verified coarse chunks retain all 310,928 text rows and 310,963 reading rows without changing keys or values. All 310,928 texts and 310,963 readings are now appended with exact key/hash membership. The final 22 pieces completed after the independently reviewed bounded stored-key fix ct-tpwm merged in PR #169. ct-f6hr owns cause-specific residual encoding/XML failures; only affected inputs should be retried after a qualified fix. ct-fb7k/ct-en4n supply response-role evidence, ct-n3ik owns the practical exception queue, and ct-0a35 owns source-to-search acceptance.
+## Completion evidence
 
-Bind authoritative reading/text catalogs and one accepted actual key per body/parser using ct-55qo. Carry prior usable text when a new attempt fails. Keep source errors, unknown roles, active refusals and unattempted work visible; completion alone must not promote an error page to substantive document text. Retain legitimate metadata/feed outputs according to their role. No PDF OCR or publisher refetch is part of this lane.
+Retained run: `<main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/markup-reparse-20261114/`; exact append reconciliation and ct-tpwm/PR169 evidence remain in the historical notes. The shared parser, selection and source-role fixes remain credited under ct-f6hr, ct-55qo and ct-en4n.
 
-## Acceptance Criteria
+## Audit evidence
 
-1. The composed wheel passes real bill XML, mixed HTML with local <pre>, adjacent links/buttons and GPO verbatim controls. PDF text and declared PDF identity remain unchanged relative to the chosen baseline.
-2. A measured CPU-only pilot and complete deduplicated HTML/XML manifest name supported, malformed, refused and unassessed bodies; no PDF enters that lane.
-3. Reparse the qualified non-OCR cohort with measured capacity and compare text, refused and pending records in both directions. WARC requires a separate justified reachable cohort.
-4. Account for all 310,964 keys across bulk results, the 400 retained-copy results and the distinct feed route. Check missing/extra/duplicate keys in both directions and preserve completed/error/unreadable/pending outcomes and their exact causes.
-5. Publish only ct-55qo selections, reconcile the authoritative catalogs used by subsequent jobs and read back actual selected text hashes. A failed replacement preserves prior accepted text; retain earlier evidence and prove row uniqueness before any separately authorized destructive compaction.
-6. A named reviewer directly reads a small raw -> actual intermediate -> adopted output sample spanning changed markup, ordinary controls and explicit refusals. Record remaining exceptions for ct-f6hr/ct-n3ik and hand the release/selection identities to ct-0a35.
+17 November manual audit: `<main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md`; PDF sample: the sibling `pdf-manual-review.md`. New v12 files: `<main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/body-text-ssot-20261116/`. These evidence files retain the exact inputs, identities and sampled/unread scope. Historical notes below are dated evidence; the current scope and criteria above supersede their unfinished-work summaries.
 
 ## Notes
 
@@ -132,3 +129,7 @@ All 310,928 ordinary completed markup outputs now have the previously missing wh
 **2026-11-15T05:06:59Z**
 
 The full markup screen's release-exposed strong warnings received direct bounded source/output review. Their long-letter triggers are source typography or table markers, with a source-symbol limitation retained. One separate concrete issue remains: Congress.gov quick-search member dropdown content pollutes a bill's selected plain text. New ct-g4yz owns a narrow content-selection repair using maintained readers and exact publisher/source evidence. The complete prior reparse/adoption remains credited; do not repeat that entire cohort for the affected subset.
+
+**2026-11-17T09:17:02Z**
+
+Closed the completed 310,964-key reparse/local-adoption scope after explicitly transferring remaining delivery, authoritative-catalog reconciliation and actual selected-text readback to ct-m704; source-role/history work remains ct-en4n and actual SereneDB acceptance remains ct-0a35. Full evidence and old notes remain preserved. Closure does not claim that newer-release coverage, source recovery or publication is complete. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.

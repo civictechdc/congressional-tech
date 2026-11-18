@@ -7,6 +7,10 @@ on:
 
 permissions:
   contents: write
+  statuses: write  # commit-and-push.sh marks its data commit for main's merge-gate rule
+
+env:
+  GH_TOKEN: ${{ github.token }}
 
 jobs:
   update-cpi:

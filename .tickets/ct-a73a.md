@@ -1,7 +1,7 @@
 ---
 id: ct-a73a
 status: in_progress
-deps: []
+deps: [ct-yy07]
 links: [ct-m704, ct-kfsd, ct-n3ik, ct-hz8y, ct-yy07, ct-t4p3, ct-55qo, ct-aitp, ct-l3xd]
 created: 2026-11-10T05:38:12Z
 type: bug
@@ -9,20 +9,35 @@ priority: 2
 assignee: mikewolfd
 tags: [congress_api, body_text, ocr]
 ---
-# Reconcile resource-failure recovery and measure memory per request
+# Reconcile remaining PDF resource failures and rejected recovery outputs
 
-All 193 completed bodies from the stored-size recovery lane remain selected in accepted-set-v11. Thirteen historical archive-read failures remain recorded; the recovered 1,208-page pilot is held for source-confirmed OCR omissions. Its old frozen SpicyDocs runtime predates the already-merged strip-boundary fix. Matched Vision settings have no uniform winner; five retained-image Tesseract outputs recover useful prose under direct Terra review and await the maintained consumer check. Separately, all seventeen fresh memory candidates now have verified originals: 84 failed pages exceed the render pixel guard and five ordinary-page failures remain unexplained. Preserve the two same-URL alternative holds, original run and prior failures.
+## Implementation update — 17 November 2026
 
-## Design
+The f1e2e2 failure is diagnosed: zero-area native text on pages 34–38 and over-limit rasters on pages 6–8. Reason-specific fallback preserves useful text on 34–38. A local 5M-pixel retry stayed within about 0.55 GiB RSS after a 20M retry exceeded its 2 GiB watchdog. Forty-three successful intermediates were reused, with unchanged normalized-page hashes; the remaining content defects on 7–8 are explicitly held, not counted as a repaired selected body.
 
-Retain the original cohort and all superseded decisions. ct-55qo owns qualified selection and ct-aitp owns page reuse. The audit found _child_peak_rss_bytes uses process-lifetime ru_maxrss in reused workers: resetting the supervisor sample does not reset that peak. Measure request-scoped memory before ranking individual bodies or raising admission limits; preserve old observations as lifetime measurements. Keep extraction errors separate from resource failures and unreadable decisions.
+The rejected 644a slide's base state is unreadable/unaccepted rather than an inferred success from missing overrides; final handoff dispositions retain the rejected candidate and f1 partial hold. Request-scoped RSS measurement was already fixed, and no replacement subsystem was introduced. ct-yy07's pre-allocation fix is complete.
+
+Remaining: reconcile the residual historical archive-read/resource refusals and any eligible bounded retries, preserving original failures and current selected outcomes. Content repair/acceptance remains ct-hz8y. Evidence: `<main checkout>/.cache/archive-release/ticket-fixes-20261117/pdf/f1-review.md`, its receipt, and the final text handoff.
+
+## Audit baseline — 17 November 2026
+
+The request-memory defect is fixed: `retention/parser_worker.py` resets and samples RSS per request, `lake/body_text.py` records its scope separately from lifetime RSS, and the large-then-small worker regression exists. Credit the 193 earlier stored-size recovery bodies and their retained qualification; do not reimplement measurement or repeat their OCR.
+
+v12 adds 15 accepted memory-cohort outputs and selectively repairs the 1,208-page report. The memory cohort still includes ordinary-geometry source `f1e2e2a26f5bd045131a7ca4d093035497f25a190405fb2ad111b2fe62e4056c`, pages 34–38, with an unexplained extraction failure, plus rejected photo-slide candidate `644a00a97804bbaa732e59709b7fdce9e8d91407c3aa162346269accf0480e4e`. Removing a candidate from new appends alone does not establish its current refusal/quality disposition.
+
+The thirteen historical archive-read failures, original run and same-URL alternative holds remain evidence to reconcile. The long report's ten compared page positions do not settle recognition quality for its 1,198 inherited positions; ct-hz8y owns that content assessment. ct-yy07 owns the opt-in pre-allocation render defect found in the audit.
 
 ## Acceptance Criteria
 
-1. Reconcile every original deadline/memory identity to a qualified completed reading or explicit measured unresolved outcome; supersede decisions with provenance only where justified.
-2. Preserve the running-time deadline and independent pool-budget regression checks.
-3. Request memory measurements are not contaminated by an earlier large request in the same worker; report measurement limitations and worker policy.
-4. Under the 14 November authorization, finish only the explicit remaining recovery inventory under resource supervision, using ct-aitp checkpoints and ct-55qo selection. A source fix alone does not close this ticket.
+1. Reconcile each original deadline/memory/archive-read identity to a qualified selected reading or explicit unresolved/rejected outcome. Retain old diagnostics and distinguish source invalidity, extraction failure, resource refusal and transport failure.
+2. Diagnose f1e2e2 pages 34–38 with the smallest discriminating retained-source probe. Preserve unknown cause until supported. Establish the rejected photo-slide's actual selected state and retain a named quality outcome without accepting garbage.
+3. Reuse request-scoped RSS and existing deadline/pool regressions; state sampling limitations. Require ct-yy07's pre-allocation guard before affected renderer retries. No new generic memory subsystem is needed.
+4. Keep source-confirmed report omissions/partial repair visible using ct-hz8y's result, then reconcile changed keys with ct-m704. Do not wait for a perfect transcription or silently count an unresolved source as recovered.
+5. Run only explicit remaining cases under the existing resource supervisor and checkpoint path. For new accepted text, retain exact source/intermediate/output identities and bounded direct review; use gpt-6.1-terra at medium reasoning for bulk PDF review. No corpus-wide OCR replay.
+
+## Audit evidence
+
+17 November manual audit: `<main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md`; PDF sample: the sibling `pdf-manual-review.md`. New v12 files: `<main checkout>/.cache/archive-release/ocr-recovery-20261113/repairs/body-text-ssot-20261116/`. These evidence files retain the exact inputs, identities and sampled/unread scope. Historical notes below are dated evidence; the current scope and criteria above supersede their unfinished-work summaries.
 
 ## Notes
 
@@ -140,3 +155,11 @@ The 1,208-page pilot completed in 1,037 seconds at 1.756 GiB outer peak RSS: 1,1
 **2026-11-15T13:34:45Z**
 
 Current recovery diagnosis: repairs/fixed-reader-runtime-preflight-20261115/HANDOFF.md distinguishes old e7 from fixed PR31 code; default recovery_versions still returns e7, so fresh fixed-reader work requires a new interpretation and checkpoint root. No new strip-merger bug is claimed. Five Tesseract 5.5.4/eng/PSM3 calls on existing 300-DPI images took 5.7 seconds combined / 0.20 GiB peak; Terra directly read all five source/output pairs and found useful substantive text with named word/number/metadata defects. These are raw diagnostic outputs, not selected readings. Evidence: repairs/raw-range-retry13-20261115/{p0007-tesseract-20261115,remaining3-control1-tesseract-20261115}/independent-review/. The 17-source preflight verified 246,199,738 decoded bytes / 387 pages; 84 oversized render positions match historical failures, while five ordinary f1e2e2 pages remain unresolved. A fixed-reader three-page geometry/orientation pilot is being prepared, with no global pixel-limit increase.
+
+**2026-11-17T09:17:02Z**
+
+Manual audit confirms request-scoped RSS sampling and its large-then-small regression are already implemented. Narrowed to residual source/attempt reconciliation: f1e2e2 pages 34–38, rejected photo-slide outcome, transport history and accurate long-report limitations. ct-yy07 owns the render guard and ct-hz8y recognition completeness. Added only the render-guard prerequisite for affected retries; existing accepted evidence remains credited. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.
+
+**2026-11-17T10:28:53Z**
+
+Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved.
