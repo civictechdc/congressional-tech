@@ -120,5 +120,11 @@
     "schema_id": 0,
     "snapshot": 1521016025579643986,
     "table_uuid": "01a1d14d-50bf-74f1-a086-1e145360b249"
+  },
+  "pdf_cover_evidence": {
+    "path": "inputs/pdf-cover-evidence-ct-fk4w-20261117.parquet",
+    "sha256": "920fd37ddb3190260f97435e162da4bb3c439ede510fc83d192fb1a3a0a30146",
+    "size": 2966,
+    "selection_sha256": "c270fe1bfa190976511f9077d9ae9b1bb45cea9c44f78ae6567564cff64fa91b"
   }
 }

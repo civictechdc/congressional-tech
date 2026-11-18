@@ -13,6 +13,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 from viewer_publication.archive_annotations import annotation_steps
 from viewer_publication.archive_model import PAGE_METADATA_STEPS, REGISTRIES, registry_inputs
+from viewer_publication.pdf_cover_evidence import model_input as pdf_cover_input
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -380,6 +381,9 @@ def test_tier1_cover_signals_and_ambiguous_slot_overrides_end_to_end(tmp_path):
             document_family=list_of('Utf8'),
         ),
     ]
+    # body-cover-kinds.sql also reads reviewed PDF cover evidence; with none bound the model supplies an empty table.
+    cover_input, cover_step = pdf_cover_input(None, tmp_path / 'pdf-cover')
+    inputs.append(cover_input)
     steps = [
         dict(
             name='page_facts',
@@ -387,6 +391,7 @@ def test_tier1_cover_signals_and_ambiguous_slot_overrides_end_to_end(tmp_path):
             materialize=True,
         ),
         dict(name='body_signals', sql=(ROOT / 'model/sql/body-signals.sql').read_text(), materialize=True),
+        cover_step,
         dict(name='body_cover_kinds', sql=(ROOT / 'model/sql/body-cover-kinds.sql').read_text(), materialize=True),
     ]
     with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
