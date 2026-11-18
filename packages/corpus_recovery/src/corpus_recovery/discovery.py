@@ -301,21 +301,69 @@ def acquire_candidates(candidates, call, *, allowed_targets, allowed_candidate_u
     return {'results': results, 'limited': limited}
 
 
-def relocated_search(target, stems, allowed_hosts, search, seen_identities, *, max_queries, max_pages, max_candidates, max_stems=1000):
-    """Search exact/partial filename stems as leads; never fetch a candidate.
+# One re-upload migration put larger copies one month later (ct-z4w5); six months
+# either side bounds one target to twelve candidate requests.
+MAX_NEIGHBOR_MONTHS = 6
+_UPLOAD_MONTH_PATH = re.compile(
+    r'(?P<root>(?:/[^/]+)*/wp-content/uploads)/(?P<year>(?:19|20)\d\d)/(?P<month>0[1-9]|1[0-2])/(?P<name>[^/]+)')
+
+
+def neighbor_folder_candidates(target, *, months=1):
+    """Propose the same file name in adjacent upload-month folders on the same host.
+
+    Only a `/wp-content/uploads/YYYY/MM/<file>` target qualifies, and no request
+    is made. The claim is only "same host, same file name" (`mapping`). A caller
+    must acquire the lead through the campaign candidate table, qualify it (every
+    page renders) and accept identity from source-native records. Bytes identical
+    to a damaged target reuse its failed qualification by digest, so they never
+    pass. Renamed copies, other folder layouts and other hosts are out of reach.
+    """
+    if type(months) is not int or not 1 <= months <= MAX_NEIGHBOR_MONTHS:
+        raise ValueError('invalid neighbor month bound')
+    if not _source_url(target):
+        return []
+    parts = urlsplit(target)
+    found = _UPLOAD_MONTH_PATH.fullmatch(parts.path)
+    if parts.query or not found:
+        return []
+    base = int(found['year']) * 12 + int(found['month']) - 1
+    candidates = []
+    for offset in (sign * step for step in range(1, months + 1) for sign in (1, -1)):
+        year, month = divmod(base + offset, 12)
+        url = f"{parts.scheme}://{parts.netloc}{found['root']}/{year:04d}/{month + 1:02d}/{found['name']}"
+        candidates.append({'target_url': target, 'url': url, 'source': 'neighbor_folder',
+                           'mapping': 'same-host-file-name-adjacent-upload-month-v1'})
+    return candidates
+
+
+# Query kind -> (accepted shape, candidate source). The kind also names the
+# candidate field that records the query.
+_SEARCH_KINDS = {
+    'stem': (r'[A-Za-z0-9][A-Za-z0-9._-]{2,127}', 'relocated_search'),
+    'phrase': (r"[^\W_][\w .,:;'&()/-]{2,255}", 'descriptive_search'),
+}
+
+
+def relocated_search(target, stems, allowed_hosts, search, seen_identities, *, max_queries, max_pages, max_candidates, max_stems=1000, kind='stem'):
+    """Search file-name stems, or descriptive phrases with kind='phrase', as leads; never fetch a candidate.
 
     search(query, page, hosts) returns a dict with candidates, evidence, complete and
     next_page. Caller owns attempt/inventory identities and request accounting.
+    Only results on allowed_hosts become candidates, whatever the index returns.
     """
     if not _source_url(target) or min(max_queries, max_pages, max_candidates, max_stems) < 1:
         raise ValueError('invalid target or limits')
+    if kind not in _SEARCH_KINDS:
+        raise ValueError('invalid search kind')
+    shape, source = _SEARCH_KINDS[kind]
     hosts = {h.lower() for h in allowed_hosts}
     if not hosts or any(not re.fullmatch(r'[a-z0-9.-]+', h) for h in hosts):
         raise ValueError('invalid scope')
     raw_stems = list(islice(stems, max_stems + 1))
     stems_limited = len(raw_stems) > max_stems
-    queries = list(dict.fromkeys(s.strip() for s in raw_stems[:max_stems]
-                                if isinstance(s, str) and re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9._-]{2,127}', s.strip())))
+    # Collapsing whitespace leaves stems as stripped: their shape admits no space.
+    queries = list(dict.fromkeys(q for q in (' '.join(s.split()) for s in raw_stems[:max_stems] if isinstance(s, str))
+                                 if re.fullmatch(shape, q)))
     candidates, evidence, seen = [], [], set(seen_identities)
     complete = len(queries) <= max_queries and bool(queries) and not stems_limited
     pages = 0
@@ -343,8 +391,8 @@ def relocated_search(target, stems, allowed_hosts, search, seen_identities, *, m
                 if len(candidates) >= max_candidates:
                     return {'complete': False, 'reason': 'candidate_limit', 'candidates': candidates, 'evidence': evidence}
                 seen.add(url)
-                candidates.append({'target_url': target, 'url': url, 'source': 'relocated_search',
-                                   'stem': query, 'evidence': result['evidence']})
+                candidates.append({'target_url': target, 'url': url, 'source': source,
+                                   kind: query, 'evidence': result['evidence']})
             if truncated:
                 return {'complete': False, 'reason': 'candidate_limit', 'candidates': candidates, 'evidence': evidence}
             token = result.get('next_page')

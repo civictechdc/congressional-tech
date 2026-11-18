@@ -170,9 +170,11 @@ One-worker decoder probes measured approximately **52.9 MiB** peak process resid
 | Origin 429/503 or applicable `Retry-After` | Defer the origin; do not immediately bypass cooldown through another provider |
 | Provider quota/rate limit, exhausted credits, or invalid credentials | Stop admission to that provider and defer; no automatic fallback spend |
 | Unknown provider completion/timeout | Reconcile attempt and reservation before a bounded retry |
-| Clean origin 404/410 at any rung | Preserve response; proceed to bounded archive/discovery without more scrape calls on that URL |
+| Clean origin 404/410 at any rung, or a body that fails qualification | Preserve response; walk the discovery ladder below without more scrape calls on that URL |
 | Out-of-scope redirect, invalid provider response, or resource ceiling | Stop the attempt with a recorded reason |
 | Exhausted allowed rungs/discovery | Leave unresolved with evidence and retry/review status |
+
+The discovery ladder runs in this order: Web Harvest, Wayback, same-site neighboring folder, publisher listing candidate, relocated search by file-name stem, descriptive search through the government index, GovInfo package mapping. Each rung yields leads that still need acquisition, qualification and identity acceptance. The neighboring folder cannot see renamed copies, other folder layouts or other hosts. The government index cannot see documents outside it, cannot filter hosts on the server, and returns at most `k` rows; a hit is usually the hearing that contains the testimony. Details: [recovery ladder](../../packages/corpus_recovery/README.md#recovery-ladder). After the ladder, a capped manual SerpApi Google search, deliberately outside the pipeline, is the standing last step for edge cases before a target is called unrecoverable.
 
 Implement these supporting changes:
 

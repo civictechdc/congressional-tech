@@ -190,10 +190,56 @@ permanent absence.
 archive host, original URL, timestamp, replay mode, final URL and available digest.
 It does not materialize a PDF in memory. Campaign consumers must pin discovered
 candidate membership before acquisition/import. Discovery does not authorize
-identity acceptance. `DiscoveryRuntime.search` provides a scoped, budgeted
-Firecrawl search callback to `relocated_search`, retains response evidence, and
-reports results as non-exhaustive leads. No scrape is requested by search.
+identity acceptance. `DiscoveryRuntime.search` (paid, scoped to the allowed
+hosts) and `DiscoveryRuntime.gov_search` (free) are search callbacks for
+`relocated_search`; both retain response evidence, share the request cap, and
+report results as non-exhaustive leads. No scrape is requested by search.
 The adapter follows the [official Firecrawl search response](https://github.com/firecrawl/firecrawl-docs/blob/main/features/search.mdx).
 Caller-supplied positive price bounds are reservations, not current-price claims.
 Local tests use recorded responses; live archive/provider acceptance remains a
 separate operational check.
+
+### Recovery ladder
+
+After a clean 404/410, or a body that fails qualification, try these rungs in
+order. Each yields leads only; a lead counts after acquisition, qualification
+(every PDF page renders) and identity acceptance from source-native records.
+
+1. Web Harvest (`campaign_lookup`).
+2. Wayback (`wayback_lookup`).
+3. Same-site neighboring folder (`neighbor_folder_candidates`).
+4. Publisher listing candidate (`house_listing_candidate`).
+5. Relocated search by file-name stem (`relocated_search` with `search`).
+6. Descriptive search through the government index (`relocated_search(...,
+   kind='phrase')` with `gov_search`).
+7. GovInfo package mapping (`govinfo_document_candidate`, `govinfo_bill_candidate`).
+
+`acquire_candidates` replays only archive captures (rungs 1 and 2). Publisher
+leads enter the campaign candidate table (`run_recovery_campaign(candidates=...)`)
+and are fetched by `capture_schedule --campaign`.
+
+**Neighboring folder.** For a `/wp-content/uploads/YYYY/MM/<file>` target it
+proposes the same file name one month either side (at most six) on the same
+host, without a request. Its `mapping` records the only claim: same host, same
+file name. Bytes identical to the damaged body reuse its failed qualification by
+digest, so they never pass. It cannot see renamed copies (one found on
+2026-11-18 had a date prefix added), other folder layouts or hosts, or copies
+further than the chosen months.
+
+**Government index.** `gov_search()` posts only `query` and `k` to Firecrawl's
+free government index (`/v2/search/gov`), with no credential and a zero-cost
+reservation. Send the file name's words, a readable date and the committee, not a
+bare stem; stem validation is unchanged. For 49 damaged files (ct-z4w5) it
+returned an official hearing print for 34, and 15 of those matched the file's
+date in MODS. It cannot see documents outside that index, filter hosts on the
+server (the caller's allowed hosts filter its rows), or page past `k` rows. A hit
+is usually the hearing that contains the testimony
+(`requested_content_in_official_hearing`), not the requested file.
+
+**Manual last step.** When the maintained rungs are exhausted, a manual Google
+search through SerpApi is the standing last step for edge cases before a
+document is called unrecoverable. It is run by hand, capped, treated as leads
+only, and deliberately not wired into the pipeline. The query shape that worked
+on 2026-11-18: surname, what the hearing was about when known, the year only,
+the committee's name, and `testimony pdf`, with no exact date and no site
+restriction. Two of its hits exposed the neighboring-folder pattern.

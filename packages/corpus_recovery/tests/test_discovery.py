@@ -7,7 +7,8 @@ import subprocess
 import sys
 import pytest
 from corpus_recovery.discovery import (Response, webharvest_lookup, wayback_lookup, acquire_wayback,
-    acquire_candidates, house_listing_candidate, relocated_search, govinfo_document_candidate, govinfo_bill_candidate)
+    acquire_candidates, house_listing_candidate, relocated_search, govinfo_document_candidate, govinfo_bill_candidate,
+    neighbor_folder_candidates, MAX_NEIGHBOR_MONTHS)
 from corpus_recovery.cdx import key, parse_cdx
 from corpus_recovery.discovery import campaign_lookup
 
@@ -55,6 +56,55 @@ def test_scoped_deduplicated_search_and_limits():
     assert result['complete'] and len(calls)==1 and [c['url'] for c in result['candidates']]==['https://example.gov/new.pdf']
     result=relocated_search(TARGET, ['report', 'other'], {'example.gov'}, search, set(), max_queries=1, max_pages=1, max_candidates=1)
     assert not result['complete'] and result['reason'] == 'candidate_limit'
+
+UPLOADS = 'https://oversight.house.gov/wp-content/uploads'
+
+def test_neighbor_folder_proposes_same_name_in_adjacent_months_across_year_ends():
+    january = f'{UPLOADS}/2012/01/20100318Witness.pdf'
+    found = neighbor_folder_candidates(january)
+    assert [c['url'] for c in found] == [f'{UPLOADS}/2012/02/20100318Witness.pdf', f'{UPLOADS}/2011/12/20100318Witness.pdf']
+    assert found[0] == {'target_url': january, 'url': found[0]['url'], 'source': 'neighbor_folder',
+                        'mapping': 'same-host-file-name-adjacent-upload-month-v1'}
+    december = f'{UPLOADS}/2011/12/a%20b.pdf'
+    assert [c['url'] for c in neighbor_folder_candidates(december, months=2)] == [
+        f'{UPLOADS}/2012/01/a%20b.pdf', f'{UPLOADS}/2011/11/a%20b.pdf',
+        f'{UPLOADS}/2012/02/a%20b.pdf', f'{UPLOADS}/2011/10/a%20b.pdf']
+    nested = 'http://example.gov:8080/site/wp-content/uploads/2015/06/x.pdf'
+    assert neighbor_folder_candidates(nested)[1]['url'] == 'http://example.gov:8080/site/wp-content/uploads/2015/05/x.pdf'
+
+def test_neighbor_folder_ignores_targets_outside_dated_upload_folders():
+    for target in [TARGET, f'{UPLOADS}/report.pdf', f'{UPLOADS}/2012/report.pdf', f'{UPLOADS}/2012/13/report.pdf',
+                   f'{UPLOADS}/1899/01/report.pdf', f'{UPLOADS}/2012/01/extra/report.pdf', f'{UPLOADS}/2012/01/',
+                   f'{UPLOADS}/2012/01/report.pdf?ver=2', 'https://example.gov/files/2012/01/report.pdf',
+                   'mailto:nobody@example.gov', f'{UPLOADS}/2012/01/report.pdf#page=2']:
+        assert neighbor_folder_candidates(target) == [], target
+
+def test_neighbor_folder_month_bound_is_enforced():
+    target = f'{UPLOADS}/2012/01/report.pdf'
+    widest = neighbor_folder_candidates(target, months=MAX_NEIGHBOR_MONTHS)
+    assert len(widest) == 2 * MAX_NEIGHBOR_MONTHS and widest[-1]['url'] == f'{UPLOADS}/2011/07/report.pdf'
+    for months in (0, -1, MAX_NEIGHBOR_MONTHS + 1, True, 1.0, '1'):
+        with pytest.raises(ValueError, match='month bound'):
+            neighbor_folder_candidates(target, months=months)
+
+def test_descriptive_phrases_search_without_loosening_stems():
+    phrase = 'Medicaid Fraud  December 7 2011 House Oversight Committee hearing testimony'
+    calls = []
+    def search(q, page, hosts):
+        calls.append(q)
+        return {'complete': False, 'evidence': 'search:1', 'next_page': None,
+                'candidates': ['https://www.govinfo.gov/app/details/CHRG-112hhrg73451', 'https://elsewhere.gov/a.pdf']}
+    stems = relocated_search(TARGET, [phrase], {'www.govinfo.gov'}, search, set(), max_queries=1, max_pages=1, max_candidates=2)
+    assert calls == [] and stems['candidates'] == [] and stems['reason'] == 'query_limit_or_no_query'
+    found = relocated_search(TARGET, [phrase, ' '.join(phrase.split()), 'x\x00y z'], {'www.govinfo.gov'}, search, set(),
+                             max_queries=2, max_pages=2, max_candidates=2, kind='phrase')
+    assert calls == [' '.join(phrase.split())] and found['reason'] == 'incomplete_search'
+    assert found['candidates'] == [{'target_url': TARGET, 'url': 'https://www.govinfo.gov/app/details/CHRG-112hhrg73451',
+                                    'source': 'descriptive_search', 'phrase': calls[0], 'evidence': 'search:1'}]
+    assert relocated_search(TARGET, ['a' * 257], {'example.gov'}, search, set(), max_queries=1, max_pages=1,
+                            max_candidates=1, kind='phrase')['candidates'] == [] and len(calls) == 1
+    with pytest.raises(ValueError, match='search kind'):
+        relocated_search(TARGET, ['report'], {'example.gov'}, search, set(), max_queries=1, max_pages=1, max_candidates=1, kind='words')
 
 def test_govinfo_identifier_mismatch():
     assert govinfo_document_candidate(TARGET, 'CDOC-105hdoc123', expected_package_id='CDOC-105hdoc124', evidence='source:1') is None

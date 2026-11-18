@@ -7,6 +7,7 @@ import pytest
 
 from congress_api.acquisition.admission import Admission,AdmissionDenied
 from congress_api.acquisition.capture_journal import UnknownRemoteOutcome
+from corpus_recovery.discovery import relocated_search
 from corpus_recovery.discovery_runtime import DiscoveryRuntime
 
 
@@ -58,15 +59,61 @@ def test_search_is_scoped_bounded_charged_and_not_exhaustive(tmp_path):
     result=search('report-2020',None,('example.gov',))
     assert result['candidates']==['https://example.gov/new.pdf'] and not result['complete']
     assert session.calls[0][2]['json']['includeDomains']==['example.gov']
+    assert session.calls[0][2]['headers']['Authorization']=='Bearer test-only'
+    # Journal identity recorded before the shared search helper existed.
+    assert result['evidence']=='9fecdb16bb965324664feb7889415e75dd510d77db04778d6e66924c774046ae'
     assert owner.admission.totals()['committed_cost']==7
     assert search('report-2020',None,('example.gov',))==result and len(session.calls)==1
     assert 'test-only' not in ''.join(p.read_text(errors='ignore') for p in (tmp_path/'journal').rglob('*.json'))
+
+
+# Trimmed from government index answers recorded 2026-11-18 (ct-z4w5): rows that
+# name people and all descriptions removed; positions are the recorded ones.
+FIXTURES=Path(__file__).parent/'fixtures'
+PHRASE='Medicaid Fraud December 7 2011 House Oversight Committee hearing testimony'
+
+
+def test_gov_search_sends_only_query_and_k_without_credential(tmp_path):
+    session=Session((FIXTURES/'govindex-hearing-20111207.json').read_bytes());owner=runtime(tmp_path,session)
+    search=owner.gov_search(result_limit=10)
+    result=search(PHRASE,None,('www.govinfo.gov',))
+    method,url,kwargs=session.calls[0]
+    assert (method,url,kwargs['json'])==('post','https://api.firecrawl.dev/v2/search/gov',{'query':PHRASE,'k':10})
+    assert not any(name.lower()=='authorization' for name in kwargs['headers'])
+    assert result['candidates'][0]=='https://www.govinfo.gov/content/pkg/CHRG-112hhrg73451/pdf/CHRG-112hhrg73451.pdf'
+    assert len(result['candidates'])==5 and not result['complete'] and result['next_page'] is None
+    assert owner.admission.totals()==dict(requests=1,committed_cost=0,unknown=0)
+    assert search(PHRASE,None,('www.govinfo.gov',))==result and len(session.calls)==1
+    with pytest.raises(ValueError,match='pagination'):search(PHRASE,'2',('www.govinfo.gov',))
+
+
+def test_gov_search_results_stay_leads_on_allowed_hosts(tmp_path):
+    session=Session((FIXTURES/'govindex-hearing-20110511.json').read_bytes());owner=runtime(tmp_path,session)
+    found=relocated_search('https://oversight.house.gov/wp-content/uploads/2012/01/5-11-11_Testimony.pdf',
+        ['USAID May 11 2011 House Oversight Committee hearing testimony'],{'www.govinfo.gov'},owner.gov_search(),set(),
+        max_queries=1,max_pages=1,max_candidates=10,kind='phrase')
+    assert [c['url'] for c in found['candidates']]==['https://www.govinfo.gov/app/details/CHRG-112hhrg68046',
+        'https://www.govinfo.gov/content/pkg/CRPT-112hrpt740/html/CRPT-112hrpt740.htm',
+        'https://www.govinfo.gov/content/pkg/CREC-2011-05-11/pdf/CREC-2011-05-11-pt1-PgD485.pdf']
+    assert {c['source'] for c in found['candidates']}=={'descriptive_search'} and not found['complete']
+
+
+def test_gov_search_refuses_over_bound_and_unsuccessful_answers(tmp_path):
+    recorded=(FIXTURES/'govindex-hearing-20111207.json').read_bytes()
+    (tmp_path/'over').mkdir();(tmp_path/'failed').mkdir()
+    with pytest.raises(ValueError,match='result bound'):
+        runtime(tmp_path/'over',Session(recorded)).gov_search(result_limit=4)(PHRASE,None,('www.govinfo.gov',))
+    failed=json.dumps({**json.loads(recorded),'success':False}).encode()
+    owner=runtime(tmp_path/'failed',Session(failed))
+    assert owner.gov_search()(PHRASE,None,('www.govinfo.gov',))['candidates']==[]
+    assert owner.admission.totals()['requests']==1
 
 
 def test_shared_request_cap_covers_search_and_archive(tmp_path):
     owner=runtime(tmp_path,Session(b'[]'),cap=1)
     owner.control('cdx','https://web.archive.org/cdx/search/cdx?url=a.gov')
     with pytest.raises(AdmissionDenied):owner.search(api_key='test',upper_cost=1)('name',None,('example.gov',))
+    with pytest.raises(AdmissionDenied):owner.gov_search()('name',None,('example.gov',))
 
 
 def test_uncertain_remote_call_is_charged_and_never_silently_repeated(tmp_path):

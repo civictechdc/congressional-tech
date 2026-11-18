@@ -1270,15 +1270,19 @@ def test_discovery_probes_every_repair_and_retains_lookup_diagnostics(tmp_path: 
 
 def test_write_candidates_parquet_accepts_discovery_rows_and_preserves_metadata(tmp_path: Path):
     """R2-F6: raw discovery `url` rows keep listing, mapping, version, and identity metadata."""
-    from corpus_recovery.discovery import govinfo_bill_candidate, house_listing_candidate
+    from corpus_recovery.discovery import govinfo_bill_candidate, house_listing_candidate, neighbor_folder_candidates
     xml = 'https://docs.house.gov/meetings/PW/PW00/20230315/115432/HHRG-118-PW00-20230315-SD001.xml'
     pdf = xml[:-4] + '.pdf'
     listing = 'https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=115432'
     identity = {'congress': 118, 'bill_type': 'hr', 'number': 4775, 'version': 'ih'}
+    upload = 'https://oversight.house.gov/wp-content/uploads/2012/01/report.pdf'
     rows = [
         house_listing_candidate(xml, pdf, listing_url=listing, listing_urls={xml, pdf}, evidence='ev:l',
                                 target_version='v1', candidate_version='v1'),
         govinfo_bill_candidate(xml, 118, 'hr', 4775, 'ih', source_identity=identity, evidence='ev:b'),
+        neighbor_folder_candidates(upload)[0],
+        {'target_url': upload, 'url': 'https://www.govinfo.gov/app/details/CHRG-112hhrg68046',
+         'source': 'descriptive_search', 'phrase': 'report May 2011 hearing', 'evidence': 'ev:s'},
     ]
     out = write_candidates_parquet(rows, tmp_path / 'c.parquet')
     persisted = pq.read_table(out).to_pylist()
@@ -1286,6 +1290,8 @@ def test_write_candidates_parquet_accepts_discovery_rows_and_preserves_metadata(
     assert (persisted[0]['listing_url'], persisted[0]['version'], persisted[0]['mapping']) == (
         listing, 'v1', 'house-listed-sibling-v1')
     assert json.loads(persisted[1]['identity']) == identity
+    assert (persisted[2]['source'], persisted[2]['mapping']) == ('neighbor_folder', 'same-host-file-name-adjacent-upload-month-v1')
+    assert (persisted[3]['source'], persisted[3]['phrase']) == ('descriptive_search', 'report May 2011 hearing')
     for bad in ({'target_url': xml, 'url': ''}, {'target_url': xml, 'candidate_url': None}, {'url': pdf}):
         with pytest.raises(ValueError, match='non-empty target_url'):
             write_candidates_parquet([bad], tmp_path / 'bad.parquet')

@@ -169,7 +169,7 @@ def discover_target_candidates(
 
 _OPTIONAL_CANDIDATE_COLUMNS = (
     'original_url', 'timestamp', 'digest', 'collection', 'package_id', 'evidence',
-    'listing_url', 'version', 'mapping', 'identifier_evidence', 'identity', 'stem',
+    'listing_url', 'version', 'mapping', 'identifier_evidence', 'identity', 'stem', 'phrase',
 )
 
 

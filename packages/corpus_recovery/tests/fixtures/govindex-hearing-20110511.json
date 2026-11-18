@@ -1,0 +1,32 @@
+{
+ "success": true,
+ "data": {
+  "web": [
+   {
+    "url": "https://oversight.house.gov/hearing/usaid-following-the-money/",
+    "title": "USAID: Following the Money - United States House Committee on ...",
+    "position": 2
+   },
+   {
+    "url": "https://www.govinfo.gov/app/details/CHRG-112hhrg68046",
+    "title": "House Hearing, 112th Congress - USAID: FOLLOWING THE MONEY - CHRG-112hhrg68046 | Content Details | GovInfo",
+    "position": 3
+   },
+   {
+    "url": "https://www.congress.gov/112/chrg/CHRG-112hhrg68046/CHRG-112hhrg68046.pdf",
+    "title": "usaid: following the money hearing",
+    "position": 4
+   },
+   {
+    "url": "https://www.govinfo.gov/content/pkg/CRPT-112hrpt740/html/CRPT-112hrpt740.htm",
+    "title": "House Report 112-740 - ACTIVITIES of the HOUSE COMMITTEE ON OVERSIGHT AND GOVERNMENT REFORM ONE HUNDRED TWELFTH CONGRESS SECOND SESSION JANUARY 2013 (Pursuant to House Rule XI, 1(d)(1))",
+    "position": 5
+   },
+   {
+    "url": "https://www.govinfo.gov/content/pkg/CREC-2011-05-11/pdf/CREC-2011-05-11-pt1-PgD485.pdf",
+    "title": "Committee Meetings",
+    "position": 10
+   }
+  ]
+ }
+}
