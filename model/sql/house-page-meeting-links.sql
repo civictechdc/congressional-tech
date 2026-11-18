@@ -3,6 +3,13 @@
 -- (HHRG/HMKP/HMTG or docs.house.gov/meetings/ address) or by parent committee (.house.gov host)
 -- and proceeding date, corroborated by substantive title/heading/measure word overlap (or unique
 -- same-kind proceeding when one side carries only a generic kind label).
+-- "One page on that date" counts pages, not addresses: a committee serves one page under its bare
+-- host and its party host (science.house.gov, republicans-science.house.gov), and the queue fetching
+-- the second address removed a correct match on 2026-11-17 (ct-mwod). page_key is host_stem (the
+-- one place the host prefixes are stripped) with the address's path and query, so the same path and
+-- query on those hosts is one page. The two party sites are different publishers, so a date
+-- holding both a democrats- and a republicans- page is never one page (party_site). It cannot
+-- see an alias whose path or query differs.
 WITH stopwords AS (
  SELECT make_array(
   '','the','a','an','of','and','to','in','on','for','with','from','at','by','is','are','be','as','or','its','it','this','that',
@@ -72,6 +79,8 @@ WITH stopwords AS (
  SELECT
   u.page_body,
   u.source_url,
+  u.host_stem||lower(regexp_replace(u.source_url,'^https?://[^/]+','')) AS page_key,
+  u.party_site,
   hh.parent_committee,
   coalesce(pf.heading,'')||' '||coalesce(pf.title,'')||' '||regexp_replace(u.source_url,'^https?://[^/]+/','') AS title_text,
   coalesce(pf.text_head,'') AS text_head,
@@ -82,9 +91,14 @@ WITH stopwords AS (
   regexp_match(u.source_url,'(?:^|-)([0-9])([0-9]{2})(20[0-9]{2})(?:[^0-9]|$)') AS u_mdy7
  FROM page_facts_matched pf
  RIGHT JOIN (
-  SELECT pu.page_body,pu.source_url,
-   regexp_replace(lower((regexp_match(pu.source_url,'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]house[.]gov'))[1]),'^(?:edit-)?(?:democrats-|republicans-|archives[0-9]*-)','') AS host_stem
-  FROM page_urls pu
+  SELECT h.page_body,h.source_url,
+   regexp_replace(h.host,'^(?:edit-)?(?:democrats-|republicans-|archives[0-9]*-)','') AS host_stem,
+   (regexp_match(h.host,'^(?:edit-)?(democrats|republicans)-'))[1] AS party_site
+  FROM (
+   SELECT pu.page_body,pu.source_url,
+    lower((regexp_match(pu.source_url,'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]house[.]gov'))[1]) AS host
+   FROM page_urls pu
+  ) h
  ) u ON pf.page_body=u.page_body
  JOIN house_hosts hh ON hh.host=u.host_stem
 ), pages_text_dates AS (
@@ -107,7 +121,9 @@ WITH stopwords AS (
  SELECT
   page_body,
   parent_committee,
-  min(source_url) AS source_url,
+  min(page_key) AS page_key,
+  min(party_site) AS party_lo,
+  max(party_site) AS party_hi,
   min(title_text) AS title_text,
   min(title_text||' '||text_head) AS full_text,
   coalesce(
@@ -127,7 +143,6 @@ WITH stopwords AS (
  SELECT
   g.page_body,
   g.parent_committee,
-  g.source_url,
   g.page_date,
   regexp_like(g.title_text,'(?i)\b(markup|business\s+meeting)\b') AS is_markup,
   array_distinct(array_except(
@@ -138,8 +153,10 @@ WITH stopwords AS (
    string_to_array(trim(regexp_replace(regexp_replace(lower(g.full_text),'[^a-z0-9]+',' ','g'),'\b[a-z0-9]{1,2}\b',' ','g')),' '),
    sw.sw
   )) AS full_words,
-  first_value(g.source_url) OVER (PARTITION BY g.page_date,g.parent_committee ORDER BY g.source_url ASC,g.page_body ASC)=
-   first_value(g.source_url) OVER (PARTITION BY g.page_date,g.parent_committee ORDER BY g.source_url DESC,g.page_body ASC) AS single_url_on_date
+  min(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee)=
+   max(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee)
+   AND coalesce(min(g.party_lo) OVER (PARTITION BY g.page_date,g.parent_committee)=
+    max(g.party_hi) OVER (PARTITION BY g.page_date,g.parent_committee),true) AS single_page_on_date
  FROM pages_grouped g
  CROSS JOIN stopwords sw
  WHERE g.page_date IS NOT NULL
@@ -181,7 +198,7 @@ WITH stopwords AS (
  SELECT
   p.page_body,
   m.event_id,
-  p.single_url_on_date,
+  p.single_page_on_date,
   m.single_kind_on_date,
   p.is_markup=m.is_markup AS same_kind,
   NOT m.not_held AS held_ok,
@@ -200,7 +217,7 @@ WITH stopwords AS (
  FROM dated_candidates
  WHERE shared_title_words>=2
   OR (shared_full_words>=2 AND same_kind)
-  OR (single_kind_on_date AND single_url_on_date AND same_kind AND (shared_title_words>=1 OR shared_full_words>=1 OR generic_side))
+  OR (single_kind_on_date AND single_page_on_date AND same_kind AND (shared_title_words>=1 OR shared_full_words>=1 OR generic_side))
 ), dated_ranked AS (
  SELECT
   page_body,
