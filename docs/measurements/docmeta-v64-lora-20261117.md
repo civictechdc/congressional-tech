@@ -2,8 +2,11 @@
 
 > Moved from fast-gemma4 on 2026-11-17 (ct-ihe7). Paths written as `fast_gemma4/docmeta/...` or `scripts/eval_docmeta_blind.py` now mean `packages/congress_docmeta/src/congress_docmeta/...` and `python -m congress_docmeta.eval_blind`; model artifacts stay in fast-gemma4.
 
-Checkpoint: `artifacts/models/gemma4_e2b_v64_c2c4_w8` (adapter in `artifacts/models/adapters_v64_c2c4`).
-Compared against the prior production model, `fused_gemma4_e2b_qat_v4`, and the untuned BF16 base.
+**Production model since 2026-11-18: `artifacts/models/gemma4_e2b_v64a35_c2c4_w8`** (LoRA on all 35 layers,
+adapter in `artifacts/models/adapters_v64a35`; see "Follow-up training experiments"). The sections from "Sets" to
+"Hybrid ANE prefill" describe its predecessor, `artifacts/models/gemma4_e2b_v64_c2c4_w8` (epoch one, last 23
+layers, adapter in `artifacts/models/adapters_v64_c2c4`), compared against the model before it,
+`fused_gemma4_e2b_qat_v4`, and the untuned BF16 base.
 Every number is the full pipeline (pre-pass, grammar-locked decode, post-pass with rules R4-R7) from
 `scripts/eval_docmeta_blind.py`; raw reports are in `artifacts/eval/`.
 
@@ -150,7 +153,27 @@ Seen in passing, not fixed: the model sometimes gives a letter's recipients the 
 
 ## Follow-up training experiments, 2026-11-17 to 11-18
 
-Epoch one (`gemma4_e2b_v64_c2c4_w8`) stays the production model through all of these.
+Epoch one (`gemma4_e2b_v64_c2c4_w8`) was the production model through these; the owner adopted the full-size
+all-35-layer run on 2026-11-18.
+
+- **All 35 layers at full size: adopted.** `train_lora_v64.py --num-layers 35 --ckpt-tokens 1500`, same 3,489
+  items, 357 min. Held-out loss 0.2777 against 0.3114. Same code, ring on, against epoch one
+  (`v64a35.json` vs `v64_ep1_main_ring7.json`):
+
+| | Epoch one | All 35 layers | Smallest difference the set can detect |
+|---|---|---|---|
+| `valid_sweep` headline | 89.9 | **91.8** | 1.8 |
+| `valid_sweep` document kind | 89.6 | 92.1 (7 fixed, 3 broken; paired interval -1.2 to +6.1) | 6.3 |
+| `valid_sweep` people, name F1 | 80.3 | **84.4** | 5.6 |
+| `valid_sweep` people, name + role F1 | 73.6 | **79.3** | about 5.6 |
+| `val48_sweep` headline / kind | 90.4 / 89.4 | 91.0 / 89.4 | 2.9 / 10.4 |
+| Output tokens over 212 docs | 53,283 | 57,287 | |
+
+  The headline and role gains are just over what `valid_sweep` can detect; the kind gain is not established.
+  Throughput read 2.01 docs/s against 2.42, but four CPU-heavy jobs shared the machine during this run, so it
+  needs a quiet back-to-back timing. Like every checkpoint before commit 743f6c9, both models were trained with
+  a `<|think|>` system turn that the sweep never sends, and on labels since found to carry values the text does
+  not state (`artifacts/gap_swarm_20261118/SUMMARY.md`); no further training until that data is signed off.
 
 - **Retrain on repaired labels: a tie.** `gemma4_e2b_v64r_c2c4_w8` adds the addressed chair / ranking member
   where the text names them. Held-out loss 0.3032 against 0.3114; headline 90.2 / 91.4 / 90.8 on `valid_sweep` /
