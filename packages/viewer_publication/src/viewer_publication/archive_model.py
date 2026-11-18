@@ -1095,6 +1095,18 @@ RECORDING_MATCH_STOPWORDS_SQL="""SELECT make_array(
  'session','examine','examining','review','oversight','part','http','https','www','gov','html','htm','aspx','events','event','calendar',
  'eventsingle','eventid','democrats','republicans','markups','markup','business','meeting','entitled','legislative','office'
 ) AS sw"""
+RECORDING_TOPIC_STOPWORDS_SQL="""SELECT make_array(
+ '','the','a','an','of','and','to','in','on','for','with','from','at','by','is','are','be','as','or','its','it','this','that',
+ 'hearing','subcommittee','committee','house','senate','united','state','congres','congressional','washington',
+ 'full','open','closed','public','session','examine','examining','examination','review','reviewing','oversight','part',
+ 'http','www','gov','html','htm','aspx','event','calendar','eventsingle','eventid','democrat','democratic','republican',
+ 'markup','busines','meeting','entitled','titled','legislative','legislation','office','virtual','hybrid','remote','joint','select','special',
+ 'field','live','stream','livestream','video','webcast','archived','archive','member','day','pending','variou','measure','bill','one','draft','discussion',
+ 'act','title','code','amend','purpose','other','certain','relating','provide','direct','secretary','department','agency','administration','federal','national',
+ 'american','america','fiscal','year','budget','request','prioritie','priority','perspective','stakeholder','update','statu','future','current'
+) AS words,
+make_array('january','february','march','april','may','june','july','august','september','october','november','december') AS full_m,
+make_array('jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec') AS abbr_m"""
 VIDEO_KEY_ALIASES_SQL="""WITH raw_meeting_videos AS (
  SELECT m.event_id,m.video_url AS url,m.explicit_key,
   min(regexp_replace((regexp_match(m.video_url,rs.pattern))[1],'^(.+)$',rs.key_template)) AS extracted_key
@@ -1112,7 +1124,7 @@ GROUP BY extracted_key"""
 
 
 def known_meetings_sql(document_relation='normalized'):
-    return f"""SELECT k.event_id,r.meeting_type,r.title,
+    return f"""SELECT k.event_id,r.meeting_date,r.not_held,r.meeting_type,r.title,r.committees,
  coalesce(arrow_cast(r.subject_keys,'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys
 FROM meetings_resolved r
 RIGHT JOIN (
@@ -1205,6 +1217,7 @@ def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwor
     if include_stopwords:
         steps.append(dict(name='recording_match_stopwords',sql=RECORDING_MATCH_STOPWORDS_SQL,materialize=True))
     steps += [
+        dict(name='recording_topic_stopwords',sql=RECORDING_TOPIC_STOPWORDS_SQL,materialize=True),
         dict(name='recording_publisher_match_rows',sql="""WITH publisher AS (
          SELECT event_id,unnest(videos) AS v FROM meetings_resolved
         )
@@ -1217,45 +1230,92 @@ def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwor
         FROM video_key_aliases a
         RIGHT JOIN publisher p ON a.alias_key=p.v['video_key']""",materialize=True),
         dict(name='recording_page_video_facts',sql=f"""SELECT DISTINCT
-         v.video_key,
-         v.title IS NOT NULL AND regexp_like(v.title,'(?i)\\b(markup|organizational\\s+meeting|subcommittee\\s+assignments)\\b') AS is_markup_video,
-         v.title IS NOT NULL AND regexp_like(v.title,'(?i)\\bround[- ]?tables?\\b') AS is_roundtable_video,
-         v.title IS NOT NULL AND regexp_like(v.title,'(?i)\\b(hearing|markup)\\b') AS is_hearing_or_markup_video,
-         v.title IS NOT NULL AND regexp_like(v.title,'(?i)(?:\\bevent\\s*id|\\bid)\\s*[=:#]\\s*0*[0-9]{{5,6}}\\b') AS has_explicit_event_id_in_title,
-         v.title IS NULL
-          OR cardinality(array_distinct(array_except(
-              string_to_array(trim(regexp_replace(regexp_replace(lower(v.title),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{{1,2}}\\b',' ','g')),' '),
-              sw.sw
-             )))=0
-          OR (
-           NOT regexp_like(
-            regexp_replace(lower(v.title),'\\b(?:pending\\s+legislation|various\\s+measures|legislation)\\b','','g'),
-            '\\b(?:hearing|hearings|markup|mark-?up|meeting|session)\\s+(?:on|of|to|for|regarding|concerning|about|titled|entitled)\\s+[a-z0-9]'
-           )
-           AND NOT (
-            regexp_like(lower(v.title),'\\s+[-–—]\\s+[a-z]')
-            AND NOT regexp_like(lower(v.title),'\\s+[-–—]\\s+(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[.]?\\s+[0-9]|eventid|part\\s+[0-9]|full\\s+committee|subcommittee|the\\s+subcommittee|oversight|legislative|hearing|markup|live)')
-           )
-           AND (
-            regexp_like(trim(v.title),'(?i)^(?:(?:oversight|legislative|public|full\\s+committee|subcommittee|joint|budget|democratic|republican|virtual|hybrid|live)\\s+)*(?:(?:hearing|markup|mark-?up|business\\s+meeting)\\s*(?:\\||[-–—:])\\s*)?(?:(?:the\\s+)?(?:select\\s+)?subcommittee\\s+on\\s+[^:|–—]+|[^:|–—]+\\s+subcommittee|full\\s+committee)(?:\\s*(?:oversight|legislative|public|joint|budget|business)?\\s*(?:hearing|markup|mark-?up|meeting))?(?:\\s*[-–—:,]?\\s*(?:eventid\\s*=\\s*[0-9]+|[0-9]{{1,2}}[./-][0-9]{{1,2}}[./-][0-9]{{2,4}}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[.]?\\s+[0-9]{{1,2}},?\\s+[0-9]{{4}}))*\\s*:?$')
-            OR cardinality(array_distinct(array_except(
-                string_to_array(trim(regexp_replace(regexp_replace(
-                 regexp_replace(lower(v.title),'(?i)\\b(?:[0-9]{{1,2}}[./:-][0-9]{{1,2}}[./:-][0-9]{{2,4}}|[0-9]{{1,2}}:[0-9]{{2}}\\s*(?:am|pm)|eventid\\s*=\\s*[0-9]+|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[.]?\\s+[0-9]{{1,2}},?\\s+[0-9]{{4}}|part\\s+[0-9]+|full\\s+committee|subcommittee|joint|field|virtual|hybrid|oversight|legislative|public|democratic|republican|business|meeting|markup|mark-?up|hearing|hearings|pending\\s+legislation|various\\s+measures|live)\\b',' ','g'),
-                 '[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{{1,2}}\\b',' ','g')),' '),
-                sw.sw
-               )))=0
-           )
-          ) AS is_generic_video_title,
-         array_distinct(array_except(
-          string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(v.title,'')),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{{1,2}}\\b',' ','g')),' '),
-          sw.sw
-         )) AS video_words
-        FROM (SELECT DISTINCT video_key FROM recording_page_video_events WHERE video_key IS NOT NULL) k
-        JOIN {videos_relation} v ON v.video_key=k.video_key
-        CROSS JOIN recording_match_stopwords sw""",materialize=True),
+         video_key,pub_date,v_parent,
+         coalesce(
+          CASE WHEN v_iso IS NOT NULL THEN try_cast(v_iso[1] AS DATE) END,
+          CASE WHEN v_mdy IS NOT NULL THEN try_cast(v_mdy[3]||'-'||lpad(v_mdy[1],2,'0')||'-'||lpad(v_mdy[2],2,'0') AS DATE) END,
+          CASE WHEN v_spc IS NOT NULL THEN try_cast(v_spc[3]||'-'||v_spc[1]||'-'||v_spc[2] AS DATE) END,
+          CASE WHEN v_ymd8 IS NOT NULL THEN try_cast(v_ymd8[1]||'-'||v_ymd8[2]||'-'||v_ymd8[3] AS DATE) END,
+          CASE WHEN v_mdy6 IS NOT NULL THEN try_cast('20'||v_mdy6[3]||'-'||v_mdy6[1]||'-'||v_mdy6[2] AS DATE) END,
+          CASE WHEN v_full IS NOT NULL THEN try_cast(v_full[3]||'-'||lpad(cast(array_position(full_m,lower(v_full[1])) AS VARCHAR),2,'0')||'-'||lpad(v_full[2],2,'0') AS DATE) END,
+          CASE WHEN v_abbr IS NOT NULL THEN try_cast(v_abbr[3]||'-'||lpad(cast(array_position(abbr_m,substr(lower(v_abbr[1]),1,3)) AS VARCHAR),2,'0')||'-'||lpad(v_abbr[2],2,'0') AS DATE) END
+         ) AS v_date,
+         is_markup_video,is_roundtable_video,is_hearing_or_markup_video,
+         has_explicit_event_id_in_title,is_generic_video_title,has_explicit_topic,
+         says_subcommittee,says_full_committee,v_acronym,
+         video_words,topic_v_words,topic_vd_words
+        FROM (
+         SELECT
+          v.video_key,
+          try_cast(v.published_at AS DATE) AS pub_date,
+          CASE WHEN v.system_code IS NOT NULL AND trim(v.system_code)<>'' THEN
+           (CASE WHEN substr(lower(trim(v.system_code)),1,4)='jsec' THEN 'jjec' ELSE substr(lower(trim(v.system_code)),1,4) END)
+          END AS v_parent,
+          tsw.full_m,tsw.abbr_m,
+          regexp_match(coalesce(v.title,''),'\\b(20[0-3][0-9]-[0-9]{{2}}-[0-9]{{2}})\\b') AS v_iso,
+          regexp_match(coalesce(v.title,''),'\\b([0-9]{{1,2}})[/.-]([0-9]{{1,2}})[/.-](20[0-3][0-9])\\b') AS v_mdy,
+          regexp_match(coalesce(v.title,''),'\\b([01][0-9])\\s+([0-3][0-9])\\s+(20[0-3][0-9])\\b') AS v_spc,
+          regexp_match(coalesce(v.title,''),'\\b(20[0-3][0-9])([01][0-9])([0-3][0-9])\\b') AS v_ymd8,
+          regexp_match(coalesce(v.title,''),'^\\s*([01][0-9])([0-3][0-9])([0-3][0-9])\\b') AS v_mdy6,
+          regexp_match(coalesce(v.title,''),'(?i)\\b(January|February|March|April|May|June|July|August|September|October|November|December)\\s+([0-9]{{1,2}}),?\\s+(20[0-3][0-9])\\b') AS v_full,
+          regexp_match(coalesce(v.title,''),'(?i)\\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[.]?\\s+([0-9]{{1,2}}),?\\s+(20[0-3][0-9])\\b') AS v_abbr,
+          v.title IS NOT NULL AND regexp_like(v.title,'(?i)\\b(markup|organizational\\s+meeting|subcommittee\\s+assignments)\\b') AS is_markup_video,
+          v.title IS NOT NULL AND regexp_like(v.title,'(?i)\\bround[- ]?tables?\\b') AS is_roundtable_video,
+          v.title IS NOT NULL AND regexp_like(v.title,'(?i)\\b(hearing|markup)\\b') AS is_hearing_or_markup_video,
+          v.title IS NOT NULL AND regexp_like(v.title,'(?i)(?:\\bevent\\s*id|\\bid)\\s*[=:#]\\s*0*[0-9]{{5,6}}\\b') AS has_explicit_event_id_in_title,
+          v.title IS NULL
+           OR cardinality(array_distinct(array_except(
+               string_to_array(trim(regexp_replace(regexp_replace(lower(v.title),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{{1,2}}\\b',' ','g')),' '),
+               sw.sw
+              )))=0
+           OR (
+            NOT regexp_like(
+             regexp_replace(lower(v.title),'\\b(?:pending\\s+legislation|various\\s+measures|legislation)\\b','','g'),
+             '\\b(?:hearing|hearings|markup|mark-?up|meeting|session)\\s+(?:on|of|to|for|regarding|concerning|about|titled|entitled)\\s+[a-z0-9]'
+            )
+            AND NOT (
+             regexp_like(lower(v.title),'\\s+[-–—]\\s+[a-z]')
+             AND NOT regexp_like(lower(v.title),'\\s+[-–—]\\s+(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[.]?\\s+[0-9]|eventid|part\\s+[0-9]|full\\s+committee|subcommittee|the\\s+subcommittee|oversight|legislative|hearing|markup|live)')
+            )
+            AND (
+             regexp_like(trim(v.title),'(?i)^(?:(?:oversight|legislative|public|full\\s+committee|subcommittee|joint|budget|democratic|republican|virtual|hybrid|live)\\s+)*(?:(?:hearing|markup|mark-?up|business\\s+meeting)\\s*(?:\\||[-–—:])\\s*)?(?:(?:the\\s+)?(?:select\\s+)?subcommittee\\s+on\\s+[^:|–—]+|[^:|–—]+\\s+subcommittee|full\\s+committee)(?:\\s*(?:oversight|legislative|public|joint|budget|business)?\\s*(?:hearing|markup|mark-?up|meeting))?(?:\\s*[-–—:,]?\\s*(?:eventid\\s*=\\s*[0-9]+|[0-9]{{1,2}}[./-][0-9]{{1,2}}[./-][0-9]{{2,4}}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[.]?\\s+[0-9]{{1,2}},?\\s+[0-9]{{4}}))*\\s*:?$')
+             OR cardinality(array_distinct(array_except(
+                 string_to_array(trim(regexp_replace(regexp_replace(
+                  regexp_replace(lower(v.title),'(?i)\\b(?:[0-9]{{1,2}}[./:-][0-9]{{1,2}}[./:-][0-9]{{2,4}}|[0-9]{{1,2}}:[0-9]{{2}}\\s*(?:am|pm)|eventid\\s*=\\s*[0-9]+|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[.]?\\s+[0-9]{{1,2}},?\\s+[0-9]{{4}}|part\\s+[0-9]+|full\\s+committee|subcommittee|joint|field|virtual|hybrid|oversight|legislative|public|democratic|republican|business|meeting|markup|mark-?up|hearing|hearings|pending\\s+legislation|various\\s+measures|live)\\b',' ','g'),
+                  '[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{{1,2}}\\b',' ','g')),' '),
+                 sw.sw
+                )))=0
+            )
+           ) AS is_generic_video_title,
+          coalesce(v.duration_seconds,0)>=900
+           AND NOT regexp_like(coalesce(v.title,''),'(?i)^\\s*(?:[0-9./-]+\\s*[-:]?\\s*)?(?:(?:subcommittee\\s+on\\s+[a-z0-9 ,&''-]+|[a-z0-9 ,&''-]+\\s+(?:subcommittee|committee)|full\\s+committee)\\s*)?(?:[-|–—:]\\s*)?(?:(?:public|open|legislative|oversight|field|joint|virtual|hybrid|remote)\\s+)*(?:hearing|markup|meeting|live\\s*stream|webcast)(?:\\s*:\\s*pending\\s+legislation)?(?:\\s+[0-9./:-]+\\s*(?:am|pm)?)?\\s*$')
+           AND NOT regexp_like(coalesce(v.title,''),'(?i):\\s*pending\\s+legislation\\s*$')
+           AND regexp_like(coalesce(v.title,''),'(?i)(?:[:“"”]|\\b(?:hearing|round[- ]?table|forum|briefing)\\s+(?:on|to|re|into|examining|reviewing|assessing)\\b)') AS has_explicit_topic,
+          regexp_like(coalesce(v.title,''),'(?i)(?:\\bsubcommittee\\b|\\bo\\s*&\\s*i\\b)') AS says_subcommittee,
+          regexp_like(coalesce(v.title,''),'(?i)(?:\\bfull\\s+(?:committee|cmte)\\b|\\bbefore\\s+the\\s+(?:house|senate)\\s+(?:committee\\s+on\\s+)?[a-z &''-]+\\s+committee\\b)')
+           AND NOT regexp_like(coalesce(v.title,''),'(?i)\\bsubcommittee\\b') AS says_full_committee,
+          (regexp_match(regexp_replace(coalesce(v.title,''),'\\b(?:HEARING|MARKUP|FULL|OPEN|PUBLIC|HYBRID|REMOTE|SELECT|JOINT|HOUSE|SENATE|PART|SUB|AND|THE|FOR|WITH|FROM)\\b',' ','g'),'\\b([A-Z]{{3,6}})\\b'))[1] AS v_acronym,
+          array_distinct(array_except(
+           string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(v.title,'')),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{{1,2}}\\b',' ','g')),' '),
+           sw.sw
+          )) AS video_words,
+          array_distinct(array_except(
+           string_to_array(trim(regexp_replace(regexp_replace(regexp_replace(lower(coalesce(v.title,'')),'[^a-z0-9]+',' ','g'),'\\b(?:[a-z0-9]{{1,2}}|(?:fy)?20[0-9]{{2}}|fy[0-9]{{2}})\\b',' ','g'),'\\b([a-z0-9]{{3,}})s\\b','$1','g')),' '),
+           tsw.words
+          )) AS topic_v_words,
+          array_distinct(array_except(
+           string_to_array(trim(regexp_replace(regexp_replace(regexp_replace(lower(coalesce(v.title,'')||' '||coalesce(v.source_description,'')),'[^a-z0-9]+',' ','g'),'\\b(?:[a-z0-9]{{1,2}}|(?:fy)?20[0-9]{{2}}|fy[0-9]{{2}})\\b',' ','g'),'\\b([a-z0-9]{{3,}})s\\b','$1','g')),' '),
+           tsw.words
+          )) AS topic_vd_words
+         FROM (SELECT DISTINCT video_key FROM recording_page_video_events WHERE video_key IS NOT NULL) k
+         JOIN {videos_relation} v ON v.video_key=k.video_key
+         CROSS JOIN recording_match_stopwords sw
+         CROSS JOIN recording_topic_stopwords tsw
+        ) r""",materialize=True),
         dict(name='recording_page_video_stated_overlaps',sql=f"""SELECT
          s.video_key,
          array_sort(array_distinct(array_agg(s.stated_id))) AS stated_event_ids,
+         array_sort(array_distinct(array_agg(s.stated_id) FILTER (WHERE m.event_id IS NOT NULL AND NOT coalesce(m.not_held,false)))) AS held_event_ids,
          max(CASE WHEN m.event_id IS NOT NULL THEN cast(1 AS BIGINT) ELSE cast(0 AS BIGINT) END)=1 AS has_known_stated_meeting,
          max(coalesce(cast(cardinality(array_intersect(
           s.video_words,
@@ -1273,34 +1333,109 @@ def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwor
         LEFT JOIN known_meetings m ON m.event_id=s.stated_id
         CROSS JOIN recording_match_stopwords sw
         GROUP BY s.video_key""",materialize=True),
-        dict(name='recording_page_match_rows',sql="""WITH page_meeting_candidates AS (
-         SELECT p.page_body,p.video_key,p.event_id,p.route_priority,p.link_rule,p.match_note,
-          lower(coalesce(m.meeting_type,''))='markup'
-           OR regexp_like(coalesce(m.title,''),'(?i)\\b(markup|business\\s+meeting|organizational|subcommittee\\s+assignments)\\b') AS is_markup_meeting,
-          regexp_like(coalesce(m.title,''),'(?i)\\bround[- ]?tables?\\b') AS is_roundtable_meeting,
-          array_distinct(array_except(
-           string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(m.title,'')||' '||coalesce(array_to_string(m.subject_keys,' '),'')),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{1,2}\\b',' ','g')),' '),
-           sw.sw
-          )) AS meeting_words
-         FROM recording_page_video_events p
-         JOIN known_meetings m ON m.event_id=p.event_id
+        dict(name='recording_page_meeting_committees',sql="""SELECT event_id,
+         array_distinct(array_agg(CASE WHEN substr(code,1,4)='jsec' THEN 'jjec' ELSE substr(code,1,4) END)) AS parent_codes,
+         bool_or(regexp_like(code,'00$')) AS has_full,
+         bool_or(NOT regexp_like(code,'00$')) AS has_sub,
+         bool_or(substr(code,1,2) IN ('hl','ht','sl','sc','sp','jc','jj','js')) AS has_select
+        FROM (
+         SELECT mc.event_id,lower(trim(mc.c['system_code'])) AS code
+         FROM (
+          SELECT p.event_id,unnest(m.committees) AS c
+          FROM (SELECT DISTINCT event_id FROM recording_page_video_events WHERE event_id IS NOT NULL) p
+          JOIN known_meetings m ON m.event_id=p.event_id
+          WHERE NOT coalesce(m.not_held,false) AND m.committees IS NOT NULL
+         ) mc
+         WHERE mc.c['system_code'] IS NOT NULL AND trim(mc.c['system_code'])<>''
+        )
+        GROUP BY event_id""",materialize=True),
+        dict(name='recording_page_match_rows',sql="""WITH page_meeting_raw AS (
+         SELECT m.event_id,m.meeting_date,m.meeting_type,m.title,m.subject_keys,
+          mc.parent_codes,coalesce(mc.has_full,false) AS has_full,coalesce(mc.has_sub,false) AS has_sub,coalesce(mc.has_select,false) AS has_select,
+          sw.sw AS match_sw,tsw.words AS topic_sw,tsw.full_m,tsw.abbr_m,
+          regexp_match(coalesce(m.title,''),'\\b(20[0-3][0-9]-[0-9]{2}-[0-9]{2})\\b') AS m_iso,
+          regexp_match(coalesce(m.title,''),'\\b([0-9]{1,2})[/.-]([0-9]{1,2})[/.-](20[0-3][0-9])\\b') AS m_mdy,
+          regexp_match(coalesce(m.title,''),'(?i)\\b(January|February|March|April|May|June|July|August|September|October|November|December)\\s+([0-9]{1,2}),?\\s+(20[0-3][0-9])\\b') AS m_full,
+          regexp_match(coalesce(m.title,''),'(?i)\\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[.]?\\s+([0-9]{1,2}),?\\s+(20[0-3][0-9])\\b') AS m_abbr
+         FROM recording_page_meeting_committees mc
+         RIGHT JOIN (
+          SELECT m.event_id,m.meeting_date,m.meeting_type,m.title,m.subject_keys
+          FROM (SELECT DISTINCT event_id FROM recording_page_video_events WHERE event_id IS NOT NULL) p
+          JOIN known_meetings m ON m.event_id=p.event_id
+          WHERE NOT coalesce(m.not_held,false)
+         ) m ON mc.event_id=m.event_id
          CROSS JOIN recording_match_stopwords sw
+         CROSS JOIN recording_topic_stopwords tsw
+        ), page_meeting_facts AS (
+         SELECT event_id,meeting_date,parent_codes,has_full,has_sub,has_select,
+          lower(coalesce(meeting_type,''))='markup'
+           OR regexp_like(coalesce(title,''),'(?i)\\b(markup|business\\s+meeting|organizational|subcommittee\\s+assignments)\\b') AS is_markup_meeting,
+          regexp_like(coalesce(meeting_type,'')||' '||coalesce(title,''),'(?i)\\bround[- ]?tables?\\b') AS is_roundtable_meeting,
+          regexp_like(coalesce(title,''),'(?i)\\bfield\\s+hearing\\b') AS is_field_hearing,
+          coalesce(
+           CASE WHEN m_iso IS NOT NULL THEN try_cast(m_iso[1] AS DATE) END,
+           CASE WHEN m_mdy IS NOT NULL THEN try_cast(m_mdy[3]||'-'||lpad(m_mdy[1],2,'0')||'-'||lpad(m_mdy[2],2,'0') AS DATE) END,
+           CASE WHEN m_full IS NOT NULL THEN try_cast(m_full[3]||'-'||lpad(cast(array_position(full_m,lower(m_full[1])) AS VARCHAR),2,'0')||'-'||lpad(m_full[2],2,'0') AS DATE) END,
+           CASE WHEN m_abbr IS NOT NULL THEN try_cast(m_abbr[3]||'-'||lpad(cast(array_position(abbr_m,substr(lower(m_abbr[1]),1,3)) AS VARCHAR),2,'0')||'-'||lpad(m_abbr[2],2,'0') AS DATE) END
+          ) AS m_title_date,
+          regexp_replace(regexp_replace(lower(regexp_replace(coalesce(title,''),'(?i)\\b(?:the|and|for|with|from|into|over|under|upon|to|in|on|at|by|a|an|of)\\b',' ','g')),'\\b([a-z])[a-z]*\\s*','$1','g'),'[^a-z]','','g')
+           ||' '||regexp_replace(regexp_replace(lower(regexp_replace(coalesce(title,''),'(?i)\\b(?:the|and|for|with|from|into|over|under|upon|to|in|on|at|by|a|an)\\b',' ','g')),'\\b([a-z])[a-z]*\\s*','$1','g'),'[^a-z]','','g') AS m_initials,
+          array_distinct(array_except(
+           string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(title,'')||' '||coalesce(array_to_string(subject_keys,' '),'')),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{1,2}\\b',' ','g')),' '),
+           match_sw
+          )) AS meeting_words,
+          array_distinct(array_except(
+           string_to_array(trim(regexp_replace(regexp_replace(regexp_replace(lower(coalesce(title,'')),'[^a-z0-9]+',' ','g'),'\\b(?:[a-z0-9]{1,2}|(?:fy)?20[0-9]{2}|fy[0-9]{2}|(?:hr|hres|hjres|hconres|s|sres|sjres|sconres)?[0-9]+)\\b',' ','g'),'\\b([a-z0-9]{3,})s\\b','$1','g')),' '),
+           topic_sw
+          )) AS topic_m_title_words,
+          array_distinct(array_except(
+           string_to_array(trim(regexp_replace(regexp_replace(regexp_replace(lower(coalesce(title,'')||' '||coalesce(array_to_string(subject_keys,' '),'')),'[^a-z0-9]+',' ','g'),'\\b(?:[a-z0-9]{1,2}|(?:fy)?20[0-9]{2}|fy[0-9]{2})\\b',' ','g'),'\\b([a-z0-9]{3,})s\\b','$1','g')),' '),
+           topic_sw
+          )) AS topic_m_words
+         FROM page_meeting_raw
+        ), page_meeting_candidates AS (
+         SELECT p.page_body,p.video_key,p.event_id,p.route_priority,p.link_rule,p.match_note,
+          mf.meeting_date,mf.parent_codes,mf.has_full,mf.has_sub,mf.has_select,
+          mf.is_markup_meeting,mf.is_roundtable_meeting,mf.is_field_hearing,mf.m_title_date,mf.m_initials,
+          mf.meeting_words,mf.topic_m_words,mf.topic_m_title_words
+         FROM page_meeting_facts mf
+         JOIN recording_page_video_events p ON p.event_id=mf.event_id
          WHERE p.video_key IS NOT NULL AND p.event_id IS NOT NULL
         ), page_evaluated AS (
          SELECT pm.page_body,pm.event_id,pm.video_key,pm.route_priority,pm.link_rule,pm.match_note,
-          pm.is_markup_meeting,pm.is_roundtable_meeting,
+          pm.is_markup_meeting,pm.is_roundtable_meeting,pm.is_field_hearing,
+          pm.meeting_date,pm.parent_codes,pm.has_full,pm.has_sub,pm.has_select,
+          pm.m_title_date,pm.m_initials,
+          cardinality(pm.topic_m_title_words) AS m_title_word_n,
+          pv.video_key IS NOT NULL AS has_video,
           coalesce(pv.is_markup_video,false) AS is_markup_video,
           coalesce(pv.is_roundtable_video,false) AS is_roundtable_video,
           coalesce(pv.is_hearing_or_markup_video,false) AS is_hearing_or_markup_video,
           coalesce(pv.has_explicit_event_id_in_title,false) AS has_explicit_event_id_in_title,
           coalesce(pv.is_generic_video_title,true) AS is_generic_video_title,
+          pv.pub_date,pv.v_date,pv.v_parent,
+          coalesce(pv.has_explicit_topic,false) AS has_explicit_topic,
+          coalesce(pv.says_subcommittee,false) AS says_subcommittee,
+          coalesce(pv.says_full_committee,false) AS says_full_committee,
+          pv.v_acronym,
+          coalesce(cast(cardinality(pv.topic_v_words) AS BIGINT),cast(0 AS BIGINT)) AS v_word_n,
           coalesce(arrow_cast(sv.stated_event_ids,'List(Int64)'),arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)')) AS stated_event_ids,
           coalesce(sv.has_known_stated_meeting,false) AS has_known_stated_meeting,
           coalesce(sv.max_stated_overlap,cast(0 AS BIGINT)) AS max_stated_overlap,
+          CASE WHEN sv.stated_event_ids IS NOT NULL THEN coalesce(array_has(arrow_cast(sv.stated_event_ids,'List(Int64)'),pm.event_id),false) ELSE false END AS states_this_event,
+          CASE WHEN sv.held_event_ids IS NOT NULL THEN cardinality(array_except(arrow_cast(sv.held_event_ids,'List(Int64)'),make_array(pm.event_id)))>0 ELSE false END AS states_other_held_event,
           cast(cardinality(array_intersect(
            coalesce(arrow_cast(pv.video_words,'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')),
            pm.meeting_words
-          )) AS BIGINT) AS video_meeting_overlap
+          )) AS BIGINT) AS video_meeting_overlap,
+          cast(cardinality(array_intersect(
+           coalesce(arrow_cast(pv.topic_v_words,'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')),
+           pm.topic_m_words
+          )) AS BIGINT) AS shared_v_words,
+          cast(cardinality(array_intersect(
+           coalesce(arrow_cast(pv.topic_vd_words,'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')),
+           pm.topic_m_words
+          )) AS BIGINT) AS shared_vd_words
          FROM recording_page_video_stated_overlaps sv
          RIGHT JOIN (
           recording_page_video_facts pv
@@ -1312,6 +1447,8 @@ def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwor
           max(e.video_meeting_overlap) OVER (PARTITION BY e.page_body,e.video_key) AS max_page_video_overlap
          FROM page_evaluated e
         ), page_kept AS (
+         -- Reject committee-page embeds whose own hearing identity (date, committee, event ID, kind, or title)
+         -- contradicts the held hearing they would attach to (ct-414r, ct-9vwc).
          SELECT e.event_id,e.video_key,e.page_body,e.match_note,
           min(e.page_body) OVER (PARTITION BY e.video_key,e.event_id) AS min_page_body,
           row_number() OVER (PARTITION BY e.video_key,e.event_id ORDER BY e.route_priority ASC,e.page_body ASC) AS rn
@@ -1344,6 +1481,26 @@ def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwor
            e.link_rule='house_text_head_weak'
            AND NOT e.is_generic_video_title
            AND e.video_meeting_overlap=0
+          )
+          AND (
+           NOT e.has_video OR (
+            (e.pub_date IS NULL OR e.meeting_date IS NULL OR e.pub_date>=e.meeting_date-INTERVAL '30' DAY OR e.states_this_event)
+            AND (e.v_date IS NULL OR e.meeting_date IS NULL OR e.v_date=e.meeting_date
+             OR (e.m_title_date IS NOT NULL AND e.v_date=e.m_title_date)
+             OR e.states_this_event
+             OR (e.shared_v_words>=2 AND NOT e.states_other_held_event
+              AND ((e.v_date>=e.meeting_date-INTERVAL '14' DAY AND e.v_date<=e.meeting_date+INTERVAL '14' DAY)
+               OR substr(cast(e.v_date AS VARCHAR),6,5)=substr(cast(e.meeting_date AS VARCHAR),6,5))))
+            AND NOT (e.states_other_held_event AND NOT e.states_this_event
+             AND (NOT e.is_generic_video_title OR e.has_explicit_event_id_in_title OR (e.v_date IS NOT NULL AND e.meeting_date IS NOT NULL AND e.v_date<>e.meeting_date))
+             AND e.shared_v_words<2)
+            AND (e.v_parent IS NULL OR e.parent_codes IS NULL OR array_has(e.parent_codes,e.v_parent) OR e.has_select OR e.states_this_event OR e.shared_v_words>=2)
+            AND (e.states_this_event OR e.parent_codes IS NULL OR e.has_select OR e.shared_vd_words>=2
+             OR NOT ((e.has_full AND NOT e.has_sub AND NOT e.is_field_hearing AND e.says_subcommittee)
+              OR (e.has_sub AND NOT e.has_full AND e.says_full_committee)))
+            AND (e.states_this_event OR NOT e.has_explicit_topic OR e.v_word_n<2 OR e.m_title_word_n<2 OR e.shared_vd_words>0
+             OR (e.v_acronym IS NOT NULL AND strpos(e.m_initials,lower(e.v_acronym))>0))
+           )
           )
         )
         SELECT DISTINCT cast('event' AS VARCHAR) AS subject_kind,cast(e.event_id AS VARCHAR) AS subject_id,
