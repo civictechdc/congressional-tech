@@ -65,3 +65,7 @@ Manual audit credits the latest release's 63 cover-driven kind/family changes an
 **2026-11-17T10:28:53Z**
 
 Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved.
+
+**2026-11-18T15:24:52Z**
+
+2026-11-18: the PDF cover-evidence model input this ticket describes (c572cfec) existed only on an unpushed local main; it is now pull request 203. It changes the model definition, so its first publish needs a cause record; expected difference is the kind of three documents.

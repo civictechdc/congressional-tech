@@ -93,3 +93,7 @@ Manual audit keeps this open: exclusions and successful HTTP transfers do not re
 **2026-11-17T10:28:53Z**
 
 Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved.
+
+**2026-11-18T15:24:52Z**
+
+2026-11-18 owner decision (questions tool): the 47 zero-page PDFs whose refetch returned byte-identical damaged files are to be recorded as 'publisher's copy is broken (seen 2026-11-15)', taken off the publisher-refetch list and kept open as 'find another copy'. Checked today: all 47 refetched files re-hashed equal to their originals; HTTP 200; the server's stated size equals the damaged size; publishers' last-modified dates are 2012 and 2015. Retry a publisher only if its last-modified date or version tag changes. A Wayback index check for older differing copies is running (reviews/ticket-state-20261118/g-wayback/); the owner also asked for Firecrawl search for relocated copies through corpus_recovery.discovery_runtime, which waits on FIRECRAWL_API_KEY being available to the session. The inventory files themselves are not yet changed.

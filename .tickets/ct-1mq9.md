@@ -52,3 +52,7 @@ Manual audit corrects the stale prerequisite: ct-yndj completed the first move o
 **2026-11-17T10:28:53Z**
 
 Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved. Byte-bound implementation and measured manual-maintenance decision complete; closed.
+
+**2026-11-18T15:24:52Z**
+
+2026-11-18: this ticket was closed on 2026-11-17 citing the byte bound on produce_html_metadata, but that commit (4c87b9f6) existed only on an unpushed local main. It is now pull request 202. Measured today from hosted pins: readings takes 2 commits a night (metadata 00039 on 11-17, 00041 on 11-18), about 40 since the 11-12 compaction, so under 10 s a night by this ticket's formula. There is still no automatic compaction and no file-count alarm; archive-jobs.yml maintenance is dispatch-only and model/jobs/maintenance.json has an empty lake_maintenance.
