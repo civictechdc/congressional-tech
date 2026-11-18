@@ -43,6 +43,7 @@ from .compact_wire_v6 import (
     expand_compact_v6_to_v4,
 )
 from .pythonic_v5 import (
+    DocMetaValidationError,
     SCHEMA_OBJ,
     SCHEMA_V4_STR,
     SYS_DOCMETA_V4,
@@ -578,7 +579,7 @@ def escalate_anomalies_gpt_oss(
                 usc_oracle=usc_oracle,
             )
             canon_cand = canonicalize_docmeta_v4(clean_cand)
-        except ValueError:
+        except DocMetaValidationError:
             continue
         ok_v4, _ = validate_docmeta_v4(canon_cand)
         if not ok_v4:
@@ -894,7 +895,7 @@ def run_docmeta_parquet_sweep(
                     r_di = int(rep_item["doc_idx"])
                     try:
                         re_canon = canonicalize_docmeta_v4(candidate_objs[r_di])
-                    except ValueError:
+                    except DocMetaValidationError:
                         continue
                     ok_rep, _ = validate_docmeta_v4(re_canon)
                     if ok_rep:
@@ -1238,7 +1239,7 @@ def run_docmeta_parquet_sweep(
                     )
                     canon_obj = canonicalize_docmeta_v4(clean_obj)
                     ok_v4, _ = validate_docmeta_v4(canon_obj)
-                except ValueError:
+                except DocMetaValidationError:
                     ok_v4 = False
                     canon_obj = {}
                     sidecar = {}

@@ -1500,3 +1500,44 @@ def test_sweep_and_teacher_recover_from_strict_v4_validation_failures(
             {"filename": "sample.pdf", "text": "Committee hearing testimony on federal policy. " * 10},
         )
         assert "fallback_primary_kind_other" in anom_pk["anomaly_codes"]
+
+    # F. Unrelated enrichment `ValueError` (e.g. RefSpec checksum drift) propagates instead of becoming `stub_or_blank`
+    from congress_docmeta import DocMetaValidationError, canonicalize_docmeta_v4, prompt_v4, pythonic_v6
+
+    assert issubclass(DocMetaValidationError, ValueError)
+    with pytest.raises(DocMetaValidationError, match="usable_missing_primary_kind"):
+        canonicalize_docmeta_v4({})
+    with pytest.raises(DocMetaValidationError, match="usable_missing_primary_kind"):
+        prompt_v4.canonicalize_v4({})
+
+    def _raise_refspec_checksum(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
+        raise ValueError("Pinned RefSpec artifact drifted: simulated checksum mismatch")
+
+    monkeypatch.setattr(pythonic_v6, "_extract_citations_bundle_v6", _raise_refspec_checksum)
+
+    in_chk_pq = tmp_path / "queue_checksum_err.parquet"
+    out_chk_pq = tmp_path / "results_checksum_err.parquet"
+    pq.write_table(pa.Table.from_pylist([queue_rows[3]]), in_chk_pq)
+    with pytest.raises(ValueError, match="Pinned RefSpec artifact drifted"):
+        run_docmeta_parquet_sweep(
+            _FakeSweepEngine([json.dumps(valid_doc, separators=(",", ":"))]),
+            in_chk_pq,
+            out_chk_pq,
+            chunk_rows=4,
+            b_slots=4,
+            wire_format="v4",
+            use_ane_ring=False,
+        )
+    assert not out_chk_pq.exists()
+
+    with pytest.raises(ValueError, match="Pinned RefSpec artifact drifted"):
+        escalate_anomalies_gpt_oss(
+            _FakeTeacherEngine([upgraded_doc]),
+            flagged_indices=[0],
+            prompts_user_content=["p0"],
+            rows=[queue_rows[3]],
+            pmetas=[pmetas_p2[2]],
+            current_objs=[dict(valid_doc)],
+            current_texts=[json.dumps(valid_doc, separators=(",", ":"))],
+            current_anomalies=[dict(pass1_anoms[2])],
+        )

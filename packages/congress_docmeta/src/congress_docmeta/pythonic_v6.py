@@ -71,6 +71,7 @@ from .pythonic_v5 import (
     DOC_FAMILY_MAP,
     DOC_KINDS_SET,
     DOMAIN_TO_COMMITTEE_CODE,
+    DocMetaValidationError,
     ETYPES_SET,
     EVAL_KIND_FAMILIES,
     FORMAL_COMMITTEE_KINDS,
@@ -2047,7 +2048,7 @@ class PythonicEngineV6:
                     use_hygiene=use_hygiene,
                     usc_oracle=self.usc_oracle,
                 )
-            except ValueError:
+            except DocMetaValidationError:
                 fn_rec = str(r.get("filename") or "")
                 fallback_triage = _build_triage_result(
                     "stub_or_blank",

@@ -93,7 +93,9 @@ def canonicalize_v4(raw_obj: dict) -> dict:
         out["error_reason"] = er.strip()[:200] if isinstance(er, str) and er.strip() else out["status"]
         ok, err = validate_v4(out)
         if not ok:
-            raise ValueError(f"Invalid error-status DocMetaV4: {err}")
+            from .pythonic_v5 import DocMetaValidationError
+
+            raise DocMetaValidationError(f"Invalid error-status DocMetaV4: {err}")
         return out
 
     max_caps = {
@@ -233,7 +235,9 @@ def canonicalize_v4(raw_obj: dict) -> dict:
 
     ok, err = validate_v4(out)
     if not ok:
-        raise ValueError(f"Canonicalized DocMetaV4 failed validation: {err}")
+        from .pythonic_v5 import DocMetaValidationError
+
+        raise DocMetaValidationError(f"Canonicalized DocMetaV4 failed validation: {err}")
     return out
 
 

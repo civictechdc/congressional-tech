@@ -889,6 +889,10 @@ def _is_empty_val(v: Any) -> bool:
     return False
 
 
+class DocMetaValidationError(ValueError):
+    """Raised when a DocMetaV4Causal object fails strict schema, order, or semantic validation."""
+
+
 class _DuplicateKeyError(ValueError):
     """Raised when a JSON object string contains duplicate keys."""
 
@@ -1069,7 +1073,7 @@ def canonicalize_docmeta_v4(
         out["error_reason"] = er.strip()[:200] if isinstance(er, str) and er.strip() else out["status"]
         ok, err = validate_docmeta_v4(out)
         if not ok:
-            raise ValueError(f"Invalid error-status DocMetaV4: {err}")
+            raise DocMetaValidationError(f"Invalid error-status DocMetaV4: {err}")
         return out
 
     max_caps = {
@@ -1232,7 +1236,7 @@ def canonicalize_docmeta_v4(
 
     ok, errs = _validate_docmeta_v4_all(out, check_usable_completeness=not _allow_incomplete_usable)
     if not ok:
-        raise ValueError(f"Canonicalized DocMetaV4 failed validation: {errs[0]}")
+        raise DocMetaValidationError(f"Canonicalized DocMetaV4 failed validation: {errs[0]}")
     return out
 
 
@@ -2170,6 +2174,7 @@ __all__ = [
     "triage_non_usable_v5",
     "triage_unwrapped_http_or_empty",
     "unwrap_archive_url",
+    "DocMetaValidationError",
     "NON_USABLE_TRIAGE_STATUSES",
     "validate_docmeta_v4",
     "validate_docmeta_v4_all",
