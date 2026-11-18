@@ -34,6 +34,7 @@ from .gold import (
     parse_gold_rows,
     select_val_indices,
 )
+from .anomaly_router_v6 import ROSTER_LEAK_MEMBER_LIMIT_V6, roster_shaped_members_v6
 from .schema_v4 import MAX_OUTPUT_TOKENS
 
 KIND_FAMILIES = {
@@ -299,7 +300,12 @@ def score_legacy(objs: list[dict[str, Any] | None], golds: list[dict[str, Any]],
             )
 
         p_pers, g_pers = _personas(obj), _personas(gold)
-        roster_spam += int(len(p_pers) > 10 or (pk_g == "committee_vote" and len(p_pers) > 4))
+        # A roster dump, judged as the router judges it: by Members outside a list role, not by how many people a
+        # record lists (a correct answer for a long witness list holds up to 26).
+        roster_spam += int(
+            len(roster_shaped_members_v6(p_pers)) > ROSTER_LEAK_MEMBER_LIMIT_V6
+            or (pk_g == "committee_vote" and len(p_pers) > 4)
+        )
         f1["personas_name"].add({surname_of(p["name"]) for p in p_pers}, {surname_of(str(p["name"])) for p in g_pers})
         f1["personas_name_role"].add(
             {(surname_of(p["name"]), str(p.get("role"))) for p in p_pers},

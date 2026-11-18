@@ -11,8 +11,9 @@ to route anomalous 2B LLM outputs to teacher review or deterministic repair:
       `0` personas on `witness_statement`, `member_opening_statement`, `oversight_letter`,
       or `nomination_or_support_letter`.
   (b) `persona_roster_leak`:
-      `len(personas) > 10` (or raw pre-cap `> 10`), `committee_vote` / `attendance_quorum_sheet` /
-      `member_roster` `> 4` personas, or `>= 3` verified standing backbench roster members leaked.
+      more people than the format allows (raw, before the cap), more than 10 Members of Congress outside a
+      list role (`roster_shaped_members_v6`), `committee_vote` / `attendance_quorum_sheet` / `member_roster`
+      `> 4` personas, or `>= 3` verified standing backbench roster members leaked.
   (c) `fallback_primary_kind_other`:
       `primary_kind == "other"` (or missing/invalid `primary_kind` on a `usable` document).
   (d) `relational_*_contradiction`:
@@ -41,6 +42,7 @@ import unicodedata
 from typing import Any, Mapping, Sequence
 
 from .prompt_v4 import NON_USABLE_TRIAGE_STATUSES
+from .schema_v4 import MAX_PERSONAS
 
 ACTOR_REQUIRED_KINDS_V6 = frozenset(
     {
@@ -172,6 +174,24 @@ BACKBENCH_LEAK_TARGET_KINDS_V6 = frozenset(
 )
 
 NON_USABLE_STATUSES_V6 = NON_USABLE_TRIAGE_STATUSES
+
+# Roles a document lists many people in, from one printed list: a witness list, a bill's cosponsor line, a
+# signature block, an address block. A standing committee roster read off a masthead or a grid fills none of them;
+# models write its Members as chair, ranking_member, author_or_speaker or questioner.
+LIST_ROLES_V6 = frozenset({"witness", "nominee", "cosponsor", "signatory", "recipient"})
+# More Members of Congress than this outside a list role is a roster. Until ct-bult this was the cap on all people,
+# which bounded a roster dump; the cap rose to 26 for witness lists. No gold label exceeds it (most: 10, on one
+# `member_roster`; 9 on any other kind, in 3,684 labels read 2026-11-18).
+ROSTER_LEAK_MEMBER_LIMIT_V6 = 10
+
+
+def roster_shaped_members_v6(personas: Sequence[Any] | None) -> list[Mapping[str, Any]]:
+    """Members of Congress listed in a role other than a list role (`LIST_ROLES_V6`): what a roster dump adds."""
+    return [
+        p
+        for p in (personas or ())
+        if isinstance(p, Mapping) and p.get("entity_type") == "member" and p.get("role") not in LIST_ROLES_V6
+    ]
 
 _SD_SUPPLEMENTAL_RE = re.compile(r"(?:^|[-_])SD\d{2,4}(?:[-_.]|$)", re.I)
 _EXHIBIT_FILENAME_RE = re.compile(
@@ -1182,17 +1202,30 @@ def score_docmeta_anomalies_v6(
         )
 
     # ------------------------------------------------------------------
-    # (b) Persona roster / voter-grid leak (`len > 10`, vote/quorum `> 4`, backbench spam)
+    # (b) Persona roster / voter-grid leak (over the cap, Members outside list roles, vote/quorum `> 4`, backbench)
     # ------------------------------------------------------------------
     raw_p_cnt = int(det.get("raw_persona_count") or len(valid_personas))
-    if len(valid_personas) > 10 or raw_p_cnt > 10:
+    roster_members = roster_shaped_members_v6(valid_personas)
+    if max(len(valid_personas), raw_p_cnt) > MAX_PERSONAS:
         _add_anomaly(
             anomalies,
             code="persona_roster_leak",
             category="roster_leak",
             severity="high",
             weight=1.25,
-            detail=f"Persona count {max(len(valid_personas), raw_p_cnt)} exceeds 10-persona standing-roster cap.",
+            detail=f"Persona count {max(len(valid_personas), raw_p_cnt)} exceeds the {MAX_PERSONAS}-person format cap.",
+        )
+    elif len(roster_members) > ROSTER_LEAK_MEMBER_LIMIT_V6:
+        _add_anomaly(
+            anomalies,
+            code="persona_roster_leak",
+            category="roster_leak",
+            severity="high",
+            weight=1.25,
+            detail=(
+                f"{len(roster_members)} Members of Congress outside a witness, cosponsor, signatory or recipient role "
+                f"(> {ROSTER_LEAK_MEMBER_LIMIT_V6}): a standing roster."
+            ),
         )
     elif pk in ("committee_vote", "attendance_quorum_sheet", "member_roster") and len(valid_personas) > 4:
         _add_anomaly(
@@ -1685,11 +1718,14 @@ __all__ = [
     "FORMAL_COMMITTEE_KINDS_V6",
     "HOST_CHAMBER_EXEMPT_KINDS_V6",
     "LEGISLATIVE_DRAFT_KINDS_V6",
+    "LIST_ROLES_V6",
+    "ROSTER_LEAK_MEMBER_LIMIT_V6",
     "check_gist_title_grounding_v6",
     "extract_slug_congress_v6",
     "iso_date_to_congress_v6",
     "load_default_usc_oracle_v6",
     "norm_committee_token_v6",
+    "roster_shaped_members_v6",
     "route_batch_anomalies_v6",
     "score_atomic_stdlib_v6",
     "score_docmeta_anomalies_v6",

@@ -45,7 +45,7 @@ Key engineering properties:
 
 5. **Stage 5 — Constrained Batch Decoding & Anomaly Router (`pythonic_v6.py`, `anomaly_router_v6.py`)**:
    - `PerDocGrammarHelperV6` + `SyncKindMatcher` compiles per-`doc_kind` `llguidance` JSON schemas lazily and synchronizes initial fast-forward tokens with `SCHEMA_V4_STR` so locked and unlocked documents share a single rolling GPU batch without token jitter.
-   - `score_docmeta_anomalies_v6` / `route_batch_anomalies_v6` scores post-pass outputs for teacher escalation across empty actor-required personas, `>10` roster leaks, `primary_kind == "other"`, relational witness/committee/bioguide contradictions, invalid non-draft U.S.C. sections, and calendar/lock mismatches (`100.0%` specificity on `Gold360` gold; `100.0%` true-error precision on live V4/V5 outputs).
+   - `score_docmeta_anomalies_v6` / `route_batch_anomalies_v6` scores post-pass outputs for teacher escalation across empty actor-required personas, roster leaks (more than 10 Members of Congress outside a witness, cosponsor, signatory or recipient role), `primary_kind == "other"`, relational witness/committee/bioguide contradictions, invalid non-draft U.S.C. sections, and calendar/lock mismatches (`100.0%` specificity on `Gold360` gold; `100.0%` true-error precision on live V4/V5 outputs).
 
 ---
 
