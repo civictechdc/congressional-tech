@@ -1010,6 +1010,7 @@ def post_pass_v6(
         triage=triage,
         is_html_override=is_html_v6,
         skip_sidecar=True,
+        _defer_completeness=True,
     )
 
     if clean_obj.get("status") != "usable":

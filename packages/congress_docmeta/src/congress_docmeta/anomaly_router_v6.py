@@ -738,7 +738,8 @@ def score_atomic_stdlib_v6(
                 ungrounded_cmts.append(c)
                 risk += 0.65
 
-    pk = docmeta.get("primary_kind")
+    raw_pk_atom = docmeta.get("primary_kind")
+    pk = raw_pk_atom if isinstance(raw_pk_atom, str) else None
     st = str(docmeta.get("status") or "usable")
     kind_conflicts: list[str] = []
     if (pk is None or st != "usable") and len(raw_text) > 600 and not det.get("triage_status"):
@@ -1154,7 +1155,8 @@ def score_docmeta_anomalies_v6(
         res_nu2["atomic_stdlib"] = score_atomic_stdlib_v6(docmeta, det)
         return res_nu2
 
-    pk = docmeta.get("primary_kind")
+    raw_pk = docmeta.get("primary_kind")
+    pk = raw_pk if isinstance(raw_pk, str) else None
     is_sd_sub = bool(det.get("slug_is_sd_submission")) or bool(_SD_SUPPLEMENTAL_RE.search(filename))
     is_exhibit = bool(det.get("is_exhibit_or_external")) or bool(_EXHIBIT_FILENAME_RE.search(filename))
     hsru_status = str(det.get("hsru_host_status") or "not_hsru")
@@ -1233,7 +1235,7 @@ def score_docmeta_anomalies_v6(
             category="genre_uncertainty",
             severity="high",
             weight=1.0,
-            detail=f"Ambiguous catch-all primary_kind={pk!r}.",
+            detail=f"Ambiguous catch-all primary_kind={raw_pk!r}.",
         )
 
     # ------------------------------------------------------------------

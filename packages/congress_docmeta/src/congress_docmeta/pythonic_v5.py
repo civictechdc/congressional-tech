@@ -966,8 +966,11 @@ def _validate_schema_node(
             errs.append(f"{path}: expected boolean, got {type(val).__name__}")
 
 
-def validate_docmeta_v4_all(obj_or_json: str | Mapping[str, Any] | None) -> tuple[bool, list[str]]:
-    """Strictly validate DocMetaV4Causal schema, types, causal key order, and semantic invariants (stdlib)."""
+def _validate_docmeta_v4_all(
+    obj_or_json: str | Mapping[str, Any] | None,
+    *,
+    check_usable_completeness: bool = True,
+) -> tuple[bool, list[str]]:
     if obj_or_json is None:
         return False, ["null_docmeta"]
     if isinstance(obj_or_json, str):
@@ -1027,7 +1030,7 @@ def validate_docmeta_v4_all(obj_or_json: str | Mapping[str, Any] | None) -> tupl
     else:
         if "error_reason" in obj:
             errs.append("usable_status_has_error_reason")
-        if st == "usable":
+        if check_usable_completeness and st == "usable":
             for req_u in ("primary_kind", "composed_title", "gist", "topics"):
                 if req_u not in obj:
                     errs.append(f"usable_missing_{req_u}")
@@ -1038,13 +1041,22 @@ def validate_docmeta_v4_all(obj_or_json: str | Mapping[str, Any] | None) -> tupl
     return len(errs) == 0, errs
 
 
+def validate_docmeta_v4_all(obj_or_json: str | Mapping[str, Any] | None) -> tuple[bool, list[str]]:
+    """Strictly validate DocMetaV4Causal schema, types, causal key order, and semantic invariants (stdlib)."""
+    return _validate_docmeta_v4_all(obj_or_json, check_usable_completeness=True)
+
+
 def validate_docmeta_v4(obj: str | Mapping[str, Any] | None) -> tuple[bool, str | None]:
     """Validate `obj` against the single strict DocMetaV4Causal validator (100% stdlib)."""
     ok, errs = validate_docmeta_v4_all(obj)
     return ok, (errs[0] if errs else None)
 
 
-def canonicalize_docmeta_v4(raw_obj: dict[str, Any], *, validate: bool = True) -> dict[str, Any]:
+def canonicalize_docmeta_v4(
+    raw_obj: dict[str, Any],
+    *,
+    _allow_incomplete_usable: bool = False,
+) -> dict[str, Any]:
     """Order keys causally at all levels, strip empty/null values, enforce caps, and validate."""
     out: dict[str, Any] = {}
     st = raw_obj.get("status", "usable")
@@ -1055,10 +1067,9 @@ def canonicalize_docmeta_v4(raw_obj: dict[str, Any], *, validate: bool = True) -
     if out["status"] in NON_USABLE_TRIAGE_STATUSES:
         er = raw_obj.get("error_reason")
         out["error_reason"] = er.strip()[:200] if isinstance(er, str) and er.strip() else out["status"]
-        if validate:
-            ok, err = validate_docmeta_v4(out)
-            if not ok:
-                raise ValueError(f"Invalid error-status DocMetaV4: {err}")
+        ok, err = validate_docmeta_v4(out)
+        if not ok:
+            raise ValueError(f"Invalid error-status DocMetaV4: {err}")
         return out
 
     max_caps = {
@@ -1219,10 +1230,9 @@ def canonicalize_docmeta_v4(raw_obj: dict[str, Any], *, validate: bool = True) -
             else:
                 out[k] = s
 
-    if validate:
-        ok, err = validate_docmeta_v4(out)
-        if not ok:
-            raise ValueError(f"Canonicalized DocMetaV4 failed validation: {err}")
+    ok, errs = _validate_docmeta_v4_all(out, check_usable_completeness=not _allow_incomplete_usable)
+    if not ok:
+        raise ValueError(f"Canonicalized DocMetaV4 failed validation: {errs[0]}")
     return out
 
 
@@ -1670,6 +1680,7 @@ def post_pass_v5(
     triage: dict[str, Any] | None = None,
     is_html_override: bool | None = None,
     skip_sidecar: bool = False,
+    _defer_completeness: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Apply 100%-precision deterministic V5 post-pass rules and return `(clean_docmeta_v4, sidecar)`."""
     if isinstance(known, dict):
@@ -1696,12 +1707,9 @@ def post_pass_v5(
             triage=triage,
         )
 
-    obj = canonicalize_docmeta_v4(raw_obj, validate=False)
+    obj = canonicalize_docmeta_v4(raw_obj, _allow_incomplete_usable=_defer_completeness)
 
     if obj["status"] in NON_USABLE_TRIAGE_STATUSES:
-        ok_t, err_t = validate_docmeta_v4(obj)
-        if not ok_t:
-            raise ValueError(f"Invalid error-status DocMetaV4: {err_t}")
         return obj, derive_sidecar_v5(
             obj,
             filename=filename,
@@ -1879,7 +1887,7 @@ def post_pass_v5(
     if (
         pk == "oversight_letter"
         and obj.get("correspondence_flow") in ("agency_to_congress", "foreign_gov_to_congress")
-        and "personas" in obj
+        and isinstance(obj.get("personas"), list)
     ):
         head_sal = (cleaned_text or "")[:1200]
         has_cong_salutation = bool(
@@ -1995,7 +2003,7 @@ def post_pass_v5(
                 if cur_pers:
                     obj["personas"] = cur_pers
 
-    clean_obj = canonicalize_docmeta_v4(obj, validate=not skip_sidecar)
+    clean_obj = canonicalize_docmeta_v4(obj, _allow_incomplete_usable=_defer_completeness)
     if skip_sidecar:
         hsru_st = (
             resolved_prov.get("hsru_host_status")
@@ -2067,7 +2075,8 @@ def _salvage_truncated_docmeta_v4(raw_txt: str, filename: str = "") -> dict[str,
             if isinstance(obj, dict):
                 obj.setdefault("status", "usable")
                 obj.setdefault("text_quality", "native")
-                if obj["status"] not in ("error_or_block", "stub_or_blank", "ocr_unreadable"):
+                st_s = obj.get("status")
+                if not (isinstance(st_s, str) and st_s in NON_USABLE_TRIAGE_STATUSES):
                     obj.setdefault("primary_kind", "other")
                     obj.setdefault("composed_title", (filename or "Congressional Document")[:100])
                     obj.setdefault("gist", "Congressional committee document.")

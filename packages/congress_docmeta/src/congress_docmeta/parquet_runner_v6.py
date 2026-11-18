@@ -154,8 +154,8 @@ def compute_llm_vs_det_diff_v6(
         if raw_d.get(k) != final_obj.get(k):
             changed_fields.append(k)
 
-    raw_refs = set(raw_d.get("refs") or ()) if isinstance(raw_d.get("refs"), list) else set()
-    fin_refs = set(final_obj.get("refs") or ()) if isinstance(final_obj.get("refs"), list) else set()
+    raw_refs = {x for x in (raw_d.get("refs") or ()) if isinstance(x, str)} if isinstance(raw_d.get("refs"), list) else set()
+    fin_refs = {x for x in (final_obj.get("refs") or ()) if isinstance(x, str)} if isinstance(final_obj.get("refs"), list) else set()
     raw_cmts = list(raw_d.get("committees") or ()) if isinstance(raw_d.get("committees"), list) else []
     fin_cmts = list(final_obj.get("committees") or ()) if isinstance(final_obj.get("committees"), list) else []
 
@@ -887,12 +887,13 @@ def run_docmeta_parquet_sweep(
                 _apply_ext_verdict_to_anomaly(c_anomalies[i], v_dict)
 
             if repair_persona_roles and callable(getattr(external_verifier, "repair_suspect_personas", None)):
-                repairs = external_verifier.repair_suspect_personas(c_clean_objs, c_chunk, parsed_verdicts)  # type: ignore[attr-defined]
+                candidate_objs = copy.deepcopy(c_clean_objs)
+                repairs = external_verifier.repair_suspect_personas(candidate_objs, c_chunk, parsed_verdicts)  # type: ignore[attr-defined]
                 repaired_by_doc: dict[int, set[int]] = {}
                 for rep_item in repairs:
                     r_di = int(rep_item["doc_idx"])
                     try:
-                        re_canon = canonicalize_docmeta_v4(c_clean_objs[r_di])
+                        re_canon = canonicalize_docmeta_v4(candidate_objs[r_di])
                     except ValueError:
                         continue
                     ok_rep, _ = validate_docmeta_v4(re_canon)
@@ -1244,7 +1245,6 @@ def run_docmeta_parquet_sweep(
 
                 if not ok_v4:
                     # Guaranteed schema-valid fallback if model output or truncated salvage failed a constraint
-                    salvaged = True
                     fallback_triage = _build_triage_result(
                         "stub_or_blank",
                         "garbled",
