@@ -182,11 +182,14 @@ def load_and_prepare_v64_splits(
     rare_oversample_max_count: int = 30,
     seed: int = 20261117,
     train_docs: int = 0,
+    class_cap: int = 0,
 ) -> tuple[list[tuple[list[int], int]], list[tuple[list[int], int]], dict[str, Any]]:
     """Build zero-leakage C2+C4 `(full_ids, prompt_len)` train & valid datasets.
 
     `train_docs > 0` keeps a class-stratified sample of the training docs (every class with at least one doc
     keeps one) and drops the rare-class second views, so short config-sweep runs share one small, fixed set.
+    `class_cap > 0` keeps a fixed random `class_cap` training docs of any class that has more, so the largest
+    classes (witness statements and biographies are 40% of the set) stop pulling the kind decision.
     """
     parsed_rows, p_stats = parse_gold_rows(gold_jsonl, (val48_json, docs8_json))
     val_indices, rng = select_val_indices(parsed_rows, val_size=val_size, seed=seed)
@@ -206,6 +209,17 @@ def load_and_prepare_v64_splits(
             keep.update(idxs[: max(1, round(len(idxs) * frac_keep))])
         skip_train = {i for v in by_cls_train.values() for i in v} - keep
         rare_oversample_max_count = 0
+    if class_cap > 0:
+        cap_rng = random.Random(seed + 2)
+        by_cls_kept: dict[str, list[int]] = defaultdict(list)
+        for i, r in enumerate(parsed_rows):
+            if i not in val_indices and i not in skip_train:
+                by_cls_kept[r["cls_key"]].append(i)
+        for cls_k in sorted(by_cls_kept):
+            idxs = by_cls_kept[cls_k]
+            if len(idxs) > class_cap:
+                cap_rng.shuffle(idxs)
+                skip_train.update(idxs[class_cap:])
     cls_train_counts = Counter(parsed_rows[i]["cls_key"] for i in range(n_total) if i not in val_indices)
 
     def _encode_pair(known: str, fn: str, text_body: str, ans_json: str) -> tuple[list[int], int]:

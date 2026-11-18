@@ -148,6 +148,43 @@ leaves blank, and 11 of 12 read against the text were right (the wrong one, a he
 Seen in passing, not fixed: the model sometimes gives a letter's recipients the sender's address
 (`HHRG-116-IF17-20200128-SD031.pdf`), and R8 leaves a model-written address alone.
 
+## Follow-up training experiments, 2026-11-17 to 11-18
+
+Epoch one (`gemma4_e2b_v64_c2c4_w8`) stays the production model through all of these.
+
+- **Retrain on repaired labels: a tie.** `gemma4_e2b_v64r_c2c4_w8` adds the addressed chair / ranking member
+  where the text names them. Held-out loss 0.3032 against 0.3114; headline 90.2 / 91.4 / 90.8 on `valid_sweep` /
+  `val48_sweep` / `val48` against 89.7 / 90.7 / 91.0 on the same gold, and `docs8` 75.7 against 88.5 (one doc is
+  12.5). Not adopted.
+- **More data still helps.** The retrain's mid-run checkpoints, scored end to end:
+
+| Batches (of 3,489) | 1,600 | 2,400 | 3,200 | 3,489 |
+|---|---|---|---|---|
+| Held-out loss | 0.343 | 0.318 | 0.304 | 0.303 |
+| `valid_sweep` headline | 87.1 | 89.1 | 89.7 | 90.2 |
+| `val48_sweep` headline | 87.6 | 89.3 | 91.4 | 91.4 |
+
+- **Config sweep, 600 stratified docs, one epoch, 92-doc held-out loss.** Three baseline runs (two init seeds,
+  one batch order) land within 0.002, so 0.004 is the bar.
+
+| Run | Held-out loss | s/batch |
+|---|---|---|
+| Baseline: last 23 layers, lr 1.8e-4 | 0.3927, 0.3911, 0.3928 | 5.2 |
+| lr 1e-4 | 0.3946 | 5.2 |
+| lr 3e-4 | 0.4138 | 5.2 |
+| All 35 layers (`--num-layers 35 --ckpt-tokens 1500`) | **0.3679** | 6.9 |
+| E4B, all 42 layers (`--base-snap`, `--ckpt-tokens 0`) | **0.3398** | 11.5 |
+
+- **E4B's lower loss did not become accuracy.** Free-running BF16 decode of both 600-doc adapters on 183
+  held-out docs (`artifacts/logs/sweep/gen_compare.py`: no grammar, no rules, comparable only with itself): E4B
+  headline 81.9 against E2B all-35 81.0, document kind 76.3 against 77.4 (13 against 15 docs right where the
+  other is wrong), people name F1 67.0 against 70.6, at 16.9 s/doc against 11.4. A 0.028 loss gap bought
+  nothing measurable, and E4B would need the packer, ANE bundle and native engine ported. Not pursued.
+- **Loss is a weak proxy at this range.** It tied once (the retrain) and misled once (E4B), so the all-35 gain
+  counts only when a full-size run is scored end to end.
+- **Merged seven-chunk ring, re-scored on main** (`v64_ep1_main_ring7.json`): headline 89.9 / 90.4 on
+  `valid_sweep` / `val48_sweep`, document kind unchanged, 2.42 docs/s in one run on an idle machine.
+
 ## Not done
 
 - The Laya / Kev atomic validators were off for these numbers. With `laya-ane` on, scores did not move, flags
