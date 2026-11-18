@@ -79,7 +79,7 @@ python scripts/dev.py test production-offline
 python scripts/dev.py test active-experiment-regression
 ```
 
-Other commands in [`scripts/`](scripts/README.md) publish the filename viewer, add recovered documents to the archive, query the Library of Congress Web Harvest, and measure local rebuilds. Those jobs are separate from the CLIs below.
+Other commands in [`scripts/`](scripts/README.md) publish the filename viewer, add recovered documents to the archive, query the National Archives Congressional Web Harvest, and measure local rebuilds. Those jobs are separate from the CLIs below.
 
 Install the Poppler release pinned in `test-suites.toml` (Homebrew held with
 `brew pin poppler` on macOS, `.github/scripts/install-poppler.sh` on Ubuntu). See the

@@ -1,6 +1,6 @@
 # Web Harvest commands
 
-The [Library of Congress Web Harvest](https://webharvest.gov/) saved copies of House and Senate committee websites. Committee pages and PDFs that disappeared from the live web are often still in that archive.
+The [National Archives Congressional Web Harvest](https://webharvest.gov/) saved copies of House and Senate committee websites. Committee pages and PDFs that disappeared from the live web are often still in that archive.
 
 These commands look up those copies, fetch a bounded set of them, and decide whether a saved page is a real document. They do not import files into the raw archive and they do not publish the filename viewer. Import is a separate step under [`scripts/corpus_recovery`](../corpus_recovery/README.md).
 

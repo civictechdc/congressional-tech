@@ -18,7 +18,7 @@ Run commands with the locked environment (`uv sync --locked`, then `.venv/bin/py
 | See whether a viewer publish can be skipped, or publish the viewer | [`publication/`](publication/README.md) |
 | Add recovered committee documents to the archive and then to the viewer | [`corpus_recovery/`](corpus_recovery/README.md) |
 | Time a rebuild or measure memory on a local fixture | [`measure/`](measure/README.md) |
-| Look up or fetch copies from the Library of Congress Web Harvest | [`webharvest/`](webharvest/README.md) |
+| Look up or fetch copies from the National Archives Congressional Web Harvest | [`webharvest/`](webharvest/README.md) |
 
 ## Workspace
 

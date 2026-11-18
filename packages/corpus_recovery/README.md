@@ -2,7 +2,7 @@
 
 Python library that checks recovered committee documents and adds them to the raw archive.
 
-Committee sites and the Library of Congress Web Harvest sometimes hold a hearing PDF or HTML page that the archive does not. This package is the code that turns a reviewed local copy into archive rows and, later, into a catalog update. Campaign commands are documented below; retained-package tools remain in [`scripts/corpus_recovery`](../../scripts/corpus_recovery/README.md).
+Committee sites and the National Archives Congressional Web Harvest sometimes hold a hearing PDF or HTML page that the archive does not. This package is the code that turns a reviewed local copy into archive rows and, later, into a catalog update. Campaign commands are documented below; retained-package tools remain in [`scripts/corpus_recovery`](../../scripts/corpus_recovery/README.md).
 
 ```python
 from corpus_recovery.reconcile import import_retained, reconcile
