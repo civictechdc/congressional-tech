@@ -41,6 +41,26 @@ def _continuation_digest(value):
     return sha256(json.dumps(value,sort_keys=True,separators=(',',':')).encode()).hexdigest()
 
 
+def _identity_inputs(model_spec,**rest):
+    """What a kept model must share with this run before it is resumed, by part.
+
+    A provenance row's `path` is where this run downloaded the record, a fresh name on every
+    hosted run (provenance_inventory._download); its key, sha256 and size are the record. Hashing
+    the path made every hosted re-run rebuild an identical candidate (ct-31qi, run 44373468129),
+    so it stays out. Every other path in the spec still counts.
+    Cannot see: a file at that path that differs from its pin; the model job checks that when it
+    reads the file, which a resume does not do.
+    """
+    model={name:([{key:item for key,item in row.items() if key!='path'} for row in value]
+                 if name in PROVENANCE else value) for name,value in model_spec.items()}
+    return {**{'model.'+name:value for name,value in model.items()},**rest}
+
+
+def _identity_parts(inputs):
+    """One digest per part: evidence that lets a refused resume name what differed."""
+    return {name:_continuation_digest(value) for name,value in sorted(inputs.items())}
+
+
 def _save_continuation(path,value,*,seal=False):
     """Make a continuation visible only after its complete bytes are durable."""
     if seal:value=dict(value,continuation_sha256=_continuation_digest(value))
@@ -71,6 +91,7 @@ def _read_continuation(work, *, daily=False):
     if 'stage' in checkpoint:fields.add('stage')
     # Evidence only, outside the identity; continuations written before ct-64t4 have none.
     if isinstance(checkpoint.get('engine_runtime'),dict):fields.add('engine_runtime')
+    if isinstance(checkpoint.get('identity_parts'),dict):fields.add('identity_parts')
     if source==checkpoint_path:fields|={'manifest_pin','result_pin'}
     if daily:fields|={'daily_summary_sha256','input_digest'}
     if set(checkpoint)!=fields:
@@ -226,8 +247,9 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
         daily_pin['daily_summary_sha256']=daily_summary_sha256
     ran={} if engine_runtime is None else dict(engine_runtime=engine_runtime)
     work=_publication_directory(work,fresh=not resume)
-    identity=_continuation_digest(dict(model=model_spec,receipt_keys=keys,provenance=provenance,run=run,
+    parts=_identity_parts(_identity_inputs(model_spec,receipt_keys=keys,provenance=provenance,run=run,
         bucket=bucket,public_origin=public_origin,measured_release_id=measured_release_id))
+    identity=_continuation_digest(parts)
     checkpoint_path=work/'completed-model.json'
     checkpoint=None;pending=None;promote_checkpoint=False
     stage=_stage_paths(None,model_spec=model_spec,work=work)
@@ -237,7 +259,11 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
         if checkpoint.get('daily_summary_sha256')!=daily_summary_sha256:
             raise ValueError('Retained daily summary differs from the model continuation')
         if checkpoint['identity']!=identity:
-            raise PublicationInputsChanged('Publication continuation inputs differ from the completed model')
+            kept=checkpoint.get('identity_parts')
+            differing=(sorted(name for name in parts.keys()|kept.keys() if parts.get(name)!=kept.get(name))
+                       if isinstance(kept,dict) else [])
+            raise PublicationInputsChanged('Publication continuation inputs differ from the completed model'
+                +(': '+', '.join(differing) if differing else ''))
         stage=_stage_paths(checkpoint.get('stage'),model_spec=model_spec,work=work)
         if source==intent_path:
             # The exporter writes its manifest last. Missing final metadata means
@@ -347,7 +373,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 if prepared.get('include_entities'):admitted_names.append('entity_profile_completeness')
                 # Persist before the expensive job. A process can die after the
                 # exporter finishes and before this controller regains control.
-                _save_continuation(intent_path,dict(version=1,identity=identity,profile=profile,
+                _save_continuation(intent_path,dict(version=1,identity=identity,identity_parts=parts,profile=profile,
                     entity_digests=entity_digests,admitted_names=admitted_names,pointer=pointer,pointer_etag=etag,stage=stage,
                     **daily_pin,**ran),seal=bool(daily_pin))
                 manifest=build_prepared_release(prepared,engine=engine,output=stage['output'])
@@ -402,7 +428,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
         if checkpoint is None or promote_checkpoint:
             # A promoted intent keeps the record of the attempt that built its model, not this one's.
             built=ran if checkpoint is None else {k:checkpoint[k] for k in ('engine_runtime',) if k in checkpoint}
-            saved=dict(version=1,identity=identity,profile=profile,entity_digests=entity_digests,
+            saved=dict(version=1,identity=identity,identity_parts=parts,profile=profile,entity_digests=entity_digests,
                        admitted_names=admitted_names if checkpoint is None else checkpoint['admitted_names'],
                        pointer=pointer,pointer_etag=etag,stage=stage,**artifacts,**daily_pin,**built)
             _save_continuation(checkpoint_path,saved,seal=bool(daily_pin))
