@@ -22,6 +22,7 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
         model_dir=getattr(args, "model_dir", None),
         default_mode=getattr(args, "mode", "auto"),
         ane_variant=getattr(args, "ane_variant", "w8"),
+        ane_ring_variant=getattr(args, "ane_variant", "w8"),
         lm_head_mode=getattr(args, "lm_head_mode", "q4"),
         mlp_dtype=getattr(args, "mlp_dtype", "bfloat16"),
         kv_i8=not getattr(args, "no_kv_i8", False),

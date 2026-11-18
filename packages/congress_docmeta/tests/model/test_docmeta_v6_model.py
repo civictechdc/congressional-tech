@@ -540,3 +540,23 @@ def test_compact_wire_kind_set_lock_dispatches_a_sync_matcher(tmp_path: Path) ->
         sync_ff_with_std=True,
     )
     assert isinstance(gh_set.new_matcher(), SyncMatcher)
+
+
+def test_docmeta_sweep_cli_puts_the_ring_on_the_asked_bundle(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`--ane-variant fp16` must reach the engine as the ring's bundle too (fast-gemma4 `ane_ring_variant`)."""
+    import fast_gemma4.engine as fg4_engine
+
+    from congress_docmeta import cli
+
+    class _Captured(Exception):
+        pass
+
+    def _fake_engine(**kw: Any) -> None:
+        raise _Captured(kw)
+
+    monkeypatch.setattr(fg4_engine, "FastGemma4Engine", _fake_engine)
+    for argv, expect in ((["--ane-variant", "fp16"], "fp16"), ([], "w8")):
+        args = cli.build_parser().parse_args(["docmeta-sweep", "in.parquet", "out.parquet", *argv])
+        with pytest.raises(_Captured) as cap:
+            cli._cmd_docmeta_sweep(args)
+        assert cap.value.args[0]["ane_ring_variant"] == expect == cap.value.args[0]["ane_variant"]

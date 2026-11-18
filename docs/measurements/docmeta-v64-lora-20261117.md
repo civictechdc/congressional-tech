@@ -86,7 +86,40 @@ now does the same. ANE compute itself was never the problem (per-layer KV cosine
 | Docs per second, same session | 1.51 | 1.86 | 1.86 |
 
 The ring stays the default (`auto`): about 39 h for the 258,440-row queue against about 47 h GPU only.
-`--ane-variant fp16` changes nothing because the ring always resolves the W8 runner.
+`--ane-variant fp16` now runs the ring on the FP16 bundle (it used to resolve W8 regardless), and the eval
+report's `ane_ring_bundle` names the bundle the ring used, or is null when it fell back to GPU only. An FP16
+ring run has not been made since; `v64_ep1_ring_fp16.json` predates this and is a W8 run.
+
+### Two follow-ups, measured in one session (19:22 to 19:39)
+
+- **Pad fix.** Inside a 48-token group pads were still written. `_scatter_ring_chunk` now writes real tokens
+  only, on the GPU admit path and the ring tail alike.
+- **Seven chunks.** The ring ran three 256-token chunks per doc (768 suffix tokens); it now runs every chunk
+  the bundle's 1,920-token past can hold: seven after the 278-token prefix, 1,792 suffix tokens. The 96-slot
+  ring then carries 13 docs per cohort instead of 16.
+
+| V6.4 LoRA | GPU only | GPU only, pad fix | Ring | Ring, pad fix | Ring, pad fix, 7 chunks |
+|---|---|---|---|---|---|
+| `valid_sweep` headline / document kind | 89.3 / 89.6 | 89.8 / 89.6 | 89.7 / 89.6 | 89.6 / 89.0 | 89.9 / 89.6 |
+| `val48_sweep` headline / document kind | 90.6 / 89.4 | 90.4 / 89.4 | 90.7 / 89.4 | 90.6 / 89.4 | 90.4 / 89.4 |
+| Docs per second | 1.53 | 1.68 | 1.78, 1.76 | 1.92 | 2.00, 2.03 |
+
+- **Accuracy does not separate the five configurations.** Headline spans 0.6 points on `valid_sweep` and 0.2 on
+  `val48_sweep` with no consistent sign, and 80 to 140 of the 212 docs change some free-text field between any
+  two. Neither change can be called an accuracy gain or loss on these sets.
+- **The pad fix is a correctness fix.** Eight docs within 31 tokens of each other had 0 to 31 wrong
+  sliding-window positions each in the first decode step's window (the predicted counts); with the fix 0 to 1,
+  as few as prefilling one doc at a time.
+- **Seven chunks are a speed gain.** Both changes together: 1.77 to 2.02 docs/s (+14%), about 36 h for the
+  258,440-row queue instead of 41 h. Against the pad-fix ring run alone the gain is 5% (1.92 to 2.02).
+- **Seven chained chunks hold KV fidelity.** Cosine against GPU per chunk: layers 0..11 0.9993 to 0.9995 in
+  every chunk; layers 12..14 0.9979 to 0.9984 in chunks 0 to 4 and 0.9968 to 0.9972 in chunks 5 and 6. The
+  GPU's own chunk-size noise floor is 0.9971 to 0.9995.
+- **Unexplained:** the pad-fix runs were 8 to 10% faster than their baselines, one run each, and the fix has no
+  reason to change speed. Do not count on it until repeated.
+- The two seven-chunk runs differ on 6 docs, in `topics` and `gist` only; the two three-chunk runs are
+  identical. Not investigated.
+- Peak MLX memory was 9.6 GB. Reports and logs: `artifacts/eval/ring_followups_20261117/`.
 
 ## Work addresses (R8)
 

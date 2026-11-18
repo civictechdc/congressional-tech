@@ -181,11 +181,31 @@ def load_and_prepare_v64_splits(
     max_seq_len: int = 3584,
     rare_oversample_max_count: int = 30,
     seed: int = 20261117,
+    train_docs: int = 0,
 ) -> tuple[list[tuple[list[int], int]], list[tuple[list[int], int]], dict[str, Any]]:
-    """Build zero-leakage C2+C4 `(full_ids, prompt_len)` train & valid datasets."""
+    """Build zero-leakage C2+C4 `(full_ids, prompt_len)` train & valid datasets.
+
+    `train_docs > 0` keeps a class-stratified sample of the training docs (every class with at least one doc
+    keeps one) and drops the rare-class second views, so short config-sweep runs share one small, fixed set.
+    """
     parsed_rows, p_stats = parse_gold_rows(gold_jsonl, (val48_json, docs8_json))
     val_indices, rng = select_val_indices(parsed_rows, val_size=val_size, seed=seed)
     n_total = len(parsed_rows)
+    skip_train: set[int] = set()
+    if train_docs > 0:
+        sub_rng = random.Random(seed + 1)
+        by_cls_train: dict[str, list[int]] = defaultdict(list)
+        for i, r in enumerate(parsed_rows):
+            if i not in val_indices:
+                by_cls_train[r["cls_key"]].append(i)
+        frac_keep = train_docs / max(1, sum(len(v) for v in by_cls_train.values()))
+        keep: set[int] = set()
+        for cls_k in sorted(by_cls_train):
+            idxs = list(by_cls_train[cls_k])
+            sub_rng.shuffle(idxs)
+            keep.update(idxs[: max(1, round(len(idxs) * frac_keep))])
+        skip_train = {i for v in by_cls_train.values() for i in v} - keep
+        rare_oversample_max_count = 0
     cls_train_counts = Counter(parsed_rows[i]["cls_key"] for i in range(n_total) if i not in val_indices)
 
     def _encode_pair(known: str, fn: str, text_body: str, ans_json: str) -> tuple[list[int], int]:
@@ -220,6 +240,8 @@ def load_and_prepare_v64_splits(
         if i in val_indices:
             val_items.append(pair)
             continue
+        if i in skip_train:
+            continue
         train_items.append(pair)
         seq_lens.append(len(pair[0]))
         # Rare tail kinds and non-usable statuses get a second view: the reviewer's own window when it differs
@@ -235,7 +257,7 @@ def load_and_prepare_v64_splits(
     stats = {
         "raw_gold_docs": n_total,
         **p_stats,
-        "train_docs_base": n_total - len(val_indices),
+        "train_docs_base": n_total - len(val_indices) - len(skip_train),
         "rare_tail_oversampled": rare_boosted,
         "train_items_total": len(train_items),
         "valid_items": len(val_items),

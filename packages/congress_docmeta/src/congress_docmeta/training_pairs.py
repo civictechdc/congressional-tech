@@ -34,6 +34,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--gold-jsonl", type=Path, default=DEFAULT_GOLD_JSONL)
     ap.add_argument("--val-size", type=int, default=180)
     ap.add_argument("--max-seq-len", type=int, default=3584)
+    ap.add_argument("--train-docs", type=int, default=0,
+                    help="keep a class-stratified sample of this many training docs (0 = all); for config sweeps")
     ap.add_argument("--out", type=Path, required=True, help="PAIRS.json; docmeta_wire_config.json is written beside it")
     args = ap.parse_args(argv)
 
@@ -41,7 +43,8 @@ def main(argv: list[str] | None = None) -> int:
 
     tok = load_tokenizer(args.base_snap)
     train, valid, stats = load_and_prepare_v64_splits(
-        args.gold_jsonl, DEFAULT_VAL48_JSON, DEFAULT_DOCS8_JSON, tok, val_size=args.val_size, max_seq_len=args.max_seq_len
+        args.gold_jsonl, DEFAULT_VAL48_JSON, DEFAULT_DOCS8_JSON, tok, val_size=args.val_size, max_seq_len=args.max_seq_len,
+        train_docs=args.train_docs,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps({"stats": stats, "train": train, "valid": valid}, separators=(",", ":")), encoding="utf-8")

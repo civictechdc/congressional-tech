@@ -8,8 +8,9 @@ This package owns all of it except the model: rules R1 to R8, parsers, the schem
 the output validators' questions, the gold eval and training-label building. The model is the
 [fast-gemma4](../../../fast-gemma4) engine, which this package calls and which never imports this package.
 
-Moved here from fast-gemma4 `src/fast_gemma4/docmeta/` at commit 11dcf14 on 2026-11-17 (ct-ihe7). The module
-files keep their names so each can be compared with its original.
+Moved here from fast-gemma4 `src/fast_gemma4/docmeta/` at commit 11dcf14 on 2026-11-17 (ct-ihe7), with fast-gemma4
+main's later DocMeta changes through fdfe088. The module files keep their names so each can be compared with its
+original.
 
 ## What is where
 

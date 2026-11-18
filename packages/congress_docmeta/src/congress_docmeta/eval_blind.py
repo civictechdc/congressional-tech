@@ -282,6 +282,9 @@ def run_sweep_sets(
         "completion_tokens": summary.completion_tokens,
         "pass2_escalated": summary.pass2_escalated_docs,
         "pass2_accepted": summary.pass2_accepted_docs,
+        # None means the ring did not engage (off, or its bundle was missing or not fully on the ANE): a ring-on
+        # run that fell back to GPU only would otherwise look like perfect parity.
+        "ane_ring_bundle": f"{bundle.parent.name}/{bundle.name}" if (bundle := eng.ane_ring_bundle) else None,
     }
     for scored in results.values():
         scored["sweep"] = sweep_stats
@@ -329,7 +332,7 @@ def main() -> int:
     ap.add_argument("--ane-ring", action="store_true", help="hybrid ANE prefill ring for the *_sweep sets")
     ap.add_argument("--escalate-gpt-oss", action="store_true",
                     help="send anomaly-flagged docs to the fast-gpt-oss Pass-2 teacher (*_sweep sets)")
-    ap.add_argument("--ane-variant", choices=("w8", "fp16"), default="w8")
+    ap.add_argument("--ane-variant", choices=("w8", "fp16"), default="w8", help="bundle the ring runs")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--rescore", type=Path, default=None,
                     help="re-score the saved predictions of an earlier report with this script's metrics; no model run")
@@ -347,6 +350,7 @@ def main() -> int:
     sweep_sets = load_sweep_sets(names, args.gold_jsonl)
     eng = FastGemma4Engine(
         model_dir=args.model_dir, default_mode="auto" if args.ane_ring else "gpu", ane_variant=args.ane_variant,
+        ane_ring_variant=args.ane_variant,
         warmup=True,
         warmup_ane=args.ane_ring,
     )
