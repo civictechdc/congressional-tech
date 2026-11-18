@@ -5,9 +5,10 @@
 -- same-kind proceeding when one side carries only a generic kind label).
 -- "One page on that date" counts pages, not addresses: a committee serves one page under its bare
 -- host and its party host (science.house.gov, republicans-science.house.gov), and the queue fetching
--- the second address removed a correct match on 2026-11-17 (ct-mwod). page_key is the address
--- without scheme, www, edit- and the party or archive prefix, so the same path and query on those
--- hosts is one page. It cannot see an alias whose path differs.
+-- the second address removed a correct match on 2026-11-17 (ct-mwod). page_key is host_stem (the
+-- one place the host prefixes are stripped) with the address's path and query, so the same path and
+-- query on those hosts is one page. It cannot see an alias whose path or query differs, and it
+-- would merge two party sites' different pages that share a path and query on one date.
 WITH stopwords AS (
  SELECT make_array(
   '','the','a','an','of','and','to','in','on','for','with','from','at','by','is','are','be','as','or','its','it','this','that',
@@ -77,7 +78,7 @@ WITH stopwords AS (
  SELECT
   u.page_body,
   u.source_url,
-  regexp_replace(lower(u.source_url),'^https?://(?:www[.])?(?:edit-)?(?:democrats-|republicans-|archives[0-9]*-)?','') AS page_key,
+  u.host_stem||lower(regexp_replace(u.source_url,'^https?://[^/]+','')) AS page_key,
   hh.parent_committee,
   coalesce(pf.heading,'')||' '||coalesce(pf.title,'')||' '||regexp_replace(u.source_url,'^https?://[^/]+/','') AS title_text,
   coalesce(pf.text_head,'') AS text_head,
@@ -113,7 +114,6 @@ WITH stopwords AS (
  SELECT
   page_body,
   parent_committee,
-  min(source_url) AS source_url,
   min(page_key) AS page_key,
   min(title_text) AS title_text,
   min(title_text||' '||text_head) AS full_text,
@@ -134,7 +134,6 @@ WITH stopwords AS (
  SELECT
   g.page_body,
   g.parent_committee,
-  g.source_url,
   g.page_date,
   regexp_like(g.title_text,'(?i)\b(markup|business\s+meeting)\b') AS is_markup,
   array_distinct(array_except(
@@ -145,8 +144,8 @@ WITH stopwords AS (
    string_to_array(trim(regexp_replace(regexp_replace(lower(g.full_text),'[^a-z0-9]+',' ','g'),'\b[a-z0-9]{1,2}\b',' ','g')),' '),
    sw.sw
   )) AS full_words,
-  first_value(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee ORDER BY g.page_key ASC,g.page_body ASC)=
-   first_value(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee ORDER BY g.page_key DESC,g.page_body ASC) AS single_url_on_date
+  min(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee)=
+   max(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee) AS single_page_on_date
  FROM pages_grouped g
  CROSS JOIN stopwords sw
  WHERE g.page_date IS NOT NULL
@@ -188,7 +187,7 @@ WITH stopwords AS (
  SELECT
   p.page_body,
   m.event_id,
-  p.single_url_on_date,
+  p.single_page_on_date,
   m.single_kind_on_date,
   p.is_markup=m.is_markup AS same_kind,
   NOT m.not_held AS held_ok,
@@ -207,7 +206,7 @@ WITH stopwords AS (
  FROM dated_candidates
  WHERE shared_title_words>=2
   OR (shared_full_words>=2 AND same_kind)
-  OR (single_kind_on_date AND single_url_on_date AND same_kind AND (shared_title_words>=1 OR shared_full_words>=1 OR generic_side))
+  OR (single_kind_on_date AND single_page_on_date AND same_kind AND (shared_title_words>=1 OR shared_full_words>=1 OR generic_side))
 ), dated_ranked AS (
  SELECT
   page_body,

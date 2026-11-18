@@ -621,6 +621,7 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
     run_job(tmp_path / 'job', engine, inputs=inputs, steps=steps, outputs=[
         parquet_output(tmp_path, 'recordings', 'SELECT * FROM recordings_export', ['video_key']),
         parquet_output(tmp_path, 'meeting_coverage', 'SELECT * FROM meeting_coverage_export', ['event_id', 'aspect']),
+        parquet_output(tmp_path, 'recording_matches', 'SELECT * FROM recording_matches_export', ['match_id']),
     ], queries=[])
     rec = {r['video_key']: r for r in rows(tmp_path, 'recordings')}
     assert rec['youtube:-Ii51ySKWUc']['event_ids'] == [118500]
@@ -635,6 +636,9 @@ def test_committee_page_recording_links_and_recording_scope(tmp_path):
     # ct-mwod: one page under two host aliases is still one page on its date; two pages are not.
     assert rec['youtube:SBp0UXikw8w']['event_ids'] == [117471]
     assert rec['youtube:markupAAAAA']['event_ids'] == [] and rec['youtube:statementBB']['event_ids'] == []
+    # Both saved copies win the meeting; they are one match, cited to the lower body.
+    assert [(m['event_id'], m['basis'], m['source_ref']) for m in rows(tmp_path, 'recording_matches')
+            if m['video_key'] == 'youtube:SBp0UXikw8w'] == [(117471, 'committee_page', 'committee_page:' + '66' * 32)]
 
     cov = {(r['event_id'], r['aspect']): (r['state'], r['reason']) for r in rows(tmp_path, 'meeting_coverage')}
     assert cov[118500, 'recording'] == ('partial', 'excerpts_only')
