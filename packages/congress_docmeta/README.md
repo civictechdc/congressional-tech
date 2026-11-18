@@ -9,7 +9,7 @@ the output validators' questions, the gold eval and training-label building. The
 [fast-gemma4](../../../fast-gemma4) engine, which this package calls and which never imports this package.
 
 Moved here from fast-gemma4 `src/fast_gemma4/docmeta/` at commit 11dcf14 on 2026-11-17 (ct-ihe7), with fast-gemma4
-main's later DocMeta changes through e7aad77. The module files keep their names so each can be compared with its
+main's later DocMeta changes through 743f6c9. The module files keep their names so each can be compared with its
 original.
 
 ## What is where

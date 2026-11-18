@@ -20,6 +20,11 @@ DEFAULT_GOLD_JSONL = DEFAULT_ARCHIVE_DIR / "lookups_and_gold" / "train_v6_4_comp
 DEFAULT_VAL48_JSON = DEFAULT_ARCHIVE_DIR / "lookups_and_gold" / "eval_val48_v4_gold.json"
 DEFAULT_DOCS8_JSON = DEFAULT_ARCHIVE_DIR / "lookups_and_gold" / "eval_docs8_v4_gold.json"
 DEFAULT_QUEUE_PARQUET = DEFAULT_ARCHIVE_DIR / "parquets_v6_2" / "llm_queue_v6_2.parquet"
+# The 183 held-out docs, by link key. The seeded draw below depends on every row's class, so one repaired label
+# would swap held-out docs for docs earlier checkpoints trained on; membership is read from this file instead.
+DEFAULT_HELDOUT_KEYS_JSON = (
+    DEFAULT_ARCHIVE_DIR.parent / "docmeta-v65-raretypes-20261118" / "lookups_and_gold" / "heldout_v6_4_183_link_keys.json"
+)
 
 _PROMPT_PARSE_RE = re.compile(
     r"Advisory known metadata:\s*(?P<known>[^\n]*)\nFilename:\s*(?P<filename>[^\n]*)\nText:\n(?P<text>.*)\Z",
@@ -154,9 +159,17 @@ def parse_gold_rows(
 
 
 def select_val_indices(
-    parsed_rows: list[dict[str, Any]], *, val_size: int = 180, seed: int = 20261117
+    parsed_rows: list[dict[str, Any]],
+    *,
+    val_size: int = 180,
+    seed: int = 20261117,
+    heldout_keys_json: Path | None = DEFAULT_HELDOUT_KEYS_JSON,
 ) -> tuple[set[int], random.Random]:
-    """Class-stratified held-out split; returns the indices and the RNG (reused for augmentation draws)."""
+    """Held-out split; returns the indices and the RNG (reused for augmentation draws).
+
+    Membership comes from `heldout_keys_json` when that file exists (rows are matched by link key, so label
+    repairs and dropped rows cannot move a doc across the split). Without it, a class-stratified seeded draw.
+    """
     rng = random.Random(seed)
     by_cls: dict[str, list[int]] = defaultdict(list)
     for i, r in enumerate(parsed_rows):
@@ -168,6 +181,11 @@ def select_val_indices(
         rng.shuffle(idxs)
         n_take = max(1, round(len(idxs) * frac)) if len(idxs) >= 4 else (1 if len(idxs) >= 2 else 0)
         val_indices.update(idxs[:n_take])
+    if heldout_keys_json is not None and heldout_keys_json.is_file():
+        keys = set(json.loads(heldout_keys_json.read_text(encoding="utf-8"))["link_key_hex"])
+        val_indices = {i for i, r in enumerate(parsed_rows) if r["link_key_hex"] in keys}
+        if not val_indices:
+            raise RuntimeError(f"no row matches the held-out keys in {heldout_keys_json}")
     return val_indices, rng
 
 
@@ -238,8 +256,12 @@ def load_and_prepare_v64_splits(
             eff_txt = text_body if char_cap is None else head_tail_window_chars(text_body, char_cap, 0.72)
             u_str = build_prompt_v6_compact(known, fn, eff_txt)
             msgs = [{"role": "user", "content": u_str}, {"role": "assistant", "content": ans_json}]
-            p_str = tok.apply_chat_template([msgs[0]], tokenize=False, add_generation_prompt=True)
-            f_str = tok.apply_chat_template(msgs, tokenize=False)
+            # enable_thinking=False: mlx-lm's template otherwise prepends a `<|think|>` system turn (7 tokens)
+            # that the sweep's `format_chat(..., enable_thinking=False)` never sends.
+            p_str = tok.apply_chat_template([msgs[0]], tokenize=False, add_generation_prompt=True, enable_thinking=False)
+            f_str = tok.apply_chat_template(msgs, tokenize=False, enable_thinking=False)
+            if "<|think|>" in p_str:
+                raise RuntimeError("training prompt still carries the thinking block production never sends")
             p_ids = list(tok.encode(p_str, add_special_tokens=False))
             f_ids = list(tok.encode(f_str, add_special_tokens=False))
             while len(f_ids) > len(p_ids) and f_ids[-1] != 106 and tok.decode([f_ids[-1]]).strip() == "":
