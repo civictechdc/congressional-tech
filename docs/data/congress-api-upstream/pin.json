@@ -43,7 +43,7 @@
       "number": 364,
       "state": "open",
       "title": "Relating Committee Meetings to Bills",
-      "impact": "relatedItems.bills remains sparse upstream"
+      "impact": "no reverse /bill/{congress}/{billType}/{billNumber}/committee_meetings endpoint; committee meetings already list discussed bills in relatedItems, so bill-to-meeting lookups must index from meetings"
     },
     {
       "number": 190,

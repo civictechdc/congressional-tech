@@ -29,3 +29,7 @@ Each relevant upstream issue is either cited beside the gap it explains or recor
 - Pinned upstream `ChangeLog.md` (`dc22db035ba18c3d4603555c0dbf0b93b93d259f`, commit `bf9417c07d1a49cc211cba71756f4bd367561642`) and `CommitteeMeetingEndpoint.md` / `CommitteeEndpoint.md` blob SHAs in `docs/data/congress-api-upstream/pin.json`.
 - Added light upstream drift watch `scripts/measure/check_congress_api_changelog.py` + unit tests (`scripts/measure/tests/test_check_congress_api_changelog.py`, 3 passed).
 - Shared findings cross-repo with `spicy-docs` in `spicy-stack` ticket `ss-a9f9` (citing `#435`, `#171`, `#176`, `#364`, `#190`, `#182`, `#159` and the `ChangeLog.md` pin against `spicy_docs/sources/congress/listing.py` and `bill_children.py`).
+
+**2026-11-18T22:50:25Z**
+
+2026-11-18 Review #0 correction: fixed inverted description of upstream issue #364 in packages/congress_api/SOURCE_MODELS.md and docs/data/congress-api-upstream/pin.json (retained issue_364.json notes committee meetings already list bills in relatedItems and requests a reverse /bill/{congress}/{billType}/{billNumber}/committee_meetings endpoint), and added strict reviewed_issues validation + CLI --live exit-2 / doc-only drift tests in check_congress_api_changelog.py.

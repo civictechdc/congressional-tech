@@ -15,8 +15,10 @@ import csv
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
+import tempfile
 import time
 from typing import Any
 from urllib.parse import parse_qs, urlencode, urljoin, urlsplit, urlunsplit
@@ -43,9 +45,23 @@ def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def save_json(path: Path, value: Any) -> None:
+def _write_text_atomic(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(text)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+
+def save_json(path: Path, value: Any) -> None:
+    _write_text_atomic(path, json.dumps(value, indent=2, ensure_ascii=False) + "\n")
 
 
 def validate_loc_json_url(url: str) -> str:
@@ -78,16 +94,21 @@ def fetch_loc_json(
     url: str,
     *,
     timeout: float = 30.0,
+    delay: float = MIN_LOC_JSON_DELAY_SECONDS,
 ) -> tuple[dict[str, Any], bytes, dict[str, Any]]:
     """Fetch a single www.loc.gov ?fo=json URL, hard-aborting on screening or errors."""
     current = validate_loc_json_url(url)
     headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
     response = None
-    for _hop in range(3):
+    for hop in range(3):
+        if hop > 0 and delay > 0:
+            time.sleep(delay)
         response = session.get(current, headers=headers, timeout=timeout, allow_redirects=False)
         lower_headers = {k.lower(): v for k, v in response.headers.items()}
         if "cf-mitigated" in lower_headers:
             raise RuntimeError(f"Cloudflare mitigation header on {current}: {lower_headers['cf-mitigated']}")
+        if "retry-after" in lower_headers:
+            raise RuntimeError(f"Retry-After header ({lower_headers['retry-after']}) on {current} (zero retries)")
         if response.status_code in {301, 302, 303, 307, 308}:
             location = response.headers.get("Location")
             if not location:
@@ -96,6 +117,8 @@ def fetch_loc_json(
             continue
         break
     assert response is not None
+    if response.status_code in {301, 302, 303, 307, 308}:
+        raise RuntimeError(f"Too many redirects on {url}")
     if response.status_code in {403, 429} or response.status_code >= 400:
         raise RuntimeError(f"LoC JSON request failed with HTTP {response.status_code} on {current} (zero retries)")
     content_type = (response.headers.get("Content-Type") or "").lower()
@@ -106,6 +129,8 @@ def fetch_loc_json(
     payload = response.json()
     if not isinstance(payload, dict):
         raise RuntimeError(f"Expected JSON object payload on {current}, got {type(payload).__name__}")
+    if not isinstance(payload.get("results"), list):
+        raise RuntimeError(f"Expected list 'results' in LoC JSON payload on {current}")
     meta = {
         "requested_url": url,
         "final_url": current,
@@ -468,25 +493,42 @@ def build_catalog(
     seen_urls: set[str] = set()
     reported_total_hits: int | None = None
     reported_total_pages: int | None = None
+    repeated_next_url = False
 
     while next_url and page_num <= max_pages:
         if next_url in seen_urls:
+            repeated_next_url = True
             break
         seen_urls.add(next_url)
         page_path = pages_dir / f"page-{page_num:04d}.json"
+        meta_path = pages_dir / f"page-{page_num:04d}.meta.json"
         if page_path.exists():
             raw = page_path.read_bytes()
+            raw_sha = sha256_bytes(raw)
+            if meta_path.exists():
+                sidecar = json.loads(meta_path.read_text(encoding="utf-8"))
+                if sidecar.get("sha256") != raw_sha:
+                    raise ValueError(
+                        f"Cached page digest mismatch for {page_path}: expected {sidecar.get('sha256')}, got {raw_sha}"
+                    )
+                sidecar_urls = {sidecar.get("requested_url"), sidecar.get("final_url")}
+                if next_url not in sidecar_urls:
+                    raise ValueError(
+                        f"Cached page URL mismatch for {page_path}: expected {next_url}, sidecar has {sorted(u for u in sidecar_urls if u)}"
+                    )
             payload = json.loads(raw.decode("utf-8"))
+            if not isinstance(payload, dict) or not isinstance(payload.get("results"), list):
+                raise ValueError(f"Cached page {page_path} missing list 'results'")
             source_mode = "cached"
         else:
             if offline:
                 raise ValueError(f"Missing cached LoC page in --offline mode: {page_path}")
             if page_num > 1:
                 time.sleep(delay)
-            payload, raw, fetch_meta = fetch_loc_json(http, next_url)
+            payload, raw, fetch_meta = fetch_loc_json(http, next_url, delay=delay)
             page_path.write_bytes(raw)
             source_mode = "fetched"
-            save_json(pages_dir / f"page-{page_num:04d}.meta.json", fetch_meta)
+            save_json(meta_path, fetch_meta)
 
         page_payloads.append(payload)
         pagination = payload.get("pagination") if isinstance(payload.get("pagination"), dict) else {}
@@ -501,7 +543,7 @@ def build_catalog(
                 "url": next_url,
                 "file": str(page_path),
                 "sha256": sha256_bytes(raw),
-                "results_count": len(payload.get("results") or []),
+                "results_count": len(payload["results"]),
                 "source_mode": source_mode,
                 "next": pagination.get("next"),
             }
@@ -511,12 +553,19 @@ def build_catalog(
         next_url = _ensure_fo_json(raw_next) if isinstance(raw_next, str) and raw_next.strip() else None
         page_num += 1
 
+    complete = next_url is None and not repeated_next_url
+    incomplete_reason = (
+        "repeated_next_url" if repeated_next_url else ("max_pages_reached" if next_url is not None else None)
+    )
+
     records = _collect_items_from_pages(page_payloads, collection="united-states-congressional-web-archive")
     coverage = build_domain_coverage(records)
     manifest = {
         "schema_version": "loc-lcwa-manifest-v1",
         "generated_at": now_iso(),
         "seed": seed,
+        "complete": complete,
+        "incomplete_reason": incomplete_reason,
         "pages_collected": len(page_manifest),
         "reported_total_hits": reported_total_hits,
         "reported_total_pages": reported_total_pages,
@@ -528,6 +577,22 @@ def build_catalog(
     save_json(output / "domain-coverage.json", coverage)
     save_json(output / "manifest.json", manifest)
     return manifest
+
+
+def _non_loc_candidate_rank(row: dict[str, Any]) -> tuple:
+    sp = (row.get("shared_prefix") or {}).get("shared_prefix_bytes") or 0
+    dmg = row.get("damaged_bytes") or 0
+    exact_prefix = dmg > 0 and sp == dmg
+    decl = row.get("declared_bytes")
+    exact_decl = decl is not None and row.get("fetched_bytes") == decl
+    is_stored = row.get("receipt_outcome") == "stored"
+    return (
+        0 if exact_prefix else 1,
+        0 if exact_decl else 1,
+        0 if is_stored else 1,
+        -sp,
+        str(row.get("operation_id") or ""),
+    )
 
 
 def _load_non_loc_outcomes(path: Path | None) -> dict[str, dict[str, Any]]:
@@ -545,12 +610,14 @@ def _load_non_loc_outcomes(path: Path | None) -> dict[str, dict[str, Any]]:
             and r.get("identity_status") != "rejected_different_hearing_2013"
         ]
         if qualified:
-            best = qualified[0]
+            best = min(qualified, key=_non_loc_candidate_rank)
             summarized[case_id] = {
                 "step1a_status": "qualified_non_loc",
+                "operation_id": best.get("operation_id"),
                 "lead_kind": best.get("lead_kind"),
                 "candidate_url": best.get("candidate_url"),
                 "fetched_bytes": best.get("fetched_bytes"),
+                "shared_prefix_bytes": (best.get("shared_prefix") or {}).get("shared_prefix_bytes"),
                 "pages": best.get("pages"),
                 "receipt_key": best.get("receipt_key"),
             }
@@ -558,9 +625,11 @@ def _load_non_loc_outcomes(path: Path | None) -> dict[str, dict[str, Any]]:
             last = rows[-1]
             summarized[case_id] = {
                 "step1a_status": f"unresolved_non_loc ({last.get('qualification_reason') or last.get('qualification_status')})",
+                "operation_id": last.get("operation_id"),
                 "lead_kind": last.get("lead_kind"),
                 "candidate_url": last.get("candidate_url"),
                 "fetched_bytes": last.get("fetched_bytes"),
+                "shared_prefix_bytes": (last.get("shared_prefix") or {}).get("shared_prefix_bytes"),
                 "pages": last.get("pages"),
                 "receipt_key": last.get("receipt_key"),
             }
@@ -604,16 +673,24 @@ def cross_match_inventory(
     remaining_loc_targets: Path | None = None,
 ) -> dict[str, Any]:
     """Cross-match LoC domain coverage against the 49 damaged PDFs and open inventory records."""
+    if not damaged_manifest.is_file():
+        raise FileNotFoundError(f"Missing required damaged_manifest: {damaged_manifest}")
+    if not invalid_sources.is_file():
+        raise FileNotFoundError(f"Missing required invalid_sources: {invalid_sources}")
+
     # Optionally merge supplemental web-archive JSON searches into an augmented coverage view
     supplemental_items: list[dict[str, Any]] = []
     for spath in supplemental_json or []:
-        if spath.exists():
-            spayload = json.loads(spath.read_text(encoding="utf-8"))
-            for raw_item in spayload.get("results") or []:
-                if isinstance(raw_item, dict):
-                    supplemental_items.append(
-                        normalize_catalog_item(raw_item, collection=spath.stem)
-                    )
+        if not spath.is_file():
+            raise FileNotFoundError(f"Missing supplemental JSON file: {spath}")
+        spayload = json.loads(spath.read_text(encoding="utf-8"))
+        if not isinstance(spayload, dict) or not isinstance(spayload.get("results"), list):
+            raise ValueError(f"Supplemental JSON {spath} missing list 'results'")
+        for raw_item in spayload["results"]:
+            if isinstance(raw_item, dict):
+                supplemental_items.append(
+                    normalize_catalog_item(raw_item, collection=spath.stem)
+                )
 
     combined_items = list(coverage.get("items", {}).values())
     existing_ids = {rec["item_id"] for rec in combined_items}
@@ -633,58 +710,58 @@ def cross_match_inventory(
             manual_loc_cases.add(t["case_id"])
 
     damaged_rows: list[dict[str, Any]] = []
-    if damaged_manifest.exists():
-        with damaged_manifest.open(encoding="utf-8") as fh:
-            for row in csv.DictReader(fh, delimiter="\t"):
-                case_id = row["case"]
-                urls = [u for u in (row.get("urls") or "").split() if u]
-                year_hint = None
-                for u in urls:
-                    year_hint = _extract_year_from_url_or_date(u)
-                    if year_hint is not None:
-                        break
-                # Look up against LCWA catalog first, then augmented coverage (general web archives)
-                lcwa_matches = [lookup_url(coverage, u, year=year_hint) for u in urls]
-                aug_matches = [lookup_url(augmented_coverage, u, year=year_hint) for u in urls]
-                # Also test old Oversight Testimony path for oversight.house.gov PDFs
-                extra_old_matches: list[dict[str, Any]] = []
-                for u in urls:
-                    parts = urlsplit(u)
-                    if (parts.hostname or "").lower() == "oversight.house.gov" and "/wp-content/uploads/" in parts.path:
-                        fname = parts.path.rsplit("/", 1)[-1]
-                        old_u = f"http://oversight.house.gov/images/stories/Testimony/{fname}"
-                        extra_old_matches.append(lookup_url(coverage, old_u, year=year_hint))
+    with damaged_manifest.open(encoding="utf-8") as fh:
+        for row in csv.DictReader(fh, delimiter="\t"):
+            case_id = row["case"]
+            urls = [u for u in (row.get("urls") or "").split() if u]
+            year_hint = None
+            for u in urls:
+                year_hint = _extract_year_from_url_or_date(u)
+                if year_hint is not None:
+                    break
+            # Look up against LCWA catalog first, then augmented coverage (general web archives)
+            lcwa_matches = [lookup_url(coverage, u, year=year_hint) for u in urls]
+            aug_matches = [lookup_url(augmented_coverage, u, year=year_hint) for u in urls]
+            # Also test old Oversight Testimony path for oversight.house.gov PDFs
+            extra_old_matches: list[dict[str, Any]] = []
+            for u in urls:
+                parts = urlsplit(u)
+                if (parts.hostname or "").lower() == "oversight.house.gov" and "/wp-content/uploads/" in parts.path:
+                    fname = parts.path.rsplit("/", 1)[-1]
+                    old_u = f"http://oversight.house.gov/images/stories/Testimony/{fname}"
+                    extra_old_matches.append(lookup_url(coverage, old_u, year=year_hint))
 
-                if case_id in non_loc_by_case and non_loc_by_case[case_id]["step1a_status"] == "qualified_non_loc":
-                    resolution_state = "qualified_non_loc"
-                elif case_id in prints_by_case:
-                    resolution_state = prints_by_case[case_id]["disposition"]
-                elif case_id in manual_loc_cases:
-                    resolution_state = "queued_for_loc_browser_capture"
-                elif case_id in non_loc_by_case:
-                    resolution_state = non_loc_by_case[case_id]["step1a_status"]
-                else:
-                    resolution_state = "no_automatic_lead_yet"
+            if case_id in non_loc_by_case and non_loc_by_case[case_id]["step1a_status"] == "qualified_non_loc":
+                resolution_state = "qualified_non_loc"
+            elif case_id in prints_by_case:
+                resolution_state = prints_by_case[case_id]["disposition"]
+            elif case_id in manual_loc_cases:
+                resolution_state = "queued_for_loc_browser_capture"
+            elif case_id in non_loc_by_case:
+                resolution_state = non_loc_by_case[case_id]["step1a_status"]
+            else:
+                resolution_state = "no_automatic_lead_yet"
 
-                damaged_rows.append(
-                    {
-                        "case": case_id,
-                        "urls": urls,
-                        "year_hint": year_hint,
-                        "resolution_state": resolution_state,
-                        "lcwa_matched": any(m["matched"] for m in lcwa_matches),
-                        "lcwa_plus_supplemental_matched": any(m["matched"] for m in aug_matches),
-                        "matched_items": sorted(
-                            {
-                                (item["item_id"], augmented_coverage["items"].get(item["item_id"], {}).get("collection", "lcwa"))
-                                for m in aug_matches
-                                for item in m["matches"]
-                            }
-                        ),
-                        "matched_details": aug_matches,
-                        "old_oversight_path_lookup": extra_old_matches,
-                    }
-                )
+            damaged_rows.append(
+                {
+                    "case": case_id,
+                    "urls": urls,
+                    "year_hint": year_hint,
+                    "resolution_state": resolution_state,
+                    "selected_non_loc": non_loc_by_case.get(case_id),
+                    "lcwa_matched": any(m["matched"] for m in lcwa_matches),
+                    "lcwa_plus_supplemental_matched": any(m["matched"] for m in aug_matches),
+                    "matched_items": sorted(
+                        {
+                            (item["item_id"], augmented_coverage["items"].get(item["item_id"], {}).get("collection", "lcwa"))
+                            for m in aug_matches
+                            for item in m["matches"]
+                        }
+                    ),
+                    "matched_details": aug_matches,
+                    "old_oversight_path_lookup": extra_old_matches,
+                }
+            )
 
     open_counts: Counter[str] = Counter()
     open_by_failure: Counter[str] = Counter()
@@ -694,84 +771,97 @@ def cross_match_inventory(
     matched_open_samples: list[dict[str, Any]] = []
     unmatched_open_url_samples: list[dict[str, Any]] = []
 
-    if invalid_sources.exists():
-        with invalid_sources.open(encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                rec = json.loads(line)
-                if not rec.get("recovery_open"):
-                    continue
-                open_counts["open_total"] += 1
-                fcat = rec.get("failure_category") or "unknown"
-                open_by_failure[fcat] += 1
+    with invalid_sources.open(encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            rec = json.loads(line)
+            if not rec.get("recovery_open"):
+                continue
+            open_counts["open_total"] += 1
+            fcat = rec.get("failure_category") or "unknown"
+            open_by_failure[fcat] += 1
 
-                urls: list[str] = []
-                for u in rec.get("source_urls") or []:
-                    if u and u not in urls:
-                        urls.append(u)
-                for tgt in rec.get("targets") or []:
-                    for cand in [tgt.get("requested_target"), *(tgt.get("observed_aliases") or [])]:
-                        if cand and cand not in urls:
-                            urls.append(cand)
+            urls: list[str] = []
+            for u in rec.get("source_urls") or []:
+                if u and u not in urls:
+                    urls.append(u)
+            for tgt in rec.get("targets") or []:
+                for cand in [tgt.get("requested_target"), *(tgt.get("observed_aliases") or [])]:
+                    if cand and cand not in urls:
+                        urls.append(cand)
 
-                if not urls:
-                    open_counts["open_missing_source_url"] += 1
-                    continue
+            if not urls:
+                open_counts["open_missing_source_url"] += 1
+                continue
 
-                open_counts["open_with_urls"] += 1
-                doc_date = None
-                for rel in rec.get("release_associations_20261117") or []:
-                    if rel.get("document_date"):
-                        doc_date = str(rel["document_date"])
-                        break
-                year_hint = _extract_year_from_url_or_date(urls[0], doc_date)
+            open_counts["open_with_urls"] += 1
+            doc_date = None
+            for rel in rec.get("release_associations_20261117") or []:
+                if rel.get("document_date"):
+                    doc_date = str(rel["document_date"])
+                    break
+            year_hint = _extract_year_from_url_or_date(urls[0], doc_date)
 
-                rec_matches_lcwa = [lookup_url(coverage, u, year=year_hint) for u in urls]
-                rec_matches_lcwa_any_year = [lookup_url(coverage, u, year=None) for u in urls]
-                rec_matches_aug = [lookup_url(augmented_coverage, u, year=year_hint) for u in urls]
+            rec_matches_lcwa_any_year = [lookup_url(coverage, u, year=None) for u in urls]
+            rec_matches_lcwa_known_year = (
+                [lookup_url(coverage, u, year=year_hint) for u in urls] if year_hint is not None else []
+            )
+            rec_matches_aug = [lookup_url(augmented_coverage, u, year=year_hint) for u in urls]
 
-                any_lcwa_year = any(m["matched"] for m in rec_matches_lcwa)
-                any_lcwa_host = any(m["matched"] for m in rec_matches_lcwa_any_year)
-                any_aug = any(m["matched"] for m in rec_matches_aug)
+            any_lcwa_host = any(m["matched"] for m in rec_matches_lcwa_any_year)
+            any_lcwa_known_year = any(m["matched"] for m in rec_matches_lcwa_known_year)
+            any_aug = any(m["matched"] for m in rec_matches_aug)
 
-                hosts_in_rec = sorted({(urlsplit(u).hostname or "").lower() for u in urls if urlsplit(u).hostname})
-                if any_lcwa_year:
-                    open_counts["open_matched_lcwa_with_year"] += 1
-                if any_lcwa_host:
-                    open_counts["open_matched_lcwa_host_any_year"] += 1
-                    open_matched_by_failure[fcat] += 1
-                    for h in hosts_in_rec:
-                        open_matched_by_host[h] += 1
-                    matched_open_samples.append(
-                        {
-                            "record_id": rec["record_id"],
-                            "failure_category": fcat,
-                            "year_hint": year_hint,
-                            "urls": urls,
-                            "lcwa_items": sorted({m_item["item_id"] for res in rec_matches_lcwa_any_year for m_item in res["matches"]}),
-                            "year_matched": any_lcwa_year,
-                        }
-                    )
+            hosts_in_rec = sorted({(urlsplit(u).hostname or "").lower() for u in urls if urlsplit(u).hostname})
+            if any_lcwa_host:
+                open_counts["open_matched_lcwa_host_any_year"] += 1
+                open_matched_by_failure[fcat] += 1
+                matched_hosts = sorted(
+                    {m["target_host"] for m in rec_matches_lcwa_any_year if m["matched"] and m["target_host"]}
+                )
+                for h in matched_hosts:
+                    open_matched_by_host[h] += 1
+                if year_hint is None:
+                    year_status = "unknown_year"
+                    open_counts["open_matched_lcwa_unknown_year"] += 1
+                elif any_lcwa_known_year:
+                    year_status = "known_year_overlap"
+                    open_counts["open_matched_lcwa_known_year_overlap"] += 1
                 else:
-                    open_counts["open_unmatched_in_lcwa"] += 1
-                    for h in hosts_in_rec:
-                        open_unmatched_by_host[h] += 1
-                    unmatched_open_url_samples.append(
-                        {
-                            "record_id": rec["record_id"],
-                            "failure_category": fcat,
-                            "year_hint": year_hint,
-                            "urls": urls,
-                            "matched_in_supplemental_general_archives": any_aug,
-                        }
-                    )
-                if any_aug and not any_lcwa_year:
-                    open_counts["open_matched_only_supplemental_or_other_year"] += 1
+                    year_status = "year_mismatch"
+                    open_counts["open_matched_lcwa_year_mismatch"] += 1
+                matched_open_samples.append(
+                    {
+                        "record_id": rec["record_id"],
+                        "failure_category": fcat,
+                        "year_hint": year_hint,
+                        "year_status": year_status,
+                        "urls": urls,
+                        "matched_hosts": matched_hosts,
+                        "lcwa_items": sorted({m_item["item_id"] for res in rec_matches_lcwa_any_year for m_item in res["matches"]}),
+                        "year_matched": year_status == "known_year_overlap",
+                    }
+                )
+            else:
+                open_counts["open_unmatched_in_lcwa"] += 1
+                for h in hosts_in_rec:
+                    open_unmatched_by_host[h] += 1
+                unmatched_open_url_samples.append(
+                    {
+                        "record_id": rec["record_id"],
+                        "failure_category": fcat,
+                        "year_hint": year_hint,
+                        "urls": urls,
+                        "matched_in_supplemental_general_archives": any_aug,
+                    }
+                )
+            if any_aug and not any_lcwa_host:
+                open_counts["open_matched_only_supplemental"] += 1
 
     state_counts = Counter(r["resolution_state"] for r in damaged_rows)
-    still_missing = [r for r in damaged_rows if r["resolution_state"] not in {"qualified_non_loc", "queued_for_loc_browser_capture"}]
+    still_missing = [r for r in damaged_rows if r["resolution_state"] != "qualified_non_loc"]
 
     overlap = {
         "schema_version": "loc-inventory-overlap-v1",
@@ -836,7 +926,9 @@ def cross_match_inventory(
         f"- Open records missing `source_urls` (`house-meeting-not-found` etc.): {open_counts.get('open_missing_source_url', 0)}",
         f"- Open records with URLs: {open_counts.get('open_with_urls', 0)}",
         f"- Open records whose host matches LCWA (any year): {open_counts.get('open_matched_lcwa_host_any_year', 0)}",
-        f"- Open records whose host + year overlaps LCWA: {open_counts.get('open_matched_lcwa_with_year', 0)}",
+        f"- Open records with known target year overlapping LCWA: {open_counts.get('open_matched_lcwa_known_year_overlap', 0)}",
+        f"- Open records matching LCWA host with unknown target year: {open_counts.get('open_matched_lcwa_unknown_year', 0)}",
+        f"- Open records matching LCWA host with known year outside LCWA range: {open_counts.get('open_matched_lcwa_year_mismatch', 0)}",
         f"- Open records with URLs not in LCWA: {open_counts.get('open_unmatched_in_lcwa', 0)}",
         "",
         "### Open Matched Hosts in LCWA",
@@ -848,7 +940,7 @@ def cross_match_inventory(
     for host, count in open_unmatched_by_host.most_common():
         lines.append(f"- `{host}`: {count}")
 
-    (output / "SUMMARY.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    _write_text_atomic(output / "SUMMARY.md", "\n".join(lines) + "\n")
     return overlap
 
 

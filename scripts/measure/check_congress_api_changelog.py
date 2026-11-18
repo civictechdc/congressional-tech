@@ -42,6 +42,12 @@ def validate_pin(pin: Any) -> dict[str, Any]:
     issues = pin.get("reviewed_issues")
     if not isinstance(issues, list) or not issues:
         raise ValueError("Pin requires reviewed_issues list")
+    for idx, entry in enumerate(issues):
+        if not isinstance(entry, dict):
+            raise ValueError(f"Pin reviewed_issues[{idx}] must be an object")
+        num = entry.get("number")
+        if type(num) is not int or num <= 0:
+            raise ValueError(f"Pin reviewed_issues[{idx}] requires positive int number")
     return pin
 
 
@@ -71,8 +77,10 @@ def fetch_github_json(api_path: str) -> dict[str, Any]:
     return json.loads(out)
 
 
-def check_live(pin: dict[str, Any], *, fetch=fetch_github_json) -> dict[str, Any]:
+def check_live(pin: dict[str, Any], *, fetch=None) -> dict[str, Any]:
     """Compare pinned blob SHAs against live GitHub contents without mutating upstream."""
+    if fetch is None:
+        fetch = fetch_github_json
     repo = pin["repo"]
     drifted: list[dict[str, Any]] = []
     cl = pin["changelog"]

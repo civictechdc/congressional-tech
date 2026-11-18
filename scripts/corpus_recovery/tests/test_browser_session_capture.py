@@ -37,23 +37,33 @@ class BrowserSessionCaptureTests(unittest.TestCase):
             "lockfile_digest": "a" * 64,
         }
 
-    def test_emit_snippet_validates_same_origin_and_writes_script(self) -> None:
+    def test_emit_snippet_single_target_manual_redirect_timeout_and_resume(self) -> None:
         targets_path = self.root / "targets.json"
         targets_path.write_text(json.dumps([
             {
                 "case_id": "zero-page-test",
                 "original_url": "http://oversight.house.gov/images/stories/Testimony/Foo.pdf",
-                "fetch_url": "https://webarchive.loc.gov/all/2011id_/http://oversight.house.gov/images/stories/Testimony/Foo.pdf",
+                "fetch_url": "https://webarchive.loc.gov/all/20111102120000id_/http://oversight.house.gov/images/stories/Testimony/Foo.pdf",
                 "expected_origin": "https://webarchive.loc.gov",
             }
         ]))
         out = self.root / "snippet.js"
-        bsc.emit_snippet(targets_path, out, interval_seconds=15.0)
+        bsc.emit_snippet(targets_path, out, interval_seconds=15.0, timeout_seconds=45.0)
         text = out.read_text(encoding="utf-8")
         self.assertIn("showDirectoryPicker", text)
         self.assertIn("15000", text)
+        self.assertIn("45000", text)
         self.assertIn("cf-mitigated", text)
+        self.assertIn("content-range", text)
+        self.assertIn("redirect: 'manual'", text)
+        self.assertNotIn("redirect: 'follow'", text)
+        self.assertIn("opaqueredirect", text)
+        self.assertIn("AbortController", text)
+        self.assertIn("arrayBufferWithAbort", text)
+        self.assertIn("readExistingLines", text)
         self.assertIn("zero-page-test", text)
+        # Single-target-per-click step button, not a multi-target fetch loop
+        self.assertNotIn("for (let i = 0; i < TARGETS.length", text)
 
         bad_targets = self.root / "bad_targets.json"
         bad_targets.write_text(json.dumps([
@@ -111,6 +121,7 @@ class BrowserSessionCaptureTests(unittest.TestCase):
         self.assertEqual(report["total"], 1)
         self.assertEqual(report["qualified"], 1)
         entry = report["entries"][0]
+        self.assertEqual(entry["media_type"], "application/pdf")
         self.assertEqual(entry["pages"], 2)
         self.assertEqual(entry["shared_prefix"]["shared_prefix_bytes"], 200)
         raw_receipt = stage / "raw" / entry["receipt_key"]
@@ -118,25 +129,38 @@ class BrowserSessionCaptureTests(unittest.TestCase):
         line = json.loads(gzip.decompress(raw_receipt.read_bytes()))
         self.assertEqual(line["transport"], "browser_same_origin")
         self.assertEqual(line["outcome"], "stored")
+        # Atomic report published cleanly with no leftover temp files
+        report_file = stage / "qualification-report.json"
+        self.assertTrue(report_file.is_file())
+        self.assertEqual(json.loads(report_file.read_text(encoding="utf-8"))["qualified"], 1)
+        self.assertEqual(list(stage.glob(".qualification-report.json.*.tmp")), [])
 
-    def _run_ingest_single(self, row: dict, pdf_bytes: bytes | None = None) -> dict:
-        capture_dir = self.root / ("cap_" + hashlib.sha256(json.dumps(row).encode()).hexdigest()[:8])
+    def _run_ingest_single(
+        self,
+        row: dict,
+        pdf_bytes: bytes | None = None,
+        *,
+        stage_dir: Path | None = None,
+        damaged_manifest: Path | None = None,
+        damaged_sources_dir: Path | None = None,
+    ) -> dict:
+        tag = hashlib.sha256(json.dumps(row, sort_keys=True).encode()).hexdigest()[:10]
+        capture_dir = self.root / f"cap_{tag}"
         capture_dir.mkdir(exist_ok=True)
         if pdf_bytes is not None:
             (capture_dir / f"{row['sha256']}.pdf").write_bytes(pdf_bytes)
         (capture_dir / "browser-captures.jsonl").write_text(json.dumps(row) + "\n")
         return bsc.ingest_captures(
             capture_dir,
-            self.root / ("stage_" + capture_dir.name),
+            stage_dir or (self.root / f"stage_{tag}"),
             writer_identity=self.identity,
             write_date="2026-11-18",
+            damaged_manifest=damaged_manifest,
+            damaged_sources_dir=damaged_sources_dir,
         )
 
-    def test_ingest_rejects_digest_mismatch_non14digit_loc_and_throttling(self) -> None:
-        tmp_pdf = self.root / "ok.pdf"
-        digest, size = _make_valid_pdf(tmp_pdf, pages=1)
-        ok_bytes = tmp_pdf.read_bytes()
-        base = {
+    def _base_row(self, digest: str, size: int) -> dict:
+        return {
             "case_id": "c1",
             "original_url": "https://oversight.house.gov/wp-content/uploads/2012/01/A.pdf",
             "requested_url": "https://webarchive.loc.gov/all/2011id_/http://oversight.house.gov/images/stories/Testimony/A.pdf",
@@ -147,6 +171,12 @@ class BrowserSessionCaptureTests(unittest.TestCase):
             "sha256": digest,
             "bytes": size,
         }
+
+    def test_ingest_rejects_digest_mismatch_non14digit_loc_and_throttling(self) -> None:
+        tmp_pdf = self.root / "ok.pdf"
+        digest, size = _make_valid_pdf(tmp_pdf, pages=1)
+        ok_bytes = tmp_pdf.read_bytes()
+        base = self._base_row(digest, size)
 
         with self.assertRaisesRegex(ValueError, "size mismatch"):
             self._run_ingest_single(base, ok_bytes + b"tamper")
@@ -166,6 +196,85 @@ class BrowserSessionCaptureTests(unittest.TestCase):
         bad_retry = {**base, "headers": {"content-type": "application/pdf", "Retry-After": "60"}}
         with self.assertRaisesRegex(ValueError, "retry-after"):
             self._run_ingest_single(bad_retry, ok_bytes)
+
+    def test_ingest_rejects_content_range_partial_transfer(self) -> None:
+        tmp_pdf = self.root / "partial.pdf"
+        digest, size = _make_valid_pdf(tmp_pdf, pages=1)
+        ok_bytes = tmp_pdf.read_bytes()
+        partial_row = {
+            **self._base_row(digest, size),
+            "headers": {"content-type": "application/pdf", "Content-Range": f"bytes 0-{size - 1}/{size + 100}"},
+        }
+        stage = self.root / "stage_partial"
+        with self.assertRaisesRegex(ValueError, "content-range"):
+            self._run_ingest_single(partial_row, ok_bytes, stage_dir=stage)
+        self.assertFalse((stage / "frozen-receipts").exists())
+
+    def test_ingest_rejects_html_content_type_and_html_body(self) -> None:
+        html_bytes = b"<!doctype html><html><body>" + (b"Witness testimony paragraph. " * 40) + b"</body></html>"
+        html_sha = hashlib.sha256(html_bytes).hexdigest()
+        base = self._base_row(html_sha, len(html_bytes))
+
+        # 1. Explicit text/html header refused
+        html_ct_row = {**base, "headers": {"content-type": "text/html; charset=utf-8"}}
+        with self.assertRaisesRegex(ValueError, "non-PDF content-type"):
+            self._run_ingest_single(html_ct_row, html_bytes)
+
+        # 2. HTML body masquerading as application/pdf refused before writing any receipt
+        stage = self.root / "stage_html_disguised"
+        with self.assertRaisesRegex(ValueError, "not a PDF"):
+            self._run_ingest_single(base, html_bytes, stage_dir=stage)
+        self.assertFalse((stage / "frozen-receipts").exists())
+
+    def test_ingest_validates_timestamp_before_writing_frozen_receipt(self) -> None:
+        tmp_pdf = self.root / "ts.pdf"
+        digest, size = _make_valid_pdf(tmp_pdf, pages=1)
+        ok_bytes = tmp_pdf.read_bytes()
+        stage = self.root / "stage_bad_ts"
+        bad_ts_row = {**self._base_row(digest, size), "retrieved_at": "not-an-iso-timestamp"}
+        with self.assertRaises(ValueError):
+            self._run_ingest_single(bad_ts_row, ok_bytes, stage_dir=stage)
+        # Must NOT strand a frozen receipt directory on failed timestamp validation
+        self.assertFalse((stage / "frozen-receipts").exists())
+
+        # Retrying with a fixed timestamp in the SAME output directory must succeed cleanly
+        fixed_row = {**bad_ts_row, "retrieved_at": "2026-11-18T19:00:00+00:00"}
+        report = self._run_ingest_single(fixed_row, ok_bytes, stage_dir=stage)
+        self.assertEqual(report["qualified"], 1)
+
+    def test_ingest_rejects_damaged_manifest_traversal_and_bad_sha256(self) -> None:
+        tmp_pdf = self.root / "trav.pdf"
+        digest, size = _make_valid_pdf(tmp_pdf, pages=1)
+        ok_bytes = tmp_pdf.read_bytes()
+        base = self._base_row(digest, size)
+
+        damaged_sources = self.root / "dmg_sources"
+        damaged_sources.mkdir()
+
+        bad_manifest = self.root / "traversal.tsv"
+        bad_manifest.write_text("case\tsha256\tbytes\nc1\t../../etc\t10\n", encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "Invalid damaged_manifest"):
+            self._run_ingest_single(
+                base, ok_bytes, damaged_manifest=bad_manifest, damaged_sources_dir=damaged_sources
+            )
+
+        # Also test direct helper containment/digest guard
+        with self.assertRaisesRegex(ValueError, "Invalid damaged source sha256"):
+            bsc._resolve_damaged_original(damaged_sources, "../outside")
+
+    def test_ingest_rejects_cross_origin_or_mismatched_requested_url(self) -> None:
+        tmp_pdf = self.root / "orig.pdf"
+        digest, size = _make_valid_pdf(tmp_pdf, pages=1)
+        ok_bytes = tmp_pdf.read_bytes()
+        base = self._base_row(digest, size)
+
+        cross_origin = {**base, "requested_url": "https://other.example.gov/all/2011id_/http://oversight.house.gov/images/stories/Testimony/A.pdf"}
+        with self.assertRaisesRegex(ValueError, "origin differs"):
+            self._run_ingest_single(cross_origin, ok_bytes)
+
+        diff_target = {**base, "requested_url": "https://webarchive.loc.gov/all/2011id_/http://oversight.house.gov/images/stories/Testimony/OTHER.pdf"}
+        with self.assertRaisesRegex(ValueError, "invalid requested_url"):
+            self._run_ingest_single(diff_target, ok_bytes)
 
     def test_ingest_marks_truncated_pdf_unresolved_with_cutoff_hint(self) -> None:
         tmp_pdf = self.root / "full.pdf"

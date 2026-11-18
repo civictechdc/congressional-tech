@@ -13,29 +13,34 @@ import csv
 from datetime import datetime, timezone
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import sys
+import tempfile
 from typing import Any
 from urllib.parse import urlsplit
 
 from congress_api.models.raw_fetch import BodyFile, FetchAttempt, FetchResult
 from congress_api.parsers.archive_links import ARCHIVE_REPLAY_PATHS, allowed_url
 from congress_api.retention.body_store import BodyStore, LocalAdapter, validate_record
-from congress_api.retention.provenance import verify_local_file
+from congress_api.retention.provenance import instant, verify_local_file
 from congress_api.retention.receipt_writer import ReceiptWriter
 from corpus_recovery.acceptance import receipt_binding
 from corpus_recovery.discovery import shared_prefix
 from corpus_recovery.pipeline import cutoff_size_hint, qualify_candidate_body
 
 LOC_REPLAY_ID_RE = re.compile(r"^/all/[0-9]{14}id_/(https?://.+)$")
+LOC_REPLAY_SELECTOR_RE = re.compile(r"^/all/[0-9]{4,14}id_/(https?://.+)$")
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+ALLOWED_PDF_MEDIA_TYPES = frozenset({"application/pdf", "application/octet-stream"})
 TRANSPORT_NAME = "browser_same_origin"
 
 _SNIPPET_TEMPLATE = r"""(() => {
   const TARGETS = __TARGETS_JSON__;
   const EXPECTED_ORIGIN = __EXPECTED_ORIGIN_JSON__;
   const INTERVAL_MS = __INTERVAL_MS__;
+  const TIMEOUT_MS = __TIMEOUT_MS__;
   const LOC_REPLAY_RE = /^\/all\/[0-9]{14}id_\/https?:\/\/.+/;
   const ALLOWED_HEADERS = [
     'content-type', 'content-length', 'content-disposition', 'content-range',
@@ -52,78 +57,192 @@ _SNIPPET_TEMPLATE = r"""(() => {
     position: 'fixed', bottom: '16px', right: '16px', zIndex: '2147483647',
     background: '#111827', color: '#f9fafb', padding: '12px 14px',
     borderRadius: '8px', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-    fontSize: '12px', maxWidth: '460px', boxShadow: '0 8px 24px rgba(0,0,0,0.35)'
+    fontSize: '12px', maxWidth: '500px', boxShadow: '0 8px 24px rgba(0,0,0,0.35)'
   });
 
   const statusEl = document.createElement('div');
   statusEl.style.marginBottom = '8px';
   statusEl.style.whiteSpace = 'pre-wrap';
 
-  const btn = document.createElement('button');
-  btn.textContent = `Pick output folder & fetch ${TARGETS.length} file(s) (${Math.round(INTERVAL_MS / 1000)}s spacing)`;
-  Object.assign(btn.style, {
-    background: '#2563eb', color: '#ffffff', border: '0', borderRadius: '6px',
+  const btnRow = document.createElement('div');
+  btnRow.style.display = 'flex';
+  btnRow.style.gap = '8px';
+  btnRow.style.flexWrap = 'wrap';
+
+  const pickBtn = document.createElement('button');
+  pickBtn.textContent = '1. Pick output folder';
+  Object.assign(pickBtn.style, {
+    background: '#374151', color: '#ffffff', border: '0', borderRadius: '6px',
     padding: '8px 12px', cursor: 'pointer', fontWeight: '600'
+  });
+
+  const stepBtn = document.createElement('button');
+  stepBtn.textContent = '2. Capture next target (pick folder first)';
+  stepBtn.disabled = true;
+  Object.assign(stepBtn.style, {
+    background: '#2563eb', color: '#ffffff', border: '0', borderRadius: '6px',
+    padding: '8px 12px', cursor: 'pointer', fontWeight: '600', opacity: '0.5'
   });
 
   if (window.location.origin !== EXPECTED_ORIGIN) {
     statusEl.textContent = `Wrong origin: open ${EXPECTED_ORIGIN} (currently ${window.location.origin}).`;
-    btn.disabled = true;
-    btn.style.opacity = '0.5';
+    pickBtn.disabled = true;
+    pickBtn.style.opacity = '0.5';
   } else {
-    statusEl.textContent = `Ready on ${EXPECTED_ORIGIN} for ${TARGETS.length} target(s).`;
+    statusEl.textContent = `Ready on ${EXPECTED_ORIGIN} for ${TARGETS.length} target(s). Pick folder, then click once per target.`;
   }
 
+  btnRow.appendChild(pickBtn);
+  btnRow.appendChild(stepBtn);
   panel.appendChild(statusEl);
-  panel.appendChild(btn);
+  panel.appendChild(btnRow);
   document.body.appendChild(panel);
 
-  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+  let dirHandle = null;
+  let existingLines = [];
+  let existingErrors = [];
+  let capturedCaseIds = new Set();
+  let nextIndex = 0;
+  let cooldownUntil = 0;
 
   async function sha256Hex(buffer) {
     const digest = await crypto.subtle.digest('SHA-256', buffer);
     return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
   }
 
-  async function writeTextFile(dirHandle, name, content) {
-    const handle = await dirHandle.getFileHandle(name, { create: true });
-    const writable = await handle.createWritable();
+  async function readExistingLines(handle, name) {
+    try {
+      const fh = await handle.getFileHandle(name);
+      const file = await fh.getFile();
+      const text = await file.text();
+      return text.split('\n').map((ln) => ln.trim()).filter(Boolean);
+    } catch (err) {
+      if (err && err.name === 'NotFoundError') return [];
+      throw err;
+    }
+  }
+
+  async function writeTextFile(handle, name, content) {
+    const fh = await handle.getFileHandle(name, { create: true });
+    const writable = await fh.createWritable();
     await writable.write(content);
     await writable.close();
   }
 
-  btn.addEventListener('click', async () => {
+  async function persistManifest() {
+    await writeTextFile(dirHandle, 'browser-captures.jsonl', existingLines.join('\n') + '\n');
+  }
+
+  async function persistErrors() {
+    await writeTextFile(dirHandle, 'browser-captures.errors.jsonl', existingErrors.join('\n') + '\n');
+  }
+
+  function advanceToNextUncaptured() {
+    while (nextIndex < TARGETS.length && capturedCaseIds.has(TARGETS[nextIndex].case_id)) {
+      nextIndex += 1;
+    }
+  }
+
+  function refreshStepButton() {
+    advanceToNextUncaptured();
+    if (!dirHandle || window.location.origin !== EXPECTED_ORIGIN) {
+      stepBtn.disabled = true;
+      stepBtn.style.opacity = '0.5';
+      return;
+    }
+    if (nextIndex >= TARGETS.length) {
+      stepBtn.disabled = true;
+      stepBtn.style.opacity = '0.5';
+      stepBtn.textContent = `Done (${capturedCaseIds.size}/${TARGETS.length} captured)`;
+      return;
+    }
+    const target = TARGETS[nextIndex];
+    const remainingMs = Math.max(0, cooldownUntil - Date.now());
+    if (remainingMs > 0) {
+      stepBtn.disabled = true;
+      stepBtn.style.opacity = '0.5';
+      stepBtn.textContent = `Wait ${Math.ceil(remainingMs / 1000)}s before [${nextIndex + 1}/${TARGETS.length}] ${target.case_id}`;
+      setTimeout(refreshStepButton, Math.min(remainingMs, 1000));
+      return;
+    }
+    stepBtn.disabled = false;
+    stepBtn.style.opacity = '1';
+    stepBtn.textContent = `2. Capture [${nextIndex + 1}/${TARGETS.length}] ${target.case_id}`;
+  }
+
+  function arrayBufferWithAbort(res, signal) {
+    if (signal.aborted) {
+      return Promise.reject(signal.reason || new Error('Aborted before body read'));
+    }
+    return new Promise((resolve, reject) => {
+      const onAbort = () => reject(signal.reason || new Error('Body read timed out'));
+      signal.addEventListener('abort', onAbort, { once: true });
+      res.arrayBuffer().then(
+        (buf) => {
+          signal.removeEventListener('abort', onAbort);
+          resolve(buf);
+        },
+        (err) => {
+          signal.removeEventListener('abort', onAbort);
+          reject(err);
+        }
+      );
+    });
+  }
+
+  pickBtn.addEventListener('click', async () => {
     if (window.location.origin !== EXPECTED_ORIGIN) return;
     if (typeof window.showDirectoryPicker !== 'function') {
       statusEl.textContent = 'File System Access API (window.showDirectoryPicker) is unavailable in this browser.';
       return;
     }
-    btn.disabled = true;
-    let dirHandle;
     try {
       dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+      existingLines = await readExistingLines(dirHandle, 'browser-captures.jsonl');
+      existingErrors = await readExistingLines(dirHandle, 'browser-captures.errors.jsonl');
+      capturedCaseIds = new Set();
+      for (const ln of existingLines) {
+        try {
+          const parsed = JSON.parse(ln);
+          if (parsed && typeof parsed.case_id === 'string') capturedCaseIds.add(parsed.case_id);
+        } catch (_ignored) {}
+      }
+      nextIndex = 0;
+      advanceToNextUncaptured();
+      const previewTarget = nextIndex < TARGETS.length ? `\nNext URL: ${TARGETS[nextIndex].fetch_url}` : '';
+      statusEl.textContent = `Folder ready (${existingLines.length} prior capture(s) preserved).${previewTarget}`;
+      refreshStepButton();
     } catch (err) {
-      statusEl.textContent = `Folder selection canceled: ${err && err.message ? err.message : err}`;
-      btn.disabled = false;
+      statusEl.textContent = `Folder selection failed or canceled: ${err && err.message ? err.message : err}`;
+    }
+  });
+
+  stepBtn.addEventListener('click', async () => {
+    if (!dirHandle || window.location.origin !== EXPECTED_ORIGIN) return;
+    advanceToNextUncaptured();
+    if (nextIndex >= TARGETS.length) {
+      refreshStepButton();
       return;
     }
+    const target = TARGETS[nextIndex];
+    stepBtn.disabled = true;
+    stepBtn.style.opacity = '0.5';
+    statusEl.textContent = `Fetching [${nextIndex + 1}/${TARGETS.length}] ${target.case_id}...\n${target.fetch_url}`;
 
-    const lines = [];
-    const errors = [];
-    for (let i = 0; i < TARGETS.length; i++) {
-      const target = TARGETS[i];
-      if (i > 0) {
-        statusEl.textContent = `Waiting ${Math.round(INTERVAL_MS / 1000)}s before [${i + 1}/${TARGETS.length}] ${target.case_id}...`;
-        await sleep(INTERVAL_MS);
-      }
-      statusEl.textContent = `Fetching [${i + 1}/${TARGETS.length}] ${target.case_id}...`;
-      let res;
-      try {
-        res = await fetch(target.fetch_url, { credentials: 'same-origin', redirect: 'follow' });
-      } catch (err) {
-        const msg = `Network error on ${target.case_id}: ${err && err.message ? err.message : err}`;
-        errors.push({ case_id: target.case_id, fetch_url: target.fetch_url, error: msg });
-        await writeTextFile(dirHandle, 'browser-captures.errors.jsonl', errors.map((e) => JSON.stringify(e)).join('\n') + '\n');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new Error(`Timeout after ${TIMEOUT_MS}ms`)), TIMEOUT_MS);
+    try {
+      const res = await fetch(target.fetch_url, {
+        credentials: 'same-origin',
+        redirect: 'manual',
+        signal: controller.signal
+      });
+
+      if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
+        const loc = res.headers ? res.headers.get('location') : null;
+        const msg = `Redirect refused under redirect:'manual' (type=${res.type}, status=${res.status}, location=${loc || 'opaque'}). Use a direct canonical 14-digit URL on ${EXPECTED_ORIGIN}.`;
+        existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, error: msg, at: new Date().toISOString() }));
+        await persistErrors();
         statusEl.textContent = `STOPPED: ${msg}`;
         return;
       }
@@ -136,36 +255,42 @@ _SNIPPET_TEMPLATE = r"""(() => {
       const cfMitigated = res.headers.get('cf-mitigated');
       const contentType = (headers['content-type'] || '').toLowerCase();
 
-      if (res.status === 429 || res.status === 403 || cfMitigated || 'retry-after' in headers || res.status !== 200 || contentType.startsWith('text/html')) {
-        const reason = `status=${res.status} cf=${cfMitigated || '-'} ct=${contentType || '-'}`;
-        errors.push({ case_id: target.case_id, fetch_url: target.fetch_url, final_url: res.url, reason, headers });
-        await writeTextFile(dirHandle, 'browser-captures.errors.jsonl', errors.map((e) => JSON.stringify(e)).join('\n') + '\n');
-        statusEl.textContent = `STOPPED immediately (${reason}) on ${target.case_id}. Saved ${lines.length} prior capture(s).`;
+      if (
+        res.status !== 200 ||
+        cfMitigated ||
+        'retry-after' in headers ||
+        'content-range' in headers ||
+        contentType.startsWith('text/html')
+      ) {
+        const reason = `status=${res.status} cf=${cfMitigated || '-'} ct=${contentType || '-'} range=${headers['content-range'] || '-'}`;
+        existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, final_url: res.url, reason, headers, at: new Date().toISOString() }));
+        await persistErrors();
+        statusEl.textContent = `STOPPED (${reason}) on ${target.case_id}. ${existingLines.length} prior capture(s) preserved.`;
         return;
       }
 
       const finalUrlObj = new URL(res.url);
       if (finalUrlObj.origin !== EXPECTED_ORIGIN) {
-        const msg = `Cross-origin redirect to ${res.url}`;
-        errors.push({ case_id: target.case_id, fetch_url: target.fetch_url, error: msg });
-        await writeTextFile(dirHandle, 'browser-captures.errors.jsonl', errors.map((e) => JSON.stringify(e)).join('\n') + '\n');
+        const msg = `Cross-origin response URL refused: ${res.url}`;
+        existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, error: msg, at: new Date().toISOString() }));
+        await persistErrors();
         statusEl.textContent = `STOPPED: ${msg}`;
         return;
       }
       if (finalUrlObj.hostname === 'webarchive.loc.gov' && !LOC_REPLAY_RE.test(finalUrlObj.pathname)) {
-        const msg = `Non-14-digit or non-id_ replay URL: ${res.url}`;
-        errors.push({ case_id: target.case_id, fetch_url: target.fetch_url, error: msg });
-        await writeTextFile(dirHandle, 'browser-captures.errors.jsonl', errors.map((e) => JSON.stringify(e)).join('\n') + '\n');
+        const msg = `Non-14-digit or non-id_ replay URL refused: ${res.url}`;
+        existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, error: msg, at: new Date().toISOString() }));
+        await persistErrors();
         statusEl.textContent = `STOPPED: ${msg}`;
         return;
       }
 
-      const buf = await res.arrayBuffer();
-      const head = new TextDecoder('ascii').decode(new Uint8Array(buf.slice(0, 16)));
+      const buf = await arrayBufferWithAbort(res, controller.signal);
+      const head = new TextDecoder('ascii').decode(new Uint8Array(buf.slice(0, 1024)));
       if (!head.includes('%PDF-')) {
         const msg = `Response is not a PDF (${buf.byteLength} bytes) for ${target.case_id}`;
-        errors.push({ case_id: target.case_id, fetch_url: target.fetch_url, final_url: res.url, error: msg });
-        await writeTextFile(dirHandle, 'browser-captures.errors.jsonl', errors.map((e) => JSON.stringify(e)).join('\n') + '\n');
+        existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, final_url: res.url, error: msg, at: new Date().toISOString() }));
+        await persistErrors();
         statusEl.textContent = `STOPPED: ${msg}`;
         return;
       }
@@ -176,7 +301,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
       await pdfWritable.write(buf);
       await pdfWritable.close();
 
-      lines.push(JSON.stringify({
+      existingLines.push(JSON.stringify({
         case_id: target.case_id,
         original_url: target.original_url,
         requested_url: target.fetch_url,
@@ -187,13 +312,43 @@ _SNIPPET_TEMPLATE = r"""(() => {
         sha256,
         bytes: buf.byteLength,
       }));
-      await writeTextFile(dirHandle, 'browser-captures.jsonl', lines.join('\n') + '\n');
+      await persistManifest();
+      capturedCaseIds.add(target.case_id);
+      nextIndex += 1;
+      cooldownUntil = Date.now() + INTERVAL_MS;
+      advanceToNextUncaptured();
+      const nextNote = nextIndex < TARGETS.length
+        ? `\nNext (${Math.round(INTERVAL_MS / 1000)}s cooldown): ${TARGETS[nextIndex].case_id}\n${TARGETS[nextIndex].fetch_url}`
+        : '\nAll targets captured.';
+      statusEl.textContent = `Saved ${target.case_id} (${buf.byteLength} bytes, ${sha256.slice(0, 12)}). Total: ${capturedCaseIds.size}/${TARGETS.length}.${nextNote}`;
+      refreshStepButton();
+    } catch (err) {
+      const msg = `Capture failed on ${target.case_id}: ${err && err.message ? err.message : err}`;
+      existingErrors.push(JSON.stringify({ case_id: target.case_id, fetch_url: target.fetch_url, error: msg, at: new Date().toISOString() }));
+      await persistErrors();
+      statusEl.textContent = `STOPPED: ${msg}`;
+    } finally {
+      clearTimeout(timer);
     }
-
-    statusEl.textContent = `Done: saved ${lines.length}/${TARGETS.length} PDF(s) and browser-captures.jsonl.`;
   });
 })();
 """
+
+
+def _write_json_atomic(path: Path, value: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(value, indent=2) + "\n"
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(tmp_path, path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
 
 def _validate_target(item: Any) -> dict[str, str]:
@@ -216,10 +371,18 @@ def _validate_target(item: Any) -> dict[str, str]:
     return {k: item[k].strip() for k in required}
 
 
-def emit_snippet(targets_path: Path, out_path: Path, *, interval_seconds: float = 15.0) -> Path:
-    """Validate targets JSON and emit a single-origin Chrome DevTools capture snippet."""
+def emit_snippet(
+    targets_path: Path,
+    out_path: Path,
+    *,
+    interval_seconds: float = 15.0,
+    timeout_seconds: float = 60.0,
+) -> Path:
+    """Validate targets JSON and emit a single-origin, single-target-per-click Chrome DevTools snippet."""
     if interval_seconds <= 0:
         raise ValueError("interval_seconds must be positive")
+    if timeout_seconds <= 0:
+        raise ValueError("timeout_seconds must be positive")
     raw = json.loads(targets_path.read_text(encoding="utf-8"))
     if not isinstance(raw, list) or not raw:
         raise ValueError("Targets JSON must be a non-empty array")
@@ -233,6 +396,7 @@ def emit_snippet(targets_path: Path, out_path: Path, *, interval_seconds: float 
         .replace("__TARGETS_JSON__", json.dumps(targets, indent=2))
         .replace("__EXPECTED_ORIGIN_JSON__", json.dumps(expected_origin))
         .replace("__INTERVAL_MS__", str(int(round(interval_seconds * 1000))))
+        .replace("__TIMEOUT_MS__", str(int(round(timeout_seconds * 1000))))
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(snippet, encoding="utf-8")
@@ -263,6 +427,46 @@ def _validate_capture_url(url: str) -> str:
     return checked
 
 
+def _validate_requested_url(requested_url: str, final_url: str, case_id: str) -> str:
+    req_parts = urlsplit(requested_url)
+    fin_parts = urlsplit(final_url)
+    if (req_parts.scheme, req_parts.netloc) != (fin_parts.scheme, fin_parts.netloc):
+        raise ValueError(f"Record {case_id} requested_url origin differs from final_url: {requested_url}")
+    if req_parts.username is not None or req_parts.password is not None or req_parts.fragment:
+        raise ValueError(f"Record {case_id} requested_url carries credentials or fragment: {requested_url}")
+    if allowed_url(requested_url) is not None:
+        return requested_url
+    # Allow explicit LoC year-selector shorthand ONLY on webarchive.loc.gov when embedded target matches final_url.
+    if (req_parts.hostname or "").lower() == "webarchive.loc.gov":
+        req_m = LOC_REPLAY_SELECTOR_RE.fullmatch(req_parts.path)
+        fin_m = LOC_REPLAY_ID_RE.fullmatch(fin_parts.path)
+        if req_m and fin_m and req_m.group(1) == fin_m.group(1):
+            return requested_url
+    raise ValueError(f"Record {case_id} invalid requested_url: {requested_url}")
+
+
+def _load_damaged_manifest(damaged_manifest: Path) -> dict[str, str]:
+    damaged_by_case: dict[str, str] = {}
+    with damaged_manifest.open(encoding="utf-8") as stream:
+        for row in csv.DictReader(stream, delimiter="\t"):
+            case_id = (row.get("case") or "").strip()
+            digest = (row.get("sha256") or "").strip()
+            if not case_id or not SHA256_RE.fullmatch(digest):
+                raise ValueError(f"Invalid damaged_manifest entry for case {case_id!r}: sha256={digest!r}")
+            damaged_by_case[case_id] = digest
+    return damaged_by_case
+
+
+def _resolve_damaged_original(damaged_sources_dir: Path, digest: str) -> Path:
+    if not SHA256_RE.fullmatch(digest):
+        raise ValueError(f"Invalid damaged source sha256: {digest!r}")
+    root = damaged_sources_dir.resolve()
+    orig_file = (root / digest / "original.bin").resolve()
+    if not orig_file.is_relative_to(root):
+        raise ValueError(f"Damaged source path escapes damaged_sources_dir: {orig_file}")
+    return orig_file
+
+
 def ingest_captures(
     capture_dir: Path,
     output_dir: Path,
@@ -283,9 +487,57 @@ def ingest_captures(
 
     damaged_by_case: dict[str, str] = {}
     if damaged_manifest is not None:
-        with damaged_manifest.open(encoding="utf-8") as stream:
-            for row in csv.DictReader(stream, delimiter="\t"):
-                damaged_by_case[row["case"]] = row["sha256"]
+        damaged_by_case = _load_damaged_manifest(damaged_manifest)
+
+    # Pass 1: Preflight every manifest row & local PDF before creating/freezing any receipt.
+    preflight: list[dict[str, Any]] = []
+    for idx, line_text in enumerate(raw_lines, 1):
+        rec = json.loads(line_text, object_pairs_hook=_unique_object)
+        validate_record(rec)
+        for req in ("case_id", "original_url", "requested_url", "final_url", "retrieved_at", "sha256"):
+            if not isinstance(rec.get(req), str) or not rec[req].strip():
+                raise ValueError(f"Record {idx} missing required field {req}")
+        case_id = rec["case_id"]
+        # Validate ISO-8601 UTC timestamp before calling ReceiptWriter (avoids stranding frozen op dir).
+        instant(rec["retrieved_at"])
+        if rec.get("http_status") != 200:
+            raise ValueError(f"Record {case_id} requires http_status=200, got {rec.get('http_status')}")
+        if type(rec.get("bytes")) is not int or rec["bytes"] <= 0:
+            raise ValueError(f"Record {case_id} requires positive integer bytes")
+        if not SHA256_RE.fullmatch(rec["sha256"]):
+            raise ValueError(f"Record {case_id} has invalid sha256: {rec['sha256']}")
+
+        raw_headers = rec.get("headers")
+        if raw_headers is not None and not isinstance(raw_headers, dict):
+            raise ValueError(f"Record {case_id} headers must be an object")
+        headers = {str(k).lower(): str(v) for k, v in (raw_headers or {}).items()}
+        if "retry-after" in headers or "cf-mitigated" in headers:
+            raise ValueError(f"Record {case_id} carries retry-after or cf-mitigated challenge header")
+        if "content-range" in headers:
+            raise ValueError(f"Record {case_id} carries content-range header (partial transfer refused)")
+
+        final_url = _validate_capture_url(rec["final_url"])
+        requested_url = _validate_requested_url(rec["requested_url"], final_url, case_id)
+
+        media_type = headers.get("content-type", "application/pdf").split(";", 1)[0].strip().lower() or "application/pdf"
+        if media_type not in ALLOWED_PDF_MEDIA_TYPES:
+            raise ValueError(f"Record {case_id} refused non-PDF content-type: {media_type!r}")
+
+        pdf_path = capture_dir / f"{rec['sha256']}.pdf"
+        verified = verify_local_file(pdf_path, expected_sha256=rec["sha256"], expected_size=rec["bytes"])
+        with verified.path.open("rb") as stream:
+            head = stream.read(1024)
+        if b"%PDF-" not in head:
+            raise ValueError(f"Record {case_id} body is not a PDF (missing %PDF- header)")
+
+        preflight.append({
+            "rec": rec,
+            "headers": headers,
+            "final_url": final_url,
+            "requested_url": requested_url,
+            "media_type": media_type,
+            "verified": verified,
+        })
 
     output_dir.mkdir(parents=True, exist_ok=True)
     store = BodyStore(LocalAdapter(output_dir / "raw"))
@@ -301,35 +553,13 @@ def ingest_captures(
     qual_cache = output_dir / "qualification-cache"
 
     entries: list[dict[str, Any]] = []
-    for idx, line_text in enumerate(raw_lines, 1):
-        rec = json.loads(line_text, object_pairs_hook=_unique_object)
-        validate_record(rec)
-        for req in ("case_id", "original_url", "requested_url", "final_url", "retrieved_at", "sha256"):
-            if not isinstance(rec.get(req), str) or not rec[req].strip():
-                raise ValueError(f"Record {idx} missing required field {req}")
-        if rec.get("http_status") != 200:
-            raise ValueError(f"Record {rec['case_id']} requires http_status=200, got {rec.get('http_status')}")
-        if type(rec.get("bytes")) is not int or rec["bytes"] <= 0:
-            raise ValueError(f"Record {rec['case_id']} requires positive integer bytes")
-        if not SHA256_RE.fullmatch(rec["sha256"]):
-            raise ValueError(f"Record {rec['case_id']} has invalid sha256: {rec['sha256']}")
-
-        headers = {str(k).lower(): str(v) for k, v in (rec.get("headers") or {}).items()}
-        if "retry-after" in headers or "cf-mitigated" in headers:
-            raise ValueError(f"Record {rec['case_id']} carries retry-after or cf-mitigated challenge header")
-
-        final_url = _validate_capture_url(rec["final_url"])
-        requested_url = rec["requested_url"]
-        if allowed_url(requested_url) is None:
-            # Allow 2011*/2011id_ shorthand only when requested_url was an explicit LoC year selector
-            # that resolved to a canonical 14-digit final_url, as long as no secrets exist.
-            req_parts = urlsplit(requested_url)
-            if req_parts.scheme not in {"http", "https"} or req_parts.hostname != urlsplit(final_url).hostname:
-                raise ValueError(f"Record {rec['case_id']} invalid requested_url: {requested_url}")
-
-        pdf_path = capture_dir / f"{rec['sha256']}.pdf"
-        verified = verify_local_file(pdf_path, expected_sha256=rec["sha256"], expected_size=rec["bytes"])
-        media_type = headers.get("content-type", "application/pdf").split(";", 1)[0].strip().lower() or "application/pdf"
+    for item in preflight:
+        rec = item["rec"]
+        headers = item["headers"]
+        final_url = item["final_url"]
+        requested_url = item["requested_url"]
+        media_type = item["media_type"]
+        verified = item["verified"]
 
         op_id = hashlib.sha256(f"{rec['case_id']}|{final_url}|{verified.sha256}".encode()).hexdigest()[:24]
         attempt = FetchAttempt(
@@ -359,9 +589,18 @@ def ingest_captures(
 
         _, qual_record = qualify_candidate_body(verified.path, qual_cache, expected_sha256=verified.sha256)
         qual_dict = dict(qual_record)
+        qual_media_type = qual_dict.get("media_type")
+        is_qualified_pdf = (qual_dict.get("status") == "qualified" and qual_media_type == "application/pdf")
+        effective_status = "qualified" if is_qualified_pdf else "unresolved"
+        effective_reason = (
+            qual_dict.get("reason")
+            if qual_media_type == "application/pdf"
+            else f"non_pdf_qualification:{qual_media_type}"
+        )
+
         prefix_info = None
         if damaged_sources_dir is not None and rec["case_id"] in damaged_by_case:
-            orig_file = damaged_sources_dir / damaged_by_case[rec["case_id"]] / "original.bin"
+            orig_file = _resolve_damaged_original(damaged_sources_dir, damaged_by_case[rec["case_id"]])
             if orig_file.is_file():
                 prefix_info = shared_prefix(orig_file.read_bytes(), verified.path.read_bytes())
 
@@ -373,8 +612,9 @@ def ingest_captures(
             "bytes": verified.size_bytes,
             "receipt_key": receipt_key,
             "operation_id": op_id,
-            "qualification_status": qual_dict["status"],
-            "qualification_reason": qual_dict.get("reason"),
+            "media_type": qual_media_type,
+            "qualification_status": effective_status,
+            "qualification_reason": effective_reason,
             "pages": qual_dict.get("pages"),
             "cutoff_size_hint": cutoff_size_hint(qual_dict),
             "shared_prefix": prefix_info,
@@ -384,10 +624,12 @@ def ingest_captures(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "run_id": run_id,
         "total": len(entries),
-        "qualified": sum(1 for e in entries if e["qualification_status"] == "qualified"),
+        "qualified": sum(
+            1 for e in entries if e["qualification_status"] == "qualified" and e["media_type"] == "application/pdf"
+        ),
         "entries": entries,
     }
-    (output_dir / "qualification-report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    _write_json_atomic(output_dir / "qualification-report.json", report)
     return report
 
 
@@ -395,10 +637,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_emit = sub.add_parser("emit-snippet", help="Generate a same-origin Chrome DevTools snippet")
+    p_emit = sub.add_parser("emit-snippet", help="Generate a same-origin single-target-per-click Chrome DevTools snippet")
     p_emit.add_argument("--targets", type=Path, required=True)
     p_emit.add_argument("--out", type=Path, required=True)
     p_emit.add_argument("--interval-seconds", type=float, default=15.0)
+    p_emit.add_argument("--timeout-seconds", type=float, default=60.0)
 
     p_ing = sub.add_parser("ingest", help="Verify and stage browser-captured PDFs into ReceiptWriter/LocalAdapter")
     p_ing.add_argument("--capture-dir", type=Path, required=True)
@@ -411,7 +654,12 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     if args.command == "emit-snippet":
-        out = emit_snippet(args.targets, args.out, interval_seconds=args.interval_seconds)
+        out = emit_snippet(
+            args.targets,
+            args.out,
+            interval_seconds=args.interval_seconds,
+            timeout_seconds=args.timeout_seconds,
+        )
         print(f"Wrote snippet to {out}")
         return 0
     identity = json.loads(args.writer_identity.read_text(encoding="utf-8"))
