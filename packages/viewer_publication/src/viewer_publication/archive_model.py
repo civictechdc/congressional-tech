@@ -1574,7 +1574,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         ]
     if prepared.get('explorer_inputs'):
         steps += _sql_steps(['youtube-cache-bodies','youtube-api-bodies'],root=root)+[
-            dict(name='known_meetings',sql="""SELECT k.event_id,r.meeting_type,r.title
+            dict(name='known_meetings',sql="""SELECT k.event_id,r.meeting_date,r.not_held,r.meeting_type,r.title,r.committees,r.subject_keys
                 FROM meetings_resolved r
                 RIGHT JOIN (
                     SELECT DISTINCT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM normalized WHERE meeting_keys IS NOT NULL
