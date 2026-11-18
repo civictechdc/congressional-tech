@@ -672,24 +672,25 @@ def _extract_year_with_source(url: str, date_str: str | None = None) -> tuple[in
         if m:
             return int(m.group(1)), "document_date"
     path = urlsplit(url).path
-    # Explicit congressional-file filename patterns like YYYYMMDD (including 20090519Reuter.pdf),
-    # M-D-YYYY / M.D.YYYY (including 9-13-2011_BousheyTestimony.pdf), or M-D-YY / M.D.YY
+    filename = path.rsplit("/", 1)[-1]
+    # Explicit congressional-file filename patterns in the final path component ONLY
+    # (YYYYMMDD like 20090519Reuter.pdf, M-D-YYYY / M.D.YYYY like 9-13-2011_BousheyTestimony.pdf, or M-D-YY)
     m_full = re.search(
         r"(?:^|[/_-])((?:19|20)\d{2})(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])(?=[A-Za-z._-]|$)",
-        path,
+        filename,
         re.I,
     )
     if m_full:
         return int(m_full.group(1)), "url_filename_date"
     m_mdy4 = re.search(
         r"(?:^|[/_.-])(?:0?[1-9]|1[0-2])(?P<sep4>[-_.])(?:0?[1-9]|[12]\d|3[01])(?P=sep4)((?:19|20)\d{2})(?=[A-Za-z._-]|$)",
-        path,
+        filename,
     )
     if m_mdy4:
         return int(m_mdy4.group(2)), "url_filename_date"
     m_short = re.search(
         r"(?:^|[/_.-])(?:0?[1-9]|1[0-2])(?P<sep2>[-_.])(?:0?[1-9]|[12]\d|3[01])(?P=sep2)(1\d|2\d|0\d)(?=[A-Za-z._-]|$)",
-        path,
+        filename,
     )
     if m_short:
         return 2000 + int(m_short.group(2)), "url_filename_date"

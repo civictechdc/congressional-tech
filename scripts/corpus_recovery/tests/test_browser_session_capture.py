@@ -294,13 +294,19 @@ currentPickerResult = folderC;
 
 const inFlightCapture = stepBtn.click();
 await folderA.pdfCloseStarted;
+assert.equal(window.__ctBrowserCaptureActive, true, 'global busy lock must be set during capture');
 assert.equal(pickBtn.disabled, true, 'pickBtn must be disabled throughout in-flight capture');
 assert.equal(stepBtn.disabled, true, 'stepBtn must be disabled throughout in-flight capture');
 await pickBtn.click(); // ignored while disabled
 await pickBtn.forceListenerClick(); // also blocked by captureInFlight guard
+// Repasting snippet during active capture must refuse panel replacement so no second panel can race!
+eval(code);
+assert.equal(elements.get('ct-browser-step-btn'), stepBtn, 'active panel must not be replaced mid-capture');
+assert.ok(elements.get('ct-browser-capture-status').textContent.includes('Refused snippet reload'));
 folderA.releasePdfClose();
 await inFlightCapture;
 
+assert.equal(window.__ctBrowserCaptureActive, false, 'global busy lock cleared after capture finishes');
 assert.equal(pickBtn.disabled, false, 'pickBtn re-enabled after capture finishes');
 assert.equal(folderC.files.size, 0, 'Folder C must remain completely empty after blocked in-flight switch');
 const aLinesAfter3 = folderA.files.get('browser-captures.jsonl').trim().split('\\n');
@@ -308,6 +314,15 @@ assert.equal(aLinesAfter3.length, 3);
 const row3 = JSON.parse(aLinesAfter3[2]);
 assert.equal(row3.case_id, 'case-3');
 assert.ok(folderA.files.has(`${{row3.sha256}}.pdf`), 'Folder A must hold case-3 PDF alongside its manifest row');
+
+// Idle reload replaces panel cleanly and preserves all 3 existing rows
+eval(code);
+const reloadedPickBtn = elements.get('ct-browser-pick-btn');
+const reloadedStepBtn = elements.get('ct-browser-step-btn');
+assert.notEqual(reloadedStepBtn, stepBtn, 'idle reload mounts fresh panel');
+currentPickerResult = folderA;
+await reloadedPickBtn.click();
+assert.ok(reloadedStepBtn.textContent.includes('Done (3/3 captured)'));
 console.log('JS_SNIPPET_BEHAVIOR_OK');
 """,
             encoding="utf-8",
@@ -535,6 +550,37 @@ console.log('JS_SNIPPET_BEHAVIOR_OK');
         }
         ok_legacy_report = self._run_ingest_single(matching_legacy_query, ok_bytes)
         self.assertEqual(ok_legacy_report["qualified"], 1)
+
+        # Empty-query symmetry: identical '/download?' -> '/download?' passes, whereas '/download' -> '/download?' fails!
+        matching_empty_query = {
+            **base,
+            "requested_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/download?",
+            "final_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/download?",
+        }
+        self.assertEqual(self._run_ingest_single(matching_empty_query, ok_bytes)["qualified"], 1)
+
+        mismatched_empty_query_resolved = {
+            **base,
+            "requested_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/download",
+            "final_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/download?",
+        }
+        with self.assertRaisesRegex(ValueError, "does not match final_url target"):
+            self._run_ingest_single(mismatched_empty_query_resolved, ok_bytes)
+
+        mismatched_empty_query_legacy = {
+            **base,
+            "requested_url": "https://webarchive.loc.gov/all/2011id_/http://oversight.house.gov/download",
+            "final_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/download?",
+        }
+        with self.assertRaisesRegex(ValueError, "does not match final_url target"):
+            self._run_ingest_single(mismatched_empty_query_legacy, ok_bytes)
+
+        matching_empty_query_legacy = {
+            **base,
+            "requested_url": "https://webarchive.loc.gov/all/2011id_/http://oversight.house.gov/download?",
+            "final_url": "https://webarchive.loc.gov/all/20111010000000id_/http://oversight.house.gov/download?",
+        }
+        self.assertEqual(self._run_ingest_single(matching_empty_query_legacy, ok_bytes)["qualified"], 1)
 
         # Trusted --targets rejects wrong case_id or wrong original_url
         targets_file = self.root / "targets_bind.json"

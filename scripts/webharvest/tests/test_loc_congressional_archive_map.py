@@ -390,6 +390,10 @@ def test_build_catalog_sidecar_verification_completeness_and_cross_match(tmp_pat
     boushey_row = next(r for r in res["damaged_49_rows"] if r["case"] == "zero-page-boushey")
     assert boushey_row["year_hint"] == 2011
     assert boushey_row["year_hint_source"] == "url_filename_date"
+    # Directory date must NOT override filename date in final path component
+    assert MODULE._extract_year_with_source(
+        "https://oversight.house.gov/9-13-2012-hearing/11-2-11_Testimony.pdf"
+    ) == (2011, "url_filename_date")
     howle_row = next(r for r in res["damaged_49_rows"] if r["case"] == "zero-page-howle")
     assert howle_row["selected_non_loc"]["operation_id"] == "op_exact"
     assert howle_row["selected_non_loc"]["shared_prefix_bytes"] == 337920

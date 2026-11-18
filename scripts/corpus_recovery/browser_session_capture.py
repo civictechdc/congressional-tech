@@ -49,8 +49,19 @@ _SNIPPET_TEMPLATE = r"""(() => {
     'cache-control', 'accept-ranges', 'memento-datetime'
   ];
 
+  if (window.__ctBrowserCaptureActive) {
+    const activeStatus = document.getElementById('ct-browser-capture-status');
+    if (activeStatus) {
+      activeStatus.textContent += '\n[Refused snippet reload while folder selection or capture is in progress]';
+    }
+    return;
+  }
+
   const existing = document.getElementById('ct-browser-capture-panel');
-  if (existing) existing.remove();
+  if (existing) {
+    if (typeof existing.__ctDispose === 'function') existing.__ctDispose();
+    existing.remove();
+  }
 
   const panel = document.createElement('div');
   panel.id = 'ct-browser-capture-panel';
@@ -62,6 +73,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
   });
 
   const statusEl = document.createElement('div');
+  statusEl.id = 'ct-browser-capture-status';
   statusEl.style.marginBottom = '8px';
   statusEl.style.whiteSpace = 'pre-wrap';
 
@@ -109,6 +121,8 @@ _SNIPPET_TEMPLATE = r"""(() => {
   let cooldownUntil = 0;
   let captureInFlight = false;
   let folderPickInFlight = false;
+  let disposed = false;
+  panel.__ctDispose = () => { disposed = true; };
 
   async function sha256Hex(buffer) {
     const digest = await crypto.subtle.digest('SHA-256', buffer);
@@ -149,6 +163,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
   }
 
   function refreshStepButton() {
+    if (disposed) return;
     advanceToNextUncaptured();
     if (captureInFlight || folderPickInFlight) {
       stepBtn.disabled = true;
@@ -218,12 +233,13 @@ _SNIPPET_TEMPLATE = r"""(() => {
   }
 
   pickBtn.addEventListener('click', async () => {
-    if (captureInFlight || folderPickInFlight || window.location.origin !== EXPECTED_ORIGIN) return;
+    if (disposed || window.__ctBrowserCaptureActive || captureInFlight || folderPickInFlight || window.location.origin !== EXPECTED_ORIGIN) return;
     if (typeof window.showDirectoryPicker !== 'function') {
       statusEl.textContent = 'File System Access API (window.showDirectoryPicker) is unavailable in this browser.';
       return;
     }
     folderPickInFlight = true;
+    window.__ctBrowserCaptureActive = true;
     pickBtn.disabled = true;
     pickBtn.style.opacity = '0.5';
     stepBtn.disabled = true;
@@ -237,7 +253,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
         statusEl.textContent = `Folder selection canceled: ${err && err.message ? err.message : err}`;
         return;
       }
-      if (captureInFlight) return;
+      if (disposed || captureInFlight) return;
 
       // Read proposed folder into temporaries FIRST; if reading fails, clear active folder so
       // neither the previous folder nor the new folder can ever be overwritten with stale state.
@@ -252,7 +268,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
           }
           nextCaptured.add(parsed.case_id);
         }
-        if (captureInFlight) return;
+        if (disposed || captureInFlight) return;
         dirHandle = nextHandle;
         existingLines = nextLines;
         existingErrors = nextErrors;
@@ -262,7 +278,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
         const previewTarget = nextIndex < TARGETS.length ? `\nNext URL: ${TARGETS[nextIndex].fetch_url}` : '';
         statusEl.textContent = `Folder ready (${existingLines.length} prior capture(s) preserved).${previewTarget}`;
       } catch (err) {
-        if (captureInFlight) return;
+        if (disposed || captureInFlight) return;
         dirHandle = null;
         existingLines = [];
         existingErrors = [];
@@ -272,16 +288,17 @@ _SNIPPET_TEMPLATE = r"""(() => {
       }
     } finally {
       folderPickInFlight = false;
-      if (!captureInFlight && window.location.origin === EXPECTED_ORIGIN) {
+      window.__ctBrowserCaptureActive = captureInFlight || folderPickInFlight;
+      if (!disposed && !captureInFlight && window.location.origin === EXPECTED_ORIGIN) {
         pickBtn.disabled = false;
         pickBtn.style.opacity = '1';
       }
-      refreshStepButton();
+      if (!disposed) refreshStepButton();
     }
   });
 
   stepBtn.addEventListener('click', async () => {
-    if (captureInFlight || folderPickInFlight || !dirHandle || window.location.origin !== EXPECTED_ORIGIN) return;
+    if (disposed || window.__ctBrowserCaptureActive || captureInFlight || folderPickInFlight || !dirHandle || window.location.origin !== EXPECTED_ORIGIN) return;
     advanceToNextUncaptured();
     if (nextIndex >= TARGETS.length) {
       refreshStepButton();
@@ -291,6 +308,7 @@ _SNIPPET_TEMPLATE = r"""(() => {
     const activeDir = dirHandle;
     let captureSucceeded = false;
     captureInFlight = true;
+    window.__ctBrowserCaptureActive = true;
     pickBtn.disabled = true;
     pickBtn.style.opacity = '0.5';
     stepBtn.disabled = true;
@@ -397,11 +415,12 @@ _SNIPPET_TEMPLATE = r"""(() => {
     } finally {
       clearTimeout(timer);
       captureInFlight = false;
-      if (window.location.origin === EXPECTED_ORIGIN) {
+      window.__ctBrowserCaptureActive = captureInFlight || folderPickInFlight;
+      if (!disposed && window.location.origin === EXPECTED_ORIGIN) {
         pickBtn.disabled = false;
         pickBtn.style.opacity = '1';
       }
-      if (captureSucceeded) {
+      if (!disposed && captureSucceeded) {
         refreshStepButton();
       }
     }
@@ -517,9 +536,19 @@ def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     return out
 
 
+def _raw_path_and_query(raw_url: str) -> str:
+    m = re.match(r"^[A-Za-z][A-Za-z0-9+.-]*://[^/?#]+(.*)$", raw_url)
+    if not m:
+        raise ValueError(f"Invalid URL: {raw_url!r}")
+    return m.group(1) or "/"
+
+
 def _validate_capture_url(url: str) -> str:
     if not isinstance(url, str) or not url.strip():
         raise ValueError("Capture final_url must be a non-empty string")
+    raw_parts = urlsplit(url)
+    if raw_parts.username is not None or raw_parts.password is not None or raw_parts.fragment:
+        raise ValueError(f"Capture URL carries credentials or fragment: {url}")
     checked = allowed_url(url)
     if checked is None:
         raise ValueError(f"Capture URL failed archive_links.allowed_url: {url}")
@@ -532,26 +561,33 @@ def _validate_capture_url(url: str) -> str:
     return checked
 
 
-def _validate_requested_url(requested_url: str, final_url: str, case_id: str) -> str:
-    req_parts = urlsplit(requested_url)
-    fin_parts = urlsplit(final_url)
-    if (req_parts.scheme, req_parts.netloc) != (fin_parts.scheme, fin_parts.netloc):
-        raise ValueError(f"Record {case_id} requested_url origin differs from final_url: {requested_url}")
-    if req_parts.username is not None or req_parts.password is not None or req_parts.fragment:
-        raise ValueError(f"Record {case_id} requested_url carries credentials or fragment: {requested_url}")
-    if requested_url == final_url:
-        return requested_url
+def _validate_requested_url(raw_requested: str, raw_final: str, case_id: str) -> str:
+    req_parts = urlsplit(raw_requested)
+    fin_parts = urlsplit(raw_final)
+    if (req_parts.scheme.lower(), req_parts.netloc.lower()) != (fin_parts.scheme.lower(), fin_parts.netloc.lower()):
+        raise ValueError(f"Record {case_id} requested_url origin differs from final_url: {raw_requested}")
+    if (
+        req_parts.username is not None
+        or req_parts.password is not None
+        or req_parts.fragment
+        or fin_parts.username is not None
+        or fin_parts.password is not None
+        or fin_parts.fragment
+    ):
+        raise ValueError(f"Record {case_id} URL carries credentials or fragment: {raw_requested!r} / {raw_final!r}")
+    if raw_requested == raw_final:
+        return _validate_capture_url(raw_requested)
     # Allow explicit unresolved (<14-digit) LoC selector shorthand ONLY when embedded original URL
-    # (including full query string) matches final_url; resolved 14-digit URLs require exact equality.
+    # (including any '?' delimiter and query string) matches raw_final; resolved 14-digit URLs require exact equality.
     if (req_parts.hostname or "").lower() == "webarchive.loc.gov":
-        req_full = req_parts.path + (f"?{req_parts.query}" if req_parts.query else "")
-        fin_full = fin_parts.path + (f"?{fin_parts.query}" if fin_parts.query else "")
+        req_full = _raw_path_and_query(raw_requested)
+        fin_full = _raw_path_and_query(raw_final)
         req_m = LOC_REPLAY_LEGACY_SELECTOR_RE.fullmatch(req_full)
         fin_m = LOC_REPLAY_ID_RE.fullmatch(fin_full)
         if req_m and fin_m and req_m.group(1) == fin_m.group(1):
-            return requested_url
+            return raw_requested
     raise ValueError(
-        f"Record {case_id} requested_url does not match final_url target ({requested_url!r} vs {final_url!r})"
+        f"Record {case_id} requested_url does not match final_url target ({raw_requested!r} vs {raw_final!r})"
     )
 
 
@@ -649,8 +685,10 @@ def ingest_captures(
         if "content-range" in headers:
             raise ValueError(f"Record {case_id} carries content-range header (partial transfer refused)")
 
-        final_url = _validate_capture_url(rec["final_url"].strip())
-        requested_url = _validate_requested_url(rec["requested_url"].strip(), final_url, case_id)
+        raw_final = rec["final_url"].strip()
+        raw_requested = rec["requested_url"].strip()
+        final_url = _validate_capture_url(raw_final)
+        requested_url = _validate_requested_url(raw_requested, raw_final, case_id)
         original_url = rec["original_url"].strip()
 
         if trusted_targets is not None:
@@ -661,9 +699,9 @@ def ingest_captures(
                 raise ValueError(
                     f"Record {case_id} original_url {original_url!r} does not match trusted target {target['original_url']!r}"
                 )
-            if requested_url != target["fetch_url"] or final_url != target["fetch_url"]:
+            if raw_requested != target["fetch_url"] or raw_final != target["fetch_url"]:
                 raise ValueError(
-                    f"Record {case_id} URL ({requested_url!r} -> {final_url!r}) does not match trusted target {target['fetch_url']!r}"
+                    f"Record {case_id} URL ({raw_requested!r} -> {raw_final!r}) does not match trusted target {target['fetch_url']!r}"
                 )
 
         media_type = headers.get("content-type", "application/pdf").split(";", 1)[0].strip().lower() or "application/pdf"
