@@ -69,3 +69,12 @@ Item 3: 23 more alerts cleared by pull request 194 (ct-f4lk closed); what is lef
 
 - Items 1 and 16 (Dependabot pull requests cannot be validated): no Dependabot secret. Dependency updates are gathered into one squashed change, tested and merged ("Squash all locally, test and merge"). First such batch: pull request 197, every open alert that has a fix (lxml, soupsieve, idna, requests, dnspython, rustls, astro with Node 22.23.5), with a 400-body reader comparison for the lxml and soupsieve move. picomatch has no patched release.
 - Item 2 (branch protection requires no checks): "Require checks to merge". Pull request 198 adds the always-running merge gate and the rule file `.github/rulesets/main.json`; the rule is applied after it merges.
+
+**2026-11-18T19:16:42Z**
+
+2026-11-18 where each item stands.
+Done: 2 (main requires the merge-gate check since 2026-11-18, ruleset 27549282; a pull request with checks running was refused, and admin pushes of tickets and docs go through with GitHub noting the bypass); 3 (pull request 197 cleared 11 of 12 alerts; picomatch has no patched release; lxml moved four producer identities, kept under reviewed equivalence on 66,490 re-produced records).
+Changed: 1 and 16 (Dependabot pull requests cannot be validated) no longer block anything by the owner's decision of 2026-11-17 to batch updates by hand.
+Open: 4 (the capture cron fires 7 to 9 hours late and later each day: 10:42, 11:15, 11:47, 12:07 UTC on 11-14 to 11-17, and 11:57 on 11-18; owner to accept it or trigger from outside GitHub); 6 (split test_archive_selective.py before refreshing shard timings); 8 (Sunday's weekly refresh may trip the unattended rule's caps); 10; 14; 15.
+Not yet shown: a data job's own push to main under the new rule. commit-and-push.sh stamps its commit with the merge-gate status first, tested against a local stand-in only. I did not dispatch update-data.yml by hand on 2026-11-18: it is the whole weekly refresh (YouTube, GPO, committee metadata, pipeline data), and running it the evening before the first schedule-started night on the new code would likely stop that night. The first real proof is the scheduled run of Sunday 2026-11-22 00:00 UTC; if GitHub refuses the stamped push the job fails and ci-alerts opens an issue.
+Also from today: the publish re-run after a cause record rebuilt instead of resuming (ct-31qi); the first schedule-started night on the final code is 2026-11-19.
