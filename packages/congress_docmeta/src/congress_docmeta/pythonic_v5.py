@@ -1210,8 +1210,10 @@ def canonicalize_docmeta_v4(
         elif k == "congress":
             if not isinstance(val, bool) and isinstance(val, int) and 1 <= val <= 130:
                 out[k] = val
-            elif isinstance(val, str) and val.strip().isdigit() and 1 <= int(val.strip()) <= 130:
-                out[k] = int(val.strip())
+            elif isinstance(val, str):
+                s_cong = val.strip()
+                if s_cong.isascii() and s_cong.isdigit() and 1 <= int(s_cong) <= 130:
+                    out[k] = int(s_cong)
 
         elif k == "signatory_count":
             if not isinstance(val, bool) and isinstance(val, int) and val >= 1:

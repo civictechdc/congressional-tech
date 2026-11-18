@@ -1510,6 +1510,22 @@ def test_sweep_and_teacher_recover_from_strict_v4_validation_failures(
     with pytest.raises(DocMetaValidationError, match="usable_missing_primary_kind"):
         prompt_v4.canonicalize_v4({})
 
+    # Unicode superscript digits (`"²".isdigit() is True`) on `congress` are ignored cleanly without raising `ValueError`
+    unicode_cong_doc = dict(valid_doc, congress="²")
+    canon_uc_v5 = canonicalize_docmeta_v4(unicode_cong_doc)
+    assert "congress" not in canon_uc_v5
+    assert validate_docmeta_v4(canon_uc_v5) == (True, None)
+    canon_uc_p4 = prompt_v4.canonicalize_v4(unicode_cong_doc)
+    assert "congress" not in canon_uc_p4
+    assert validate_docmeta_v4(canon_uc_p4) == (True, None)
+    post_uc, _ = post_pass_v6(
+        unicode_cong_doc,
+        filename="witness_testimony.pdf",
+        text="Statement of Jane Doe on electric grid reliability.",
+    )
+    assert "congress" not in post_uc
+    assert validate_docmeta_v4(post_uc) == (True, None)
+
     def _raise_refspec_checksum(*_args: Any, **_kwargs: Any) -> dict[str, Any]:
         raise ValueError("Pinned RefSpec artifact drifted: simulated checksum mismatch")
 
