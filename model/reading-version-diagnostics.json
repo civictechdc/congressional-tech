@@ -4,7 +4,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "0993df7207a725212e3f82d8dd1c14653c7e6ff755ffc26b19e365136e7de081",
+    "locked_sha256": "573de0329b0d62f918426dbed7f8c95ea3ea0786a2f8a295e630d20dc7bdce12",
     "policy": {
       "max_input_bytes": 65536,
       "max_output_bytes": 67108864,
@@ -57,7 +57,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "df34b1edd4e409394be1ae59f0197ccad065dd1560aeb6be7f4debf02fdcfc02",
+    "locked_sha256": "b8e075839d021deeafc502ec4db0bb50bdbcc630e62fe7c4f5b2de1c64957f6e",
     "page_deadline_seconds": 60,
     "policy": {
       "max_input_bytes": 65536,
@@ -67,11 +67,11 @@
     },
     "sample_sha256": "526687503c9d0a8c475f168a1bc11317ac005114fbfde62eebf18d759d0c6411",
     "spicy_docs": {
-      "derivation": "007+ctreaders.20261113",
-      "digest": "sha256:32d10c89125e491f699bb8ce43f094fdeebbb5f5a0e5c267801b4ae7f7194a89",
-      "version": "0.85.0+cttesseract.20261117"
+      "derivation": "006",
+      "digest": "sha256:8e84ae822250614920435e630e0a7e5d906cbb076da3bb7f5fe16139611e6d01",
+      "version": "0.85.0+ctmain.20261118"
     },
-    "version": "f1cefe442182dc8e4c456359aebdb37e5c50db6b0abb669b303e05763feb94a3",
+    "version": "5c5f36bc41341cdaad06402628b2ef1707af8024aa708ad2648edd227aa863f9",
     "workspace_sha256": "37fdea267dd3a58f57a1ee55fe20888e094c8404120daafb3c5b1543cb3cf957"
   },
   "json": {
@@ -90,7 +90,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "df34b1edd4e409394be1ae59f0197ccad065dd1560aeb6be7f4debf02fdcfc02",
+    "locked_sha256": "b8e075839d021deeafc502ec4db0bb50bdbcc630e62fe7c4f5b2de1c64957f6e",
     "macos_build": "25G5057c",
     "ocr_rule": {
       "bands": 3,
@@ -112,9 +112,9 @@
     "pymupdf": "1.28.2",
     "sample_sha256": "df43e60b0033473753db33b675c4d5fd2f94405374833c9ae1fd7705a7ce3f6f",
     "spicy_docs": {
-      "derivation": "007+ctreaders.20261113",
-      "digest": "sha256:32d10c89125e491f699bb8ce43f094fdeebbb5f5a0e5c267801b4ae7f7194a89",
-      "version": "0.85.0+cttesseract.20261117"
+      "derivation": "006",
+      "digest": "sha256:8e84ae822250614920435e630e0a7e5d906cbb076da3bb7f5fe16139611e6d01",
+      "version": "0.85.0+ctmain.20261118"
     },
     "version": "4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8",
     "workspace_sha256": "37fdea267dd3a58f57a1ee55fe20888e094c8404120daafb3c5b1543cb3cf957"
@@ -163,7 +163,7 @@
       "decoded_bytes": 67108864,
       "stored_bytes": 67108864
     },
-    "locked_sha256": "df34b1edd4e409394be1ae59f0197ccad065dd1560aeb6be7f4debf02fdcfc02",
+    "locked_sha256": "b8e075839d021deeafc502ec4db0bb50bdbcc630e62fe7c4f5b2de1c64957f6e",
     "page_deadline_seconds": 60,
     "policy": {
       "max_input_bytes": 65536,
@@ -173,11 +173,11 @@
     },
     "sample_sha256": "6398303fd71602e2f2cb7a8931354a47da67ceb0eed8e57de09099601310fb59",
     "spicy_docs": {
-      "derivation": "007+ctreaders.20261113",
-      "digest": "sha256:32d10c89125e491f699bb8ce43f094fdeebbb5f5a0e5c267801b4ae7f7194a89",
-      "version": "0.85.0+cttesseract.20261117"
+      "derivation": "006",
+      "digest": "sha256:8e84ae822250614920435e630e0a7e5d906cbb076da3bb7f5fe16139611e6d01",
+      "version": "0.85.0+ctmain.20261118"
     },
-    "version": "5a0768bcbaaaf7f67e29e2ff989689b62356579780f99e518d137f7b222c798c",
+    "version": "24898408bb949bd8cc3e2137102e4d6a9d3b7752c19c7106b3f9069d1c4a07d4",
     "workspace_sha256": "37fdea267dd3a58f57a1ee55fe20888e094c8404120daafb3c5b1543cb3cf957"
   }
 }

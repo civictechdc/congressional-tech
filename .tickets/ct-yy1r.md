@@ -1,6 +1,6 @@
 ---
 id: ct-yy1r
-status: open
+status: in_progress
 deps: []
 links: []
 created: 2026-11-18T15:41:39Z
@@ -35,3 +35,7 @@ CT's pinned wheel is rebuildable from a pushed spicy-docs commit on its main; th
 **2026-11-18T22:03:24Z**
 
 2026-11-18 22:00Z: five-fix port on spicy-docs branch port/ct-wheel-fixes-20261118 (worktree /Users/mikewolfd/Work/spicy-stack-worktrees/spicy-docs-port-ct-fixes-20261118), one commit over fork/main c33121ea, NOT pushed. Codex checks 1-4 fixed: txt reuse, squash, punctuation, CRLF, charset forwarding. Check 4 left: line-ending cases (being fixed by normalizing CRLF/CR to LF at the reader) and inverted/infinite PDF boxes labelled zero_area. Next: final Codex check, push to fork, PR on mikewolfd/spicy-docs, OCR and Vision tests before the wheel rebuild. Handoff: .cache/archive-release/reviews/handoffs-20261118/spicy-docs-port.md
+
+**2026-11-18T23:42:03Z**
+
+2026-11-18: Rebuilt reproducible wheel vendor/spicy_docs-0.85.0+ctmain.20261118-py3-none-any.whl (sha256 05ee4864c5227963962be9ef11f376e6a40a8125698df3ca4629f560c29d4f7b, two byte-identical uv build --wheel builds) from spicy-docs branch ct-main-tesseract-20261118 commit 381f17032f805a7e297012033156dbaea6d119be atop five-fix CT reader port cff95c1b40533abc96fd08e66ba6fb73b07cdf65 on merged main c33121ea2d8e4ad1e9e352f1ae213f33f34ea0f3 (upstream Tesseract from c5d5f2ba already AST-identical in extraction/ocr.py; skipped OCR/Vision/Tesseract/rendering/Wayback/error-page suites verified: 1,107 passed in spicy-docs). Repinned CT pyproject.toml, packages/congress_api/pyproject.toml, and uv.lock; verified Wayback readers (read_wayback_index, newest_wayback_captures, read_wayback_replay, WaybackFallback) and error-page PDF guard (a648e60d); deleted CT duplicate _OptInPDFPage.native spacing copy in parsers/pdf_opt_in.py delegating to spicy-docs PR 32 (_PDFPage.native, verified byte-identical across all 5 accepted-set-v12 spacing PDFs); verified zero byte-hashed record/filename producers import spicy_docs; redeclared html_text, xml_text, warc, and HTML/XML opt-in declarations for derivation 006 while retaining pdf_text and house_floor_feed equivalence (11/11 diagnostic fixtures, 411/411 assess_response, f1e2e2 p36 Vision/Tesseract identical; 1,156 passed across 60 CT production-offline reader/version/recovery/export test files). Kept in_progress solely awaiting user approval to push port/ct-wheel-fixes-20261118 and ct-main-tesseract-20261118 to mikewolfd/spicy-docs. Evidence: .cache/archive-release/ct-yy1r-20261118/.

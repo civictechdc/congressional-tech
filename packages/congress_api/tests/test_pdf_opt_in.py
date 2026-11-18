@@ -52,7 +52,7 @@ def test_tesseract_backend_identity_and_selective_scan_ocr():
         ]
     )
     rule = tesseract_300dpi()
-    assert rule.checkpoint_identity['backend_implementation'] == 'spicy-docs-0.85.0+cttesseract.20261117'
+    assert rule.checkpoint_identity['backend_implementation'] == 'spicy-docs-0.85.0+ctmain.20261118'
     reading = body_text.pdf_text(pdf_bytes, strategy=rule, page_deadline_seconds=30)
     assert reading.status == "completed"
     assert reading.ocr_pages == (1,)
@@ -111,28 +111,105 @@ def test_oversized_page_refuses_before_pixmap_allocation(adaptive):
 
 
 def test_native_inhibit_spaces_opt_in_rule_preserves_native_prose():
-    doc = pymupdf.open()
-    pg = doc.new_page()
-    pg.insert_text(
-        (72, 100),
+    from spicy_docs.extraction.pages import _PDFPage
+    from congress_api.parsers.pdf_opt_in import _OptInPDFPage
+
+    # CT delegates native_inhibit_spaces directly to spicy-docs PR 32 (_PDFPage.native).
+    assert "native" not in _OptInPDFPage.__dict__
+    assert _OptInPDFPage.native is _PDFPage.native
+    with pytest.raises(TypeError, match="boolean"):
+        OptInPdfReader(native_inhibit_spaces="yes")  # type: ignore[arg-type]
+
+    # Build a PDF with PDF character-spacing (`3 Tc`) where PyMuPDF infers spaces unless TEXT_INHIBIT_SPACES is set.
+    tracked_doc = pymupdf.open()
+    tracked_pg = tracked_doc.new_page()
+    tracked_pg.insert_text((72, 100), "OF THE COMMITTEE", fontsize=12)
+    tracked_pg.insert_text(
+        (72, 140),
         "Subcommittee on Courts, Intellectual Property, and the Internet Hearing Notice.",
         fontsize=12,
     )
-    pg.insert_text(
-        (72, 130),
-        "Witnesses will testify regarding federal judicial administration and patent quality.",
-        fontsize=12,
-    )
-    pdf_bytes = doc.tobytes()
-    doc.close()
+    xref = tracked_pg.get_contents()[0]
+    stream = tracked_doc.xref_stream(xref)
+    tracked_doc.update_stream(xref, stream.replace(b"BT", b"BT\n3 Tc", 1))
+    pdf_bytes = tracked_doc.tobytes()
+    tracked_doc.close()
+
+    default_reader = OptInPdfReader(native_inhibit_spaces=False)
+    with default_reader.open(pdf_bytes, "application/pdf") as opened_default:
+        default_nat = opened_default.page(1).native()
+        assert "O F T H E C O M M I T T E E" in default_nat.text
+        assert "inhibit_spaces" not in default_nat.configuration
 
     reader = OptInPdfReader(native_inhibit_spaces=True)
-    with reader.open(pdf_bytes, "application/pdf") as doc:
-        assert doc.page_count == 1
+    with reader.open(pdf_bytes, "application/pdf") as opened:
+        assert opened.page_count == 1
+        inhibited_nat = opened.page(1).native()
+        assert inhibited_nat.configuration["inhibit_spaces"] is True
+        assert "OF THE COMMITTEE" in inhibited_nat.text
     reading = body_text.pdf_text(pdf_bytes, strategy=native_inhibit_spaces_only(), page_deadline_seconds=15)
     assert reading.status == "completed"
     assert reading.ocr_pages == ()
+    assert "OF THE COMMITTEE" in reading.text
     assert "Intellectual Property" in reading.text
+
+
+def test_shared_wayback_readers_and_error_page_pdf_guard_import_and_validate_offline():
+    import json
+    from spicy_docs.reading.error_pages import detect_error_page
+    from spicy_docs.sources.web_archive import (
+        WaybackCdxScope,
+        WaybackFallback,
+        WaybackSelection,
+        newest_wayback_captures,
+        payload_sha1,
+        read_wayback_index,
+        read_wayback_replay,
+        wayback_replay_url,
+    )
+    from spicy_docs.transport.captured import CapturedBodyResponse
+
+    assert callable(WaybackFallback)
+    original_url = "https://www.finance.senate.gov/imo/media/doc/testimony.pdf"
+    ts = "20240519143000"
+    pdf_payload = b"%PDF-1.4\n1 0 obj << /Title (Access Denied Just a moment Cloudflare) >> endobj\n%%EOF\n"
+    digest = payload_sha1(pdf_payload)
+
+    # a648e60d: a PDF/binary body containing wall phrases must never be classified as an error page.
+    assert detect_error_page(pdf_payload, status_code=200, media_types=("application/pdf",), source_format="pdf") is None
+
+    scope = WaybackCdxScope(url=original_url, media_type="application/pdf")
+    cdx_filtered = json.dumps([["timestamp", "original", "digest"], [ts, original_url, digest]]).encode()
+    newest = newest_wayback_captures(cdx_filtered, scope)
+    assert newest[("www.finance.senate.gov", "/imo/media/doc/testimony.pdf")].digest == digest
+
+    selection = WaybackSelection(original_url=original_url, day="20240519")
+    cdx_exact = json.dumps([
+        ["urlkey", "timestamp", "original", "mimetype", "statuscode", "digest", "length"],
+        ["gov,senate,finance)/imo/media/doc/testimony.pdf", ts, original_url, "application/pdf", "200", digest, "96"],
+    ]).encode()
+    idx_resp = CapturedBodyResponse(
+        requested_url=selection.index_url,
+        resolved_url=selection.index_url,
+        status_code=200,
+        content_type="application/json",
+        observed_at="2026-11-18T22:00:00Z",
+        body=cdx_exact,
+    )
+    idx_read = read_wayback_index(idx_resp, selection)
+    assert len(idx_read.candidates) == 1
+    replay_url = wayback_replay_url(original_url, ts)
+    replay_resp = CapturedBodyResponse(
+        requested_url=replay_url,
+        resolved_url=replay_url,
+        status_code=200,
+        content_type="application/pdf",
+        observed_at="2026-11-18T22:00:05Z",
+        body=pdf_payload,
+    )
+    replay = read_wayback_replay(replay_resp, selection, idx_resp, idx_read.candidates[0])
+    assert replay.payload_digest == digest
+    assert replay.receipt_fields()["original_publisher_url"] == original_url
 
 
 def test_opt_in_reader_opens_only_unencrypted_pdf_bytes():

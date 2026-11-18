@@ -401,6 +401,50 @@ Retained qualification evidence is under
 This bounded equivalence decision covers the unchanged default path, not
 unreviewed opt-in cohorts.
 
+The 2026-11-18 merged-main rebuild (`ct-yy1r`) pins
+`spicy-docs==0.85.0+ctmain.20261118` (wheel SHA-256
+`05ee4864c5227963962be9ef11f376e6a40a8125698df3ca4629f560c29d4f7b`), built
+reproducibly (`uv build --wheel` twice, byte-identical) from local commit
+`381f17032f805a7e297012033156dbaea6d119be` atop the five-fix CT reader port
+(`cff95c1b40533abc96fd08e66ba6fb73b07cdf65`) on merged `spicy-docs` `main`
+(`c33121ea2d8e4ad1e9e352f1ae213f33f34ea0f3`, PR 34; pushing the port and version
+commit awaits owner approval). Upstream `extraction/ocr.py` already ships an
+AST-identical `Tesseract` backend from `c5d5f2ba`, replacing the standalone
+`extraction/tesseract.py` backport (`bfd3c539`); the wheel also brings in the
+shared Wayback index/replay readers and `WaybackFallback`
+(`sources/web_archive.py`), the Apple Vision band-edge retention fix (PR 31),
+shared `DefaultReader(native_inhibit_spaces=True)` (PR 32, allowing CT to delete
+its duplicate `_OptInPDFPage.native` copy in `parsers/pdf_opt_in.py`), and the
+PDF/binary error-page guard (`a648e60d`). No byte-hashed record or filename
+producer imports `spicy_docs`, and every `producer_version` and `captures`
+mapping digest remains identical.
+
+The maintainer redeclares `html_text`, `xml_text`, composed `warc`, and the
+opt-in HTML/XML recovery and publisher-selection declarations for `spicy-docs`
+derivation `006` (`CRLF`/`CR`-to-`LF` boundary normalization, adjacent
+text-event coalescing, explicit `\u00a0` retention outside template whitespace,
+and indented inline punctuation removal across split events), while retaining
+`pdf_text`, `house_floor_feed`, `sniff`, `html`, `xml`, `json`, `html_metadata`,
+and `readings`. All eleven fixed reader and WARC diagnostic fixture digests
+match byte for byte; on the source-backed `hr4307-enrolled.html.gz` fixture and
+411 retained HTML/XML diagnostic bodies, completion status and
+whitespace-normalized `fingerprint` match 100%, `assess_response` matches
+411/411, `xml_text` and all 18 opt-in legislative/CMS HTML selector runs match
+byte for byte, and ordinary `html_text` reflects derivation `006`'s `&nbsp;`
+preservation (`hr4307-enrolled.html.gz` default HTML digest and 197 House HTML
+diagnostic bodies) and event coalescing (`markup_cleanup` counts on 9
+preformatted transcripts). On PDF, `gpo_normalize` and `markup_recovery` remain
+byte-identical to `0.85.0+cttesseract.20261117`, all 5 `native_inhibit_spaces`
+PDFs in `accepted-set-v12/selection.json` reproduce byte for byte through shared
+`_PDFPage.native`, and `f1e2e2` page 36 reproduces byte for byte under both
+`TesseractBackend` and `AppleVision` (outside unchanged fixtures, PR 31 can
+retain unique Vision band-edge lines and `cff95c1b` refuses inverted/non-finite
+PDF boxes as `NativeGeometryError("invalid_box")`, still persisted as
+`ExtractionError`). Historical `readings` and `accepted-set-v12/selection.json`
+rows keep their pinned versions without restamping or recomputation. Evidence
+and receipts are in `vendor/` and
+`<main checkout>/.cache/archive-release/ct-yy1r-20261118/`.
+
 The lake keys reading rows by body digest, parser, and the declared version in
 `congress_api.lake.reading_versions`. The combined unreadable-decision version
 also depends on the four leaf versions and the combined worker limits.

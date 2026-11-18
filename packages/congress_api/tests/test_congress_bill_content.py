@@ -51,9 +51,9 @@ def test_source_backed_bill_preserves_all_sections_and_both_signatures():
     assert selection.body == body[evidence['byte_start']:evidence['byte_end']]
     assert sha256(selection.body).hexdigest() == evidence['selected_sha256']
     assert sha256(reading.text.encode()).hexdigest() == 'c513d914c7ebb4f95e17ed58eee29b2db04fca6ec2e42b8b4d38dcbe2508bfad'
-    # The unchanged default remains reproducible under its original version.
+    # Default html_text reflects its redeclared 2026-11-18 006 derivation (preserving literal &nbsp; spacing).
     baseline = markup_text(body, 'html_text')
-    assert sha256(baseline.text.encode()).hexdigest() == '0e0610a6d7eebd908f6cce52923298cb8b9f5f06e9586262ab01607ad142d299'
+    assert sha256(baseline.text.encode()).hexdigest() == '40a718fb7aec68f240f219a21211af4243fc5356cfaa5c916c9fc75d45cc710f'
     assert 'content_selection' not in baseline.fields
 
 
