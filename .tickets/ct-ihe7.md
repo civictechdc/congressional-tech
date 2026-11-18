@@ -1,6 +1,6 @@
 ---
 id: ct-ihe7
-status: in_progress
+status: closed
 deps: []
 links: [ct-fk4w]
 created: 2026-11-17T19:47:13Z
@@ -35,3 +35,7 @@ Owner ruling 2026-11-17: fast-gemma4 holds only model-related code; congressiona
 **2026-11-18T16:49:17Z**
 
 2026-11-18 12:10: fast-gemma4 local main merged (fast-forward to efc905b; it has no remote). Post-merge checks: GPU-only eval from CT equals main's own script on all four sets apart from work_addr (R8); ring eval of the adopted model gemma4_e2b_v64a35_c2c4_w8 from merged main equals main's v64a35.json apart from work_addr; ring runs of the epoch-one model vary by 3 to 7 free-text docs between runs on main itself (CT run equals one of main's two reruns); old and new trainer print the same losses over 4 batches (nothing saved); docmeta-model full lane exit 0 (10 passed); fast-gemma4 tests 42 pass, 2 fail the same way on pre-merge main. Main's 57aa284 note change carried in 90aedf3a. Left: push this branch and open the pull request (owner's word), full production-offline lane via hosted CI. Until then the pipeline runs only from this worktree. Hand-over note: side-session note docmeta-move-handover-20261117.md.
+
+**2026-11-18T19:26:36Z**
+
+2026-11-18 closing: merged. congressional-tech main 7be0a07e (pull request 206, squash; 11 of 11 checks green before the merge) holds packages/congress_docmeta; fast-gemma4 local main efc905b holds no DocMeta code (it has no remote). Acceptance: (1) the package owns rules R1 to R8, parsers, schema, prompts, sweep driver, validators' questions, gold eval, label building, the address reader and the sidecar builder; (2) fast-gemma4 keeps only per_doc_grammar, scorers and train_lora.py --pairs for CT to call, plus a frozen V3 schema in tests/fixtures as its engine test workload; (3) eval from this package reproduced the reference report on the engine it was made on, and matches fast-gemma4 main's own script on the current engine apart from work_addr, GPU only on the epoch-one model and with the ring on the adopted model gemma4_e2b_v64a35_c2c4_w8. Not done here, each with its own ticket: ct-2cig (rule and scorer defects), ct-1lpr, ct-s9l2, ct-07y3, ct-pzaz, ct-0zry. The sidecar builder was adopted but not re-run. Two fast-gemma4 engine tests fail on its main independent of the move (reported to the training session, no ticket).
