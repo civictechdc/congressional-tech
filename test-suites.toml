@@ -54,6 +54,7 @@ congress_api = "packages/congress_api/src"
 viewer_publication = "packages/viewer_publication/src"
 corpus_recovery = "packages/corpus_recovery/src"
 news_lake = "packages/news_lake/src"
+congress_docmeta = "packages/congress_docmeta/src"
 committee_explorer = "apps/committee_youtube/src"
 
 [baseline]
@@ -73,6 +74,7 @@ roots = [
     "packages/congress_api/tests",
     "packages/corpus_recovery/tests",
     "packages/news_lake/tests",
+    "packages/congress_docmeta/tests",
     "packages/viewer_publication/tests",
     "packages/youtube_api/tests",
     "apps/committee_youtube/tests",
@@ -131,6 +133,13 @@ roots = [
 marker = "loopback"
 offline = false
 purpose = "Real S3 SDK transport against local HTTP fakes; no source-fetch binary or live storage. A subset of native-loopback, which CI runs."
+
+[lanes.docmeta-model]
+roots = ["packages/congress_docmeta/tests/model"]
+marker = "not loopback"
+offline = true
+runner = [".venv/bin/python", "packages/congress_docmeta/scripts/model_lane.py", "test"]
+purpose = "DocMeta against the fast-gemma4 engine (tokenizer, llguidance, ANE, MLX). Apple Silicon only: runs under the fast-gemma4 interpreter with this checkout's congress_docmeta on the path. production-offline collects the same files and skips them, since the engine is not in uv.lock."
 
 [lanes.explorer-mcp]
 roots = ["apps/explorer_mcp/tests"]

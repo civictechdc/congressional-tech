@@ -1,0 +1,326 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "DocMetaV4Causal",
+  "description": "Autoregressive-ordered, pure-metadata schema (depth <= 2, no roll-call grids, no standing rosters, no tables) with minItems/minLength constraints for llguidance.",
+  "type": "object",
+  "required": ["status", "text_quality"],
+  "additionalProperties": false,
+  "$defs": {
+    "doc_kind": {
+      "type": "string",
+      "enum": [
+        "hearing_transcript",
+        "witness_statement",
+        "member_opening_statement",
+        "member_or_floor_statement",
+        "truth_in_testimony_disclosure",
+        "witness_biography",
+        "witness_list",
+        "member_roster",
+        "attendance_quorum_sheet",
+        "qfr_request",
+        "qfr_response",
+        "nominee_questionnaire_apq",
+        "hearing_notice",
+        "markup_notice",
+        "hearing_memo_or_charter",
+        "meeting_results",
+        "committee_vote",
+        "bill_or_draft",
+        "committee_amendment",
+        "comparative_print",
+        "section_by_section",
+        "committee_report",
+        "explanatory_statement",
+        "committee_resolution",
+        "committee_rules",
+        "oversight_plan",
+        "budget_views_and_estimates",
+        "revenue_or_cost_estimate",
+        "treaty_document",
+        "agency_or_gao_crs_report",
+        "external_report_or_whitepaper",
+        "oversight_letter",
+        "witness_invitation",
+        "nomination_or_support_letter",
+        "external_submission_letter",
+        "public_comment_or_submission",
+        "investigative_exhibit",
+        "legal_or_investigative_filing",
+        "news_clip_or_article",
+        "press_release_or_fact_sheet",
+        "legislative_schedule_or_calendar",
+        "gsa_prospectus_or_property",
+        "slides_or_visual",
+        "event_web_page",
+        "multi_doc_packet",
+        "error_or_non_document",
+        "other"
+      ]
+    }
+  },
+  "properties": {
+    "status": {
+      "type": "string",
+      "enum": [
+        "usable",
+        "cover_or_toc",
+        "govinfo_wrapper",
+        "index_or_listing",
+        "catalog_xml",
+        "stub_or_blank",
+        "error_or_block",
+        "ocr_unreadable"
+      ]
+    },
+    "text_quality": {
+      "type": "string",
+      "enum": ["native", "clean_ocr", "noisy_ocr", "garbled"]
+    },
+    "error_reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Populated ONLY when status is error_or_block, stub_or_blank, or ocr_unreadable; omit all remaining fields."
+    },
+
+    "verbatim_title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Exact non-generic document heading copied from p1-2; omit if only generic label like 'Testimony of X', 'Roll Call', or 'Nominations'."
+    },
+    "short_titles": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Quoted statutory or bill short titles on p1-2 (e.g. 'Stop Senior Scams Act', 'RESPECT Act')."
+    },
+    "chamber": {
+      "type": "string",
+      "enum": ["house", "senate", "joint", "commission", "executive_or_external"]
+    },
+    "congress": { "type": "integer", "minimum": 1, "maximum": 130 },
+    "committees": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Authoring or jurisdictional parent committee(s) — NOT merely a Rules/website host."
+    },
+    "subcommittees": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "issuer_org": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Originating agency or outside organization when not authored by the committee itself (e.g. GAO, JCT, CRS, DoD, CEI, Third Way)."
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "hearing",
+        "field_hearing",
+        "nomination_hearing",
+        "markup",
+        "business_meeting",
+        "roundtable_or_briefing",
+        "floor_or_other"
+      ]
+    },
+    "event_title": { "type": "string", "minLength": 1 },
+    "venue_kind": {
+      "type": "string",
+      "enum": ["capitol_room", "field_site", "virtual", "hybrid"]
+    },
+    "venue": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Room + building (2125 Rayburn HOB), full field-site address, or remote platform (Cisco Webex, Zoom)."
+    },
+    "event_time": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stated start or gavel-to-adjournment time (e.g. '10:00 EDT', '13:39-15:36')."
+    },
+    "date_spans": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Verbatim date substrings copied from p1-2 BEFORE ISO normalization."
+    },
+    "doc_date": { "type": "string", "minLength": 1, "description": "YYYY-MM-DD or YYYY-MM (signed, issued, dated, or published)." },
+    "event_date": { "type": "string", "minLength": 1, "description": "YYYY-MM-DD (hearing, markup, or meeting date)." },
+    "due_date": { "type": "string", "minLength": 1, "description": "YYYY-MM-DD (QFR, public comment, or statutory reporting deadline)." },
+
+    "primary_kind": { "$ref": "#/$defs/doc_kind" },
+    "secondary_kinds": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/doc_kind" },
+      "description": "Additional functional kinds only on bundled/hybrid docs (e.g. witness_biography inside witness_statement)."
+    },
+    "subkind": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional fine-grained subtype (e.g. chairs_mark, en_bloc_amendment, amendment_in_nature_of_substitute, markup_memo, internal_email_chain, subpoena)."
+    },
+
+    "personas": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "description": "Lead/active document actors ONLY in reading order (witnesses, speakers, chairs, ranking members, sponsors, offerors, nominees, introducers, questioners, senders, recipients, named staff). NEVER list roll-call voters or standing backbench committee members.",
+      "items": {
+        "type": "object",
+        "required": ["name", "role", "entity_type"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1, "description": "Clean full name without honorifics/degrees (anchor FIRST)." },
+          "creds": { "type": "string", "minLength": 1, "description": "e.g. Ph.D., M.D., Maj. Gen. (Ret.) USA, Esq." },
+          "title": { "type": "string", "minLength": 1, "description": "Current job title, or 'Nominee to be <Target Office & Court/Agency>'." },
+          "org": { "type": "string", "minLength": 1, "description": "Whole primary employer/institution string (never comma-cut)." },
+          "sub_org": { "type": "string", "minLength": 1, "description": "School, bureau, division, lab, or office." },
+          "secondary_orgs": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+          "on_behalf_of": { "type": "string", "minLength": 1, "description": "Distinct coalition, trade association, or entity represented." },
+          "party_state": { "type": "string", "minLength": 1, "description": "e.g. R-UT, D-NJ-09, or nominee home state KY." },
+          "panel": { "type": "string", "minLength": 1, "description": "e.g. Panel I, Panel II, Minority Witness." },
+          "role": {
+            "type": "string",
+            "enum": [
+              "witness",
+              "author_or_speaker",
+              "chair",
+              "ranking_member",
+              "presiding",
+              "questioner",
+              "sponsor",
+              "cosponsor",
+              "amendment_offeror",
+              "nominee",
+              "introducer",
+              "sender",
+              "recipient",
+              "signatory",
+              "staff",
+              "party_or_investigator"
+            ]
+          },
+          "entity_type": {
+            "type": "string",
+            "enum": [
+              "member",
+              "gov_official",
+              "military_officer",
+              "judicial_or_exec_nominee",
+              "non_gov_person",
+              "staff",
+              "organization"
+            ]
+          },
+          "work_addr": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Single verbatim institutional/office address string ONLY (parsed post-hoc; omit private residences)."
+          },
+          "official_contact": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Official .gov/institutional email, phone, or URL ('email | phone'); omit personal contact info."
+          },
+          "prior_roles": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": { "type": "string", "minLength": 1 },
+            "description": "'Years | Title | Organization' strings for career history on bios/statements."
+          },
+          "education": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 5,
+            "items": { "type": "string", "minLength": 1 },
+            "description": "'Institution | Degree | Year' strings."
+          },
+          "redacted_personal_pii": {
+            "type": "boolean",
+            "description": "True if private residence address, personal email, or personal phone on p1-2 was withheld."
+          }
+        }
+      }
+    },
+
+    "refs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 25,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Prefixed canonical citations: bill:, amdt:, law:, usc:, cfr:, fr:, docket:, eo:, rule:, treaty:, nom:, rept:, hrg:, jct:, gao:, crs:, cbo:, olc:, gsa:, sudoc:, gpo:, grant:, advisory:, exhibit:, id:."
+    },
+    "programs": { "type": "array", "minItems": 1, "maxItems": 10, "items": { "type": "string", "minLength": 1 } },
+    "orgs_mentioned": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string", "minLength": 1 } },
+    "places": { "type": "array", "minItems": 1, "maxItems": 10, "items": { "type": "string", "minLength": 1 } },
+    "fiscal_years": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "integer", "minimum": 1900, "maximum": 2100 } },
+
+    "correspondence_flow": {
+      "type": "string",
+      "enum": [
+        "committee_to_witness",
+        "witness_to_committee",
+        "congress_to_agency",
+        "agency_to_congress",
+        "member_to_committee",
+        "committee_to_member",
+        "external_to_committee",
+        "foreign_gov_to_congress",
+        "internal_exhibit_chain"
+      ]
+    },
+    "signatory_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total stated signatories on multi-signer letters."
+    },
+    "action_summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Headline procedural/vote/amendment/score metadata ONLY (e.g. 'Roll Call #8 on Plaskett Amdt #12 to H. Con. Res. 14: Rejected 16-21'; no member vote lists or tables)."
+    },
+
+    "disclosure": {
+      "type": "object",
+      "description": "Populated ONLY on Truth-in-Testimony or financial/conflict disclosures.",
+      "additionalProperties": false,
+      "properties": {
+        "capacity": { "type": "string", "enum": ["self", "organization", "government"] },
+        "gov_witness": { "type": "boolean" },
+        "represented_orgs": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "fiduciary_orgs": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "unrepresented_parent_or_sub": { "type": "boolean" },
+        "has_federal_grants": { "type": "boolean" },
+        "federal_grants": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+        "has_foreign_payments": { "type": "boolean" },
+        "foreign_payments": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+
+    "composed_title": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Clean <110-char organizer title synthesized LAST from extracted entities when verbatim_title is absent, ALL-CAPS, or cryptic."
+    },
+    "gist": {
+      "type": "string",
+      "minLength": 1,
+      "description": "<=22-word factual summary of document subject, claim, or action (synthesized LAST)."
+    },
+    "topics": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": { "type": "string", "minLength": 1 },
+      "description": "3-6 normalized policy subject tags (synthesized LAST)."
+    }
+  }
+}

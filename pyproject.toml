@@ -13,6 +13,7 @@ dependencies = [
     "viewer-publication",
     "corpus-recovery",
     "news-lake",
+    "congress-docmeta",
     "inflation-gsheets",
 ]
 
@@ -54,6 +55,7 @@ members = [
     "packages/viewer_publication",
     "packages/corpus_recovery",
     "packages/news_lake",
+    "packages/congress_docmeta",
     "apps/committee_youtube",
     "apps/inflation_gsheets",
 ]
@@ -69,6 +71,7 @@ congress-youtube = { workspace = true }
 viewer-publication = { workspace = true }
 corpus-recovery = { workspace = true }
 news-lake = { workspace = true }
+congress-docmeta = { workspace = true }
 inflation-gsheets = { workspace = true }
 # Sibling readers ship as vendored wheels, as spicy-regs binds them; the build
 # receipt beside each wheel names its source commit (vendor/spicy_docs-*.json).

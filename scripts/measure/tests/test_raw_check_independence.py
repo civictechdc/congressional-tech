@@ -16,7 +16,7 @@ import pytest
 
 MEASURE = Path(__file__).resolve().parents[1]
 RULE_PACKAGES = {'congress_api', 'viewer_publication', 'congress_shared', 'house_naming', 'committee_meeting',
-                 'news_lake', 'corpus_recovery', 'committee_explorer'}
+                 'news_lake', 'corpus_recovery', 'committee_explorer', 'congress_docmeta'}
 RULE_FILES = re.compile(r'model/(sql|registries)/|\.sql\b')
 
 
