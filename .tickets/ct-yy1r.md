@@ -25,3 +25,9 @@ Do: build one wheel from spicy-docs main plus the Tesseract backport under a new
 
 CT's pinned wheel is rebuildable from a pushed spicy-docs commit on its main; the Wayback readers are importable in CT; CT's own spacing copy is gone; reader equivalence is recorded.
 
+
+## Notes
+
+**2026-11-18T20:27:36Z**
+
+2026-11-18 branch value review (.cache/archive-release/reviews/branch-value-20261118/c-sd-wheels/REPORT.md, checked here by content): rebuilding the wheel from spicy-docs main as planned would DROP five fixes that are in the pinned wheel source bfd3c539 and that CT uses (3 files on main reference NativeGeometryError, native_geometry_fallback or declared-or-windows-1252). On fork/main none of _legislative_namespace, _only_preformatted_body, NativeGeometryError, native_geometry_fallback, declared-or-windows-1252 exists. Port these to spicy-docs main first (library code, docs and tests only; not the +gpo/+markup version pins, and not the stale evidence.py docstring): 358a0778 GPO VerDate footer no longer truncates body text and prose bullets are kept; ce38a3db legislative XML normalization only for qualified bill.dtd/USLM XML, local <pre> kept local; d0d929ef (alias 0c8582ec) NativeGeometryError and NativeOrOcr.native_geometry_fallback; d2ad8df3 (alias 2469ce9f) declared-or-windows-1252 HTML decoding wired into rendition_text; b064f96a (alias a756c10d) House amendment-doc XML qualification and punctuation spacing. Every other CT wheel side branch is already on spicy-docs main.
