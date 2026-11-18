@@ -349,8 +349,10 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     :Promise.resolve([]);
   const videoDurations=async()=>{
     if(!files.has('videos.parquet'))return [];
-    try{return await read('videos.parquet',undefined,undefined,undefined,['video_key','duration_seconds']);}
-    finally{tables.delete('videos.parquet');}
+    try{
+      const rows=await read('videos.parquet',undefined,undefined,undefined,['video_key','duration_seconds']);
+      return rows.filter(item=>item.video_key!=null).map(item=>({video_key:String(item.video_key),duration_seconds:item.duration_seconds??null}));
+    }finally{tables.delete('videos.parquet');}
   };
   const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions,witnessKeyMap,personRecord,personAlias,meetingCoverage,videoDurations,
     entityHasColumn:async(name,column)=>(await table(name+'.parquet',true)).names.includes(column)});
