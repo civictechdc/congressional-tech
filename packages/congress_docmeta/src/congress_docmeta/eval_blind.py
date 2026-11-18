@@ -214,9 +214,18 @@ def load_record_sets(names: list[str]) -> dict[str, tuple[list[dict[str, Any]], 
     return out
 
 
-def load_sweep_sets(names: list[str], gold_jsonl: Path) -> dict[str, tuple[list[dict[str, Any]], list[dict[str, Any]]]]:
-    """`name -> (queue rows, golds)` for the held-out docs the sweep queue contains."""
+def load_sweep_sets(
+    names: list[str], gold_jsonl: Path, extra: dict[str, Path] | None = None
+) -> dict[str, tuple[list[dict[str, Any]], list[dict[str, Any]]]]:
+    """`name -> (queue rows, golds)` for the held-out docs the sweep queue contains.
+
+    `extra` adds whole labeled files as their own sets (every row that is in the queue), for gold that was
+    never trained on or was split off before training.
+    """
     out: dict[str, tuple[list[dict[str, Any]], list[dict[str, Any]]]] = {}
+    for name, path in (extra or {}).items():
+        rows = [r for r in parse_gold_rows(path, (DEFAULT_VAL48_JSON, DEFAULT_DOCS8_JSON))[0] if r["queue_row"] is not None]
+        out[name] = ([r["queue_row"] for r in rows], [r["gold_v4"] for r in rows])
     if "valid_sweep" in names:
         parsed, _ = parse_gold_rows(gold_jsonl, (DEFAULT_VAL48_JSON, DEFAULT_DOCS8_JSON))
         val_idx, _ = select_val_indices(parsed)
@@ -321,6 +330,8 @@ def main() -> int:
     ap.add_argument("--label", default=None)
     ap.add_argument("--wire-format", choices=("auto", "v4", "compact"), default="auto")
     ap.add_argument("--sets", default="val48,docs8,valid_sweep,val48_sweep")
+    ap.add_argument("--extra-sweep-set", action="append", default=[], metavar="NAME=GOLD_JSONL",
+                    help="score every queue doc of another labeled file as its own sweep set (repeatable)")
     ap.add_argument("--gold-jsonl", type=Path, default=DEFAULT_GOLD_JSONL)
     ap.add_argument("--max-tokens", type=int, default=768)
     ap.add_argument("--b-slots", type=int, default=64)
@@ -347,7 +358,8 @@ def main() -> int:
 
     names = [s.strip() for s in args.sets.split(",") if s.strip()]
     sets = load_record_sets(names)
-    sweep_sets = load_sweep_sets(names, args.gold_jsonl)
+    extra_sets = dict(item.split("=", 1) for item in args.extra_sweep_set)
+    sweep_sets = load_sweep_sets(names, args.gold_jsonl, {k: Path(v) for k, v in extra_sets.items()})
     eng = FastGemma4Engine(
         model_dir=args.model_dir, default_mode="auto" if args.ane_ring else "gpu", ane_variant=args.ane_variant,
         ane_ring_variant=args.ane_variant,

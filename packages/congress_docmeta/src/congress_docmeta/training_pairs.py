@@ -38,6 +38,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="keep a class-stratified sample of this many training docs (0 = all); for config sweeps")
     ap.add_argument("--class-cap", type=int, default=0,
                     help="keep at most this many training docs per class (0 = no cap)")
+    ap.add_argument("--extra-train-jsonl", type=Path, default=None,
+                    help="more gold rows, used for training only (the held-out split is drawn before they are added)")
     ap.add_argument("--out", type=Path, required=True, help="PAIRS.json; docmeta_wire_config.json is written beside it")
     args = ap.parse_args(argv)
 
@@ -46,7 +48,7 @@ def main(argv: list[str] | None = None) -> int:
     tok = load_tokenizer(args.base_snap)
     train, valid, stats = load_and_prepare_v64_splits(
         args.gold_jsonl, DEFAULT_VAL48_JSON, DEFAULT_DOCS8_JSON, tok, val_size=args.val_size, max_seq_len=args.max_seq_len,
-        train_docs=args.train_docs, class_cap=args.class_cap,
+        train_docs=args.train_docs, class_cap=args.class_cap, extra_train_jsonl=args.extra_train_jsonl,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps({"stats": stats, "train": train, "valid": valid}, separators=(",", ":")), encoding="utf-8")

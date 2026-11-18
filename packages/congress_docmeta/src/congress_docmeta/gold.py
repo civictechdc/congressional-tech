@@ -183,6 +183,7 @@ def load_and_prepare_v64_splits(
     seed: int = 20261117,
     train_docs: int = 0,
     class_cap: int = 0,
+    extra_train_jsonl: Path | None = None,
 ) -> tuple[list[tuple[list[int], int]], list[tuple[list[int], int]], dict[str, Any]]:
     """Build zero-leakage C2+C4 `(full_ids, prompt_len)` train & valid datasets.
 
@@ -190,9 +191,17 @@ def load_and_prepare_v64_splits(
     keeps one) and drops the rare-class second views, so short config-sweep runs share one small, fixed set.
     `class_cap > 0` keeps a fixed random `class_cap` training docs of any class that has more, so the largest
     classes (witness statements and biographies are 40% of the set) stop pulling the kind decision.
+    `extra_train_jsonl` rows are appended after the held-out split is drawn, so they only ever train and the
+    held-out docs stay the same ones.
     """
     parsed_rows, p_stats = parse_gold_rows(gold_jsonl, (val48_json, docs8_json))
     val_indices, rng = select_val_indices(parsed_rows, val_size=val_size, seed=seed)
+    if extra_train_jsonl is not None:
+        extra_rows, e_stats = parse_gold_rows(extra_train_jsonl, (val48_json, docs8_json))
+        seen = {r["link_key_hex"] for r in parsed_rows}
+        extra_rows = [r for r in extra_rows if r["link_key_hex"] not in seen]
+        parsed_rows = parsed_rows + extra_rows
+        p_stats = {**p_stats, "extra_train_docs": len(extra_rows), "extra_skipped_blind_eval_overlap": e_stats["skipped_blind_eval_overlap"]}
     n_total = len(parsed_rows)
     skip_train: set[int] = set()
     if train_docs > 0:
