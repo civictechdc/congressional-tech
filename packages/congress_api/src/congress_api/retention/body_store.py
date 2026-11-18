@@ -11,6 +11,7 @@ import re
 import shutil
 import tempfile
 import threading
+import time
 from urllib.parse import parse_qsl, urlsplit
 
 from congress_shared.custody import VerifiedFile
@@ -21,6 +22,83 @@ from congress_api.retention.receipt_privacy import credential_parameters
 RAW_PREFIXES = ('bodies/', 'receipts/', 'provenance/')
 BODY = re.compile(r'bodies/sha256/([a-f0-9]{2})/([a-f0-9]{64})(\.gz|\.pdf)?')
 LEGACY_MULTIPART_ETAG = re.compile(r'("?)[0-9a-fA-F]{32}-[1-9][0-9]{0,4}\1')
+# Seconds to wait before each HEAD look after an unacknowledged create (22s total before one replay).
+SETTLE_SECONDS = (0, 2, 5, 15)
+_TRANSIENT_R2_CODES = frozenset({
+    'ServiceUnavailable', 'SlowDown', 'InternalError', 'RequestTimeout',
+    'RequestTimeoutException', 'BadGateway', 'GatewayTimeout',
+    'Throttling', 'ThrottlingException', 'TooManyRequestsException',
+    '408', '429', '500', '502', '503', '504',
+})
+_TRANSIENT_R2_STATUSES = frozenset({408, 429, 500, 502, 503, 504})
+_NONTRANSIENT_R2_CODES = frozenset({
+    '412', 'PreconditionFailed', 'AccessDenied', 'InvalidAccessKeyId',
+    'SignatureDoesNotMatch', 'NoSuchBucket', 'BadDigest', 'InvalidDigest',
+    'InvalidArgument', 'MalformedXML', 'EntityTooLarge',
+})
+
+
+def confirm_stored(existing, key, *, md5, size):
+    """Return True when HEAD matches sent (size, md5), False when absent, or raise on byte mismatch."""
+    if existing is None:
+        return False
+    try:
+        observed_md5 = single_put_md5(existing.get('etag'))
+    except ValueError as error:
+        raise ValueError(f'Stored object differs from expected bytes: {key}') from error
+    if type(existing.get('size')) is not int or existing['size'] != size or observed_md5 != md5.lower():
+        raise ValueError(f'Stored object differs from expected bytes: {key}')
+    return True
+
+
+def reconcile_create(head, replay, key, *, md5, size, replay_recoverable,
+                     head_recoverable=lambda _: False, waits=SETTLE_SECONDS, sleep=None):
+    """Poll HEAD across a bounded 22s backoff after an ambiguous create, then replay once."""
+    pause = time.sleep if sleep is None else sleep
+
+    def lookup():
+        try:
+            existing = head(key)
+        except Exception as error:
+            if head_recoverable(error):
+                return False
+            raise
+        return confirm_stored(existing, key, md5=md5, size=size)
+
+    for wait in waits:
+        pause(wait)
+        if lookup():
+            return True
+    try:
+        return bool(replay())
+    except Exception as error:
+        if not replay_recoverable(error):
+            raise
+        return lookup()
+
+
+def _precondition_failed(error):
+    from botocore.exceptions import ClientError
+    return isinstance(error, ClientError) and error.response.get('Error', {}).get('Code') in {'412', 'PreconditionFailed'}
+
+
+def _transient_r2_error(error):
+    import ssl
+    import urllib3.exceptions
+    from botocore.exceptions import (
+        ClientError, ConnectionError as BotoConnectionError,
+        HTTPClientError, IncompleteReadError,
+    )
+    if isinstance(error, ClientError):
+        code = error.response.get('Error', {}).get('Code')
+        if code in _NONTRANSIENT_R2_CODES:
+            return False
+        status = error.response.get('ResponseMetadata', {}).get('HTTPStatusCode')
+        return code in _TRANSIENT_R2_CODES or status in _TRANSIENT_R2_STATUSES
+    return isinstance(error, (
+        ConnectionError, TimeoutError, ssl.SSLError, urllib3.exceptions.HTTPError,
+        BotoConnectionError, HTTPClientError, IncompleteReadError,
+    ))
 
 
 class RawNameCollision(RuntimeError):
@@ -347,13 +425,28 @@ class R2Adapter(R2Source):
         return True
 
     def create(self, key, source, **facts):
-        from botocore.exceptions import ClientError
+        def replay():
+            source.seek(0)
+            return self.verify(self.client.put_object(**self.parameters(key, source, **facts)), facts['md5'])
+
         try:
             result = self.client.put_object(**self.parameters(key, source, **facts))
-        except ClientError as error:
-            if error.response['Error']['Code'] in {'412', 'PreconditionFailed'}:
+        except Exception as error:
+            if _precondition_failed(error):
                 return False
-            raise
+            if not _transient_r2_error(error):
+                raise
+            if not reconcile_create(
+                self.head,
+                replay,
+                key,
+                md5=facts['md5'],
+                size=facts['size'],
+                replay_recoverable=lambda exc: _precondition_failed(exc) or _transient_r2_error(exc),
+                head_recoverable=_transient_r2_error,
+            ):
+                raise
+            return True
         return self.verify(result, facts['md5'])
 
 

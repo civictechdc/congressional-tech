@@ -264,3 +264,206 @@ def test_embedded_recorded_url_keeps_apostrophes_during_credential_check(tmp_pat
     with pytest.raises(ValueError,match='Credential'):
         BodyStore(adapter).put(RECEIPT,path,'application/x-ndjson')
     assert adapter.calls==[]
+
+
+def _gzip_body(data):
+    buffer = io.BytesIO()
+    with gzip.GzipFile(filename='', fileobj=buffer, mode='wb', compresslevel=6, mtime=0) as zipped:
+        zipped.write(data)
+    return buffer.getvalue()
+
+
+def _service_error(code, status, operation='PutObject', message='Reduce your concurrent request rate for the same object'):
+    return ClientError(
+        {'Error': {'Code': code, 'Message': message}, 'ResponseMetadata': {'HTTPStatusCode': status}},
+        operation,
+    )
+
+
+@pytest.mark.parametrize('transient_error', [
+    _service_error('ServiceUnavailable', 503),
+    _service_error('SlowDown', 503),
+    _service_error('InternalError', 500),
+    pytest.param('read_timeout', id='ReadTimeoutError'),
+])
+def test_r2_create_polls_head_and_confirms_settled_compressed_body(tmp_path, monkeypatch, transient_error):
+    import time
+    from botocore.exceptions import ReadTimeoutError
+
+    if transient_error == 'read_timeout':
+        transient_error = ReadTimeoutError(endpoint_url='https://r2.example.test')
+    compressed = _gzip_body(DATA)
+    waits, puts, heads, stored = [], [], [], {}
+    settled_looks = 0
+
+    class Client:
+        def head_object(self, *, Bucket, Key):
+            nonlocal settled_looks
+            assert Bucket == 'raw'
+            heads.append(Key)
+            if Key == KEY and KEY in stored:
+                settled_looks += 1
+                if settled_looks == 1:
+                    raise _service_error('404', 404, 'HeadObject', 'Not Found')
+                payload = stored[Key]
+                return {'ContentLength': len(payload), 'ETag': '"' + hashlib.md5(payload).hexdigest() + '"'}
+            raise _service_error('404', 404, 'HeadObject', 'Not Found')
+
+        def put_object(self, **args):
+            payload = args['Body'].read()
+            puts.append((args['Key'], args.get('ContentEncoding'), args.get('IfNoneMatch'), payload))
+            stored[args['Key']] = payload
+            raise transient_error
+
+    monkeypatch.setattr(time, 'sleep', waits.append)
+    source = tmp_path / 'body.html'
+    source.write_bytes(DATA)
+    result = BodyStore(R2Adapter(Client(), 'raw')).put(KEY, source, 'text/html')
+    assert (result.outcome, result.suffix, result.size, result.md5) == (
+        'stored', '', len(compressed), hashlib.md5(compressed).hexdigest())
+    assert len(puts) == 1 and puts[0] == (KEY, 'gzip', '*', compressed)
+    assert heads == [KEY + '.gz', KEY, KEY]
+    assert waits == [0, 2] and sum(waits) <= 22
+    assert gzip.decompress(stored[KEY]) == DATA
+
+    # Ordinary 412 and non-transient 403 must not enter the settle poll.
+    class NonSettlingClient:
+        mode = '412'
+
+        def head_object(self, *, Bucket, Key):
+            if self.mode == '412' and Key == KEY:
+                return {'ContentLength': len(compressed), 'ETag': '"' + hashlib.md5(compressed).hexdigest() + '"'}
+            raise _service_error('404', 404, 'HeadObject', 'Not Found')
+
+        def put_object(self, **args):
+            if self.mode == '412':
+                raise _service_error('PreconditionFailed', 412)
+            raise _service_error('AccessDenied', 403)
+
+    waits.clear()
+    client = NonSettlingClient()
+    unchanged = BodyStore(R2Adapter(client, 'raw')).put(KEY, source, 'text/html')
+    assert (unchanged.outcome, unchanged.md5, unchanged.size) == (
+        'unchanged', hashlib.md5(compressed).hexdigest(), len(compressed))
+    assert waits == []
+    client.mode = '403'
+    with pytest.raises(ClientError, match='AccessDenied'):
+        BodyStore(R2Adapter(client, 'raw')).put(KEY, source, 'text/html')
+    assert waits == []
+
+
+@pytest.mark.parametrize('replay_mode', ['succeeds', 'settles_after_503', 'fails'])
+def test_r2_create_persistent_absence_replays_once_within_bounded_wait(tmp_path, monkeypatch, replay_mode):
+    import time
+
+    compressed = _gzip_body(DATA)
+    waits, puts, stored = [], [], {}
+
+    class Client:
+        def head_object(self, *, Bucket, Key):
+            if Key in stored:
+                payload = stored[Key]
+                return {'ContentLength': len(payload), 'ETag': '"' + hashlib.md5(payload).hexdigest() + '"'}
+            raise _service_error('404', 404, 'HeadObject', 'Not Found')
+
+        def put_object(self, **args):
+            payload = args['Body'].read()
+            puts.append((args['Key'], args.get('IfNoneMatch'), len(payload)))
+            if len(puts) == 1:
+                raise _service_error('ServiceUnavailable', 503)
+            if replay_mode == 'succeeds':
+                stored[args['Key']] = payload
+                return {'ETag': '"' + hashlib.md5(payload).hexdigest() + '"'}
+            if replay_mode == 'settles_after_503':
+                stored[args['Key']] = payload
+                raise _service_error('ServiceUnavailable', 503, message='Replay response lost')
+            raise _service_error('ServiceUnavailable', 503, message='Still unavailable')
+
+    monkeypatch.setattr(time, 'sleep', waits.append)
+    source = tmp_path / 'body.html'
+    source.write_bytes(DATA)
+    store = BodyStore(R2Adapter(Client(), 'raw'))
+    if replay_mode == 'fails':
+        with pytest.raises(ClientError, match='Reduce your concurrent request rate'):
+            store.put(KEY, source, 'text/html')
+        assert KEY not in stored and KEY not in store.known
+    else:
+        result = store.put(KEY, source, 'text/html')
+        assert (result.outcome, result.size, result.md5) == (
+            'stored', len(compressed), hashlib.md5(compressed).hexdigest())
+        assert gzip.decompress(stored[KEY]) == DATA
+    assert puts == [(KEY, '*', len(compressed)), (KEY, '*', len(compressed))]
+    assert waits == [0, 2, 5, 15] and sum(waits) == 22
+
+
+@pytest.mark.parametrize('mismatch', ['wrong_md5', 'uncompressed_length', 'replay_collision_wrong_bytes'])
+def test_r2_create_refuses_stored_object_with_different_bytes(tmp_path, monkeypatch, mismatch):
+    import time
+
+    compressed = _gzip_body(DATA)
+    waits, puts = [], []
+
+    class Client:
+        def head_object(self, *, Bucket, Key):
+            if Key == KEY + '.gz':
+                raise _service_error('404', 404, 'HeadObject', 'Not Found')
+            if mismatch == 'wrong_md5':
+                return {'ContentLength': len(compressed), 'ETag': '"' + hashlib.md5(b'different').hexdigest() + '"'}
+            if mismatch == 'uncompressed_length':
+                return {'ContentLength': len(DATA), 'ETag': '"' + hashlib.md5(DATA).hexdigest() + '"'}
+            if len(puts) < 2:
+                raise _service_error('404', 404, 'HeadObject', 'Not Found')
+            other = b'competing bytes'
+            return {'ContentLength': len(other), 'ETag': '"' + hashlib.md5(other).hexdigest() + '"'}
+
+        def put_object(self, **args):
+            args['Body'].read()
+            puts.append(args['Key'])
+            if len(puts) == 1:
+                raise _service_error('ServiceUnavailable', 503)
+            raise _service_error('PreconditionFailed', 412)
+
+    monkeypatch.setattr(time, 'sleep', waits.append)
+    source = tmp_path / 'body.html'
+    source.write_bytes(DATA)
+    store = BodyStore(R2Adapter(Client(), 'raw'))
+    with pytest.raises(ValueError, match='differs from expected bytes'):
+        store.put(KEY, source, 'text/html')
+    assert KEY not in store.known
+    if mismatch == 'replay_collision_wrong_bytes':
+        assert len(puts) == 2 and waits == [0, 2, 5, 15]
+    else:
+        assert len(puts) == 1 and waits == [0]
+
+
+@pytest.mark.parametrize(('media', 'encoding'), [('text/html', 'gzip'), ('application/pdf', None)])
+def test_r2_create_replay_rewinds_stream_and_resends_full_bytes(tmp_path, monkeypatch, media, encoding):
+    import time
+
+    expected = _gzip_body(DATA) if encoding == 'gzip' else DATA
+    waits, sent, stored = [], [], {}
+
+    class Client:
+        def head_object(self, *, Bucket, Key):
+            raise _service_error('404', 404, 'HeadObject', 'Not Found')
+
+        def put_object(self, **args):
+            stream = args['Body']
+            payload = stream.read()
+            assert stream.read() == b''  # stream is at EOF after the attempt consumes it
+            sent.append(payload)
+            assert len(payload) == args['ContentLength'] == len(expected) > 0
+            assert args['ContentMD5'] == base64.b64encode(hashlib.md5(payload).digest()).decode()
+            if len(sent) == 1:
+                raise _service_error('ServiceUnavailable', 503)
+            stored[args['Key']] = payload
+            return {'ETag': '"' + hashlib.md5(payload).hexdigest() + '"'}
+
+    monkeypatch.setattr(time, 'sleep', waits.append)
+    source = tmp_path / 'body'
+    source.write_bytes(DATA)
+    result = BodyStore(R2Adapter(Client(), 'raw')).put(KEY, source, media)
+    assert result.outcome == 'stored'
+    assert sent == [expected, expected]
+    assert stored[KEY] == expected
+    assert waits == [0, 2, 5, 15]

@@ -15,7 +15,9 @@ from congress_api.lake.receipt_metadata import document_status, empty_body, whol
 from congress_api.models.raw_fetch import FetchResult
 from congress_api.parsers.source_family import family as source_family
 from congress_api.retention.archive_expander import expand_archive
-from congress_api.retention.body_store import validate_record
+from congress_api.retention.body_store import (
+    R2Adapter, RawNameCollision, SETTLE_SECONDS, confirm_stored, reconcile_create, validate_record,
+)
 from congress_api.retention.receipt_privacy import public_receipt, refuse_local_paths
 from congress_api.retention.sniff import read_sniff_file, SniffResourceError
 
@@ -236,34 +238,32 @@ class ReceiptWriter:
                     or body_identity!=frozen_identity):
                 raise ValueError('Stable receipt operation was reused for another attempt')
         refuse_local_paths(line)
+        expected=dict(md5=hashlib.md5(raw).hexdigest(),size=len(raw))
         try:
             self.store.put(metadata['key'],path,'application/x-ndjson')
+        except RawNameCollision:
+            if not confirm_stored(self.store.adapter.head(metadata['key']),metadata['key'],**expected):
+                raise
         except Exception:
-            if not self._settled(metadata['key'],path,raw):
+            if isinstance(self.store.adapter,R2Adapter) or not self._settled(metadata['key'],path,raw):
                 raise
         return metadata['key'],line
 
     # Seconds to wait before each look at the store after a create that was not acknowledged.
-    SETTLE_SECONDS=(0,2,5,15)
+    SETTLE_SECONDS=SETTLE_SECONDS
 
     def _settled(self, key, path, raw):
-        """Whether this create-only receipt is in the store after a write that raised.
-
-        A lost response is not a failed write, and R2 answers 503 "Reduce your concurrent request
-        rate for the same object" while an earlier attempt at the same key is still settling:
-        capture 44132068232 looked once, at once, and stopped 22 minutes in. The receipt's key,
-        size and MD5 are known, so look again as it settles, then try the create once more.
-        """
-        expected=(len(raw),hashlib.md5(raw).hexdigest())
-        def stored():
-            existing=self.store.adapter.head(key)
-            return existing is not None and (existing.get('size'),existing.get('etag','').strip('"'))==expected
-        for wait in self.SETTLE_SECONDS:
-            time.sleep(wait)
-            if stored():return True
-        try:self.store.put(key,path,'application/x-ndjson')
-        except Exception:return stored()
-        return True
+        """Whether this create-only receipt is in the store after a write that raised."""
+        return reconcile_create(
+            self.store.adapter.head,
+            lambda:self.store.put(key,path,'application/x-ndjson'),
+            key,
+            md5=hashlib.md5(raw).hexdigest(),
+            size=len(raw),
+            replay_recoverable=lambda _:True,
+            waits=self.SETTLE_SECONDS,
+            sleep=time.sleep,
+        )
 
     @staticmethod
     def _capture(body,attempt,index,stored,member_path,entry_index,fidelity):

@@ -364,3 +364,63 @@ def test_a_local_path_is_refused_before_any_body_is_stored(tmp_path):
         writer.write(FetchResult(attempt(tmp_path)), family='documents', mode='retained_import',
                      recovery_evidence=evidence)
     assert not root.exists() or not any(p.is_file() for p in root.rglob('*'))
+
+
+def test_receipt_writer_reconciles_ambiguous_r2_body_and_receipt_creates(tmp_path, monkeypatch):
+    """Capture 44395592746: an unacknowledged gzipped body PUT returns 503 while settling;
+    confirming via HEAD emits a valid receipt with one PUT per object and no double wait."""
+    import io
+    import time
+    from botocore.exceptions import ClientError
+    from congress_api.models.raw_fetch import BodyFile, FetchAttempt, FetchResult
+    from congress_api.retention.body_store import BodyStore, R2Adapter
+    from congress_api.retention.receipt_writer import ReceiptWriter
+
+    html = b'<html><body>hearing transcript</body></html>'
+    buffer = io.BytesIO()
+    with gzip.GzipFile(filename='', fileobj=buffer, mode='wb', compresslevel=6, mtime=0) as zipped:
+        zipped.write(html)
+    compressed = buffer.getvalue()
+    sha = hashlib.sha256(html).hexdigest()
+    body_key = f'bodies/sha256/{sha[:2]}/{sha}'
+    body_path = tmp_path / 'page.html'
+    body_path.write_bytes(html)
+    fetched = FetchAttempt('https://docs.house.gov/page.html', 'https://docs.house.gov/page.html',
+                           '2026-11-18T11:20:00Z', 'direct', 200, None, {'content-type': 'text/html'},
+                           (), True, BodyFile(body_path, sha, len(html), 'text/html', 'html', 'v1', True))
+
+    waits, puts, looks, stored = [], [], {}, {}
+
+    def error(code, status):
+        return ClientError({'Error': {'Code': code, 'Message': 'Reduce your concurrent request rate for the same object'},
+                            'ResponseMetadata': {'HTTPStatusCode': status}}, 'PutObject')
+
+    class Client:
+        def head_object(self, *, Bucket, Key):
+            if Key in stored:
+                looks[Key] = looks.get(Key, 0) + 1
+                if looks[Key] == 1:
+                    raise error('404', 404)
+                payload = stored[Key]
+                return {'ContentLength': len(payload), 'ETag': '"' + hashlib.md5(payload).hexdigest() + '"'}
+            raise error('404', 404)
+
+        def put_object(self, **args):
+            payload = args['Body'].read()
+            puts.append((args['Key'], args.get('ContentEncoding'), len(payload)))
+            stored[args['Key']] = payload
+            raise error('ServiceUnavailable', 503)
+
+    monkeypatch.setattr(time, 'sleep', waits.append)
+    writer = ReceiptWriter(BodyStore(R2Adapter(Client(), 'raw')), identity=WRITER, run_id='run',
+                           write_date='2026-11-18', archive_limits=None)
+    receipt_key, line = writer.write(FetchResult(fetched), family='documents',
+                                     operation_id='op1', freeze_dir=tmp_path / 'frozen')
+    assert [item[:2] for item in puts] == [(body_key, 'gzip'), (receipt_key, None)]
+    assert waits == [0, 2, 0, 2]
+    assert gzip.decompress(stored[body_key]) == html
+    assert json.loads(gzip.decompress(stored[receipt_key])) == line
+    assert line['outcome'] == 'stored'
+    assert line['captures'][0]['bytes'] == len(html)
+    assert line['captures'][0]['stored_bytes'] == len(compressed)
+    assert line['captures'][0]['stored_md5'] == hashlib.md5(compressed).hexdigest()
