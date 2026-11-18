@@ -10,7 +10,7 @@ import hashlib
 from itertools import islice
 import json
 import re
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import quote, unquote, urlencode, urlsplit
 
 
 @dataclass(frozen=True)
@@ -50,25 +50,47 @@ def _capture(call, kind, url):
     return response
 
 
-def webharvest_lookup(original, collection, call, *, parse_cdx, url_key, max_pages, page_size=1000):
-    """Query a single exact URL, retaining each page's capture evidence.
+_WEBHARVEST_COLLECTION = re.compile(r'congress(?:109|11[0-8])th')
 
-    parse_cdx and url_key are the maintained Web Harvest helpers. The injected
-    call must enforce response-byte limits in addition to these page limits.
+
+def webharvest_collections(year):
+    """Harvests that close the Congress sitting in `year` and the next one.
+
+    A harvest is taken as a Congress ends, so a document can sit in either. Years
+    are coarse: a document from 1-2 January of an odd year belongs to the previous
+    Congress. Only the maintained collections (109th to 118th) are returned.
     """
-    if not _source_url(original) or not re.fullmatch(r'congress(?:10[9]|11[0-8])th', collection):
+    if type(year) is not int:
+        raise ValueError('invalid year')
+    congress = (year - 1789) // 2 + 1
+    return [name for name in (f'congress{congress}th', f'congress{congress + 1}th') if _WEBHARVEST_COLLECTION.fullmatch(name)]
+
+
+def _publisher_site(host):
+    """House and Senate subdomains are separate publishers; elsewhere the last two labels."""
+    host = host.lower()
+    labels = host.removeprefix('www.').split('.')
+    return '.'.join(labels[-3:] if host.endswith(('.house.gov', '.senate.gov')) else labels[-2:])
+
+
+def _base_name(url):
+    return unquote(urlsplit(url).path.rsplit('/', 1)[-1]).lower()
+
+
+def _check_webharvest(original, collection, max_pages, page_size):
+    if not _source_url(original) or not _WEBHARVEST_COLLECTION.fullmatch(collection):
         raise ValueError('invalid target or collection')
     if max_pages < 1 or not 1 <= page_size <= 50000:
         raise ValueError('invalid page limit')
-    expected = url_key(original)
-    if expected is None:
-        raise ValueError('invalid target key')
+
+
+def _webharvest_pages(original, collection, call, query, *, parse_cdx, url_key, max_pages, page_size, row_ok, keep, source, **extra):
+    """Page one checked Web Harvest CDX query; a row failing row_ok voids its page, keep selects leads."""
     seen, candidates, evidence = set(), {}, []
     resume = None
     reason = 'page_limit'
     for _ in range(max_pages):
-        params = [('url', original), ('matchType', 'exact'), ('filter', 'statuscode:200'),
-                  ('limit', str(page_size)), ('showResumeKey', 'true')]
+        params = [*query, ('limit', str(page_size)), ('showResumeKey', 'true')]
         if resume:
             params.append(('resumeKey', resume))
         url = f'https://webharvest.gov/{collection}/timemap/cdx?' + urlencode(params)
@@ -83,7 +105,7 @@ def webharvest_lookup(original, collection, call, *, parse_cdx, url_key, max_pag
             break
         try:
             rows, next_resume = parse_cdx(response.body)
-            if any(r['status'] != '200' or r['urlkey'] != expected or url_key(r['url']) != expected for r in rows):
+            if any(r['status'] != '200' or url_key(r['url']) != r['urlkey'] or not row_ok(r) for r in rows):
                 raise ValueError('index filter mismatch')
         except (ValueError, UnicodeError, KeyError):
             reason = 'invalid_index_response'
@@ -92,11 +114,13 @@ def webharvest_lookup(original, collection, call, *, parse_cdx, url_key, max_pag
             if not _timestamp(row['timestamp']) or not _source_url(row['url']):
                 reason = 'invalid_index_response'
                 return {'complete': False, 'reason': reason, 'candidates': list(candidates.values()), 'evidence': evidence}
+            if not keep(row):
+                continue
             replay = f"https://webharvest.gov/{collection}/{row['timestamp']}id_/{row['url']}"
             ident = (row['timestamp'], row['url'], row['digest'])
             candidates[ident] = {'target_url': original, 'url': replay, 'original_url': row['url'],
                                  'timestamp': row['timestamp'], 'digest': row['digest'],
-                                 'source': 'webharvest', 'collection': collection, 'evidence': response.evidence}
+                                 'source': source, 'collection': collection, 'evidence': response.evidence, **extra}
         if not next_resume:
             reason = 'complete'
             break
@@ -108,10 +132,58 @@ def webharvest_lookup(original, collection, call, *, parse_cdx, url_key, max_pag
     return {'complete': reason == 'complete', 'reason': reason, 'candidates': list(candidates.values()), 'evidence': evidence}
 
 
+def webharvest_lookup(original, collection, call, *, parse_cdx, url_key, max_pages, page_size=1000):
+    """Query a single exact URL, retaining each page's capture evidence.
+
+    parse_cdx and url_key are the maintained Web Harvest helpers. The injected
+    call must enforce response-byte limits in addition to these page limits.
+    """
+    _check_webharvest(original, collection, max_pages, page_size)
+    expected = url_key(original)
+    if expected is None:
+        raise ValueError('invalid target key')
+    return _webharvest_pages(original, collection, call, [('url', original), ('matchType', 'exact'), ('filter', 'statuscode:200')],
+                             parse_cdx=parse_cdx, url_key=url_key, max_pages=max_pages, page_size=page_size,
+                             row_ok=lambda r: r['urlkey'] == expected, keep=lambda r: True, source='webharvest')
+
+
 def campaign_lookup(original, collection, capture, *, max_pages, page_size=1000):
     from corpus_recovery.cdx import key, parse_cdx
     return webharvest_lookup(original, collection, capture, parse_cdx=parse_cdx,
                              url_key=key, max_pages=max_pages, page_size=page_size)
+
+
+def webharvest_name_lookup(original, collection, call, *, damaged_digest, max_pages, page_size=20,
+                           media_type='application/pdf'):
+    """Find the target's exact file name anywhere on its publisher site in one harvest.
+
+    Run it when the exact-address lookup in this collection yields no capture, or
+    only captures whose digest equals damaged_digest (the damaged body's base32
+    SHA-1, as CDX records it). A lead must have the same base name (case-insensitive),
+    the given media type and a different digest. The match is by name only: the
+    same name can be a different document, renamed copies are missed, and a file
+    published between two harvests holds only what the next harvest saw.
+    """
+    from corpus_recovery.cdx import key, parse_cdx
+    _check_webharvest(original, collection, max_pages, page_size)
+    if not isinstance(damaged_digest, str) or not re.fullmatch(r'[A-Z2-7]{32}', damaged_digest):
+        raise ValueError('invalid damaged digest')
+    target_key, name = key(original), _base_name(original)
+    if target_key is None or not name:
+        raise ValueError('invalid target key or name')
+    site = _publisher_site(urlsplit(original).hostname)
+    stem = name.rsplit('.', 1)[0] if '.' in name else name
+    query = [('url', site), ('matchType', 'domain'), ('filter', 'urlkey:.*' + re.escape(quote(stem, safe='')) + '.*'),
+             ('filter', 'statuscode:200')]
+    def in_query(row):
+        host = (urlsplit(row['url']).hostname or '').lower()
+        return stem in unquote(row['urlkey']) and (host == site or host.endswith('.' + site))
+    def same_name_other_copy(row):
+        return (_base_name(row['url']) == name and row['mime'] == media_type and row['urlkey'] != target_key
+                and re.fullmatch(r'[A-Z2-7]{32}', row['digest']) is not None and row['digest'] != damaged_digest)
+    return _webharvest_pages(original, collection, call, query, parse_cdx=parse_cdx, url_key=key,
+                             max_pages=max_pages, page_size=page_size, row_ok=in_query, keep=same_name_other_copy,
+                             source='webharvest_name', mapping='same-site-file-name-harvest-v1')
 
 
 def validate_wayback_replay(replay, original, timestamp):
@@ -233,21 +305,54 @@ def acquire_wayback(replay, original, timestamp, call, *, digest=None):
     return response
 
 
+def validate_webharvest_replay(candidate):
+    """Require the exact harvest replay of the candidate's recorded harvested address.
+
+    A name match (`webharvest_name`) must also keep the target's publisher site and
+    base name; an address match was tied to its target by the exact lookup.
+    """
+    source, original, timestamp = candidate.get('source'), candidate.get('original_url'), candidate.get('timestamp')
+    if source not in ('webharvest', 'webharvest_name') or not _source_url(original) or not _timestamp(timestamp):
+        raise ValueError('invalid archive candidate')
+    collection = candidate.get('collection')
+    if not isinstance(collection, str) or not _WEBHARVEST_COLLECTION.fullmatch(collection):
+        raise ValueError('invalid Web Harvest collection')
+    if candidate.get('url') != f'https://webharvest.gov/{collection}/{timestamp}id_/{original}':
+        raise ValueError('Web Harvest replay identity mismatch')
+    target = candidate.get('target_url')
+    if source == 'webharvest_name' and (
+            not _source_url(target) or _base_name(original) != _base_name(target)
+            or _publisher_site(urlsplit(original).hostname) != _publisher_site(urlsplit(target).hostname)):
+        raise ValueError('Web Harvest name match identity mismatch')
+
+
+def shared_prefix(damaged, candidate):
+    """Count the leading bytes a damaged body shares with a candidate body (any bytes-like, mmap included).
+
+    Identity evidence, not a rule. The hypothesis that a cut-off file equals the
+    intact file up to the cut is not yet verified on real bytes, so no threshold
+    accepts or rejects a candidate until the first real fetches set one; unrelated
+    PDFs already share their header line. Qualification stays required.
+    """
+    left, right = memoryview(damaged), memoryview(candidate)
+    limit, same, chunk = min(len(left), len(right)), 0, 1 << 16
+    while same < limit:
+        step = min(chunk, limit - same)
+        if left[same:same + step] != right[same:same + step]:
+            same += next(i for i in range(step) if left[same + i] != right[same + i])
+            break
+        same += step
+    return {'shared_prefix_bytes': same, 'damaged_bytes': len(left), 'candidate_bytes': len(right)}
+
+
 def acquire_candidate(candidate, call, *, seen_identities):
     """Acquire one indexed replay as raw bytes, unless already retained or attempted."""
     url = candidate['url']
     if url in seen_identities:
         return None
-    source, original, timestamp = candidate['source'], candidate['original_url'], candidate['timestamp']
-    if source == 'wayback':
-        return acquire_wayback(url, original, timestamp, call, digest=candidate.get('digest'))
-    if source != 'webharvest' or not _source_url(original) or not _timestamp(timestamp):
-        raise ValueError('invalid archive candidate')
-    collection = candidate.get('collection')
-    if not isinstance(collection, str) or not re.fullmatch(r'congress(?:10[9]|11[0-8])th', collection):
-        raise ValueError('invalid Web Harvest collection')
-    if url != f'https://webharvest.gov/{collection}/{timestamp}id_/{original}':
-        raise ValueError('Web Harvest replay identity mismatch')
+    if candidate['source'] == 'wayback':
+        return acquire_wayback(url, candidate['original_url'], candidate['timestamp'], call, digest=candidate.get('digest'))
+    validate_webharvest_replay(candidate)
     response = _capture(call, 'replay_raw', url)
     if response.final_url != url or response.status != 200 or not response.complete:
         raise ValueError('Web Harvest replay incomplete or redirected')
@@ -272,8 +377,12 @@ def house_listing_candidate(target, candidate, *, listing_url, listing_urls, evi
             'mapping': 'house-listed-sibling-v1'}
 
 
-def acquire_candidates(candidates, call, *, allowed_targets, allowed_candidate_urls, seen_identities, max_candidates, max_considered=None):
-    """Fetch at most max_candidates distinct, in-scope archive leads via capture."""
+def acquire_candidates(candidates, call, *, allowed_targets, allowed_candidate_urls, seen_identities, max_candidates, max_considered=None,
+                       damaged_body=None):
+    """Fetch at most max_candidates distinct, in-scope archive leads via capture.
+
+    With damaged_body, each result also records shared_prefix(damaged_body, body).
+    """
     if max_candidates < 1:
         raise ValueError('invalid candidate limit')
     if max_considered is None:
@@ -297,7 +406,10 @@ def acquire_candidates(candidates, call, *, allowed_targets, allowed_candidate_u
         # Mark before dispatch so aliases in this call never trigger another attempt.
         seen.add(url)
         response = acquire_candidate(candidate, call, seen_identities=())
-        results.append({'candidate': candidate, 'response': response})
+        result = {'candidate': candidate, 'response': response}
+        if damaged_body is not None:
+            result['shared_prefix'] = shared_prefix(damaged_body, response.body)
+        results.append(result)
     return {'results': results, 'limited': limited}
 
 

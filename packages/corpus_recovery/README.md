@@ -205,7 +205,8 @@ After a clean 404/410, or a body that fails qualification, try these rungs in
 order. Each yields leads only; a lead counts after acquisition, qualification
 (every PDF page renders) and identity acceptance from source-native records.
 
-1. Web Harvest (`campaign_lookup`).
+1. Web Harvest: the exact address (`campaign_lookup`), then the file name on the
+   publisher's site (`webharvest_name_lookup`).
 2. Wayback (`wayback_lookup`).
 3. Same-site neighboring folder (`neighbor_folder_candidates`).
 4. Publisher listing candidate (`house_listing_candidate`).
@@ -221,6 +222,26 @@ and are fetched by `capture_schedule --campaign`.
 `pipeline.cutoff_size_hint(record)` reads a failed PDF's stored `body_bytes` and
 names a round boundary (1 MiB, 64 KiB, 32 KiB, 1 KiB or a round thousand) that
 usually marks a cut-off copy; it is a hint only and never passes or fails a body.
+
+**Web Harvest by file name.** When the exact address in a collection has no
+capture, or only the damaged digest, call `webharvest_name_lookup(target,
+collection, call, damaged_digest=...)` with the damaged body's base32 SHA-1. It
+asks that harvest for the file name across the publisher's site (each House or
+Senate subdomain is its own site) and keeps a capture only if it has the same
+base name (case-insensitive), the PDF media type, another address and another
+digest. `webharvest_collections(year)` names the harvests that close the
+document's Congress and the next; callers without a date query as before.
+Replayed over the answers recorded for 49 damaged files (ct-z4w5), it kept a
+lead for 19, mostly at the publisher's pre-2012 addresses. `acquire_candidates`
+replays a name match only at its recorded harvested address, on the target's
+site, under the target's base name; with `damaged_body` it records
+`shared_prefix`, the count of leading bytes both bodies share. That count is
+evidence, not a rule, until real fetches set a threshold. It cannot see a
+different document with the same name on the same site, a renamed copy (one had
+`1` added to its name), or a document published between two harvests: files
+from 2011 exist in the harvest only as the same damaged bytes. The Library of
+Congress web archive answers plain clients with a bot check (HTTP 403), so it is
+not a rung and must not be worked around.
 
 **Neighboring folder.** For a `/wp-content/uploads/YYYY/MM/<file>` target it
 proposes the same file name one month either side (at most six) on the same

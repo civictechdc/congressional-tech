@@ -153,3 +153,16 @@ def test_partial_timeout_keeps_discovery_reservation_unknown(tmp_path):
     with pytest.raises(UnknownRemoteOutcome):owner.control('cdx',url)
     with pytest.raises(UnknownRemoteOutcome):owner.control('cdx',url)
     assert len(session.calls)==1 and owner.admission.totals()['unknown']==1
+
+
+def test_runtime_replays_a_harvest_name_match_only_at_its_recorded_address(tmp_path):
+    session=Session(b'%PDF-1.4\nbody');owner=runtime(tmp_path,session)
+    target='https://oversight.house.gov/wp-content/uploads/2012/01/20090212GAO.pdf'
+    old='http://oversight.house.gov/images/stories/Hearings/pdfs/20090212GAO.pdf'
+    replay='https://webharvest.gov/congress111th/20110106212806id_/'
+    candidate=dict(source='webharvest_name',target_url=target,original_url=old,url=replay+old,
+        timestamp='20110106212806',collection='congress111th',digest='-')
+    for bad in ({'url':replay+target},{'original_url':old.replace('GAO.pdf','GAO1.pdf'),'url':replay+old.replace('GAO.pdf','GAO1.pdf')}):
+        with pytest.raises(ValueError,match='Web Harvest replay identity'):owner.replay({**candidate,**bad})
+    assert session.calls==[]
+    assert owner.replay(candidate)[0].final.body.path.read_bytes()==b'%PDF-1.4\nbody' and len(session.calls)==1

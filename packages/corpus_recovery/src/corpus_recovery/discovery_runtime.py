@@ -19,7 +19,7 @@ from congress_api.acquisition.capture_journal import DurableCapture,durable_json
 from congress_api.acquisition.fetcher import CaptureScope,Fetcher
 from congress_api.transport.raw_adapters import DirectAdapter,network_outcome_unknown
 from congress_shared.custody import canonical_json_bytes,verify_local_file
-from corpus_recovery.discovery import Response,campaign_lookup,wayback_lookup,relocated_search,validate_wayback_replay
+from corpus_recovery.discovery import Response,campaign_lookup,wayback_lookup,relocated_search,validate_wayback_replay,validate_webharvest_replay
 
 
 class Budgeted:
@@ -74,10 +74,9 @@ class DiscoveryRuntime:
         if source=='wayback':
             if not validate_wayback_replay(url,original,timestamp):
                 raise ValueError('Invalid Wayback replay identity')
-        elif (source!='webharvest' or not re.fullmatch(r'congress(?:109|11[0-8])th',candidate.get('collection',''))
-              or not re.fullmatch(r'\d{14}',timestamp)
-              or url!=f"https://webharvest.gov/{candidate['collection']}/{timestamp}id_/{original}"):
-            raise ValueError('Invalid Web Harvest replay identity')
+        else:
+            try:validate_webharvest_replay(candidate)
+            except ValueError as error:raise ValueError('Invalid Web Harvest replay identity') from error
         result,operation=self._fetch(url,adapter=Budgeted(DirectAdapter(self.session),self.admission,'replay',0),
             limit=body_limit,definition=dict(kind='replay',candidate=candidate,limit=body_limit))
         final=result.final
