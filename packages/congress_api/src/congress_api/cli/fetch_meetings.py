@@ -259,7 +259,7 @@ def main(argv=None):
         from congress_shared.storage import connect_r2
         store = BodyStore(
             R2Adapter(
-                connect_r2(bucket=args.bucket, retries={'mode': 'standard', 'max_attempts': 5}),
+                connect_r2(bucket=args.bucket, retries={'mode': 'adaptive', 'max_attempts': 10}),
                 args.bucket,
             )
         )

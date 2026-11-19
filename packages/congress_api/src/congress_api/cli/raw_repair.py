@@ -36,7 +36,7 @@ def main(argv=None):
     if args.restore_input:
         writer_identity(ROOT,'old-raw-repair')
         from congress_shared.storage import connect_r2
-        client=connect_r2(bucket=args.bucket,retries={'mode':'standard','max_attempts':5})
+        client=connect_r2(bucket=args.bucket,retries={'mode':'adaptive','max_attempts':10})
     if args.restore_input:
         store=BodyStore(R2Adapter(client,args.bucket))
         result=[dict(key=row['key'],outcome=restore_missing(store,row['key'],row['stored_path'],

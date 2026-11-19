@@ -51,7 +51,7 @@ def main(argv=None):
 
         identity = writer(args.job)
         # The capture writer's retry policy; R2Store adds its own 429 backoff.
-        client = connect_r2(bucket=args.bucket, retries={'mode': 'standard', 'max_attempts': 5})
+        client = connect_r2(bucket=args.bucket, retries={'mode': 'adaptive', 'max_attempts': 10})
         store = R2Store(client, args.bucket)
         summary = pipeline_raw.archive(
             store, files, writer=identity,

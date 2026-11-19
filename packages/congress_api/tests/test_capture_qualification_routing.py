@@ -1110,21 +1110,11 @@ def test_retained_byte_retry_decompresses_gzip_suffix_free_html_on_local_and_r2(
     assert retried_r2[0]['url_qualified'] is False and retried_r2[0]['reason'] in ('error_or_challenge', 'candidate_format_mismatch')
 
 
-def test_reconcile_min_date_reads_last_attempt_survives_505_304s_and_propagates_get_errors(tmp_path):
-    """Review 7c: state_reconcile_min_date reads published 'last_attempt', 505 newer body-less 304
-    receipts do not crowd out an interrupted PDF receipt, and store GET errors fail closed."""
-    from congress_api.retention.qualification_facts import (
-        reconcile_store_receipt_qualifications,
-        state_reconcile_min_date,
-    )
+def test_reconcile_explicit_receipts_handles_whole_206_and_propagates_get_errors(tmp_path):
+    """Explicit-key qualification reconciliation handles whole-range 206, skips assemble-* and
+    partial 206 receipts without bucket listing, and propagates GET/if_match errors fail-closed."""
+    from congress_api.retention.qualification_facts import reconcile_store_receipt_qualifications
     from corpus_recovery.qualification import qualify as real_qualify
-
-    state_pq = tmp_path / 'url_state.parquet'
-    pq.write_table(pa.table({
-        'requested_url': ['https://fixture.test/a.pdf'],
-        'last_attempt': pa.array([datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc)], pa.timestamp('us', tz='UTC')),
-    }), state_pq)
-    assert state_reconcile_min_date(state_pq) == '2026-11-14'
 
     raw_dir = tmp_path / 'reconcile-raw'
     store = BodyStore(LocalAdapter(raw_dir))
@@ -1145,20 +1135,10 @@ def test_reconcile_min_date_reads_last_attempt_survives_505_304s_and_propagates_
         'captures': [{'attempt': 0, 'sha256': bad_sha, 'bytes': len(bad_pdf), 'sniffed_format': 'pdf'}],
     }) + '\n').encode()))
 
-    # Add 505 newer body-less 304 receipts so a naive 500-receipt cap would miss interrupted_key!
-    newer_dir = raw_dir / 'receipts/documents/2026-11-16'
-    newer_dir.mkdir(parents=True, exist_ok=True)
-    recheck_bytes = gzip.compress((json.dumps({
-        'mode': 'fetch', 'http_status': 304, 'outcome': 'unchanged',
-        'requested_url': 'https://fixture.test/other.pdf', 'url': 'https://fixture.test/other.pdf',
-        'retrieved_at': '2026-11-16T12:00:00Z', 'captures': [],
-    }) + '\n').encode())
-    for idx in range(505):
-        (newer_dir / f'{idx:04d}-recheck.jsonl.gz').write_bytes(recheck_bytes)
-
-    # Review 7d: a complete whole-range HTTP 206 receipt is reconciled, whereas a partial 206 is skipped.
     whole_206_key = 'receipts/documents/2026-11-15/0001-whole206.jsonl.gz'
     partial_206_key = 'receipts/documents/2026-11-15/0002-partial206.jsonl.gz'
+    inconsistent_cap_key = 'receipts/documents/2026-11-15/0003-incomplete-cap.jsonl.gz'
+    assemble_key = 'receipts/documents/undated/assemble-20260930.jsonl.gz'
     (raw_dir / whole_206_key).write_bytes(gzip.compress((json.dumps({
         'mode': 'fetch', 'complete': True, 'http_status': 206, 'outcome': 'stored',
         'requested_url': 'https://fixture.test/range.pdf', 'url': 'https://fixture.test/range.pdf',
@@ -1173,7 +1153,6 @@ def test_reconcile_min_date_reads_last_attempt_survives_505_304s_and_propagates_
         'response_headers': {'Content-Type': 'application/pdf', 'Content-Range': 'bytes 0-9/100'},
         'captures': [{'attempt': 0, 'sha256': bad_sha, 'bytes': len(bad_pdf), 'sniffed_format': 'pdf'}],
     }) + '\n').encode()))
-    inconsistent_cap_key = 'receipts/documents/2026-11-15/0003-incomplete-cap.jsonl.gz'
     (raw_dir / inconsistent_cap_key).write_bytes(gzip.compress((json.dumps({
         'mode': 'fetch', 'http_status': 206, 'outcome': 'stored',
         'requested_url': 'https://fixture.test/inconsistent.pdf', 'url': 'https://fixture.test/inconsistent.pdf',
@@ -1185,7 +1164,8 @@ def test_reconcile_min_date_reads_last_attempt_survives_505_304s_and_propagates_
     rec_res = reconcile_store_receipt_qualifications(
         store, existing_loaded={'by_sha256': {}, 'receipt_keys': set()},
         qualify_fn=real_qualify, cache_dir=tmp_path / 'qcache', work=tmp_path / 'qwork',
-        decided_at='2026-11-16T13:00:00Z', min_write_date=state_reconcile_min_date(state_pq),
+        decided_at='2026-11-16T13:00:00Z',
+        receipt_keys=[interrupted_key, whole_206_key, partial_206_key, inconsistent_cap_key, assemble_key],
         persist=True,
     )
     assert {f['receipt_key'] for f in rec_res['facts']} == {interrupted_key, whole_206_key}
@@ -1193,8 +1173,6 @@ def test_reconcile_min_date_reads_last_attempt_survives_505_304s_and_propagates_
 
     # A broken store GET must propagate its exception rather than returning an empty result.
     class _BrokenAdapter:
-        def listing(self, prefix):
-            return [{'key': 'receipts/documents/2026-11-16/boom.jsonl.gz', 'size': 42}]
         def get(self, key):
             raise RuntimeError('r2-get-explosion')
 
@@ -1203,17 +1181,16 @@ def test_reconcile_min_date_reads_last_attempt_survives_505_304s_and_propagates_
             type('S', (), {'adapter': _BrokenAdapter()})(),
             existing_loaded={'by_sha256': {}, 'receipt_keys': set()},
             qualify_fn=real_qualify, cache_dir=tmp_path / 'qcache2', work=tmp_path / 'qwork2',
-            decided_at='2026-11-16T13:00:00Z', persist=False,
+            decided_at='2026-11-16T13:00:00Z',
+            receipt_keys=['receipts/documents/2026-11-16/boom.jsonl.gz'],
+            persist=False,
         )
 
-    # Review 7d: a conditional receipt GET (if_match present) that raises TypeError inside the client
-    # MUST propagate TypeError and MUST NEVER fall back to an unpinned adapter.get(key) read!
+    # Conditional receipt GET (if_match present) that raises TypeError inside the client MUST
+    # propagate TypeError and MUST NEVER fall back to an unpinned adapter.get(key) read!
     get_calls: list[tuple[str, str | None]] = []
 
     class _ConditionalTypeErrorAdapter:
-        def listing(self, prefix, *, preserve_etags=False):
-            assert preserve_etags is True
-            return [{'key': interrupted_key, 'size': 128, 'etag': '"pinned-etag-1"'}]
         def get(self, key, *, if_match=None):
             get_calls.append((key, if_match))
             if if_match is not None:
@@ -1225,6 +1202,9 @@ def test_reconcile_min_date_reads_last_attempt_survives_505_304s_and_propagates_
             type('S', (), {'adapter': _ConditionalTypeErrorAdapter()})(),
             existing_loaded={'by_sha256': {}, 'receipt_keys': set()},
             qualify_fn=real_qualify, cache_dir=tmp_path / 'qcache3', work=tmp_path / 'qwork3',
-            decided_at='2026-11-16T13:00:00Z', persist=False,
+            decided_at='2026-11-16T13:00:00Z',
+            receipt_keys=[interrupted_key],
+            receipt_etags={interrupted_key: '"pinned-etag-1"'},
+            persist=False,
         )
     assert get_calls == [(interrupted_key, '"pinned-etag-1"')]

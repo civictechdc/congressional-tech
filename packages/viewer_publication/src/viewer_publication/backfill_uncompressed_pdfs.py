@@ -60,7 +60,7 @@ def main(argv: list[str] | None = None, *, store: BodyStore | None = None) -> in
                 bucket=args.bucket,
                 connect_timeout=15,
                 read_timeout=180,
-                retries={'mode': 'standard', 'max_attempts': 5},
+                retries={'mode': 'adaptive', 'max_attempts': 10},
             )
             target_store = BodyStore(R2Adapter(client, args.bucket))
 

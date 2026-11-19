@@ -23,7 +23,6 @@ from dataclasses import asdict
 import gzip
 import hashlib
 import importlib
-import inspect
 import json
 from pathlib import Path
 import re
@@ -680,70 +679,6 @@ def _read_retained_body(store: Any, body_sha256: str, dest: Path) -> Path | None
     return None
 
 
-MAX_RECONCILE_RECEIPT_BYTES = 4 << 20
-MAX_RECONCILE_RECEIPTS = 500
-
-
-def state_reconcile_min_date(state_path: str | Path | None) -> str | None:
-    """Bound fallback receipt reconciliation to receipts written on or after the release's last attempt day."""
-    from datetime import datetime, timedelta, timezone
-
-    if state_path is None:
-        return None
-    target = Path(state_path)
-    if not target.is_file():
-        return None
-    import pyarrow.compute as pc
-    import pyarrow.parquet as pq
-
-    schema_names = set(pq.read_schema(target).names)
-    col = "last_attempt" if "last_attempt" in schema_names else ("last_attempt_at" if "last_attempt_at" in schema_names else None)
-    if col is None:
-        return None
-    max_val = pc.max(pq.read_table(target, columns=[col])[col]).as_py()
-    if max_val is None or not hasattr(max_val, "date"):
-        return None
-    anchor = min(max_val.date(), datetime.now(timezone.utc).date())
-    return (anchor - timedelta(days=1)).isoformat()
-
-
-def _receipt_write_date(receipt_key: str) -> str | None:
-    parts = receipt_key.split("/")
-    if len(parts) >= 3:
-        candidate = parts[-2]
-        if len(candidate) == 10 and candidate[4] == "-" and candidate[7] == "-" and candidate.replace("-", "").isdigit():
-            return candidate
-    return None
-
-
-def _list_store_receipt_keys(store: Any) -> list[tuple[str, int, str | None]]:
-    adapter = getattr(store, "adapter", None)
-    if adapter is None:
-        return []
-    local_root = getattr(adapter, "root", None)
-    if local_root is not None:
-        root = Path(local_root)
-        receipts_dir = root / "receipts"
-        if not receipts_dir.is_dir():
-            return []
-        return [
-            (p.relative_to(root).as_posix(), p.stat().st_size, None)
-            for p in sorted(receipts_dir.rglob("*.jsonl.gz"))
-            if p.is_file()
-        ]
-    if hasattr(adapter, "listing"):
-        if "preserve_etags" in inspect.signature(adapter.listing).parameters:
-            listed = list(adapter.listing("receipts/", preserve_etags=True))
-        else:
-            listed = list(adapter.listing("receipts/"))
-        return [
-            (row["key"], int(row.get("size") or 0), row.get("etag"))
-            for row in listed
-            if isinstance(row.get("key"), str) and row["key"].endswith(".jsonl.gz")
-        ]
-    return []
-
-
 def _read_store_receipt_lines(
     store: Any,
     receipt_key: str,
@@ -783,17 +718,15 @@ def reconcile_store_receipt_qualifications(
     cache_dir: str | Path,
     work: str | Path,
     decided_at: str,
-    receipt_keys: Iterable[str] | None = None,
+    receipt_keys: Iterable[str],
     receipt_etags: Mapping[str, str | None] | None = None,
     local_receipt_paths: Mapping[str, str | Path] | None = None,
     body_store: Any = None,
-    min_write_date: str | None = None,
-    max_receipts: int | None = None,
     persist: bool = True,
     remember: bool = False,
     provenance_cache: str | Path | None = None,
 ) -> dict[str, Any]:
-    """Recover missing qualifications for durable receipts whose runner died before uploading provenance."""
+    """Recover missing qualifications for explicit durable receipts whose runner died before uploading provenance."""
     from tempfile import TemporaryDirectory
 
     covered = set(existing_loaded.get("receipt_keys") or ())
@@ -801,21 +734,11 @@ def reconcile_store_receipt_qualifications(
     etag_map = dict(receipt_etags or {})
     local_map = {k: Path(v) for k, v in (local_receipt_paths or {}).items()}
     read_bodies_from = body_store if body_store is not None else store
-    if receipt_keys is not None:
-        candidates = [(rk, 0, etag_map.get(rk)) for rk in receipt_keys if isinstance(rk, str) and rk not in covered]
-    else:
-        filtered = []
-        for rk, sz, etag in _list_store_receipt_keys(store):
-            if rk in covered or "/assemble-" in rk or sz > MAX_RECONCILE_RECEIPT_BYTES:
-                continue
-            wdate = _receipt_write_date(rk)
-            if min_write_date is not None and wdate is not None and wdate < min_write_date:
-                continue
-            filtered.append((wdate or "", rk, sz, etag))
-        filtered.sort(key=lambda item: (item[0], item[1]), reverse=True)
-        selected = filtered[:max_receipts] if max_receipts is not None else filtered
-        candidates = [(rk, sz, etag) for _wd, rk, sz, etag in selected]
-        candidates.sort(key=lambda item: item[0])
+    candidates = [
+        (rk, etag_map.get(rk))
+        for rk in receipt_keys
+        if isinstance(rk, str) and rk not in covered and "/assemble-" not in rk
+    ]
     if not candidates:
         return {"facts": [], "imported": None}
     work_dir = Path(work)
@@ -824,7 +747,7 @@ def reconcile_store_receipt_qualifications(
     recovered: list[dict[str, Any]] = []
     with TemporaryDirectory(prefix="reconcile-qual-", dir=work_dir) as temp_dir:
         temp_root = Path(temp_dir)
-        for idx, (rkey, _sz, r_etag) in enumerate(candidates):
+        for idx, (rkey, r_etag) in enumerate(candidates):
             for line_idx, line in enumerate(
                 _read_store_receipt_lines(store, rkey, if_match=r_etag, local_path=local_map.get(rkey))
             ):

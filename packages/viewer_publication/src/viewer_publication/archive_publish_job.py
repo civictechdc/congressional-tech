@@ -143,19 +143,15 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
         with summary_path.open('x') as target:json.dump(summary,target,sort_keys=True)
     new_receipts=list(production.get('new_receipt_keys') or [])
     is_completed=production['status']=='completed'
-    if template.get('recovery_requirements') is not None and (new_receipts or daily.get('receipt_families')):
-        from datetime import datetime,timedelta,timezone
-        from congress_api.lake import tables
-        from congress_api.lake.daily import _complete_receipt_keys
+    if template.get('recovery_requirements') is not None and new_receipts:
         from congress_api.retention.body_store import BodyStore,LocalAdapter
         from congress_api.retention.qualification_facts import (
-            _list_store_receipt_keys,_receipt_write_date,load_qualification_facts,reconcile_store_receipt_qualifications,
+            load_qualification_facts,reconcile_store_receipt_qualifications,
         )
         from corpus_recovery.qualification import qualify as run_qualify
         prov_work=work.with_name(work.name+'-provenance')
         existing_quals=load_qualification_facts([r for r in records if provenance_record_kind(r['key'])=='qualifications'])
         reconcile_keys=list(new_receipts)
-        etags={}
         local_paths={
             item['key']:item['path']
             for item in (daily.get('receipt_inventory') or ())
@@ -165,37 +161,13 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
             copied=work/'receipts'/rk
             if copied.is_file():
                 local_paths[rk]=copied
-        if daily.get('receipt_families'):
-            if is_completed:
-                admitted_keys=set(production.get('receipt_keys') or ())
-            else:
-                cap_head=tables.resolve_tables(engine=engine,catalog_root=daily['catalog_root'],
-                    work=work/'qualification-captures-head',tables={'captures':daily['tables']['captures']})['captures']
-                admitted_keys=set(_complete_receipt_keys(cap_head,engine=engine,work=work/'qualification-receipt-keys'))
-            families=set(daily['receipt_families'])
-            decided_dt=datetime.fromisoformat(str(daily['decided_at']).replace('Z','+00:00')).date()
-            cutoff=(min(decided_dt,datetime.now(timezone.utc).date())-timedelta(days=14)).isoformat()
-            for rk,_sz,etag in _list_store_receipt_keys(raw_store):
-                if rk not in admitted_keys:
-                    continue
-                etags[rk]=etag
-                parts=rk.split('/')
-                family_ok=len(parts)>=4 and parts[0]=='receipts' and '/'.join(parts[1:-2]) in families
-                wdate=_receipt_write_date(rk)
-                if family_ok and '/assemble-' not in rk and (wdate is None or wdate>=cutoff):
-                    copied=work/'receipts'/rk
-                    if copied.is_file():
-                        local_paths[rk]=copied
-                    if rk not in reconcile_keys:
-                        reconcile_keys.append(rk)
         body_reader=BodyStore(LocalAdapter(daily['local_root'])) if daily.get('local_root') else raw_store
-        if reconcile_keys:
-            reconcile_store_receipt_qualifications(
-                raw_store,existing_loaded=existing_quals,qualify_fn=run_qualify,
-                cache_dir=work/'qualification-cache',work=work/'qualification-reconcile',
-                decided_at=daily['decided_at'],receipt_keys=reconcile_keys,
-                receipt_etags=etags,local_receipt_paths=local_paths,body_store=body_reader,
-                persist=True,remember=is_completed,provenance_cache=prov_work)
+        reconcile_store_receipt_qualifications(
+            raw_store,existing_loaded=existing_quals,qualify_fn=run_qualify,
+            cache_dir=work/'qualification-cache',work=work/'qualification-reconcile',
+            decided_at=daily['decided_at'],receipt_keys=reconcile_keys,
+            local_receipt_paths=local_paths,body_store=body_reader,
+            persist=True,remember=is_completed,provenance_cache=prov_work)
     if not is_completed:return dict(status=production['status'],daily=summary)
     records=snapshot.rows()
     model,keys=completed_daily_inputs(template,production,records)

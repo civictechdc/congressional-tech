@@ -820,9 +820,9 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
     from congress_shared.custody import verify_local_file
     from congress_api.retention.qualification_facts import (
         StaleQualification, build_qualification_fact, expects_pdf_response, import_qualifications,
-        load_qualification_facts, load_store_qualifications, merge_fact, reconcile_store_receipt_qualifications,
-        refresh_url_entry, repair_qualifications_ledger, retry_retained_qualifications,
-        scan_local_store_validators, state_reconcile_min_date, verify_qualification_fact,
+        load_qualification_facts, load_store_qualifications, merge_fact, refresh_url_entry,
+        repair_qualifications_ledger, retry_retained_qualifications, scan_local_store_validators,
+        verify_qualification_fact,
     )
     qual_cache_dir = Path(qualification_cache).resolve() if qualification_cache is not None else (work / 'qualification-cache')
     qualifications_ledger = work / 'qualifications.jsonl'
@@ -911,23 +911,6 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                 covered_receipt_keys.add(fact['receipt_key'])
             stats['qualification_metrics']['retried'] += 1
             _append_ledger_fact(fact)
-    if qualification_store is not None and qualify_fn is not False:
-        reconciled = reconcile_store_receipt_qualifications(
-            qualification_store,
-            existing_loaded={'by_sha256': by_sha256, 'receipt_keys': covered_receipt_keys},
-            qualify_fn=lambda vb, _cd: _run_qualify(vb),
-            cache_dir=qual_cache_dir,
-            work=work / 'qualification-reconcile',
-            decided_at=as_of,
-            min_write_date=state_reconcile_min_date(release.get('state')),
-            persist=True,
-        )
-        if reconciled['imported'] is not None:
-            stats['qualification_metrics']['provenance_key'] = reconciled['imported']['key']
-        for fact in reconciled['facts']:
-            merge_fact(by_sha256, by_url, fact)
-            if not fact.get('retryable') and isinstance(fact.get('receipt_key'), str):
-                covered_receipt_keys.add(fact['receipt_key'])
     local_store_root = getattr(store.adapter, 'root', None)
     if local_store_root is not None and by_sha256:
         _merge_url_entries(scan_local_store_validators(local_store_root, by_sha256=by_sha256))

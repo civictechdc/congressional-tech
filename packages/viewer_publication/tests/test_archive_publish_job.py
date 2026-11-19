@@ -703,99 +703,16 @@ def test_standalone_body_qualifications_pin_publishes_reuses_live_input_and_pass
             provenance=[], run={'id': 'standalone-3'}, public_origin='https://archive.fixture.test',
             contract=probe, canary=probe,
         )
-        assert pub_b['input_digest'] != pub_a['input_digest']
-        assert pub_b['status'] in ('published', 'release_unchanged')
+        assert pub_b['input_digest']!=pub_a['input_digest']
+        assert pub_b['status'] in ('published','release_unchanged')
 
         # 5. maintain_releases validates kept input records carrying snapshots['body_qualifications'] cleanly!
-        maint = maintain_releases(
-            ArchiveMaintenanceStore(client=store, bucket='derived-fixture'),
-            now=datetime(2026, 11, 5, 12, tzinfo=timezone.utc),
+        maint=maintain_releases(
+            ArchiveMaintenanceStore(client=store,bucket='derived-fixture'),
+            now=datetime(2026,11,5,12,tzinfo=timezone.utc),
         )
-        assert maint['status'] == 'planned'
+        assert maint['status']=='planned'
         assert pub_a['input_digest'] in {r['input_digest'] for r in maint['kept_inputs']}
-
-
-def test_daily_reconciliation_matches_slash_families_and_excludes_nested_siblings(tmp_path, monkeypatch):
-    """Review 7e: 20 of 22 shipped receipt_families contain a slash (e.g. 'senate/pages'); daily
-    reconciliation must include already-admitted 'senate/pages' receipts while excluding an
-    unconfigured nested sibling ('documents/other' when only 'documents' and 'senate/pages' are
-    configured) and excluding budget-deferred receipts on both completed and backfill_required runs."""
-    import gzip
-    from hashlib import sha256
-    from congress_api.lake import daily as daily_mod, tables as tables_mod
-    from congress_api.retention.body_store import BodyStore, LocalAdapter
-    from congress_api.retention.qualification_facts import load_qualification_facts
-    from viewer_publication import archive_publish_job
-    from viewer_publication.archive_publish_job import produce_daily_inputs
-
-    raw_dir = tmp_path / 'raw'
-    store = BodyStore(LocalAdapter(raw_dir))
-    bad_pdf = b'%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\ntruncated-slash-family'
-    bad_sha = sha256(bad_pdf).hexdigest()
-    pdf_file = tmp_path / 'bad.pdf'
-    pdf_file.write_bytes(bad_pdf)
-    store.put(f'bodies/sha256/{bad_sha[:2]}/{bad_sha}', pdf_file, 'application/pdf')
-
-    slash_admitted = 'receipts/senate/pages/2026-10-28/admitted-slash.jsonl.gz'
-    nested_sibling = 'receipts/documents/other/2026-10-28/nested-sibling.jsonl.gz'
-    slash_deferred = 'receipts/senate/pages/2026-10-29/deferred-slash.jsonl.gz'
-    for rk, u in (
-        (slash_admitted, 'https://www.senate.gov/meetings/slash.pdf'),
-        (nested_sibling, 'https://docs.house.gov/other/sibling.pdf'),
-        (slash_deferred, 'https://www.senate.gov/meetings/deferred.pdf'),
-    ):
-        p = raw_dir / rk
-        p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_bytes(gzip.compress((json.dumps({
-            'mode': 'fetch', 'complete': True, 'http_status': 200, 'outcome': 'stored',
-            'requested_url': u, 'url': u, 'retrieved_at': '2026-10-28T10:00:00Z',
-            'response_headers': {'Content-Type': 'application/pdf'},
-            'captures': [{'attempt': 0, 'complete': True, 'sha256': bad_sha, 'bytes': len(bad_pdf), 'sniffed_format': 'pdf'}],
-        }) + '\n').encode()))
-
-    admitted = [slash_admitted, nested_sibling]
-    monkeypatch.setattr(daily_mod, '_validate', lambda spec, eng, rs: (Path(spec['work']), spec['provenance'], {}))
-    monkeypatch.setattr(tables_mod, 'resolve_tables', lambda **kw: {'captures': {'path': 'cap'}})
-    monkeypatch.setattr(daily_mod, '_complete_receipt_keys', lambda *a, **kw: list(admitted))
-    monkeypatch.setattr(archive_publish_job, 'completed_daily_inputs', lambda tmpl, prod, recs: (dict(tmpl, qualification_files=[r for r in recs if 'qualifications' in r['key']]), list(prod['receipt_keys'])))
-
-    tmpl = dict(model_spec(tmp_path), recovery_requirements={'path': 'req.parquet', 'sha256': 'a' * 64, 'size': 1})
-
-    # 1. Non-completed daily stop ('backfill_required') reconciles 'senate/pages' and skips 'documents/other' & deferred!
-    monkeypatch.setattr(daily_mod, 'produce_daily', lambda spec, *a, **kw: Path(spec['work']).mkdir(parents=True, exist_ok=False) or {
-        'status': 'backfill_required', 'pins': None, 'receipt_keys': None, 'new_receipt_keys': [],
-        'provenance': {'recoveries': [], 'reviews': [], 'unreadable': []}, 'currentversions': {},
-    })
-    daily_stop = {
-        'work': str(tmp_path / 'work-stop'), 'decided_at': '2026-10-28T12:00:00Z',
-        'catalog_root': str(tmp_path / 'cat'), 'tables': {'captures': {'namespace': ['a'], 'name': 'captures'}},
-        'receipt_families': ['documents', 'senate/pages'], 'max_work_items': 5,
-        'provenance': {'recoveries': [], 'reviews': [], 'unreadable': []},
-    }
-    res_stop = produce_daily_inputs(tmpl, daily_stop, engine=object(), raw_store=store)
-    assert res_stop['status'] == 'backfill_required'
-    q_files_stop = sorted((raw_dir / 'provenance' / 'qualifications').glob('*.jsonl'))
-    assert len(q_files_stop) == 1
-    assert load_qualification_facts(q_files_stop)['all_receipt_keys'] == {slash_admitted}
-
-    # 2. Completed daily run on fresh store also reconciles 'senate/pages' and skips 'documents/other' & deferred!
-    raw_dir2 = tmp_path / 'raw2'
-    store2 = BodyStore(LocalAdapter(raw_dir2))
-    store2.put(f'bodies/sha256/{bad_sha[:2]}/{bad_sha}', pdf_file, 'application/pdf')
-    for rk in (slash_admitted, nested_sibling, slash_deferred):
-        p2 = raw_dir2 / rk
-        p2.parent.mkdir(parents=True, exist_ok=True)
-        p2.write_bytes((raw_dir / rk).read_bytes())
-    monkeypatch.setattr(daily_mod, 'produce_daily', lambda spec, *a, **kw: Path(spec['work']).mkdir(parents=True, exist_ok=False) or {
-        'status': 'completed', 'pins': {}, 'receipt_keys': list(admitted), 'new_receipt_keys': [],
-        'provenance': {'recoveries': [], 'reviews': [], 'unreadable': []}, 'currentversions': {},
-    })
-    daily_ok = dict(daily_stop, work=str(tmp_path / 'work-ok'))
-    res_ok = produce_daily_inputs(tmpl, daily_ok, engine=object(), raw_store=store2)
-    assert res_ok['status'] == 'ready'
-    q_files_ok = sorted((raw_dir2 / 'provenance' / 'qualifications').glob('*.jsonl'))
-    assert len(q_files_ok) == 1
-    assert load_qualification_facts(q_files_ok)['all_receipt_keys'] == {slash_admitted}
 
 
 def test_daily_budget_refuses_before_raw_inventory_or_cache_effects(tmp_path):

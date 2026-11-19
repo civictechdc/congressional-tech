@@ -55,7 +55,7 @@ def main(argv=None):
         parser.error('Preview requires engine config, selected captures, receipt and verification inventories')
     writer_identity(ROOT,'raw-verifier')
     from congress_shared.storage import connect_r2
-    client=connect_r2(bucket=args.bucket,retries={'mode':'standard','max_attempts':5})
+    client=connect_r2(bucket=args.bucket,retries={'mode':'adaptive','max_attempts':10})
     if args.apply_staged:
         result=apply_staged(args.work,BodyStore(R2Adapter(client,args.bucket)))
     else:

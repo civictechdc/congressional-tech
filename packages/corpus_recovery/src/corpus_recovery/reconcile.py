@@ -338,7 +338,7 @@ def main(argv=None):
         from congress_api.retention.receipt_writer import ReceiptWriter
         identity=writer_identity(Path(__file__).resolve().parents[4],'recovery-import')
         from congress_shared.storage import connect_r2
-        client=connect_r2(bucket=args.bucket,retries={'mode':'standard','max_attempts':5})
+        client=connect_r2(bucket=args.bucket,retries={'mode':'adaptive','max_attempts':10})
         writer=ReceiptWriter(BodyStore(R2Adapter(client,args.bucket)),identity=identity,
             run_id='recovery-'+datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')+'-'+uuid4().hex[:12],
             write_date=datetime.now(timezone.utc).date().isoformat(),archive_limits=None)

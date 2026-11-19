@@ -478,28 +478,12 @@ def run_recovery_campaign(
     if qual_source is None:
         qual_store = store if store is not None else source_or_store
         if qual_store is not None:
-            from datetime import datetime, timezone
             from congress_api.retention.qualification_facts import (
                 load_qualification_facts,
                 load_store_qualifications,
-                reconcile_store_receipt_qualifications,
-                state_reconcile_min_date,
             )
-            from corpus_recovery.qualification import qualify as run_qualify
             if hasattr(qual_store, 'adapter'):
                 loaded_store_quals = load_store_qualifications(qual_store, work=inputs_dir / 'qualification-inventory')
-                reconciled = reconcile_store_receipt_qualifications(
-                    qual_store,
-                    existing_loaded=loaded_store_quals,
-                    qualify_fn=run_qualify,
-                    cache_dir=inputs_dir / 'qualification-cache',
-                    work=inputs_dir / 'qualification-reconcile',
-                    decided_at=datetime.now(timezone.utc).isoformat(),
-                    min_write_date=state_reconcile_min_date(state),
-                    persist=True,
-                )
-                if reconciled['imported'] is not None:
-                    loaded_store_quals = load_store_qualifications(qual_store, work=inputs_dir / 'qualification-inventory')
                 if loaded_store_quals['files']:
                     qual_source = loaded_store_quals['files']
             elif isinstance(qual_store, (str, Path)):

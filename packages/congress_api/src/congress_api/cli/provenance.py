@@ -34,7 +34,7 @@ def main(argv=None):
     if args.apply:
         identity=writer_identity(ROOT,'provenance-import')
         from congress_shared.storage import connect_r2
-        client=connect_r2(bucket=args.bucket,retries={'mode':'standard','max_attempts':5})
+        client=connect_r2(bucket=args.bucket,retries={'mode':'adaptive','max_attempts':10})
         summary.update(apply_staged(root,BodyStore(R2Adapter(client,args.bucket))),apply=True,writer=identity)
     print(json.dumps(summary,indent=2))
 
