@@ -440,8 +440,10 @@ for `spicy-docs` derivation `006`, while retaining `house_floor_feed`, `sniff`,
   non-finite native coordinates such as `(40, 50, +inf, 80)` as
   `NativeGeometryError("invalid_box")` (mapped to `ExtractionError` and recorded
   as `error_type = "failed_pages"` with no text across ordinary native, opt-in
-  spacing, and bounded Tesseract). Redeclaring `pdf_text`, `PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION`,
-  and `PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION` gives changed PDF behavior
+  spacing, and bounded Tesseract). Redeclaring `pdf_text`,
+  `PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION` (adaptive <=200 DPI),
+  `PDF_TESSERACT_300DPI_RECOVERY_VERSION` (fixed 300 DPI), and
+  `PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION` gives changed PDF behavior
   distinct execution IDs without disturbing pinned historical IDs.
 - Retired reviewed-recovery IDs (`RETIRED_MARKUP_RECOVERY_VERSIONS`) remain
   selectable in explicit manifests, while `lake.body_text.stage` and

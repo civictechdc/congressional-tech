@@ -75,12 +75,13 @@ ORDINARY_STRATEGIES = frozenset({
     'congress_api.parsers.body_text:native_only',
     'congress_api.parsers.body_text:apple_vision',
 })
-RECOVERY_STRATEGIES = ORDINARY_STRATEGIES | frozenset({
+RECOVERY_STRATEGIES = frozenset({
+    'congress_api.parsers.body_text:native_only',
     'congress_api.parsers.body_text:recovery_apple_vision',
 })
 OPT_IN_PDF_STRATEGY_VERSIONS = {
     'congress_api.parsers.pdf_opt_in:native_inhibit_spaces_only': 'PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION',
-    'congress_api.parsers.pdf_opt_in:tesseract_300dpi': 'PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION',
+    'congress_api.parsers.pdf_opt_in:tesseract_300dpi': 'PDF_TESSERACT_300DPI_RECOVERY_VERSION',
     'congress_api.parsers.pdf_opt_in:tesseract_bounded_200dpi': 'PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION',
 }
 
@@ -555,17 +556,18 @@ def _parse_payload(payload):
             return dict(read_error='markup_recovery_input',
                         error='Worker key differs from the reviewed recovery version',
                         worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
-    elif request.get('parser_version') is not None:
-        if request['parser_version'] in all_markup_recovery:
+    else:
+        parser_version = request.get('parser_version')
+        if parser_version in all_markup_recovery:
             return dict(read_error='markup_recovery_input',
                         error='Reviewed markup reading versions require their pinned recovery manifest',
                         worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
         try:
-            expected_versions = _execution_versions(request['strategy'], recovery=bool(request.get('unlimited_body_bytes')))
+            expected_versions = _execution_versions(request.get('strategy'), recovery=bool(request.get('unlimited_body_bytes')))
         except ValueError as error:
             return dict(read_error='parser_version_mismatch', error=str(error),
                         worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
-        if expected_versions.get(request['parser']) != request['parser_version']:
+        if not isinstance(parser_version, str) or expected_versions.get(request.get('parser')) != parser_version:
             return dict(read_error='parser_version_mismatch',
                         error='Worker parser_version differs from the requested execution mode',
                         worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
@@ -724,8 +726,12 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
                 raise ValueError('Opt-in PDF staging requires its dedicated declared reading version')
             raise ValueError('Ordinary body-text staging requires the current declared reading versions')
         for item in items:
-            if (not isinstance(item, dict) or item.get('parser') not in expected_versions
-                    or planned_versions.get(item.get('parser')) != item.get('parser_version')):
+            parser = item.get('parser') if isinstance(item, dict) else None
+            version = item.get('parser_version') if isinstance(item, dict) else None
+            if (not isinstance(item, dict) or parser not in expected_versions
+                    or parser not in planned_versions
+                    or not isinstance(version, str)
+                    or planned_versions[parser] != version):
                 raise ValueError('Staged item parser or version differs from the planned execution versions')
     work = Path(work).resolve()
     if page_checkpoints is not None:

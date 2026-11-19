@@ -72,7 +72,7 @@
       "version": "0.85.0+ctmain.20261118"
     },
     "version": "cbbcee1bd7cb46be713606435ac7f7c88301484d47998b4c6fc273acec4a350f",
-    "workspace_sha256": "764d4281b66a0872fcb35e8e7b0bdc7c767fbbc01991b10dcf39b5c1d00bc958"
+    "workspace_sha256": "71b5a259eeb1bb8e2b7edf163043f7772d61f118091d54ce67ca326876070d86"
   },
   "json": {
     "limits": {
@@ -117,7 +117,7 @@
       "version": "0.85.0+ctmain.20261118"
     },
     "version": "9df9e8fae788e255563aa60ea7fa8d8a51a9931c89c1aaa172f7f3f3eda86a05",
-    "workspace_sha256": "764d4281b66a0872fcb35e8e7b0bdc7c767fbbc01991b10dcf39b5c1d00bc958"
+    "workspace_sha256": "71b5a259eeb1bb8e2b7edf163043f7772d61f118091d54ce67ca326876070d86"
   },
   "readings": {
     "limits": {
@@ -178,6 +178,6 @@
       "version": "0.85.0+ctmain.20261118"
     },
     "version": "4b30d66e01cf65a5951d7d95e7e5bb092de8ebbceeba592def22523051665b6f",
-    "workspace_sha256": "764d4281b66a0872fcb35e8e7b0bdc7c767fbbc01991b10dcf39b5c1d00bc958"
+    "workspace_sha256": "71b5a259eeb1bb8e2b7edf163043f7772d61f118091d54ce67ca326876070d86"
   }
 }

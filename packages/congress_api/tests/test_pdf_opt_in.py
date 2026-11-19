@@ -238,6 +238,8 @@ def test_pdf_reading_versions_and_invalid_box_and_vision_band_edge_controls(monk
         BODY_TEXT_DECLARATIONS,
         PDF_NATIVE_SPACING_SYMBOL_REPAIR_DECLARATION,
         PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION,
+        PDF_TESSERACT_300DPI_RECOVERY_DECLARATION,
+        PDF_TESSERACT_300DPI_RECOVERY_VERSION,
         PDF_TESSERACT_SELECTIVE_RECOVERY_DECLARATION,
         PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION,
         READING_VERSIONS,
@@ -247,15 +249,19 @@ def test_pdf_reading_versions_and_invalid_box_and_vision_band_edge_controls(monk
     assert PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION == sha256(
         PDF_TESSERACT_SELECTIVE_RECOVERY_DECLARATION.encode()
     ).hexdigest()
+    assert PDF_TESSERACT_300DPI_RECOVERY_VERSION == sha256(
+        PDF_TESSERACT_300DPI_RECOVERY_DECLARATION.encode()
+    ).hexdigest()
     assert PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION == sha256(
         PDF_NATIVE_SPACING_SYMBOL_REPAIR_DECLARATION.encode()
     ).hexdigest()
     current_pdf_ids = {
         READING_VERSIONS["pdf_text"],
         PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION,
+        PDF_TESSERACT_300DPI_RECOVERY_VERSION,
         PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION,
     }
-    assert len(current_pdf_ids) == 3
+    assert len(current_pdf_ids) == 4
     historical_v12_pdf_ids = {
         "4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8",
         "5d84e2bca02998e7b509ec12d2b5c17ef12d9da8a76c3e4b8e1f487b6f7c8f82",

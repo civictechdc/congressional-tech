@@ -111,15 +111,42 @@ def prepare_items(work, engine, targets, versions, origin):
 
 def reuse_completed(source, work, engine, catalog, table_ids, versions, *, equivalent_versions=None):
     """Carry forward successful retries only when prior versions match or have an explicit equivalence record."""
+    source = Path(source).resolve()
     receipt = work / 'carried-completed.json'
+    equiv = {p: set(v) for p, v in (equivalent_versions or {}).items()}
     if receipt.exists():
-        return json.loads(receipt.read_text())
+        retained = json.loads(receipt.read_text())
+        if not isinstance(retained, list):
+            raise ValueError('Invalid carried-completed receipt')
+        expected_source = str(source)
+        for o in retained:
+            if not isinstance(o, dict):
+                raise ValueError('Invalid carried-completed entry')
+            body_hex = o.get('body_sha256')
+            parser = o.get('parser')
+            target_version = versions.get(parser)
+            prior_version = o.get('prior_parser_version')
+            reused_from = o.get('reused_from')
+            if (not isinstance(body_hex, str) or not re.fullmatch(r'[0-9a-f]{64}', body_hex)
+                    or target_version is None
+                    or o.get('parser_version') != target_version
+                    or not isinstance(prior_version, str) or not re.fullmatch(r'[0-9a-f]{64}', prior_version)
+                    or not isinstance(reused_from, str) or str(Path(reused_from).resolve()) != expected_source):
+                raise ValueError(
+                    f'Retained carried-completed entry {body_hex!r} does not match current source or target versions'
+                )
+            allowed = {target_version} | equiv.get(parser, set())
+            if prior_version not in allowed:
+                raise ValueError(
+                    f'Retained carried-completed {parser} row {body_hex} from prior version {prior_version} '
+                    f'differs from target {target_version} with no recorded equivalence decision'
+                )
+        return retained
     outcomes = [o for p in sorted((source/'batches').glob('*/result.json'))
                 for o in json.loads(p.read_text())['body_outcomes'] if o.get('reading_status')=='completed']
     if not outcomes:
         write_json(receipt, [])
         return []
-    equiv = {p: set(v) for p, v in (equivalent_versions or {}).items()}
     checked = {}
     for o in outcomes:
         body_hex = o.get('body_sha256')

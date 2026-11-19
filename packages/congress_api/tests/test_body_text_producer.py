@@ -484,6 +484,7 @@ def test_retry_unreadable_script_dry_run_live_guard_and_idempotent_resume(tmp_pa
 def test_stage_accepts_warc_recovery_and_enforces_opt_in_pdf_strategy_versions(tmp_path):
     from congress_api.lake.reading_versions import (
         PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION,
+        PDF_TESSERACT_300DPI_RECOVERY_VERSION,
         PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION,
     )
 
@@ -538,7 +539,7 @@ def test_stage_accepts_warc_recovery_and_enforces_opt_in_pdf_strategy_versions(t
     [srow] = pq.read_table(staged_spacing['body_text']).to_pylist()
     assert srow['parser'] == 'pdf_text' and srow['parser_version'] == PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION
 
-    # 3. Ordinary strategy refuses opt-in PDF IDs, and Tesseract strategy refuses spacing/ordinary IDs.
+    # 3. Ordinary strategy refuses opt-in PDF IDs, and bounded 200 DPI vs fixed 300 DPI Tesseract have distinct IDs.
     with pytest.raises(ValueError, match='current declared reading versions'):
         body_text.stage(spacing_plan, [spacing_item], engine=args['engine'], work=tmp_path / 'ordinary-with-spacing')
     assert not (tmp_path / 'ordinary-with-spacing').exists()
@@ -546,6 +547,38 @@ def test_stage_accepts_warc_recovery_and_enforces_opt_in_pdf_strategy_versions(t
         body_text.stage(spacing_plan, [spacing_item], engine=args['engine'], work=tmp_path / 'tess-with-spacing',
                         strategy='congress_api.parsers.pdf_opt_in:tesseract_bounded_200dpi')
     assert not (tmp_path / 'tess-with-spacing').exists()
-    assert PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION != PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION
+    assert len({
+        PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION,
+        PDF_TESSERACT_300DPI_RECOVERY_VERSION,
+        PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION,
+    }) == 3
+    tess_200_plan = dict(versions={'pdf_text': PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION},
+                         local_root=args['local_root'], decided_at=STAMP)
+    tess_200_item = dict(ordinary_pdf_item, parser_version=PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION)
+    with pytest.raises(ValueError, match='dedicated declared reading version'):
+        body_text.stage(tess_200_plan, [tess_200_item], engine=args['engine'], work=tmp_path / 'tess300-with-200id',
+                        strategy='congress_api.parsers.pdf_opt_in:tesseract_300dpi')
+    assert not (tmp_path / 'tess300-with-200id').exists()
+    tess_300_plan = dict(versions={'pdf_text': PDF_TESSERACT_300DPI_RECOVERY_VERSION},
+                         local_root=args['local_root'], decided_at=STAMP)
+    tess_300_item = dict(ordinary_pdf_item, parser_version=PDF_TESSERACT_300DPI_RECOVERY_VERSION)
+    with pytest.raises(ValueError, match='dedicated declared reading version'):
+        body_text.stage(tess_300_plan, [tess_300_item], engine=args['engine'], work=tmp_path / 'tess200-with-300id',
+                        strategy='congress_api.parsers.pdf_opt_in:tesseract_bounded_200dpi')
+    assert not (tmp_path / 'tess200-with-300id').exists()
+
+    # 4. recovery=True refuses pixel-capped ordinary apple_vision under unlimited-pixel recovery_versions().
+    with pytest.raises(ValueError, match='declared recovery PDF strategy'):
+        body_text.stage(warc_plan, [warc_item], engine=args['engine'], work=tmp_path / 'rec-with-ordinary-vision',
+                        strategy='congress_api.parsers.body_text:apple_vision', recovery=True)
+    assert not (tmp_path / 'rec-with-ordinary-vision').exists()
+
+    # 5. A null item parser_version cannot match an omitted parser key in planned['versions'].
+    html_only_plan = dict(versions={'html_text': body_text.current_versions()['html_text']},
+                          local_root=args['local_root'], decided_at=STAMP)
+    null_pdf_item = dict(ordinary_pdf_item, parser_version=None)
+    with pytest.raises(ValueError, match='differs from the planned execution versions'):
+        body_text.stage(html_only_plan, [null_pdf_item], engine=args['engine'], work=tmp_path / 'null-pdf-item')
+    assert not (tmp_path / 'null-pdf-item').exists()
 
 

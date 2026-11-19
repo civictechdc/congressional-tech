@@ -144,6 +144,28 @@ def test_reuse_completed_refuses_version_drift_without_recorded_equivalence(tmp_
         assert carried[0]['prior_parser_version'] == prior_ver
         assert carried[0]['parser_version'] == target_versions['pdf_text']
 
+        # 2b. Resuming with a retained carried-completed.json WITHOUT equivalent_versions MUST refuse!
+        with pytest.raises(ValueError, match='no recorded equivalence decision'):
+            module.reuse_completed(source, work_equiv, engine, dest_catalog, table_ids, target_versions)
+        # Resuming with a different target version or different source MUST also refuse!
+        with pytest.raises(ValueError, match='does not match current source or target versions'):
+            module.reuse_completed(
+                source, work_equiv, engine, dest_catalog, table_ids,
+                dict(target_versions, pdf_text='b' * 64),
+                equivalent_versions={'pdf_text': [prior_ver]},
+            )
+        with pytest.raises(ValueError, match='does not match current source or target versions'):
+            module.reuse_completed(
+                tmp_path / 'other-source', work_equiv, engine, dest_catalog, table_ids, target_versions,
+                equivalent_versions={'pdf_text': [prior_ver]},
+            )
+        # Resuming with matching source, target versions, and recorded equivalence succeeds cleanly.
+        resumed = module.reuse_completed(
+            source, work_equiv, engine, dest_catalog, table_ids, target_versions,
+            equivalent_versions={'pdf_text': [prior_ver]},
+        )
+        assert resumed == carried
+
         # 3. Accepts exact matching version without equivalent_versions.
         exact_dest = tmp_path / 'exact-dest-catalog'
         readings.create_table(engine=engine, work=tmp_path / 'create-r-exact', catalog_root=exact_dest,

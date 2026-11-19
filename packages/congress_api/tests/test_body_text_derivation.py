@@ -563,10 +563,12 @@ def reader_runs(tmp_path):
                                body_sha=hashlib.sha256(plain).hexdigest())).encode()
 
     def body_text_worker():
+        versions = body_text.current_versions()
         for data, parser in bodies.values():
             texts = tmp_path / f'texts-{next(written)}'
             texts.mkdir()
-            body_text.parse_payload(payload(data, parser=parser, strategy=bt.DEFAULT_STRATEGY,
+            body_text.parse_payload(payload(data, parser=parser, parser_version=versions[parser],
+                                            strategy=bt.DEFAULT_STRATEGY,
                                             page_deadline_seconds=0, texts=str(texts)))
 
     def bundle():
