@@ -74,6 +74,11 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument('--allow-concurrent', action='store_true')
     ap.add_argument('--work-dir', type=Path, required=True)
     args = ap.parse_args(argv)
+    if args.strategy not in body_text.ORDINARY_STRATEGIES:
+        raise ValueError(
+            f'Unsupported strategy for ordinary unreadable retry: {args.strategy} '
+            f'(allowed: {", ".join(sorted(body_text.ORDINARY_STRATEGIES))})'
+        )
 
     if args.apply and not args.allow_concurrent:
         proc = subprocess.run(['pgrep', '-fl', LIVE_WRITERS_PATTERN], capture_output=True, text=True, check=False)

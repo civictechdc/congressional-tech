@@ -205,8 +205,9 @@ def test_worker_streams_evidence_by_file_and_preserves_prior_attempts(tmp_path, 
     texts = tmp_path / 'texts'
     texts.mkdir()
     request = dict(path=str(body), stored_bytes=len(data), body_sha=hashlib.sha256(data).hexdigest(),
-                   parser='pdf_text', parser_version='qualification-version', strategy=bt.DEFAULT_STRATEGY,
-                   page_deadline_seconds=30, texts=str(texts), quality_evidence=str(tmp_path / 'body.quality.jsonl'))
+                   parser='pdf_text', parser_version=producer.current_versions()['pdf_text'],
+                   strategy=bt.DEFAULT_STRATEGY, page_deadline_seconds=30, texts=str(texts),
+                   quality_evidence=str(tmp_path / 'body.quality.jsonl'))
     first = producer.parse_payload(json.dumps(request))
     second = producer.parse_payload(json.dumps(request))
     assert first['row'] == second['row']

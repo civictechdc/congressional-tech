@@ -109,29 +109,56 @@ def prepare_items(work, engine, targets, versions, origin):
     return items
 
 
-def reuse_completed(source, work, engine, catalog, table_ids, versions):
-    """Carry forward successful byte-limit retries: lifting the pixel exclusion cannot change them."""
+def reuse_completed(source, work, engine, catalog, table_ids, versions, *, equivalent_versions=None):
+    """Carry forward successful retries only when prior versions match or have an explicit equivalence record."""
     receipt = work / 'carried-completed.json'
     if receipt.exists():
         return json.loads(receipt.read_text())
     outcomes = [o for p in sorted((source/'batches').glob('*/result.json'))
                 for o in json.loads(p.read_text())['body_outcomes'] if o.get('reading_status')=='completed']
-    wanted = {o['body_sha256'] for o in outcomes}
+    if not outcomes:
+        write_json(receipt, [])
+        return []
+    equiv = {p: set(v) for p, v in (equivalent_versions or {}).items()}
+    checked = {}
+    for o in outcomes:
+        body_hex = o.get('body_sha256')
+        parser = o.get('parser')
+        prior_version = o.get('parser_version')
+        target_version = versions.get(parser)
+        if (not isinstance(body_hex, str) or not re.fullmatch(r'[0-9a-f]{64}', body_hex)
+                or not isinstance(prior_version, str) or not re.fullmatch(r'[0-9a-f]{64}', prior_version)):
+            raise ValueError(f'Invalid completed outcome identity in reuse source: {body_hex!r}/{prior_version!r}')
+        if target_version is None:
+            raise ValueError(f'Cannot reuse completed row {body_hex}: unsupported parser {parser}')
+        allowed = {target_version} | equiv.get(parser, set())
+        if prior_version not in allowed:
+            raise ValueError(
+                f'Cannot reuse completed {parser} row {body_hex} at version {prior_version}: '
+                f'differs from target {target_version} with no recorded equivalence decision'
+            )
+        checked[(body_hex, parser, prior_version)] = o
+    if len({(b, p) for b, p, _ in checked}) != len(outcomes):
+        raise ValueError('Duplicate or conflicting completed outcomes in reuse source')
     pins = tables.resolve_tables(engine=engine,work=work/'resolve-reuse',catalog_root=source/'catalog',tables=table_ids)
     stage = work/'carried-stage'
     stage.mkdir(exist_ok=True)
+    match_predicates = ' OR '.join(
+        f"(encode(s.body_sha,'hex')='{b}' AND s.parser='{p}' AND s.parser_version='{v}')"
+        for b, p, v in sorted(checked)
+    )
     for name in ('body_text','readings'):
         schema = json.loads(body_text.SCHEMA.read_text()) if name=='body_text' else tables.load_schema(name)
         version = 'CASE s.parser ' + ' '.join(f"WHEN '{p}' THEN '{v}'" for p,v in versions.items()) + ' ELSE s.parser_version END AS parser_version'
         columns = ','.join(version if f['name']=='parser_version' else 's."'+f['name']+'"' for f in schema['fields'])
-        selected = ','.join("'"+s+"'" for s in sorted(wanted))
         out = stage/name
         run_job(out,engine,inputs=[tables.table_input('source',pins[name])],steps=[],
-                outputs=[parquet_output(out,'rows',f"SELECT {columns} FROM source s WHERE encode(s.body_sha,'hex') IN ({selected})",body_text.PK)])
+                outputs=[parquet_output(out,'rows',f"SELECT {columns} FROM source s WHERE {match_predicates}",body_text.PK)])
         path=out/'rows.parquet'
-        assert pq.ParquetFile(path).metadata.num_rows==len(wanted)
+        if pq.ParquetFile(path).metadata.num_rows != len(checked):
+            raise ValueError(f'Reuse source {name} rows do not match verified completed outcomes')
         tables.append_rows(path,engine=engine,work=stage/('append-'+name),catalog_root=catalog,
-                           table=table_ids[name],keys=body_text.PK,definition='reuse completed recovery: pixel exclusion removed')
+                           table=table_ids[name],keys=body_text.PK,definition='reuse completed recovery: verified version or equivalence')
     for o in outcomes:
         o['prior_parser_version']=o['parser_version']
         o['parser_version']=versions[o['parser']]
@@ -148,6 +175,8 @@ def main():
     ap.add_argument('--pilot', action='store_true', help='One smallest body per original failure reason before the full pass')
     ap.add_argument('--max-batches', type=int)
     ap.add_argument('--reuse-completed',type=Path)
+    ap.add_argument('--reuse-equivalent-versions', type=Path,
+                    help='Optional JSON mapping parser -> list of prior parser_version IDs with recorded equivalence')
     ap.add_argument('--page-checkpoints', type=Path,
                     help='Durable page checkpoint directory outside batch stages; does not resume a paused run')
     args = ap.parse_args()
@@ -183,7 +212,11 @@ def main():
             body_text.create_table(engine=engine, work=work / 'create-text', catalog_root=catalog,
                                    table=table_ids['body_text'], location=work / 'tables/body_text')
         all_items = prepare_items(work, engine, targets, versions, args.origin)
-        carried = reuse_completed(args.reuse_completed.resolve(),work,engine,catalog,table_ids,versions) if args.reuse_completed else []
+        equiv_versions = (json.loads(args.reuse_equivalent_versions.read_text())
+                          if args.reuse_equivalent_versions else None)
+        carried = (reuse_completed(args.reuse_completed.resolve(), work, engine, catalog, table_ids, versions,
+                                   equivalent_versions=equiv_versions)
+                   if args.reuse_completed else [])
         completed = {o['body_sha256'] for o in carried}
         results = sorted((work / 'batches').glob('*/result.json'))
         for p in results:

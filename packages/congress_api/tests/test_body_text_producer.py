@@ -468,4 +468,84 @@ def test_retry_unreadable_script_dry_run_live_guard_and_idempotent_resume(tmp_pa
     assert by_sha_2[digests['b']]['status'] == 'read'
     assert by_sha_2[digests['b']]['peak_rss_bytes'] > 0
 
+    # Ordinary unreadable retry refuses opt-in PDF strategies before modifying unreadable decisions.
+    with pytest.raises(ValueError, match='Unsupported strategy'):
+        retry_mod.main([
+            '--unreadable-root', str(unr_root),
+            '--catalog-root', str(args['catalog_root']),
+            '--captures', str(args['captures']),
+            '--local-root', str(args['local_root']),
+            '--strategy', 'congress_api.parsers.pdf_opt_in:native_inhibit_spaces_only',
+            '--dry-run',
+            '--work-dir', str(tmp_path / 'bad-strategy'),
+        ])
+
+
+def test_stage_accepts_warc_recovery_and_enforces_opt_in_pdf_strategy_versions(tmp_path):
+    from congress_api.lake.reading_versions import (
+        PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION,
+        PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION,
+    )
+
+    warc_bytes = warc_member(HTML)
+    pdf_bytes = two_page_pdf()
+    args, names = lake(tmp_path, dict(warc=(warc_bytes, 'warc'), pdf=(pdf_bytes, 'pdf')))
+    by_name = {name: digest for digest, name in names.items()}
+
+    # 1. Valid WARC recovery item carrying recovery_versions()['warc'] stages cleanly.
+    rec_versions = body_text.recovery_versions()
+    warc_hex = by_name['warc'].hex()
+    warc_key = f'bodies/sha256/{warc_hex[:2]}/{warc_hex}'
+    warc_item = dict(
+        body_sha=by_name['warc'],
+        parser='warc',
+        parser_version=rec_versions['warc'],
+        physical_key=warc_key,
+        relative_path=warc_key,
+        stored_bytes=len(warc_bytes),
+    )
+    warc_plan = dict(versions=rec_versions, local_root=args['local_root'], decided_at=STAMP)
+    staged_warc = body_text.stage(warc_plan, [warc_item], engine=args['engine'], work=tmp_path / 'warc-rec', recovery=True)
+    assert staged_warc['body_text_rows'] == 1
+    [wrow] = pq.read_table(staged_warc['body_text']).to_pylist()
+    assert wrow['parser'] == 'warc' and wrow['parser_version'] == rec_versions['warc']
+
+    # 2. native_inhibit_spaces_only refuses ordinary pdf_text ID (before mkdir) and accepts its dedicated ID.
+    pdf_hex = by_name['pdf'].hex()
+    pdf_key = f'bodies/sha256/{pdf_hex[:2]}/{pdf_hex}'
+    ordinary_pdf_item = dict(
+        body_sha=by_name['pdf'],
+        parser='pdf_text',
+        parser_version=body_text.current_versions()['pdf_text'],
+        physical_key=pdf_key,
+        relative_path=pdf_key,
+        stored_bytes=len(pdf_bytes),
+    )
+    ordinary_plan = dict(versions=body_text.current_versions(), local_root=args['local_root'], decided_at=STAMP)
+    with pytest.raises(ValueError, match='dedicated declared reading version'):
+        body_text.stage(ordinary_plan, [ordinary_pdf_item], engine=args['engine'],
+                        work=tmp_path / 'spacing-wrong-id',
+                        strategy='congress_api.parsers.pdf_opt_in:native_inhibit_spaces_only')
+    assert not (tmp_path / 'spacing-wrong-id').exists()
+
+    spacing_item = dict(ordinary_pdf_item, parser_version=PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION)
+    spacing_plan = dict(versions={'pdf_text': PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION},
+                        local_root=args['local_root'], decided_at=STAMP)
+    staged_spacing = body_text.stage(spacing_plan, [spacing_item], engine=args['engine'],
+                                     work=tmp_path / 'spacing-ok',
+                                     strategy='congress_api.parsers.pdf_opt_in:native_inhibit_spaces_only')
+    assert staged_spacing['body_text_rows'] == 1
+    [srow] = pq.read_table(staged_spacing['body_text']).to_pylist()
+    assert srow['parser'] == 'pdf_text' and srow['parser_version'] == PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION
+
+    # 3. Ordinary strategy refuses opt-in PDF IDs, and Tesseract strategy refuses spacing/ordinary IDs.
+    with pytest.raises(ValueError, match='current declared reading versions'):
+        body_text.stage(spacing_plan, [spacing_item], engine=args['engine'], work=tmp_path / 'ordinary-with-spacing')
+    assert not (tmp_path / 'ordinary-with-spacing').exists()
+    with pytest.raises(ValueError, match='dedicated declared reading version'):
+        body_text.stage(spacing_plan, [spacing_item], engine=args['engine'], work=tmp_path / 'tess-with-spacing',
+                        strategy='congress_api.parsers.pdf_opt_in:tesseract_bounded_200dpi')
+    assert not (tmp_path / 'tess-with-spacing').exists()
+    assert PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION != PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION
+
 

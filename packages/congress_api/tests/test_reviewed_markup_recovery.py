@@ -208,6 +208,50 @@ def test_stage_and_worker_reject_retired_recovery_and_stale_plan_ids_while_selec
     assert worker_out['read_error'] == 'markup_recovery_input'
     assert 'row' not in worker_out and not list(texts_dir.iterdir())
 
+    # Direct worker request with retired recovery ID + markup_recovery + oversize body must NOT return decoded_size_limit.
+    oversize_path = tmp_path / 'oversize.html'
+    oversize_bytes = b'<' + b'a' * body_text.MAX_DECODED_BYTES + b'>'
+    oversize_path.write_bytes(oversize_bytes)
+    oversize_out = body_text.parse_payload(json.dumps(dict(
+        path=str(oversize_path),
+        stored_bytes=len(oversize_bytes),
+        body_sha=sha256(oversize_bytes).hexdigest(),
+        parser='html_text',
+        parser_version=retired['html_text'],
+        strategy='congress_api.parsers.body_text:native_only',
+        page_deadline_seconds=0,
+        texts=str(texts_dir),
+        diagnostics=str(tmp_path / 'diag.txt'),
+        markup_recovery=dict(case=case(), manifest_sha256='b' * 64),
+    )).encode())
+    assert oversize_out['read_error'] == 'markup_recovery_input' and 'row' not in oversize_out
+
+    # Direct worker request with a stale ordinary ID or wrong strategy/version never reaches derivation.
+    stale_ord_out = body_text.parse_payload(json.dumps(dict(
+        path=str(body_path),
+        stored_bytes=len(HTML_CANDIDATE),
+        body_sha=sha256(HTML_CANDIDATE).hexdigest(),
+        parser='html_text',
+        parser_version='f1cefe442182dc8e4c456359aebdb37e5c50db6b0abb669b303e05763feb94a3',
+        strategy='congress_api.parsers.body_text:native_only',
+        page_deadline_seconds=0,
+        texts=str(texts_dir),
+    )).encode())
+    assert stale_ord_out['read_error'] == 'parser_version_mismatch' and 'row' not in stale_ord_out
+    assert not list(texts_dir.iterdir())
+
+    wrong_strat_out = body_text.parse_payload(json.dumps(dict(
+        path=str(body_path),
+        stored_bytes=len(HTML_CANDIDATE),
+        body_sha=sha256(HTML_CANDIDATE).hexdigest(),
+        parser='pdf_text',
+        parser_version=body_text.current_versions()['pdf_text'],
+        strategy='congress_api.parsers.pdf_opt_in:native_inhibit_spaces_only',
+        page_deadline_seconds=0,
+        texts=str(texts_dir),
+    )).encode())
+    assert wrong_strat_out['read_error'] == 'parser_version_mismatch' and 'row' not in wrong_strat_out
+
     # Historical selection manifests continue to load retired recovery IDs cleanly.
     proof = tmp_path / 'proof.md'
     proof_bytes = b'qualified historical selection\n'

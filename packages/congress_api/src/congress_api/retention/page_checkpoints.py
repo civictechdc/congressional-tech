@@ -17,6 +17,17 @@ from congress_api.parsers import body_text
 from congress_api.parsers.body_text import CheckpointError
 
 
+def _spicy_docs_identity():
+    """Bind checkpoints to the exact installed spicy-docs derivation and package RECORD."""
+    from importlib.metadata import distribution
+    from spicy_docs.extraction.derivation import derivation_code_digest
+    info = dict(version=version('spicy-docs'), derivation=derivation_code_digest())
+    record = distribution('spicy-docs').read_text('RECORD')
+    if record is not None:
+        info['record_sha256'] = sha256(record.encode('utf-8')).hexdigest()
+    return info
+
+
 def adapter(root):
     """The producer supplies durable storage; parsers only call this extraction adapter."""
     if root is None:
@@ -28,7 +39,8 @@ def adapter(root):
         identity = dict(rule=rule.checkpoint_identity, strategy=type(rule.strategy).__qualname__,
             code=sha256(Path(body_text.__file__).read_bytes()).hexdigest(),
             adapter=sha256(Path(__file__).read_bytes()).hexdigest(),
-            dependencies={name: version(name) for name in ('spicy-docs', 'pymupdf', 'pillow')})
+            dependencies={name: version(name) for name in ('spicy-docs', 'pymupdf', 'pillow')},
+            spicy_docs=_spicy_docs_identity())
         overrides = {}
         for number, replacement in run.overrides.items():
             if replacement.checkpoint_identity is None:

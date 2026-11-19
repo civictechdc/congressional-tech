@@ -71,11 +71,37 @@ MAX_BATCH_ITEMS = 4096
 STAGE_TEXT_BYTES = 64 << 20
 ORIGIN = 'https://' + PUBLIC_HOSTNAME
 USER_AGENT = 'ct-body-text/1'
+ORDINARY_STRATEGIES = frozenset({
+    'congress_api.parsers.body_text:native_only',
+    'congress_api.parsers.body_text:apple_vision',
+})
+RECOVERY_STRATEGIES = ORDINARY_STRATEGIES | frozenset({
+    'congress_api.parsers.body_text:recovery_apple_vision',
+})
+OPT_IN_PDF_STRATEGY_VERSIONS = {
+    'congress_api.parsers.pdf_opt_in:native_inhibit_spaces_only': 'PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION',
+    'congress_api.parsers.pdf_opt_in:tesseract_300dpi': 'PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION',
+    'congress_api.parsers.pdf_opt_in:tesseract_bounded_200dpi': 'PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION',
+}
 
 
 def current_versions():
     """The declared version of each body-text parser (reading_versions)."""
     return {parser: readings.current_version(parser) for parser in PARSERS}
+
+
+def _execution_versions(strategy, *, recovery=False):
+    """Map supported staging strategies and execution modes to their allowed parser versions."""
+    from congress_api.lake import reading_versions
+    if recovery:
+        if strategy not in RECOVERY_STRATEGIES:
+            raise ValueError('Unlimited body reads require a declared recovery PDF strategy')
+        return recovery_versions()
+    if strategy in ORDINARY_STRATEGIES:
+        return current_versions()
+    if strategy in OPT_IN_PDF_STRATEGY_VERSIONS:
+        return {'pdf_text': getattr(reading_versions, OPT_IN_PDF_STRATEGY_VERSIONS[strategy])}
+    raise ValueError(f'Unsupported body-text staging strategy: {strategy}')
 
 
 def recovery_versions():
@@ -518,10 +544,31 @@ def _parse_payload(payload):
     all_markup_recovery = set(MARKUP_RECOVERY_VERSIONS.values()) | {
         v for ids in RETIRED_MARKUP_RECOVERY_VERSIONS.values() for v in ids
     }
-    if request.get('markup_recovery') is None and request.get('parser_version') in all_markup_recovery:
-        return dict(read_error='markup_recovery_input',
-                    error='Reviewed markup reading versions require their pinned recovery manifest',
-                    worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
+    if request.get('markup_recovery') is not None:
+        mr = request['markup_recovery']
+        case = mr.get('case') if isinstance(mr, dict) else None
+        if (not isinstance(case, dict)
+                or case.get('parser') != request.get('parser')
+                or request.get('parser_version') != MARKUP_RECOVERY_VERSIONS.get(request.get('parser'))
+                or request.get('strategy') != derivation.DEFAULT_STRATEGY
+                or request.get('unlimited_body_bytes')):
+            return dict(read_error='markup_recovery_input',
+                        error='Worker key differs from the reviewed recovery version',
+                        worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
+    elif request.get('parser_version') is not None:
+        if request['parser_version'] in all_markup_recovery:
+            return dict(read_error='markup_recovery_input',
+                        error='Reviewed markup reading versions require their pinned recovery manifest',
+                        worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
+        try:
+            expected_versions = _execution_versions(request['strategy'], recovery=bool(request.get('unlimited_body_bytes')))
+        except ValueError as error:
+            return dict(read_error='parser_version_mismatch', error=str(error),
+                        worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
+        if expected_versions.get(request['parser']) != request['parser_version']:
+            return dict(read_error='parser_version_mismatch',
+                        error='Worker parser_version differs from the requested execution mode',
+                        worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
     try:
         data = _read_decoded(request)
     except (OSError, EOFError) as error:
@@ -669,12 +716,15 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
         item_versions = {item.get('parser_version') for item in items if isinstance(item, dict)}
         if (set(planned_versions.values()) | item_versions) & all_markup_recovery:
             raise ValueError('Reviewed markup reading versions require their pinned recovery manifest')
-        expected_versions = recovery_versions() if recovery else current_versions()
+        expected_versions = _execution_versions(strategy, recovery=recovery)
         if any(expected_versions.get(p) != v for p, v in planned_versions.items()):
-            raise ValueError('Unlimited body reads require the explicit recovery reading versions'
-                             if recovery else 'Ordinary body-text staging requires the current declared reading versions')
+            if recovery:
+                raise ValueError('Unlimited body reads require the explicit recovery reading versions')
+            if strategy in OPT_IN_PDF_STRATEGY_VERSIONS:
+                raise ValueError('Opt-in PDF staging requires its dedicated declared reading version')
+            raise ValueError('Ordinary body-text staging requires the current declared reading versions')
         for item in items:
-            if (not isinstance(item, dict) or item.get('parser') not in PARSERS
+            if (not isinstance(item, dict) or item.get('parser') not in expected_versions
                     or planned_versions.get(item.get('parser')) != item.get('parser_version')):
                 raise ValueError('Staged item parser or version differs from the planned execution versions')
     work = Path(work).resolve()
