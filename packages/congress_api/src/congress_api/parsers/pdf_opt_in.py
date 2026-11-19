@@ -24,6 +24,7 @@ from spicy_docs.extraction.pages import _PDFPage
 from congress_api.parsers.body_text import OCR_MIN_CHARS, PageRule, gpo_page, page_rule
 
 DEFAULT_TESSDATA_DIR = '/opt/homebrew/share/tessdata'
+_open_default_reader = DefaultReader.open
 
 
 class TesseractBackend(Tesseract):
@@ -119,7 +120,7 @@ class OptInPdfReader(DefaultReader):
         and would be silently ignored, while the rule's checkpoint identity still claimed it."""
         if media_type != 'application/pdf':
             raise ValueError(f'OptInPdfReader reads application/pdf only, not {media_type}')
-        with super().open(source, media_type) as pdf:
+        with _open_default_reader(self, source, media_type) as pdf:
             yield _OptInPDF(pdf.document, self)
 
 

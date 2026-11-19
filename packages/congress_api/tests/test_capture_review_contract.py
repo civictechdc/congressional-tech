@@ -150,7 +150,7 @@ def test_direct_receipts_qualify_pdfinfo_only_for_the_fallback(tmp_path, monkeyp
     if mode == 'capture':
         url = URL + '.pdf'
         result, adapter, root = run_fixture(tmp_path, [dict(requested_url=url, attempts=0)],
-            {url: (200, data, {'content-type': 'application/pdf'})}, request_budget=1)
+            {url: (200, data, {'content-type': 'application/pdf'})}, request_budget=1, qualify=False)
         [key] = result['receipts']
         assert adapter.calls == [url]
     else:
