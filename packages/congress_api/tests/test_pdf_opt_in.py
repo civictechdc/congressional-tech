@@ -224,3 +224,85 @@ def test_opt_in_reader_opens_only_unencrypted_pdf_bytes():
     with pytest.raises(ExtractionError, match="encrypted PDF"):
         with reader.open(locked, "application/pdf"):
             pytest.fail("an encrypted PDF must not open")
+    with pytest.raises(ExtractionError, match="not application/pdf"):
+        with reader.open(b"<html><body>Not a PDF</body></html>", "application/pdf"):
+            pytest.fail("markup masquerading as PDF must not open")
+
+
+def test_pdf_reading_versions_and_invalid_box_and_vision_band_edge_controls(monkeypatch):
+    from hashlib import sha256
+    import math
+    from spicy_docs.extraction.model import RAW_RGB, Box, Raster
+    from spicy_docs.extraction.ocr import AppleVision
+    from congress_api.lake.reading_versions import (
+        BODY_TEXT_DECLARATIONS,
+        PDF_NATIVE_SPACING_SYMBOL_REPAIR_DECLARATION,
+        PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION,
+        PDF_TESSERACT_SELECTIVE_RECOVERY_DECLARATION,
+        PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION,
+        READING_VERSIONS,
+    )
+
+    assert READING_VERSIONS["pdf_text"] == sha256(BODY_TEXT_DECLARATIONS["pdf_text"].encode()).hexdigest()
+    assert PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION == sha256(
+        PDF_TESSERACT_SELECTIVE_RECOVERY_DECLARATION.encode()
+    ).hexdigest()
+    assert PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION == sha256(
+        PDF_NATIVE_SPACING_SYMBOL_REPAIR_DECLARATION.encode()
+    ).hexdigest()
+    current_pdf_ids = {
+        READING_VERSIONS["pdf_text"],
+        PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION,
+        PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION,
+    }
+    assert len(current_pdf_ids) == 3
+    historical_v12_pdf_ids = {
+        "4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8",
+        "5d84e2bca02998e7b509ec12d2b5c17ef12d9da8a76c3e4b8e1f487b6f7c8f82",
+        "b345ac1cf8f88e2726a5de04cd92d470c3d83fbf490e9724b308797c6901a0f9",
+    }
+    assert current_pdf_ids.isdisjoint(historical_v12_pdf_ids)
+
+    # Non-finite native coordinates (40, 50, +inf, 80) refuse as ExtractionError(invalid_box) across all three PDF policies.
+    with pymupdf.open() as doc:
+        pg = doc.new_page(width=400, height=500)
+        pg.insert_text((80, 120), "Before\nUnlocated\nAfter" + " prose" * 20)
+        pg.set_cropbox(pymupdf.Rect(50, 70, 350, 470))
+        sample_pdf = doc.tobytes()
+
+    original_get_text = pymupdf.Page.get_text
+
+    def injected_get_text(page, option="text", **kwargs):
+        raw = original_get_text(page, option, **kwargs)
+        if option == "dict":
+            coords = (40, 50, math.inf, 80)
+            line = raw["blocks"][0]["lines"][1]
+            line["bbox"] = coords
+            line["spans"][0].update(text="Unlocated", bbox=coords, alpha=255)
+        return raw
+
+    monkeypatch.setattr(pymupdf.Page, "get_text", injected_get_text)
+    for rule in (body_text.native_only(), native_inhibit_spaces_only(), tesseract_bounded_200dpi()):
+        reading = body_text.pdf_text(sample_pdf, strategy=rule, page_deadline_seconds=15)
+        assert reading.status == "error"
+        assert reading.error_type == "failed_pages"
+        assert reading.text is None
+        assert reading.fields["failed_pages"] == [1]
+        assert "invalid_box" in (reading.diagnostic or "")
+    monkeypatch.setattr(pymupdf.Page, "get_text", original_get_text)
+
+    # Under CT's 3-band Vision settings, an unmatched internal strip-edge line survives (PR 31).
+    calls = []
+
+    def injected_vision_engine(strip: Raster):
+        idx = len(calls)
+        calls.append(idx)
+        if idx == 0:
+            # Strip 0 bottom edge in Vision bottom-left coords: middle > strip core end, lower within 0.005*height of bottom.
+            return [("edge observation", 1.0, [0.1, 0.002, 0.5, 0.03])]
+        return []
+
+    vis = AppleVision(recognition_level="accurate", language_correction=False, bands=3, engine=injected_vision_engine)
+    blank_rgb = Raster(b"\xff" * (100 * 300 * 3), 100, 300, Box(), RAW_RGB)
+    recognized = vis.recognize(blank_rgb)
+    assert recognized.text == "edge observation"

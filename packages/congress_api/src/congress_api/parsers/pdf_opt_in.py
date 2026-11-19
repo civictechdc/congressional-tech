@@ -119,11 +119,8 @@ class OptInPdfReader(DefaultReader):
         and would be silently ignored, while the rule's checkpoint identity still claimed it."""
         if media_type != 'application/pdf':
             raise ValueError(f'OptInPdfReader reads application/pdf only, not {media_type}')
-        import pymupdf
-        with pymupdf.Document(stream=source, filetype='pdf') as document:
-            if document.needs_pass:
-                raise ExtractionError('encrypted PDF requires decryption before extraction')
-            yield _OptInPDF(document, self)
+        with super().open(source, media_type) as pdf:
+            yield _OptInPDF(pdf.document, self)
 
 
 def tesseract_300dpi() -> PageRule:

@@ -512,8 +512,16 @@ def _parse_payload(payload):
     """
     from congress_api.parsers import body_text as derivation
     from congress_api.lake.markup_recovery import RecoveryInputError, read_reviewed_markup
+    from congress_api.lake.reading_versions import MARKUP_RECOVERY_VERSIONS, RETIRED_MARKUP_RECOVERY_VERSIONS
     from congress_api.retention.page_checkpoints import CheckpointError, adapter
     request = json.loads(payload)
+    all_markup_recovery = set(MARKUP_RECOVERY_VERSIONS.values()) | {
+        v for ids in RETIRED_MARKUP_RECOVERY_VERSIONS.values() for v in ids
+    }
+    if request.get('markup_recovery') is None and request.get('parser_version') in all_markup_recovery:
+        return dict(read_error='markup_recovery_input',
+                    error='Reviewed markup reading versions require their pinned recovery manifest',
+                    worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
     try:
         data = _read_decoded(request)
     except (OSError, EOFError) as error:
@@ -531,7 +539,6 @@ def _parse_payload(payload):
     with _QualityEvidence(request) as evidence:
         try:
             if request.get('markup_recovery') is not None:
-                from congress_api.lake.reading_versions import MARKUP_RECOVERY_VERSIONS
                 if (request['markup_recovery']['case']['parser'] != request['parser']
                         or request.get('parser_version') != MARKUP_RECOVERY_VERSIONS.get(request['parser'])):
                     raise RecoveryInputError('Worker key differs from the reviewed recovery version')
@@ -630,9 +637,10 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
     bounded recovery versions. It requires local originals and never invokes OCR.
     """
     from congress_api.parsers.body_text import DEFAULT_STRATEGY, load_page_rule
-    from congress_api.lake.reading_versions import MARKUP_RECOVERY_VERSIONS
+    from congress_api.lake.reading_versions import MARKUP_RECOVERY_VERSIONS, RETIRED_MARKUP_RECOVERY_VERSIONS
     ParserWorkerPool.validate_budget(parser_workers, parser_memory_bytes, worker_memory_bytes)
-    if recovery and any(recovery_versions().get(p) != v for p, v in planned['versions'].items()):
+    if recovery and (not isinstance(planned.get('versions'), dict) or not planned['versions']
+                     or any(recovery_versions().get(p) != v for p, v in planned['versions'].items())):
         raise ValueError('Unlimited body reads require the explicit recovery reading versions')
     strategy = strategy or DEFAULT_STRATEGY
     recovery_cases = {}
@@ -650,8 +658,25 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
             replacement.checkpoint_identity is None
             for pages in rule.page_overrides.values() for replacement in pages.values())):
         raise ValueError('Page checkpoints require a strategy with reproducible identity')
-    if markup_recovery is None and set(planned['versions'].values()) & set(MARKUP_RECOVERY_VERSIONS.values()):
-        raise ValueError('Reviewed markup reading versions require their pinned recovery manifest')
+    if markup_recovery is None:
+        items = list(items)
+        all_markup_recovery = set(MARKUP_RECOVERY_VERSIONS.values()) | {
+            v for ids in RETIRED_MARKUP_RECOVERY_VERSIONS.values() for v in ids
+        }
+        planned_versions = planned.get('versions')
+        if not isinstance(planned_versions, dict) or not planned_versions:
+            raise ValueError('Body-text staging requires explicit planned reading versions')
+        item_versions = {item.get('parser_version') for item in items if isinstance(item, dict)}
+        if (set(planned_versions.values()) | item_versions) & all_markup_recovery:
+            raise ValueError('Reviewed markup reading versions require their pinned recovery manifest')
+        expected_versions = recovery_versions() if recovery else current_versions()
+        if any(expected_versions.get(p) != v for p, v in planned_versions.items()):
+            raise ValueError('Unlimited body reads require the explicit recovery reading versions'
+                             if recovery else 'Ordinary body-text staging requires the current declared reading versions')
+        for item in items:
+            if (not isinstance(item, dict) or item.get('parser') not in PARSERS
+                    or planned_versions.get(item.get('parser')) != item.get('parser_version')):
+                raise ValueError('Staged item parser or version differs from the planned execution versions')
     work = Path(work).resolve()
     if page_checkpoints is not None:
         page_checkpoints = Path(page_checkpoints).resolve()
@@ -718,17 +743,15 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
             relative = Path(item['relative_path'])
             if relative.is_absolute() or '..' in relative.parts or body_object_digest(item['physical_key']) != body_hex:
                 raise ValueError('Body copy path or key does not name its body')
-            request = dict(body_sha=body_hex, parser=parser, stored_bytes=item['stored_bytes'],
+            request = dict(body_sha=body_hex, parser=parser, parser_version=version, stored_bytes=item['stored_bytes'],
                            texts=str(texts_dir), strategy=strategy, page_deadline_seconds=page_deadline_seconds,
                            unlimited_body_bytes=recovery, diagnostics=str(diagnostics_dir / (body_hex + '.txt')))
             if markup_recovery is not None:
                 request['markup_recovery'] = recovery_cases[body_hex]
-                request['parser_version'] = version
             if page_checkpoints is not None:
                 request['page_checkpoints'] = str(page_checkpoints)
             if retain_quality_evidence:
-                request.update(parser_version=version,
-                               quality_evidence=str(diagnostics_dir / (body_hex + '.quality.jsonl')))
+                request['quality_evidence'] = str(diagnostics_dir / (body_hex + '.quality.jsonl'))
             if origin is not None:
                 oversize = not recovery and item['stored_bytes'] is not None and item['stored_bytes'] > MAX_STORED_BYTES
                 if not oversize and item['stored_bytes'] is None:
