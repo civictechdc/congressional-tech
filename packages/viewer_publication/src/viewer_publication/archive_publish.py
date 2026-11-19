@@ -104,8 +104,15 @@ def _collect_spicy_generations(client,store,bucket,*,live,previous,candidate_dig
     return sorted(pairs)
 
 
-def input_digest(*,receipt_keys,provenance,profile,entity_digests):
-    """Hash semantic inputs only; snapshots and run fields never enter this API."""
+def extra_pins_for_snapshots(snapshots):
+    """Extract standalone non-table pins from snapshots so all input_digest callers agree."""
+    if isinstance(snapshots,dict) and snapshots.get('body_qualifications') is not None:
+        return {'body_qualifications':snapshots['body_qualifications']}
+    return None
+
+
+def input_digest(*,receipt_keys,provenance,profile,entity_digests,extra_pins=None):
+    """Hash semantic inputs and explicit standalone pins; table snapshots and run fields stay out."""
     if not isinstance(profile,dict) or not profile:
         raise ValueError('Input identity requires the semantic model profile')
     entities=_valid_entity_digests(entity_digests)
@@ -122,6 +129,8 @@ def input_digest(*,receipt_keys,provenance,profile,entity_digests):
         if key in pinned and pinned[key]!=etag:raise ValueError('Conflicting pinned provenance ETags')
         pinned[key]=etag
     identity=[keys,[[key,pinned[key]] for key in sorted(pinned)],entities,profile]
+    if extra_pins:
+        identity.append(extra_pins)
     return sha256(_encoded(identity)).hexdigest()
 
 
@@ -377,7 +386,8 @@ def matching_live_input(store,*,release_id,digest):
     keys=read_receipt_list(record['receipt_keys_sha256'],store.get(
         PREFIX+release_id+'/inputs/receipts/'+record['receipt_keys_sha256']+'.json.gz'))
     actual=input_digest(receipt_keys=keys,provenance=record['provenance'],
-        profile=record['profile'],entity_digests=record['entity_digests'])
+        profile=record['profile'],entity_digests=record['entity_digests'],
+        extra_pins=extra_pins_for_snapshots(record.get('snapshots')))
     if actual!=digest or record.get('input_digest')!=digest:
         raise ValueError('Live input record differs from its semantic identity')
     return record
@@ -470,7 +480,7 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
                       input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None,asset_journal=None,
                       base_release=None,release_causes=None,link_history_dirs=(),first_release=False,automatic_captures=None,
-                      selected_pointer_reconciled=False,receipt_client=None):
+                      automatic_qualifications=(),selected_pointer_reconciled=False,receipt_client=None):
     """Upload a pinned model candidate and use the existing reader gates and CAS.
 
     The caller owns actual model planning, completeness and early skip. This stage
@@ -499,7 +509,8 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
         store=NativeArchiveStore(client=client,engine=engine,bucket=bucket,work=Path(work)/'uploads',comparison_acceptance=comparison_acceptance,asset_journal=asset_journal)
         receipt_keys=sorted(set(receipt_keys))
         digest=input_digest(receipt_keys=receipt_keys,provenance=input_record['provenance'],
-            profile=input_record['profile'],entity_digests=input_record['entity_digests'])
+            profile=input_record['profile'],entity_digests=input_record['entity_digests'],
+            extra_pins=extra_pins_for_snapshots(input_record.get('snapshots')))
         if input_record.get('input_digest')!=digest:raise ValueError('Input record semantic identity differs')
         manifest,raw,release_id,admission=_candidate(Path(release),manifest_pin,result_pin,
             input_record=input_record,receipt_keys=receipt_keys)
@@ -558,13 +569,18 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                 # The traced proof decides every night it can read; a night that also changed existing
                 # rows goes to the data-only rule (ct-pz32). See data_only_night.unattended_causes.
                 from viewer_publication.data_only_night import data_only_causes,recaptured_pages,unattended_causes
-                from viewer_publication.release_gate import capture_job
+                from viewer_publication.release_gate import capture_job,qual_states_job
                 found,stopped,facts=unattended_causes(report,
                     traced=lambda value:automatic_causes(value,base_release,Path(release),engine=engine,
                         captures=automatic_captures,live_receipt_keys=held,read_receipt=read_receipt,work=Path(work)/'automatic',
-                        candidate_receipt_keys=receipt_keys,evidence_dir=Path(result_pin['path']).parent/'evidence'),
+                        candidate_receipt_keys=receipt_keys,evidence_dir=Path(result_pin['path']).parent/'evidence',
+                        qualification_files=automatic_qualifications),
                     data_only=lambda value:data_only_causes(value,candidate_record=input_record,live_records=entries,
                         candidate_receipt_keys=receipt_keys,base_dir=base_release,candidate_dir=Path(release),
+                        qualification_files=automatic_qualifications,
+                        qual_proof=lambda urls,shas=():qual_states_job(Path(work)/'data-only-qualifications',engine,automatic_captures,
+                            new_receipts=set(receipt_keys)-held,held_receipts=held,
+                            qual_urls=urls,qualification_files=automatic_qualifications,added_failed_shas=shas),
                         # A page captured again at its own address is proven from the raw receipt that stored it.
                         link_proof=lambda rule:recaptured_pages(rule,base_release,Path(release),held=held,read_receipt=read_receipt,
                             trace=lambda keys:capture_job(Path(work)/'recaptures',engine,automatic_captures,keys=keys)['trace'])))

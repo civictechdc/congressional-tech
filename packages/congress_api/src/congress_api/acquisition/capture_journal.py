@@ -91,26 +91,50 @@ class DurableCapture:
         owner=self
         class JournalAdapter:
             sequence=0
-            def hop(self,url,destination,*,limit,headers):
+            def hop(self,url,destination,*,limit,headers,prior_validators=None):
+                import inspect
                 index=self.sequence;self.sequence+=1
                 record=root/f'{kind}-{index}.json'
                 owned=root/f'{kind}-{index}.sealed'
                 # Header values can contain credentials; bind by hash only.
-                request=dict(url=url,limit=limit,headers_sha256=hashlib.sha256(json.dumps(headers,sort_keys=True).encode()).hexdigest())
+                plain={k:v for k,v in headers.items() if k.lower() not in {'if-none-match','if-modified-since'}}
+                base_sha=hashlib.sha256(json.dumps(plain,sort_keys=True).encode()).hexdigest()
+                request=dict(url=url,limit=limit,headers_sha256=hashlib.sha256(json.dumps(headers,sort_keys=True).encode()).hexdigest(),
+                             base_headers_sha256=base_sha)
+                if prior_validators is not None:
+                    request['validators_sha256']=hashlib.sha256(json.dumps(prior_validators,sort_keys=True,default=str).encode()).hexdigest()
                 previous=json.loads(record.read_text()) if record.exists() else None
                 decision=root/f'{kind}-{index}.unknown.json'
                 if previous is not None and decision.exists() and json.loads(decision.read_text())['previous']==previous:
                     owner._finish_retry(root,kind,index)
                     previous=None
                 if previous is not None:
-                    if previous['request']!=request:raise ValueError('Durable request definition changed')
+                    prev_req=previous['request']
+                    if prev_req!=request and previous['phase']=='downloaded':
+                        # A sealed hop's bytes and headers were already received in this operation:
+                        # allow validator/conditional-header state to appear, change, or clear across
+                        # restart while still refusing any URL, limit, or non-conditional header drift.
+                        same_core=prev_req.get('url')==url and prev_req.get('limit')==limit
+                        if 'base_headers_sha256' in prev_req:
+                            headers_ok=prev_req['base_headers_sha256']==base_sha
+                        else:
+                            headers_ok=prev_req.get('headers_sha256') in {request['headers_sha256'],base_sha}
+                        if same_core and headers_ok:
+                            request=prev_req
+                    if prev_req!=request:raise ValueError('Durable request definition changed')
                     if previous['phase']=='started':raise UnknownRemoteOutcome('Remote outcome is unknown; reconcile or record an explicit retry decision')
                     facts=dict(previous['transfer']);_checked_file(owned,facts['sha256'],facts['size'])
                 else:
                     started=dict(phase='started',request=request,attempt_token=uuid4().hex)
                     durable_json(record,started)
                     from congress_api.acquisition.admission import AdmissionDenied
-                    try:transfer=adapter.hop(url,owned,limit=limit,headers=headers)
+                    params = inspect.signature(adapter.hop).parameters
+                    accepts_validators = 'prior_validators' in params
+                    try:
+                        if accepts_validators and prior_validators is not None:
+                            transfer=adapter.hop(url,owned,limit=limit,headers=headers,prior_validators=prior_validators)
+                        else:
+                            transfer=adapter.hop(url,owned,limit=limit,headers=headers)
                     except AdmissionDenied:
                         record.unlink()  # No network call was admitted.
                         raise

@@ -406,6 +406,7 @@ def evaluate_campaign_url_state(
     work_dir: str | Path, *, engine: Any, inputs: list[dict[str, Any]],
     prep_steps: list[dict[str, Any]] | None = None,
     recovery_policy: Mapping[str, Any] | None = None,
+    qualifications: Any = None,
     output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     """Execute full `url_state_steps` + `url_state_diagnostics` and enforce zero invariant errors.
@@ -413,18 +414,27 @@ def evaluate_campaign_url_state(
     `url_state.parquet` is written under `work_dir` and moved to `output_dir` only
     after the invariants pass; a failing table stays in `work_dir` for inspection.
     """
+    from congress_api.retention.qualification_facts import model_qualification_input
     from viewer_publication.archive_url_state import url_state_diagnostics, url_state_steps
 
     work = Path(work_dir)
     pol = dict(recovery_policy) if recovery_policy is not None else None
-    steps = list(prep_steps or ()) + url_state_steps(recovery_policy=pol)
+    job_inputs = list(inputs)
+    all_prep = list(prep_steps or ())
+    has_qual_step = any(s.get('name') == 'body_qualifications' for s in all_prep)
+    if qualifications is not None:
+        qual_inp, qual_step = model_qualification_input(qualifications, work / 'qualifications')
+        job_inputs.append(qual_inp)
+        all_prep.append(qual_step)
+        has_qual_step = True
+    steps = all_prep + url_state_steps(recovery_policy=pol, include_qualifications=has_qual_step)
     staged_root = work / 'staged-outputs'
     staged_root.mkdir(parents=True, exist_ok=True)
     outputs = [
         parquet_output(staged_root, 'url_state', 'SELECT * FROM url_state ORDER BY requested_url', ['requested_url'])
     ]
     queries = list(url_state_diagnostics())
-    result = run_job(work, engine, inputs=inputs, steps=steps, outputs=outputs, queries=queries)
+    result = run_job(work, engine, inputs=job_inputs, steps=steps, outputs=outputs, queries=queries)
     failing = {k: v for k, v in result['url_state_invariants'][0].items() if v}
     if failing:
         raise ValueError(f'URL state invariants failed: {failing}; staged table retained in {staged_root}')
@@ -439,6 +449,7 @@ def run_recovery_campaign(
     work_dir: str | Path, *, campaign_id: str, targets: Any, engine: Any,
     policy: Any | None = None, captures: Any | None = None,
     states: Any | None = None, fetch_outcomes: Any | None = None,
+    qualifications: Any = None,
     source_or_store: Any | None = None, history: Mapping[str, Any] | None = None,
     membership_origin: str = 'baseline', refresh_policy: str = 'historical_only',
     candidates: Iterable[Mapping[str, Any]] | None = None,
@@ -462,10 +473,72 @@ def run_recovery_campaign(
     inputs_dir = root / 'inputs'
     inputs_dir.mkdir(parents=True, exist_ok=True)
 
+    qual_source = qualifications
+    loaded_store_quals = None
+    if qual_source is None:
+        qual_store = store if store is not None else source_or_store
+        if qual_store is not None:
+            from datetime import datetime, timezone
+            from congress_api.retention.qualification_facts import (
+                load_qualification_facts,
+                load_store_qualifications,
+                reconcile_store_receipt_qualifications,
+                state_reconcile_min_date,
+            )
+            from corpus_recovery.qualification import qualify as run_qualify
+            if hasattr(qual_store, 'adapter'):
+                loaded_store_quals = load_store_qualifications(qual_store, work=inputs_dir / 'qualification-inventory')
+                reconciled = reconcile_store_receipt_qualifications(
+                    qual_store,
+                    existing_loaded=loaded_store_quals,
+                    qualify_fn=run_qualify,
+                    cache_dir=inputs_dir / 'qualification-cache',
+                    work=inputs_dir / 'qualification-reconcile',
+                    decided_at=datetime.now(timezone.utc).isoformat(),
+                    min_write_date=state_reconcile_min_date(state),
+                    persist=True,
+                )
+                if reconciled['imported'] is not None:
+                    loaded_store_quals = load_store_qualifications(qual_store, work=inputs_dir / 'qualification-inventory')
+                if loaded_store_quals['files']:
+                    qual_source = loaded_store_quals['files']
+            elif isinstance(qual_store, (str, Path)):
+                qdir = Path(qual_store) / 'provenance' / 'qualifications'
+                if qdir.is_dir():
+                    qfiles = sorted(qdir.glob('*.jsonl'))
+                    if qfiles:
+                        qual_source = qfiles
+                        loaded_store_quals = load_qualification_facts(qfiles)
+
+    resolved_targets = targets
+    if resolved_targets is None:
+        derived_urls: list[str] = []
+        seen_urls: set[str] = set()
+        if state is not None and Path(state).is_file():
+            import pyarrow.parquet as pq
+            schema = set(pq.read_schema(state).names)
+            if {'requested_url', 'capture_reason'} <= schema:
+                tbl = pq.read_table(state, columns=['requested_url', 'capture_reason'])
+                for row in tbl.to_pylist():
+                    u = row.get('requested_url')
+                    if row.get('capture_reason') == 'body_not_qualified' and isinstance(u, str) and u not in seen_urls:
+                        seen_urls.add(u)
+                        derived_urls.append(u)
+        if qual_source is not None or loaded_store_quals is not None:
+            from congress_api.retention.qualification_facts import load_qualification_facts
+            q_loaded = loaded_store_quals if loaded_store_quals is not None else load_qualification_facts(qual_source)
+            req_map = q_loaded.get('by_requested_url') or q_loaded.get('by_url') or {}
+            for u, entry in sorted(req_map.items()):
+                if entry.get('qualified') is False and not entry.get('retryable', False) and u not in seen_urls:
+                    seen_urls.add(u)
+                    derived_urls.append(u)
+        resolved_targets = [{'target_url': u} for u in derived_urls]
+
     targets_parquet = inputs_dir / 'targets.parquet'
     inventory_rows = build_target_inventory(
-        targets, policy=policy, history=history, source_or_store=source_or_store,
-        captures=captures, states=states, fetch_outcomes=fetch_outcomes, output=targets_parquet,
+        resolved_targets, policy=policy, history=history, source_or_store=source_or_store,
+        captures=captures, states=states, fetch_outcomes=fetch_outcomes,
+        qualifications=qual_source, output=targets_parquet,
         membership_origin=membership_origin, refresh_policy=refresh_policy,
     )
     diagnostics: list[dict[str, Any]] = []

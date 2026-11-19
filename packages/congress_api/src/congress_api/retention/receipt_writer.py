@@ -41,6 +41,10 @@ def outcome(attempt, stored):
     """Use transfer/status facts, with body-store results only for good fetches."""
     if 'retry-after' in attempt.headers or attempt.http_status in {429,503}:
         return 'retry_later'
+    if attempt.complete and (attempt.http_status == 304 or (
+            attempt.http_status == 200 and attempt.error == 'validator_unchanged'
+            and attempt.body is None and 'content-range' not in attempt.headers)):
+        return 'unchanged'
     if not attempt.complete or attempt.error:
         return 'size_limit' if attempt.error in {'size_limit','response_limit','source_response_limit'} else 'request_failed'
     if attempt.http_status is not None and 200 <= attempt.http_status < 300:

@@ -127,7 +127,7 @@ def _definition_hashes(root):
         *(Path('packages/congress_api/src/congress_api') / name for name in (
             'lake/readings.py', 'lake/reading_versions.py', 'lake/compatible_versions.py', 'lake/versions.py',
             'lake/model_sql.py', 'lake/_record_producer.py', 'lake/meeting_records.py', 'lake/appearance_records.py',
-            'retention/parser_worker.py', 'retention/process_resources.py',
+            'retention/parser_worker.py', 'retention/process_resources.py', 'retention/qualification_facts.py',
         )),
     ]
     closure = ImportClosure(root, distributions={'house_naming': ['house-naming-guide']})

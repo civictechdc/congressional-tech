@@ -114,6 +114,301 @@ def test_an_input_neither_side_names_cannot_be_called_equal(decide):
     assert decide(value, record=bare, records=[old])[1] == ['data-only night: the candidate names no unprofiled_inputs']
 
 
+def test_daily_qualification_provenance_may_grow_while_decisions_and_removed_ledgers_stop(tmp_path, releases):
+    """Review 7b: daily capture appends receipt-bound provenance/qualifications/ ledgers without
+    stopping a mixed data-only night, while decision edits, removed ledgers or unknown receipts stop."""
+    import hashlib
+    from congress_api.retention.provenance import file_pin
+    from congress_api.retention.qualification_facts import build_qualification_fact
+    from congress_shared.custody import verify_local_file
+    from corpus_recovery.qualification import qualify
+
+    base = releases('qbase', ['t'] * 1000, ['n'] * 200 + [None] * 800)
+    cand = releases('qcand', ['t'] * 1000, ['n'] * 200 + [None] * 800)
+    bad_pdf = tmp_path / 'bad.pdf'
+    bad_pdf.write_bytes(b'%PDF-1.7\ntruncated')
+    q_rec = qualify(verify_local_file(bad_pdf), tmp_path / 'qcache')
+
+    q_key_1 = 'provenance/qualifications/20261116T120000Z-' + '1' * 64 + '.jsonl'
+    q_key_2 = 'provenance/qualifications/20261117T120000Z-' + '2' * 64 + '.jsonl'
+    q_path_2 = tmp_path / 'q2.jsonl'
+    fact_2 = build_qualification_fact(q_rec, requested_url='https://fixture.test/doc.pdf', url='https://fixture.test/doc.pdf',
+                                      receipt_key=NIGHT[0], retrieved_at='2026-11-17T12:00:00Z', http_status=200,
+                                      headers={'Content-Type': 'application/pdf'})
+    q_bytes_2 = (json.dumps(fact_2, sort_keys=True) + '\n').encode()
+    q_path_2.write_bytes(q_bytes_2)
+    etag_1 = '"' + 'a' * 32 + '"'
+    etag_2 = '"' + hashlib.md5(q_bytes_2).hexdigest() + '"'
+
+    live_prov = [*INPUTS['provenance'], dict(key=q_key_1, etag=etag_1)]
+    cand_prov = [*live_prov, dict(key=q_key_2, etag=etag_2)]
+    val = report(group('list.parquet', 'changed title', 5))
+
+    entries, reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=cand_prov),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        qualification_files=[dict(key=q_key_2, path=str(q_path_2), **file_pin(q_path_2))],
+    )
+    assert reasons == [] and len(entries) == 1
+
+    # Dropping or mutating an existing live qualification ledger stops the night.
+    _, dropped_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*INPUTS['provenance'], dict(key=q_key_2, etag=etag_2)]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+    )
+    assert dropped_reasons == ['data-only night: the candidate differs from the live release in provenance']
+
+    # Citing an unknown receipt outside candidate_receipt_keys stops the night.
+    q_path_unknown = tmp_path / 'q-unknown.jsonl'
+    fact_unknown = build_qualification_fact(q_rec, requested_url='https://fixture.test/doc.pdf', url='https://fixture.test/doc.pdf',
+                                            receipt_key='receipts/documents/2026-11-19/outside.jsonl.gz',
+                                            retrieved_at='2026-11-19T12:00:00Z', http_status=200)
+    raw_unk = (json.dumps(fact_unknown, sort_keys=True) + '\n').encode()
+    q_path_unknown.write_bytes(raw_unk)
+    _, unk_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*live_prov, dict(key=q_key_2, etag='"' + hashlib.md5(raw_unk).hexdigest() + '"')]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        qualification_files=[dict(key=q_key_2, path=str(q_path_unknown), **file_pin(q_path_unknown))],
+    )
+    assert any('cites unknown receipts' in r for r in unk_reasons)
+
+    # Review 7c: unbound records (receipt_key=None) and retryable=True records citing unknown receipts also stop.
+    from dataclasses import asdict
+    from datetime import datetime, timezone
+    from corpus_recovery.qualification import QualificationConfig, _finish, _identity
+
+    q_path_unbound = tmp_path / 'q-unbound.jsonl'
+    fact_unbound = build_qualification_fact(q_rec, requested_url='https://fixture.test/doc.pdf', url='https://fixture.test/doc.pdf',
+                                            receipt_key=None, retrieved_at='2026-11-17T12:00:00Z', http_status=200)
+    raw_unb = (json.dumps(fact_unbound, sort_keys=True) + '\n').encode()
+    q_path_unbound.write_bytes(raw_unb)
+    _, unb_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*live_prov, dict(key=q_key_2, etag='"' + hashlib.md5(raw_unb).hexdigest() + '"')]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        qualification_files=[dict(key=q_key_2, path=str(q_path_unbound), **file_pin(q_path_unbound))],
+    )
+    assert any('unbound' in r for r in unb_reasons)
+
+    retry_rec = _finish({
+        'body_sha256': q_rec['body_sha256'], 'body_bytes': q_rec['body_bytes'],
+        'validator': _identity(), 'config': asdict(QualificationConfig()),
+        'status': 'unresolved', 'media_type': 'application/pdf', 'reason': 'worker_timeout', 'retryable': True,
+    })
+    q_path_retry_unk = tmp_path / 'q-retry-unk.jsonl'
+    fact_retry_unk = build_qualification_fact(retry_rec, requested_url='https://fixture.test/doc.pdf', url='https://fixture.test/doc.pdf',
+                                              receipt_key='receipts/documents/2026-11-19/outside-retry.jsonl.gz',
+                                              retrieved_at='2026-11-19T12:00:00Z', http_status=200)
+    raw_ru = (json.dumps(fact_retry_unk, sort_keys=True) + '\n').encode()
+    q_path_retry_unk.write_bytes(raw_ru)
+    _, ru_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*live_prov, dict(key=q_key_2, etag='"' + hashlib.md5(raw_ru).hexdigest() + '"')]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        qualification_files=[dict(key=q_key_2, path=str(q_path_retry_unk), **file_pin(q_path_retry_unk))],
+    )
+    assert any('cites unknown receipts' in r for r in ru_reasons)
+
+    # Review 7c: a mixed night (changed list.parquet title + url_state clearing body_not_qualified on a 304)
+    # routed through unattended_causes -> data_only_causes MUST refuse without positive qualification proof!
+    pq.write_table(pa.table({
+        'requested_url': ['https://fixture.test/doc.pdf'],
+        'attempts': pa.array([1], pa.int32()),
+        'last_good_at': pa.array([datetime(2026, 11, 16, tzinfo=timezone.utc)], pa.timestamp('us', tz='UTC')),
+        'capture_disposition': ['eligible'],
+        'capture_reason': ['body_not_qualified'],
+    }), base / 'url_state.parquet')
+    pq.write_table(pa.table({
+        'requested_url': ['https://fixture.test/doc.pdf'],
+        'attempts': pa.array([2], pa.int32()),
+        'last_good_at': pa.array([datetime(2026, 11, 16, tzinfo=timezone.utc)], pa.timestamp('us', tz='UTC')),
+        'capture_disposition': ['eligible'],
+        'capture_reason': ['no_satisfying_recovery'],
+    }), cand / 'url_state.parquet')
+    mixed_rep = report(
+        group('list.parquet', 'changed title', 1),
+        group('url_state.parquet', 'changed capture_reason', 1),
+    )
+    mixed_entries, mixed_reasons, _ = unattended_causes(
+        mixed_rep,
+        traced=lambda _r: pytest.fail('mixed night should route to data_only'),
+        data_only=lambda r: data_only_causes(
+            r, candidate_record=INPUTS, live_records=[live()],
+            candidate_receipt_keys=[*LIVE_KEYS, NIGHT[0]], base_dir=base, candidate_dir=cand,
+            qualification_files=(),
+        ),
+    )
+    assert mixed_entries == []
+    assert any('capture_reason is not implied by verified body qualifications' in r for r in mixed_reasons)
+
+    # Review 7d: mixed-night A -> B cross-URL SHA false-clear reproduction!
+    # URL u serves qualified body A in NIGHT[0] (advancing last_good_at), then serves failed body B2
+    # in NIGHT[1] whose verified failure was recorded under u_other (so URL-only lookup on u sees A).
+    # Capture-backed qual_states_job joins u's latest capture to B2 by SHA and REFUSES the false clear;
+    # when u's latest capture genuinely is A, qual_states_job APPROVES the clear!
+    import io
+    import os
+    from pypdf import PdfWriter
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.release_gate import qual_states_job
+    from test_release_gate import write_captures
+
+    pw = PdfWriter()
+    pw.add_blank_page(width=72, height=72)
+    pbuf = io.BytesIO()
+    pw.write(pbuf)
+    good_pdf_a = pbuf.getvalue()
+    good_path_a = tmp_path / 'good-a.pdf'
+    good_path_a.write_bytes(good_pdf_a)
+    good_rec_a = qualify(verify_local_file(good_path_a), tmp_path / 'qcache')
+    assert good_rec_a['status'] == 'qualified'
+
+    bad_pdf_b2 = b'%PDF-1.7\n99 0 obj\n<< /Type /Catalog >>\ntruncated-cross-url'
+    bad_path_b2 = tmp_path / 'bad-b2.pdf'
+    bad_path_b2.write_bytes(bad_pdf_b2)
+    bad_rec_b2 = qualify(verify_local_file(bad_path_b2), tmp_path / 'qcache')
+    assert bad_rec_b2['status'] == 'unresolved'
+
+    u_target = 'https://fixture.test/doc.pdf'
+    u_other = 'https://fixture.test/other-mirror.pdf'
+    t_live = datetime(2026, 11, 16, 12, 0, tzinfo=timezone.utc)
+    t_good_a = datetime(2026, 11, 17, 12, 0, tzinfo=timezone.utc)
+    t_bad_b2 = datetime(2026, 11, 17, 13, 0, tzinfo=timezone.utc)
+
+    q_ab_path = tmp_path / 'q-ab.jsonl'
+    q_ab_bytes = (
+        json.dumps(build_qualification_fact(q_rec, requested_url=u_target, url=u_target,
+                                            receipt_key=LIVE_KEYS[0], retrieved_at=t_live.isoformat(), http_status=200), sort_keys=True) + '\n'
+        + json.dumps(build_qualification_fact(good_rec_a, requested_url=u_target, url=u_target,
+                                              receipt_key=NIGHT[0], retrieved_at=t_good_a.isoformat(), http_status=200), sort_keys=True) + '\n'
+        + json.dumps(build_qualification_fact(bad_rec_b2, requested_url=u_other, url=u_other,
+                                              receipt_key=LIVE_KEYS[0], retrieved_at=t_live.isoformat(), http_status=200), sort_keys=True) + '\n'
+    ).encode()
+    q_ab_path.write_bytes(q_ab_bytes)
+    q_ab_key = 'provenance/qualifications/20261117T130500Z-' + '3' * 64 + '.jsonl'
+    q_ab_etag = '"' + hashlib.md5(q_ab_bytes).hexdigest() + '"'
+    q_ab_files = [dict(key=q_ab_key, path=str(q_ab_path), **file_pin(q_ab_path))]
+    cand_ab_prov = [*INPUTS['provenance'], dict(key=q_ab_key, etag=q_ab_etag)]
+
+    pq.write_table(pa.table({
+        'requested_url': [u_target],
+        'attempts': pa.array([3], pa.int32()),
+        'last_good_at': pa.array([t_bad_b2], pa.timestamp('us', tz='UTC')),
+        'capture_disposition': ['eligible'],
+        'capture_reason': ['no_satisfying_recovery'],
+    }), cand / 'url_state.parquet')
+
+    caps_ab_pq = tmp_path / 'caps-ab.parquet'
+    write_captures([
+        dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=LIVE_KEYS[0], receipt_line=1,
+             requested_url=u_target, sha256=bytes.fromhex(q_rec['body_sha256']), retrieved_at=t_live, outcome='stored'),
+        dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=NIGHT[0], receipt_line=1,
+             requested_url=u_target, sha256=bytes.fromhex(good_rec_a['body_sha256']), retrieved_at=t_good_a, outcome='stored'),
+        dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=NIGHT[1], receipt_line=1,
+             requested_url=u_target, sha256=bytes.fromhex(bad_rec_b2['body_sha256']), retrieved_at=t_bad_b2, outcome='stored'),
+    ], caps_ab_pq)
+
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as eng:
+        ab_entries, ab_reasons, _ = unattended_causes(
+            mixed_rep,
+            traced=lambda _r: pytest.fail('mixed night should route to data_only'),
+            data_only=lambda r: data_only_causes(
+                r, candidate_record=dict(INPUTS, provenance=cand_ab_prov), live_records=[live()],
+                candidate_receipt_keys=[*LIVE_KEYS, NIGHT[0], NIGHT[1]], base_dir=base, candidate_dir=cand,
+                qualification_files=q_ab_files,
+                qual_proof=lambda urls: qual_states_job(
+                    tmp_path / 'qual-ab', eng, dict(kind='parquet', path=str(caps_ab_pq)),
+                    new_receipts={NIGHT[0], NIGHT[1]}, held_receipts=set(LIVE_KEYS),
+                    qual_urls=urls, qualification_files=q_ab_files,
+                ),
+            ),
+        )
+        assert ab_entries == []
+        assert any('capture_reason is not implied by verified body qualifications' in r for r in ab_reasons)
+
+        # Positive counterpart: when u_target's latest capture is A (only NIGHT[0], attempts=2, last_good_at=t_good_a),
+        # qual_states_job proves (url_qualified=True, new_body_qualified=True) and approves the clear!
+        caps_ok_pq = tmp_path / 'caps-ok.parquet'
+        write_captures([
+            dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=LIVE_KEYS[0], receipt_line=1,
+                 requested_url=u_target, sha256=bytes.fromhex(q_rec['body_sha256']), retrieved_at=t_live, outcome='stored'),
+            dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=NIGHT[0], receipt_line=1,
+                 requested_url=u_target, sha256=bytes.fromhex(good_rec_a['body_sha256']), retrieved_at=t_good_a, outcome='stored'),
+        ], caps_ok_pq)
+        pq.write_table(pa.table({
+            'requested_url': [u_target],
+            'attempts': pa.array([2], pa.int32()),
+            'last_good_at': pa.array([t_good_a], pa.timestamp('us', tz='UTC')),
+            'capture_disposition': ['eligible'],
+            'capture_reason': ['no_satisfying_recovery'],
+        }), cand / 'url_state.parquet')
+        ok_entries, ok_reasons, _ = unattended_causes(
+            mixed_rep,
+            traced=lambda _r: pytest.fail('mixed night should route to data_only'),
+            data_only=lambda r: data_only_causes(
+                r, candidate_record=dict(INPUTS, provenance=cand_ab_prov), live_records=[live()],
+                candidate_receipt_keys=[*LIVE_KEYS, NIGHT[0]], base_dir=base, candidate_dir=cand,
+                qualification_files=q_ab_files,
+                qual_proof=lambda urls, shas=(): qual_states_job(
+                    tmp_path / 'qual-ok', eng, dict(kind='parquet', path=str(caps_ok_pq)),
+                    new_receipts={NIGHT[0]}, held_receipts=set(LIVE_KEYS),
+                    qual_urls=urls, qualification_files=q_ab_files, added_failed_shas=shas,
+                ),
+            ),
+        )
+        assert ok_reasons == [] and len(ok_entries) == 2
+
+        # Review 7e: held URL U already holds failed body B2 (unchanged attempts/dates), while tonight
+        # URL V supplies the first verified failure for B2 in an added ledger! Leaving U at
+        # 'no_satisfying_recovery' MUST be refused, and marking both U and V 'body_not_qualified' passes!
+        u_held = 'https://fixture.test/held-shared.pdf'
+        u_new_v = 'https://fixture.test/new-shared.pdf'
+        q_uv_path = tmp_path / 'q-uv.jsonl'
+        q_uv_bytes = (json.dumps(build_qualification_fact(
+            bad_rec_b2, requested_url=u_new_v, url=u_new_v,
+            receipt_key=NIGHT[0], retrieved_at=t_good_a.isoformat(), http_status=200,
+        ), sort_keys=True) + '\n').encode()
+        q_uv_path.write_bytes(q_uv_bytes)
+        q_uv_key = 'provenance/qualifications/20261117T140000Z-' + '4' * 64 + '.jsonl'
+        q_uv_files = [dict(key=q_uv_key, path=str(q_uv_path), **file_pin(q_uv_path))]
+        cand_uv_prov = [*INPUTS['provenance'], dict(key=q_uv_key, etag='"' + hashlib.md5(q_uv_bytes).hexdigest() + '"')]
+        caps_uv_pq = tmp_path / 'caps-uv.parquet'
+        write_captures([
+            dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=LIVE_KEYS[0], receipt_line=1,
+                 requested_url=u_held, sha256=bytes.fromhex(bad_rec_b2['body_sha256']), retrieved_at=t_live, outcome='stored'),
+            dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=NIGHT[0], receipt_line=1,
+                 requested_url=u_new_v, sha256=bytes.fromhex(bad_rec_b2['body_sha256']), retrieved_at=t_good_a, outcome='stored'),
+        ], caps_uv_pq)
+        pq.write_table(pa.table({
+            'requested_url': [u_held],
+            'attempts': pa.array([1], pa.int32()),
+            'last_good_at': pa.array([t_live], pa.timestamp('us', tz='UTC')),
+            'capture_disposition': ['eligible'],
+            'capture_reason': ['no_satisfying_recovery'],
+        }), base / 'url_state.parquet')
+        pq.write_table(pa.table({
+            'requested_url': [u_held, u_new_v],
+            'attempts': pa.array([1, 1], pa.int32()),
+            'last_good_at': pa.array([t_live, t_good_a], pa.timestamp('us', tz='UTC')),
+            'capture_disposition': ['eligible', 'eligible'],
+            'capture_reason': ['no_satisfying_recovery', 'body_not_qualified'],
+        }), cand / 'url_state.parquet')
+        _, uv_reasons, _ = data_only_causes(
+            mixed_rep, candidate_record=dict(INPUTS, provenance=cand_uv_prov), live_records=[live()],
+            candidate_receipt_keys=[*LIVE_KEYS, NIGHT[0]], base_dir=base, candidate_dir=cand,
+            qualification_files=q_uv_files,
+            qual_proof=lambda urls, shas=(): qual_states_job(
+                tmp_path / 'qual-uv', eng, dict(kind='parquet', path=str(caps_uv_pq)),
+                new_receipts={NIGHT[0]}, held_receipts=set(LIVE_KEYS),
+                qual_urls=urls, qualification_files=q_uv_files, added_failed_shas=shas,
+            ),
+        )
+        assert any(u_held in r and 'capture_reason is not implied' in r for r in uv_reasons)
+
+
 def test_any_kept_input_of_the_live_release_with_the_same_inputs_serves_and_every_kept_receipt_counts_as_live(decide):
     older = live(keys=['receipts/documents/2026-11-15/z.jsonl.gz'], entity_digests={'members': 'o' * 64})
     value = report(group('list.parquet', 'added rows', 2, 'no surviving link key'))

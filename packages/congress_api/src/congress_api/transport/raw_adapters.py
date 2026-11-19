@@ -76,16 +76,37 @@ class DirectAdapter:
     def __init__(self, session):
         self.session = session
 
-    def hop(self, url, destination, *, limit, headers):
-        extra = {'max_bytes': limit} if hasattr(self.session, '_request') else {}
-        with self.session.get(url, headers={**UA, **headers}, timeout=(15, 300),
-                              stream=True, allow_redirects=False, **extra) as response:
-            sha, size, complete, error = _spool(response, destination, limit)
-            if _partial_response(response.status_code,response.headers):
-                complete, error = False, error or 'partial_response'
-            return Transfer(Path(destination), response.url, response.status_code,
-                            {k.lower(): v for k, v in response.headers.items()},
-                            complete, error, sha256=sha, size=size)
+    def hop(self, url, destination, *, limit, headers, prior_validators=None):
+        from collections.abc import Mapping
+        from contextlib import nullcontext
+        from congress_api.retention.qualification_facts import conditional_request_headers, validators_unchanged
+        active_validator = isinstance(prior_validators, Mapping) and prior_validators.get('qualified') is False
+        use_streaming_requests = active_validator and hasattr(self.session, '_request')
+        session_cm = requests.Session() if use_streaming_requests else nullcontext(self.session)
+        request_headers = {**UA, **conditional_request_headers(prior_validators, headers)}
+        with session_cm as active_session:
+            extra = {'max_bytes': limit} if hasattr(active_session, '_request') else {}
+            with active_session.get(url, headers=request_headers, timeout=(15, 300),
+                                    stream=True, allow_redirects=False, **extra) as response:
+                resp_headers = {k.lower(): v for k, v in response.headers.items()}
+                if response.status_code == 304:
+                    return Transfer(Path(destination), response.url, 304,
+                                    resp_headers, True, None, sha256=None, size=0, wire_bytes=0)
+                # Only a complete, non-ranged HTTP 200 answering the exact requested hop URL
+                # may be suppressed before its body (ct-zohj review 7b).
+                if (response.status_code == 200
+                        and getattr(response, 'capture_complete', True) is True
+                        and (response.url or url) == url
+                        and not _partial_response(response.status_code, resp_headers)
+                        and validators_unchanged(prior_validators, resp_headers)):
+                    return Transfer(Path(destination), url, response.status_code,
+                                    resp_headers, True, 'validator_unchanged', sha256=None, size=0, wire_bytes=0)
+                sha, size, complete, error = _spool(response, destination, limit)
+                if _partial_response(response.status_code,response.headers):
+                    complete, error = False, error or 'partial_response'
+                return Transfer(Path(destination), response.url, response.status_code,
+                                resp_headers,
+                                complete, error, sha256=sha, size=size)
 
 
 def _unique_object(pairs):

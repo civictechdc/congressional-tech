@@ -149,17 +149,23 @@ _ROW_URL_COLUMNS = ('url', 'context_url', 'requested_url')
 _HISTORY_COLUMNS = (
     *_ROW_URL_COLUMNS, 'family', 'body_key', 'sha256', 'body_sha256', 'media_type', 'fidelity',
     'retrieved_at', 'checked_at', 'last_attempt', 'outcome', 'resolution', 'last_outcome',
-    'http_status', 'last_status', 'complete', 'intact', 'mode', 'receipt_key', 'receipt_line',
+    'fetch_outcome', 'http_status', 'last_status', 'fetch_http_status', 'complete', 'intact',
+    'mode', 'receipt_key', 'receipt_line', 'capture_index', 'attempt', 'member_path',
     'evidence_id', 'record_role', 'is_real_file', 'placeholder_body', 'usable_direct', 'subtype',
-    'attempts',
+    'attempts', 'qualified', 'qualification_status', 'qualification_reason', 'retryable',
+    'capture_disposition', 'capture_reason',
 )
 
 
 def _row_outcome(row):
+    if row.get('fetch_outcome') is not None:
+        return row['fetch_outcome']
     return row.get('resolution') or row.get('outcome') or row.get('last_outcome')
 
 
 def _row_status(row):
+    if row.get('fetch_outcome') is not None and row.get('fetch_http_status') is not None:
+        return row['fetch_http_status']
     status = row.get('http_status')
     return row.get('last_status') if status is None else status
 
@@ -171,11 +177,80 @@ def _expects_document(url):
             or path.endswith(_DOCUMENT_EXTENSIONS))
 
 
-def _is_usable_direct_row(row, url=''):
+def _row_qualification_failed(row, url='', *, qual_by_sha=None, qual_by_url=None):
+    """Whether verified qualification facts or explicit state mark this row's body unusable."""
+    if not isinstance(row, dict):
+        return False
+    if (row.get('capture_reason') == 'body_not_qualified'
+            or (not row.get('retryable', False)
+                and (row.get('qualified') is False or row.get('qualification_status') == 'unresolved'))):
+        return True
+    if not qual_by_sha and not qual_by_url:
+        return False
+    from congress_api.retention.qualification_facts import expects_pdf_response, extract_sha256_hex
+    sha = (
+        extract_sha256_hex(row.get('sha256'))
+        or extract_sha256_hex(row.get('body_sha256'))
+        or extract_sha256_hex(row.get('body_key'))
+    )
+    if sha is not None and qual_by_sha and sha in qual_by_sha:
+        q = qual_by_sha[sha]
+        if q.get('retryable', False):
+            return False
+        if not q.get('qualified', False):
+            return True
+        # The same PDF expectation capture and URL state apply: either spelling or the captured type.
+        content_type = {'content-type': row['media_type']} if isinstance(row.get('media_type'), str) else None
+        pdf_expected = any(expects_pdf_response(u, content_type)
+                           for u in (url, row.get('requested_url'), row.get('url')) if isinstance(u, str) and u)
+        return bool(pdf_expected and q.get('media_type') != 'application/pdf')
+    if sha is None and qual_by_url:
+        for cand_url in (url, row.get('requested_url'), row.get('url')):
+            if isinstance(cand_url, str) and cand_url in qual_by_url:
+                u_entry = qual_by_url[cand_url]
+                if not u_entry.get('retryable', False) and u_entry.get('qualified') is False:
+                    return True
+    return False
+
+
+def _carries_body_verdict(row):
+    """Whether a row is a complete primary body-bearing fetch (matching archive_url_state.py) or explicit state verdict."""
+    if not isinstance(row, dict) or row.get('mode') == 'retained_import':
+        return False
+    if row.get('capture_reason') == 'body_not_qualified':
+        return True
+    if 'complete' in row and row['complete'] is not True:
+        return False
+    if row.get('attempt') not in (None, 0) or row.get('member_path') is not None:
+        return False
+    is_fetch = row.get('mode') == 'fetch'
+    eff_status = row.get('fetch_http_status') if row.get('fetch_outcome') is not None else row.get('http_status')
+    if is_fetch and eff_status is None:
+        return False
+    if eff_status is not None and (
+        type(eff_status) is not int
+        or not (200 <= eff_status <= 299)
+        or eff_status == 202
+        or (eff_status == 206 and row.get('complete') is not True)
+    ):
+        return False
+    eff_outcome = row.get('fetch_outcome') if row.get('fetch_outcome') is not None else row.get('outcome')
+    if is_fetch and eff_outcome is None:
+        return False
+    if eff_outcome is not None and eff_outcome not in ('stored', 'unchanged', 'ok', 'completed'):
+        return False
+    if row.get('sha256') or row.get('body_sha256') or row.get('body_key'):
+        return True
+    return bool(not row.get('retryable', False) and (
+        row.get('qualified') is not None or row.get('qualification_status') is not None
+    ))
+
+
+def _is_usable_direct_row(row, url='', *, qual_by_sha=None, qual_by_url=None):
     """Check whether a single capture/state row represents a usable direct body.
 
     Rows must carry receipt evidence, a document role (when stated), a complete
-    (where the column exists) and intact body, and must not be retained imports.
+    (where the column exists), intact, and qualified body, and must not be retained imports.
     """
     if not isinstance(row, dict) or row.get('usable_direct') is False:
         return False
@@ -183,7 +258,11 @@ def _is_usable_direct_row(row, url=''):
         return False
     if 'complete' in row and row['complete'] is not True:
         return False
+    if row.get('attempt') not in (None, 0) or row.get('member_path') is not None:
+        return False
     if row.get('intact') is False:
+        return False
+    if _row_qualification_failed(row, url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url):
         return False
     if row.get('record_role') is not None and row['record_role'] != 'document':
         return False
@@ -196,7 +275,8 @@ def _is_usable_direct_row(row, url=''):
     outcome = _row_outcome(row)
     status = _row_status(row)
     if status is not None:
-        if int(status) != 200 or outcome not in ('stored', 'unchanged', 'ok', 'usable_direct', 'verified'):
+        status_ok = int(status) == 200 or (int(status) == 206 and row.get('complete') is True)
+        if not status_ok or outcome not in ('stored', 'unchanged', 'ok', 'usable_direct', 'verified'):
             return False
     # Never treat status-less 'unchanged' state rows as usable direct bodies.
     elif outcome not in ('stored', 'ok', 'usable_direct', 'verified'):
@@ -296,6 +376,38 @@ def _iter_table_rows(table_src, *, wanted=None, wanted_arr=None):
             yield from batch.to_pylist()
 
 
+def _load_inventory_qualifications(qualifications, source_or_store):
+    """Load verified qualifications from an explicit source or durable store provenance."""
+    from congress_api.retention.qualification_facts import (
+        load_qualification_facts,
+        load_store_qualifications,
+    )
+    if qualifications is not None:
+        return load_qualification_facts(qualifications)
+    if source_or_store is None:
+        return None
+    if isinstance(source_or_store, (str, Path)):
+        qdir = Path(source_or_store) / 'provenance' / 'qualifications'
+        if qdir.is_dir():
+            files = sorted(qdir.glob('*.jsonl'))
+            return load_qualification_facts(files) if files else None
+        return None
+    adapter = getattr(source_or_store, 'adapter', None)
+    if adapter is not None:
+        local_root = getattr(adapter, 'root', None)
+        if local_root is not None:
+            qdir = Path(local_root) / 'provenance' / 'qualifications'
+            if qdir.is_dir():
+                files = sorted(qdir.glob('*.jsonl'))
+                return load_qualification_facts(files) if files else None
+            return None
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory(prefix='inv-quals-') as tmp:
+            loaded = load_store_qualifications(source_or_store, work=tmp)
+            return loaded if (loaded['by_sha256'] or loaded['by_url']) else None
+    return None
+
+
 def scan_receipt_history(
     source_or_store=None,
     *,
@@ -303,6 +415,7 @@ def scan_receipt_history(
     states=None,
     fetch_outcomes=None,
     urls=None,
+    qualifications=None,
 ):
     """Read URL recovery history from raw_archive tables directly when available.
 
@@ -311,6 +424,13 @@ def scan_receipt_history(
     """
     import pyarrow as pa
     import pyarrow.parquet as pq
+
+    qual_by_sha = None
+    qual_by_url = None
+    loaded_q = _load_inventory_qualifications(qualifications, source_or_store)
+    if loaded_q is not None:
+        qual_by_sha = loaded_q['by_sha256']
+        qual_by_url = loaded_q['by_url']
 
     wanted = set(urls) if urls is not None else None
     history = {}
@@ -321,11 +441,19 @@ def scan_receipt_history(
     def observe(url, cand, row):
         entry = history.setdefault(
             url,
-            dict(attempts=0, latest_state=cand, usable_attempt=None, outcomes=[], body_keys=[], source='table'),
+            dict(attempts=0, latest_state=cand, usable_attempt=None, outcomes=[], body_keys=[], source='table',
+                 qualification_failed=False, latest_body_key=None),
         )
         if _row_order_key(cand) >= _row_order_key(entry['latest_state']):
             entry['latest_state'] = cand
-        if _is_usable_direct_row(row, url):
+        # Only the newest body-bearing evidence says whether the address now serves a usable body.
+        if _carries_body_verdict(row):
+            key = _row_order_key(cand)
+            if entry.get('latest_body_key') is None or key >= entry['latest_body_key']:
+                entry['latest_body_key'] = key
+                entry['qualification_failed'] = _row_qualification_failed(
+                    row, url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url)
+        if _is_usable_direct_row(row, url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url):
             if entry.get('usable_attempt') is None or _row_order_key(cand) >= _row_order_key(entry['usable_attempt']):
                 entry['usable_attempt'] = cand
         outcome = _row_outcome(row)
@@ -341,13 +469,16 @@ def scan_receipt_history(
     if hasattr(source_or_store, 'states_for') and callable(getattr(source_or_store, 'states_for', None)) and wanted:
         for url, state_row in source_or_store.states_for(wanted).items():
             cand = dict(state_row, url=url, raw_url=state_row.get('url'))
+            carries = _carries_body_verdict(state_row)
             history[url] = dict(
                 attempts=int(state_row.get('attempts') or 0),
                 latest_state=cand,
-                usable_attempt=cand if _is_usable_direct_row(state_row, url) else None,
+                usable_attempt=cand if _is_usable_direct_row(state_row, url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url) else None,
                 outcomes=[state_row['outcome']] if state_row.get('outcome') else [],
                 body_keys=[state_row['body_key']] if state_row.get('body_key') else [],
                 source='table',
+                latest_body_key=_row_order_key(cand) if carries else None,
+                qualification_failed=carries and _row_qualification_failed(state_row, url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url),
             )
 
     root_path = Path(source_or_store) if isinstance(source_or_store, (str, Path)) else None
@@ -410,6 +541,7 @@ def build_target_inventory(
     captures=None,
     states=None,
     fetch_outcomes=None,
+    qualifications=None,
     output=None,
     membership_origin='baseline',
     refresh_policy='historical_only',
@@ -426,6 +558,12 @@ def build_target_inventory(
     import pyarrow.parquet as pq
 
     raw_targets = _target_rows(targets)
+    qual_by_sha = None
+    qual_by_url = None
+    loaded_q = _load_inventory_qualifications(qualifications, source_or_store)
+    if loaded_q is not None:
+        qual_by_sha = loaded_q['by_sha256']
+        qual_by_url = loaded_q['by_url']
 
     if history is None:
         target_urls = [
@@ -439,6 +577,7 @@ def build_target_inventory(
             states=states,
             fetch_outcomes=fetch_outcomes,
             urls=target_urls,
+            qualifications=qualifications,
         )
 
     policy_digest = None
@@ -460,17 +599,32 @@ def build_target_inventory(
         context_url = raw.get('context_url') if isinstance(raw.get('context_url'), str) else None
         hist = history.get(target_url) if history else None
         latest = (hist.get('latest_state') or {}) if hist else {}
+        qual_failed = False
 
         if hist is not None:
             usable_row = hist.get('usable_attempt')
-            if usable_row is None and 'usable_attempt' not in hist and _is_usable_direct_row(latest, target_url):
+            if usable_row is None and 'usable_attempt' not in hist and _is_usable_direct_row(latest, target_url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url):
                 usable_row = latest
+            if 'latest_body_key' in hist:
+                # scan_receipt_history judged the newest complete primary body-bearing evidence.
+                qual_failed = bool(hist.get('qualification_failed'))
+                if usable_row is not None and hist.get('latest_body_key') is not None:
+                    if _row_order_key(usable_row) < hist['latest_body_key']:
+                        usable_row = None
+                if qual_failed:
+                    usable_row = None
+            else:  # a caller-built history: judge its latest row
+                qual_failed = _row_qualification_failed(latest, target_url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url)
+                if qual_failed:
+                    usable_row = None
             usable_direct = usable_row is not None
             hist_evidence_id = _row_evidence_id(usable_row) if usable_row is not None else _row_evidence_id(latest)
         else:
-            usable_direct = bool(raw.get('usable_direct', False))
+            qual_failed = _row_qualification_failed(raw, target_url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url)
+            usable_direct = bool(raw.get('usable_direct', False)) and not qual_failed
             hist_evidence_id = raw.get('evidence_id')
 
+        default_unusable_subtype = 'body_not_qualified' if qual_failed else (latest.get('outcome') or latest.get('last_outcome'))
         if usable_direct:
             acquisition_excluded = False
             evidence_id = hist_evidence_id or raw.get('evidence_id')
@@ -490,14 +644,14 @@ def build_target_inventory(
             else:
                 acquisition_excluded = False
                 evidence_id = hist_evidence_id or raw.get('evidence_id')
-                subtype = raw.get('subtype') or latest.get('outcome') or latest.get('last_outcome') or 'missing_direct'
+                subtype = raw.get('subtype') or default_unusable_subtype or 'missing_direct'
                 unresolved_reason = raw.get('unresolved_reason')
         else:
             acquisition_excluded = bool(raw.get('acquisition_excluded', False))
             evidence_id = hist_evidence_id or raw.get('evidence_id')
             if acquisition_excluded and not evidence_id:
                 raise ValueError(f'Excluded target requires evidence_id: {target_url}')
-            subtype = raw.get('subtype') or latest.get('outcome') or latest.get('last_outcome')
+            subtype = raw.get('subtype') or default_unusable_subtype
             unresolved_reason = raw.get('unresolved_reason')
 
         computed_norm, computed_key = _normalize_and_key_url(target_url)

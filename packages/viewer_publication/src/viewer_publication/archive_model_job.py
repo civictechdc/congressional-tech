@@ -35,10 +35,10 @@ ENTITY_TABLES=('meeting_records','appearance_records')
 # channels, recording_matches and committee_records. All three inputs or none.
 EXPLORER_TABLES=('video_records','committee_records')
 OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES,'playlist_records','transcript_headings')
-OPTIONAL={'engine_config',*OPTIONAL_TABLES,'spicy_regs','recovery_requirements','text_index','historical_recording_matcher','docmeta_v6_1','pdf_cover_evidence'}
+OPTIONAL={'engine_config',*OPTIONAL_TABLES,'spicy_regs','recovery_requirements','text_index','historical_recording_matcher','docmeta_v6_1','pdf_cover_evidence','body_qualifications'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants',
-            'recording_decision_files':'recording_decisions'}
+            'recording_decision_files':'recording_decisions','qualification_files':'qualifications'}
 REQUIRED={'version',*TABLES,'parser_versions','catalog_version','output','scratch'}
 RELEASE_ID=re.compile('[a-f0-9]{12,64}')
 
@@ -128,6 +128,10 @@ def validate_spec(value,*,base):
         if not isinstance(cover['selection_sha256'],str) or re.fullmatch('[0-9a-f]{64}',cover['selection_sha256']) is None:
             raise ValueError('PDF cover evidence requires an exact accepted-selection digest')
         result['pdf_cover_evidence']=dict(cover,path=_local(cover['path'],base))
+    if value.get('body_qualifications') is not None:
+        quals=value['body_qualifications']
+        _pin(quals,{'path','sha256','size'})
+        result['body_qualifications']=dict(quals,path=_local(quals['path'],base))
     for name in OPTIONAL_TABLES:
         if value.get(name) is not None:
             result[name]=_selector(value[name],base)
@@ -238,7 +242,7 @@ def check_inputs(spec):
         for value in spec[name]:check(name+' '+value['key'],value)
     for name in (*TABLES,*OPTIONAL_TABLES):
         if spec.get(name) is not None and spec[name]['kind']=='parquet':check(name,spec[name])
-    for name in ('historical_recording_matcher','recovery_requirements','pdf_cover_evidence'):
+    for name in ('historical_recording_matcher','recovery_requirements','pdf_cover_evidence','body_qualifications'):
         if spec.get(name) is not None:check(name,spec[name])
     if spec.get('docmeta_v6_1') is not None:
         from viewer_publication.docmeta_v6_1 import iter_docmeta_pins
@@ -342,6 +346,9 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
         if spec.get('pdf_cover_evidence') is not None:
             value=spec['pdf_cover_evidence']
             arguments['pdf_cover_evidence']=dict(value,path=hold(value))
+        if spec.get('body_qualifications') is not None:
+            value=spec['body_qualifications']
+            arguments['body_qualifications']=dict(value,path=hold(value))
         if spec.get('docmeta_v6_1') is not None:
             from viewer_publication.docmeta_v6_1 import ALL_PARTS
             dm=dict(spec['docmeta_v6_1'])
@@ -532,6 +539,8 @@ def main(argv=None):
                 result['inputs']['docmeta_v6_1']=spec['docmeta_v6_1']
             if spec.get('pdf_cover_evidence'):
                 result['inputs']['pdf_cover_evidence']=spec['pdf_cover_evidence']
+            if spec.get('body_qualifications'):
+                result['inputs']['body_qualifications']=spec['body_qualifications']
             if spec.get('text_index'):
                 result['text_index']=spec['text_index']
         if args.from_candidate:result.update(spec=str(path),model_definition_changes_from_candidate=changes)

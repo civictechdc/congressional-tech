@@ -215,6 +215,589 @@ def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path,monkeypatc
     assert 'viewer-publications/manifest.json' in store.objects
 
 
+def test_interrupted_capture_recovers_missing_qualification_via_daily_publish_and_discovery(tmp_path):
+    """Review 7b acceptance check: interrupt capture right after R2 receipt storage, discard runner
+    scratch, and drive real produce_daily_inputs -> run_publish -> run_recovery_campaign -> 304 recheck -> release_gate."""
+    from datetime import timedelta
+    from hashlib import md5, sha256
+    from io import BytesIO
+    import shutil
+    from types import SimpleNamespace
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from archive_job_fixture import native_daily_spec, real_model_spec
+    from congress_api.acquisition.capture_scheduler import CapturePolicy, load_release, run_capture
+    from congress_api.models.archive_profile import build_capture_profile
+    from congress_api.retention.archive_members import ZipLimits
+    from congress_api.retention.body_store import BodyStore, R2Adapter
+    from congress_api.transport.raw_adapters import DirectAdapter
+    from corpus_recovery.acceptance import VERSION as RECOVERY_VERSION
+    from corpus_recovery.cdx import key as surt_key
+    from corpus_recovery.discovery import Response
+    from corpus_recovery.pipeline import run_recovery_campaign
+    WAYBACK_FIELDS = ['urlkey', 'timestamp', 'original', 'mimetype', 'statuscode', 'digest', 'length']
+    from botocore.exceptions import ClientError
+    from docspec_client.client import NativeDatasets
+    from test_archive_controller import Runtime
+    from test_archive_publish import Store
+    from viewer_publication.archive_controller import run_publish
+    from viewer_publication.archive_model_job import load_spec
+    from viewer_publication.archive_publish_job import produce_daily_inputs
+    from viewer_publication.release_gate import automatic_causes, require_release_gates
+
+    broken_url = 'https://docs.house.gov/meetings/FA/FA00/20261028/119222/HHRG-119-FA00-Wstate-Crash-20261028.pdf'
+    corrupt_pdf = b'%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\ntruncated-without-eof'
+    reqs_pq = tmp_path / 'recovery-requirements.parquet'
+    pq.write_table(pa.Table.from_pylist([
+        dict(original_url=broken_url, target_requirement='historical_exact',
+             acceptance_policy=RECOVERY_VERSION, refresh_policy='historical_only'),
+    ]), reqs_pq)
+
+    seed_dir = tmp_path / 'seed'
+    seed_dir.mkdir()
+    model, _, _ = real_model_spec(seed_dir)
+    model['recovery_requirements'] = dict(path=str(reqs_pq), **file_pin(reqs_pq), acceptance_policy=RECOVERY_VERSION)
+    template_path = tmp_path / 'template.json'
+    template_path.write_text(json.dumps(model))
+    model = load_spec(template_path)
+
+    class R2Store(Store):
+        def __init__(self):
+            super().__init__()
+            self.encodings = {}
+
+        def _is_pointer(self, key):
+            return key in {'viewer-publications/manifest.json', 'viewer-publications/status.json'}
+
+        def get_paginator(self, operation):
+            assert operation == 'list_objects_v2'
+            return SimpleNamespace(paginate=lambda **req: [self.list_objects_v2(**req)])
+
+        def head_object(self, *, Bucket, Key):
+            if self._is_pointer(Key):
+                return super().head_object(Bucket=Bucket, Key=Key)
+            if Key not in self.objects:
+                raise ClientError({'Error': {'Code': '404', 'Message': 'Not Found'}, 'ResponseMetadata': {'HTTPStatusCode': 404}}, 'HeadObject')
+            raw = self.objects[Key]
+            meta = dict(ContentLength=len(raw), ETag=self.etag if self._is_pointer(Key) else f'"{md5(raw).hexdigest()}"')
+            if Key in self.encodings:
+                meta['ContentEncoding'] = self.encodings[Key]
+            return meta
+
+        def get_object(self, *, Bucket, Key, IfMatch=None):
+            if self._is_pointer(Key):
+                return super().get_object(Bucket=Bucket, Key=Key)
+            if Key not in self.objects:
+                raise ClientError({'Error': {'Code': 'NoSuchKey', 'Message': 'Missing'}, 'ResponseMetadata': {'HTTPStatusCode': 404}}, 'GetObject')
+            raw = self.objects[Key]
+            etag = f'"{md5(raw).hexdigest()}"'
+            if IfMatch is not None and IfMatch.strip('"') != md5(raw).hexdigest():
+                raise ClientError({'Error': {'Code': '412', 'Message': 'PreconditionFailed'}, 'ResponseMetadata': {'HTTPStatusCode': 412}}, 'GetObject')
+            resp = dict(Body=BytesIO(raw), ContentLength=len(raw), ETag=etag)
+            if Key in self.encodings:
+                resp['ContentEncoding'] = self.encodings[Key]
+            return resp
+
+        def put_object(self, **request):
+            key = request['Key']
+            body_arg = request['Body']
+            data = body_arg if isinstance(body_arg, (bytes, bytearray)) else body_arg.read()
+            if self._is_pointer(key):
+                return super().put_object(**dict(request, Body=bytes(data)))
+            if request.get('IfNoneMatch') == '*' and key in self.objects:
+                raise ClientError({'Error': {'Code': '412', 'Message': 'PreconditionFailed'}, 'ResponseMetadata': {'HTTPStatusCode': 412}}, 'PutObject')
+            self.events.append(('put', key))
+            self.requests.append(request)
+            self.objects[key] = bytes(data)
+            if request.get('ContentEncoding'):
+                self.encodings[key] = request['ContentEncoding']
+            return dict(ETag=f'"{md5(data).hexdigest()}"')
+
+        def list_objects_v2(self, *, Bucket, Prefix='', Delimiter=None, **kwargs):
+            contents, prefixes = [], set()
+            for k in sorted(self.objects):
+                if not k.startswith(Prefix):
+                    continue
+                rest = k[len(Prefix):]
+                if Delimiter and Delimiter in rest:
+                    prefixes.add(Prefix + rest.split(Delimiter, 1)[0] + Delimiter)
+                    continue
+                raw = self.objects[k]
+                contents.append(dict(
+                    Key=k, Size=len(raw),
+                    ETag=self.etag if self._is_pointer(k) else f'"{md5(raw).hexdigest()}"',
+                ))
+            return dict(Contents=contents, CommonPrefixes=[dict(Prefix=p) for p in sorted(prefixes)], IsTruncated=False)
+
+    r2 = R2Store()
+    raw_seed = seed_dir / 'raw'
+    for fpath in sorted(raw_seed.rglob('*')):
+        if fpath.is_file():
+            r2.objects[fpath.relative_to(raw_seed).as_posix()] = fpath.read_bytes()
+
+    class _Resp:
+        def __init__(self, status, headers, body, req_url, tracker):
+            self.status_code, self.headers, self._body, self.url = status, dict(headers), body, req_url
+            self._tracker = tracker
+        def __enter__(self): return self
+        def __exit__(self, *_): return False
+        def iter_content(self, chunk_size=65536):
+            self._tracker['body_reads'] += 1
+            if self._body:
+                yield self._body
+
+    class _Sess:
+        def __init__(self, responder):
+            self.responder = responder
+            self.tracker = {'requests': [], 'body_reads': 0}
+        def get(self, u, *, headers=None, allow_redirects=False, stream=True, timeout=None):
+            self.tracker['requests'].append({'url': u, 'headers': dict(headers or {})})
+            s, h, b = self.responder(u, headers or {})
+            return _Resp(s, h, b, u, self.tracker)
+
+    repo_root = Path(__file__).resolve().parents[3]
+    scope_path = repo_root / 'model/registries/capture-scope.json'
+    identity = {'job': 'capture-scheduler', 'commit': 'b' * 40, 'lockfile_digest': 'c' * 64}
+    limits = ZipLimits(max_archive_bytes=1 << 20, max_member_bytes=1 << 20, max_total_bytes=2 << 20, max_directory_bytes=65536)
+
+    def _probe(**context):
+        return dict(status='passed', releaseId=context['release_id'], targets='owner-approved')
+
+    def _materialize_release(rel_id: str, dest: Path) -> Path:
+        dest.mkdir(parents=True, exist_ok=True)
+        prefix = f'viewer-publications/releases/{rel_id}/'
+        for k, data in r2.objects.items():
+            if k.startswith(prefix):
+                out_f = dest / k[len(prefix):]
+                out_f.parent.mkdir(parents=True, exist_ok=True)
+                out_f.write_bytes(data)
+        return dest
+
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        daily_base = native_daily_spec(seed_dir, model, native)
+        daily_base = {k: v for k, v in daily_base.items() if k not in ('body_inventory', 'local_root')}
+        daily_base['receipt_families'] = ['documents']
+
+        # Build an initial capture seed release with broken_url queued (attempts=0).
+        seed_rel = tmp_path / 'seed-capture-rel'
+        seed_rel.mkdir()
+        pq.write_table(pa.table({
+            'requested_url': pa.array([broken_url], pa.string()),
+            'attempts': pa.array([0], pa.int32()),
+            'last_attempt': pa.array([None], pa.timestamp('us', tz='UTC')),
+            'last_status': pa.array([None], pa.int16()),
+            'last_outcome': pa.array([None], pa.string()),
+            'last_good_at': pa.array([None], pa.timestamp('us', tz='UTC')),
+            'next_attempt_at': pa.array([None], pa.timestamp('us', tz='UTC')),
+            'recheck_meeting_date': pa.array([None], pa.date32()),
+            'linked_from': pa.array([[bytes.fromhex('11' * 32)]], pa.list_(pa.binary(32))),
+            'capture_disposition': pa.array(['eligible'], pa.string()),
+            'capture_reason': pa.array(['no_satisfying_recovery'], pa.string()),
+            'capture_decision_id': pa.array([None], pa.string()),
+        }), seed_rel / 'url_state.parquet')
+        (seed_rel / 'capture_scope.json').write_bytes(scope_path.read_bytes())
+        prof = build_capture_profile(
+            engine_revision=native.source_revision,
+            url_normalized_sql=(repo_root / 'model/sql/url-normalized.sql').read_text(),
+            url_keys_sql=(repo_root / 'model/sql/url-keys.sql').read_text(),
+            url_rules=json.loads((repo_root / 'model/registries/url-rules.json').read_text()),
+            recovery_policy={'acceptance_policy': RECOVERY_VERSION, 'requirements_sha256': file_pin(reqs_pq)['sha256']},
+        )
+        (seed_rel / 'capture_profile.json').write_text(json.dumps(prof, sort_keys=True))
+        pq.write_table(pa.Table.from_pylist([], schema=pa.schema([('canonical_url', pa.string()), ('variant_url', pa.string())])), seed_rel / 'url_variants.parquet')
+        files = []
+        for fn in ('url_state.parquet', 'capture_scope.json', 'capture_profile.json', 'url_variants.parquet'):
+            raw_b = (seed_rel / fn).read_bytes()
+            files.append(dict(name=fn, sha256=sha256(raw_b).hexdigest(), size=len(raw_b),
+                              rows=pq.read_metadata(seed_rel / fn).num_rows if fn.endswith('.parquet') else None))
+        seed_rel_id = sha256(json.dumps([1, [[f[k] for k in ('name', 'sha256', 'size', 'rows')] for f in files]], separators=(',', ':')).encode()).hexdigest()
+        (seed_rel / 'manifest.json').write_text(json.dumps({'schema_version': 1, 'release_id': seed_rel_id, 'files': files}))
+
+        # 1. Runner 1 crashes right after ReceiptWriter stores body + receipt in R2, BEFORE qualification!
+        runner1_work = tmp_path / 'runner1-scratch'
+        runner1_store = BodyStore(R2Adapter(r2, 'derived-fixture'))
+        sess1 = _Sess(lambda _u, _h: (200, {'Content-Type': 'application/pdf', 'ETag': '"crash-v1"', 'Content-Length': str(len(corrupt_pdf))}, corrupt_pdf))
+        def _crash_before_qualification(*_a, **_kw):
+            raise RuntimeError('ephemeral-runner-terminated-after-receipt')
+
+        with pytest.raises(RuntimeError, match='ephemeral-runner-terminated-after-receipt'):
+            run_capture(
+                load_release(release_root=seed_rel, work=runner1_work / 'load'),
+                engine=native, work=runner1_work / 'capture', as_of='2026-10-28T06:00:00Z',
+                request_budget=5, byte_budget=1 << 24, spool_budget=1 << 25,
+                store=runner1_store, identity=identity, direct=DirectAdapter(sess1),
+                resolve=lambda _: ['8.8.8.8'], archive_limits=limits, pace=lambda *_: None,
+                qualify=_crash_before_qualification, qualification_store=runner1_store,
+            )
+        # Discard all runner 1 scratch; verify R2 has the receipt + body, and ZERO qualification provenance!
+        shutil.rmtree(runner1_work)
+        assert not runner1_work.exists()
+        crashed_receipts = [k for k in r2.objects if k.startswith('receipts/') and k != 'receipts/documents/2026-10-27/slice.jsonl.gz']
+        assert len(crashed_receipts) == 1
+        assert [k for k in r2.objects if k.startswith('provenance/qualifications/')] == []
+
+        # 2. Fresh Runner 2 drives real produce_daily_inputs + run_publish -> recovers qualification!
+        # Review 7d: also plant a budget-deferred receipt (2026-10-29, deferred by max_work_items=1) and
+        # an out-of-family receipt in R2, proving daily reconciliation qualifies ONLY admitted receipts!
+        from congress_api.models.raw_fetch import BodyFile, FetchAttempt, FetchResult
+        from congress_api.retention.qualification_facts import load_qualification_facts
+        from congress_api.retention.receipt_writer import ReceiptWriter
+
+        deferred_pdf = b'%PDF-1.7\n77 0 obj\n<< /Type /Catalog >>\ntruncated-deferred'
+        deferred_file = tmp_path / 'deferred.pdf'
+        deferred_file.write_bytes(deferred_pdf)
+        out_fam_pdf = b'%PDF-1.7\n88 0 obj\n<< /Type /Catalog >>\ntruncated-out-family'
+        out_fam_file = tmp_path / 'out-fam.pdf'
+        out_fam_file.write_bytes(out_fam_pdf)
+        plant_store = BodyStore(R2Adapter(r2, 'derived-fixture'))
+        w_def = ReceiptWriter(plant_store, identity=identity, run_id='def000000001', write_date='2026-11-20', archive_limits=None)
+        deferred_key, _ = w_def.write(
+            FetchResult(final=FetchAttempt(
+                requested_url='https://docs.house.gov/meetings/FA/FA00/20261001/119777/deferred.pdf',
+                url='https://docs.house.gov/meetings/FA/FA00/20261001/119777/deferred.pdf',
+                retrieved_at='2026-11-20T06:00:00Z', transport='direct', http_status=200,
+                provider_status=None, headers={'content-type': 'application/pdf'}, redirects=(), complete=True,
+                body=BodyFile(path=deferred_file, sha256=sha256(deferred_pdf).hexdigest(), size=len(deferred_pdf),
+                              media_type='application/pdf', sniffed_format=None, sniff_version=None, intact=None),
+            )),
+            family='documents',
+        )
+        w_out = ReceiptWriter(plant_store, identity=identity, run_id='out000000001', write_date='2026-10-28', archive_limits=None)
+        out_fam_key, _ = w_out.write(
+            FetchResult(final=FetchAttempt(
+                requested_url='https://www.senate.gov/meetings/out-family.pdf',
+                url='https://www.senate.gov/meetings/out-family.pdf',
+                retrieved_at='2026-10-28T06:05:00Z', transport='direct', http_status=200,
+                provider_status=None, headers={'content-type': 'application/pdf'}, redirects=(), complete=True,
+                body=BodyFile(path=out_fam_file, sha256=sha256(out_fam_pdf).hexdigest(), size=len(out_fam_pdf),
+                              media_type='application/pdf', sniffed_format=None, sniff_version=None, intact=None),
+            )),
+            family='senate/pages',
+        )
+
+        daily1 = dict(daily_base, work=str(tmp_path / 'runner2-daily'), max_work_items=1)
+        runner2_store = BodyStore(R2Adapter(r2, 'derived-fixture'))
+        res_daily1 = produce_daily_inputs(model, daily1, engine=native, raw_store=runner2_store)
+        assert res_daily1['status'] == 'ready'
+        assert crashed_receipts[0] in res_daily1['receipt_keys']
+        assert deferred_key not in res_daily1['receipt_keys']
+        assert out_fam_key not in res_daily1['receipt_keys']
+        assert len(res_daily1['model']['qualification_files']) == 1
+        assert load_qualification_facts(res_daily1['model']['qualification_files'])['all_receipt_keys'] == {crashed_receipts[0]}
+        del r2.objects[deferred_key]
+        del r2.objects[out_fam_key]
+        q_prov_keys = [k for k in r2.objects if k.startswith('provenance/qualifications/')]
+        assert len(q_prov_keys) == 1
+        assert any(p['key'] == q_prov_keys[0] for p in res_daily1['provenance'])
+
+        model1 = dict(res_daily1['model'], output=str(tmp_path / 'runner2-out'), scratch=str(tmp_path / 'runner2-model'))
+        pub1 = run_publish(
+            model1, first_release=True, client=r2, engine=Runtime(native, r2), bucket='derived-fixture',
+            work=tmp_path / 'runner2-pub', receipt_keys=res_daily1['receipt_keys'],
+            provenance=res_daily1['provenance'], verified_files=res_daily1['verified_files'],
+            run={'id': 'daily-1'}, public_origin='https://archive.fixture.test',
+            contract=_probe, canary=_probe,
+        )
+        assert pub1['status'] == 'published'
+        rel1_dir = _materialize_release(pub1['release_id'], tmp_path / 'mat-rel1')
+        state1_by_url = {r['requested_url']: r for r in pq.read_table(rel1_dir / 'url_state.parquet').to_pylist()}
+        row1 = state1_by_url[broken_url]
+        assert row1['attempts'] == 1 and row1['last_status'] == 200 and row1['last_good_at'] is not None
+        assert row1['capture_disposition'] == 'eligible' and row1['capture_reason'] == 'body_not_qualified'
+        night1_last_good = row1['last_good_at']
+
+        # 3. Fresh Runner 3 drives scheduled discovery consumer (targets=None) -> starts archive lookup!
+        from congress_api.lake import tables as lake_tables
+        from congress_api.retention.provenance import parquet_output, run_job as run_docspec_job
+
+        cap_export_dir = tmp_path / 'runner3-caps'
+        cap_export_dir.mkdir()
+        run_docspec_job(
+            cap_export_dir / 'job', native,
+            inputs=[lake_tables.table_input('captures', res_daily1['daily']['pins']['captures'])],
+            steps=[],
+            outputs=[parquet_output(cap_export_dir, 'captures', 'SELECT * FROM captures', ['receipt_key', 'receipt_line', 'capture_index'])],
+        )
+        wayback_queries = []
+        def _wb_probe(_kind: str, q_url: str):
+            wayback_queries.append(q_url)
+            payload = json.dumps([
+                WAYBACK_FIELDS,
+                [surt_key(broken_url), '20261028000000', broken_url, 'application/pdf', '200', 'B' * 32, '8192'],
+            ]).encode('utf-8')
+            return Response(200, payload, True, 'ev:wb:crash', 'application/json', q_url)
+
+        runner3_store = BodyStore(R2Adapter(r2, 'derived-fixture'))
+        camp = run_recovery_campaign(
+            tmp_path / 'runner3-discovery', campaign_id='m7-crash-recovery', targets=None, engine=native,
+            policy=CapturePolicy(scope_path, resolve=lambda _: ['8.8.8.8']),
+            captures=cap_export_dir / 'captures.parquet', store=runner3_store,
+            state=rel1_dir / 'url_state.parquet', state_profile=rel1_dir / 'capture_profile.json',
+            state_requirements=reqs_pq, discovery_kwargs={'wayback_call': _wb_probe, 'max_pages': 1},
+        )
+        assert len(wayback_queries) == 1 and 'HHRG-119-FA00-Wstate-Crash-20261028.pdf' in wayback_queries[0]
+        assert len(camp['targets']) == 1 and camp['targets'][0]['usable_direct'] is False
+        assert camp['targets'][0]['subtype'] == 'body_not_qualified'
+
+        # 4. Fresh Runner 4 runs due recheck -> sends If-None-Match from R2 provenance, gets 304,
+        # preserves last_good_at through real produce_daily_inputs + automatic_causes run_publish!
+        runner4_store = BodyStore(R2Adapter(r2, 'derived-fixture'))
+        sess4 = _Sess(lambda _u, h: (304, {'ETag': '"crash-v1"'}, b'') if h.get('If-None-Match') == '"crash-v1"' else (500, {}, b''))
+        res_cap2 = run_capture(
+            load_release(release_root=rel1_dir, work=tmp_path / 'runner4-load'),
+            engine=native, work=tmp_path / 'runner4-capture',
+            as_of=(row1['next_attempt_at'] + timedelta(days=1)).isoformat(),
+            request_budget=5, byte_budget=1 << 24, spool_budget=1 << 25,
+            store=runner4_store, identity=identity, direct=DirectAdapter(sess4),
+            resolve=lambda _: ['8.8.8.8'], archive_limits=limits, pace=lambda *_: None,
+            qualification_store=runner4_store,
+        )
+        assert sess4.tracker['body_reads'] == 0
+        assert sess4.tracker['requests'][0]['headers'].get('If-None-Match') == '"crash-v1"'
+
+        daily2 = dict(daily_base, work=str(tmp_path / 'runner5-daily'), decided_at='2026-11-06T12:00:00Z')
+        runner5_store = BodyStore(R2Adapter(r2, 'derived-fixture'))
+        res_daily2 = produce_daily_inputs(model, daily2, engine=native, raw_store=runner5_store)
+        assert res_daily2['status'] == 'ready' and res_cap2['receipts'][0] in res_daily2['receipt_keys']
+
+        model2 = dict(res_daily2['model'], output=str(tmp_path / 'runner5-out'), scratch=str(tmp_path / 'runner5-model'))
+        pub2 = run_publish(
+            model2, automatic_causes=True, client=r2, receipt_client=r2, engine=Runtime(native, r2),
+            bucket='derived-fixture', work=tmp_path / 'runner5-pub',
+            receipt_keys=res_daily2['receipt_keys'], provenance=res_daily2['provenance'],
+            verified_files=res_daily2['verified_files'], run={'id': 'daily-2'},
+            public_origin='https://archive.fixture.test', contract=_probe, canary=_probe,
+        )
+        assert pub2['status'] == 'published' and pub2['release_gates'] == 'passed'
+        rel2_dir = _materialize_release(pub2['release_id'], tmp_path / 'mat-rel2')
+        row2 = {r['requested_url']: r for r in pq.read_table(rel2_dir / 'url_state.parquet').to_pylist()}[broken_url]
+        assert row2['attempts'] == 2 and row2['last_status'] == 304 and row2['last_outcome'] == 'unchanged'
+        assert row2['last_good_at'] == night1_last_good
+        assert row2['capture_disposition'] == 'eligible' and row2['capture_reason'] == 'body_not_qualified'
+
+        # 5. Positive evidence required: tampering with rel2 url_state to clear body_not_qualified ->
+        # no_satisfying_recovery on that body-less 304 is REFUSED by require_release_gates!
+        forged_rel2 = tmp_path / 'forged-rel2'
+        shutil.copytree(rel2_dir, forged_rel2)
+        orig_tbl = pq.read_table(forged_rel2 / 'url_state.parquet')
+        forged_rows = [
+            dict(r, capture_reason='no_satisfying_recovery') if r['requested_url'] == broken_url else r
+            for r in orig_tbl.to_pylist()
+        ]
+        pq.write_table(pa.Table.from_pylist(forged_rows, schema=orig_tbl.schema), forged_rel2 / 'url_state.parquet')
+        mf = json.loads((forged_rel2 / 'manifest.json').read_bytes())
+        for f_entry in mf['files']:
+            if f_entry['name'] == 'url_state.parquet':
+                raw_u = (forged_rel2 / 'url_state.parquet').read_bytes()
+                f_entry.update(sha256=sha256(raw_u).hexdigest(), md5=md5(raw_u).hexdigest(), size=len(raw_u))
+        (forged_rel2 / 'manifest.json').write_text(json.dumps(mf))
+
+        with pytest.raises(ValueError, match='capture_reason is not implied by verified body qualifications'):
+            require_release_gates(
+                rel1_dir, forged_rel2, None, report_path=tmp_path / 'forged-gate.json',
+                automatic=lambda rep: automatic_causes(
+                    rep, rel1_dir, forged_rel2, engine=native,
+                    captures=res_daily2['model']['captures'],
+                    live_receipt_keys=set(res_daily1['receipt_keys']),
+                    read_receipt=lambda k: r2.objects[k],
+                    work=tmp_path / 'forged-auto',
+                    candidate_receipt_keys=set(res_daily2['receipt_keys']),
+                    evidence_dir=tmp_path / 'runner5-model/evidence',
+                    qualification_files=res_daily2['model']['qualification_files'],
+                ),
+            )
+
+
+def test_standalone_body_qualifications_pin_publishes_reuses_live_input_and_passes_maintenance(tmp_path):
+    """Review 7c: standalone body_qualifications pin computes identical input_digest across
+    run_publish, publish_candidate, matching_live_input, input_unchanged skip, and maintain_releases."""
+    from datetime import datetime, timezone
+    import io
+    from pypdf import PdfWriter
+    from archive_job_fixture import real_model_spec
+    from congress_api.retention.qualification_facts import build_qualification_fact
+    from congress_shared.custody import verify_local_file
+    from corpus_recovery.qualification import qualify
+    from docspec_client.client import NativeDatasets
+    from test_archive_controller import Runtime
+    from test_archive_publish import Store
+    from viewer_publication.archive_controller import run_publish
+    from viewer_publication.archive_maintenance import ArchiveMaintenanceStore, maintain_releases
+    from viewer_publication.archive_model_job import load_spec
+    from viewer_publication.archive_publish import NativeArchiveStore, matching_live_input
+
+    seed_root = tmp_path / 'seed'
+    seed_root.mkdir()
+    model, _, _ = real_model_spec(seed_root)
+    bad_file = tmp_path / 'standalone-bad.pdf'
+    bad_file.write_bytes(b'%PDF-1.7\ntruncated')
+    bad_rec = qualify(verify_local_file(bad_file), tmp_path / 'qcache')
+    q_pin_a = tmp_path / 'standalone-quals-a.jsonl'
+    q_pin_a.write_text(json.dumps(build_qualification_fact(
+        bad_rec, requested_url='https://fixture.test/standalone.pdf', url='https://fixture.test/standalone.pdf',
+        receipt_key='receipts/documents/2026-10-27/slice.jsonl.gz', retrieved_at='2026-10-27T12:00:00Z', http_status=200,
+    )) + '\n')
+    model['body_qualifications'] = dict(path=str(q_pin_a), **file_pin(q_pin_a))
+    spec_a_path = tmp_path / 'spec-a.json'
+    spec_a_path.write_text(json.dumps(model))
+    loaded_a = load_spec(spec_a_path)
+
+    class _MaintStore(Store):
+        def list_objects_v2(self, *, Bucket, Prefix='', **kwargs):
+            now = datetime(2026, 11, 1, 12, tzinfo=timezone.utc)
+            return dict(
+                Contents=[dict(Key=k, LastModified=now, Size=len(self.objects[k])) for k in sorted(self.objects) if k.startswith(Prefix)],
+                IsTruncated=False,
+            )
+
+    store = _MaintStore()
+    probe = lambda **ctx: dict(status='passed', releaseId=ctx['release_id'], targets='owner-approved')
+
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        # 1. Initial publish with standalone body_qualifications pin succeeds!
+        pub_a = run_publish(
+            dict(loaded_a, output=str(tmp_path / 'out-a'), scratch=str(tmp_path / 'scratch-a')),
+            first_release=True, client=store, engine=Runtime(native, store), bucket='derived-fixture',
+            work=tmp_path / 'pub-a', receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],
+            provenance=[], run={'id': 'standalone-1'}, public_origin='https://archive.fixture.test',
+            contract=probe, canary=probe,
+        )
+        assert pub_a['status'] == 'published'
+
+        # 2. matching_live_input recomputes identical digest including extra_pins!
+        lookup_store = NativeArchiveStore(client=store, engine=Runtime(native, store), bucket='derived-fixture', work=tmp_path / 'lookup')
+        found = matching_live_input(lookup_store, release_id=pub_a['release_id'], digest=pub_a['input_digest'])
+        assert found is not None and found['snapshots']['body_qualifications'] == {'sha256': loaded_a['body_qualifications']['sha256'], 'size': loaded_a['body_qualifications']['size']}
+
+        # 3. Repeating with identical body_qualifications pin returns input_unchanged!
+        pub_same = run_publish(
+            dict(loaded_a, output=str(tmp_path / 'out-same'), scratch=str(tmp_path / 'scratch-same')),
+            client=store, engine=Runtime(native, store), bucket='derived-fixture',
+            work=tmp_path / 'pub-same', receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],
+            provenance=[], run={'id': 'standalone-2'}, public_origin='https://archive.fixture.test',
+            contract=probe, canary=probe,
+        )
+        assert pub_same['status'] == 'input_unchanged'
+
+        # 4. Changing ONLY the standalone body_qualifications pin produces a new input_digest (not skipped)!
+        good_writer = PdfWriter()
+        good_writer.add_blank_page(width=72, height=72)
+        good_buf = io.BytesIO()
+        good_writer.write(good_buf)
+        good_file = tmp_path / 'standalone-good.pdf'
+        good_file.write_bytes(good_buf.getvalue())
+        good_rec = qualify(verify_local_file(good_file), tmp_path / 'qcache')
+        q_pin_b = tmp_path / 'standalone-quals-b.jsonl'
+        q_pin_b.write_text(json.dumps(build_qualification_fact(
+            good_rec, requested_url='https://fixture.test/standalone.pdf', url='https://fixture.test/standalone.pdf',
+            receipt_key='receipts/documents/2026-10-27/slice.jsonl.gz', retrieved_at='2026-10-27T12:00:00Z', http_status=200,
+        )) + '\n')
+        model_b = dict(model, body_qualifications=dict(path=str(q_pin_b), **file_pin(q_pin_b)))
+        spec_b_path = tmp_path / 'spec-b.json'
+        spec_b_path.write_text(json.dumps(model_b))
+        loaded_b = load_spec(spec_b_path)
+        pub_b = run_publish(
+            dict(loaded_b, output=str(tmp_path / 'out-b'), scratch=str(tmp_path / 'scratch-b')),
+            client=store, engine=Runtime(native, store), bucket='derived-fixture',
+            work=tmp_path / 'pub-b', receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],
+            provenance=[], run={'id': 'standalone-3'}, public_origin='https://archive.fixture.test',
+            contract=probe, canary=probe,
+        )
+        assert pub_b['input_digest'] != pub_a['input_digest']
+        assert pub_b['status'] in ('published', 'release_unchanged')
+
+        # 5. maintain_releases validates kept input records carrying snapshots['body_qualifications'] cleanly!
+        maint = maintain_releases(
+            ArchiveMaintenanceStore(client=store, bucket='derived-fixture'),
+            now=datetime(2026, 11, 5, 12, tzinfo=timezone.utc),
+        )
+        assert maint['status'] == 'planned'
+        assert pub_a['input_digest'] in {r['input_digest'] for r in maint['kept_inputs']}
+
+
+def test_daily_reconciliation_matches_slash_families_and_excludes_nested_siblings(tmp_path, monkeypatch):
+    """Review 7e: 20 of 22 shipped receipt_families contain a slash (e.g. 'senate/pages'); daily
+    reconciliation must include already-admitted 'senate/pages' receipts while excluding an
+    unconfigured nested sibling ('documents/other' when only 'documents' and 'senate/pages' are
+    configured) and excluding budget-deferred receipts on both completed and backfill_required runs."""
+    import gzip
+    from hashlib import sha256
+    from congress_api.lake import daily as daily_mod, tables as tables_mod
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    from congress_api.retention.qualification_facts import load_qualification_facts
+    from viewer_publication import archive_publish_job
+    from viewer_publication.archive_publish_job import produce_daily_inputs
+
+    raw_dir = tmp_path / 'raw'
+    store = BodyStore(LocalAdapter(raw_dir))
+    bad_pdf = b'%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\ntruncated-slash-family'
+    bad_sha = sha256(bad_pdf).hexdigest()
+    pdf_file = tmp_path / 'bad.pdf'
+    pdf_file.write_bytes(bad_pdf)
+    store.put(f'bodies/sha256/{bad_sha[:2]}/{bad_sha}', pdf_file, 'application/pdf')
+
+    slash_admitted = 'receipts/senate/pages/2026-10-28/admitted-slash.jsonl.gz'
+    nested_sibling = 'receipts/documents/other/2026-10-28/nested-sibling.jsonl.gz'
+    slash_deferred = 'receipts/senate/pages/2026-10-29/deferred-slash.jsonl.gz'
+    for rk, u in (
+        (slash_admitted, 'https://www.senate.gov/meetings/slash.pdf'),
+        (nested_sibling, 'https://docs.house.gov/other/sibling.pdf'),
+        (slash_deferred, 'https://www.senate.gov/meetings/deferred.pdf'),
+    ):
+        p = raw_dir / rk
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(gzip.compress((json.dumps({
+            'mode': 'fetch', 'complete': True, 'http_status': 200, 'outcome': 'stored',
+            'requested_url': u, 'url': u, 'retrieved_at': '2026-10-28T10:00:00Z',
+            'response_headers': {'Content-Type': 'application/pdf'},
+            'captures': [{'attempt': 0, 'complete': True, 'sha256': bad_sha, 'bytes': len(bad_pdf), 'sniffed_format': 'pdf'}],
+        }) + '\n').encode()))
+
+    admitted = [slash_admitted, nested_sibling]
+    monkeypatch.setattr(daily_mod, '_validate', lambda spec, eng, rs: (Path(spec['work']), spec['provenance'], {}))
+    monkeypatch.setattr(tables_mod, 'resolve_tables', lambda **kw: {'captures': {'path': 'cap'}})
+    monkeypatch.setattr(daily_mod, '_complete_receipt_keys', lambda *a, **kw: list(admitted))
+    monkeypatch.setattr(archive_publish_job, 'completed_daily_inputs', lambda tmpl, prod, recs: (dict(tmpl, qualification_files=[r for r in recs if 'qualifications' in r['key']]), list(prod['receipt_keys'])))
+
+    tmpl = dict(model_spec(tmp_path), recovery_requirements={'path': 'req.parquet', 'sha256': 'a' * 64, 'size': 1})
+
+    # 1. Non-completed daily stop ('backfill_required') reconciles 'senate/pages' and skips 'documents/other' & deferred!
+    monkeypatch.setattr(daily_mod, 'produce_daily', lambda spec, *a, **kw: Path(spec['work']).mkdir(parents=True, exist_ok=False) or {
+        'status': 'backfill_required', 'pins': None, 'receipt_keys': None, 'new_receipt_keys': [],
+        'provenance': {'recoveries': [], 'reviews': [], 'unreadable': []}, 'currentversions': {},
+    })
+    daily_stop = {
+        'work': str(tmp_path / 'work-stop'), 'decided_at': '2026-10-28T12:00:00Z',
+        'catalog_root': str(tmp_path / 'cat'), 'tables': {'captures': {'namespace': ['a'], 'name': 'captures'}},
+        'receipt_families': ['documents', 'senate/pages'], 'max_work_items': 5,
+        'provenance': {'recoveries': [], 'reviews': [], 'unreadable': []},
+    }
+    res_stop = produce_daily_inputs(tmpl, daily_stop, engine=object(), raw_store=store)
+    assert res_stop['status'] == 'backfill_required'
+    q_files_stop = sorted((raw_dir / 'provenance' / 'qualifications').glob('*.jsonl'))
+    assert len(q_files_stop) == 1
+    assert load_qualification_facts(q_files_stop)['all_receipt_keys'] == {slash_admitted}
+
+    # 2. Completed daily run on fresh store also reconciles 'senate/pages' and skips 'documents/other' & deferred!
+    raw_dir2 = tmp_path / 'raw2'
+    store2 = BodyStore(LocalAdapter(raw_dir2))
+    store2.put(f'bodies/sha256/{bad_sha[:2]}/{bad_sha}', pdf_file, 'application/pdf')
+    for rk in (slash_admitted, nested_sibling, slash_deferred):
+        p2 = raw_dir2 / rk
+        p2.parent.mkdir(parents=True, exist_ok=True)
+        p2.write_bytes((raw_dir / rk).read_bytes())
+    monkeypatch.setattr(daily_mod, 'produce_daily', lambda spec, *a, **kw: Path(spec['work']).mkdir(parents=True, exist_ok=False) or {
+        'status': 'completed', 'pins': {}, 'receipt_keys': list(admitted), 'new_receipt_keys': [],
+        'provenance': {'recoveries': [], 'reviews': [], 'unreadable': []}, 'currentversions': {},
+    })
+    daily_ok = dict(daily_stop, work=str(tmp_path / 'work-ok'))
+    res_ok = produce_daily_inputs(tmpl, daily_ok, engine=object(), raw_store=store2)
+    assert res_ok['status'] == 'ready'
+    q_files_ok = sorted((raw_dir2 / 'provenance' / 'qualifications').glob('*.jsonl'))
+    assert len(q_files_ok) == 1
+    assert load_qualification_facts(q_files_ok)['all_receipt_keys'] == {slash_admitted}
+
+
 def test_daily_budget_refuses_before_raw_inventory_or_cache_effects(tmp_path):
     from congress_api.retention.body_store import BodyStore,R2Adapter
     from viewer_publication.archive_publish_job import produce_daily_inputs
