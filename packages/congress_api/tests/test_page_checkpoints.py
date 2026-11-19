@@ -143,6 +143,63 @@ def test_checkpoint_identity_change_does_not_reuse_old_pages(tmp_path):
     assert len(list(tmp_path.glob('**/page-*.json'))) == 4
 
 
+def test_same_version_rebuilt_wheel_checkpoint_cannot_replay_html_as_pdf(tmp_path, monkeypatch):
+    from importlib.metadata import version as pkg_version
+    from congress_api.retention import page_checkpoints
+
+    html_bytes = b'<html><body>Not a PDF</body></html>'
+    html_sha = sha256(html_bytes).hexdigest()
+    rule = derivation.native_only()
+    base_identity = dict(
+        rule=rule.checkpoint_identity,
+        strategy=type(rule.strategy).__qualname__,
+        code=sha256(Path(derivation.__file__).read_bytes()).hexdigest(),
+        adapter=sha256(Path(page_checkpoints.__file__).read_bytes()).hexdigest(),
+        dependencies={name: pkg_version(name) for name in ('spicy-docs', 'pymupdf', 'pillow')},
+        source_sha256=html_sha,
+        source_bytes=len(html_bytes),
+        media_type='application/pdf',
+        checkpoint_schema=1,
+    )
+    stale_identities = [
+        base_identity,  # legacy checkpoint lacking spicy_docs derivation/RECORD pin
+        dict(base_identity, spicy_docs=dict(
+            version=pkg_version('spicy-docs'),
+            derivation='sha256:8e84ae822250614920435e630e0a7e5d906cbb076da3bb7f5fe16139611e6d01',
+            record_sha256='0' * 64,
+        )),
+    ]
+    fake_page_result = dict(
+        metadata=dict(page=1, page_count=1, source_sha256=html_sha,
+                      source_size_bytes=len(html_bytes), media_type='application/pdf'),
+        blocks=[dict(text='Not a PDF', box=None, confidence=None, observation='native', inspected_region=None)],
+        observations=[dict(id='native', text='Not a PDF', configuration={'backend': 'pymupdf'},
+                           raw=None, blocks=[], text_format='plain', issues=[], inspected_region=None)],
+    )
+    for stale in stale_identities:
+        directory = tmp_path / html_sha / sha256(encoded(stale)).hexdigest()
+        directory.mkdir(parents=True, exist_ok=True)
+        payload = dict(identity=stale, result=fake_page_result)
+        (directory / 'page-000001.json').write_bytes(
+            encoded(dict(payload=payload, sha256=sha256(encoded(payload)).hexdigest()))
+        )
+
+    reading = derivation.pdf_text(html_bytes, strategy=rule, page_deadline_seconds=0, checkpoint=adapter(tmp_path))
+    assert reading.status == 'error'
+    assert reading.error_type == 'ExtractionError'
+    assert reading.text is None
+    assert 'not application/pdf' in (reading.diagnostic or '')
+
+    # Changing the wheel RECORD digest under the same version string also forces a distinct checkpoint dir.
+    pdf = two_page_pdf()
+    pdf_root = tmp_path / 'pdf-wheel-change'
+    assert derivation.pdf_text(pdf, strategy=rule, page_deadline_seconds=0, checkpoint=adapter(pdf_root)).status == 'completed'
+    orig_ident = page_checkpoints._spicy_docs_identity()
+    monkeypatch.setattr(page_checkpoints, '_spicy_docs_identity', lambda: dict(orig_ident, record_sha256='f' * 64))
+    assert derivation.pdf_text(pdf, strategy=rule, page_deadline_seconds=0, checkpoint=adapter(pdf_root)).status == 'completed'
+    assert len(list(pdf_root.glob('**/page-*.json'))) == 4
+
+
 def test_actual_worker_reuses_checkpoints_and_leaves_corruption_pending(tmp_path):
     args, _ = lake(tmp_path, {'pdf': (two_page_pdf(), 'pdf')})
     checkpoint_root = tmp_path / 'durable-pages'

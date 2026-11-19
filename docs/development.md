@@ -401,6 +401,76 @@ Retained qualification evidence is under
 This bounded equivalence decision covers the unchanged default path, not
 unreviewed opt-in cohorts.
 
+The 2026-11-18 merged-main rebuild (`ct-yy1r`) pins
+`spicy-docs==0.85.0+ctmain.20261118` (wheel SHA-256
+`92667256b5b20d293d834f31c9a0dbc9dc9f0f73bc28b7af270da3bef95ae4fb`, `3,746,296`
+bytes), built reproducibly (`uv build --wheel` twice, byte-identical) from local
+commit `3f307b7b5752fdc827e3e6e2b886f7a1915da6ab` merging local `spicy-docs`
+`main` (`6e9e40f9`, M5 `ss-n8eq`/`ss-a9f9` atop PR 34 `c33121ea`) with the
+five-fix CT reader port (`cff95c1b40533abc96fd08e66ba6fb73b07cdf65`, keeping
+`DERIVATION_READS_AS["006"] = ("005", frozenset())`; merging onto
+`mikewolfd/spicy-docs:main` and pushing awaits owner approval). Upstream
+`extraction/ocr.py` already ships an AST-identical `Tesseract` backend from
+`c5d5f2ba`, replacing the standalone `extraction/tesseract.py` backport
+(`bfd3c539`); the wheel also brings in the shared Wayback index/replay readers
+and `WaybackFallback` (`sources/web_archive.py`), the Apple Vision band-edge
+retention fix (PR 31), shared `DefaultReader(native_inhibit_spaces=True)`
+(PR 32, allowing CT to delete its duplicate `_OptInPDFPage.native` copy in
+`parsers/pdf_opt_in.py`), non-PDF markup stream and zero-page PDF refusal
+(`ss-n8eq`, also inherited by `OptInPdfReader.open`), Congress.gov upstream
+limit pins (`ss-a9f9`), and the PDF/binary error-page guard (`a648e60d`). No
+byte-hashed record or filename producer imports `spicy_docs`, and every
+`producer_version` and `captures` mapping digest remains identical.
+
+The maintainer redeclares `pdf_text`, `html_text`, `xml_text`, composed `warc`,
+and the opt-in PDF, HTML, and XML recovery and publisher-selection declarations
+for `spicy-docs` derivation `006`, while retaining `house_floor_feed`, `sniff`,
+`html`, `xml`, `json`, `html_metadata`, and `readings`:
+- On HTML and XML (`006`), `CRLF`/`CR` normalize to `LF` and adjacent text
+  events coalesce at the reading boundary (before `_cleanup`'s
+  `line_endings_normalized` counter, so `<pre>A\r\nB</pre>` still emits `A\nB`
+  while reporting `line_endings_normalized = 0`), explicit non-breaking spaces
+  (`U+00A0` / `&nbsp;`) preserve separation outside ASCII template whitespace
+  collapse before `normalize_gpo_glyphs` converts `U+00A0` to ordinary `' '` in
+  emitted text, and indented inline punctuation is removed across split XML
+  events.
+- On PDF (`006`), PR 31 retains unique 3-band Vision strip-edge detections when
+  no neighboring strip matches the line (recovering one dropped line each on
+  retained `dbaa560c` pages 600 and 1100), and `cff95c1b` refuses inverted or
+  non-finite native coordinates such as `(40, 50, +inf, 80)` as
+  `NativeGeometryError("invalid_box")` (mapped to `ExtractionError` and recorded
+  as `error_type = "failed_pages"` with no text across ordinary native, opt-in
+  spacing, and bounded Tesseract). Redeclaring `pdf_text`,
+  `PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION` (adaptive <=200 DPI),
+  `PDF_TESSERACT_300DPI_RECOVERY_VERSION` (fixed 300 DPI), and
+  `PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION` gives changed PDF behavior
+  distinct execution IDs without disturbing pinned historical IDs.
+- Retired reviewed-recovery IDs (`RETIRED_MARKUP_RECOVERY_VERSIONS`) remain
+  selectable in explicit manifests, while `lake.body_text.stage` and
+  `parse_payload` validate planned and item `parser_version` values against the
+  requested execution mode before creating a work directory.
+
+All eleven fixed reader and WARC diagnostic fixture digests match byte for byte.
+Across the 411 retained HTML/XML diagnostic bodies, `(reading_status,
+fingerprint)` and `assess_response` match 411/411, all 204 `xml_text` rows match
+byte for byte, and of 207 `html_text` rows, 197 change text hash from preserved
+`&nbsp;` separation (normalized to `' '`) and 9 change `markup_cleanup` metadata
+alone (5 event-count changes and 4 `metadata_element_chars` changes). Across the
+6 `html_metadata/*.html` fixtures (18 opt-in runs: 3 CMS selections and 15
+fallbacks), all 18 match byte for byte; across the 5 `*.html.gz` legislative
+fixtures (15 opt-in runs), all 6 wrapper-selected runs preserve `text_sha256`
+(5 match row byte for byte and `hr3916-introduced.html.gz` under
+`legislative_002` changes `markup_events` `18 -> 3`), while all 9
+ordinary-HTML fallback runs change text under `006` (including
+`hr4307-enrolled.html.gz` ordinary `html_text`). On PDF, all 5
+`native_inhibit_spaces` PDFs in `accepted-set-v12/selection.json` reproduce byte
+for byte through shared `_PDFPage.native`, and `f1e2e2` page 36 reproduces byte
+for byte under both `TesseractBackend` and `AppleVision`. Historical `readings`
+and `accepted-set-v12/selection.json` keep their pinned versions; compare
+selected rows, active refusals, and pending keys in both directions on the
+retained tables before changing publication selection. Evidence and receipts are
+in `vendor/` and `<main checkout>/.cache/archive-release/ct-yy1r-20261118/`.
+
 The lake keys reading rows by body digest, parser, and the declared version in
 `congress_api.lake.reading_versions`. The combined unreadable-decision version
 also depends on the four leaf versions and the combined worker limits.

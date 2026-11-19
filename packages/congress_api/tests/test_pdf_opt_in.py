@@ -52,7 +52,7 @@ def test_tesseract_backend_identity_and_selective_scan_ocr():
         ]
     )
     rule = tesseract_300dpi()
-    assert rule.checkpoint_identity['backend_implementation'] == 'spicy-docs-0.85.0+cttesseract.20261117'
+    assert rule.checkpoint_identity['backend_implementation'] == 'spicy-docs-0.85.0+ctmain.20261118'
     reading = body_text.pdf_text(pdf_bytes, strategy=rule, page_deadline_seconds=30)
     assert reading.status == "completed"
     assert reading.ocr_pages == (1,)
@@ -111,28 +111,105 @@ def test_oversized_page_refuses_before_pixmap_allocation(adaptive):
 
 
 def test_native_inhibit_spaces_opt_in_rule_preserves_native_prose():
-    doc = pymupdf.open()
-    pg = doc.new_page()
-    pg.insert_text(
-        (72, 100),
+    from spicy_docs.extraction.pages import _PDFPage
+    from congress_api.parsers.pdf_opt_in import _OptInPDFPage
+
+    # CT delegates native_inhibit_spaces directly to spicy-docs PR 32 (_PDFPage.native).
+    assert "native" not in _OptInPDFPage.__dict__
+    assert _OptInPDFPage.native is _PDFPage.native
+    with pytest.raises(TypeError, match="boolean"):
+        OptInPdfReader(native_inhibit_spaces="yes")  # type: ignore[arg-type]
+
+    # Build a PDF with PDF character-spacing (`3 Tc`) where PyMuPDF infers spaces unless TEXT_INHIBIT_SPACES is set.
+    tracked_doc = pymupdf.open()
+    tracked_pg = tracked_doc.new_page()
+    tracked_pg.insert_text((72, 100), "OF THE COMMITTEE", fontsize=12)
+    tracked_pg.insert_text(
+        (72, 140),
         "Subcommittee on Courts, Intellectual Property, and the Internet Hearing Notice.",
         fontsize=12,
     )
-    pg.insert_text(
-        (72, 130),
-        "Witnesses will testify regarding federal judicial administration and patent quality.",
-        fontsize=12,
-    )
-    pdf_bytes = doc.tobytes()
-    doc.close()
+    xref = tracked_pg.get_contents()[0]
+    stream = tracked_doc.xref_stream(xref)
+    tracked_doc.update_stream(xref, stream.replace(b"BT", b"BT\n3 Tc", 1))
+    pdf_bytes = tracked_doc.tobytes()
+    tracked_doc.close()
+
+    default_reader = OptInPdfReader(native_inhibit_spaces=False)
+    with default_reader.open(pdf_bytes, "application/pdf") as opened_default:
+        default_nat = opened_default.page(1).native()
+        assert "O F T H E C O M M I T T E E" in default_nat.text
+        assert "inhibit_spaces" not in default_nat.configuration
 
     reader = OptInPdfReader(native_inhibit_spaces=True)
-    with reader.open(pdf_bytes, "application/pdf") as doc:
-        assert doc.page_count == 1
+    with reader.open(pdf_bytes, "application/pdf") as opened:
+        assert opened.page_count == 1
+        inhibited_nat = opened.page(1).native()
+        assert inhibited_nat.configuration["inhibit_spaces"] is True
+        assert "OF THE COMMITTEE" in inhibited_nat.text
     reading = body_text.pdf_text(pdf_bytes, strategy=native_inhibit_spaces_only(), page_deadline_seconds=15)
     assert reading.status == "completed"
     assert reading.ocr_pages == ()
+    assert "OF THE COMMITTEE" in reading.text
     assert "Intellectual Property" in reading.text
+
+
+def test_shared_wayback_readers_and_error_page_pdf_guard_import_and_validate_offline():
+    import json
+    from spicy_docs.reading.error_pages import detect_error_page
+    from spicy_docs.sources.web_archive import (
+        WaybackCdxScope,
+        WaybackFallback,
+        WaybackSelection,
+        newest_wayback_captures,
+        payload_sha1,
+        read_wayback_index,
+        read_wayback_replay,
+        wayback_replay_url,
+    )
+    from spicy_docs.transport.captured import CapturedBodyResponse
+
+    assert callable(WaybackFallback)
+    original_url = "https://www.finance.senate.gov/imo/media/doc/testimony.pdf"
+    ts = "20240519143000"
+    pdf_payload = b"%PDF-1.4\n1 0 obj << /Title (Access Denied Just a moment Cloudflare) >> endobj\n%%EOF\n"
+    digest = payload_sha1(pdf_payload)
+
+    # a648e60d: a PDF/binary body containing wall phrases must never be classified as an error page.
+    assert detect_error_page(pdf_payload, status_code=200, media_types=("application/pdf",), source_format="pdf") is None
+
+    scope = WaybackCdxScope(url=original_url, media_type="application/pdf")
+    cdx_filtered = json.dumps([["timestamp", "original", "digest"], [ts, original_url, digest]]).encode()
+    newest = newest_wayback_captures(cdx_filtered, scope)
+    assert newest[("www.finance.senate.gov", "/imo/media/doc/testimony.pdf")].digest == digest
+
+    selection = WaybackSelection(original_url=original_url, day="20240519")
+    cdx_exact = json.dumps([
+        ["urlkey", "timestamp", "original", "mimetype", "statuscode", "digest", "length"],
+        ["gov,senate,finance)/imo/media/doc/testimony.pdf", ts, original_url, "application/pdf", "200", digest, "96"],
+    ]).encode()
+    idx_resp = CapturedBodyResponse(
+        requested_url=selection.index_url,
+        resolved_url=selection.index_url,
+        status_code=200,
+        content_type="application/json",
+        observed_at="2026-11-18T22:00:00Z",
+        body=cdx_exact,
+    )
+    idx_read = read_wayback_index(idx_resp, selection)
+    assert len(idx_read.candidates) == 1
+    replay_url = wayback_replay_url(original_url, ts)
+    replay_resp = CapturedBodyResponse(
+        requested_url=replay_url,
+        resolved_url=replay_url,
+        status_code=200,
+        content_type="application/pdf",
+        observed_at="2026-11-18T22:00:05Z",
+        body=pdf_payload,
+    )
+    replay = read_wayback_replay(replay_resp, selection, idx_resp, idx_read.candidates[0])
+    assert replay.payload_digest == digest
+    assert replay.receipt_fields()["original_publisher_url"] == original_url
 
 
 def test_opt_in_reader_opens_only_unencrypted_pdf_bytes():
@@ -147,3 +224,91 @@ def test_opt_in_reader_opens_only_unencrypted_pdf_bytes():
     with pytest.raises(ExtractionError, match="encrypted PDF"):
         with reader.open(locked, "application/pdf"):
             pytest.fail("an encrypted PDF must not open")
+    with pytest.raises(ExtractionError, match="not application/pdf"):
+        with reader.open(b"<html><body>Not a PDF</body></html>", "application/pdf"):
+            pytest.fail("markup masquerading as PDF must not open")
+
+
+def test_pdf_reading_versions_and_invalid_box_and_vision_band_edge_controls(monkeypatch):
+    from hashlib import sha256
+    import math
+    from spicy_docs.extraction.model import RAW_RGB, Box, Raster
+    from spicy_docs.extraction.ocr import AppleVision
+    from congress_api.lake.reading_versions import (
+        BODY_TEXT_DECLARATIONS,
+        PDF_NATIVE_SPACING_SYMBOL_REPAIR_DECLARATION,
+        PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION,
+        PDF_TESSERACT_300DPI_RECOVERY_DECLARATION,
+        PDF_TESSERACT_300DPI_RECOVERY_VERSION,
+        PDF_TESSERACT_SELECTIVE_RECOVERY_DECLARATION,
+        PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION,
+        READING_VERSIONS,
+    )
+
+    assert READING_VERSIONS["pdf_text"] == sha256(BODY_TEXT_DECLARATIONS["pdf_text"].encode()).hexdigest()
+    assert PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION == sha256(
+        PDF_TESSERACT_SELECTIVE_RECOVERY_DECLARATION.encode()
+    ).hexdigest()
+    assert PDF_TESSERACT_300DPI_RECOVERY_VERSION == sha256(
+        PDF_TESSERACT_300DPI_RECOVERY_DECLARATION.encode()
+    ).hexdigest()
+    assert PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION == sha256(
+        PDF_NATIVE_SPACING_SYMBOL_REPAIR_DECLARATION.encode()
+    ).hexdigest()
+    current_pdf_ids = {
+        READING_VERSIONS["pdf_text"],
+        PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION,
+        PDF_TESSERACT_300DPI_RECOVERY_VERSION,
+        PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION,
+    }
+    assert len(current_pdf_ids) == 4
+    historical_v12_pdf_ids = {
+        "4d04558965d9baf630033c94857169bfddad68988fce34041a4a35a0c6ddd2a8",
+        "5d84e2bca02998e7b509ec12d2b5c17ef12d9da8a76c3e4b8e1f487b6f7c8f82",
+        "b345ac1cf8f88e2726a5de04cd92d470c3d83fbf490e9724b308797c6901a0f9",
+    }
+    assert current_pdf_ids.isdisjoint(historical_v12_pdf_ids)
+
+    # Non-finite native coordinates (40, 50, +inf, 80) refuse as ExtractionError(invalid_box) across all three PDF policies.
+    with pymupdf.open() as doc:
+        pg = doc.new_page(width=400, height=500)
+        pg.insert_text((80, 120), "Before\nUnlocated\nAfter" + " prose" * 20)
+        pg.set_cropbox(pymupdf.Rect(50, 70, 350, 470))
+        sample_pdf = doc.tobytes()
+
+    original_get_text = pymupdf.Page.get_text
+
+    def injected_get_text(page, option="text", **kwargs):
+        raw = original_get_text(page, option, **kwargs)
+        if option == "dict":
+            coords = (40, 50, math.inf, 80)
+            line = raw["blocks"][0]["lines"][1]
+            line["bbox"] = coords
+            line["spans"][0].update(text="Unlocated", bbox=coords, alpha=255)
+        return raw
+
+    monkeypatch.setattr(pymupdf.Page, "get_text", injected_get_text)
+    for rule in (body_text.native_only(), native_inhibit_spaces_only(), tesseract_bounded_200dpi()):
+        reading = body_text.pdf_text(sample_pdf, strategy=rule, page_deadline_seconds=15)
+        assert reading.status == "error"
+        assert reading.error_type == "failed_pages"
+        assert reading.text is None
+        assert reading.fields["failed_pages"] == [1]
+        assert "invalid_box" in (reading.diagnostic or "")
+    monkeypatch.setattr(pymupdf.Page, "get_text", original_get_text)
+
+    # Under CT's 3-band Vision settings, an unmatched internal strip-edge line survives (PR 31).
+    calls = []
+
+    def injected_vision_engine(strip: Raster):
+        idx = len(calls)
+        calls.append(idx)
+        if idx == 0:
+            # Strip 0 bottom edge in Vision bottom-left coords: middle > strip core end, lower within 0.005*height of bottom.
+            return [("edge observation", 1.0, [0.1, 0.002, 0.5, 0.03])]
+        return []
+
+    vis = AppleVision(recognition_level="accurate", language_correction=False, bands=3, engine=injected_vision_engine)
+    blank_rgb = Raster(b"\xff" * (100 * 300 * 3), 100, 300, Box(), RAW_RGB)
+    recognized = vis.recognize(blank_rgb)
+    assert recognized.text == "edge observation"

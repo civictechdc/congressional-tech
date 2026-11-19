@@ -255,7 +255,8 @@ def test_a_real_small_body_reads_from_the_public_origin(tmp_path, monkeypatch):
     digest = probe['decoded_sha256']
     monkeypatch.setenv('DOCSPEC_PARSER_IO_MARKER', str(tmp_path / 'io-marker'))
     (tmp_path / 'texts').mkdir()
-    request = dict(body_sha=digest, parser='html_text', stored_bytes=5597, texts=str(tmp_path / 'texts'),
+    request = dict(body_sha=digest, parser='html_text', parser_version=body_text.current_versions()['html_text'],
+                   stored_bytes=5597, texts=str(tmp_path / 'texts'),
                    strategy='congress_api.parsers.body_text:native_only',
                    page_deadline_seconds=60, cache=str(tmp_path / 'cache'),
                    remote=dict(origin=body_text.ORIGIN, bucket='congressional-tech-raw', key=probe['path'][1:],

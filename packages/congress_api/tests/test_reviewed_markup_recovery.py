@@ -7,7 +7,11 @@ import pytest
 
 from body_text_fixtures import STAMP, committed, lake
 from congress_api.lake import body_text
-from congress_api.lake.reading_versions import MARKUP_RECOVERY_DECLARATIONS, MARKUP_RECOVERY_VERSIONS
+from congress_api.lake.reading_versions import (
+    MARKUP_RECOVERY_DECLARATIONS,
+    MARKUP_RECOVERY_VERSIONS,
+    RETIRED_MARKUP_RECOVERY_VERSIONS,
+)
 from congress_api.lake import markup_recovery as recovery
 
 HTML = b'<meta charset="utf-8"><p>Jos\xe9 requested the hearing on March 31.</p>'
@@ -146,3 +150,164 @@ def test_stage_rejects_default_versions_before_reading_inputs(tmp_path):
     with pytest.raises(ValueError, match='require their pinned recovery manifest'):
         body_text.stage(dict(versions=MARKUP_RECOVERY_VERSIONS), [], engine=None, work=tmp_path / 'no-manifest')
     assert not (tmp_path / 'no-manifest').exists()
+
+
+def test_stage_and_worker_reject_retired_recovery_and_stale_plan_ids_while_selection_retains_them(tmp_path, monkeypatch):
+    from congress_api.lake import body_text_selection
+    monkeypatch.setenv('DOCSPEC_PARSER_IO_MARKER', str(tmp_path / 'raw-io-marker'))
+
+    retired = {parser: ids[0] for parser, ids in RETIRED_MARKUP_RECOVERY_VERSIONS.items()}
+    assert retired == {
+        'html_text': 'ef4745f48e0432dd21ae960621589e5d1a1404d2e90f0b35c0618b4b10673a42',
+        'xml_text': 'e11e19e1f5ed946e0fda9259e549ca76dd5488ab2070e85f5624e9e4e9849f27',
+    }
+
+    # Retired recovery IDs in planned['versions'] without a manifest fail before work.mkdir().
+    with pytest.raises(ValueError, match='require their pinned recovery manifest'):
+        body_text.stage(dict(versions=retired), [], engine=None, work=tmp_path / 'retired-plan')
+    assert not (tmp_path / 'retired-plan').exists()
+
+    # Retired recovery IDs in an item alongside current planned['versions'] fail before work.mkdir().
+    stale_item = dict(body_sha=sha256(HTML).digest(), parser='html_text', parser_version=retired['html_text'])
+    with pytest.raises(ValueError, match='require their pinned recovery manifest'):
+        body_text.stage(dict(versions=body_text.current_versions()), [stale_item], engine=None, work=tmp_path / 'retired-item')
+    assert not (tmp_path / 'retired-item').exists()
+
+    # Retired recovery IDs with a manifest also fail before work.mkdir().
+    ref = manifest(tmp_path, [case()])
+    with pytest.raises(recovery.RecoveryInputError, match='separate declared'):
+        body_text.stage(dict(versions=retired), [stale_item], engine=None, work=tmp_path / 'retired-with-manifest', markup_recovery=ref)
+    assert not (tmp_path / 'retired-with-manifest').exists()
+
+    # Stale ordinary plan IDs and mismatched item versions fail before work.mkdir().
+    old_ordinary = dict(body_text.current_versions(), html_text='f1cefe442182dc8e4c456359aebdb37e5c50db6b0abb669b303e05763feb94a3')
+    with pytest.raises(ValueError, match='current declared reading versions'):
+        body_text.stage(dict(versions=old_ordinary), [], engine=None, work=tmp_path / 'old-ordinary')
+    assert not (tmp_path / 'old-ordinary').exists()
+
+    mismatched_item = dict(body_sha=sha256(HTML).digest(), parser='html_text', parser_version='0' * 64)
+    with pytest.raises(ValueError, match='differs from the planned execution versions'):
+        body_text.stage(dict(versions=body_text.current_versions()), [mismatched_item], engine=None, work=tmp_path / 'mismatch')
+    assert not (tmp_path / 'mismatch').exists()
+
+    # Worker defense-in-depth: parse_payload never runs ordinary derivation on a retired recovery ID.
+    body_path = tmp_path / 'body.html'
+    body_path.write_bytes(HTML_CANDIDATE)
+    texts_dir = tmp_path / 'texts'
+    texts_dir.mkdir()
+    worker_out = body_text.parse_payload(json.dumps(dict(
+        path=str(body_path),
+        stored_bytes=len(HTML_CANDIDATE),
+        body_sha=sha256(HTML_CANDIDATE).hexdigest(),
+        parser='html_text',
+        parser_version=retired['html_text'],
+        strategy='congress_api.parsers.body_text:native_only',
+        page_deadline_seconds=0,
+        texts=str(texts_dir),
+    )).encode())
+    assert worker_out['read_error'] == 'markup_recovery_input'
+    assert 'row' not in worker_out and not list(texts_dir.iterdir())
+
+    # Direct worker request with retired recovery ID + markup_recovery + oversize body must NOT return decoded_size_limit.
+    oversize_path = tmp_path / 'oversize.html'
+    oversize_bytes = b'<' + b'a' * body_text.MAX_DECODED_BYTES + b'>'
+    oversize_path.write_bytes(oversize_bytes)
+    oversize_out = body_text.parse_payload(json.dumps(dict(
+        path=str(oversize_path),
+        stored_bytes=len(oversize_bytes),
+        body_sha=sha256(oversize_bytes).hexdigest(),
+        parser='html_text',
+        parser_version=retired['html_text'],
+        strategy='congress_api.parsers.body_text:native_only',
+        page_deadline_seconds=0,
+        texts=str(texts_dir),
+        diagnostics=str(tmp_path / 'diag.txt'),
+        markup_recovery=dict(case=case(), manifest_sha256='b' * 64),
+    )).encode())
+    assert oversize_out['read_error'] == 'markup_recovery_input' and 'row' not in oversize_out
+
+    # Direct worker request with a stale ordinary ID or wrong strategy/version never reaches derivation.
+    stale_ord_out = body_text.parse_payload(json.dumps(dict(
+        path=str(body_path),
+        stored_bytes=len(HTML_CANDIDATE),
+        body_sha=sha256(HTML_CANDIDATE).hexdigest(),
+        parser='html_text',
+        parser_version='f1cefe442182dc8e4c456359aebdb37e5c50db6b0abb669b303e05763feb94a3',
+        strategy='congress_api.parsers.body_text:native_only',
+        page_deadline_seconds=0,
+        texts=str(texts_dir),
+    )).encode())
+    assert stale_ord_out['read_error'] == 'parser_version_mismatch' and 'row' not in stale_ord_out
+    assert not list(texts_dir.iterdir())
+
+    wrong_strat_out = body_text.parse_payload(json.dumps(dict(
+        path=str(body_path),
+        stored_bytes=len(HTML_CANDIDATE),
+        body_sha=sha256(HTML_CANDIDATE).hexdigest(),
+        parser='pdf_text',
+        parser_version=body_text.current_versions()['pdf_text'],
+        strategy='congress_api.parsers.pdf_opt_in:native_inhibit_spaces_only',
+        page_deadline_seconds=0,
+        texts=str(texts_dir),
+    )).encode())
+    assert wrong_strat_out['read_error'] == 'parser_version_mismatch' and 'row' not in wrong_strat_out
+
+    # Null parser_version + unsupported strategy + oversize body must fail BEFORE _read_decoded() / decoded_size_limit.
+    null_ver_out = body_text.parse_payload(json.dumps(dict(
+        path=str(oversize_path),
+        stored_bytes=len(oversize_bytes),
+        body_sha=sha256(oversize_bytes).hexdigest(),
+        parser='html_text',
+        parser_version=None,
+        strategy='congress_api.parsers.body_text:no_such_engine',
+        page_deadline_seconds=0,
+        texts=str(texts_dir),
+    )).encode())
+    assert null_ver_out['read_error'] == 'parser_version_mismatch' and 'row' not in null_ver_out
+
+    null_ordinary_out = body_text.parse_payload(json.dumps(dict(
+        path=str(body_path),
+        stored_bytes=len(HTML_CANDIDATE),
+        body_sha=sha256(HTML_CANDIDATE).hexdigest(),
+        parser='html_text',
+        parser_version=None,
+        strategy='congress_api.parsers.body_text:native_only',
+        page_deadline_seconds=0,
+        texts=str(texts_dir),
+    )).encode())
+    assert null_ordinary_out['read_error'] == 'parser_version_mismatch' and 'row' not in null_ordinary_out
+
+    # Null parser_version + unsupported parser='pdf_text' in markup_recovery must NOT match None == None and decode!
+    null_mr_pdf_out = body_text.parse_payload(json.dumps(dict(
+        path=str(oversize_path),
+        stored_bytes=len(oversize_bytes),
+        body_sha=sha256(oversize_bytes).hexdigest(),
+        parser='pdf_text',
+        parser_version=None,
+        strategy='congress_api.parsers.body_text:native_only',
+        page_deadline_seconds=0,
+        texts=str(texts_dir),
+        diagnostics=str(tmp_path / 'diag2.txt'),
+        markup_recovery=dict(case=dict(case(), parser='pdf_text'), manifest_sha256='b' * 64),
+    )).encode())
+    assert null_mr_pdf_out['read_error'] == 'markup_recovery_input' and 'row' not in null_mr_pdf_out
+
+    # Historical selection manifests continue to load retired recovery IDs cleanly.
+    proof = tmp_path / 'proof.md'
+    proof_bytes = b'qualified historical selection\n'
+    proof.write_bytes(proof_bytes)
+    sel_path = tmp_path / 'selection.json'
+    sel_path.write_text(json.dumps(dict(
+        version=1,
+        baseline_versions=body_text.current_versions(),
+        qualification=dict(path='proof.md', sha256=sha256(proof_bytes).hexdigest()),
+        overrides=[dict(
+            body_sha256=sha256(HTML).hexdigest(),
+            parser='html_text',
+            parser_version=retired['html_text'],
+            status='completed',
+            text_sha256=sha256(HTML_TEXT.encode()).hexdigest(),
+        )],
+    )))
+    loaded = body_text_selection.load(sel_path, body_text.current_versions())
+    assert loaded['overrides'][0]['parser_version'] == retired['html_text']

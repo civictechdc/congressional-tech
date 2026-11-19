@@ -10,7 +10,6 @@ configurations for:
 """
 from __future__ import annotations
 
-from collections import Counter
 from contextlib import contextmanager
 from importlib.metadata import version
 import io
@@ -18,10 +17,9 @@ import math
 import os
 
 from spicy_docs.extraction import DefaultReader, NativeOrOcr
-from spicy_docs.extraction.font_glyphs import counts, map_line, unmapped_by_font
-from spicy_docs.extraction.model import RAW_RGB, Box, ExtractionError, ProcessingIssue, Raster, Recognition, TextBlock
-from spicy_docs.extraction.pages import _display_box, _PDFPage
+from spicy_docs.extraction.model import RAW_RGB, Box, ExtractionError, Raster
 from spicy_docs.extraction.ocr import Tesseract
+from spicy_docs.extraction.pages import _PDFPage
 
 from congress_api.parsers.body_text import OCR_MIN_CHARS, PageRule, gpo_page, page_rule
 
@@ -39,45 +37,7 @@ class TesseractBackend(Tesseract):
 
 
 class _OptInPDFPage(_PDFPage):
-    """Extends ``_PDFPage`` with opt-in ``native_inhibit_spaces``, adaptive pixel ceiling, and CCW rotation."""
-
-    def native(self):
-        if not getattr(self.reader, 'native_inhibit_spaces', False):
-            return super().native()
-        import pymupdf
-        from spicy_docs.extraction.pages import _unmapped_issues
-
-        flags = (pymupdf.TEXTFLAGS_DICT & ~pymupdf.TEXT_PRESERVE_IMAGES) | pymupdf.TEXT_INHIBIT_SPACES
-        raw = self.page.get_text('dict', flags=flags)
-        unmapped, unreadable = unmapped_by_font(self.page.parent, self.page.get_fonts(), self.unmapped)
-        blocks = []
-        issues = [
-            ProcessingIssue('unmapped-glyph-check-skipped', f'{name}: font dictionary or Unicode map unreadable')
-            for name in unreadable
-        ]
-        tally: Counter = Counter()
-        width, height = self.page.rect.width, self.page.rect.height
-        for block in raw['blocks']:
-            for line in block.get('lines', []):
-                text = map_line(line['spans'], tally, line['dir'])
-                box = _display_box(self.page, line['bbox'], width, height)
-                if box is None:
-                    if not text.strip():
-                        continue
-                    raise ExtractionError('native text falls outside displayed page bounds', details=line)
-                issues.extend(_unmapped_issues(line['spans'], unmapped, len(blocks), box))
-                blocks.append(TextBlock(text, box))
-        for glyph in counts(self.number, tally):
-            mapped = glyph.replacement is not None
-            issues.append(
-                ProcessingIssue(
-                    'font-glyph-mapped' if mapped else 'font-glyph-unresolved',
-                    f'{glyph.rule}: {glyph.font} {glyph.original!r} -> '
-                    f"{glyph.replacement if mapped else 'kept'!r} x{glyph.count}",
-                )
-            )
-        cfg = {'backend': 'pymupdf', 'version': version('pymupdf'), 'sort': False, 'inhibit_spaces': True}
-        return Recognition('\n'.join(b.text for b in blocks), cfg, raw, tuple(blocks), issues=tuple(issues))
+    """Extends ``_PDFPage`` with adaptive pixel ceiling and CCW rotation; ``native_inhibit_spaces`` delegates to ``_PDFPage.native``."""
 
     def render(self) -> Raster:
         import pymupdf
@@ -141,12 +101,15 @@ class OptInPdfReader(DefaultReader):
         adaptive_max_pixels: bool = False,
         rotate_ccw_pages: dict[int, int] | None = None,
     ):
-        super().__init__(dpi=dpi, max_pixels=max_pixels, table_strategy=table_strategy, raw_rgb=raw_rgb)
-        if not isinstance(native_inhibit_spaces, bool):
-            raise TypeError('native_inhibit_spaces must be bool')
+        super().__init__(
+            dpi=dpi,
+            max_pixels=max_pixels,
+            table_strategy=table_strategy,
+            raw_rgb=raw_rgb,
+            native_inhibit_spaces=native_inhibit_spaces,
+        )
         if not isinstance(adaptive_max_pixels, bool):
             raise TypeError('adaptive_max_pixels must be bool')
-        self.native_inhibit_spaces = native_inhibit_spaces
         self.adaptive_max_pixels = adaptive_max_pixels
         self.rotate_ccw_pages = dict(rotate_ccw_pages or {})
 
@@ -156,11 +119,8 @@ class OptInPdfReader(DefaultReader):
         and would be silently ignored, while the rule's checkpoint identity still claimed it."""
         if media_type != 'application/pdf':
             raise ValueError(f'OptInPdfReader reads application/pdf only, not {media_type}')
-        import pymupdf
-        with pymupdf.Document(stream=source, filetype='pdf') as document:
-            if document.needs_pass:
-                raise ExtractionError('encrypted PDF requires decryption before extraction')
-            yield _OptInPDF(document, self)
+        with super().open(source, media_type) as pdf:
+            yield _OptInPDF(pdf.document, self)
 
 
 def tesseract_300dpi() -> PageRule:
@@ -173,7 +133,7 @@ def tesseract_300dpi() -> PageRule:
         reader,
         checkpoint_identity=dict(
             backend=identity,
-            backend_implementation='spicy-docs-0.85.0+cttesseract.20261117',
+            backend_implementation=f"spicy-docs-{version('spicy-docs')}",
             reader='OptInPdfReader',
             dpi=300,
             raw_rgb=True,
@@ -194,7 +154,7 @@ def tesseract_bounded_200dpi() -> PageRule:
         reader,
         checkpoint_identity=dict(
             backend=identity,
-            backend_implementation='spicy-docs-0.85.0+cttesseract.20261117',
+            backend_implementation=f"spicy-docs-{version('spicy-docs')}",
             reader='OptInPdfReader',
             dpi=200,
             raw_rgb=True,

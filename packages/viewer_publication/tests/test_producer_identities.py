@@ -72,8 +72,8 @@ def test_current_identities_are_the_published_pins():
 
 
 # aiohttp, pyasn1, urllib3, certifi and pillow were the pending security patches
-# (ct-680z). pypdf feeds only readings, which carry declared versions.
-@pytest.mark.parametrize('package', ['aiohttp', 'pyasn1', 'urllib3', 'certifi', 'pillow', 'pypdf', 'boto3'])
+# (ct-680z). pypdf and spicy-docs feed only readings/body_text, which carry declared versions.
+@pytest.mark.parametrize('package', ['aiohttp', 'pyasn1', 'urllib3', 'certifi', 'pillow', 'pypdf', 'boto3', 'spicy-docs'])
 def test_an_unrelated_locked_package_leaves_every_identity(tmp_path, package):
     assert all_identities(bumped_checkout(tmp_path, package)) == all_published()
 

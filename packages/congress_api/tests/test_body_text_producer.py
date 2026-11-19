@@ -468,4 +468,166 @@ def test_retry_unreadable_script_dry_run_live_guard_and_idempotent_resume(tmp_pa
     assert by_sha_2[digests['b']]['status'] == 'read'
     assert by_sha_2[digests['b']]['peak_rss_bytes'] > 0
 
+    # Ordinary unreadable retry refuses opt-in PDF strategies before modifying unreadable decisions.
+    with pytest.raises(ValueError, match='Unsupported strategy'):
+        retry_mod.main([
+            '--unreadable-root', str(unr_root),
+            '--catalog-root', str(args['catalog_root']),
+            '--captures', str(args['captures']),
+            '--local-root', str(args['local_root']),
+            '--strategy', 'congress_api.parsers.pdf_opt_in:native_inhibit_spaces_only',
+            '--dry-run',
+            '--work-dir', str(tmp_path / 'bad-strategy'),
+        ])
+
+
+def test_stage_accepts_warc_recovery_and_enforces_opt_in_pdf_strategy_versions(tmp_path):
+    from congress_api.lake.reading_versions import (
+        PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION,
+        PDF_TESSERACT_300DPI_RECOVERY_VERSION,
+        PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION,
+    )
+
+    warc_bytes = warc_member(HTML)
+    pdf_bytes = two_page_pdf()
+    args, names = lake(tmp_path, dict(warc=(warc_bytes, 'warc'), pdf=(pdf_bytes, 'pdf')))
+    by_name = {name: digest for digest, name in names.items()}
+
+    # 1. Valid WARC recovery item carrying recovery_versions()['warc'] stages cleanly.
+    rec_versions = body_text.recovery_versions()
+    warc_hex = by_name['warc'].hex()
+    warc_key = f'bodies/sha256/{warc_hex[:2]}/{warc_hex}'
+    warc_item = dict(
+        body_sha=by_name['warc'],
+        parser='warc',
+        parser_version=rec_versions['warc'],
+        physical_key=warc_key,
+        relative_path=warc_key,
+        stored_bytes=len(warc_bytes),
+    )
+    warc_plan = dict(versions=rec_versions, local_root=args['local_root'], decided_at=STAMP)
+    staged_warc = body_text.stage(warc_plan, [warc_item], engine=args['engine'], work=tmp_path / 'warc-rec', recovery=True)
+    assert staged_warc['body_text_rows'] == 1
+    [wrow] = pq.read_table(staged_warc['body_text']).to_pylist()
+    assert wrow['parser'] == 'warc' and wrow['parser_version'] == rec_versions['warc']
+
+    # 2. native_inhibit_spaces_only refuses ordinary pdf_text ID (before mkdir) and accepts its dedicated ID.
+    pdf_hex = by_name['pdf'].hex()
+    pdf_key = f'bodies/sha256/{pdf_hex[:2]}/{pdf_hex}'
+    ordinary_pdf_item = dict(
+        body_sha=by_name['pdf'],
+        parser='pdf_text',
+        parser_version=body_text.current_versions()['pdf_text'],
+        physical_key=pdf_key,
+        relative_path=pdf_key,
+        stored_bytes=len(pdf_bytes),
+    )
+    ordinary_plan = dict(versions=body_text.current_versions(), local_root=args['local_root'], decided_at=STAMP)
+    with pytest.raises(ValueError, match='dedicated declared reading version'):
+        body_text.stage(ordinary_plan, [ordinary_pdf_item], engine=args['engine'],
+                        work=tmp_path / 'spacing-wrong-id',
+                        strategy='congress_api.parsers.pdf_opt_in:native_inhibit_spaces_only')
+    assert not (tmp_path / 'spacing-wrong-id').exists()
+
+    spacing_item = dict(ordinary_pdf_item, parser_version=PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION)
+    spacing_plan = dict(versions={'pdf_text': PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION},
+                        local_root=args['local_root'], decided_at=STAMP)
+    staged_spacing = body_text.stage(spacing_plan, [spacing_item], engine=args['engine'],
+                                     work=tmp_path / 'spacing-ok',
+                                     strategy='congress_api.parsers.pdf_opt_in:native_inhibit_spaces_only')
+    assert staged_spacing['body_text_rows'] == 1
+    [srow] = pq.read_table(staged_spacing['body_text']).to_pylist()
+    assert srow['parser'] == 'pdf_text' and srow['parser_version'] == PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION
+
+    # 3. Ordinary strategy refuses opt-in PDF IDs, and bounded 200 DPI vs fixed 300 DPI Tesseract have distinct IDs.
+    with pytest.raises(ValueError, match='current declared reading versions'):
+        body_text.stage(spacing_plan, [spacing_item], engine=args['engine'], work=tmp_path / 'ordinary-with-spacing')
+    assert not (tmp_path / 'ordinary-with-spacing').exists()
+    with pytest.raises(ValueError, match='dedicated declared reading version'):
+        body_text.stage(spacing_plan, [spacing_item], engine=args['engine'], work=tmp_path / 'tess-with-spacing',
+                        strategy='congress_api.parsers.pdf_opt_in:tesseract_bounded_200dpi')
+    assert not (tmp_path / 'tess-with-spacing').exists()
+    assert len({
+        PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION,
+        PDF_TESSERACT_300DPI_RECOVERY_VERSION,
+        PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION,
+    }) == 3
+    tess_200_plan = dict(versions={'pdf_text': PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION},
+                         local_root=args['local_root'], decided_at=STAMP)
+    tess_200_item = dict(ordinary_pdf_item, parser_version=PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION)
+    with pytest.raises(ValueError, match='dedicated declared reading version'):
+        body_text.stage(tess_200_plan, [tess_200_item], engine=args['engine'], work=tmp_path / 'tess300-with-200id',
+                        strategy='congress_api.parsers.pdf_opt_in:tesseract_300dpi')
+    assert not (tmp_path / 'tess300-with-200id').exists()
+    tess_300_plan = dict(versions={'pdf_text': PDF_TESSERACT_300DPI_RECOVERY_VERSION},
+                         local_root=args['local_root'], decided_at=STAMP)
+    tess_300_item = dict(ordinary_pdf_item, parser_version=PDF_TESSERACT_300DPI_RECOVERY_VERSION)
+    with pytest.raises(ValueError, match='dedicated declared reading version'):
+        body_text.stage(tess_300_plan, [tess_300_item], engine=args['engine'], work=tmp_path / 'tess200-with-300id',
+                        strategy='congress_api.parsers.pdf_opt_in:tesseract_bounded_200dpi')
+    assert not (tmp_path / 'tess200-with-300id').exists()
+
+    # 4. recovery=True refuses pixel-capped ordinary apple_vision AND native_only BEFORE load_page_rule() (even on Linux!).
+    from congress_api.parsers import body_text as bt_parsers
+    with pytest.raises(ValueError, match='declared recovery PDF strategy'):
+        body_text.stage(warc_plan, [warc_item], engine=args['engine'], work=tmp_path / 'rec-with-ordinary-vision',
+                        strategy='congress_api.parsers.body_text:apple_vision', recovery=True)
+    assert not (tmp_path / 'rec-with-ordinary-vision').exists()
+    with pytest.raises(ValueError, match='declared recovery PDF strategy'):
+        body_text.stage(warc_plan, [warc_item], engine=args['engine'], work=tmp_path / 'rec-with-ordinary-native',
+                        strategy='congress_api.parsers.body_text:native_only', recovery=True)
+    assert not (tmp_path / 'rec-with-ordinary-native').exists()
+    # Simulate Linux CI where apple_vision() would raise ExtractionError("Apple Vision requires macOS") if called:
+    orig_apple_vision = bt_parsers.apple_vision
+    try:
+        def linux_no_vision():
+            raise RuntimeError('Apple Vision requires macOS')
+        bt_parsers.apple_vision = linux_no_vision
+        with pytest.raises(ValueError, match='declared recovery PDF strategy'):
+            body_text.stage(warc_plan, [warc_item], engine=args['engine'], work=tmp_path / 'rec-linux-vision',
+                            strategy='congress_api.parsers.body_text:apple_vision', recovery=True)
+        assert not (tmp_path / 'rec-linux-vision').exists()
+    finally:
+        bt_parsers.apple_vision = orig_apple_vision
+
+    # 4b. A >20M-pixel (1,700 x 1,700 pt) scanned PDF under recovery=True stays pending (ocr_pending=1, 0 error rows)!
+    import pymupdf
+    src_doc = pymupdf.open()
+    src_pg = src_doc.new_page(width=100, height=100)
+    src_pg.insert_text((10, 50), 'Scan', fontsize=14)
+    png = src_pg.get_pixmap(dpi=72, colorspace=pymupdf.csRGB, alpha=False).tobytes('png')
+    src_doc.close()
+    big_doc = pymupdf.open()
+    big_pg = big_doc.new_page(width=1700, height=1700)  # 4723 x 4723 = 22.3M pixels at 200 DPI (> 20M)
+    big_pg.insert_image(pymupdf.Rect(0, 0, 1700, 1700), stream=png)
+    big_scan_bytes = big_doc.tobytes()
+    big_doc.close()
+    big_args, big_names = lake(tmp_path / 'big-scan-lake', dict(bigscan=(big_scan_bytes, 'pdf')))
+    [big_sha] = list(big_names)
+    big_hex = big_sha.hex()
+    big_key = f'bodies/sha256/{big_hex[:2]}/{big_hex}'
+    big_item = dict(
+        body_sha=big_sha,
+        parser='pdf_text',
+        parser_version=rec_versions['pdf_text'],
+        physical_key=big_key,
+        relative_path=big_key,
+        stored_bytes=len(big_scan_bytes),
+    )
+    big_plan = dict(versions=rec_versions, local_root=big_args['local_root'], decided_at=STAMP)
+    staged_big = body_text.stage(big_plan, [big_item], engine=big_args['engine'], work=tmp_path / 'big-scan-rec', recovery=True)
+    assert staged_big['ocr_pending'] == 1 and staged_big['readings_rows'] == 0 and staged_big['body_text_rows'] == 0
+
+    # 5. Null item parser_version and unknown/null plan entries fail before work.mkdir().
+    with pytest.raises(ValueError, match='current declared reading versions'):
+        body_text.stage(dict(versions={'unknown': None}, local_root=args['local_root'], decided_at=STAMP),
+                        [], engine=args['engine'], work=tmp_path / 'unknown-null-plan')
+    assert not (tmp_path / 'unknown-null-plan').exists()
+    html_only_plan = dict(versions={'html_text': body_text.current_versions()['html_text']},
+                          local_root=args['local_root'], decided_at=STAMP)
+    null_pdf_item = dict(ordinary_pdf_item, parser_version=None)
+    with pytest.raises(ValueError, match='differs from the planned execution versions'):
+        body_text.stage(html_only_plan, [null_pdf_item], engine=args['engine'], work=tmp_path / 'null-pdf-item')
+    assert not (tmp_path / 'null-pdf-item').exists()
+
 
