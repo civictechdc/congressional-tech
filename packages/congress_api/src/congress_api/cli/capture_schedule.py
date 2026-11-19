@@ -40,6 +40,8 @@ def main(argv=None):
     parser.add_argument('--firecrawl-cost-bound-micros',type=int,help='Conservative maximum Firecrawl call cost in microdollars')
     parser.add_argument('--engine-config',type=Path,default=os.environ.get('DOCSPEC_JOB_CONFIG'))
     parser.add_argument('--local-store',type=Path,help='Local create-only body/receipt destination')
+    parser.add_argument('--qualifications',type=Path,help='Prior verified qualification ledger or cache')
+    parser.add_argument('--qualification-cache',type=Path,help='Durable body qualification cache directory')
     parser.add_argument('--bucket',default='congressional-tech-raw')
     parser.add_argument('--max-discovery-jobs',type=int,default=8)
     parser.add_argument('--fetcher-binary',type=Path,default=_default_fetcher_binary())
@@ -138,7 +140,8 @@ def main(argv=None):
                 request_budget=args.request_budget,byte_budget=args.byte_budget,spool_budget=args.spool_budget,
                 store=store,identity=identity,direct=DirectAdapter(session),provider=provider,
                 cutoff_urls=cutoffs,max_discovery_jobs=args.max_discovery_jobs,headers=headers,workers=workers,campaign=campaign,
-                admission=admission,provider_cost=args.zyte_cost_bound_micros,firecrawl=firecrawl,firecrawl_cost=args.firecrawl_cost_bound_micros)
+                admission=admission,provider_cost=args.zyte_cost_bound_micros,firecrawl=firecrawl,firecrawl_cost=args.firecrawl_cost_bound_micros,
+                qualification_cache=args.qualification_cache,qualifications=args.qualifications)
     (args.work/'summary.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
     print(json.dumps(result,ensure_ascii=False,indent=2))
 

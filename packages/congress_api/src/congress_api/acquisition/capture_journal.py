@@ -91,12 +91,15 @@ class DurableCapture:
         owner=self
         class JournalAdapter:
             sequence=0
-            def hop(self,url,destination,*,limit,headers):
+            def hop(self,url,destination,*,limit,headers,prior_validators=None):
+                import inspect
                 index=self.sequence;self.sequence+=1
                 record=root/f'{kind}-{index}.json'
                 owned=root/f'{kind}-{index}.sealed'
                 # Header values can contain credentials; bind by hash only.
                 request=dict(url=url,limit=limit,headers_sha256=hashlib.sha256(json.dumps(headers,sort_keys=True).encode()).hexdigest())
+                if prior_validators is not None:
+                    request['validators_sha256']=hashlib.sha256(json.dumps(prior_validators,sort_keys=True,default=str).encode()).hexdigest()
                 previous=json.loads(record.read_text()) if record.exists() else None
                 decision=root/f'{kind}-{index}.unknown.json'
                 if previous is not None and decision.exists() and json.loads(decision.read_text())['previous']==previous:
@@ -110,7 +113,13 @@ class DurableCapture:
                     started=dict(phase='started',request=request,attempt_token=uuid4().hex)
                     durable_json(record,started)
                     from congress_api.acquisition.admission import AdmissionDenied
-                    try:transfer=adapter.hop(url,owned,limit=limit,headers=headers)
+                    params = inspect.signature(adapter.hop).parameters
+                    accepts_validators = 'prior_validators' in params
+                    try:
+                        if accepts_validators and prior_validators is not None:
+                            transfer=adapter.hop(url,owned,limit=limit,headers=headers,prior_validators=prior_validators)
+                        else:
+                            transfer=adapter.hop(url,owned,limit=limit,headers=headers)
                     except AdmissionDenied:
                         record.unlink()  # No network call was admitted.
                         raise

@@ -60,7 +60,7 @@ def plan(descriptor, *, output, engine):
             _input(campaign,campaign.candidate_table,'candidates_input')]
     # State is already produced by the native qualified-decision owner. A planner
     # does not elevate arbitrary accepted mapping rows into recovery evidence.
-    state="SELECT cast(NULL AS VARCHAR) AS url,cast(NULL AS VARCHAR) AS capture_disposition,cast(NULL AS VARCHAR) AS capture_decision_id WHERE false"
+    state="SELECT cast(NULL AS VARCHAR) AS url,cast(NULL AS VARCHAR) AS capture_disposition,cast(NULL AS VARCHAR) AS capture_reason,cast(NULL AS VARCHAR) AS capture_decision_id WHERE false"
     if 'state' in campaign.tables:
         # url_state.parquet (model/sql/url-state.sql) names the literal 'requested_url';
         # older state tables name it 'url'. Either is the same literal address.
@@ -78,9 +78,11 @@ def plan(descriptor, *, output, engine):
         if policy!={'acceptance_policy':VERSION,'requirements_sha256':campaign.tables['state_requirements'].sha256}:
             raise ValueError('State requirements or acceptance policy do not match its profile')
         inputs.extend([_input(campaign,'state','state_input'),_input(campaign,'state_requirements','state_requirements')])
+        capture_reason_col='cast(s.capture_reason AS VARCHAR)' if 'capture_reason' in state_names else 'cast(NULL AS VARCHAR)'
         state=f"""SELECT s.{state_url} AS url,CASE WHEN s.capture_disposition='satisfied' AND
             NOT coalesce(r.target_requirement={_q(campaign.requirement)} AND r.acceptance_policy={_q(VERSION)},false)
-            THEN 'eligible' ELSE s.capture_disposition END AS capture_disposition,s.capture_decision_id
+            THEN 'eligible' ELSE s.capture_disposition END AS capture_disposition,
+            {capture_reason_col} AS capture_reason,s.capture_decision_id
             FROM state_input s LEFT JOIN state_requirements r ON s.{state_url}=r.original_url"""
     steps=[dict(name='targets',sql=raw),dict(name='state',sql=state),
         dict(name='candidate_counts',sql='SELECT target_url,count(*) AS candidates FROM candidates_input GROUP BY target_url'),
@@ -88,11 +90,14 @@ def plan(descriptor, *, output, engine):
         regexp_replace(t.target_url,'^https?://([^/]+).*$', '\\1') AS host,t.subtype,
         CASE WHEN coalesce(t.unresolved_reason,'')<>'' OR
                   (coalesce(t.usable_direct,false) AND coalesce(t.acquisition_excluded,false)) THEN 'unresolved'
-             WHEN coalesce(t.usable_direct,false) THEN 'usable_direct'
              WHEN s.capture_disposition='satisfied' AND s.capture_decision_id IS NOT NULL THEN 'accepted_recovery'
+             WHEN (coalesce(t.usable_direct,false) AND coalesce(s.capture_reason,'')<>'body_not_qualified')
+                  OR (s.capture_disposition='satisfied' AND s.capture_reason='qualified_direct_body') THEN 'usable_direct'
              WHEN coalesce(t.acquisition_excluded,false) OR s.capture_disposition='excluded' THEN 'acquisition_excluded'
              WHEN c.candidates>0 THEN 'retained_candidate_pending' ELSE 'needs_acquisition' END AS disposition,
-        coalesce(t.unresolved_reason,s.capture_disposition,'metadata_policy') AS reason,
+        coalesce(t.unresolved_reason,
+                 CASE WHEN s.capture_reason IN ('body_not_qualified','qualified_direct_body') THEN s.capture_reason END,
+                 s.capture_disposition,'metadata_policy') AS reason,
         coalesce(s.capture_decision_id,t.evidence_id,{_q(campaign.descriptor_sha256)}) AS evidence_id,
         {_q(campaign.requirement)} AS target_requirement,{_q(VERSION)} AS acceptance_policy,t.refresh_policy,
         coalesce(c.candidates,0) AS candidates

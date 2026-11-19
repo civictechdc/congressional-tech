@@ -1523,3 +1523,260 @@ def test_fragmented_target_probes_archive_and_narrow_repairs_normalize_utf8():
     assert len(queried) == 1
     assert 'HHRG-118-IF00-WState-1.pdf' in queried[0] and '#page=2' not in queried[0]
 
+
+def test_http_200_corrupt_pdf_routes_through_url_state_discovery_and_scheduler_while_healthy_pdf_stays_usable(tmp_path):
+    """ct-zohj end-to-end: an HTTP-200 truncated PDF is preserved in BodyStore and captures,
+    marked body_not_qualified in url_state and inventory, routed to Wayback discovery in
+    run_recovery_campaign, and scheduled onto its archive candidate by plan_queue; a healthy
+    HTTP-200 PDF stays usable_direct and never triggers archive discovery."""
+    from congress_api.acquisition.capture_scheduler import CapturePolicy, load_release, plan_queue, run_capture
+    from congress_api.lake import capture_staging
+    from congress_api.models.archive_profile import build_capture_profile
+    from congress_api.retention.archive_members import ZipLimits
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    from congress_api.retention.provenance import file_pin
+    from congress_api.transport.raw_adapters import DirectAdapter
+    from congress_shared.campaign import load_campaign
+    import requests
+
+    import io
+    from pypdf import PdfWriter
+
+    bad_url = 'https://docs.house.gov/meetings/GO/GO00/20110511/corrupt-testimony.pdf'
+    good_url = 'https://docs.house.gov/meetings/GO/GO00/20110511/healthy-testimony.pdf'
+    bad_bytes = b'%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\ntruncated'
+    pdf_writer = PdfWriter()
+    pdf_writer.add_blank_page(width=72, height=72)
+    pdf_writer.add_blank_page(width=72, height=72)
+    pdf_buf = io.BytesIO()
+    pdf_writer.write(pdf_buf)
+    good_bytes = pdf_buf.getvalue()
+
+    scope_path = ROOT / 'model/registries/capture-scope.json'
+    policy = CapturePolicy(scope_path, resolve=lambda _: ['8.8.8.8'])
+
+    class _Resp:
+        def __init__(self, u, status, hdrs, body):
+            self.url = u
+            self.status_code = status
+            self.headers = requests.structures.CaseInsensitiveDict(hdrs)
+            self._body = body
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def iter_content(self, chunk_size=65536):
+            yield self._body
+
+    class _Sess:
+        def get(self, u, *, headers, timeout, stream, allow_redirects):
+            payload = bad_bytes if u == bad_url else good_bytes
+            return _Resp(u, 200, {'Content-Type': 'application/pdf', 'ETag': f'"{len(payload)}"', 'Content-Length': str(len(payload))}, payload)
+
+    # 1. Capture both URLs via run_capture into local BodyStore
+    rel0 = tmp_path / 'rel0'
+    rel0.mkdir()
+    state0_schema = pa.schema([
+        ('requested_url', pa.string()), ('attempts', pa.int32()),
+        ('last_attempt', pa.timestamp('us', tz='UTC')), ('last_status', pa.int16()),
+        ('last_outcome', pa.string()), ('last_good_at', pa.timestamp('us', tz='UTC')),
+        ('next_attempt_at', pa.timestamp('us', tz='UTC')),
+    ])
+    pq.write_table(
+        pa.Table.from_pylist([dict(requested_url=bad_url, attempts=0), dict(requested_url=good_url, attempts=0)], schema=state0_schema),
+        rel0 / 'url_state.parquet',
+    )
+    (rel0 / 'capture_scope.json').write_bytes(scope_path.read_bytes())
+    with engine() as eng:
+        prof0 = build_capture_profile(
+            engine_revision=eng.source_revision,
+            url_normalized_sql=(ROOT / 'model/sql/url-normalized.sql').read_text(),
+            url_keys_sql=(ROOT / 'model/sql/url-keys.sql').read_text(),
+            url_rules=json.loads((ROOT / 'model/registries/url-rules.json').read_text()),
+        )
+        (rel0 / 'capture_profile.json').write_text(json.dumps(prof0))
+        pq.write_table(pa.Table.from_pylist([], schema=pa.schema([('canonical_url', pa.string()), ('variant_url', pa.string())])), rel0 / 'url_variants.parquet')
+        files0 = []
+        for name in ('url_state.parquet', 'capture_scope.json', 'capture_profile.json', 'url_variants.parquet'):
+            raw_b = (rel0 / name).read_bytes()
+            files0.append(dict(name=name, sha256=sha256(raw_b).hexdigest(), size=len(raw_b),
+                               rows=pq.read_metadata(rel0 / name).num_rows if name.endswith('.parquet') else None))
+        rel0_id = sha256(json.dumps([1, [[f[k] for k in ('name', 'sha256', 'size', 'rows')] for f in files0]], separators=(',', ':')).encode()).hexdigest()
+        (rel0 / 'manifest.json').write_text(json.dumps(dict(schema_version=1, release_id=rel0_id, files=files0)))
+
+        raw_store_dir = tmp_path / 'raw'
+        store = BodyStore(LocalAdapter(raw_store_dir))
+        cap_res = run_capture(
+            load_release(release_root=rel0, work=tmp_path / 'load0'),
+            engine=eng,
+            work=tmp_path / 'cap0',
+            as_of='2026-10-01T00:00:00Z',
+            request_budget=10,
+            byte_budget=2**24,
+            spool_budget=2**26,
+            store=store,
+            identity=WRITER_IDENTITY,
+            direct=DirectAdapter(_Sess()),
+            resolve=lambda _: ['8.8.8.8'],
+            archive_limits=ZipLimits(max_archive_bytes=1024 * 1024, max_member_bytes=1024 * 1024, max_total_bytes=2 * 1024 * 1024, max_members=8, max_directory_bytes=1024 * 1024),
+            pace=lambda *_: None,
+        )
+        assert cap_res['qualifications'] == {
+            'checked': 2,
+            'qualified': 1,
+            'failed': 1,
+            'failed_urls': [bad_url],
+        }
+        quals_ledger = tmp_path / 'cap0/qualifications.jsonl'
+        assert quals_ledger.is_file()
+
+        # 2. Stage receipts with captures.py and evaluate url_state with qualifications
+        staged_files = []
+        for idx, rkey in enumerate(cap_res['receipts']):
+            src = raw_store_dir / rkey
+            dst = tmp_path / 'q-receipts' / f'{idx}-{src.name}'
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            data = src.read_bytes()
+            dst.write_bytes(data)
+            auth = dst.with_name(dst.name + '.qualification.json')
+            auth.write_text(json.dumps(dict(path=str(dst.resolve()), sha256=sha256(data).hexdigest(), size=len(data), producer='synthetic fixture creation')))
+            staged_files.append(dict(key=rkey, path=str(dst), qualification=str(auth)))
+        captures_parquet = capture_staging.stage_captures(staged_files, engine=eng, work=tmp_path / 'stage0') / 'captures.parquet'
+
+        reqs_rows = [
+            dict(original_url=bad_url, target_requirement='historical_exact', acceptance_policy=VERSION, refresh_policy='historical_only'),
+            dict(original_url=good_url, target_requirement='historical_exact', acceptance_policy=VERSION, refresh_policy='historical_only'),
+        ]
+        reqs_parquet = tmp_path / 'requirements.parquet'
+        pq.write_table(pa.Table.from_pylist(reqs_rows), reqs_parquet)
+
+        state_work = tmp_path / 'state-eval'
+        state_inputs = [
+            *registry_inputs(state_work / 'registries'),
+            dict(name='captures', kind='parquet', path=str(captures_parquet)),
+            json_input(state_work, 'resolved_links', [], target_url='Utf8', target_member_path='Utf8', page_body='Utf8', context_url='Utf8', member_path='Utf8'),
+            json_input(state_work, 'url_state_meeting_dates', [], requested_url='Utf8', meeting_date='Utf8'),
+            json_input(state_work, 'url_variants', [], canonical_url='Utf8', variant_url='Utf8'),
+            dict(name='recovery_requirements', kind='parquet', path=str(reqs_parquet)),
+            json_input(state_work, 'recovery_decisions', [], **{**{k: 'Utf8' for k in ('id', 'original_url', 'body_sha256', 'kind', 'target_requirement', 'acceptance_policy', 'acceptance_status', 'evidence_sha256', 'qualification_sha256', 'supersedes')}, 'recovery_record_version': 'Int32'}),
+        ]
+        prep_steps = [
+            dict(name='capture_evidence', sql='SELECT * FROM captures'),
+            *model_steps(['good-fetches'], provided=['capture_evidence']),
+            dict(name='good_fetch_contexts', sql='SELECT receipt_key,receipt_line,capture_index,sha256,context_url,member_path FROM good_fetches'),
+            dict(name='record_roles', sql="SELECT receipt_key,receipt_line,capture_index,'document' AS record_role FROM captures"),
+            dict(name='resolved_link_targets', sql='SELECT DISTINCT page_body,context_url,member_path,target_url,cast(NULL AS VARCHAR) AS target_member_path FROM resolved_links WHERE target_member_path IS NULL'),
+            dict(name='url_inputs', sql="SELECT DISTINCT encode(sha256(json_array(url)),'hex') AS input_id,url FROM (SELECT requested_url AS url FROM captures UNION SELECT url FROM captures) WHERE url IS NOT NULL"),
+            dict(name='url_normalized', sql=(ROOT / 'model/sql/url-normalized.sql').read_text(), materialize=True),
+            dict(name='model_url_keys', sql=(ROOT / 'model/sql/url-keys.sql').read_text(), materialize=True),
+        ]
+        rel1 = tmp_path / 'rel1'
+        state_res = evaluate_campaign_url_state(
+            state_work / 'job',
+            engine=eng,
+            inputs=state_inputs,
+            prep_steps=prep_steps,
+            recovery_policy={'acceptance_policy': VERSION},
+            qualifications=quals_ledger,
+            output_dir=rel1,
+        )
+        state_by_url = {r['requested_url']: r for r in pq.read_table(state_res['url_state_parquet']).to_pylist()}
+        assert state_by_url[bad_url]['capture_disposition'] == 'eligible'
+        assert state_by_url[bad_url]['capture_reason'] == 'body_not_qualified'
+        assert state_by_url[good_url]['capture_disposition'] == 'satisfied'
+        assert state_by_url[good_url]['capture_reason'] == 'qualified_direct_body'
+
+        # Seal rel1 as a v2 capture release
+        (rel1 / 'capture_scope.json').write_bytes(scope_path.read_bytes())
+        prof1 = build_capture_profile(
+            engine_revision=eng.source_revision,
+            url_normalized_sql=(ROOT / 'model/sql/url-normalized.sql').read_text(),
+            url_keys_sql=(ROOT / 'model/sql/url-keys.sql').read_text(),
+            url_rules=json.loads((ROOT / 'model/registries/url-rules.json').read_text()),
+            recovery_policy=dict(acceptance_policy=VERSION, requirements_sha256=file_pin(reqs_parquet)['sha256']),
+        )
+        (rel1 / 'capture_profile.json').write_text(json.dumps(prof1))
+        pq.write_table(pa.Table.from_pylist([], schema=pa.schema([('canonical_url', pa.string()), ('variant_url', pa.string())])), rel1 / 'url_variants.parquet')
+        files1 = []
+        for name in ('url_state.parquet', 'capture_scope.json', 'capture_profile.json', 'url_variants.parquet'):
+            raw_b = (rel1 / name).read_bytes()
+            files1.append(dict(name=name, sha256=sha256(raw_b).hexdigest(), size=len(raw_b),
+                               rows=pq.read_metadata(rel1 / name).num_rows if name.endswith('.parquet') else None))
+        rel1_id = sha256(json.dumps([1, [[f[k] for k in ('name', 'sha256', 'size', 'rows')] for f in files1]], separators=(',', ':')).encode()).hexdigest()
+        (rel1 / 'manifest.json').write_text(json.dumps(dict(schema_version=1, release_id=rel1_id, files=files1)))
+
+        # 3. Run recovery campaign: only bad_url queries Wayback/GovInfo discovery; good_url stays usable_direct!
+        probed_wayback = []
+        def mock_wayback(kind: str, query_url: str) -> Response:
+            probed_wayback.append(query_url)
+            payload = json.dumps([
+                WAYBACK_FIELDS,
+                [surt_key(bad_url), '20110601120000', bad_url, 'application/pdf', '200', 'B' * 32, '8192'],
+            ]).encode('utf-8')
+            return Response(200, payload, True, 'ev:wb:bad', 'application/json', query_url)
+
+        sibling_url = 'https://docs.house.gov/meetings/GO/GO00/20110511/corrupt-testimony.xml'
+        sibling_good = 'https://docs.house.gov/meetings/GO/GO00/20110511/healthy-testimony.xml'
+        listing_url = 'https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=100100'
+        house_candidates = {
+            bad_url: [{
+                'candidate_url': sibling_url,
+                'listing_url': listing_url,
+                'listing_urls': {bad_url, sibling_url},
+                'evidence': 'ev:house:bad',
+                'target_version': 'v1',
+                'candidate_version': 'v1',
+            }],
+            good_url: [{
+                'candidate_url': sibling_good,
+                'listing_url': listing_url,
+                'listing_urls': {good_url, sibling_good},
+                'evidence': 'ev:house:good',
+                'target_version': 'v1',
+                'candidate_version': 'v1',
+            }],
+        }
+        camp_res = run_recovery_campaign(
+            tmp_path / 'campaign',
+            campaign_id='ct-zohj-e2e',
+            targets=[bad_url, good_url],
+            engine=eng,
+            policy=policy,
+            captures=captures_parquet,
+            qualifications=quals_ledger,
+            discovery_kwargs={'wayback_call': mock_wayback, 'house_listings': house_candidates, 'max_pages': 1},
+            state=rel1 / 'url_state.parquet',
+            state_profile=rel1 / 'capture_profile.json',
+            state_requirements=reqs_parquet,
+        )
+        assert len(probed_wayback) == 1 and 'corrupt-testimony.pdf' in probed_wayback[0]
+        assert {c['target_url'] for c in camp_res['candidates']} == {bad_url}
+        assert {c['candidate_url'] for c in camp_res['candidates']} == {
+            f'https://web.archive.org/web/20110601120000id_/{bad_url}',
+            sibling_url,
+        }
+        inv_by_url = {r['target_url']: r for r in camp_res['targets']}
+        assert inv_by_url[bad_url]['usable_direct'] is False
+        assert inv_by_url[bad_url]['subtype'] == 'body_not_qualified'
+        assert inv_by_url[good_url]['usable_direct'] is True
+
+        disp_by_url = {
+            r['target_url']: r
+            for r in pq.read_table(tmp_path / 'campaign/plan/url-dispositions.parquet').to_pylist()
+        }
+        assert disp_by_url[bad_url]['disposition'] == 'retained_candidate_pending'
+        assert disp_by_url[bad_url]['reason'] == 'body_not_qualified'
+        assert disp_by_url[good_url]['disposition'] == 'usable_direct'
+
+        # 4. Verify capture_scheduler.plan_queue schedules the discovered in-scope candidate immediately
+        # while keeping good_url satisfied and bad_url's direct address deferred!
+        queue_res = plan_queue(
+            load_release(release_root=rel1, work=tmp_path / 'load1'),
+            engine=eng,
+            work=tmp_path / 'queue1',
+            as_of='2026-10-02T00:00:00Z',
+            request_budget=10,
+            campaign=load_campaign(camp_res['descriptor']),
+        )
+        queued_urls = [r['requested_url'] for r in pq.read_table(queue_res['queue']).to_pylist()]
+        assert queued_urls == [sibling_url]
+
+

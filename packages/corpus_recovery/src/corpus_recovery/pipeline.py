@@ -406,6 +406,7 @@ def evaluate_campaign_url_state(
     work_dir: str | Path, *, engine: Any, inputs: list[dict[str, Any]],
     prep_steps: list[dict[str, Any]] | None = None,
     recovery_policy: Mapping[str, Any] | None = None,
+    qualifications: Any = None,
     output_dir: str | Path | None = None,
 ) -> dict[str, Any]:
     """Execute full `url_state_steps` + `url_state_diagnostics` and enforce zero invariant errors.
@@ -413,18 +414,27 @@ def evaluate_campaign_url_state(
     `url_state.parquet` is written under `work_dir` and moved to `output_dir` only
     after the invariants pass; a failing table stays in `work_dir` for inspection.
     """
+    from congress_api.retention.qualification_facts import model_qualification_input
     from viewer_publication.archive_url_state import url_state_diagnostics, url_state_steps
 
     work = Path(work_dir)
     pol = dict(recovery_policy) if recovery_policy is not None else None
-    steps = list(prep_steps or ()) + url_state_steps(recovery_policy=pol)
+    job_inputs = list(inputs)
+    all_prep = list(prep_steps or ())
+    has_qual_step = any(s.get('name') == 'body_qualifications' for s in all_prep)
+    if qualifications is not None:
+        qual_inp, qual_step = model_qualification_input(qualifications, work / 'qualifications')
+        job_inputs.append(qual_inp)
+        all_prep.append(qual_step)
+        has_qual_step = True
+    steps = all_prep + url_state_steps(recovery_policy=pol, include_qualifications=has_qual_step)
     staged_root = work / 'staged-outputs'
     staged_root.mkdir(parents=True, exist_ok=True)
     outputs = [
         parquet_output(staged_root, 'url_state', 'SELECT * FROM url_state ORDER BY requested_url', ['requested_url'])
     ]
     queries = list(url_state_diagnostics())
-    result = run_job(work, engine, inputs=inputs, steps=steps, outputs=outputs, queries=queries)
+    result = run_job(work, engine, inputs=job_inputs, steps=steps, outputs=outputs, queries=queries)
     failing = {k: v for k, v in result['url_state_invariants'][0].items() if v}
     if failing:
         raise ValueError(f'URL state invariants failed: {failing}; staged table retained in {staged_root}')
@@ -439,6 +449,7 @@ def run_recovery_campaign(
     work_dir: str | Path, *, campaign_id: str, targets: Any, engine: Any,
     policy: Any | None = None, captures: Any | None = None,
     states: Any | None = None, fetch_outcomes: Any | None = None,
+    qualifications: Any = None,
     source_or_store: Any | None = None, history: Mapping[str, Any] | None = None,
     membership_origin: str = 'baseline', refresh_policy: str = 'historical_only',
     candidates: Iterable[Mapping[str, Any]] | None = None,
@@ -465,7 +476,8 @@ def run_recovery_campaign(
     targets_parquet = inputs_dir / 'targets.parquet'
     inventory_rows = build_target_inventory(
         targets, policy=policy, history=history, source_or_store=source_or_store,
-        captures=captures, states=states, fetch_outcomes=fetch_outcomes, output=targets_parquet,
+        captures=captures, states=states, fetch_outcomes=fetch_outcomes,
+        qualifications=qualifications, output=targets_parquet,
         membership_origin=membership_origin, refresh_policy=refresh_policy,
     )
     diagnostics: list[dict[str, Any]] = []

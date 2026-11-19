@@ -1241,7 +1241,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                          spicy_regs=None,include_entities=False,recovery_requirements=None,
                          video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                          transcript_headings=None,
-                         historical_recording_matcher=None,docmeta_v6_1=None,pdf_cover_evidence=None,prior_links=None,base_retired=None,base_release_id=None,
+                         historical_recording_matcher=None,docmeta_v6_1=None,pdf_cover_evidence=None,body_qualifications=None,prior_links=None,base_retired=None,base_release_id=None,
                          carried_html_metadata=0,root=ROOT,registry=None):
     """Freeze current input selectors and the shared prefix in fresh private scratch.
 
@@ -1301,6 +1301,10 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     cover_input,cover_step=pdf_cover_input(pdf_cover_evidence,scratch/'pdf-cover')
     inputs.append(cover_input)
     prelude.append(cover_step)
+    from congress_api.retention.qualification_facts import model_qualification_input
+    qual_input,qual_step=model_qualification_input(body_qualifications,scratch/'qualifications')
+    inputs.append(qual_input)
+    prelude.append(qual_step)
     if docmeta_v6_1 is not None:
         from viewer_publication.docmeta_v6_1 import docmeta_inputs_and_prelude
         dm_inputs,dm_prelude=docmeta_inputs_and_prelude(docmeta_v6_1)
@@ -1416,7 +1420,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
             ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key']),
             auxiliary_row_group_rows=AUXILIARY_ROW_GROUP_ROWS),root=root,
         recovery_policy=recovery_policy,historical_recording_matcher=historical_recording_matcher,docmeta_v6_1=docmeta_v6_1,
-        pdf_cover_evidence=pdf_cover_evidence)
+        pdf_cover_evidence=pdf_cover_evidence,body_qualifications=body_qualifications)
     (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
@@ -1435,7 +1439,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
                   spicy_regs=None,include_entities=False,recovery_requirements=None,
                   video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                   transcript_headings=None,
-                  historical_recording_matcher=None,docmeta_v6_1=None,pdf_cover_evidence=None,prior_links=None,base_retired=None,base_release_id=None,
+                  historical_recording_matcher=None,docmeta_v6_1=None,pdf_cover_evidence=None,body_qualifications=None,prior_links=None,base_retired=None,base_release_id=None,
                   carried_html_metadata=0,root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
@@ -1446,6 +1450,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
         recording_decision_files=recording_decision_files,playlist_records=playlist_records,transcript_headings=transcript_headings,
         historical_recording_matcher=historical_recording_matcher,docmeta_v6_1=docmeta_v6_1,pdf_cover_evidence=pdf_cover_evidence,
+        body_qualifications=body_qualifications,
         prior_links=prior_links,base_retired=base_retired,base_release_id=base_release_id,
         carried_html_metadata=carried_html_metadata,root=root,registry=registry)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
@@ -1560,7 +1565,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             WHERE m.meeting_date IS NOT NULL"""
     steps += [dict(name='url_state_meeting_dates',sql=url_state_meeting_dates_sql,materialize=True)]
     from viewer_publication.archive_url_state import url_state_steps,url_state_diagnostics
-    steps += url_state_steps(root=root,recovery_policy=prepared.get('recovery_policy'))
+    steps += url_state_steps(root=root,recovery_policy=prepared.get('recovery_policy'),include_qualifications=True)
     auxiliary=[]
     if not prepared.get('include_entities'):
         # Meetings list caption tracks among their transcripts (ct-1i4q); without entities there are none.

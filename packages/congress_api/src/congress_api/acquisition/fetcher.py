@@ -50,13 +50,14 @@ class CaptureScope:
 
 
 class Fetcher:
-    def __init__(self, *, scope, direct, provider, pace, directory, spool_limit, headers=None, clock=None, firecrawl=None):
+    def __init__(self, *, scope, direct, provider, pace, directory, spool_limit, headers=None, clock=None, firecrawl=None, validators=None):
         if not spool_limit > 0:
             raise ValueError('Spool limit must be positive')
         self.scope, self.direct, self.provider, self.pace = scope, direct, provider, pace
         self.firecrawl=firecrawl
         self.directory, self.spool_limit = Path(directory), spool_limit
         self.headers = headers or (lambda url: {})
+        self.validators = validators or (lambda url: None)
         self.clock = clock or (lambda: datetime.now(timezone.utc).isoformat())
 
     def fetch(self, url):
@@ -80,7 +81,7 @@ class Fetcher:
                 or attempt.error in {'provider_quota','provider_credits','provider_http_error','invalid_provider_response'}):
             return False
         if ('retry-after' in attempt.headers or attempt.http_status in {429,503,404,410}
-                or attempt.error in {'excluded_redirect','redirect_limit','size_limit'}):
+                or attempt.error in {'excluded_redirect','redirect_limit','size_limit','validator_unchanged'}):
             return False
         if not attempt.complete or attempt.error or attempt.http_status in {401,403}:return True
         if attempt.http_status is None or not 200<=attempt.http_status<300 or attempt.body is None:return False
@@ -92,15 +93,24 @@ class Fetcher:
         return bool(wall or expected_pdf and not prefix.startswith(b'%PDF-'))
 
     def _attempt(self, requested, adapter, transport, limit):
+        import inspect
+        from congress_api.retention.qualification_facts import conditional_request_headers, validators_unchanged
         target, redirects, timestamp = requested, [], self.clock()
         self.directory.mkdir(parents=True,exist_ok=True)
+        params = inspect.signature(adapter.hop).parameters
+        accepts_validators = 'prior_validators' in params
         for step in range(7):
             if not self.scope(target):
                 return FetchAttempt(requested,target,timestamp,transport,None,None,{},tuple(redirects),False,None,'excluded_redirect')
             self.pace(target,transport)
             destination = self.directory/(uuid4().hex+'.body')
+            prior = self.validators(target) if transport == 'direct' else None
+            req_headers = conditional_request_headers(prior, self.headers(target))
             try:
-                transfer = adapter.hop(target,destination,limit=min(limit,5*1024**3),headers=self.headers(target))
+                if accepts_validators and prior is not None:
+                    transfer = adapter.hop(target,destination,limit=min(limit,5*1024**3),headers=req_headers,prior_validators=prior)
+                else:
+                    transfer = adapter.hop(target,destination,limit=min(limit,5*1024**3),headers=req_headers)
             except (requests.RequestException, OSError) as exc:
                 destination.unlink(missing_ok=True)
                 code = getattr(exc, 'capture_error', None)
@@ -119,6 +129,18 @@ class Fetcher:
                         transfer.provider_status,headers,tuple(redirects),False,None,'redirect_limit')
                 target = urljoin(transfer.url,headers['location'])
                 continue
+            if transfer.http_status == 304:
+                destination.unlink(missing_ok=True)
+                return FetchAttempt(requested,transfer.url,timestamp,transport,304,
+                    transfer.provider_status,headers,tuple(redirects),transfer.complete and valid_final,None,
+                    transfer.error if valid_final else 'excluded_redirect')
+            if transfer.error == 'validator_unchanged' or (
+                    transfer.http_status is not None and 200 <= transfer.http_status < 300
+                    and validators_unchanged(prior, headers)):
+                destination.unlink(missing_ok=True)
+                return FetchAttempt(requested,transfer.url,timestamp,transport,transfer.http_status,
+                    transfer.provider_status,headers,tuple(redirects),valid_final,None,
+                    'validator_unchanged' if valid_final else 'excluded_redirect')
             body = None
             if destination.exists():
                 size = transfer.size if transfer.size is not None else destination.stat().st_size

@@ -127,7 +127,7 @@ def _definition_hashes(root):
         *(Path('packages/congress_api/src/congress_api') / name for name in (
             'lake/readings.py', 'lake/reading_versions.py', 'lake/compatible_versions.py', 'lake/versions.py',
             'lake/model_sql.py', 'lake/_record_producer.py', 'lake/meeting_records.py', 'lake/appearance_records.py',
-            'retention/parser_worker.py', 'retention/process_resources.py',
+            'retention/parser_worker.py', 'retention/process_resources.py', 'retention/qualification_facts.py',
         )),
     ]
     closure = ImportClosure(root, distributions={'house_naming': ['house-naming-guide']})
@@ -162,7 +162,7 @@ def runtime_pins(engine):
 def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pins,
                    lake_versions,writer_settings,snapshots,file_hashes=None,root=ROOT,
                    relationship_metadata_update=None,recovery_policy=None,historical_recording_matcher=None,
-                   docmeta_v6_1=None,pdf_cover_evidence=None):
+                   docmeta_v6_1=None,pdf_cover_evidence=None,body_qualifications=None):
     """Pin semantic definitions; retain exact physical selectors outside their digest."""
     require_entities=(isinstance(lake_versions,dict)
         and ('meeting_records' in lake_versions or 'appearance_records' in lake_versions))
@@ -186,6 +186,8 @@ def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pin
         profile['docmeta_v6_1']=docmeta_profile_entry(docmeta_v6_1)
     if pdf_cover_evidence is not None:
         profile['pdf_cover_evidence']={key:pdf_cover_evidence[key] for key in ('sha256','size','selection_sha256')}
+    if body_qualifications is not None:
+        profile['body_qualifications']={key:body_qualifications[key] for key in ('sha256','size')}
     if relationship_metadata_update is not None:
         update=relationship_metadata_update
         digests={'base_release_id','registry_sha256','schema_sha256'}

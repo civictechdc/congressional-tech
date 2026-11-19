@@ -700,7 +700,8 @@ class _Counted:
     def __init__(self,adapter,stats,admission,kind,cost,entity_limit,wire,spool_guard,provider_state):
         self.adapter,self.stats,self.admission,self.kind,self.cost=adapter,stats,admission,kind,cost
         self.entity_limit=entity_limit;self.wire=wire;self.spool_guard=spool_guard;self.provider_state=provider_state
-    def hop(self,url,destination,*,limit,headers):
+    def hop(self,url,destination,*,limit,headers,prior_validators=None):
+        import inspect
         from congress_api.acquisition.capture_journal import UnknownRemoteOutcome
         lock,disabled=self.provider_state
         # Account-state observation and admission form one atomic boundary.
@@ -720,8 +721,13 @@ class _Counted:
                 raise
             self.last_attempt=attempt
         self.stats['requests']+=1
+        params = inspect.signature(self.adapter.hop).parameters
+        accepts_validators = 'prior_validators' in params
         try:
-            result=self.adapter.hop(url,destination,limit=allowance,headers=headers)
+            if accepts_validators and prior_validators is not None:
+                result=self.adapter.hop(url,destination,limit=allowance,headers=headers,prior_validators=prior_validators)
+            else:
+                result=self.adapter.hop(url,destination,limit=allowance,headers=headers)
         except Exception:
             with lock:disabled.add('*')
             raise
@@ -767,7 +773,8 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                 store,identity,direct,provider=None,resolve=resolve_host,pace=None,
                 archive_limits=None,seed_inventories=(),cutoff_urls=(),
                 discover=None,max_discovery_jobs=8,headers=None,worker_factory=None,workers=1,campaign=None,
-                admission=None,provider_cost=None,firecrawl=None,firecrawl_cost=None,max_entity_bytes=16<<20):
+                admission=None,provider_cost=None,firecrawl=None,firecrawl_cost=None,max_entity_bytes=16<<20,
+                qualify=None,qualification_cache=None,qualifications=None):
     """Bounded raw writer. No state/index or table writes occur here."""
     _require_capture_authority(release)
     for name,value in [('request budget',request_budget),('byte budget',byte_budget),('spool budget',spool_budget),('discovery jobs',max_discovery_jobs),('workers',workers)]:
@@ -805,8 +812,57 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
         max_directory_bytes=min(256<<10,max(1,spool_budget//256)));hops=7*(1+int(provider is not None)+int(firecrawl is not None))
     stats=dict(release_id=release['release_id'],as_of=as_of,run_id=new_run_id(),requests=0,
         fetched_bytes=0,captures=0,receipts=[],refusals=[],discovery_errors=[],discovery_refused=0,cutoffs=[],cutoff_attempts=[],
+        validator_unchanged=0,qualifications=dict(checked=0,qualified=0,failed=0,failed_urls=[]),
         budgets=dict(requests=request_budget,bytes=byte_budget,spool=spool_budget,max_entity_bytes=max_entity_bytes),spool_reserved_bound=0,
         url_key_definition_sha256=url_key_digest,writer=identity,reviewed_cutoff_urls=list(cutoff_urls),stop_reason=None)
+    from congress_shared.custody import verify_local_file
+    from congress_api.retention.qualification_facts import (
+        build_qualification_fact, expects_pdf_response, extract_validators,
+        load_qualification_facts, scan_local_store_validators, verify_qualification_fact,
+    )
+    qual_cache_dir = Path(qualification_cache).resolve() if qualification_cache is not None else (work / 'qualification-cache')
+    qualifications_ledger = work / 'qualifications.jsonl'
+    if qualify is None:
+        def qualify_fn(verified_body, cache_dir):
+            from corpus_recovery.qualification import qualify as run_qualify
+            return run_qualify(verified_body, cache_dir)
+    else:
+        qualify_fn = qualify
+    validator_lock = threading.Lock()
+    by_sha256 = {}
+    by_url = {}
+    for source in (qualifications, qual_cache_dir if qual_cache_dir.exists() else None,
+                   qualifications_ledger if qualifications_ledger.exists() else None):
+        if source is None:
+            continue
+        loaded = load_qualification_facts(source)
+        by_sha256.update(loaded['by_sha256'])
+        for u, info in loaded['by_url'].items():
+            prev = by_url.get(u)
+            if prev is None or (str(info.get('retrieved_at') or ''), str(info.get('receipt_key') or '')) >= (
+                    str(prev.get('retrieved_at') or ''), str(prev.get('receipt_key') or '')):
+                by_url[u] = info
+    state_schema_names = set(pq.read_schema(release['state']).names)
+    unqualified_state_urls = set()
+    if 'capture_reason' in state_schema_names:
+        unqualified_state_urls = {
+            r['requested_url'] for r in _records(release['state'])
+            if r.get('capture_reason') == 'body_not_qualified' and isinstance(r.get('requested_url'), str)
+        }
+    local_store_root = getattr(store.adapter, 'root', None)
+    if local_store_root is not None and (by_sha256 or unqualified_state_urls):
+        scanned_validators = scan_local_store_validators(
+            local_store_root, by_sha256=by_sha256, unqualified_urls=unqualified_state_urls
+        )
+        for u, info in scanned_validators.items():
+            prev = by_url.get(u)
+            if prev is None or (str(info.get('retrieved_at') or ''), str(info.get('receipt_key') or '')) >= (
+                    str(prev.get('retrieved_at') or ''), str(prev.get('receipt_key') or '')):
+                by_url[u] = info
+    def lookup_validators(target_url):
+        with validator_lock:
+            entry = by_url.get(target_url)
+            return dict(entry) if entry is not None else None
     from congress_api.acquisition.capture_journal import DurableCapture,durable_json
     binding=dict(release_id=release['release_id'],as_of=as_of,identity=identity,
                  budgets=stats['budgets'],campaign_id=getattr(campaign,'campaign_id',None),campaign_sha256=getattr(campaign,'descriptor_sha256',None),
@@ -868,10 +924,22 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
     restored_links=[];disabled_providers=set()
     for committed in sorted((work/'attempts').glob('*/committed.json')):
         journal.cleanup(committed.parent.name)
-        completed=json.loads(committed.read_text());line=completed['line'];url=line['requested_url']
+        completed=json.loads(committed.read_text())
+        line=completed['line'];url=line['requested_url']
         completed_keys.add(completed['key'])
         if _provider_terminal(line['transport'],line['provider_status'],line.get('error_type')):disabled_providers.add(line['transport'])
         stats['captures']+=1;stats['receipts'].append(completed['key'])
+        if line.get('error_type')=='validator_unchanged':
+            stats['validator_unchanged']+=1
+        if isinstance(completed.get('qualification'), dict):
+            q_restored = verify_qualification_fact(completed['qualification'])
+            stats['qualifications']['checked'] += 1
+            if q_restored.get('url_qualified', q_restored['qualified']):
+                stats['qualifications']['qualified'] += 1
+            else:
+                stats['qualifications']['failed'] += 1
+                if url not in stats['qualifications']['failed_urls']:
+                    stats['qualifications']['failed_urls'].append(url)
         _record_attempt(attempted,url,attempted=True,complete=completed['result']['final']['complete'],
             outcome=line['outcome'],http_status=line['http_status'],error_type=completed['result']['final']['error'],
             receipt_key=completed['key'])
@@ -927,10 +995,16 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                 error.resource='scratch'
                 raise error
         def factory(directory):
+            prior_direct = directory / 'direct-0.json'
+            use_validators = lookup_validators
+            if prior_direct.is_file():
+                saved_req = json.loads(prior_direct.read_text()).get('request', {})
+                if 'validators_sha256' not in saved_req:
+                    use_validators = None
             return Fetcher(scope=policy,direct=_Counted(direct,local_stats,admission,'direct',0,max_entity_bytes,wire,spool_guard,provider_state),
                 provider=_Counted(provider,local_stats,admission,'zyte',provider_cost,max_entity_bytes,wire,spool_guard,provider_state) if provider is not None else None,
                 firecrawl=_Counted(firecrawl,local_stats,admission,'firecrawl',firecrawl_cost,max_entity_bytes,wire,spool_guard,provider_state) if firecrawl is not None else None,
-                pace=pace,directory=directory,spool_limit=limit,headers=headers)
+                pace=pace,directory=directory,spool_limit=limit,headers=headers,validators=use_validators)
         # The stable spool survives body PUT, qualification, and receipt failures.
         result=journal.fetch(operation_id,url,factory)
         # Completed acquisition bypasses request/byte admission, while receipt
@@ -941,17 +1015,79 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                                   operation_id=operation_id,freeze_dir=work/'frozen-receipts')
         except LocalPathRefused:
             # This item fails with a recorded reason; the run continues (invariant 3).
-            return None,url,result,None,None,local_stats,[],[],0
+            return None,url,result,None,None,local_stats,[],[],0,None
         # Acknowledgement precedes discovery and the local completion marker.
         # Keep its reporting facts even when either later step raises.
         with acknowledgement_lock:
             acknowledged[key]=dict(url=url,attempted=True,complete=result.final.complete,outcome=line['outcome'],
                 http_status=line['http_status'],error_type=result.final.error,receipt_key=key)
         body=result.final.body
-        parser=line['captures'][0]['sniffed_format'] if body is not None else None
+        parser=line['captures'][0]['sniffed_format'] if (body is not None and line['captures']) else None
+        qualification_fact=None
+        if qualify_fn is not False:
+            if result.final.http_status==304 or result.final.error=='validator_unchanged':
+                with validator_lock:
+                    prior_v=by_url.get(url) or by_url.get(result.final.url)
+                    if prior_v is not None:
+                        fresh_v=extract_validators(line.get('response_headers'))
+                        updated_v=dict(prior_v,
+                            etag=fresh_v['etag'] or prior_v.get('etag'),
+                            last_modified=fresh_v['last_modified'] or prior_v.get('last_modified'),
+                            content_length=fresh_v['content_length'] or prior_v.get('content_length'),
+                            retrieved_at=line['retrieved_at'],
+                            receipt_key=key,
+                            http_status=line['http_status'])
+                        by_url[url]=updated_v
+                        if isinstance(result.final.url,str) and result.final.url:
+                            by_url[result.final.url]=updated_v
+            elif (body is not None and body.path is not None
+                    and line['outcome'] in ('stored','unchanged')
+                    and (parser=='pdf'
+                         or expects_pdf_response(url,line.get('response_headers'))
+                         or expects_pdf_response(result.final.url,line.get('response_headers')))):
+                with validator_lock:
+                    cached_q=by_sha256.get(body.sha256)
+                if cached_q is not None and not cached_q.get('retryable',False) and isinstance(cached_q.get('qualification_record'),dict):
+                    q_record=cached_q['qualification_record']
+                else:
+                    verified_body=verify_local_file(body.path,expected_sha256=body.sha256,expected_size=body.size)
+                    q_record=qualify_fn(verified_body,qual_cache_dir)
+                qualification_fact=build_qualification_fact(
+                    q_record,
+                    requested_url=url,
+                    url=result.final.url,
+                    receipt_key=key,
+                    retrieved_at=line['retrieved_at'],
+                    http_status=line['http_status'],
+                    headers=line.get('response_headers'),
+                )
+                with validator_lock:
+                    by_sha256[qualification_fact['body_sha256']]=qualification_fact
+                    for target_u in {url,result.final.url}:
+                        if isinstance(target_u,str) and target_u:
+                            by_url[target_u]=dict(
+                                url=target_u,
+                                body_sha256=qualification_fact['body_sha256'],
+                                body_bytes=qualification_fact['body_bytes'],
+                                qualified=qualification_fact['url_qualified'],
+                                reason=qualification_fact['reason'],
+                                retryable=qualification_fact['retryable'],
+                                qualification_sha256=qualification_fact['qualification_sha256'],
+                                etag=qualification_fact['etag'],
+                                last_modified=qualification_fact['last_modified'],
+                                content_length=qualification_fact['content_length'],
+                                retrieved_at=qualification_fact['retrieved_at'],
+                                receipt_key=key,
+                                http_status=line['http_status'],
+                            )
+                    with qualifications_ledger.open('a',encoding='utf-8') as q_out:
+                        q_out.write(json.dumps(qualification_fact,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
+                        q_out.flush()
+                        os.fsync(q_out.fileno())
         # The writer's outcome owns "this is a document": no discovery on a 202 or empty page.
         if (allow_discovery and body is not None and line['outcome'] in ('stored','unchanged')
-                and parser in {'html','xml','json'}):
+                and parser in {'html','xml','json'}
+                and (qualification_fact is None or qualification_fact['url_qualified'])):
             if body.size>PAGE_BYTES:
                 disc_errors.append(dict(url=url,reason='discovery_size_limit'))
             else:
@@ -981,16 +1117,19 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                             source=key,pointer=json.dumps([index])))
         from congress_api.acquisition.capture_journal import encode_result
         completion_path=spool/'committed.json'
-        durable_json(completion_path,dict(key=key,line=line,result=encode_result(result),links=links))
+        committed_payload=dict(key=key,line=line,result=encode_result(result),links=links)
+        if qualification_fact is not None:
+            committed_payload['qualification']=qualification_fact
+        durable_json(completion_path,committed_payload)
         with acknowledgement_lock:
             completed_keys.add(key)
             if links:
                 discovery_paths[key]=completion_path
         journal.cleanup(operation_id)
-        return row,url,result,key,line,local_stats,links,disc_errors,disc_refused
+        return row,url,result,key,line,local_stats,links,disc_errors,disc_refused,qualification_fact
 
     def _commit(outcome_tuple):
-        row,url,result,key,line,local_stats,links,disc_errors,disc_refused=outcome_tuple
+        row,url,result,key,line,local_stats,links,disc_errors,disc_refused,qualification_fact=outcome_tuple
         stats['requests']+=local_stats['requests']
         stats['fetched_bytes']+=local_stats['fetched_bytes']
         if line is None:
@@ -1000,6 +1139,16 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
             return []
         _record_attempt(attempted,**acknowledged[key])
         stats['receipts'].append(key);stats['captures']+=1
+        if line.get('error_type')=='validator_unchanged':
+            stats['validator_unchanged']+=1
+        if qualification_fact is not None:
+            stats['qualifications']['checked']+=1
+            if qualification_fact.get('url_qualified',qualification_fact['qualified']):
+                stats['qualifications']['qualified']+=1
+            else:
+                stats['qualifications']['failed']+=1
+                if url not in stats['qualifications']['failed_urls']:
+                    stats['qualifications']['failed_urls'].append(url)
         if row['priority'] in (-1,1):
             stats['cutoff_attempts'].append(dict(url=url,outcome=line['outcome'],complete=result.final.complete,
                 reason=result.final.error))
