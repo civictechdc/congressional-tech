@@ -12,7 +12,7 @@ import re
 from urllib.parse import urlsplit
 
 from viewer_publication.archive_publish import (CONTROL_BYTES,NativeArchiveStore,SPICY_PINS,_encoded,
-    _read,input_digest,read_pointer,write_spicy_generations)
+    _read,extra_pins_for_snapshots,input_digest,read_pointer,write_spicy_generations)
 from viewer_publication.client import require_publication_client
 from viewer_publication.receipt_pins import PREFIX
 
@@ -124,14 +124,18 @@ class _InventoryEvidence:
 
 
 def _validate_kept_model(record,receipt_keys):
-    from viewer_publication.archive_model_job import TABLES,OPTIONAL_TABLES,_selector
+    from viewer_publication.archive_model_job import TABLES,OPTIONAL_TABLES,_pin,_selector
     from viewer_publication.archive_model_profile import ENTITY_SOURCES,PARSERS,profile_record
     snapshots=record['snapshots']
     if (not isinstance(snapshots,dict) or not set(TABLES)<=set(snapshots)
-            or not set(snapshots)<=(set(TABLES)|set(OPTIONAL_TABLES))):
+            or not set(snapshots)<=(set(TABLES)|set(OPTIONAL_TABLES)|{'body_qualifications'})):
         raise ValueError('Kept input requires the complete model table selectors')
     selected={}
     for name,value in snapshots.items():
+        if name=='body_qualifications':
+            _pin(value,{'sha256','size'})
+            selected[name]=dict(value)
+            continue
         if isinstance(value,dict) and value.get('kind')=='native_table' and 'name' in value:
             if value['name']!=name:
                 raise ValueError('Kept native selector name differs from its table key')
@@ -323,7 +327,8 @@ def maintain_releases(store,*,now,external_pins=(),external_pins_source=None,exe
         record=entry['record']
         try:
             actual=input_digest(receipt_keys=entry['receipt_keys'],provenance=record['provenance'],
-                profile=record['profile'],entity_digests=record['entity_digests'])
+                profile=record['profile'],entity_digests=record['entity_digests'],
+                extra_pins=extra_pins_for_snapshots(record.get('snapshots')))
             if actual!=record['input_digest']:
                 raise ValueError('Kept input record differs from its semantic identity')
             _validate_kept_model(record,entry['receipt_keys'])

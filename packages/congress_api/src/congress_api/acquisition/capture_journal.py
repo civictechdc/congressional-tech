@@ -114,8 +114,12 @@ class DurableCapture:
                         # A sealed hop's bytes and headers were already received in this operation:
                         # allow validator/conditional-header state to appear, change, or clear across
                         # restart while still refusing any URL, limit, or non-conditional header drift.
-                        prev_base=prev_req.get('base_headers_sha256',prev_req.get('headers_sha256'))
-                        if prev_req.get('url')==url and prev_req.get('limit')==limit and prev_base==base_sha:
+                        same_core=prev_req.get('url')==url and prev_req.get('limit')==limit
+                        if 'base_headers_sha256' in prev_req:
+                            headers_ok=prev_req['base_headers_sha256']==base_sha
+                        else:
+                            headers_ok=prev_req.get('headers_sha256') in {request['headers_sha256'],base_sha}
+                        if same_core and headers_ok:
                             request=prev_req
                     if prev_req!=request:raise ValueError('Durable request definition changed')
                     if previous['phase']=='started':raise UnknownRemoteOutcome('Remote outcome is unknown; reconcile or record an explicit retry decision')

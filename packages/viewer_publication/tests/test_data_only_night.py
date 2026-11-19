@@ -175,6 +175,75 @@ def test_daily_qualification_provenance_may_grow_while_decisions_and_removed_led
     )
     assert any('cites unknown receipts' in r for r in unk_reasons)
 
+    # Review 7c: unbound records (receipt_key=None) and retryable=True records citing unknown receipts also stop.
+    from dataclasses import asdict
+    from datetime import datetime, timezone
+    from corpus_recovery.qualification import QualificationConfig, _finish, _identity
+
+    q_path_unbound = tmp_path / 'q-unbound.jsonl'
+    fact_unbound = build_qualification_fact(q_rec, requested_url='https://fixture.test/doc.pdf', url='https://fixture.test/doc.pdf',
+                                            receipt_key=None, retrieved_at='2026-11-17T12:00:00Z', http_status=200)
+    raw_unb = (json.dumps(fact_unbound, sort_keys=True) + '\n').encode()
+    q_path_unbound.write_bytes(raw_unb)
+    _, unb_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*live_prov, dict(key=q_key_2, etag='"' + hashlib.md5(raw_unb).hexdigest() + '"')]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        qualification_files=[dict(key=q_key_2, path=str(q_path_unbound), **file_pin(q_path_unbound))],
+    )
+    assert any('unbound' in r for r in unb_reasons)
+
+    retry_rec = _finish({
+        'body_sha256': q_rec['body_sha256'], 'body_bytes': q_rec['body_bytes'],
+        'validator': _identity(), 'config': asdict(QualificationConfig()),
+        'status': 'unresolved', 'media_type': 'application/pdf', 'reason': 'worker_timeout', 'retryable': True,
+    })
+    q_path_retry_unk = tmp_path / 'q-retry-unk.jsonl'
+    fact_retry_unk = build_qualification_fact(retry_rec, requested_url='https://fixture.test/doc.pdf', url='https://fixture.test/doc.pdf',
+                                              receipt_key='receipts/documents/2026-11-19/outside-retry.jsonl.gz',
+                                              retrieved_at='2026-11-19T12:00:00Z', http_status=200)
+    raw_ru = (json.dumps(fact_retry_unk, sort_keys=True) + '\n').encode()
+    q_path_retry_unk.write_bytes(raw_ru)
+    _, ru_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*live_prov, dict(key=q_key_2, etag='"' + hashlib.md5(raw_ru).hexdigest() + '"')]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        qualification_files=[dict(key=q_key_2, path=str(q_path_retry_unk), **file_pin(q_path_retry_unk))],
+    )
+    assert any('cites unknown receipts' in r for r in ru_reasons)
+
+    # Review 7c: a mixed night (changed list.parquet title + url_state clearing body_not_qualified on a 304)
+    # routed through unattended_causes -> data_only_causes MUST refuse without positive qualification proof!
+    pq.write_table(pa.table({
+        'requested_url': ['https://fixture.test/doc.pdf'],
+        'attempts': pa.array([1], pa.int32()),
+        'last_good_at': pa.array([datetime(2026, 11, 16, tzinfo=timezone.utc)], pa.timestamp('us', tz='UTC')),
+        'capture_disposition': ['eligible'],
+        'capture_reason': ['body_not_qualified'],
+    }), base / 'url_state.parquet')
+    pq.write_table(pa.table({
+        'requested_url': ['https://fixture.test/doc.pdf'],
+        'attempts': pa.array([2], pa.int32()),
+        'last_good_at': pa.array([datetime(2026, 11, 16, tzinfo=timezone.utc)], pa.timestamp('us', tz='UTC')),
+        'capture_disposition': ['eligible'],
+        'capture_reason': ['no_satisfying_recovery'],
+    }), cand / 'url_state.parquet')
+    mixed_rep = report(
+        group('list.parquet', 'changed title', 1),
+        group('url_state.parquet', 'changed capture_reason', 1),
+    )
+    mixed_entries, mixed_reasons, _ = unattended_causes(
+        mixed_rep,
+        traced=lambda _r: pytest.fail('mixed night should route to data_only'),
+        data_only=lambda r: data_only_causes(
+            r, candidate_record=INPUTS, live_records=[live()],
+            candidate_receipt_keys=[*LIVE_KEYS, NIGHT[0]], base_dir=base, candidate_dir=cand,
+            qualification_files=(),
+        ),
+    )
+    assert mixed_entries == []
+    assert any('capture_reason is not implied by verified body qualifications' in r for r in mixed_reasons)
+
 
 def test_any_kept_input_of_the_live_release_with_the_same_inputs_serves_and_every_kept_receipt_counts_as_live(decide):
     older = live(keys=['receipts/documents/2026-11-15/z.jsonl.gz'], entity_digests={'members': 'o' * 64})

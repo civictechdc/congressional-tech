@@ -299,6 +299,11 @@ def test_qualification_facts_refuse_unverified_overrides_retryable_and_length_on
         out.write(json.dumps(fact2) + '\n')
     repaired_loaded = load_qualification_facts(ledger)
     assert set(repaired_loaded['by_url']) == {'https://fixture.test/b.pdf', 'https://fixture.test/second.pdf'}
+    # Review 7c: a malformed final line that ALREADY ends in a newline is corruption, not a torn append -> must raise!
+    corrupt_newline_ledger = tmp_path / 'corrupt-newline.jsonl'
+    corrupt_newline_ledger.write_text(json.dumps(fact) + '\n{not-valid-json\n')
+    with pytest.raises(json.JSONDecodeError):
+        repair_qualifications_ledger(corrupt_newline_ledger)
 
     # Review 7b: checker implementation hash, classifier hash, or parser version drift raises StaleQualification.
     for mutated_validator in (
@@ -434,6 +439,31 @@ def test_journal_replays_a_hop_sealed_before_validators_existed(tmp_path):
             url, tmp_path / 'c4', limit=10,
             headers={'Accept': 'text/html'},
             prior_validators=None)
+
+    # Review 7c: an older conditional hop sealed BEFORE base_headers_sha256 existed (only headers_sha256)
+    # still replays cleanly on an identical conditional request!
+    legacy_headers = {'Accept': 'application/pdf', 'If-None-Match': '"legacy-etag"'}
+    legacy_prior = {'qualified': False, 'etag': '"legacy-etag"'}
+    legacy_root = tmp_path / 'journal' / 'op-legacy'
+    legacy_root.mkdir(parents=True)
+    (legacy_root / 'direct-0.sealed').write_bytes(b'z')
+    (legacy_root / 'direct-0.json').write_text(json.dumps({
+        'phase': 'downloaded',
+        'request': {
+            'url': url,
+            'limit': 10,
+            'headers_sha256': hashlib.sha256(json.dumps(legacy_headers, sort_keys=True).encode()).hexdigest(),
+            'validators_sha256': hashlib.sha256(json.dumps(legacy_prior, sort_keys=True, default=str).encode()).hexdigest(),
+        },
+        'transfer': {
+            'url': url, 'http_status': 200, 'headers': {'etag': '"legacy-etag"'}, 'complete': True,
+            'error': None, 'sha256': hashlib.sha256(b'z').hexdigest(), 'size': 1, 'wire_bytes': 1,
+        },
+    }))
+    replay_legacy = journal.adapter('op-legacy', Plain(), 'direct').hop(
+        url, tmp_path / 'legacy-out', limit=10, headers=legacy_headers, prior_validators=legacy_prior,
+    )
+    assert len(calls) == 2 and replay_legacy.http_status == 200 and (tmp_path / 'legacy-out').read_bytes() == b'z'
 
 
 def test_corrupt_http_200_pdf_preserved_and_not_refetched_on_unchanged_validators_or_304(tmp_path):
@@ -1078,5 +1108,76 @@ def test_retained_byte_retry_decompresses_gzip_suffix_free_html_on_local_and_r2(
     assert len(retried_r2) == 1
     assert retried_r2[0]['body_sha256'] == html_sha and retried_r2[0]['retryable'] is False
     assert retried_r2[0]['url_qualified'] is False and retried_r2[0]['reason'] in ('error_or_challenge', 'candidate_format_mismatch')
+
+
+def test_reconcile_min_date_reads_last_attempt_survives_505_304s_and_propagates_get_errors(tmp_path):
+    """Review 7c: state_reconcile_min_date reads published 'last_attempt', 505 newer body-less 304
+    receipts do not crowd out an interrupted PDF receipt, and store GET errors fail closed."""
+    from congress_api.retention.qualification_facts import (
+        reconcile_store_receipt_qualifications,
+        state_reconcile_min_date,
+    )
+    from corpus_recovery.qualification import qualify as real_qualify
+
+    state_pq = tmp_path / 'url_state.parquet'
+    pq.write_table(pa.table({
+        'requested_url': ['https://fixture.test/a.pdf'],
+        'last_attempt': pa.array([datetime(2026, 11, 15, 12, 0, tzinfo=timezone.utc)], pa.timestamp('us', tz='UTC')),
+    }), state_pq)
+    assert state_reconcile_min_date(state_pq) == '2026-11-14'
+
+    raw_dir = tmp_path / 'reconcile-raw'
+    store = BodyStore(LocalAdapter(raw_dir))
+    bad_pdf = b'%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\ntruncated'
+    bad_sha = hashlib.sha256(bad_pdf).hexdigest()
+    pdf_src = tmp_path / 'broken.pdf'
+    pdf_src.write_bytes(bad_pdf)
+    store.put(f'bodies/sha256/{bad_sha[:2]}/{bad_sha}', pdf_src, 'application/pdf')
+
+    interrupted_key = 'receipts/documents/2026-11-15/0000-interrupted.jsonl.gz'
+    interrupted_path = raw_dir / interrupted_key
+    interrupted_path.parent.mkdir(parents=True, exist_ok=True)
+    interrupted_path.write_bytes(gzip.compress((json.dumps({
+        'mode': 'fetch', 'http_status': 200, 'outcome': 'stored',
+        'requested_url': 'https://fixture.test/a.pdf', 'url': 'https://fixture.test/a.pdf',
+        'retrieved_at': '2026-11-15T12:00:00Z',
+        'response_headers': {'Content-Type': 'application/pdf', 'ETag': '"v1"'},
+        'captures': [{'attempt': 0, 'sha256': bad_sha, 'bytes': len(bad_pdf), 'sniffed_format': 'pdf'}],
+    }) + '\n').encode()))
+
+    # Add 505 newer body-less 304 receipts so a naive 500-receipt cap would miss interrupted_key!
+    newer_dir = raw_dir / 'receipts/documents/2026-11-16'
+    newer_dir.mkdir(parents=True, exist_ok=True)
+    recheck_bytes = gzip.compress((json.dumps({
+        'mode': 'fetch', 'http_status': 304, 'outcome': 'unchanged',
+        'requested_url': 'https://fixture.test/other.pdf', 'url': 'https://fixture.test/other.pdf',
+        'retrieved_at': '2026-11-16T12:00:00Z', 'captures': [],
+    }) + '\n').encode())
+    for idx in range(505):
+        (newer_dir / f'{idx:04d}-recheck.jsonl.gz').write_bytes(recheck_bytes)
+
+    rec_res = reconcile_store_receipt_qualifications(
+        store, existing_loaded={'by_sha256': {}, 'receipt_keys': set()},
+        qualify_fn=real_qualify, cache_dir=tmp_path / 'qcache', work=tmp_path / 'qwork',
+        decided_at='2026-11-16T13:00:00Z', min_write_date=state_reconcile_min_date(state_pq),
+        persist=True,
+    )
+    assert len(rec_res['facts']) == 1 and rec_res['facts'][0]['receipt_key'] == interrupted_key
+    assert rec_res['imported'] is not None
+
+    # A broken store GET must propagate its exception rather than returning an empty result.
+    class _BrokenAdapter:
+        def listing(self, prefix):
+            return [{'key': 'receipts/documents/2026-11-16/boom.jsonl.gz', 'size': 42}]
+        def get(self, key):
+            raise RuntimeError('r2-get-explosion')
+
+    with pytest.raises(RuntimeError, match='r2-get-explosion'):
+        reconcile_store_receipt_qualifications(
+            type('S', (), {'adapter': _BrokenAdapter()})(),
+            existing_loaded={'by_sha256': {}, 'receipt_keys': set()},
+            qualify_fn=real_qualify, cache_dir=tmp_path / 'qcache2', work=tmp_path / 'qwork2',
+            decided_at='2026-11-16T13:00:00Z', persist=False,
+        )
 
 

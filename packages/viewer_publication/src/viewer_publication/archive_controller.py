@@ -15,7 +15,7 @@ from viewer_publication.archive_model_job import (
     model_arguments,provenance_record_kind,provenance_etag_md5,PROVENANCE,
 )
 from viewer_publication.archive_publish import (
-    NativeArchiveStore,input_digest,matching_live_input,publish_candidate,read_pointer,write_status,
+    NativeArchiveStore,extra_pins_for_snapshots,input_digest,matching_live_input,publish_candidate,read_pointer,write_status,
 )
 from viewer_publication.receipt_pins import receipt_list
 
@@ -348,11 +348,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 else:
                     check_current_daily()
                     provenance=_provenance_snapshot(client,bucket,provenance)
-            extra_pins={}
-            if isinstance(profile.get('snapshots'),dict) and profile['snapshots'].get('body_qualifications') is not None:
-                extra_pins['body_qualifications']=profile['snapshots']['body_qualifications']
             digest=input_digest(receipt_keys=keys,provenance=provenance,profile=profile['profile'],entity_digests=entity_digests,
-                                extra_pins=extra_pins or None)
+                                extra_pins=extra_pins_for_snapshots(profile.get('snapshots')))
             status['input_digest']=digest
             if daily_pin:
                 if checkpoint is not None and checkpoint['input_digest']!=digest:

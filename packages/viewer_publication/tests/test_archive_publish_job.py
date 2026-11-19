@@ -565,6 +565,113 @@ def test_interrupted_capture_recovers_missing_qualification_via_daily_publish_an
             )
 
 
+def test_standalone_body_qualifications_pin_publishes_reuses_live_input_and_passes_maintenance(tmp_path):
+    """Review 7c: standalone body_qualifications pin computes identical input_digest across
+    run_publish, publish_candidate, matching_live_input, input_unchanged skip, and maintain_releases."""
+    from datetime import datetime, timezone
+    import io
+    from pypdf import PdfWriter
+    from archive_job_fixture import real_model_spec
+    from congress_api.retention.qualification_facts import build_qualification_fact
+    from congress_shared.custody import verify_local_file
+    from corpus_recovery.qualification import qualify
+    from docspec_client.client import NativeDatasets
+    from test_archive_controller import Runtime
+    from test_archive_publish import Store
+    from viewer_publication.archive_controller import run_publish
+    from viewer_publication.archive_maintenance import ArchiveMaintenanceStore, maintain_releases
+    from viewer_publication.archive_model_job import load_spec
+    from viewer_publication.archive_publish import NativeArchiveStore, matching_live_input
+
+    seed_root = tmp_path / 'seed'
+    seed_root.mkdir()
+    model, _, _ = real_model_spec(seed_root)
+    bad_file = tmp_path / 'standalone-bad.pdf'
+    bad_file.write_bytes(b'%PDF-1.7\ntruncated')
+    bad_rec = qualify(verify_local_file(bad_file), tmp_path / 'qcache')
+    q_pin_a = tmp_path / 'standalone-quals-a.jsonl'
+    q_pin_a.write_text(json.dumps(build_qualification_fact(
+        bad_rec, requested_url='https://fixture.test/standalone.pdf', url='https://fixture.test/standalone.pdf',
+        receipt_key='receipts/documents/2026-10-27/slice.jsonl.gz', retrieved_at='2026-10-27T12:00:00Z', http_status=200,
+    )) + '\n')
+    model['body_qualifications'] = dict(path=str(q_pin_a), **file_pin(q_pin_a))
+    spec_a_path = tmp_path / 'spec-a.json'
+    spec_a_path.write_text(json.dumps(model))
+    loaded_a = load_spec(spec_a_path)
+
+    class _MaintStore(Store):
+        def list_objects_v2(self, *, Bucket, Prefix='', **kwargs):
+            now = datetime(2026, 11, 1, 12, tzinfo=timezone.utc)
+            return dict(
+                Contents=[dict(Key=k, LastModified=now, Size=len(self.objects[k])) for k in sorted(self.objects) if k.startswith(Prefix)],
+                IsTruncated=False,
+            )
+
+    store = _MaintStore()
+    probe = lambda **ctx: dict(status='passed', releaseId=ctx['release_id'], targets='owner-approved')
+
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as native:
+        # 1. Initial publish with standalone body_qualifications pin succeeds!
+        pub_a = run_publish(
+            dict(loaded_a, output=str(tmp_path / 'out-a'), scratch=str(tmp_path / 'scratch-a')),
+            first_release=True, client=store, engine=Runtime(native, store), bucket='derived-fixture',
+            work=tmp_path / 'pub-a', receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],
+            provenance=[], run={'id': 'standalone-1'}, public_origin='https://archive.fixture.test',
+            contract=probe, canary=probe,
+        )
+        assert pub_a['status'] == 'published'
+
+        # 2. matching_live_input recomputes identical digest including extra_pins!
+        lookup_store = NativeArchiveStore(client=store, engine=Runtime(native, store), bucket='derived-fixture', work=tmp_path / 'lookup')
+        found = matching_live_input(lookup_store, release_id=pub_a['release_id'], digest=pub_a['input_digest'])
+        assert found is not None and found['snapshots']['body_qualifications'] == {'sha256': loaded_a['body_qualifications']['sha256'], 'size': loaded_a['body_qualifications']['size']}
+
+        # 3. Repeating with identical body_qualifications pin returns input_unchanged!
+        pub_same = run_publish(
+            dict(loaded_a, output=str(tmp_path / 'out-same'), scratch=str(tmp_path / 'scratch-same')),
+            client=store, engine=Runtime(native, store), bucket='derived-fixture',
+            work=tmp_path / 'pub-same', receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],
+            provenance=[], run={'id': 'standalone-2'}, public_origin='https://archive.fixture.test',
+            contract=probe, canary=probe,
+        )
+        assert pub_same['status'] == 'input_unchanged'
+
+        # 4. Changing ONLY the standalone body_qualifications pin produces a new input_digest (not skipped)!
+        good_writer = PdfWriter()
+        good_writer.add_blank_page(width=72, height=72)
+        good_buf = io.BytesIO()
+        good_writer.write(good_buf)
+        good_file = tmp_path / 'standalone-good.pdf'
+        good_file.write_bytes(good_buf.getvalue())
+        good_rec = qualify(verify_local_file(good_file), tmp_path / 'qcache')
+        q_pin_b = tmp_path / 'standalone-quals-b.jsonl'
+        q_pin_b.write_text(json.dumps(build_qualification_fact(
+            good_rec, requested_url='https://fixture.test/standalone.pdf', url='https://fixture.test/standalone.pdf',
+            receipt_key='receipts/documents/2026-10-27/slice.jsonl.gz', retrieved_at='2026-10-27T12:00:00Z', http_status=200,
+        )) + '\n')
+        model_b = dict(model, body_qualifications=dict(path=str(q_pin_b), **file_pin(q_pin_b)))
+        spec_b_path = tmp_path / 'spec-b.json'
+        spec_b_path.write_text(json.dumps(model_b))
+        loaded_b = load_spec(spec_b_path)
+        pub_b = run_publish(
+            dict(loaded_b, output=str(tmp_path / 'out-b'), scratch=str(tmp_path / 'scratch-b')),
+            client=store, engine=Runtime(native, store), bucket='derived-fixture',
+            work=tmp_path / 'pub-b', receipt_keys=['receipts/documents/2026-10-27/slice.jsonl.gz'],
+            provenance=[], run={'id': 'standalone-3'}, public_origin='https://archive.fixture.test',
+            contract=probe, canary=probe,
+        )
+        assert pub_b['input_digest'] != pub_a['input_digest']
+        assert pub_b['status'] in ('published', 'release_unchanged')
+
+        # 5. maintain_releases validates kept input records carrying snapshots['body_qualifications'] cleanly!
+        maint = maintain_releases(
+            ArchiveMaintenanceStore(client=store, bucket='derived-fixture'),
+            now=datetime(2026, 11, 5, 12, tzinfo=timezone.utc),
+        )
+        assert maint['status'] == 'planned'
+        assert pub_a['input_digest'] in {r['input_digest'] for r in maint['kept_inputs']}
+
+
 def test_daily_budget_refuses_before_raw_inventory_or_cache_effects(tmp_path):
     from congress_api.retention.body_store import BodyStore,R2Adapter
     from viewer_publication.archive_publish_job import produce_daily_inputs

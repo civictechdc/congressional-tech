@@ -308,6 +308,65 @@ def _link_reasons(rule, link_proof):
     return reasons, proven, facts
 
 
+def _url_state_qualification_reasons(base_dir, candidate_dir, *, qualification_files, new_receipts):
+    """Enforce verified body-qualification transitions on url_state even when a mixed night takes data_only_causes."""
+    base_pq, cand_pq = Path(base_dir) / QUEUE_FILE, Path(candidate_dir) / QUEUE_FILE
+    if not (base_pq.is_file() and cand_pq.is_file()):
+        return []
+    import pyarrow.parquet as pq
+    base_names, cand_names = set(pq.read_schema(base_pq).names), set(pq.read_schema(cand_pq).names)
+    needed = {'requested_url', 'capture_disposition', 'capture_reason'}
+    if not (needed <= base_names and needed <= cand_names):
+        return []
+    from congress_api.retention.qualification_facts import load_qualification_facts
+    loaded_all = load_qualification_facts(qualification_files) if qualification_files else {'by_requested_url': {}}
+    by_req = loaded_all.get('by_requested_url') or {}
+    cols_b = [c for c in ('requested_url', 'attempts', 'last_good_at', 'capture_disposition', 'capture_reason') if c in base_names]
+    cols_c = [c for c in ('requested_url', 'attempts', 'last_good_at', 'capture_disposition', 'capture_reason') if c in cand_names]
+    base_rows = {r['requested_url']: r for r in pq.read_table(base_pq, columns=cols_b).to_pylist()}
+    unproven: list[str] = []
+    for c in pq.read_table(cand_pq, columns=cols_c).to_pylist():
+        u = c['requested_url']
+        b = base_rows.get(u)
+        q = by_req.get(u)
+        q_failed = q is not None and q.get('qualified') is False and not q.get('retryable', False)
+        q_new_good = q is not None and q.get('qualified') is True and q.get('receipt_key') in new_receipts
+        if b is not None:
+            if b['capture_disposition'] == c['capture_disposition'] and b['capture_reason'] == c['capture_reason']:
+                if c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'no_satisfying_recovery' and q_failed and q.get('receipt_key') in new_receipts:
+                    unproven.append(u)
+                continue
+            if b['capture_disposition'] != 'eligible' or c['capture_disposition'] != 'eligible':
+                unproven.append(u)
+            elif c['capture_reason'] == 'body_not_qualified':
+                if not q_failed:
+                    unproven.append(u)
+            elif b['capture_reason'] == 'body_not_qualified' and c['capture_reason'] == 'no_satisfying_recovery':
+                good_advanced = c.get('last_good_at') is not None and (b.get('last_good_at') is None or c['last_good_at'] > b['last_good_at'])
+                if not (good_advanced and q_new_good):
+                    unproven.append(u)
+            else:
+                unproven.append(u)
+        else:
+            attempts = c.get('attempts') or 0
+            if attempts == 0:
+                if not (c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'no_satisfying_recovery'):
+                    unproven.append(u)
+            elif c['capture_disposition'] == 'excluded' and c['capture_reason'] == 'scope_exclusion':
+                continue
+            elif c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'body_not_qualified':
+                if not q_failed:
+                    unproven.append(u)
+            elif c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'no_satisfying_recovery':
+                if q_failed:
+                    unproven.append(u)
+            else:
+                unproven.append(u)
+    if unproven:
+        return [f'data-only night: url_state: {len(unproven)} rows: capture_reason is not implied by verified body qualifications (first {sorted(unproven)[:3]})']
+    return []
+
+
 def data_only_causes(report, *, candidate_record, live_records, candidate_receipt_keys, base_dir, candidate_dir, link_proof=None,
                      qualification_files=None):
     """Cause entries for every failing group of a night only new receipts can explain.
@@ -329,7 +388,7 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
     candidate = set(candidate_receipt_keys)
     new, groups = candidate - held, report['failing']
     reasons = [] if same else _input_reasons(candidate_record, live_records)
-    if same and qualification_files is not None:
+    if same:
         from congress_api.retention.qualification_facts import load_qualification_facts
         from viewer_publication.archive_model_job import provenance_record_kind
         live_q_keys = {item['key'] for item in (same[-1]['record'].get('provenance') or ())
@@ -338,15 +397,18 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
                        if isinstance(item, dict) and provenance_record_kind(item.get('key')) == 'qualifications'}
         added_q_keys = cand_q_keys - live_q_keys
         if added_q_keys:
-            by_key = {item['key']: item for item in qualification_files if isinstance(item, dict) and isinstance(item.get('key'), str)}
+            by_key = {item['key']: item for item in (qualification_files or ()) if isinstance(item, dict) and isinstance(item.get('key'), str)}
             missing_q = sorted(added_q_keys - set(by_key))
             if missing_q:
                 reasons.append(f'data-only night: added qualification provenance lacks verified files ({missing_q[:3]})')
             else:
                 loaded_q = load_qualification_facts([by_key[k] for k in sorted(added_q_keys)])
-                outside_q = sorted((loaded_q.get('receipt_keys') or set()) - candidate)
+                if loaded_q.get('stale', 0) > 0 or loaded_q.get('unbound_facts', 0) > 0:
+                    reasons.append('data-only night: added qualification provenance contains stale or receipt-unbound records')
+                outside_q = sorted((loaded_q.get('all_receipt_keys') or set()) - candidate)
                 if outside_q:
                     reasons.append(f'data-only night: added qualification provenance cites unknown receipts ({outside_q[:3]})')
+    reasons += _url_state_qualification_reasons(base_dir, candidate_dir, qualification_files=qualification_files, new_receipts=new)
     if held - candidate:
         reasons.append(f'data-only night: {len(held - candidate)} receipts the live release read are absent from the '
                        f'candidate (first {sorted(held - candidate)[:3]})')

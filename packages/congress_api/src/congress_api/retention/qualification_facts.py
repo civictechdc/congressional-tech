@@ -364,7 +364,7 @@ def repair_qualifications_ledger(path: str | Path) -> None:
         try:
             json.loads(stripped.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError):
-            if is_last:
+            if is_last and not raw_line.endswith((b"\n", b"\r")):
                 needs_rewrite = True
                 break
             raise
@@ -494,6 +494,9 @@ def load_qualification_facts(source: Any) -> dict[str, Any]:
     by_url: dict[str, dict[str, Any]] = {}
     by_requested_url: dict[str, dict[str, Any]] = {}
     covered_receipts: set[str] = set()
+    all_receipts: set[str] = set()
+    unbound_facts = 0
+    verified_facts: list[dict[str, Any]] = []
     retryable_by_key: dict[tuple[str, str | None, str | None], dict[str, Any]] = {}
     stale = 0
     for raw in _iter_raw_entries(source):
@@ -502,10 +505,15 @@ def load_qualification_facts(source: Any) -> dict[str, Any]:
         except StaleQualification:
             stale += 1
             continue
+        verified_facts.append(fact)
         merge_fact(by_sha256, by_url, fact, by_requested_url)
         rkey = fact.get("receipt_key")
-        if isinstance(rkey, str) and rkey and not fact.get("retryable"):
-            covered_receipts.add(rkey)
+        if isinstance(rkey, str) and rkey:
+            all_receipts.add(rkey)
+            if not fact.get("retryable"):
+                covered_receipts.add(rkey)
+        else:
+            unbound_facts += 1
         if fact.get("retryable"):
             retryable_by_key[(fact["body_sha256"], responding_url(fact), fact.get("receipt_key"))] = fact
     retryable_facts = [
@@ -518,6 +526,9 @@ def load_qualification_facts(source: Any) -> dict[str, Any]:
         "by_url": by_url,
         "by_requested_url": by_requested_url,
         "receipt_keys": covered_receipts,
+        "all_receipt_keys": all_receipts,
+        "unbound_facts": unbound_facts,
+        "facts": verified_facts,
         "stale": stale,
         "retryable_facts": retryable_facts,
     }
@@ -682,9 +693,11 @@ def state_reconcile_min_date(state_path: str | Path | None) -> str | None:
     import pyarrow.compute as pc
     import pyarrow.parquet as pq
 
-    if "last_attempt_at" not in set(pq.read_schema(target).names):
+    schema_names = set(pq.read_schema(target).names)
+    col = "last_attempt" if "last_attempt" in schema_names else ("last_attempt_at" if "last_attempt_at" in schema_names else None)
+    if col is None:
         return None
-    max_val = pc.max(pq.read_table(target, columns=["last_attempt_at"])["last_attempt_at"]).as_py()
+    max_val = pc.max(pq.read_table(target, columns=[col])[col]).as_py()
     if max_val is None or not hasattr(max_val, "date"):
         return None
     anchor = min(max_val.date(), datetime.now(timezone.utc).date())
@@ -700,7 +713,7 @@ def _receipt_write_date(receipt_key: str) -> str | None:
     return None
 
 
-def _list_store_receipt_keys(store: Any) -> list[tuple[str, int]]:
+def _list_store_receipt_keys(store: Any) -> list[tuple[str, int, str | None]]:
     adapter = getattr(store, "adapter", None)
     if adapter is None:
         return []
@@ -711,32 +724,48 @@ def _list_store_receipt_keys(store: Any) -> list[tuple[str, int]]:
         if not receipts_dir.is_dir():
             return []
         return [
-            (p.relative_to(root).as_posix(), p.stat().st_size)
+            (p.relative_to(root).as_posix(), p.stat().st_size, None)
             for p in sorted(receipts_dir.rglob("*.jsonl.gz"))
             if p.is_file()
         ]
     if hasattr(adapter, "listing"):
+        try:
+            listed = list(adapter.listing("receipts/", preserve_etags=True))
+        except TypeError:
+            listed = list(adapter.listing("receipts/"))
         return [
-            (row["key"], int(row.get("size") or 0))
-            for row in adapter.listing("receipts/")
+            (row["key"], int(row.get("size") or 0), row.get("etag"))
+            for row in listed
             if isinstance(row.get("key"), str) and row["key"].endswith(".jsonl.gz")
         ]
     return []
 
 
-def _read_store_receipt_lines(store: Any, receipt_key: str) -> list[Mapping[str, Any]]:
-    adapter = getattr(store, "adapter", None)
-    if adapter is None or not hasattr(adapter, "get"):
-        return []
-    try:
-        response = adapter.get(receipt_key)
-    except Exception:
-        return []
-    stream = response["Body"]
-    try:
-        raw_bytes = stream.read()
-    finally:
-        stream.close()
+def _read_store_receipt_lines(
+    store: Any,
+    receipt_key: str,
+    *,
+    if_match: str | None = None,
+    local_path: Path | None = None,
+) -> list[Mapping[str, Any]]:
+    if local_path is not None and local_path.is_file():
+        raw_bytes = local_path.read_bytes()
+    else:
+        adapter = getattr(store, "adapter", None)
+        if adapter is None or not hasattr(adapter, "get"):
+            return []
+        if if_match is not None:
+            try:
+                response = adapter.get(receipt_key, if_match=if_match)
+            except TypeError:
+                response = adapter.get(receipt_key)
+        else:
+            response = adapter.get(receipt_key)
+        stream = response["Body"]
+        try:
+            raw_bytes = stream.read()
+        finally:
+            stream.close()
     text = gzip.decompress(raw_bytes).decode("utf-8") if receipt_key.endswith(".gz") or raw_bytes[:2] == b"\x1f\x8b" else raw_bytes.decode("utf-8")
     out: list[Mapping[str, Any]] = []
     for line_str in text.splitlines():
@@ -758,8 +787,11 @@ def reconcile_store_receipt_qualifications(
     work: str | Path,
     decided_at: str,
     receipt_keys: Iterable[str] | None = None,
+    receipt_etags: Mapping[str, str | None] | None = None,
+    local_receipt_paths: Mapping[str, str | Path] | None = None,
+    body_store: Any = None,
     min_write_date: str | None = None,
-    max_receipts: int = MAX_RECONCILE_RECEIPTS,
+    max_receipts: int | None = None,
     persist: bool = True,
     remember: bool = False,
     provenance_cache: str | Path | None = None,
@@ -769,19 +801,23 @@ def reconcile_store_receipt_qualifications(
 
     covered = set(existing_loaded.get("receipt_keys") or ())
     by_sha = dict(existing_loaded.get("by_sha256") or {})
+    etag_map = dict(receipt_etags or {})
+    local_map = {k: Path(v) for k, v in (local_receipt_paths or {}).items()}
+    read_bodies_from = body_store if body_store is not None else store
     if receipt_keys is not None:
-        candidates = [(rk, 0) for rk in receipt_keys if isinstance(rk, str) and rk not in covered]
+        candidates = [(rk, 0, etag_map.get(rk)) for rk in receipt_keys if isinstance(rk, str) and rk not in covered]
     else:
         filtered = []
-        for rk, sz in _list_store_receipt_keys(store):
+        for rk, sz, etag in _list_store_receipt_keys(store):
             if rk in covered or "/assemble-" in rk or sz > MAX_RECONCILE_RECEIPT_BYTES:
                 continue
             wdate = _receipt_write_date(rk)
             if min_write_date is not None and wdate is not None and wdate < min_write_date:
                 continue
-            filtered.append((wdate or "", rk, sz))
+            filtered.append((wdate or "", rk, sz, etag))
         filtered.sort(key=lambda item: (item[0], item[1]), reverse=True)
-        candidates = [(rk, sz) for _wd, rk, sz in filtered[:max_receipts]]
+        selected = filtered[:max_receipts] if max_receipts is not None else filtered
+        candidates = [(rk, sz, etag) for _wd, rk, sz, etag in selected]
         candidates.sort(key=lambda item: item[0])
     if not candidates:
         return {"facts": [], "imported": None}
@@ -791,8 +827,10 @@ def reconcile_store_receipt_qualifications(
     recovered: list[dict[str, Any]] = []
     with TemporaryDirectory(prefix="reconcile-qual-", dir=work_dir) as temp_dir:
         temp_root = Path(temp_dir)
-        for idx, (rkey, _sz) in enumerate(candidates):
-            for line_idx, line in enumerate(_read_store_receipt_lines(store, rkey)):
+        for idx, (rkey, _sz, r_etag) in enumerate(candidates):
+            for line_idx, line in enumerate(
+                _read_store_receipt_lines(store, rkey, if_match=r_etag, local_path=local_map.get(rkey))
+            ):
                 if line.get("mode") != "fetch":
                     continue
                 status = line.get("http_status")
@@ -818,7 +856,7 @@ def reconcile_store_receipt_qualifications(
                 if existing_body is not None and not existing_body.get("retryable", False):
                     q_record = existing_body["qualification_record"]
                 else:
-                    target_file = _read_retained_body(store, sha, temp_root / f"{idx}-{line_idx}-{sha}.body")
+                    target_file = _read_retained_body(read_bodies_from, sha, temp_root / f"{idx}-{line_idx}-{sha}.body")
                     if target_file is None:
                         continue
                     expected_bytes = primary.get("bytes")

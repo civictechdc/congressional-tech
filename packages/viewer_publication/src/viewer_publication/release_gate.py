@@ -658,18 +658,19 @@ def _url_state_rules(*, has_capture_reason=False, has_qual_proof=False):
     pages = ('a page that linked a queued address is gone', 'NOT coalesce(list_has_all(c.linked_from,b.linked_from),false)')
     reason_moved = 'b.capture_reason IS DISTINCT FROM c.capture_reason' if has_capture_reason else 'false'
     if has_capture_reason and has_qual_proof:
-        # Clearing body_not_qualified requires positive evidence (url_qualified IS TRUE) on a newer
-        # capture line; a NULL lookup or a body-less 304 never clears a failed body (ct-zohj review 7b).
+        # Clearing body_not_qualified requires positive evidence (new_body_qualified IS TRUE and p.good IS NOT NULL)
+        # from a new body-bearing capture line; a NULL lookup, held body, or body-less 304 never clears it (ct-zohj review 7c).
         qual_reason_ok = ("b.capture_disposition IS NOT DISTINCT FROM 'eligible' "
                           "AND c.capture_disposition IS NOT DISTINCT FROM 'eligible' "
                           "AND b.capture_reason IN ('no_satisfying_recovery','body_not_qualified') "
                           "AND c.capture_reason IN ('no_satisfying_recovery','body_not_qualified') "
                           "AND ((c.capture_reason='body_not_qualified' AND q.url_qualified IS FALSE) "
-                          f"OR (c.capture_reason='no_satisfying_recovery' AND {n}>0 AND {later} AND q.url_qualified IS TRUE))")
+                          f"OR (c.capture_reason='no_satisfying_recovery' AND {n}>0 AND {later} "
+                          "AND p.good IS NOT NULL AND coalesce(q.new_body_qualified,false)))")
         qual_settled = f"({reason_moved} AND {qual_reason_ok} AND c.capture_reason='body_not_qualified')"
         added_reason_ok = ("(c.capture_disposition='excluded' AND c.capture_reason='scope_exclusion') "
                            "OR (c.capture_disposition='eligible' AND "
-                           "(c.capture_reason='no_satisfying_recovery' "
+                           "((c.capture_reason='no_satisfying_recovery' AND q.url_qualified IS NOT FALSE) "
                            "OR (c.capture_reason='body_not_qualified' AND q.url_qualified IS FALSE)))")
     elif has_capture_reason:
         qual_reason_ok = 'false'
@@ -844,11 +845,25 @@ def capture_job(work, engine, captures, *, keys, new_receipts=(), held_receipts=
             steps += [
                 qual_step,
                 dict(name='qual_captures', materialize=True,
-                     sql=f"SELECT {','.join(CAPTURE_COLUMNS)},url,media_type FROM capture_rows WHERE qual_row"),
+                     sql=f"SELECT {','.join(CAPTURE_COLUMNS)},url,media_type,new_line FROM capture_rows WHERE qual_row"),
                 *(_qual_step(qual_model[name]) for name in ('url_state_qualified_urls', 'url_state_latest_qualification')),
             ]
-            queries.append(dict(name='qual_states', sql="""SELECT requested_url,url_qualified
-                FROM qual_url_state_latest_qualification"""))
+            queries.append(dict(name='qual_states', sql="""WITH new_latest AS (
+                SELECT requested_url FROM (
+                  SELECT c.requested_url,c.new_line,
+                    row_number() OVER(PARTITION BY c.requested_url ORDER BY
+                      c.retrieved_at DESC NULLS LAST,c.receipt_key DESC,c.receipt_line DESC,c.capture_index ASC) AS rn
+                  FROM qual_url_state_qualified_urls qu JOIN qual_captures c ON qu.requested_url=c.requested_url
+                  WHERE c.mode='fetch' AND c.complete AND coalesce(c.attempt,0)=0
+                    AND c.member_path IS NULL AND c.sha256 IS NOT NULL
+                    AND coalesce(c.fetch_outcome,c.outcome) IN ('stored','unchanged')
+                    AND (CASE WHEN c.fetch_outcome IS NOT NULL THEN c.fetch_http_status ELSE c.http_status END) BETWEEN 200 AND 299
+                    AND (CASE WHEN c.fetch_outcome IS NOT NULL THEN c.fetch_http_status ELSE c.http_status END) <> 206
+                ) WHERE rn=1 AND new_line)
+                SELECT q.requested_url,q.url_qualified,
+                  (nl.requested_url IS NOT NULL AND q.url_qualified IS TRUE) AS new_body_qualified
+                FROM qual_url_state_latest_qualification q
+                LEFT JOIN new_latest nl ON nl.requested_url=q.requested_url"""))
     return run_job(work / 'job', engine, inputs=inputs, steps=steps, outputs=[], queries=queries)
 
 
@@ -989,7 +1004,7 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, k
     has_capture_reason = 'capture_reason' in common and 'capture_disposition' in common
     qual_urls = ({u for (u,) in d.rows(
         "SELECT url FROM url_pairs WHERE (b.requested_url IS NOT NULL AND b.capture_reason IS DISTINCT FROM c.capture_reason) "
-        "OR (b.requested_url IS NULL AND c.capture_reason='body_not_qualified')")}
+        "OR (b.requested_url IS NULL AND c.attempts>0)")}
         if has_capture_reason else set())
     pages = {key.hex() for (key,) in d.rows("""SELECT DISTINCT k FROM (SELECT url,unnest(c.linked_from) AS k FROM url_pairs WHERE c.attempts=0)
         ANTI JOIN (SELECT url,unnest(b.linked_from) AS k FROM url_pairs WHERE b.requested_url IS NOT NULL) USING(url,k)""")}
@@ -1005,7 +1020,7 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, k
     d.con.register('url_rechecked', pa.Table.from_pylist(result.get('rechecked', []), schema=pa.schema([
         ('requested_url', pa.string()), ('t', pa.int64()), ('interval_seconds', pa.int64())])))
     d.con.register('url_qual_states', pa.Table.from_pylist(result.get('qual_states', []), schema=pa.schema([
-        ('requested_url', pa.string()), ('url_qualified', pa.bool_())])))
+        ('requested_url', pa.string()), ('url_qualified', pa.bool_()), ('new_body_qualified', pa.bool_())])))
     d.table('url_rows', f"""WITH p AS (SELECT requested_url,count(*) AS n,
           max(t) FILTER (WHERE good) AS good FROM url_new_lines GROUP BY 1)
         SELECT u.url,b.requested_url IS NOT NULL AS live,c.attempts>0 AS attempted,

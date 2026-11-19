@@ -104,6 +104,13 @@ def _collect_spicy_generations(client,store,bucket,*,live,previous,candidate_dig
     return sorted(pairs)
 
 
+def extra_pins_for_snapshots(snapshots):
+    """Extract standalone non-table pins from snapshots so all input_digest callers agree."""
+    if isinstance(snapshots,dict) and snapshots.get('body_qualifications') is not None:
+        return {'body_qualifications':snapshots['body_qualifications']}
+    return None
+
+
 def input_digest(*,receipt_keys,provenance,profile,entity_digests,extra_pins=None):
     """Hash semantic inputs and explicit standalone pins; table snapshots and run fields stay out."""
     if not isinstance(profile,dict) or not profile:
@@ -379,7 +386,8 @@ def matching_live_input(store,*,release_id,digest):
     keys=read_receipt_list(record['receipt_keys_sha256'],store.get(
         PREFIX+release_id+'/inputs/receipts/'+record['receipt_keys_sha256']+'.json.gz'))
     actual=input_digest(receipt_keys=keys,provenance=record['provenance'],
-        profile=record['profile'],entity_digests=record['entity_digests'])
+        profile=record['profile'],entity_digests=record['entity_digests'],
+        extra_pins=extra_pins_for_snapshots(record.get('snapshots')))
     if actual!=digest or record.get('input_digest')!=digest:
         raise ValueError('Live input record differs from its semantic identity')
     return record
@@ -501,7 +509,8 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
         store=NativeArchiveStore(client=client,engine=engine,bucket=bucket,work=Path(work)/'uploads',comparison_acceptance=comparison_acceptance,asset_journal=asset_journal)
         receipt_keys=sorted(set(receipt_keys))
         digest=input_digest(receipt_keys=receipt_keys,provenance=input_record['provenance'],
-            profile=input_record['profile'],entity_digests=input_record['entity_digests'])
+            profile=input_record['profile'],entity_digests=input_record['entity_digests'],
+            extra_pins=extra_pins_for_snapshots(input_record.get('snapshots')))
         if input_record.get('input_digest')!=digest:raise ValueError('Input record semantic identity differs')
         manifest,raw,release_id,admission=_candidate(Path(release),manifest_pin,result_pin,
             input_record=input_record,receipt_keys=receipt_keys)

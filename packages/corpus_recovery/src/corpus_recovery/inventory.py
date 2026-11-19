@@ -149,18 +149,23 @@ _ROW_URL_COLUMNS = ('url', 'context_url', 'requested_url')
 _HISTORY_COLUMNS = (
     *_ROW_URL_COLUMNS, 'family', 'body_key', 'sha256', 'body_sha256', 'media_type', 'fidelity',
     'retrieved_at', 'checked_at', 'last_attempt', 'outcome', 'resolution', 'last_outcome',
-    'http_status', 'last_status', 'complete', 'intact', 'mode', 'receipt_key', 'receipt_line',
+    'fetch_outcome', 'http_status', 'last_status', 'fetch_http_status', 'complete', 'intact',
+    'mode', 'receipt_key', 'receipt_line', 'capture_index', 'attempt', 'member_path',
     'evidence_id', 'record_role', 'is_real_file', 'placeholder_body', 'usable_direct', 'subtype',
-    'attempts', 'qualified', 'qualification_status', 'qualification_reason',
+    'attempts', 'qualified', 'qualification_status', 'qualification_reason', 'retryable',
     'capture_disposition', 'capture_reason',
 )
 
 
 def _row_outcome(row):
+    if row.get('fetch_outcome') is not None:
+        return row['fetch_outcome']
     return row.get('resolution') or row.get('outcome') or row.get('last_outcome')
 
 
 def _row_status(row):
+    if row.get('fetch_outcome') is not None and row.get('fetch_http_status') is not None:
+        return row['fetch_http_status']
     status = row.get('http_status')
     return row.get('last_status') if status is None else status
 
@@ -240,6 +245,8 @@ def _is_usable_direct_row(row, url='', *, qual_by_sha=None, qual_by_url=None):
     if _row_evidence_id(row) is None or row.get('mode') == 'retained_import':
         return False
     if 'complete' in row and row['complete'] is not True:
+        return False
+    if row.get('attempt') not in (None, 0) or row.get('member_path') is not None:
         return False
     if row.get('intact') is False:
         return False

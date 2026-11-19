@@ -460,13 +460,24 @@ def test_release_gate_url_state_proof_admits_verified_qualification_reason_and_r
     release_dir(tmp_path / 'base', ['A'], url_state=build_table(base_rows, base_reasons))
     release_dir(tmp_path / 'cand', ['A'], url_state=build_table(cand_rows, cand_reasons))
 
+    bad_pdf_fixed = b'%PDF-1.7\n11 0 obj\n<< /Type /Catalog >>\ntruncated-fixed'
+    bad_pdf_unchanged = b'%PDF-1.7\n12 0 obj\n<< /Type /Catalog >>\ntruncated-unchanged'
+    bad_file_fixed = tmp_path / 'bad-fixed.pdf'
+    bad_file_unchanged = tmp_path / 'bad-unchanged.pdf'
+    bad_file_fixed.write_bytes(bad_pdf_fixed)
+    bad_file_unchanged.write_bytes(bad_pdf_unchanged)
+    bad_rec_fixed = qualify(verify_local_file(bad_file_fixed), q_cache)
+    bad_rec_unchanged = qualify(verify_local_file(bad_file_unchanged), q_cache)
+    bad_sha_fixed = bytes.fromhex(hashlib.sha256(bad_pdf_fixed).hexdigest())
+    bad_sha_unchanged = bytes.fromhex(hashlib.sha256(bad_pdf_unchanged).hexdigest())
+
     cap_rows = [
         dict(mode='fetch', complete=True, attempt=0, http_status=500, receipt_key=LIVE, receipt_line=1,
              requested_url=u_newly_bad, sha256=None, retrieved_at=T0, outcome='failed'),
         dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=LIVE, receipt_line=2,
-             requested_url=u_fixed, sha256=bad_sha, retrieved_at=T0, outcome='stored'),
+             requested_url=u_fixed, sha256=bad_sha_fixed, retrieved_at=T0, outcome='stored'),
         dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=LIVE, receipt_line=3,
-             requested_url=u_unchanged, sha256=bad_sha, retrieved_at=T0, outcome='stored'),
+             requested_url=u_unchanged, sha256=bad_sha_unchanged, retrieved_at=T0, outcome='stored'),
         dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=NEW_RECEIPT, receipt_line=1,
              requested_url=u_newly_bad, sha256=bad_sha, retrieved_at=FETCHED, outcome='stored'),
         dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=NEW_RECEIPT, receipt_line=2,
@@ -487,6 +498,12 @@ def test_release_gate_url_state_proof_admits_verified_qualification_reason_and_r
         json.dumps(build_qualification_fact(bad_rec, requested_url=u_newly_bad, url=u_newly_bad,
                                             receipt_key=NEW_RECEIPT, retrieved_at=FETCHED.isoformat(),
                                             http_status=200, headers={'Content-Type': 'application/pdf'})) + '\n'
+        + json.dumps(build_qualification_fact(bad_rec_fixed, requested_url=u_fixed, url=u_fixed,
+                                              receipt_key=LIVE, retrieved_at=T0.isoformat(),
+                                              http_status=200, headers={'Content-Type': 'application/pdf'})) + '\n'
+        + json.dumps(build_qualification_fact(bad_rec_unchanged, requested_url=u_unchanged, url=u_unchanged,
+                                              receipt_key=LIVE, retrieved_at=T0.isoformat(),
+                                              http_status=200, headers={'Content-Type': 'application/pdf'})) + '\n'
         + json.dumps(build_qualification_fact(good_rec, requested_url=u_fixed, url=u_fixed,
                                               receipt_key=NEW_RECEIPT, retrieved_at=FETCHED.isoformat(),
                                               http_status=200, headers={'Content-Type': 'application/pdf'})) + '\n'
@@ -612,6 +629,46 @@ def test_release_gate_url_state_proof_admits_verified_qualification_reason_and_r
             ),
         )
         assert passed_added['reasons'] == [] and passed_added['automatic_reasons'] == []
+
+        # 5b. Review 7c: reverse check on added URL — labeling a failed added PDF as 'no_satisfying_recovery' refuses!
+        hidden_added_reasons = dict(cand_reasons, **{u_added: 'no_satisfying_recovery'})
+        release_dir(tmp_path / 'cand-added-hidden', ['A'], url_state=build_table(added_cand_rows, hidden_added_reasons))
+        with pytest.raises(ValueError, match='capture_reason is not implied by verified body qualifications'):
+            require_release_gates(
+                tmp_path / 'base', tmp_path / 'cand-added-hidden', None, report_path=tmp_path / 'fail-added-hidden.json',
+                automatic=lambda rep: automatic_causes(
+                    rep, tmp_path / 'base', tmp_path / 'cand-added-hidden', engine=eng,
+                    captures=dict(kind='parquet', path=str(tmp_path / 'captures-added.parquet')),
+                    live_receipt_keys=LIVE_RECEIPTS, read_receipt=added_blobs.__getitem__,
+                    work=tmp_path / 'auto-fail-added-hidden', candidate_receipt_keys=LIVE_RECEIPTS | {NEW_RECEIPT},
+                    qualification_files=[dict(key='provenance/qualifications/with-added.jsonl', path=str(q_with_added))],
+                ),
+            )
+
+        # 5c. Review 7c: a body-less 304 CANNOT clear body_not_qualified by crediting an older held qualified body!
+        held_good_caps = [
+            row if not (row['receipt_key'] == LIVE and row['requested_url'] == u_unchanged)
+            else dict(row, sha256=good_sha)
+            for row in cap_rows
+        ]
+        write_captures(held_good_caps, tmp_path / 'captures-held-good.parquet')
+        held_good_text = {}
+        for row in held_good_caps:
+            body = [dict(sha256=row['sha256'].hex())] if row.get('sha256') else []
+            held_good_text.setdefault(row['receipt_key'], {})[row['receipt_line']] = json.dumps(dict(
+                record=dict(mode='fetch', requested_url=row['requested_url'], outcome=row['outcome']), captures=body))
+        held_good_blobs = {k: gzip.compress(('\n'.join(v[i] for i in sorted(v)) + '\n').encode(), mtime=0) for k, v in held_good_text.items()}
+        with pytest.raises(ValueError, match='capture_reason is not implied by verified body qualifications'):
+            require_release_gates(
+                tmp_path / 'base', tmp_path / 'cand-unproven-clear', None, report_path=tmp_path / 'fail-held-good-304.json',
+                automatic=lambda rep: automatic_causes(
+                    rep, tmp_path / 'base', tmp_path / 'cand-unproven-clear', engine=eng,
+                    captures=dict(kind='parquet', path=str(tmp_path / 'captures-held-good.parquet')),
+                    live_receipt_keys=LIVE_RECEIPTS, read_receipt=held_good_blobs.__getitem__,
+                    work=tmp_path / 'auto-fail-held-good-304', candidate_receipt_keys=LIVE_RECEIPTS | {NEW_RECEIPT},
+                    qualification_files=[dict(key='provenance/qualifications/test.jsonl', path=str(q_file))],
+                ),
+            )
 
     # 6. Review 7b: missing explicit qualification path and tampered selector pin raise, and
     # standalone body_qualifications pin participates in input_digest.
