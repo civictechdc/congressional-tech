@@ -25,6 +25,8 @@ from .atomic_validator_v6 import (
     build_atomic_doc_questions_v6,
     build_atomic_persona_question_v6,
     build_genre_conditional_question_v6,
+    resolve_docmeta_pkg_root,
+    resolve_docmeta_validators_dir,
 )
 from .compact_wire_v6 import (
     DOCMETA_V6_COMPACT_SCHEMA_OBJ,
@@ -288,6 +290,8 @@ __all__ = [
     "per_doc_grammar_v6",
     "pre_pass_v6",
     "repair_bgsdd_mojibake_v6",
+    "resolve_docmeta_pkg_root",
+    "resolve_docmeta_validators_dir",
     "resolve_provenance_v5",
     "resolve_saved_name_override_v6",
     "route_batch_anomalies_v6",

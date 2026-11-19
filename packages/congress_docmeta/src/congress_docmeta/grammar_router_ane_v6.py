@@ -2,7 +2,7 @@
 """Pre-Decode Calibrated `Choice(47)` + `status(8)` Grammar Router (`grammar_router_ane_v6.py`).
 
 Top-level import is 100% Python standard library (`/usr/bin/python3 -B -I -S` clean);
-`numpy` and fast-gemma4's `LayaAneBackend` (`CoreML` Pure ANE `W8A16`, `0` Metal GPU ops) are loaded lazily.
+`numpy` and `fast_decision_models.LayaAneBackend` (`CoreML` Pure ANE `W8A16`, `0` Metal GPU ops) are loaded lazily.
 
 Trained and out-of-fold calibrated on `train_v6_3_complete_ssot_gold.jsonl` (2,917 docs across all
 47 `primary_kind` enums and 8 `status` enums, 100% disjoint from `val_48` and `docs_8`):
@@ -226,14 +226,13 @@ class PreDecodeGrammarRouterV6:
         self._np = np
         self.mode: RouterMode = mode
         self.allow_multi_kind_set = bool(allow_multi_kind_set)
-        from fast_gemma4.scorers import LayaAneBackend, ensure_laya_dylib, resolve_home
+        from fast_decision_models import LayaAneBackend
+        from fast_decision_models.paths import ensure_laya_dylib
 
-        self.home_dir = resolve_home(home)  # the engine checkout holds the router artifacts
-        self.artifacts_dir = (
-            Path(artifacts_dir).expanduser().resolve()
-            if artifacts_dir is not None
-            else self.home_dir / "artifacts" / "atomic_validators"
-        )
+        from .atomic_validator_v6 import resolve_docmeta_pkg_root, resolve_docmeta_validators_dir
+
+        self.home_dir = resolve_docmeta_pkg_root(home)
+        self.artifacts_dir = resolve_docmeta_validators_dir(artifacts_dir, home=home)
 
         npz_path = self.artifacts_dir / "router_v63_linear.npz"
         cal_path = self.artifacts_dir / "router_v63_calibration.json"
@@ -266,7 +265,7 @@ class PreDecodeGrammarRouterV6:
             if shared_laya_backend is not None:
                 self.laya_backend = shared_laya_backend
             else:
-                dylib_p = ensure_laya_dylib(self.home_dir)
+                dylib_p = ensure_laya_dylib()
                 self.laya_backend = LayaAneBackend(
                     self.artifacts_dir / "laya_typed",
                     dylib_p,

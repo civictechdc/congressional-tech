@@ -14,8 +14,8 @@ dependencies = [
     "msgspec-schemaorg==0.2.1",
     "msgspec==0.21.1",
 ]
-# fast-gemma4 (the Apple Silicon engine) is deliberately not listed: it has no remote and no Linux build,
-# so it cannot enter uv.lock. Modules that generate import it on first use; see README.md.
+# fast-gemma4 and fast-decision-models (Apple Silicon checkouts) are deliberately not listed:
+# neither enters uv.lock. Modules that generate or run ANE/MLX validators import them lazily; see README.md.
 
 [build-system]
 requires = ["setuptools>=61"]

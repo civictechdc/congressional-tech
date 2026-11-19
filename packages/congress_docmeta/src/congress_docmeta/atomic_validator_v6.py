@@ -514,6 +514,43 @@ def _is_trivially_verified_single_persona(
     return (sur in fn) or (bool(rel_w) and sur in rel_w)
 
 
+def resolve_docmeta_pkg_root(home: str | Path | None = None) -> Path:
+    """Resolve `packages/congress_docmeta` root cleanly with stdlib-only path traversal."""
+    if home is not None:
+        return Path(home).expanduser().resolve()
+    return Path(__file__).resolve().parents[2]
+
+
+def resolve_docmeta_validators_dir(
+    artifacts_dir: str | Path | None = None,
+    *,
+    home: str | Path | None = None,
+) -> Path:
+    """Resolve Congressional V6.3 validator artifacts directory (`explicit > env > checkout cache`)."""
+    if artifacts_dir is not None:
+        return Path(artifacts_dir).expanduser().resolve()
+    env_dir = os.environ.get("DOCMETA_VALIDATORS_DIR")
+    if env_dir:
+        return Path(env_dir).expanduser().resolve()
+    if home is not None:
+        home_art = Path(home).expanduser().resolve() / "artifacts" / "atomic_validators"
+        if home_art.exists():
+            return home_art
+    env_data = os.environ.get("DOCMETA_V6_DATA_DIR")
+    if env_data:
+        return Path(env_data).expanduser().resolve() / "atomic_validators"
+    pkg_root = Path(__file__).resolve().parents[2]
+    ct_root = pkg_root.parents[1]
+    candidates = [
+        ct_root / ".cache" / "archive-release" / "docmeta-v6-20261116" / "atomic_validators",
+        pkg_root / "artifacts" / "atomic_validators",
+    ]
+    for cand in candidates:
+        if cand.exists():
+            return cand
+    return candidates[0]
+
+
 class AtomicOutputValidatorV6:
     """Post-`Gemma-4` Atomic `Noul` Output Validator (`laya-ane` | `kev-0.8b` | `both`).
 
@@ -544,15 +581,12 @@ class AtomicOutputValidatorV6:
     ) -> None:
         if mode not in ("laya-ane", "kev-0.8b", "both"):
             raise ValueError(f"Unsupported mode={mode!r}; expected 'laya-ane', 'kev-0.8b', or 'both'.")
-        from fast_gemma4.scorers import Kev08bMlxBackend, LayaAneBackend, ensure_laya_dylib, resolve_home
+        from fast_decision_models import Kev08bMlxBackend, LayaAneBackend
+        from fast_decision_models.paths import ensure_laya_dylib
 
         self.mode: ValidatorMode = mode
-        self.home_dir = resolve_home(home)  # the engine checkout: build/, native/ and artifacts/atomic_validators
-        self.artifacts_dir = (
-            Path(artifacts_dir).expanduser().resolve()
-            if artifacts_dir is not None
-            else self.home_dir / "artifacts" / "atomic_validators"
-        )
+        self.home_dir = resolve_docmeta_pkg_root(home)
+        self.artifacts_dir = resolve_docmeta_validators_dir(artifacts_dir, home=home)
         cal_p = self.artifacts_dir / "validator_v63_calibration.json"
         cal: dict[str, Any] = json.loads(cal_p.read_text(encoding="utf-8")) if cal_p.is_file() else {}
         self.calibration_version: str = str(cal.get("version") or "v6_2")
@@ -586,7 +620,7 @@ class AtomicOutputValidatorV6:
         self.kev_backend: Any = None
 
         if mode in ("laya-ane", "both"):
-            dylib_p = ensure_laya_dylib(self.home_dir)
+            dylib_p = ensure_laya_dylib()
             self.laya_backend = LayaAneBackend(
                 self.artifacts_dir / "laya_typed",
                 dylib_p,
@@ -1143,4 +1177,6 @@ __all__ = [
     "build_atomic_doc_questions_v6",
     "build_atomic_persona_question_v6",
     "build_genre_conditional_question_v6",
+    "resolve_docmeta_pkg_root",
+    "resolve_docmeta_validators_dir",
 ]

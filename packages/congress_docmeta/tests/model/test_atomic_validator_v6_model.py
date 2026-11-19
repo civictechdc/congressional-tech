@@ -1,7 +1,9 @@
-"""DocMeta validators, grammar router and sweep against the fast-gemma4 tokenizer, ANE and MLX backends.
+"""DocMeta validators, grammar router and sweep against fast-decision-models (ANE/MLX) and fast-gemma4.
 
-Run by the `docmeta-model` lane. `REPO_ROOT` here is the fast-gemma4 checkout: it holds the validator artifacts,
-the native runner and the build directory.
+Run by the `docmeta-model` lane. `REPO_ROOT` here is `packages/congress_docmeta`;
+Congressional validator artifacts live under `.cache/archive-release/docmeta-v6-20261116/atomic_validators`
+(override via `DOCMETA_VALIDATORS_DIR` or `DOCMETA_V6_DATA_DIR`), while generic ANE/MLX runners come from
+`fast-decision-models`.
 """
 
 from __future__ import annotations
@@ -19,14 +21,16 @@ from typing import Any
 import pytest
 
 pytest.importorskip("fast_gemma4", reason="needs the fast-gemma4 engine; run scripts/dev.py test docmeta-model")
+pytest.importorskip("fast_decision_models", reason="needs fast-decision-models runners; run scripts/dev.py test docmeta-model")
 
-import fast_gemma4  # noqa: E402
 from congress_docmeta import (  # noqa: E402
     SCHEMA_V4_STR,
     AtomicOutputValidatorV6,
     PreDecodeGrammarRouterV6,
     build_doc_kind_set_schema_v6,
     per_doc_grammar_v6,
+    resolve_docmeta_pkg_root,
+    resolve_docmeta_validators_dir,
     run_docmeta_parquet_sweep,
     score_atomic_stdlib_v6,
     score_docmeta_anomalies_v6,
@@ -39,8 +43,8 @@ from fast_gemma4.paths import resolve_paths  # noqa: E402
 from fast_gemma4.per_doc_grammar import SyncMatcher  # noqa: E402
 from fast_gemma4.tokenizer import FastGemma4Tokenizer, VocabRemapper  # noqa: E402
 
-REPO_ROOT = Path(fast_gemma4.__file__).resolve().parents[2]
-ARTIFACTS_DIR = REPO_ROOT / "artifacts" / "atomic_validators"
+REPO_ROOT = resolve_docmeta_pkg_root()
+ARTIFACTS_DIR = resolve_docmeta_validators_dir()
 
 
 def test_cli_and_parquet_runner_custom_codes_propagation(tmp_path: Path) -> None:

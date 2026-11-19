@@ -39,10 +39,11 @@ from typing import Any, Iterator
 
 import numpy as np
 
-import fast_gemma4
-from fast_gemma4.scorers import Kev08bMlxBackend, LayaAneBackend
+from congress_docmeta.atomic_validator_v6 import resolve_docmeta_pkg_root, resolve_docmeta_validators_dir
+from fast_decision_models import Kev08bMlxBackend, LayaAneBackend
+from fast_decision_models.paths import ensure_laya_dylib
 
-REPO_ROOT = Path(fast_gemma4.__file__).resolve().parents[2]  # the engine checkout: artifacts/, build/, scripts/
+REPO_ROOT = resolve_docmeta_pkg_root()
 
 from congress_docmeta.anomaly_router_v6 import check_gist_title_grounding_v6, score_atomic_stdlib_v6, surname_token_v6
 from congress_docmeta.atomic_validator_v6 import (
@@ -891,7 +892,8 @@ def main() -> int:
         required=True,
         help="Python executable with coremltools installed for W8A16 ANE compilation",
     )
-    ap.add_argument("--home", default=None, help="Repository root (defaults to parent of scripts/)")
+    ap.add_argument("--home", default=None, help="Package root override (defaults to packages/congress_docmeta)")
+    ap.add_argument("--artifacts-dir", default=None, help="Override atomic_validators output directory")
     ap.add_argument("--steps", type=int, default=420, help="MLX fine-tuning steps on train_split")
     ap.add_argument("--batch-size", type=int, default=16)
     ap.add_argument("--lr", type=float, default=3.5e-5)
@@ -901,8 +903,8 @@ def main() -> int:
     import mlx.core as mx
     import mlx.optimizers as optim
 
-    repo_root = Path(args.home).expanduser().resolve() if args.home else REPO_ROOT
-    artifacts_dir = repo_root / "artifacts" / "atomic_validators"
+    repo_root = resolve_docmeta_pkg_root(args.home)
+    artifacts_dir = resolve_docmeta_validators_dir(args.artifacts_dir, home=args.home)
     laya_out_dir = artifacts_dir / "laya_typed"
     base_laya_dir = Path(args.base_laya_dir).expanduser().resolve()
 
@@ -978,7 +980,7 @@ def main() -> int:
     ]
 
     # [3/6] Parity check + Build Multi-Task Dataset + Kev-0.8B W8 Teacher Distillation
-    dylib_p = repo_root / "build" / "liblaya_ane_runner.dylib"
+    dylib_p = ensure_laya_dylib()
     with acquire_hw_lock("train_v63_distill_and_lora"):
         laya_ane = LayaAneBackend(laya_out_dir, dylib_p, pipe_depth=4)
         enc_cfg = json.loads((base_laya_dir / "encoder" / "config.json").read_text(encoding="utf-8"))
@@ -1169,7 +1171,7 @@ def main() -> int:
                 merged_mx[k] = v.astype(mx.float32)
         mx.save_safetensors(str(tmp_export / "model.safetensors"), merged_mx)
 
-        # Invoke `scripts/build_atomic_validators.py --build-laya-ane` under `--coreml-python`!
+        # Build CoreML `.mlmodelc` bundles under `--coreml-python` via `fast_decision_models.builder`.
         # First save `laya_typed_emb_f16.npz` & configs, then compile `.mlmodelc` via coremltools python
         shutil.copy2(tmp_export / "rl_agent_config.json", laya_out_dir / "rl_agent_config.json")
         type_f16 = best_params["type_emb.weight"].astype(np.float16)
@@ -1181,11 +1183,15 @@ def main() -> int:
         )
         np.savez(tmp_export / "merged_weights_f32.npz", **{k: np.asarray(v) for k, v in merged_mx.items()})
 
+        import fast_decision_models
+
+        fdm_src_dir = Path(fast_decision_models.__file__).resolve().parents[1]
         compile_snippet = (
             "import json, sys, numpy as np\n"
             "from pathlib import Path\n"
-            f"sys.path.insert(0, {str(repo_root / 'scripts')!r})\n"
-            "from build_atomic_validators import _compile_laya_seq_bundle, acquire_hw_lock\n"
+            f"sys.path.insert(0, {str(fdm_src_dir)!r})\n"
+            "from fast_decision_models._common import acquire_hw_lock\n"
+            "from fast_decision_models.builder import _compile_laya_seq_bundle\n"
             f"tmp_p = Path({str(tmp_export)!r})\n"
             f"out_p = Path({str(laya_out_dir)!r})\n"
             "enc_cfg = json.loads((tmp_p / 'encoder' / 'config.json').read_text())\n"

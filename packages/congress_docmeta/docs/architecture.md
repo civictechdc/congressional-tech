@@ -1,6 +1,6 @@
 # DocMeta V6 Deterministic Architecture, `323,564`-Row Routing & Blind Benchmarks
 
-> Moved from fast-gemma4 on 2026-11-17 (ct-ihe7). Paths written as `fast_gemma4/docmeta/...` or `scripts/eval_docmeta_blind.py` now mean `packages/congress_docmeta/src/congress_docmeta/...` and `python -m congress_docmeta.eval_blind`; model artifacts stay in fast-gemma4.
+> Moved from fast-gemma4 on 2026-11-17 (ct-ihe7), with generic decision-model runners/builders (`LayaAneBackend`, `Kev08bMlxBackend`, `native/laya_ane_runner.{h,mm}`) moved to standalone sibling repo `fast-decision-models`. Paths written below as `fast_gemma4.docmeta` map to `congress_docmeta`; Congressional validator weights live under `.cache/archive-release/docmeta-v6-20261116/atomic_validators` (`DOCMETA_VALIDATORS_DIR` overrides) while base Gemma-4 generation weights remain in `fast-gemma4`.
 
 ## 1. Overview
 

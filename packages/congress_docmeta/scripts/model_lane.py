@@ -15,12 +15,22 @@ REPO = PACKAGE.parents[1]
 TESTS = PACKAGE / 'tests/model'
 
 
+def sibling_work_root():
+    common = subprocess.run(['git', 'rev-parse', '--path-format=absolute', '--git-common-dir'], cwd=REPO,
+                            capture_output=True, text=True, check=True).stdout.strip()
+    return Path(common).parent.parent  # a worktree's main checkout, then its sibling parent dir
+
+
 def engine_python():
     if named := os.environ.get('FAST_GEMMA4_PYTHON'):
         return Path(named)
-    common = subprocess.run(['git', 'rev-parse', '--path-format=absolute', '--git-common-dir'], cwd=REPO,
-                            capture_output=True, text=True, check=True).stdout.strip()
-    return Path(common).parent.parent / 'fast-gemma4/.venv/bin/python'  # a worktree's main checkout, then its sibling
+    return sibling_work_root() / 'fast-gemma4/.venv/bin/python'
+
+
+def decision_models_src():
+    if named := os.environ.get('FAST_DECISION_MODELS_SRC'):
+        return Path(named)
+    return sibling_work_root() / 'fast-decision-models/src'
 
 
 def main():
@@ -30,10 +40,16 @@ def main():
     if not python.is_file():
         raise SystemExit(f'No fast-gemma4 interpreter at {python}; set FAST_GEMMA4_PYTHON. This lane runs only '
                          'where the engine is installed (Apple Silicon).')
-    # This checkout's package first; a caller's PYTHONPATH may follow (an engine worktree's src, say).
-    path = os.pathsep.join(filter(None, [str(PACKAGE / 'src'), os.environ.get('PYTHONPATH')]))
+    # This checkout's package first, then sibling fast-decision-models, then any caller PYTHONPATH.
+    fdm_src = decision_models_src()
+    path_parts = [str(PACKAGE / 'src')]
+    if fdm_src.is_dir():
+        path_parts.append(str(fdm_src))
+    if extra := os.environ.get('PYTHONPATH'):
+        path_parts.append(extra)
+    path = os.pathsep.join(path_parts)
     env = dict(os.environ, PYTHONPATH=path, PYTHONDONTWRITEBYTECODE='1')
-    probe = subprocess.run([str(python), '-c', 'import congress_docmeta, fast_gemma4; print(congress_docmeta.__file__)'],
+    probe = subprocess.run([str(python), '-c', 'import congress_docmeta, fast_gemma4, fast_decision_models; print(congress_docmeta.__file__)'],
                            capture_output=True, text=True, env=env)
     if probe.returncode or not Path(probe.stdout.strip()).resolve().is_relative_to(PACKAGE / 'src'):
         raise SystemExit(f'{python} would not test this checkout on the engine: {probe.stderr.strip() or probe.stdout.strip()}')

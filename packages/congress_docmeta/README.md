@@ -4,13 +4,16 @@ DocMeta reads a congressional document's first pages and writes one `DocMetaV4Ca
 congress, committees, dates, people and their roles, citations, a title and a gist. Most of the work is
 deterministic (rules, parsers, lookups); a small language model fills in what the rules cannot.
 
-This package owns all of it except the model: rules R1 to R8, parsers, the schema, prompts, the sweep driver,
-the output validators' questions, the gold eval and training-label building. The model is the
-[fast-gemma4](../../../fast-gemma4) engine, which this package calls and which never imports this package.
+This package owns all of it except the base Gemma-4 generation engine and generic ANE/MLX decision-model runners:
+rules R1 to R8, parsers, the schema, prompts, the sweep driver, the Congressional validator/router wrappers
+(`atomic_validator_v6.py`, `grammar_router_ane_v6.py`, `scripts/train_v63_validators.py`), the gold eval and
+training-label building. The generative model runs via [fast-gemma4](../../../fast-gemma4), and typed-question
+decision-model runners (`LayaAneBackend`, `Kev08bMlxBackend`) live in
+[fast-decision-models](../../../fast-decision-models); neither engine imports this package.
 
-Moved here from fast-gemma4 `src/fast_gemma4/docmeta/` at commit 11dcf14 on 2026-11-17 (ct-ihe7), with fast-gemma4
-main's later DocMeta changes through 57aa284. The module files keep their names so each can be compared with its
-original.
+Moved here from fast-gemma4 `src/fast_gemma4/docmeta/` at commit 11dcf14 on 2026-11-17 (ct-ihe7), with generic
+Laya/Kev decision-model runners (`fast_decision_models`) later extracted to `../fast-decision-models`. The module
+files keep their names so each can be compared with its original.
 
 ## What is where
 
@@ -24,8 +27,12 @@ original.
 | `citations_and_signals_v6.py`, `anomaly_router_v6.py` | Citations and short titles; scoring of suspect outputs |
 | `address_reader/` | Postal-address reader (a copy of Keeplist's, see its `__init__.py`) plus congressional additions |
 | `parquet_runner_v6.py`, `cli.py` | The sweep: queue Parquet in, sidecar Parquet out, resumable |
-| `atomic_validator_v6.py`, `grammar_router_ane_v6.py` | Output validator and pre-decode kind router (ANE and MLX backends) |
+| `atomic_validator_v6.py`, `grammar_router_ane_v6.py` | Congressional validator & pre-decode kind router (`fast-decision-models` backends) |
 | `gold.py`, `eval_blind.py`, `compare_evals.py` | Gold sets, the held-out split, training pairs, and the blind eval |
+
+Staged Congressional validator artifacts (`laya_typed/`, `kev_08b/`, `router_v63_*`, `validator_v63_calibration.json`) live under
+`<main checkout>/.cache/archive-release/docmeta-v6-20261116/atomic_validators` (`DOCMETA_VALIDATORS_DIR` or
+`DOCMETA_V6_DATA_DIR` overrides it). Generic ANE CoreML / MLX runners and builders live in `../fast-decision-models`.
 
 ## Output contract
 
