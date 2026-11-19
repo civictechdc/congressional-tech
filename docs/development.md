@@ -83,6 +83,16 @@ An empty partition fails before pytest, and `--shard` cannot combine with `--pat
 Omit `--shard` to run the full lane. CI installs the locked Node workspace before
 the Python reader tests and requires every partition before `validate` can pass.
 
+For fast local iteration on multi-core hosts:
+- Run the **full lane** in parallel across LPT-balanced workers with isolated
+  `TMPDIR`, pytest cache, and DocSpec workspaces:
+  `python scripts/dev.py test production-offline --workers 8`
+- Run a **fast smoke subset** (files recorded `<= 5000 ms` in
+  `.github/scripts/test-shard-durations.json`, plus any unmeasured new files,
+  across parallel workers; explicitly reported as not a full lane result):
+  `python scripts/dev.py test production-offline --fast`
+  (tune threshold with `--max-file-ms`, e.g. `--fast --max-file-ms 30000`)
+
 The native lane uses the same source-fetch toolchain as the capture workflow:
 
 ```bash

@@ -533,6 +533,18 @@ def junit_shard_durations(xml_paths, files):
     return dict(sorted(measured.items()))
 
 
+def _partition_lpt(candidates, count, table):
+    """Partition candidates across count disjoint buckets by greedy longest-first duration."""
+    ordered = sorted(candidates, key=lambda item: (-table.get(item, DEFAULT_SHARD_DURATION_MS), item))
+    buckets = [[] for _ in range(count)]
+    heap = [(0, 0, i) for i in range(count)]
+    for item in ordered:
+        load, size, target = heapq.heappop(heap)
+        buckets[target].append(item)
+        heapq.heappush(heap, (load + table.get(item, DEFAULT_SHARD_DURATION_MS), size + 1, target))
+    return [sorted(bucket) for bucket in buckets]
+
+
 def shard_files(files, roots, shard, *, durations=None):
     """Partition T enrolled files across K shards by greedy longest-first duration in O(T log T)."""
     index, count = shard
@@ -541,28 +553,124 @@ def shard_files(files, roots, shard, *, durations=None):
     table = load_shard_durations() if durations is None else _validate_shard_durations(durations)
     candidates = {item for item in files if any(
         item == root or item.startswith(root.rstrip('/') + '/') for root in roots)}
-    ordered = sorted(candidates, key=lambda item: (-table.get(item, DEFAULT_SHARD_DURATION_MS), item))
-    buckets = [[] for _ in range(count)]
-    heap = [(0, 0, i) for i in range(count)]
-    for item in ordered:
-        load, size, target = heapq.heappop(heap)
-        buckets[target].append(item)
-        heapq.heappush(heap, (load + table.get(item, DEFAULT_SHARD_DURATION_MS), size + 1, target))
-    selected = sorted(buckets[index - 1])
+    buckets = _partition_lpt(candidates, count, table)
+    selected = buckets[index - 1]
     if not selected:
         raise ValueError(f'shard {index}/{count} is empty; no tests were started')
     return selected
 
 
-def test(config, name, paths, pytest_args, *, shard=None):
+def _write_isolated_job_config(job_config_path, worker_dir):
+    """Create a per-worker DOCSPEC_JOB_CONFIG pointing to an isolated workspace."""
+    src = Path(job_config_path)
+    base = src.parent
+    settings = json.loads(src.read_text())
+    if 'binary' in settings:
+        settings['binary'] = str((base / settings['binary']).resolve())
+    if 'limits' in settings:
+        settings['limits'] = str((base / settings['limits']).resolve())
+    settings['workspace'] = str(worker_dir / 'workspace')
+    out = worker_dir / 'runtime.json'
+    out.write_text(json.dumps(settings, indent=1) + '\n')
+    return out
+
+
+def _run_parallel_workers(base_command, buckets, job_env_var, job_config_path):
+    """Execute disjoint test buckets concurrently with isolated tmp, cache, and docspec workspace."""
+    import concurrent.futures
+    import signal
+    import tempfile
+    import time
+
+    total_workers = len(buckets)
+    failures = []
+    procs = {}
+    t_start = time.monotonic()
+
+    def _run_one(idx, bucket, temp_root):
+        wdir = temp_root / f'w{idx}'
+        (wdir / 'tmp').mkdir(parents=True)
+        (wdir / 'cache').mkdir()
+        env = dict(os.environ, TMPDIR=str(wdir / 'tmp'))
+        if job_env_var and job_config_path:
+            env[job_env_var] = str(_write_isolated_job_config(job_config_path, wdir))
+        cmd = [*base_command, '-o', f'cache_dir={wdir / "cache"}', *bucket]
+        t0 = time.monotonic()
+        proc = subprocess.Popen(cmd, cwd=ROOT, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        procs[idx] = proc
+        try:
+            out, _ = proc.communicate()
+        finally:
+            procs.pop(idx, None)
+        return idx, proc.returncode, time.monotonic() - t0, len(bucket), out or ''
+
+    with tempfile.TemporaryDirectory(prefix='ct-dev-workers-') as tmp_name:
+        temp_root = Path(tmp_name)
+        prev_term = signal.signal(signal.SIGTERM, lambda num, frame: sys.exit(128 + num))
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=total_workers) as pool:
+                futs = [pool.submit(_run_one, i, bucket, temp_root) for i, bucket in enumerate(buckets, 1)]
+                for fut in concurrent.futures.as_completed(futs):
+                    idx, rc, elapsed, n_files, out = fut.result()
+                    lines = [line.strip() for line in out.splitlines() if line.strip()]
+                    tail = next((l for l in reversed(lines) if 'passed' in l or 'failed' in l or 'error' in l),
+                                lines[-1] if lines else f'exit {rc}')
+                    print(f'  [worker {idx}/{total_workers}] {n_files} files in {elapsed:.1f}s (exit {rc}): {tail}',
+                          flush=True)
+                    if rc != 0:
+                        failures.append((idx, rc, out))
+        except BaseException:
+            for proc in list(procs.values()):
+                with suppress(OSError):
+                    proc.terminate()
+            for proc in list(procs.values()):
+                try:
+                    proc.wait(timeout=3)
+                except (OSError, subprocess.TimeoutExpired):
+                    with suppress(OSError):
+                        proc.kill()
+            raise
+        finally:
+            signal.signal(signal.SIGTERM, prev_term)
+
+    if failures:
+        for idx, rc, out in sorted(failures):
+            print(f'\n=== worker {idx}/{total_workers} failed (exit {rc}) ===\n{out}', flush=True)
+        print(f'Parallel run finished in {time.monotonic() - t_start:.1f}s with {len(failures)} failing worker(s).',
+              flush=True)
+        return 1
+    print(f'Parallel run finished in {time.monotonic() - t_start:.1f}s across {total_workers} worker(s).',
+          flush=True)
+    return 0
+
+
+def test(config, name, paths, pytest_args, *, shard=None, workers=None, max_file_ms=None, durations=None):
     """Execute pytest against the selected test lane with environment tripwires."""
     lane = config['lanes'][name]
     if not lane['roots']:
         raise ValueError(f'{name}: {lane["rationale"]} Requirements: {lane["requirements"]}')
     if shard is not None and paths:
         raise ValueError('--path and --shard cannot be combined')
+    if workers is not None and workers < 1:
+        raise ValueError('--workers must be >= 1')
+    if max_file_ms is not None and max_file_ms < 1:
+        raise ValueError('--max-file-ms must be >= 1')
+    if shard is not None and (max_file_ms is not None or (workers is not None and workers > 1)):
+        raise ValueError('--shard cannot be combined with --fast, --max-file-ms, or --workers > 1')
+    if paths and (max_file_ms is not None or (workers is not None and workers > 1)):
+        raise ValueError('--path cannot be combined with --fast, --max-file-ms, or --workers > 1')
+    if lane.get('runner') and (max_file_ms is not None or (workers is not None and workers > 1)):
+        raise ValueError(f'{name} uses a dedicated runner and does not support --fast, --max-file-ms, or --workers')
+
     files = inventory(config)
-    selected = shard_files(files, lane['roots'], shard) if shard is not None else paths or lane['roots']
+    use_pool = max_file_ms is not None or (workers is not None and workers > 1)
+    if shard is not None:
+        selected = shard_files(files, lane['roots'], shard, durations=durations)
+    elif use_pool:
+        selected = lane['roots']
+    else:
+        selected = paths or lane['roots']
+
     for path in selected:
         resolved = (ROOT / path.split('::', 1)[0]).resolve()
         if not any(resolved == (ROOT / root).resolve() or resolved.is_relative_to((ROOT / root).resolve())
@@ -575,20 +683,58 @@ def test(config, name, paths, pytest_args, *, shard=None):
         print(f'{name} ({scope}): exit {code}', flush=True)
         return code
     doctor(config, name)
-    command = [sys.executable]
+
+    table = None
+    candidates = None
+    pool_items = None
+    if use_pool:
+        candidates = sorted(item for item in files if any(
+            item == root or item.startswith(root.rstrip('/') + '/') for root in lane['roots']))
+        table = load_shard_durations() if durations is None else _validate_shard_durations(durations)
+        if max_file_ms is not None:
+            selected = [item for item in candidates if table.get(item, DEFAULT_SHARD_DURATION_MS) <= max_file_ms]
+            if not selected:
+                raise ValueError(f'no {name} test files matched duration <= {max_file_ms} ms')
+            pool_items = selected
+        else:
+            pool_items = candidates
+        eff_workers = min(workers, len(pool_items)) if (workers is not None and workers > 1) else 1
+        if eff_workers == 1:
+            selected = pool_items
+    else:
+        eff_workers = 1
+
+    base_command = [sys.executable]
     if lane['offline']:
-        command += [str(ROOT / '.github/scripts/offline-python.py')]
-    command += ['-m', 'pytest', '-c', str(ROOT / 'pytest.ini'), '-q']
+        base_command += [str(ROOT / '.github/scripts/offline-python.py')]
+    base_command += ['-m', 'pytest', '-c', str(ROOT / 'pytest.ini'), '-q']
     if marker := lane.get('marker'):
-        command += ['-m', marker]
-    command += selected + pytest_args
-    scope = run_scope(files, lane['roots'], paths, pytest_args, shard)
+        base_command += ['-m', marker]
+
+    base_scope = run_scope(files, lane['roots'], paths, pytest_args, shard)
+    if max_file_ms is not None:
+        est_s = sum(table.get(item, DEFAULT_SHARD_DURATION_MS) for item in selected) / 1_000
+        print(f'Fast subset ({name}): {len(selected)}/{len(candidates)} files <= {max_file_ms} ms '
+              f'(est. {est_s:.1f}s single-threaded) across {eff_workers} worker(s); '
+              f'omitted {len(candidates) - len(selected)} slower file(s).', flush=True)
+        scope = f'fast subset <= {max_file_ms}ms ({len(selected)}/{len(candidates)} files, {eff_workers}w): not a lane result'
+    elif eff_workers > 1:
+        scope = f'{base_scope} ({eff_workers} workers)'
+    else:
+        scope = base_scope
+
     print(f'Running {name}: {lane["purpose"]}', flush=True)
-    result = subprocess.run(command, cwd=ROOT)
+    if eff_workers > 1:
+        buckets = _partition_lpt(pool_items, eff_workers, table)
+        job_env_var = lane.get('required_job_config_env')
+        job_config_path = os.environ.get(job_env_var) if job_env_var else None
+        code = _run_parallel_workers([*base_command, *pytest_args], buckets, job_env_var, job_config_path)
+    else:
+        code = subprocess.run([*base_command, *selected, *pytest_args], cwd=ROOT).returncode
     if name == 'native-loopback':
         print('Native qualification requires reviewing the -ra summary: skipped checks are unqualified.', flush=True)
-    print(f'{name} ({scope}): exit {result.returncode}', flush=True)
-    return result.returncode
+    print(f'{name} ({scope}): exit {code}', flush=True)
+    return code
 
 
 def run_scope(files, roots, paths, pytest_args, shard):
@@ -741,6 +887,12 @@ def main(argv=None):
     tests.add_argument('--path', action='append', default=[], help='Restrict to a path or node within this lane (repeatable)')
     tests.add_argument('--shard', type=parse_shard, metavar='INDEX/COUNT',
                        help='Run one disjoint partition of the full lane (one-based; cannot combine with --path)')
+    tests.add_argument('--fast', action='store_true',
+                       help='Fast smoke subset (<= 5000 ms files in test-shard-durations.json across parallel workers; not a full lane result)')
+    tests.add_argument('--max-file-ms', type=int, default=None, metavar='MS',
+                       help='Run only lane files with recorded duration <= MS (not a full lane result)')
+    tests.add_argument('--workers', '-j', type=int, default=None, metavar='N',
+                       help='Run disjoint LPT partitions in N parallel worker processes')
     refresh = sub.add_parser('refresh-shard-durations',
                              help='Update .github/scripts/test-shard-durations.json from full-shard passing production-offline JUnit XMLs')
     refresh.add_argument('xml', nargs='+', type=Path,
@@ -798,6 +950,11 @@ def main(argv=None):
             args.out.write_text(json.dumps(updated, indent=2, sort_keys=True) + '\n')
             print(f'Wrote {len(updated)} durations to {args.out}')
         else:
+            if args.fast or args.workers is not None or args.max_file_ms is not None:
+                eff_max_ms = 5_000 if (args.fast and args.max_file_ms is None) else args.max_file_ms
+                eff_workers = min(8, max(1, os.cpu_count() or 4)) if (args.fast and args.workers is None) else args.workers
+                return test(config, args.lane, args.path, extra, shard=args.shard,
+                            workers=eff_workers, max_file_ms=eff_max_ms)
             return test(config, args.lane, args.path, extra, shard=args.shard)
     except (OSError, ValueError, subprocess.SubprocessError) as error:
         print(f'ERROR: {error}', file=sys.stderr)

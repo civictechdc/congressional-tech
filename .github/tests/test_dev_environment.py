@@ -513,3 +513,72 @@ def test_data_under_a_build_named_directory_blocks_a_prune(tmp_path, relative):
                                       'packages/a/src/b/__pycache__/c.pyc', '.cache/local-runtime/runtime.json'])
 def test_rebuildable_output_at_a_package_root_does_not_block(relative):
     assert dev._disposable(relative)
+
+
+def test_fast_subset_and_parallel_workers_isolate_workspaces_and_keep_honest_scope(tmp_path, monkeypatch, capsys):
+    import json
+    files = {
+        'tests/test_fast_a.py',
+        'tests/test_fast_b.py',
+        'tests/test_unmeasured.py',  # Defaults to DEFAULT_SHARD_DURATION_MS (5000 ms) -> included in --fast
+        'tests/test_slow_heavy.py',
+    }
+    durations = {
+        'tests/test_fast_a.py': 400,
+        'tests/test_fast_b.py': 4900,
+        'tests/test_slow_heavy.py': 12000,
+    }
+    config = dict(lanes={'production-offline': {
+        'roots': ['tests'], 'offline': True, 'marker': 'not loopback',
+        'purpose': 'test lane', 'required_job_config_env': 'DOCSPEC_JOB_CONFIG',
+    }})
+    job_cfg = tmp_path / 'runtime.json'
+    job_cfg.write_text(json.dumps({
+        'binary': 'bin/docspec',
+        'limits': 'limits.json',
+        'workspace': str(tmp_path / 'shared-ws'),
+    }))
+    monkeypatch.setenv('DOCSPEC_JOB_CONFIG', str(job_cfg))
+    monkeypatch.setattr(dev, 'inventory', lambda cfg: files)
+    monkeypatch.setattr(dev, 'doctor', lambda cfg, lane_name=None: None)
+
+    recorded = []
+
+    class FakeProc:
+        def __init__(self, cmd, *, env, **kwargs):
+            cfg_path = Path(env['DOCSPEC_JOB_CONFIG'])
+            cfg_data = json.loads(cfg_path.read_text())
+            recorded.append((cmd, env['TMPDIR'], cfg_data))
+            self.returncode = 0
+
+        def communicate(self):
+            return '1 passed in 0.05s\n', None
+
+    monkeypatch.setattr(dev.subprocess, 'Popen', FakeProc)
+
+    # 1. --fast / max_file_ms=5000 excludes slow file, isolates workspaces, and says "not a lane result".
+    assert dev.test(config, 'production-offline', [], [], max_file_ms=5000, workers=2, durations=durations) == 0
+    out = capsys.readouterr().out
+    assert '3/4 files <= 5000 ms' in out
+    assert 'omitted 1 slower file(s)' in out
+    assert 'fast subset <= 5000ms (3/4 files, 2w): not a lane result' in out
+    selected_in_cmds = {arg for cmd, _, _ in recorded for arg in cmd if arg.startswith('tests/')}
+    assert selected_in_cmds == {'tests/test_fast_a.py', 'tests/test_fast_b.py', 'tests/test_unmeasured.py'}
+    assert len({ws['workspace'] for _, _, ws in recorded}) == 2
+    assert len({tmp for _, tmp, _ in recorded}) == 2
+    assert all(cfg['binary'] == str((tmp_path / 'bin/docspec').resolve()) for _, _, cfg in recorded)
+
+    # 2. Full lane across --workers 2 runs all 4 files and reports full lane (2 workers).
+    recorded.clear()
+    assert dev.test(config, 'production-offline', [], [], workers=2, durations=durations) == 0
+    out_full = capsys.readouterr().out
+    assert 'production-offline (full lane (2 workers)): exit 0' in out_full
+    assert {arg for cmd, _, _ in recorded for arg in cmd if arg.startswith('tests/')} == files
+
+    # 3. Conflicting flags fail cleanly before execution.
+    with pytest.raises(ValueError, match='--shard cannot be combined'):
+        dev.test(config, 'production-offline', [], [], shard=(1, 2), max_file_ms=5000)
+    with pytest.raises(ValueError, match='--path cannot be combined'):
+        dev.test(config, 'production-offline', ['tests/test_fast_a.py'], [], max_file_ms=5000)
+    with pytest.raises(ValueError, match='--max-file-ms must be >= 1'):
+        dev.test(config, 'production-offline', [], [], max_file_ms=0)
