@@ -181,9 +181,9 @@ def _row_qualification_failed(row, url='', *, qual_by_sha=None, qual_by_url=None
     """Whether verified qualification facts or explicit state mark this row's body unusable."""
     if not isinstance(row, dict):
         return False
-    if (row.get('qualified') is False
-            or (row.get('qualification_status') == 'unresolved' and not row.get('retryable', False))
-            or row.get('capture_reason') == 'body_not_qualified'):
+    if (row.get('capture_reason') == 'body_not_qualified'
+            or (not row.get('retryable', False)
+                and (row.get('qualified') is False or row.get('qualification_status') == 'unresolved'))):
         return True
     if not qual_by_sha and not qual_by_url:
         return False
@@ -217,21 +217,28 @@ def _carries_body_verdict(row):
     """Whether a row is a complete primary body-bearing fetch (matching archive_url_state.py) or explicit state verdict."""
     if not isinstance(row, dict) or row.get('mode') == 'retained_import':
         return False
-    if (row.get('capture_reason') == 'body_not_qualified'
-            or row.get('qualified') is not None
-            or (row.get('qualification_status') is not None and not row.get('retryable', False))):
+    if row.get('capture_reason') == 'body_not_qualified':
         return True
     if 'complete' in row and row['complete'] is not True:
         return False
     if row.get('attempt') not in (None, 0) or row.get('member_path') is not None:
         return False
     eff_status = row.get('fetch_http_status') if row.get('fetch_outcome') is not None else row.get('http_status')
-    if eff_status is not None and (type(eff_status) is not int or not (200 <= eff_status <= 299) or eff_status == 206):
+    if eff_status is not None and (
+        type(eff_status) is not int
+        or not (200 <= eff_status <= 299)
+        or eff_status == 202
+        or (eff_status == 206 and row.get('complete') is not True)
+    ):
         return False
     eff_outcome = row.get('fetch_outcome') if row.get('fetch_outcome') is not None else row.get('outcome')
     if eff_outcome is not None and eff_outcome not in ('stored', 'unchanged', 'ok', 'completed'):
         return False
-    return bool(row.get('sha256') or row.get('body_sha256') or row.get('body_key'))
+    if row.get('sha256') or row.get('body_sha256') or row.get('body_key'):
+        return True
+    return bool(not row.get('retryable', False) and (
+        row.get('qualified') is not None or row.get('qualification_status') is not None
+    ))
 
 
 def _is_usable_direct_row(row, url='', *, qual_by_sha=None, qual_by_url=None):
@@ -263,7 +270,8 @@ def _is_usable_direct_row(row, url='', *, qual_by_sha=None, qual_by_url=None):
     outcome = _row_outcome(row)
     status = _row_status(row)
     if status is not None:
-        if int(status) != 200 or outcome not in ('stored', 'unchanged', 'ok', 'usable_direct', 'verified'):
+        status_ok = int(status) == 200 or (int(status) == 206 and row.get('complete') is True)
+        if not status_ok or outcome not in ('stored', 'unchanged', 'ok', 'usable_direct', 'verified'):
             return False
     # Never treat status-less 'unchanged' state rows as usable direct bodies.
     elif outcome not in ('stored', 'ok', 'usable_direct', 'verified'):

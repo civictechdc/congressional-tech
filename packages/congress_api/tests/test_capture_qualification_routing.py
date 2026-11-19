@@ -1156,13 +1156,31 @@ def test_reconcile_min_date_reads_last_attempt_survives_505_304s_and_propagates_
     for idx in range(505):
         (newer_dir / f'{idx:04d}-recheck.jsonl.gz').write_bytes(recheck_bytes)
 
+    # Review 7d: a complete whole-range HTTP 206 receipt is reconciled, whereas a partial 206 is skipped.
+    whole_206_key = 'receipts/documents/2026-11-15/0001-whole206.jsonl.gz'
+    partial_206_key = 'receipts/documents/2026-11-15/0002-partial206.jsonl.gz'
+    (raw_dir / whole_206_key).write_bytes(gzip.compress((json.dumps({
+        'mode': 'fetch', 'complete': True, 'http_status': 206, 'outcome': 'stored',
+        'requested_url': 'https://fixture.test/range.pdf', 'url': 'https://fixture.test/range.pdf',
+        'retrieved_at': '2026-11-15T12:30:00Z',
+        'response_headers': {'Content-Type': 'application/pdf', 'Content-Range': f'bytes 0-{len(bad_pdf) - 1}/{len(bad_pdf)}'},
+        'captures': [{'attempt': 0, 'sha256': bad_sha, 'bytes': len(bad_pdf), 'sniffed_format': 'pdf'}],
+    }) + '\n').encode()))
+    (raw_dir / partial_206_key).write_bytes(gzip.compress((json.dumps({
+        'mode': 'fetch', 'complete': True, 'http_status': 206, 'outcome': 'stored',
+        'requested_url': 'https://fixture.test/partial.pdf', 'url': 'https://fixture.test/partial.pdf',
+        'retrieved_at': '2026-11-15T12:35:00Z',
+        'response_headers': {'Content-Type': 'application/pdf', 'Content-Range': 'bytes 0-9/100'},
+        'captures': [{'attempt': 0, 'sha256': bad_sha, 'bytes': len(bad_pdf), 'sniffed_format': 'pdf'}],
+    }) + '\n').encode()))
+
     rec_res = reconcile_store_receipt_qualifications(
         store, existing_loaded={'by_sha256': {}, 'receipt_keys': set()},
         qualify_fn=real_qualify, cache_dir=tmp_path / 'qcache', work=tmp_path / 'qwork',
         decided_at='2026-11-16T13:00:00Z', min_write_date=state_reconcile_min_date(state_pq),
         persist=True,
     )
-    assert len(rec_res['facts']) == 1 and rec_res['facts'][0]['receipt_key'] == interrupted_key
+    assert {f['receipt_key'] for f in rec_res['facts']} == {interrupted_key, whole_206_key}
     assert rec_res['imported'] is not None
 
     # A broken store GET must propagate its exception rather than returning an empty result.
@@ -1179,5 +1197,28 @@ def test_reconcile_min_date_reads_last_attempt_survives_505_304s_and_propagates_
             qualify_fn=real_qualify, cache_dir=tmp_path / 'qcache2', work=tmp_path / 'qwork2',
             decided_at='2026-11-16T13:00:00Z', persist=False,
         )
+
+    # Review 7d: a conditional receipt GET (if_match present) that raises TypeError inside the client
+    # MUST propagate TypeError and MUST NEVER fall back to an unpinned adapter.get(key) read!
+    get_calls: list[tuple[str, str | None]] = []
+
+    class _ConditionalTypeErrorAdapter:
+        def listing(self, prefix, *, preserve_etags=False):
+            assert preserve_etags is True
+            return [{'key': interrupted_key, 'size': 128, 'etag': '"pinned-etag-1"'}]
+        def get(self, key, *, if_match=None):
+            get_calls.append((key, if_match))
+            if if_match is not None:
+                raise TypeError('r2-client-internal-type-error')
+            return {'Body': io.BytesIO((raw_dir / interrupted_key).read_bytes())}
+
+    with pytest.raises(TypeError, match='r2-client-internal-type-error'):
+        reconcile_store_receipt_qualifications(
+            type('S', (), {'adapter': _ConditionalTypeErrorAdapter()})(),
+            existing_loaded={'by_sha256': {}, 'receipt_keys': set()},
+            qualify_fn=real_qualify, cache_dir=tmp_path / 'qcache3', work=tmp_path / 'qwork3',
+            decided_at='2026-11-16T13:00:00Z', persist=False,
+        )
+    assert get_calls == [(interrupted_key, '"pinned-etag-1"')]
 
 

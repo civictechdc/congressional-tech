@@ -752,6 +752,80 @@ def _qual_step(step):
     return dict(step, name=f"qual_{step['name']}", sql=sql)
 
 
+QUAL_STATES_SQL = """WITH new_latest AS (
+    SELECT requested_url FROM (
+      SELECT c.requested_url,c.new_line,
+        row_number() OVER(PARTITION BY c.requested_url ORDER BY
+          c.retrieved_at DESC NULLS LAST,c.receipt_key DESC,c.receipt_line DESC,c.capture_index ASC) AS rn
+      FROM qual_url_state_qualified_urls qu JOIN qual_captures c ON qu.requested_url=c.requested_url
+      WHERE c.mode='fetch' AND c.complete AND coalesce(c.attempt,0)=0
+        AND c.member_path IS NULL AND c.sha256 IS NOT NULL
+        AND coalesce(c.fetch_outcome,c.outcome) IN ('stored','unchanged')
+        AND (CASE WHEN c.fetch_outcome IS NOT NULL THEN c.fetch_http_status ELSE c.http_status END) BETWEEN 200 AND 299
+    ) WHERE rn=1 AND new_line)
+    SELECT q.requested_url,q.url_qualified,
+      (nl.requested_url IS NOT NULL AND q.url_qualified IS TRUE) AS new_body_qualified
+    FROM qual_url_state_latest_qualification q
+    LEFT JOIN new_latest nl ON nl.requested_url=q.requested_url"""
+
+
+def qual_states_job(work, engine, captures, *, new_receipts=(), held_receipts=(), qual_urls=(), qualification_files=None):
+    """Evaluate `(url_qualified, new_body_qualified)` by latest primary capture SHA for `qual_urls`."""
+    if not qual_urls or not qualification_files:
+        return {}
+    from uuid import uuid4
+    from congress_api.lake.tables import table_input
+    from congress_api.retention.provenance import run_job
+    from congress_api.retention.qualification_facts import model_qualification_input
+    from viewer_publication.archive_url_state import url_state_steps
+
+    run_dir = Path(work) / uuid4().hex
+    run_dir.mkdir(parents=True, exist_ok=True)
+    held_set = set(held_receipts)
+    new_set = set(new_receipts) - held_set
+    pq.write_table(pa.table({'new_key': pa.array(sorted(new_set), pa.string())}), run_dir / 'new-receipts.parquet')
+    pq.write_table(pa.table({'held_key': pa.array(sorted(held_set), pa.string())}), run_dir / 'held-receipts.parquet')
+    pq.write_table(pa.table({'qual_url': pa.array(sorted(set(qual_urls)), pa.string())}), run_dir / 'qual-urls.parquet')
+    qual_input, qual_step = model_qualification_input(qualification_files, run_dir / 'qualifications')
+    inputs = [
+        table_input('lake_captures', _captures_source(captures)),
+        dict(name='new_receipts', kind='parquet', path=str(run_dir / 'new-receipts.parquet')),
+        dict(name='held_receipts', kind='parquet', path=str(run_dir / 'held-receipts.parquet')),
+        dict(name='qual_urls', kind='parquet', path=str(run_dir / 'qual-urls.parquet')),
+        qual_input,
+    ]
+    qual_cols = (
+        ('receipt_key', 'VARCHAR'), ('receipt_line', 'INT'), ('capture_index', 'INT'),
+        ('mode', 'VARCHAR'), ('outcome', 'VARCHAR'), ('requested_url', 'VARCHAR'),
+        ('url', 'VARCHAR'), ('media_type', 'VARCHAR'), ('member_path', 'VARCHAR'),
+        ('attempt', 'INT'), ('http_status', 'INT'), ('complete', 'BOOLEAN'),
+        ('fetch_http_status', 'INT'), ('fetch_outcome', 'VARCHAR'),
+        ('retrieved_at', 'TIMESTAMP'), ('sha256', 'BINARY'),
+    )
+    cap_cols = set(pq.read_schema(captures['path']).names) if captures.get('kind') == 'parquet' else {c for c, _ in qual_cols}
+    select_cols = ','.join(f'c.{col}' if col in cap_cols else f'cast(NULL AS {sql_t}) AS {col}' for col, sql_t in qual_cols)
+    qual_model = {step['name']: step for step in url_state_steps(
+        recovery_policy={'acceptance_policy': 'recovery-identity-v1'}, include_qualifications=True)}
+    steps = [
+        qual_step,
+        dict(name='qual_captures', materialize=True,
+             sql=f"SELECT {select_cols},n.new_key IS NOT NULL AS new_line "
+                 "FROM new_receipts n RIGHT JOIN ("
+                 "  held_receipts h RIGHT JOIN ("
+                 "    qual_urls q JOIN lake_captures c ON q.qual_url=c.requested_url"
+                 "  ) ON h.held_key=c.receipt_key"
+                 ") ON n.new_key=c.receipt_key "
+                 "WHERE n.new_key IS NOT NULL OR h.held_key IS NOT NULL"),
+        *(_qual_step(qual_model[name]) for name in ('url_state_qualified_urls', 'url_state_latest_qualification')),
+    ]
+    res = run_job(run_dir / 'job', engine, inputs=inputs, steps=steps, outputs=[],
+                  queries=[dict(name='qual_states', sql=QUAL_STATES_SQL)])
+    return {
+        row['requested_url']: (row['url_qualified'], bool(row['new_body_qualified']))
+        for row in res.get('qual_states', [])
+    }
+
+
 def capture_job(work, engine, captures, *, keys, new_receipts=(), held_receipts=(), recheck_urls=(),
                 qual_urls=(), qualification_files=(), candidate_state=None):
     """One engine job and one scan of the capture input, for the trace and the url_state proof.
@@ -848,22 +922,7 @@ def capture_job(work, engine, captures, *, keys, new_receipts=(), held_receipts=
                      sql=f"SELECT {','.join(CAPTURE_COLUMNS)},url,media_type,new_line FROM capture_rows WHERE qual_row"),
                 *(_qual_step(qual_model[name]) for name in ('url_state_qualified_urls', 'url_state_latest_qualification')),
             ]
-            queries.append(dict(name='qual_states', sql="""WITH new_latest AS (
-                SELECT requested_url FROM (
-                  SELECT c.requested_url,c.new_line,
-                    row_number() OVER(PARTITION BY c.requested_url ORDER BY
-                      c.retrieved_at DESC NULLS LAST,c.receipt_key DESC,c.receipt_line DESC,c.capture_index ASC) AS rn
-                  FROM qual_url_state_qualified_urls qu JOIN qual_captures c ON qu.requested_url=c.requested_url
-                  WHERE c.mode='fetch' AND c.complete AND coalesce(c.attempt,0)=0
-                    AND c.member_path IS NULL AND c.sha256 IS NOT NULL
-                    AND coalesce(c.fetch_outcome,c.outcome) IN ('stored','unchanged')
-                    AND (CASE WHEN c.fetch_outcome IS NOT NULL THEN c.fetch_http_status ELSE c.http_status END) BETWEEN 200 AND 299
-                    AND (CASE WHEN c.fetch_outcome IS NOT NULL THEN c.fetch_http_status ELSE c.http_status END) <> 206
-                ) WHERE rn=1 AND new_line)
-                SELECT q.requested_url,q.url_qualified,
-                  (nl.requested_url IS NOT NULL AND q.url_qualified IS TRUE) AS new_body_qualified
-                FROM qual_url_state_latest_qualification q
-                LEFT JOIN new_latest nl ON nl.requested_url=q.requested_url"""))
+            queries.append(dict(name='qual_states', sql=QUAL_STATES_SQL))
     return run_job(work / 'job', engine, inputs=inputs, steps=steps, outputs=[], queries=queries)
 
 

@@ -1848,37 +1848,67 @@ def test_newer_failed_body_overrides_older_healthy_fetch_in_inventory(tmp_path):
     import pyarrow.parquet as pq
 
     retry_url = 'https://docs.house.gov/meetings/GO/GO00/20110511/inline-retryable.pdf'
-    arrow_caps_pq = tmp_path / 'arrow-history-captures.parquet'
-    pq.write_table(pa.Table.from_pylist([
+    healthy_url = 'https://docs.house.gov/meetings/GO/GO00/20110511/healthy-with-bad-secondary.pdf'
+    range_url = 'https://docs.house.gov/meetings/GO/GO00/20110511/whole-range-206.pdf'
+    arrow_table = pa.Table.from_pylist([
         dict(requested_url=target, url=target, sha256=good_rec['body_sha256'], outcome='stored',
              fetch_outcome='stored', http_status=200, fetch_http_status=200, complete=True, mode='fetch',
              media_type='application/pdf', retrieved_at='2026-10-01T00:00:00Z', receipt_key='receipts/a.jsonl.gz',
-             receipt_line=1, attempt=0, member_path=None, qualification_status=None, retryable=None),
+             receipt_line=1, attempt=0, member_path=None, qualified=None, qualification_status=None, retryable=None),
         dict(requested_url=target, url=target, sha256=bad_rec['body_sha256'], outcome='stored',
              fetch_outcome='stored', http_status=200, fetch_http_status=200, complete=True, mode='fetch',
              media_type='application/pdf', retrieved_at='2026-10-10T00:00:00Z', receipt_key='receipts/b.jsonl.gz',
-             receipt_line=1, attempt=0, member_path=None, qualification_status=None, retryable=None),
+             receipt_line=1, attempt=0, member_path=None, qualified=None, qualification_status=None, retryable=None),
         # Non-primary attempt=1 and archive member_path rows after t=2 MUST NOT resurrect older_good!
         dict(requested_url=target, url=target, sha256=good_rec['body_sha256'], outcome='stored',
              fetch_outcome='stored', http_status=200, fetch_http_status=200, complete=True, mode='fetch',
              media_type='application/pdf', retrieved_at='2026-10-15T00:00:00Z', receipt_key='receipts/hop.jsonl.gz',
-             receipt_line=1, attempt=1, member_path=None, qualification_status=None, retryable=None),
+             receipt_line=1, attempt=1, member_path=None, qualified=True, qualification_status='qualified', retryable=False),
         dict(requested_url=target, url=target, sha256=good_rec['body_sha256'], outcome='stored',
              fetch_outcome='stored', http_status=200, fetch_http_status=200, complete=True, mode='fetch',
              media_type='application/pdf', retrieved_at='2026-10-16T00:00:00Z', receipt_key='receipts/zip.jsonl.gz',
-             receipt_line=1, attempt=0, member_path='inner.pdf', qualification_status=None, retryable=None),
-        # Inline retryable=True row in Parquet MUST remain usable_direct=True (not body_not_qualified)!
+             receipt_line=1, attempt=0, member_path='inner.pdf', qualified=True, qualification_status='qualified', retryable=False),
+        # Review 7d: healthy primary followed by explicitly failed attempt=1 and archive member MUST stay usable_direct=True!
+        dict(requested_url=healthy_url, url=healthy_url, sha256=good_rec['body_sha256'], outcome='stored',
+             fetch_outcome='stored', http_status=200, fetch_http_status=200, complete=True, mode='fetch',
+             media_type='application/pdf', retrieved_at='2026-10-01T00:00:00Z', receipt_key='receipts/h0.jsonl.gz',
+             receipt_line=1, attempt=0, member_path=None, qualified=True, qualification_status='qualified', retryable=False),
+        dict(requested_url=healthy_url, url=healthy_url, sha256=bad_rec['body_sha256'], outcome='stored',
+             fetch_outcome='stored', http_status=200, fetch_http_status=200, complete=True, mode='fetch',
+             media_type='application/pdf', retrieved_at='2026-10-15T00:00:00Z', receipt_key='receipts/h1.jsonl.gz',
+             receipt_line=1, attempt=1, member_path=None, qualified=False, qualification_status='unresolved', retryable=False),
+        dict(requested_url=healthy_url, url=healthy_url, sha256=bad_rec['body_sha256'], outcome='stored',
+             fetch_outcome='stored', http_status=200, fetch_http_status=200, complete=True, mode='fetch',
+             media_type='application/pdf', retrieved_at='2026-10-16T00:00:00Z', receipt_key='receipts/h2.jsonl.gz',
+             receipt_line=1, attempt=0, member_path='inner.pdf', qualified=False, qualification_status='unresolved', retryable=False),
+        # Review 7d: primary row with BOTH qualified=False AND retryable=True MUST remain usable_direct=True!
         dict(requested_url=retry_url, url=retry_url, sha256='f' * 64, outcome='stored',
              fetch_outcome='stored', http_status=200, fetch_http_status=200, complete=True, mode='fetch',
              media_type='application/pdf', retrieved_at='2026-10-12T00:00:00Z', receipt_key='receipts/ret.jsonl.gz',
-             receipt_line=1, attempt=0, member_path=None, qualification_status='unresolved', retryable=True),
-    ]), arrow_caps_pq)
-    arrow_inv = {
-        r['target_url']: r
-        for r in build_target_inventory([target, retry_url], captures=arrow_caps_pq, qualifications=[good_rec, bad_rec])
-    }
-    assert arrow_inv[target]['usable_direct'] is False and arrow_inv[target]['subtype'] == 'body_not_qualified'
-    assert arrow_inv[retry_url]['usable_direct'] is True
+             receipt_line=1, attempt=0, member_path=None, qualified=False, qualification_status='unresolved', retryable=True),
+        # Review 7d: complete whole-range HTTP 206 after an earlier bad body clears body_not_qualified!
+        dict(requested_url=range_url, url=range_url, sha256=bad_rec['body_sha256'], outcome='stored',
+             fetch_outcome='stored', http_status=200, fetch_http_status=200, complete=True, mode='fetch',
+             media_type='application/pdf', retrieved_at='2026-10-01T00:00:00Z', receipt_key='receipts/r0.jsonl.gz',
+             receipt_line=1, attempt=0, member_path=None, qualified=None, qualification_status=None, retryable=None),
+        dict(requested_url=range_url, url=range_url, sha256=good_rec['body_sha256'], outcome='stored',
+             fetch_outcome='stored', http_status=206, fetch_http_status=206, complete=True, mode='fetch',
+             media_type='application/pdf', retrieved_at='2026-10-20T00:00:00Z', receipt_key='receipts/r1.jsonl.gz',
+             receipt_line=1, attempt=0, member_path=None, qualified=None, qualification_status=None, retryable=None),
+    ])
+    arrow_caps_pq = tmp_path / 'arrow-history-captures.parquet'
+    pq.write_table(arrow_table, arrow_caps_pq)
+    for src in (arrow_table, arrow_caps_pq):
+        arrow_inv = {
+            r['target_url']: r
+            for r in build_target_inventory(
+                [target, healthy_url, retry_url, range_url], captures=src, qualifications=[good_rec, bad_rec],
+            )
+        }
+        assert arrow_inv[target]['usable_direct'] is False and arrow_inv[target]['subtype'] == 'body_not_qualified'
+        assert arrow_inv[healthy_url]['usable_direct'] is True
+        assert arrow_inv[retry_url]['usable_direct'] is True
+        assert arrow_inv[range_url]['usable_direct'] is True
 
     # Review 7b: run_recovery_campaign(targets=None) unions published state failed URLs AND
     # unpublished durable-store failed URLs using their original requested_url (not redirected URL).

@@ -145,6 +145,8 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
     is_completed=production['status']=='completed'
     if template.get('recovery_requirements') is not None and (new_receipts or daily.get('receipt_families')):
         from datetime import datetime,timedelta,timezone
+        from congress_api.lake import tables
+        from congress_api.lake.daily import _complete_receipt_keys
         from congress_api.retention.body_store import BodyStore,LocalAdapter
         from congress_api.retention.qualification_facts import (
             _list_store_receipt_keys,_receipt_write_date,load_qualification_facts,reconcile_store_receipt_qualifications,
@@ -164,12 +166,23 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
             if copied.is_file():
                 local_paths[rk]=copied
         if daily.get('receipt_families'):
+            if is_completed:
+                admitted_keys=set(production.get('receipt_keys') or ())
+            else:
+                cap_head=tables.resolve_tables(engine=engine,catalog_root=daily['catalog_root'],
+                    work=work/'qualification-captures-head',tables={'captures':daily['tables']['captures']})['captures']
+                admitted_keys=set(_complete_receipt_keys(cap_head,engine=engine,work=work/'qualification-receipt-keys'))
+            families=set(daily['receipt_families'])
             decided_dt=datetime.fromisoformat(str(daily['decided_at']).replace('Z','+00:00')).date()
             cutoff=(min(decided_dt,datetime.now(timezone.utc).date())-timedelta(days=14)).isoformat()
             for rk,_sz,etag in _list_store_receipt_keys(raw_store):
+                if rk not in admitted_keys:
+                    continue
+                etags[rk]=etag
+                parts=rk.split('/')
+                family_ok=len(parts)>=3 and parts[0]=='receipts' and parts[1] in families
                 wdate=_receipt_write_date(rk)
-                if '/assemble-' not in rk and (wdate is None or wdate>=cutoff):
-                    etags[rk]=etag
+                if family_ok and '/assemble-' not in rk and (wdate is None or wdate>=cutoff):
                     copied=work/'receipts'/rk
                     if copied.is_file():
                         local_paths[rk]=copied

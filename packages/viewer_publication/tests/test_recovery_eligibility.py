@@ -670,6 +670,28 @@ def test_release_gate_url_state_proof_admits_verified_qualification_reason_and_r
                 ),
             )
 
+        # 5d. Review 7d: a failed held body followed by a qualified, complete whole-range HTTP 206
+        # in NEW_RECEIPT clears body_not_qualified -> no_satisfying_recovery and PASSES!
+        whole206_caps = [
+            row if not (row['receipt_key'] == NEW_RECEIPT and row['requested_url'] == u_fixed)
+            else dict(row, http_status=206)
+            for row in cap_rows
+        ]
+        write_captures(whole206_caps, tmp_path / 'captures-whole206.parquet')
+        cand_rows_206 = dict(cand_rows, **{u_fixed: state(u_fixed, 2, FETCHED, 206, 'stored', FETCHED, 7 * DAY, meeting)})
+        release_dir(tmp_path / 'cand-whole206', ['A'], url_state=build_table(cand_rows_206, cand_reasons))
+        passed_206 = require_release_gates(
+            tmp_path / 'base', tmp_path / 'cand-whole206', None, report_path=tmp_path / 'pass-whole206.json',
+            automatic=lambda rep: automatic_causes(
+                rep, tmp_path / 'base', tmp_path / 'cand-whole206', engine=eng,
+                captures=dict(kind='parquet', path=str(tmp_path / 'captures-whole206.parquet')),
+                live_receipt_keys=LIVE_RECEIPTS, read_receipt=blobs.__getitem__,
+                work=tmp_path / 'auto-pass-whole206', candidate_receipt_keys=LIVE_RECEIPTS | {NEW_RECEIPT},
+                qualification_files=[dict(key='provenance/qualifications/test.jsonl', path=str(q_file))],
+            ),
+        )
+        assert passed_206['reasons'] == [] and passed_206['automatic_reasons'] == []
+
     # 6. Review 7b: missing explicit qualification path and tampered selector pin raise, and
     # standalone body_qualifications pin participates in input_digest.
     from congress_api.retention.qualification_facts import load_qualification_facts

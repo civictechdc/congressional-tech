@@ -437,12 +437,55 @@ def test_interrupted_capture_recovers_missing_qualification_via_daily_publish_an
         assert [k for k in r2.objects if k.startswith('provenance/qualifications/')] == []
 
         # 2. Fresh Runner 2 drives real produce_daily_inputs + run_publish -> recovers qualification!
-        daily1 = dict(daily_base, work=str(tmp_path / 'runner2-daily'))
+        # Review 7d: also plant a budget-deferred receipt (2026-10-29, deferred by max_work_items=1) and
+        # an out-of-family receipt in R2, proving daily reconciliation qualifies ONLY admitted receipts!
+        from congress_api.models.raw_fetch import BodyFile, FetchAttempt, FetchResult
+        from congress_api.retention.qualification_facts import load_qualification_facts
+        from congress_api.retention.receipt_writer import ReceiptWriter
+
+        deferred_pdf = b'%PDF-1.7\n77 0 obj\n<< /Type /Catalog >>\ntruncated-deferred'
+        deferred_file = tmp_path / 'deferred.pdf'
+        deferred_file.write_bytes(deferred_pdf)
+        out_fam_pdf = b'%PDF-1.7\n88 0 obj\n<< /Type /Catalog >>\ntruncated-out-family'
+        out_fam_file = tmp_path / 'out-fam.pdf'
+        out_fam_file.write_bytes(out_fam_pdf)
+        plant_store = BodyStore(R2Adapter(r2, 'derived-fixture'))
+        w_def = ReceiptWriter(plant_store, identity=identity, run_id='def000000001', write_date='2026-11-20', archive_limits=None)
+        deferred_key, _ = w_def.write(
+            FetchResult(final=FetchAttempt(
+                requested_url='https://docs.house.gov/meetings/FA/FA00/20261001/119777/deferred.pdf',
+                url='https://docs.house.gov/meetings/FA/FA00/20261001/119777/deferred.pdf',
+                retrieved_at='2026-11-20T06:00:00Z', transport='direct', http_status=200,
+                provider_status=None, headers={'content-type': 'application/pdf'}, redirects=(), complete=True,
+                body=BodyFile(path=deferred_file, sha256=sha256(deferred_pdf).hexdigest(), size=len(deferred_pdf),
+                              media_type='application/pdf', sniffed_format=None, sniff_version=None, intact=None),
+            )),
+            family='documents',
+        )
+        w_out = ReceiptWriter(plant_store, identity=identity, run_id='out000000001', write_date='2026-10-28', archive_limits=None)
+        out_fam_key, _ = w_out.write(
+            FetchResult(final=FetchAttempt(
+                requested_url='https://www.senate.gov/meetings/out-family.pdf',
+                url='https://www.senate.gov/meetings/out-family.pdf',
+                retrieved_at='2026-10-28T06:05:00Z', transport='direct', http_status=200,
+                provider_status=None, headers={'content-type': 'application/pdf'}, redirects=(), complete=True,
+                body=BodyFile(path=out_fam_file, sha256=sha256(out_fam_pdf).hexdigest(), size=len(out_fam_pdf),
+                              media_type='application/pdf', sniffed_format=None, sniff_version=None, intact=None),
+            )),
+            family='senate/pages',
+        )
+
+        daily1 = dict(daily_base, work=str(tmp_path / 'runner2-daily'), max_work_items=1)
         runner2_store = BodyStore(R2Adapter(r2, 'derived-fixture'))
         res_daily1 = produce_daily_inputs(model, daily1, engine=native, raw_store=runner2_store)
         assert res_daily1['status'] == 'ready'
         assert crashed_receipts[0] in res_daily1['receipt_keys']
+        assert deferred_key not in res_daily1['receipt_keys']
+        assert out_fam_key not in res_daily1['receipt_keys']
         assert len(res_daily1['model']['qualification_files']) == 1
+        assert load_qualification_facts(res_daily1['model']['qualification_files'])['all_receipt_keys'] == {crashed_receipts[0]}
+        del r2.objects[deferred_key]
+        del r2.objects[out_fam_key]
         q_prov_keys = [k for k in r2.objects if k.startswith('provenance/qualifications/')]
         assert len(q_prov_keys) == 1
         assert any(p['key'] == q_prov_keys[0] for p in res_daily1['provenance'])

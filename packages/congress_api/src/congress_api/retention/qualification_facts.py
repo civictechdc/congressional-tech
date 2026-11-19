@@ -23,6 +23,7 @@ from dataclasses import asdict
 import gzip
 import hashlib
 import importlib
+import inspect
 import json
 from pathlib import Path
 import re
@@ -31,6 +32,7 @@ from urllib.parse import urlsplit
 
 from congress_shared.custody import canonical_json_bytes, verify_local_file
 
+from congress_api.lake.receipt_metadata import whole_range
 from congress_api.retention.provenance import _put_identical, json_input, timestamp_key
 from congress_api.retention.receipt_privacy import cut_paths
 
@@ -657,7 +659,8 @@ def _read_retained_body(store: Any, body_sha256: str, dest: Path) -> Path | None
         head_meta = adapter.head(key)
         if head_meta is None:
             continue
-        response = adapter.get(key)
+        head_etag = head_meta.get("etag")
+        response = adapter.get(key, if_match=head_etag) if isinstance(head_etag, str) and head_etag else adapter.get(key)
         body_stream = response["Body"]
         try:
             raw_bytes = body_stream.read()
@@ -729,9 +732,9 @@ def _list_store_receipt_keys(store: Any) -> list[tuple[str, int, str | None]]:
             if p.is_file()
         ]
     if hasattr(adapter, "listing"):
-        try:
+        if "preserve_etags" in inspect.signature(adapter.listing).parameters:
             listed = list(adapter.listing("receipts/", preserve_etags=True))
-        except TypeError:
+        else:
             listed = list(adapter.listing("receipts/"))
         return [
             (row["key"], int(row.get("size") or 0), row.get("etag"))
@@ -754,13 +757,7 @@ def _read_store_receipt_lines(
         adapter = getattr(store, "adapter", None)
         if adapter is None or not hasattr(adapter, "get"):
             return []
-        if if_match is not None:
-            try:
-                response = adapter.get(receipt_key, if_match=if_match)
-            except TypeError:
-                response = adapter.get(receipt_key)
-        else:
-            response = adapter.get(receipt_key)
+        response = adapter.get(receipt_key, if_match=if_match) if if_match is not None else adapter.get(receipt_key)
         stream = response["Body"]
         try:
             raw_bytes = stream.read()
@@ -833,8 +830,13 @@ def reconcile_store_receipt_qualifications(
             ):
                 if line.get("mode") != "fetch":
                     continue
+                if "complete" in line and line["complete"] is not True:
+                    continue
                 status = line.get("http_status")
-                if type(status) is not int or not (200 <= status <= 299) or status == 206:
+                if type(status) is not int or not (200 <= status <= 299) or status == 202:
+                    continue
+                headers = line.get("response_headers") if isinstance(line.get("response_headers"), Mapping) else {}
+                if status == 206 and not whole_range(_header_value(headers, "content-range")):
                     continue
                 if line.get("outcome") not in ("stored", "unchanged"):
                     continue
@@ -848,7 +850,6 @@ def reconcile_store_receipt_qualifications(
                     continue
                 req_url = line.get("requested_url") if isinstance(line.get("requested_url"), str) else None
                 fin_url = line.get("url") if isinstance(line.get("url"), str) else None
-                headers = line.get("response_headers") if isinstance(line.get("response_headers"), Mapping) else {}
                 sniffed = primary.get("sniffed_format")
                 if not (sniffed == "pdf" or expects_pdf_response(req_url, headers) or expects_pdf_response(fin_url, headers)):
                     continue

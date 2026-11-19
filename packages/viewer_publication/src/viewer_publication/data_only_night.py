@@ -308,7 +308,7 @@ def _link_reasons(rule, link_proof):
     return reasons, proven, facts
 
 
-def _url_state_qualification_reasons(base_dir, candidate_dir, *, qualification_files, new_receipts):
+def _url_state_qualification_reasons(base_dir, candidate_dir, *, qualification_files, new_receipts, qual_proof=None):
     """Enforce verified body-qualification transitions on url_state even when a mixed night takes data_only_causes."""
     base_pq, cand_pq = Path(base_dir) / QUEUE_FILE, Path(candidate_dir) / QUEUE_FILE
     if not (base_pq.is_file() and cand_pq.is_file()):
@@ -319,31 +319,64 @@ def _url_state_qualification_reasons(base_dir, candidate_dir, *, qualification_f
     if not (needed <= base_names and needed <= cand_names):
         return []
     from congress_api.retention.qualification_facts import load_qualification_facts
-    loaded_all = load_qualification_facts(qualification_files) if qualification_files else {'by_requested_url': {}}
+    has_quals = bool(qualification_files)
+    loaded_all = load_qualification_facts(qualification_files) if has_quals else {'by_requested_url': {}}
     by_req = loaded_all.get('by_requested_url') or {}
-    cols_b = [c for c in ('requested_url', 'attempts', 'last_good_at', 'capture_disposition', 'capture_reason') if c in base_names]
-    cols_c = [c for c in ('requested_url', 'attempts', 'last_good_at', 'capture_disposition', 'capture_reason') if c in cand_names]
+    cols_b = [c for c in ('requested_url', 'attempts', 'last_attempt', 'last_good_at', 'capture_disposition', 'capture_reason') if c in base_names]
+    cols_c = [c for c in ('requested_url', 'attempts', 'last_attempt', 'last_good_at', 'capture_disposition', 'capture_reason') if c in cand_names]
     base_rows = {r['requested_url']: r for r in pq.read_table(base_pq, columns=cols_b).to_pylist()}
-    unproven: list[str] = []
-    for c in pq.read_table(cand_pq, columns=cols_c).to_pylist():
+    cand_rows = pq.read_table(cand_pq, columns=cols_c).to_pylist()
+    qual_urls: set[str] = set()
+    for c in cand_rows:
         u = c['requested_url']
         b = base_rows.get(u)
         q = by_req.get(u)
         q_failed = q is not None and q.get('qualified') is False and not q.get('retryable', False)
-        q_new_good = q is not None and q.get('qualified') is True and q.get('receipt_key') in new_receipts
+        if b is not None:
+            moved = ((c.get('attempts') or 0) != (b.get('attempts') or 0)
+                     or c.get('last_attempt') != b.get('last_attempt')
+                     or c.get('last_good_at') != b.get('last_good_at'))
+            if (b['capture_disposition'] != c['capture_disposition']
+                    or b['capture_reason'] != c['capture_reason']
+                    or c['capture_reason'] == 'body_not_qualified'):
+                qual_urls.add(u)
+            elif has_quals and c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'no_satisfying_recovery':
+                if moved or (q_failed and q.get('receipt_key') in new_receipts):
+                    qual_urls.add(u)
+        elif (c.get('attempts') or 0) > 0:
+            if c['capture_reason'] == 'body_not_qualified':
+                qual_urls.add(u)
+            elif has_quals and not (c['capture_disposition'] == 'excluded' and c['capture_reason'] == 'scope_exclusion'):
+                qual_urls.add(u)
+    proved = qual_proof(qual_urls) if (qual_proof is not None and qual_urls) else None
+    unproven: list[str] = []
+    for c in cand_rows:
+        u = c['requested_url']
+        b = base_rows.get(u)
+        url_qual, new_body_qual = proved.get(u, (None, False)) if proved is not None else (None, False)
         if b is not None:
             if b['capture_disposition'] == c['capture_disposition'] and b['capture_reason'] == c['capture_reason']:
-                if c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'no_satisfying_recovery' and q_failed and q.get('receipt_key') in new_receipts:
-                    unproven.append(u)
+                if c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'body_not_qualified':
+                    if not (proved is not None and url_qual is False):
+                        unproven.append(u)
+                elif c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'no_satisfying_recovery' and u in qual_urls:
+                    if proved is None or url_qual is False:
+                        unproven.append(u)
                 continue
-            if b['capture_disposition'] != 'eligible' or c['capture_disposition'] != 'eligible':
+            if (b['capture_disposition'] != 'eligible' or c['capture_disposition'] != 'eligible'
+                    or b['capture_reason'] not in ('no_satisfying_recovery', 'body_not_qualified')
+                    or c['capture_reason'] not in ('no_satisfying_recovery', 'body_not_qualified')):
                 unproven.append(u)
             elif c['capture_reason'] == 'body_not_qualified':
-                if not q_failed:
+                if not (proved is not None and url_qual is False):
                     unproven.append(u)
             elif b['capture_reason'] == 'body_not_qualified' and c['capture_reason'] == 'no_satisfying_recovery':
-                good_advanced = c.get('last_good_at') is not None and (b.get('last_good_at') is None or c['last_good_at'] > b['last_good_at'])
-                if not (good_advanced and q_new_good):
+                attempts_ok = ('attempts' not in base_names or 'attempts' not in cand_names
+                               or (c.get('attempts') or 0) > (b.get('attempts') or 0))
+                good_advanced = ('last_good_at' not in base_names or 'last_good_at' not in cand_names
+                                 or (c.get('last_good_at') is not None
+                                     and (b.get('last_good_at') is None or c['last_good_at'] > b['last_good_at'])))
+                if not (proved is not None and attempts_ok and good_advanced and url_qual is True and new_body_qual is True):
                     unproven.append(u)
             else:
                 unproven.append(u)
@@ -355,10 +388,10 @@ def _url_state_qualification_reasons(base_dir, candidate_dir, *, qualification_f
             elif c['capture_disposition'] == 'excluded' and c['capture_reason'] == 'scope_exclusion':
                 continue
             elif c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'body_not_qualified':
-                if not q_failed:
+                if not (proved is not None and url_qual is False):
                     unproven.append(u)
             elif c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'no_satisfying_recovery':
-                if q_failed:
+                if u in qual_urls and (proved is None or url_qual is False):
                     unproven.append(u)
             else:
                 unproven.append(u)
@@ -368,7 +401,7 @@ def _url_state_qualification_reasons(base_dir, candidate_dir, *, qualification_f
 
 
 def data_only_causes(report, *, candidate_record, live_records, candidate_receipt_keys, base_dir, candidate_dir, link_proof=None,
-                     qualification_files=None):
+                     qualification_files=None, qual_proof=None):
     """Cause entries for every failing group of a night only new receipts can explain.
 
     `live_records` are the live release's kept input records (`receipt_pins.kept_input_records`).
@@ -408,7 +441,9 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
                 outside_q = sorted((loaded_q.get('all_receipt_keys') or set()) - candidate)
                 if outside_q:
                     reasons.append(f'data-only night: added qualification provenance cites unknown receipts ({outside_q[:3]})')
-    reasons += _url_state_qualification_reasons(base_dir, candidate_dir, qualification_files=qualification_files, new_receipts=new)
+    reasons += _url_state_qualification_reasons(
+        base_dir, candidate_dir, qualification_files=qualification_files, new_receipts=new, qual_proof=qual_proof,
+    )
     if held - candidate:
         reasons.append(f'data-only night: {len(held - candidate)} receipts the live release read are absent from the '
                        f'candidate (first {sorted(held - candidate)[:3]})')
