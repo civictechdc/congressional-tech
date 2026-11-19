@@ -1217,4 +1217,196 @@ def test_explorer_tables_frozen_job_dag_resolves_all_relations(tmp_path):
             assert required_steps <= step_names
 
 
+def _iceberg_arrow_type(spec):
+    import pyarrow as pa
+    if isinstance(spec, str):
+        if spec == 'string':
+            return pa.string()
+        if spec == 'long':
+            return pa.int64()
+        if spec == 'int':
+            return pa.int32()
+        if spec == 'boolean':
+            return pa.bool_()
+        if spec.startswith('fixed['):
+            return pa.binary(int(spec[6:-1]))
+        raise ValueError(spec)
+    if spec['type'] == 'list':
+        elem = pa.field(
+            'element',
+            _iceberg_arrow_type(spec['element']),
+            nullable=not spec.get('element-required', False),
+            metadata={'PARQUET:field_id': str(spec['element-id'])},
+        )
+        return pa.list_(elem)
+    if spec['type'] == 'struct':
+        return pa.struct([_iceberg_arrow_field(f) for f in spec['fields']])
+    raise ValueError(spec)
+
+
+def _iceberg_arrow_field(field_spec):
+    import pyarrow as pa
+    return pa.field(
+        field_spec['name'],
+        _iceberg_arrow_type(field_spec['type']),
+        nullable=not field_spec.get('required', False),
+        metadata={'PARQUET:field_id': str(field_spec['id'])},
+    )
+
+
+def test_recording_match_steps_accept_iceberg_field_id_metadata_on_lake_tables(tmp_path):
+    """Regression test for live publish failure on step 'recording_page_video_facts': Iceberg Parquet files
+    stamp PARQUET:field_id metadata onto nested list element fields (e.g. stated_event_ids element field_id=28,
+    named_meetings, subject_keys, videos), which DataFusion 55 coalesce(..., arrow_cast(..., 'List(...)'))
+    rejects unless normalized."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from viewer_publication import archive_model
+
+    lake_schema = json.loads((ROOT / 'model/lake/video-records.schema.json').read_text())
+    pa_schema = pa.schema([_iceberg_arrow_field(f) for f in lake_schema['fields']])
+    rec_sha = bytes.fromhex('ab' * 32)
+    video_table = pa.Table.from_pylist([
+        dict(
+            record_sha=rec_sha,
+            parser_version='pv',
+            status='completed',
+            error_type=None,
+            source='youtube_cache',
+            channels=[dict(handle='@AgRepublicans', channel_id='UC1', title='Ag', custom_url=None, uploads_scan_complete=True)],
+            videos=[
+                dict(
+                    handle='@AgRepublicans', video_id='vidStated1', channel_id='UC1', channel_title='Ag',
+                    title='Oversight Hearing on Crop Insurance (EventID=115538)', description='EventID=115538',
+                    published_at='2023-05-10T14:00:00Z', video_published_at='2023-05-10T14:00:00Z',
+                    duration_seconds=3600, available=True, has_caption=True, details_checked_at='2023-05-11T00:00:00Z',
+                    stated_event_ids=[115538],
+                ),
+                dict(
+                    handle='@AgRepublicans', video_id='vidEmpty02', channel_id='UC1', channel_title='Ag',
+                    title='Full Committee Hearing', description='',
+                    published_at='2023-05-10T16:00:00Z', video_published_at='2023-05-10T16:00:00Z',
+                    duration_seconds=2400, available=True, has_caption=False, details_checked_at=None,
+                    stated_event_ids=[],
+                ),
+            ],
+        )
+    ], schema=pa_schema)
+    video_parquet = tmp_path / 'video_records.parquet'
+    pq.write_table(video_table, video_parquet)
+
+    pf_schema = pa.schema([
+        pa.field('body_sha', pa.binary(32), nullable=False, metadata={'PARQUET:field_id': '1'}),
+        pa.field('status', pa.string(), nullable=False, metadata={'PARQUET:field_id': '2'}),
+        pa.field('title', pa.string(), nullable=True, metadata={'PARQUET:field_id': '3'}),
+        pa.field('heading', pa.string(), nullable=True, metadata={'PARQUET:field_id': '4'}),
+        pa.field('content_date', pa.string(), nullable=True, metadata={'PARQUET:field_id': '5'}),
+        pa.field('text_head', pa.string(), nullable=True, metadata={'PARQUET:field_id': '6'}),
+        pa.field('named_meetings', pa.list_(pa.field('element', pa.int64(), nullable=False, metadata={'PARQUET:field_id': '99'})),
+                 nullable=True, metadata={'PARQUET:field_id': '7'}),
+    ])
+    pf_parquet = tmp_path / 'page_facts.parquet'
+    pq.write_table(pa.Table.from_pylist([
+        dict(body_sha=bytes.fromhex('01' * 32), status='completed',
+             title='Oversight Hearing on Crop Insurance | House Agriculture Committee',
+             heading='Oversight Hearing on Crop Insurance', content_date='2023-05-10',
+             text_head='May 10, 2023', named_meetings=[115538]),
+        dict(body_sha=bytes.fromhex('02' * 32), status='completed',
+             title='Oversight Hearing on Crop Insurance | House Agriculture Committee',
+             heading='Oversight Hearing on Crop Insurance', content_date='2023-05-10',
+             text_head='May 10, 2023', named_meetings=None),
+    ], schema=pf_schema), pf_parquet)
+
+    mr_schema = pa.schema([
+        pa.field('event_id', pa.int64(), nullable=False, metadata={'PARQUET:field_id': '10'}),
+        pa.field('chamber', pa.string(), nullable=True, metadata={'PARQUET:field_id': '11'}),
+        pa.field('meeting_date', pa.date32(), nullable=True, metadata={'PARQUET:field_id': '12'}),
+        pa.field('meeting_type', pa.string(), nullable=True, metadata={'PARQUET:field_id': '13'}),
+        pa.field('title', pa.string(), nullable=True, metadata={'PARQUET:field_id': '14'}),
+        pa.field('not_held', pa.bool_(), nullable=True, metadata={'PARQUET:field_id': '15'}),
+        pa.field('committees', pa.list_(pa.field('element', pa.struct([
+            pa.field('system_code', pa.string(), nullable=True, metadata={'PARQUET:field_id': '17'}),
+            pa.field('role', pa.string(), nullable=True, metadata={'PARQUET:field_id': '18'}),
+        ]), nullable=False, metadata={'PARQUET:field_id': '16'})), nullable=True, metadata={'PARQUET:field_id': '19'}),
+        pa.field('subject_keys', pa.list_(pa.field('element', pa.string(), nullable=False, metadata={'PARQUET:field_id': '21'})),
+                 nullable=True, metadata={'PARQUET:field_id': '20'}),
+        pa.field('videos', pa.list_(pa.field('element', pa.struct([
+            pa.field('name', pa.string(), nullable=True, metadata={'PARQUET:field_id': '23'}),
+            pa.field('url', pa.string(), nullable=True, metadata={'PARQUET:field_id': '24'}),
+            pa.field('video_key', pa.string(), nullable=True, metadata={'PARQUET:field_id': '25'}),
+        ]), nullable=False, metadata={'PARQUET:field_id': '22'})), nullable=True, metadata={'PARQUET:field_id': '26'}),
+    ])
+    import datetime
+    mr_parquet = tmp_path / 'meetings_resolved.parquet'
+    pq.write_table(pa.Table.from_pylist([
+        dict(event_id=115538, chamber='house', meeting_date=datetime.date(2023, 5, 10),
+             meeting_type='Hearing', title='Oversight Hearing on Crop Insurance', not_held=False,
+             committees=[dict(system_code='hsag00', role='host')],
+             subject_keys=['118-hr-1234'],
+             videos=[dict(name='Live', url='https://youtu.be/vidStated1', video_key='youtube:vidStated1')]),
+    ], schema=mr_schema), mr_parquet)
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    inputs = [
+        dict(name='selected_video_records', kind='parquet', path=str(video_parquet)),
+        dict(name='page_facts', kind='parquet', path=str(pf_parquet)),
+        dict(name='meetings_resolved', kind='parquet', path=str(mr_parquet)),
+        json_input(tmp_path, 'channel_directory',
+                   [dict(handle='@AgRepublicans', channel_id='UC1', system_code='hsag00', committee_label='Ag', role='majority')],
+                   handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8'),
+        json_input(tmp_path, 'active_recording_decisions', [],
+                   id='Utf8', subject_kind='Utf8', subject_id='Utf8', verdict='Utf8', video_refs=_list(),
+                   note='Utf8', disputed_by='Utf8', decided_at='Utf8', supersedes='Utf8'),
+        json_input(tmp_path, 'recording_sources',
+                   json.loads((ROOT / 'model/registries/recording-sources.json').read_text()),
+                   id='Utf8', kind='Utf8', pattern='Utf8', key_template='Utf8',
+                   format='Utf8', default_language='Utf8', default_production='Utf8'),
+    ]
+    steps = [
+        dict(name='recording_match_stopwords', sql=archive_model.RECORDING_MATCH_STOPWORDS_SQL, materialize=True),
+        dict(name='recording_url_sources', sql="SELECT id,pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'", materialize=True),
+        dict(name='youtube_cache_bodies', sql="SELECT repeat('ab',32) AS record_sha", materialize=True),
+        dict(name='youtube_api_bodies', sql="SELECT cast(NULL AS VARCHAR) AS record_sha WHERE false", materialize=True),
+        dict(name='normalized', sql="SELECT arrow_cast(make_array('115538','999999'),'List(Utf8)') AS meeting_keys", materialize=True),
+        dict(name='known_meetings', sql=archive_model.known_meetings_sql('normalized'), materialize=True),
+        dict(name='videos_entity', sql=sql('entity-videos'), materialize=True),
+        dict(name='videos_export', sql='SELECT * FROM videos_entity', materialize=True),
+        dict(name='video_key_aliases', sql=archive_model.VIDEO_KEY_ALIASES_SQL, materialize=True),
+        dict(name='recording_video_links', sql="""SELECT repeat('01',32) AS page_body,'youtube:vidStated1' AS extracted_key
+            UNION ALL SELECT repeat('02',32),'youtube:vidEmpty02'""", materialize=True),
+        dict(name='recording_video_pages', sql="SELECT DISTINCT page_body,arrow_cast(decode(page_body,'hex'),'FixedSizeBinary(32)') AS body_sha FROM recording_video_links", materialize=True),
+        dict(name='resolved_link_targets', sql="SELECT repeat('02',32) AS page_body,'https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=115538' AS target_url", materialize=True),
+        dict(name='capture_source_contexts', sql="SELECT 's1' AS source_id,repeat('01',32) AS body_sha UNION ALL SELECT 's2',repeat('02',32)", materialize=True),
+        dict(name='source_addresses', sql="SELECT 's1' AS source_id,'https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=1' AS url UNION ALL SELECT 's2','https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=2'", materialize=True),
+        dict(name='recording_page_sources', sql="SELECT DISTINCT c.source_id,c.body_sha AS page_body FROM recording_video_pages vp JOIN capture_source_contexts c ON c.body_sha=vp.page_body", materialize=True),
+        dict(name='publisher_links', sql='SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS VARCHAR) AS source_id WHERE false', materialize=True),
+        dict(name='document_members', sql='SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS BIGINT) AS component,cast(NULL AS VARCHAR) AS filename,cast(NULL AS VARCHAR) AS source_url WHERE false', materialize=True),
+        dict(name='component_meeting_links', sql="SELECT cast(NULL AS BIGINT) AS component,arrow_cast(NULL,'List(Utf8)') AS meeting_keys WHERE false", materialize=True),
+        dict(name='source_annotation_addresses', sql='SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS VARCHAR) AS meeting_key WHERE false', materialize=True),
+        dict(name='senate_page_meeting_links', sql='SELECT cast(NULL AS VARCHAR) AS record_sha_hex,cast(NULL AS BIGINT) AS event_id WHERE false', materialize=True),
+        dict(name='recording_page_event_links', sql=archive_model.RECORDING_PAGE_EVENT_LINKS_SQL, materialize=True),
+        dict(name='house_page_meeting_links', sql=sql('house-page-meeting-links'), materialize=True),
+        dict(name='recording_page_meetings', sql=archive_model.RECORDING_PAGE_MEETINGS_SQL, materialize=True),
+        dict(name='recording_page_video_events', sql=archive_model.RECORDING_PAGE_VIDEO_EVENTS_SQL, materialize=True),
+        dict(name='meeting_transcript_links', sql='SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false', materialize=True),
+        dict(name='package_meeting_links', sql='SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false', materialize=True),
+        dict(name='recordings_entity', sql=archive_model.EMPTY_RECORDINGS_SQL, materialize=True),
+        *archive_model.recording_match_prep_steps(videos_relation='videos_entity'),
+        dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
+        dict(name='recordings_export', sql=archive_model.recordings_export_sql(root=ROOT, explorer_inputs=True), materialize=True),
+    ]
+    run_job(tmp_path / 'job', engine, inputs=inputs, steps=steps, outputs=[
+        parquet_output(tmp_path, 'videos', 'SELECT * FROM videos_export', ['video_key']),
+        parquet_output(tmp_path, 'recording_matches', 'SELECT * FROM recording_matches_export', ['match_id']),
+        parquet_output(tmp_path, 'recordings', 'SELECT * FROM recordings_export', ['video_key']),
+    ], queries=[])
+
+    vids = {r['video_key']: r for r in rows(tmp_path, 'videos')}
+    assert vids['youtube:vidStated1']['stated_event_ids'] == [115538]
+    assert vids['youtube:vidEmpty02']['stated_event_ids'] == []
+    cp = {(m['event_id'], m['video_key']) for m in rows(tmp_path, 'recording_matches') if m['basis'] == 'committee_page'}
+    assert cp == {(115538, 'youtube:vidStated1'), (115538, 'youtube:vidEmpty02')}
+
+
+
 

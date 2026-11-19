@@ -1107,7 +1107,7 @@ GROUP BY extracted_key"""
 
 def known_meetings_sql(document_relation='normalized'):
     return f"""SELECT k.event_id,r.meeting_type,r.title,
- coalesce(r.subject_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys
+ coalesce(arrow_cast(r.subject_keys,'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys
 FROM meetings_resolved r
 RIGHT JOIN (
  SELECT DISTINCT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM {document_relation} WHERE meeting_keys IS NOT NULL
@@ -1140,7 +1140,7 @@ RECORDING_PAGE_EVENT_LINKS_SQL="""WITH raw_links AS (
  WHERE m.event_id IS NOT NULL
 )
 SELECT l.page_body,l.event_id,mw.meeting_date,
- coalesce(mw.title_words,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS title_words
+ coalesce(arrow_cast(mw.title_words,'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS title_words
 FROM meeting_words mw
 RIGHT JOIN raw_links l ON mw.event_id=l.event_id"""
 RECORDING_PAGE_MEETINGS_SQL="""WITH raw_routes AS (
@@ -1212,7 +1212,6 @@ def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwor
         RIGHT JOIN publisher p ON a.alias_key=p.v['video_key']""",materialize=True),
         dict(name='recording_page_video_facts',sql=f"""SELECT DISTINCT
          v.video_key,
-         coalesce(v.stated_event_ids,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)')) AS stated_event_ids,
          v.title IS NOT NULL AND regexp_like(v.title,'(?i)\\b(markup|organizational\\s+meeting|subcommittee\\s+assignments)\\b') AS is_markup_video,
          v.title IS NOT NULL AND regexp_like(v.title,'(?i)\\bround[- ]?tables?\\b') AS is_roundtable_video,
          v.title IS NOT NULL AND regexp_like(v.title,'(?i)\\b(hearing|markup)\\b') AS is_hearing_or_markup_video,
@@ -1248,20 +1247,22 @@ def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwor
         FROM (SELECT DISTINCT video_key FROM recording_page_video_events WHERE video_key IS NOT NULL) k
         JOIN {videos_relation} v ON v.video_key=k.video_key
         CROSS JOIN recording_match_stopwords sw""",materialize=True),
-        dict(name='recording_page_video_stated_overlaps',sql="""SELECT
+        dict(name='recording_page_video_stated_overlaps',sql=f"""SELECT
          s.video_key,
+         array_sort(array_distinct(array_agg(s.stated_id))) AS stated_event_ids,
          max(CASE WHEN m.event_id IS NOT NULL THEN cast(1 AS BIGINT) ELSE cast(0 AS BIGINT) END)=1 AS has_known_stated_meeting,
          max(coalesce(cast(cardinality(array_intersect(
           s.video_words,
           array_distinct(array_except(
-           string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(m.title,'')||' '||coalesce(array_to_string(m.subject_keys,' '),'')),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{1,2}\\b',' ','g')),' '),
+           string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(m.title,'')||' '||coalesce(array_to_string(m.subject_keys,' '),'')),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{{1,2}}\\b',' ','g')),' '),
            sw.sw
           ))
          )) AS BIGINT),cast(0 AS BIGINT))) AS max_stated_overlap
         FROM (
-         SELECT video_key,video_words,unnest(stated_event_ids) AS stated_id
-         FROM recording_page_video_facts
-         WHERE cardinality(stated_event_ids)>0
+         SELECT pf.video_key,pf.video_words,vs.stated_id
+         FROM recording_page_video_facts pf
+         JOIN (SELECT video_key,unnest(stated_event_ids) AS stated_id FROM {videos_relation}) vs ON pf.video_key=vs.video_key
+         WHERE vs.stated_id IS NOT NULL
         ) s
         LEFT JOIN known_meetings m ON m.event_id=s.stated_id
         CROSS JOIN recording_match_stopwords sw
@@ -1287,11 +1288,11 @@ def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwor
           coalesce(pv.is_hearing_or_markup_video,false) AS is_hearing_or_markup_video,
           coalesce(pv.has_explicit_event_id_in_title,false) AS has_explicit_event_id_in_title,
           coalesce(pv.is_generic_video_title,true) AS is_generic_video_title,
-          coalesce(pv.stated_event_ids,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)')) AS stated_event_ids,
+          coalesce(arrow_cast(sv.stated_event_ids,'List(Int64)'),arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)')) AS stated_event_ids,
           coalesce(sv.has_known_stated_meeting,false) AS has_known_stated_meeting,
           coalesce(sv.max_stated_overlap,cast(0 AS BIGINT)) AS max_stated_overlap,
           cast(cardinality(array_intersect(
-           coalesce(pv.video_words,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')),
+           coalesce(arrow_cast(pv.video_words,'List(Utf8)'),arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')),
            pm.meeting_words
           )) AS BIGINT) AS video_meeting_overlap
          FROM recording_page_video_stated_overlaps sv

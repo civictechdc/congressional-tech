@@ -97,7 +97,7 @@ WITH house_hosts AS (
   coalesce(pf.text_head,'') AS text_head,
   try_cast(pf.content_date AS DATE) AS pf_date,
   array_distinct(array_concat(
-   coalesce(pf.named_meetings,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)')),
+   coalesce(arrow_cast(pf.named_meetings,'List(Int64)'),arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)')),
    CASE
     WHEN try_cast((regexp_match(coalesce(pf.heading,'')||' '||coalesce(pf.title,''),'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/|\bevent\s*id\s*[=:#]\s*)0*(1[0-9]{5})\b'))[1] AS BIGINT) IS NOT NULL
     THEN make_array(try_cast((regexp_match(coalesce(pf.heading,'')||' '||coalesce(pf.title,''),'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/|\bevent\s*id\s*[=:#]\s*)0*(1[0-9]{5})\b'))[1] AS BIGINT))
