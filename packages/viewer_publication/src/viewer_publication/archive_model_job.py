@@ -38,7 +38,7 @@ OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES,'playlist_records','transcript_
 OPTIONAL={'engine_config',*OPTIONAL_TABLES,'spicy_regs','recovery_requirements','text_index','historical_recording_matcher','docmeta_v6_1','pdf_cover_evidence','body_qualifications'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants',
-            'recording_decision_files':'recording_decisions'}
+            'recording_decision_files':'recording_decisions','qualification_files':'qualifications'}
 REQUIRED={'version',*TABLES,'parser_versions','catalog_version','output','scratch'}
 RELEASE_ID=re.compile('[a-f0-9]{12,64}')
 

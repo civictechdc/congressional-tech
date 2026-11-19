@@ -32,7 +32,7 @@ from congress_api.retention.qualification_facts import (
     verify_qualification_fact,
 )
 from congress_api.transport.raw_adapters import DirectAdapter
-from congress_shared.custody import verify_local_file
+from congress_shared.custody import canonical_json_bytes, verify_local_file
 from corpus_recovery.qualification import qualify
 from docspec_client.client import NativeDatasets
 
@@ -237,6 +237,110 @@ def test_qualification_fact_integrity_and_validator_rules(tmp_path):
         'last_modified': None,
         'content_length': '42',
     }
+
+
+def test_qualification_facts_refuse_unverified_overrides_retryable_and_length_only_gates(tmp_path):
+    """Review 7: flat summaries, url_qualified upgrades, stale records, retryable failures and
+    length-only validators never decide routing or suppress a refetch."""
+    from congress_api.retention.qualification_facts import StaleQualification, merge_fact
+
+    bad_path = tmp_path / 'corrupt.pdf'
+    bad_path.write_bytes(b'%PDF-1.7\ntruncated stream without eof')
+    rec = qualify(verify_local_file(bad_path), tmp_path / 'cache')
+    headers = {'Content-Type': 'application/pdf', 'ETag': '"v1"', 'Content-Length': str(bad_path.stat().st_size)}
+    fact = build_qualification_fact(rec, requested_url='https://fixture.test/a', url='https://fixture.test/b.pdf',
+                                    receipt_key='r1', retrieved_at=ASOF_DAY1, http_status=200, headers=headers)
+
+    # A flat summary with an arbitrary checksum and no record is refused.
+    flat = {k: fact[k] for k in ('body_sha256', 'body_bytes', 'status', 'media_type', 'reason', 'retryable')}
+    flat.update(qualified=True, status='qualified', qualification_sha256='f' * 64, requested_url='https://fixture.test/a')
+    with pytest.raises(ValueError, match='full qualification record'):
+        verify_qualification_fact(flat)
+    # A stored url_qualified=True cannot upgrade a failed verified record.
+    assert verify_qualification_fact(dict(fact, url_qualified=True))['url_qualified'] is False
+    # A record from another validator configuration is stale and ignored, never trusted.
+    body = {k: v for k, v in dict(rec).items() if k != 'qualification_sha256'}
+    body['config'] = dict(body['config'], max_pages=body['config']['max_pages'] + 1)
+    stale = dict(body, qualification_sha256=hashlib.sha256(canonical_json_bytes(body)).hexdigest())
+    with pytest.raises(StaleQualification):
+        verify_qualification_fact(stale)
+    assert load_qualification_facts([stale])['stale'] == 1
+
+    # Validators bind to the resource that answered, not the redirecting address.
+    loaded = load_qualification_facts([fact])
+    assert set(loaded['by_url']) == {'https://fixture.test/b.pdf'}
+    prior = loaded['by_url']['https://fixture.test/b.pdf']
+    assert conditional_request_headers(prior, {}) == {'If-None-Match': '"v1"'}
+
+    # Retryable checker failures never gate a refetch.
+    retryable = dict(prior, retryable=True)
+    assert conditional_request_headers(retryable, {}) == {}
+    assert not validators_unchanged(retryable, headers)
+    # Equal Content-Length alone cannot show the publisher kept the same file.
+    length_only = dict(prior, etag=None, last_modified=None)
+    assert not validators_unchanged(length_only, {'content-length': headers['Content-Length']})
+
+    # A newer non-retryable record replaces a retryable one for the same body.
+    by_sha, by_url = {}, {}
+    merge_fact(by_sha, by_url, dict(fact, retryable=True))
+    merge_fact(by_sha, by_url, fact)
+    assert by_sha[fact['body_sha256']]['retryable'] is False
+
+    # A torn final ledger line from an interrupted append is skipped; earlier lines load.
+    ledger = tmp_path / 'qualifications.jsonl'
+    ledger.write_text(json.dumps(fact) + '\n' + json.dumps(fact)[:40])
+    assert set(load_qualification_facts(ledger)['by_url']) == {'https://fixture.test/b.pdf'}
+
+
+@pytest.mark.parametrize('status,extra,body_expected', [
+    (206, {'Content-Range': 'bytes 0-9/100'}, True),
+    (200, {'Content-Range': 'bytes 0-9/100'}, True),
+    (202, {}, True),
+])
+def test_only_a_full_http_200_can_be_validator_suppressed(tmp_path, status, extra, body_expected):
+    from congress_api.acquisition.fetcher import Fetcher
+    from congress_api.models.raw_fetch import FetchAttempt
+    from congress_api.retention.receipt_writer import outcome
+
+    url = 'https://fixture.test/partial.pdf'
+    payload = b'%PDF-1.7\nbroken'
+    headers = {'Content-Type': 'application/pdf', 'ETag': '"p1"', 'Content-Length': str(len(payload)), **extra}
+    prior = {'qualified': False, 'retryable': False, 'etag': '"p1"', 'last_modified': None,
+             'content_length': str(len(payload))}
+    session = _MockSession(lambda _u, _h: (status, headers, payload))
+    fetcher = Fetcher(scope=lambda _u: True, direct=DirectAdapter(session), provider=None, pace=lambda *_: None,
+                      directory=tmp_path / 'spool', spool_limit=1 << 20, validators=lambda _u: prior)
+    final = fetcher.fetch(url).final
+    assert final.error != 'validator_unchanged'
+    assert session.tracker['body_reads'] == 1 and (final.body is not None) is body_expected
+    # The writer never calls a non-200 or ranged validator match 'unchanged'.
+    forged = FetchAttempt(url, url, ASOF_DAY1, 'direct', status, None, {k.lower(): v for k, v in headers.items()},
+                          (), True, None, 'validator_unchanged')
+    assert outcome(forged, None) != 'unchanged'
+
+
+def test_journal_replays_a_hop_sealed_before_validators_existed(tmp_path):
+    """A sealed hop recorded without conditional headers resumes without a second network call."""
+    from congress_api.acquisition.capture_journal import DurableCapture
+    from congress_api.models.raw_fetch import Transfer
+
+    url = 'https://fixture.test/r.pdf'
+    calls = []
+
+    class Plain:
+        def hop(self, u, dest, *, limit, headers, prior_validators=None):
+            calls.append(dict(headers))
+            Path(dest).write_bytes(b'x')
+            return Transfer(Path(dest), u, 200, {'etag': '"e"'}, True, sha256=hashlib.sha256(b'x').hexdigest(), size=1)
+
+    journal = DurableCapture(tmp_path / 'journal', {'binding': 1})
+    journal.adapter('op', Plain(), 'direct').hop(url, tmp_path / 'd1', limit=10, headers={})
+    replay = journal.adapter('op', Plain(), 'direct').hop(
+        url, tmp_path / 'd2', limit=10, headers={'If-None-Match': '"e"'},
+        prior_validators={'qualified': False, 'etag': '"e"'})
+    assert calls == [{}] and replay.http_status == 200 and (tmp_path / 'd2').read_bytes() == b'x'
+    with pytest.raises(ValueError, match='request definition changed'):
+        journal.adapter('op', Plain(), 'direct').hop(url, tmp_path / 'd3', limit=11, headers={})
 
 
 def test_corrupt_http_200_pdf_preserved_and_not_refetched_on_unchanged_validators_or_304(tmp_path):
@@ -663,4 +767,125 @@ def test_loopback_http_server_validator_suppression_with_requests_and_rust_fetch
     finally:
         server.shutdown()
         server.server_close()
+
+
+def test_durable_store_qualifications_survive_fresh_work_dirs_and_retry_transient_failures(tmp_path):
+    """R2/store-backed provenance/qualifications/ survives fresh work dirs and retries transient failures."""
+    from dataclasses import asdict
+    import io
+    from botocore.exceptions import ClientError
+    from congress_api.retention.body_store import R2Adapter
+    from corpus_recovery.qualification import QualificationConfig, _finish, _identity, qualify as real_qualify
+
+    class _FakeR2Client:
+        def __init__(self):
+            self.objects: dict[str, bytes] = {}
+
+        def head_object(self, *, Bucket, Key):
+            if Key not in self.objects:
+                raise ClientError({'Error': {'Code': '404', 'Message': 'Not Found'}}, 'HeadObject')
+            data = self.objects[Key]
+            return {'ContentLength': len(data), 'ETag': f'"{hashlib.md5(data).hexdigest()}"'}
+
+        def put_object(self, *, Bucket, Key, Body, IfNoneMatch=None, **kwargs):
+            if IfNoneMatch == '*' and Key in self.objects:
+                raise ClientError({'Error': {'Code': '412', 'Message': 'PreconditionFailed'}}, 'PutObject')
+            data = Body if isinstance(Body, (bytes, bytearray)) else Body.read()
+            self.objects[Key] = bytes(data)
+            return {'ETag': f'"{hashlib.md5(data).hexdigest()}"'}
+
+        def get_object(self, *, Bucket, Key, IfMatch=None):
+            if Key not in self.objects:
+                raise ClientError({'Error': {'Code': 'NoSuchKey', 'Message': 'Missing'}}, 'GetObject')
+            data = self.objects[Key]
+            return {'Body': io.BytesIO(data), 'ContentLength': len(data), 'ETag': f'"{hashlib.md5(data).hexdigest()}"'}
+
+        def get_paginator(self, operation):
+            assert operation == 'list_objects_v2'
+            objects = self.objects
+            class _Paginator:
+                def paginate(self, *, Bucket, Prefix=''):
+                    contents = [
+                        {'Key': k, 'Size': len(v), 'ETag': f'"{hashlib.md5(v).hexdigest()}"'}
+                        for k, v in sorted(objects.items())
+                        if k.startswith(Prefix)
+                    ]
+                    return [{'Contents': contents}]
+            return _Paginator()
+
+    r2 = _FakeR2Client()
+    store = BodyStore(R2Adapter(r2, 'raw-bucket'))
+    url = 'https://fixture.test/hearing/transient-broken.pdf'
+    corrupt_pdf = b'%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\ntruncated'
+    headers = {'Content-Type': 'application/pdf', 'ETag': '"r2-broken-1"', 'Content-Length': str(len(corrupt_pdf))}
+
+    # Night 1 (fresh work1): checker suffers a transient retryable failure; persisted to R2 provenance/qualifications/.
+    def transient_qualify(verified_body, _cache_dir):
+        return _finish({
+            'body_sha256': verified_body.sha256,
+            'body_bytes': verified_body.size_bytes,
+            'validator': _identity(),
+            'config': asdict(QualificationConfig()),
+            'status': 'unresolved',
+            'media_type': 'application/pdf',
+            'reason': 'worker_timeout',
+            'retryable': True,
+        })
+
+    rel1 = _build_release(tmp_path / 'rel1', [dict(requested_url=url, attempts=0)])
+    sess1 = _MockSession(lambda _u, _h: (200, headers, corrupt_pdf))
+    res1 = run_capture(
+        load_release(release_root=rel1, work=tmp_path / 'load1'),
+        engine=_engine(),
+        work=tmp_path / 'work1',
+        as_of=ASOF_DAY1,
+        request_budget=10,
+        byte_budget=2**24,
+        spool_budget=2**26,
+        store=store,
+        identity=IDENTITY,
+        direct=DirectAdapter(sess1),
+        resolve=lambda _: ['8.8.8.8'],
+        archive_limits=LIMITS,
+        pace=lambda *_: None,
+        qualify=transient_qualify,
+        qualification_store=store,
+    )
+    assert res1['qualification_metrics']['provenance_key'].startswith('provenance/qualifications/')
+    assert any(k.startswith('provenance/qualifications/') for k in r2.objects)
+
+    # Night 2 (completely fresh work2, zero runner-scratch handoff): loads from R2, retries the
+    # retryable failure directly against the retained R2 body, settles definitive failure, and
+    # sends If-None-Match on the due recheck -> 304 Not Modified without re-downloading bytes.
+    rel2 = _build_release(
+        tmp_path / 'rel2',
+        [dict(requested_url=url, attempts=1, last_attempt=datetime(2026, 10, 1, tzinfo=timezone.utc),
+              last_status=200, last_outcome='stored', next_attempt_at=datetime(2026, 10, 8, tzinfo=timezone.utc))],
+    )
+    sess2 = _MockSession(lambda _u, h: (304, {'ETag': '"r2-broken-1"'}, b'') if h.get('If-None-Match') == '"r2-broken-1"' else (200, headers, corrupt_pdf))
+    res2 = run_capture(
+        load_release(release_root=rel2, work=tmp_path / 'load2'),
+        engine=_engine(),
+        work=tmp_path / 'work2',
+        as_of=ASOF_DAY10,
+        request_budget=10,
+        byte_budget=2**24,
+        spool_budget=2**26,
+        store=store,
+        identity=IDENTITY,
+        direct=DirectAdapter(sess2),
+        resolve=lambda _: ['8.8.8.8'],
+        archive_limits=LIMITS,
+        pace=lambda *_: None,
+        qualify=real_qualify,
+        qualification_store=store,
+    )
+    assert res2['qualification_metrics']['retried'] == 1
+    assert res2['qualification_metrics']['provenance_key'].startswith('provenance/qualifications/')
+    assert sess2.tracker['body_reads'] == 0
+    assert sess2.requests[0]['headers'].get('If-None-Match') == '"r2-broken-1"'
+    r2_receipt = json.loads(gzip.decompress(r2.objects[res2['receipts'][0]]).decode('utf-8'))
+    assert r2_receipt['http_status'] == 304 and r2_receipt['outcome'] == 'unchanged' and r2_receipt['captures'] == []
+    assert len([k for k in r2.objects if k.startswith('provenance/qualifications/')]) == 2
+
 

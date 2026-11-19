@@ -1681,8 +1681,9 @@ def test_http_200_corrupt_pdf_routes_through_url_state_discovery_and_scheduler_w
         state_by_url = {r['requested_url']: r for r in pq.read_table(state_res['url_state_parquet']).to_pylist()}
         assert state_by_url[bad_url]['capture_disposition'] == 'eligible'
         assert state_by_url[bad_url]['capture_reason'] == 'body_not_qualified'
-        assert state_by_url[good_url]['capture_disposition'] == 'satisfied'
-        assert state_by_url[good_url]['capture_reason'] == 'qualified_direct_body'
+        # Readability alone never satisfies a historical identity requirement (review 7).
+        assert state_by_url[good_url]['capture_disposition'] == 'eligible'
+        assert state_by_url[good_url]['capture_reason'] == 'no_satisfying_recovery'
 
         # Seal rel1 as a v2 capture release
         (rel1 / 'capture_scope.json').write_bytes(scope_path.read_bytes())
@@ -1779,4 +1780,277 @@ def test_http_200_corrupt_pdf_routes_through_url_state_discovery_and_scheduler_w
         queued_urls = [r['requested_url'] for r in pq.read_table(queue_res['queue']).to_pylist()]
         assert queued_urls == [sibling_url]
 
+
+def test_newer_failed_body_overrides_older_healthy_fetch_in_inventory(tmp_path):
+    """Review 7: an older healthy 200 cannot keep a target usable_direct once a newer 200 body
+    at the same address failed qualification; a still newer healthy body restores it."""
+    from congress_shared.custody import verify_local_file
+    from corpus_recovery.qualification import qualify
+
+    target = 'https://docs.house.gov/meetings/GO/GO00/20110511/testimony.pdf'
+    from pypdf import PdfWriter
+    good_path = tmp_path / 'good.pdf'
+    writer = PdfWriter()
+    writer.add_blank_page(width=72, height=72)
+    with good_path.open('wb') as out:
+        writer.write(out)
+    bad_path = tmp_path / 'bad.pdf'
+    bad_path.write_bytes(b'%PDF-1.7\ntruncated')
+    good_rec = qualify(verify_local_file(good_path), tmp_path / 'qcache')
+    bad_rec = qualify(verify_local_file(bad_path), tmp_path / 'qcache')
+    assert good_rec['status'] == 'qualified' and bad_rec['status'] == 'unresolved'
+
+    def row(stamp, rec, key):
+        return dict(requested_url=target, url=target, sha256=rec['body_sha256'], outcome='stored', http_status=200,
+                    complete=True, mode='fetch', media_type='application/pdf', retrieved_at=stamp,
+                    receipt_key=key, receipt_line=1)
+
+    older_good = row('2026-10-01T00:00:00Z', good_rec, 'receipts/a.jsonl.gz')
+    newer_bad = row('2026-10-10T00:00:00Z', bad_rec, 'receipts/b.jsonl.gz')
+    [inv] = build_target_inventory([target], fetch_outcomes=[older_good, newer_bad], qualifications=[good_rec, bad_rec])
+    assert inv['usable_direct'] is False and inv['subtype'] == 'body_not_qualified'
+
+    newest_good = row('2026-10-20T00:00:00Z', good_rec, 'receipts/c.jsonl.gz')
+    [inv] = build_target_inventory([target], fetch_outcomes=[older_good, newer_bad, newest_good],
+                                   qualifications=[good_rec, bad_rec])
+    assert inv['usable_direct'] is True and inv['evidence_id'] == 'receipts/c.jsonl.gz#1'
+
+
+def test_two_fresh_work_dirs_across_publication_boundary_and_discovery(tmp_path):
+    """Minimum finish: fresh work dirs across capture -> durable provenance -> URL state -> discovery -> 304 -> replacement."""
+    from datetime import timedelta
+    import gzip
+    import hashlib
+    import io
+    import json
+    import os
+    from pathlib import Path
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from pypdf import PdfWriter
+    from congress_api.acquisition.capture_scheduler import CapturePolicy, load_release, run_capture
+    from congress_api.lake import capture_staging
+    from congress_api.models.archive_profile import build_capture_profile
+    from congress_api.retention.archive_members import ZipLimits
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    from congress_api.retention.provenance import file_pin, json_input
+    from congress_api.transport.raw_adapters import DirectAdapter
+    from corpus_recovery.acceptance import VERSION
+    from corpus_recovery.pipeline import evaluate_campaign_url_state, run_recovery_campaign
+    from docspec_client.client import NativeDatasets
+    from viewer_publication.archive_model import registry_inputs
+
+    ROOT_DIR = Path(__file__).resolve().parents[3]
+    scope_path = ROOT_DIR / 'model/registries/capture-scope.json'
+    raw_dir = tmp_path / 'raw'
+    store = BodyStore(LocalAdapter(raw_dir))
+    shared_qcache = tmp_path / 'shared-qcache'
+    identity = {'job': 'capture-scheduler', 'commit': 'b' * 40, 'lockfile_digest': 'c' * 64}
+    limits = ZipLimits(max_archive_bytes=1 << 20, max_member_bytes=1 << 20, max_total_bytes=2 << 20, max_directory_bytes=65536)
+
+    broken_url = 'https://docs.house.gov/meetings/FA/FA00/20261001/119111/HHRG-119-FA00-Wstate-Test-20261001.pdf'
+    corrupt_pdf = b'%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\ntruncated-without-eof'
+    pdf_writer = PdfWriter()
+    pdf_writer.add_blank_page(width=72, height=72)
+    pdf_buf = io.BytesIO()
+    pdf_writer.write(pdf_buf)
+    replacement_pdf = pdf_buf.getvalue()
+
+    class _Resp:
+        def __init__(self, status, headers, body, req_url, tracker):
+            self.status_code, self.headers, self._body, self.url = status, dict(headers), body, req_url
+            self._tracker = tracker
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def iter_content(self, chunk_size=65536):
+            self._tracker['body_reads'] += 1
+            if self._body:
+                yield self._body
+
+    class _Sess:
+        def __init__(self, responder):
+            self.responder = responder
+            self.tracker = {'requests': [], 'body_reads': 0}
+        def get(self, u, *, headers=None, allow_redirects=False, stream=True, timeout=None):
+            self.tracker['requests'].append({'url': u, 'headers': dict(headers or {})})
+            s, h, b = self.responder(u, headers or {})
+            return _Resp(s, h, b, u, self.tracker)
+
+    reqs_parquet = tmp_path / 'requirements.parquet'
+    pq.write_table(pa.Table.from_pylist([
+        dict(original_url=broken_url, target_requirement='historical_exact', acceptance_policy=VERSION, refresh_policy='historical_only'),
+    ]), reqs_parquet)
+
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as eng:
+        def _stage_release(rel_dir: Path, state_path: Path):
+            rel_dir.mkdir(parents=True, exist_ok=True)
+            dst_state = rel_dir / 'url_state.parquet'
+            dst_state.write_bytes(state_path.read_bytes())
+            (rel_dir / 'capture_scope.json').write_bytes(scope_path.read_bytes())
+            profile = build_capture_profile(
+                engine_revision=eng.source_revision,
+                url_normalized_sql=(ROOT_DIR / 'model/sql/url-normalized.sql').read_text(),
+                url_keys_sql=(ROOT_DIR / 'model/sql/url-keys.sql').read_text(),
+                url_rules=json.loads((ROOT_DIR / 'model/registries/url-rules.json').read_text()),
+                recovery_policy={'acceptance_policy': VERSION, 'requirements_sha256': file_pin(reqs_parquet)['sha256']},
+            )
+            (rel_dir / 'capture_profile.json').write_text(json.dumps(profile, sort_keys=True))
+            pq.write_table(pa.Table.from_pylist([], schema=pa.schema([('canonical_url', pa.string()), ('variant_url', pa.string())])), rel_dir / 'url_variants.parquet')
+            files = []
+            for n in ('url_state.parquet', 'capture_scope.json', 'capture_profile.json', 'url_variants.parquet'):
+                raw_b = (rel_dir / n).read_bytes()
+                files.append(dict(name=n, sha256=hashlib.sha256(raw_b).hexdigest(), size=len(raw_b),
+                                  rows=pq.read_metadata(rel_dir / n).num_rows if n.endswith('.parquet') else None))
+            rel_id = hashlib.sha256(json.dumps([1, [[f[k] for k in ('name', 'sha256', 'size', 'rows')] for f in files]], separators=(',', ':')).encode()).hexdigest()
+            (rel_dir / 'manifest.json').write_text(json.dumps({'schema_version': 1, 'release_id': rel_id, 'files': files}))
+            return load_release(release_root=rel_dir, work=rel_dir / 'loaded')
+
+        def _publish_url_state(stage_dir: Path, cap_root: Path):
+            receipt_paths = sorted((raw_dir / 'receipts').rglob('*.jsonl.gz'))
+            staged_files = []
+            for idx, src in enumerate(receipt_paths):
+                rkey = src.relative_to(raw_dir).as_posix()
+                dst = stage_dir / 'q-receipts' / f'{idx}-{src.name}'
+                dst.parent.mkdir(parents=True, exist_ok=True)
+                data = src.read_bytes()
+                dst.write_bytes(data)
+                auth = dst.with_name(dst.name + '.qualification.json')
+                auth.write_text(json.dumps(dict(path=str(dst.resolve()), sha256=hashlib.sha256(data).hexdigest(),
+                                                size=len(data), producer='synthetic fixture creation')))
+                staged_files.append(dict(key=rkey, path=str(dst), qualification=str(auth)))
+            cap_pq = capture_staging.stage_captures(staged_files, engine=eng, work=stage_dir / 'captures-stage') / 'captures.parquet'
+            qual_files = sorted((raw_dir / 'provenance' / 'qualifications').glob('*.jsonl'))
+            inputs = [
+                *registry_inputs(stage_dir / 'registries'),
+                dict(name='captures', kind='parquet', path=str(cap_pq)),
+                json_input(stage_dir, 'resolved_links', [], target_url='Utf8', target_member_path='Utf8', page_body='Utf8', context_url='Utf8', member_path='Utf8'),
+                json_input(stage_dir, 'url_state_meeting_dates', [], requested_url='Utf8', meeting_date='Utf8'),
+                json_input(stage_dir, 'url_variants', [], canonical_url='Utf8', variant_url='Utf8'),
+                dict(name='recovery_requirements', kind='parquet', path=str(reqs_parquet)),
+                json_input(stage_dir, 'recovery_decisions', [], **{**{k: 'Utf8' for k in ('id', 'original_url', 'body_sha256', 'kind', 'target_requirement', 'acceptance_policy', 'acceptance_status', 'evidence_sha256', 'qualification_sha256', 'supersedes')}, 'recovery_record_version': 'Int32'}),
+            ]
+            prep = [
+                dict(name='capture_evidence', sql='SELECT * FROM captures'),
+                *model_steps(['good-fetches'], provided=['capture_evidence']),
+                dict(name='good_fetch_contexts', sql='SELECT receipt_key,receipt_line,capture_index,sha256,context_url,member_path FROM good_fetches'),
+                dict(name='record_roles', sql="SELECT receipt_key,receipt_line,capture_index,'document' AS record_role FROM captures"),
+                dict(name='resolved_link_targets', sql='SELECT DISTINCT page_body,context_url,member_path,target_url,cast(NULL AS VARCHAR) AS target_member_path FROM resolved_links WHERE target_member_path IS NULL'),
+                dict(name='url_inputs', sql="SELECT DISTINCT encode(sha256(json_array(url)),'hex') AS input_id,url FROM (SELECT requested_url AS url FROM captures UNION SELECT url FROM captures) WHERE url IS NOT NULL"),
+                dict(name='url_normalized', sql=(ROOT_DIR / 'model/sql/url-normalized.sql').read_text(), materialize=True),
+                dict(name='model_url_keys', sql=(ROOT_DIR / 'model/sql/url-keys.sql').read_text(), materialize=True),
+            ]
+            ev = evaluate_campaign_url_state(
+                stage_dir / 'url-state', engine=eng, inputs=inputs, prep_steps=prep,
+                recovery_policy={'acceptance_policy': VERSION},
+                qualifications=qual_files, output_dir=cap_root,
+            )
+            return cap_pq, ev['url_state_parquet']
+
+        # Seed initial queued release (attempts=0).
+        seed_state = tmp_path / 'seed-url-state.parquet'
+        pq.write_table(pa.table({
+            'requested_url': pa.array([broken_url], pa.string()),
+            'attempts': pa.array([0], pa.int32()),
+            'last_attempt': pa.array([None], pa.timestamp('us', tz='UTC')),
+            'last_status': pa.array([None], pa.int16()),
+            'last_outcome': pa.array([None], pa.string()),
+            'last_good_at': pa.array([None], pa.timestamp('us', tz='UTC')),
+            'next_attempt_at': pa.array([None], pa.timestamp('us', tz='UTC')),
+            'recheck_meeting_date': pa.array([None], pa.date32()),
+            'linked_from': pa.array([[bytes.fromhex('11' * 32)]], pa.list_(pa.binary(32))),
+            'capture_disposition': pa.array(['eligible'], pa.string()),
+            'capture_reason': pa.array(['no_satisfying_recovery'], pa.string()),
+            'capture_decision_id': pa.array([None], pa.string()),
+        }), seed_state)
+
+        # Night 1 (fresh work_night1): broken HTTP-200 PDF captured & persisted to store provenance/qualifications/.
+        rel_seed = _stage_release(tmp_path / 'rel-seed', seed_state)
+        sess1 = _Sess(lambda _u, _h: (200, {'Content-Type': 'application/pdf', 'ETag': '"v1"', 'Content-Length': str(len(corrupt_pdf))}, corrupt_pdf))
+        res1 = run_capture(
+            rel_seed, engine=eng, work=tmp_path / 'work_night1', as_of='2026-10-01T00:00:00Z',
+            request_budget=5, byte_budget=1 << 24, spool_budget=1 << 25, store=store, identity=identity,
+            direct=DirectAdapter(sess1), resolve=lambda _: ['8.8.8.8'], archive_limits=limits, pace=lambda *_: None,
+            qualification_cache=shared_qcache, qualification_store=store,
+        )
+        assert res1['qualifications']['failed'] == 1
+        assert res1['qualification_metrics']['elapsed_seconds'] >= 0.0
+        assert res1['qualification_metrics']['provenance_key'].startswith('provenance/qualifications/')
+
+        cap1_pq, state1_pq = _publish_url_state(tmp_path / 'pub1', tmp_path / 'out1')
+        row1 = pq.read_table(state1_pq).to_pylist()[0]
+        assert row1['capture_disposition'] == 'eligible' and row1['capture_reason'] == 'body_not_qualified'
+        assert row1['attempts'] == 1 and row1['last_good_at'] is not None
+        night1_last_good = row1['last_good_at']
+
+        # Existing discovery consumer takes definitive failure automatically from durable store + url_state (targets=None, qualifications=None).
+        wayback_calls = []
+        def _mock_wayback(kind: str, query_url: str):
+            wayback_calls.append(query_url)
+            payload = json.dumps([
+                WAYBACK_FIELDS,
+                [surt_key(broken_url), '20261001000000', broken_url, 'application/pdf', '200', 'B' * 32, '8192'],
+            ]).encode('utf-8')
+            return Response(200, payload, True, 'ev:wb:m7', 'application/json', query_url)
+
+        rel1 = _stage_release(tmp_path / 'rel-night1', state1_pq)
+        camp = run_recovery_campaign(
+            tmp_path / 'discovery-night1', campaign_id='m7-e2e-boundary', targets=None, engine=eng,
+            policy=CapturePolicy(scope_path, resolve=lambda _: ['8.8.8.8']),
+            captures=cap1_pq, store=store,
+            state=tmp_path / 'rel-night1/url_state.parquet',
+            state_profile=tmp_path / 'rel-night1/capture_profile.json',
+            state_requirements=reqs_parquet,
+            discovery_kwargs={'wayback_call': _mock_wayback, 'max_pages': 1},
+        )
+        assert len(wayback_calls) == 1 and 'HHRG-119-FA00-Wstate-Test-20261001.pdf' in wayback_calls[0]
+        assert len(camp['targets']) == 1 and camp['targets'][0]['usable_direct'] is False
+        assert camp['targets'][0]['subtype'] == 'body_not_qualified'
+
+        # Night 2a (fresh work_night2a, zero shared runner scratch): 304 Not Modified advances schedule, NOT last_good_at.
+        sess2a = _Sess(lambda _u, h: (304, {'ETag': '"v1"'}, b'') if h.get('If-None-Match') == '"v1"' else (500, {}, b''))
+        res2a = run_capture(
+            rel1, engine=eng, work=tmp_path / 'work_night2a', as_of=(row1['next_attempt_at'] + timedelta(days=1)).isoformat(),
+            request_budget=5, byte_budget=1 << 24, spool_budget=1 << 25, store=store, identity=identity,
+            direct=DirectAdapter(sess2a), resolve=lambda _: ['8.8.8.8'], archive_limits=limits, pace=lambda *_: None,
+            qualification_cache=shared_qcache, qualification_store=store,
+        )
+        assert sess2a.tracker['body_reads'] == 0
+        assert sess2a.tracker['requests'][0]['headers'].get('If-None-Match') == '"v1"'
+        r2a_line = json.loads(gzip.decompress((raw_dir / res2a['receipts'][0]).read_bytes()).decode('utf-8'))
+        assert r2a_line['http_status'] == 304 and r2a_line['outcome'] == 'unchanged' and r2a_line['captures'] == []
+        _, state2a_pq = _publish_url_state(tmp_path / 'pub2a', tmp_path / 'out2a')
+        row2a = pq.read_table(state2a_pq).to_pylist()[0]
+        assert row2a['attempts'] == 2 and row2a['last_status'] == 304 and row2a['last_outcome'] == 'unchanged'
+        assert row2a['last_good_at'] == night1_last_good
+        assert row2a['next_attempt_at'] > row1['next_attempt_at']
+        assert row2a['capture_disposition'] == 'eligible' and row2a['capture_reason'] == 'body_not_qualified'
+
+        # Night 2b (fresh work_night2b): changed ETag serves a readable (wrong) replacement PDF ->
+        # downloaded & qualified, yet historical_exact requirement stays OPEN (eligible / no_satisfying_recovery).
+        rel2a = _stage_release(tmp_path / 'rel-night2a', state2a_pq)
+        sess2b = _Sess(lambda _u, _h: (200, {'Content-Type': 'application/pdf', 'ETag': '"v2-replacement"', 'Content-Length': str(len(replacement_pdf))}, replacement_pdf))
+        res2b = run_capture(
+            rel2a, engine=eng, work=tmp_path / 'work_night2b', as_of=(row2a['next_attempt_at'] + timedelta(days=1)).isoformat(),
+            request_budget=5, byte_budget=1 << 24, spool_budget=1 << 25, store=store, identity=identity,
+            direct=DirectAdapter(sess2b), resolve=lambda _: ['8.8.8.8'], archive_limits=limits, pace=lambda *_: None,
+            qualification_cache=shared_qcache, qualification_store=store,
+        )
+        assert sess2b.tracker['body_reads'] == 1 and res2b['qualifications']['qualified'] == 1
+        assert res2b['qualification_metrics']['elapsed_seconds'] > 0.0
+        _, state2b_pq = _publish_url_state(tmp_path / 'pub2b', tmp_path / 'out2b')
+        row2b = pq.read_table(state2b_pq).to_pylist()[0]
+        assert row2b['attempts'] == 3 and row2b['last_status'] == 200 and row2b['last_good_at'] > night1_last_good
+        # Readable replacement does NOT satisfy historical_exact without identity acceptance!
+        assert row2b['capture_disposition'] == 'eligible' and row2b['capture_reason'] == 'no_satisfying_recovery'
+
+        # Night 2c (cache hit check on same replacement PDF across a fresh work dir): cache_hits == 1!
+        rel2b = _stage_release(tmp_path / 'rel-night2b', state2b_pq)
+        sess2c = _Sess(lambda _u, _h: (200, {'Content-Type': 'application/pdf', 'ETag': '"v2-replacement"', 'Content-Length': str(len(replacement_pdf))}, replacement_pdf))
+        res2c = run_capture(
+            rel2b, engine=eng, work=tmp_path / 'work_night2c', as_of=(row2b['next_attempt_at'] + timedelta(days=1)).isoformat(),
+            request_budget=5, byte_budget=1 << 24, spool_budget=1 << 25, store=store, identity=identity,
+            direct=DirectAdapter(sess2c), resolve=lambda _: ['8.8.8.8'], archive_limits=limits, pace=lambda *_: None,
+            qualification_cache=shared_qcache, qualification_store=store,
+        )
+        assert res2c['qualification_metrics']['cache_hits'] == 1
 

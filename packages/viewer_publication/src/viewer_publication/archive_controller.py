@@ -433,6 +433,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                        pointer=pointer,pointer_etag=etag,stage=stage,**artifacts,**daily_pin,**built)
             _save_continuation(checkpoint_path,saved,seal=bool(daily_pin))
         delegate=True
+        automatic_qualifications=[*(model_spec.get('qualification_files') or ()),
+            *([model_spec['body_qualifications']] if model_spec.get('body_qualifications') is not None else [])]
         return publish_candidate(client=client,engine=engine,bucket=bucket,work=work/('candidate-'+uuid4().hex),
             release=Path(stage['output']),**artifacts,input_record=record,receipt_keys=keys,
             asset_journal=work/'publication-assets.json',
@@ -440,7 +442,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             pointer=pointer,expected_etag=etag,public_origin=public_origin,
             selected_pointer_reconciled=check_current_daily is not None and selected_candidate,
             base_release=base_release,release_causes=release_causes,link_history_dirs=history,first_release=first_release,
-            automatic_captures=model_spec['captures'] if automatic_causes else None,receipt_client=receipt_client,
+            automatic_captures=model_spec['captures'] if automatic_causes else None,
+            automatic_qualifications=automatic_qualifications if automatic_causes else (),receipt_client=receipt_client,
             contract=lambda **context:contract(**context,probe_selectors=probe_selectors),
             canary=lambda **context:canary(**context,probe_selectors=probe_selectors))
     except BaseException as error:

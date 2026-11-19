@@ -192,16 +192,26 @@ def _row_qualification_failed(row, url='', *, qual_by_sha=None, qual_by_url=None
         q = qual_by_sha[sha]
         if not q.get('qualified', False):
             return True
-        probe_url = url or row.get('requested_url') or row.get('url')
-        if expects_pdf_response(probe_url) and q.get('media_type') != 'application/pdf':
-            return True
-        return False
+        # The same PDF expectation capture and URL state apply: either spelling or the captured type.
+        content_type = {'content-type': row['media_type']} if isinstance(row.get('media_type'), str) else None
+        pdf_expected = any(expects_pdf_response(u, content_type)
+                           for u in (url, row.get('requested_url'), row.get('url')) if isinstance(u, str) and u)
+        return bool(pdf_expected and q.get('media_type') != 'application/pdf')
     if sha is None and qual_by_url:
         for cand_url in (url, row.get('requested_url'), row.get('url')):
             if isinstance(cand_url, str) and cand_url in qual_by_url:
                 if qual_by_url[cand_url].get('qualified') is False:
                     return True
     return False
+
+
+def _carries_body_verdict(row):
+    """A fetched body, or an explicit qualification verdict, that can supersede an older one."""
+    if not isinstance(row, dict) or row.get('mode') == 'retained_import':
+        return False
+    return bool(row.get('sha256') or row.get('body_sha256') or row.get('body_key')
+                or row.get('capture_reason') == 'body_not_qualified'
+                or row.get('qualified') is not None or row.get('qualification_status') is not None)
 
 
 def _is_usable_direct_row(row, url='', *, qual_by_sha=None, qual_by_url=None):
@@ -331,6 +341,38 @@ def _iter_table_rows(table_src, *, wanted=None, wanted_arr=None):
             yield from batch.to_pylist()
 
 
+def _load_inventory_qualifications(qualifications, source_or_store):
+    """Load verified qualifications from an explicit source or durable store provenance."""
+    from congress_api.retention.qualification_facts import (
+        load_qualification_facts,
+        load_store_qualifications,
+    )
+    if qualifications is not None:
+        return load_qualification_facts(qualifications)
+    if source_or_store is None:
+        return None
+    if isinstance(source_or_store, (str, Path)):
+        qdir = Path(source_or_store) / 'provenance' / 'qualifications'
+        if qdir.is_dir():
+            files = sorted(qdir.glob('*.jsonl'))
+            return load_qualification_facts(files) if files else None
+        return None
+    adapter = getattr(source_or_store, 'adapter', None)
+    if adapter is not None:
+        local_root = getattr(adapter, 'root', None)
+        if local_root is not None:
+            qdir = Path(local_root) / 'provenance' / 'qualifications'
+            if qdir.is_dir():
+                files = sorted(qdir.glob('*.jsonl'))
+                return load_qualification_facts(files) if files else None
+            return None
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory(prefix='inv-quals-') as tmp:
+            loaded = load_store_qualifications(source_or_store, work=tmp)
+            return loaded if (loaded['by_sha256'] or loaded['by_url']) else None
+    return None
+
+
 def scan_receipt_history(
     source_or_store=None,
     *,
@@ -350,9 +392,8 @@ def scan_receipt_history(
 
     qual_by_sha = None
     qual_by_url = None
-    if qualifications is not None:
-        from congress_api.retention.qualification_facts import load_qualification_facts
-        loaded_q = load_qualification_facts(qualifications)
+    loaded_q = _load_inventory_qualifications(qualifications, source_or_store)
+    if loaded_q is not None:
         qual_by_sha = loaded_q['by_sha256']
         qual_by_url = loaded_q['by_url']
 
@@ -366,12 +407,17 @@ def scan_receipt_history(
         entry = history.setdefault(
             url,
             dict(attempts=0, latest_state=cand, usable_attempt=None, outcomes=[], body_keys=[], source='table',
-                 qualification_failed=False),
+                 qualification_failed=False, latest_body_key=None),
         )
         if _row_order_key(cand) >= _row_order_key(entry['latest_state']):
             entry['latest_state'] = cand
-        if _row_qualification_failed(row, url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url):
-            entry['qualification_failed'] = True
+        # Only the newest body-bearing evidence says whether the address now serves a usable body.
+        if _carries_body_verdict(row):
+            key = _row_order_key(cand)
+            if entry.get('latest_body_key') is None or key >= entry['latest_body_key']:
+                entry['latest_body_key'] = key
+                entry['qualification_failed'] = _row_qualification_failed(
+                    row, url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url)
         if _is_usable_direct_row(row, url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url):
             if entry.get('usable_attempt') is None or _row_order_key(cand) >= _row_order_key(entry['usable_attempt']):
                 entry['usable_attempt'] = cand
@@ -388,6 +434,7 @@ def scan_receipt_history(
     if hasattr(source_or_store, 'states_for') and callable(getattr(source_or_store, 'states_for', None)) and wanted:
         for url, state_row in source_or_store.states_for(wanted).items():
             cand = dict(state_row, url=url, raw_url=state_row.get('url'))
+            carries = _carries_body_verdict(state_row)
             history[url] = dict(
                 attempts=int(state_row.get('attempts') or 0),
                 latest_state=cand,
@@ -395,7 +442,8 @@ def scan_receipt_history(
                 outcomes=[state_row['outcome']] if state_row.get('outcome') else [],
                 body_keys=[state_row['body_key']] if state_row.get('body_key') else [],
                 source='table',
-                qualification_failed=_row_qualification_failed(state_row, url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url),
+                latest_body_key=_row_order_key(cand) if carries else None,
+                qualification_failed=carries and _row_qualification_failed(state_row, url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url),
             )
 
     root_path = Path(source_or_store) if isinstance(source_or_store, (str, Path)) else None
@@ -477,9 +525,8 @@ def build_target_inventory(
     raw_targets = _target_rows(targets)
     qual_by_sha = None
     qual_by_url = None
-    if qualifications is not None:
-        from congress_api.retention.qualification_facts import load_qualification_facts
-        loaded_q = load_qualification_facts(qualifications)
+    loaded_q = _load_inventory_qualifications(qualifications, source_or_store)
+    if loaded_q is not None:
         qual_by_sha = loaded_q['by_sha256']
         qual_by_url = loaded_q['by_url']
 
@@ -521,14 +568,19 @@ def build_target_inventory(
 
         if hist is not None:
             usable_row = hist.get('usable_attempt')
-            if usable_row is not None and _row_qualification_failed(usable_row, target_url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url):
-                usable_row = None
-                qual_failed = True
             if usable_row is None and 'usable_attempt' not in hist and _is_usable_direct_row(latest, target_url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url):
                 usable_row = latest
-            qual_failed = qual_failed or bool(hist.get('qualification_failed')) or _row_qualification_failed(
-                latest, target_url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url
-            )
+            if 'latest_body_key' in hist:
+                # scan_receipt_history judged the newest body-bearing evidence.
+                qual_failed = bool(hist.get('qualification_failed'))
+                newer_usable = (usable_row is not None and hist.get('latest_body_key') is not None
+                                and _row_order_key(usable_row) > hist['latest_body_key'])
+            else:  # a caller-built history: judge its latest row
+                qual_failed = _row_qualification_failed(latest, target_url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url)
+                newer_usable = False
+            if qual_failed and not newer_usable:
+                # An older healthy fetch cannot stand in for the body the address serves now.
+                usable_row = None
             usable_direct = usable_row is not None
             hist_evidence_id = _row_evidence_id(usable_row) if usable_row is not None else _row_evidence_id(latest)
         else:

@@ -473,11 +473,52 @@ def run_recovery_campaign(
     inputs_dir = root / 'inputs'
     inputs_dir.mkdir(parents=True, exist_ok=True)
 
+    qual_source = qualifications
+    loaded_store_quals = None
+    if qual_source is None:
+        qual_store = store if store is not None else source_or_store
+        if qual_store is not None:
+            from congress_api.retention.qualification_facts import load_qualification_facts, load_store_qualifications
+            if hasattr(qual_store, 'adapter'):
+                loaded_store_quals = load_store_qualifications(qual_store, work=inputs_dir / 'qualification-inventory')
+                if loaded_store_quals['files']:
+                    qual_source = loaded_store_quals['files']
+            elif isinstance(qual_store, (str, Path)):
+                qdir = Path(qual_store) / 'provenance' / 'qualifications'
+                if qdir.is_dir():
+                    qfiles = sorted(qdir.glob('*.jsonl'))
+                    if qfiles:
+                        qual_source = qfiles
+                        loaded_store_quals = load_qualification_facts(qfiles)
+
+    resolved_targets = targets
+    if resolved_targets is None:
+        derived_urls: list[str] = []
+        seen_urls: set[str] = set()
+        if state is not None and Path(state).is_file():
+            import pyarrow.parquet as pq
+            schema = set(pq.read_schema(state).names)
+            if {'requested_url', 'capture_reason'} <= schema:
+                tbl = pq.read_table(state, columns=['requested_url', 'capture_reason'])
+                for row in tbl.to_pylist():
+                    u = row.get('requested_url')
+                    if row.get('capture_reason') == 'body_not_qualified' and isinstance(u, str) and u not in seen_urls:
+                        seen_urls.add(u)
+                        derived_urls.append(u)
+        if not derived_urls and (qual_source is not None or loaded_store_quals is not None):
+            from congress_api.retention.qualification_facts import load_qualification_facts
+            q_loaded = loaded_store_quals if loaded_store_quals is not None else load_qualification_facts(qual_source)
+            for u, entry in sorted(q_loaded['by_url'].items()):
+                if entry.get('qualified') is False and not entry.get('retryable', False) and u not in seen_urls:
+                    seen_urls.add(u)
+                    derived_urls.append(u)
+        resolved_targets = [{'target_url': u} for u in derived_urls]
+
     targets_parquet = inputs_dir / 'targets.parquet'
     inventory_rows = build_target_inventory(
-        targets, policy=policy, history=history, source_or_store=source_or_store,
+        resolved_targets, policy=policy, history=history, source_or_store=source_or_store,
         captures=captures, states=states, fetch_outcomes=fetch_outcomes,
-        qualifications=qualifications, output=targets_parquet,
+        qualifications=qual_source, output=targets_parquet,
         membership_origin=membership_origin, refresh_policy=refresh_policy,
     )
     diagnostics: list[dict[str, Any]] = []

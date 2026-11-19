@@ -106,6 +106,13 @@ class DurableCapture:
                     owner._finish_retry(root,kind,index)
                     previous=None
                 if previous is not None:
+                    if previous['request']!=request and prior_validators is not None:
+                        # A hop sealed before this URL had validators replays its own binding:
+                        # the same request without the conditional headers it never sent.
+                        plain={k:v for k,v in headers.items() if k.lower() not in {'if-none-match','if-modified-since'}}
+                        alternate=dict(url=url,limit=limit,headers_sha256=hashlib.sha256(json.dumps(plain,sort_keys=True).encode()).hexdigest())
+                        if previous['request']==alternate:
+                            request,headers,prior_validators=alternate,plain,None
                     if previous['request']!=request:raise ValueError('Durable request definition changed')
                     if previous['phase']=='started':raise UnknownRemoteOutcome('Remote outcome is unknown; reconcile or record an explicit retry decision')
                     facts=dict(previous['transfer']);_checked_file(owned,facts['sha256'],facts['size'])

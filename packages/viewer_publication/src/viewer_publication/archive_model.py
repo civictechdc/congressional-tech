@@ -1237,7 +1237,7 @@ def probe_selectors_query(*,root=ROOT):
 
 def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,catalog_version,
                          engine,scratch,recovery_files=(),review_files=(),verification_files=(),
-                         unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
+                         unreadable_files=(),variant_files=(),qualification_files=(),meeting_records=None,appearance_records=None,
                          spicy_regs=None,include_entities=False,recovery_requirements=None,
                          video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                          transcript_headings=None,
@@ -1302,7 +1302,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     inputs.append(cover_input)
     prelude.append(cover_step)
     from congress_api.retention.qualification_facts import model_qualification_input
-    qual_input,qual_step=model_qualification_input(body_qualifications,scratch/'qualifications')
+    qual_sources=[*qualification_files,*([body_qualifications] if body_qualifications is not None else [])]
+    qual_input,qual_step=model_qualification_input(qual_sources or None,scratch/'qualifications')
     inputs.append(qual_input)
     prelude.append(qual_step)
     if docmeta_v6_1 is not None:
@@ -1410,6 +1411,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         url_rules=json.loads((Path(root)/'model/registries/url-rules.json').read_text()),recovery_policy=recovery_policy)
     from congress_api.retention.provenance import file_pin
     selectors={item['name']:dict(item) if item['kind']=='native_table' else dict(kind='parquet',path=item['path'],**file_pin(item['path'])) for item in data_inputs}
+    if body_qualifications is not None:
+        selectors['body_qualifications']={key:body_qualifications[key] for key in ('sha256','size')}
     lake_tables=['captures','readings','filename_readings']+(['meeting_records','appearance_records'] if include_entities else [])+(['video_records','committee_records'] if explorer_inputs else [])
     if playlist_records is not None:lake_tables.append('playlist_records')
     if transcript_headings is not None:lake_tables.append('transcript_headings')
@@ -1420,7 +1423,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
             ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key']),
             auxiliary_row_group_rows=AUXILIARY_ROW_GROUP_ROWS),root=root,
         recovery_policy=recovery_policy,historical_recording_matcher=historical_recording_matcher,docmeta_v6_1=docmeta_v6_1,
-        pdf_cover_evidence=pdf_cover_evidence,body_qualifications=body_qualifications)
+        pdf_cover_evidence=pdf_cover_evidence)
     (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
@@ -1435,7 +1438,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
 
 def build_release(*,captures,readings,filename_readings,parser_versions,catalog_version,
                   engine,output,scratch,recovery_files=(),review_files=(),verification_files=(),
-                  unreadable_files=(),variant_files=(),meeting_records=None,appearance_records=None,
+                  unreadable_files=(),variant_files=(),qualification_files=(),meeting_records=None,appearance_records=None,
                   spicy_regs=None,include_entities=False,recovery_requirements=None,
                   video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                   transcript_headings=None,
@@ -1445,7 +1448,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
         recovery_files=recovery_files,review_files=review_files,verification_files=verification_files,
-        unreadable_files=unreadable_files,variant_files=variant_files,meeting_records=meeting_records,
+        unreadable_files=unreadable_files,variant_files=variant_files,qualification_files=qualification_files,meeting_records=meeting_records,
         appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
         recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
         recording_decision_files=recording_decision_files,playlist_records=playlist_records,transcript_headings=transcript_headings,

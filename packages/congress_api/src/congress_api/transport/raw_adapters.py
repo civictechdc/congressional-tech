@@ -92,7 +92,9 @@ class DirectAdapter:
                 if response.status_code == 304:
                     return Transfer(Path(destination), response.url, 304,
                                     resp_headers, True, None, sha256=None, size=0, wire_bytes=0)
-                if (200 <= response.status_code < 300
+                # Only a full HTTP 200 may be suppressed before its body: 202/206/ranged
+                # responses keep their own receipt semantics (ct-zohj review 7).
+                if (response.status_code == 200
                         and not _partial_response(response.status_code, resp_headers)
                         and validators_unchanged(prior_validators, resp_headers)):
                     return Transfer(Path(destination), response.url, response.status_code,

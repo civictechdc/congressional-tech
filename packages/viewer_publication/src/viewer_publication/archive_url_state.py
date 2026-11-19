@@ -156,8 +156,8 @@ def url_state_steps(*,root=ROOT,recovery_policy=None,include_qualifications=Fals
                     WHERE c.mode='fetch' AND c.complete AND c.requested_url IS NOT NULL
                       AND coalesce(c.attempt,0)=0 AND c.member_path IS NULL"""),
                 dict(name='url_state_latest_qualification',materialize=True,sql="""WITH latest_bodies AS (
-                    SELECT requested_url,sha256 FROM (
-                      SELECT c.requested_url,c.sha256,
+                    SELECT requested_url,url,media_type,sha256 FROM (
+                      SELECT c.requested_url,c.url,c.media_type,c.sha256,
                         row_number() OVER(PARTITION BY c.requested_url ORDER BY
                           c.retrieved_at DESC NULLS LAST,c.receipt_key DESC,c.receipt_line DESC,c.capture_index ASC) AS rn
                       FROM url_state_qualified_urls qu JOIN captures c ON qu.requested_url=c.requested_url
@@ -166,28 +166,27 @@ def url_state_steps(*,root=ROOT,recovery_policy=None,include_qualifications=Fals
                         AND coalesce(c.fetch_outcome,c.outcome) IN ('stored','unchanged')
                         AND (CASE WHEN c.fetch_outcome IS NOT NULL THEN c.fetch_http_status ELSE c.http_status END) BETWEEN 200 AND 299
                     ) WHERE rn=1)
+                    -- A PDF is expected from the requested or final spelling or the captured media type,
+                    -- the same rule capture applies (qualification_facts.expects_pdf_response).
                     SELECT lb.requested_url,bq.qualification_sha256,
                       CASE WHEN bq.body_sha IS NULL THEN cast(NULL AS BOOLEAN)
                            ELSE (bq.qualified IS TRUE AND NOT (
-                             regexp_like(lb.requested_url,'(?i)[.]pdf(?:$|[&#?])')
+                             (regexp_like(lb.requested_url,'(?i)[.]pdf(?:$|[&#?])')
+                              OR regexp_like(coalesce(lb.url,''),'(?i)[.]pdf(?:$|[&#?])')
+                              OR strpos(lower(coalesce(lb.media_type,'')),'application/pdf')>0)
                              AND coalesce(bq.media_type,'')<>'application/pdf')) END AS url_qualified
                     FROM body_qualifications bq RIGHT JOIN latest_bodies lb ON bq.body_sha=lb.sha256""")]
-            qual_disp=f"WHEN lq.url_qualified IS TRUE AND r.refresh_policy='historical_only' AND r.acceptance_policy='{policy}' THEN 'satisfied' "
-            qual_reason=(f"WHEN lq.url_qualified IS TRUE AND r.refresh_policy='historical_only' AND r.acceptance_policy='{policy}' THEN 'qualified_direct_body' "
-                         "WHEN lq.url_qualified IS FALSE THEN 'body_not_qualified' ")
-            from_clause="""FROM recovery_requirements r RIGHT JOIN (
-                url_state_latest_qualification lq RIGHT JOIN (
-                  excluded x RIGHT JOIN (
-                    unambiguous u RIGHT JOIN url_state_history h ON h.requested_url=u.original_url
-                  ) ON h.requested_url=x.requested_url
-                ) ON h.requested_url=lq.requested_url
-              ) ON h.requested_url=r.original_url"""
+            # Readability never settles identity: a readable direct body leaves the target as it
+            # was, and only a body that failed qualification changes its reason (review 7).
+            qual_reason="WHEN lq.url_qualified IS FALSE THEN 'body_not_qualified' "
+            from_clause="""FROM url_state_latest_qualification lq RIGHT JOIN (
+                url_state_history h LEFT JOIN unambiguous u ON h.requested_url=u.original_url
+                LEFT JOIN excluded x ON h.requested_url=x.requested_url
+              ) ON h.requested_url=lq.requested_url"""
         else:
-            qual_disp=''
             qual_reason=''
-            from_clause="""FROM excluded x RIGHT JOIN (
-                unambiguous u RIGHT JOIN url_state_history h ON h.requested_url=u.original_url
-              ) ON h.requested_url=x.requested_url"""
+            from_clause="""FROM url_state_history h LEFT JOIN unambiguous u ON h.requested_url=u.original_url
+          LEFT JOIN excluded x ON h.requested_url=x.requested_url"""
         eligibility=f"""WITH candidates AS (
           SELECT d.original_url,d.id,d.kind,d.target_requirement,d.acceptance_policy
           FROM recovery_decisions d JOIN recovery_requirements r ON d.original_url=r.original_url
@@ -220,7 +219,7 @@ def url_state_steps(*,root=ROOT,recovery_policy=None,include_qualifications=Fals
             ON e.family=l.family AND regexp_like(l.requested_url,e.pattern))
         SELECT h.*,
           CASE WHEN x.requested_url IS NOT NULL THEN 'excluded'
-               WHEN u.id IS NOT NULL THEN 'satisfied' {qual_disp}ELSE 'eligible' END AS capture_disposition,
+               WHEN u.id IS NOT NULL THEN 'satisfied' ELSE 'eligible' END AS capture_disposition,
           CASE WHEN x.requested_url IS NOT NULL THEN 'scope_exclusion'
                WHEN u.id IS NOT NULL THEN 'qualified_recovery' {qual_reason}ELSE 'no_satisfying_recovery' END AS capture_reason,
           CASE WHEN x.requested_url IS NOT NULL THEN cast(NULL AS VARCHAR)

@@ -104,5 +104,6 @@ jobs:
             ${{ runner.temp }}/archive-capture/selection.json
             ${{ runner.temp }}/archive-capture/summary.json
             ${{ runner.temp }}/archive-capture/capture/summary.json
+            ${{ runner.temp }}/archive-capture/capture/qualifications.jsonl
             ${{ runner.temp }}/archive-meetings/summary.json
           if-no-files-found: ignore

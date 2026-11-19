@@ -180,9 +180,10 @@ def test_legacy_requirements_conservatively_keep_live_refresh(tmp_path):
 
 
 def test_body_qualifications_route_unqualified_http_200_and_survive_304_or_validator_unchanged(tmp_path):
-    """ct-zohj: HTTP-200 failed-qualification PDFs remain eligible (body_not_qualified) across 304 and
-    validator_unchanged receipts, while healthy historical_only PDFs satisfy (qualified_direct_body)
-    and refresh_live PDFs keep their live schedule."""
+    """ct-zohj: HTTP-200 failed-qualification bodies stay eligible (body_not_qualified) across 304 and
+    validator_unchanged receipts. A readable body never settles identity, so healthy targets keep their
+    ordinary reason under both refresh policies (review 7). A PDF is expected from either spelling or
+    the captured media type, as at capture time; with no qualification facts the output is unchanged."""
     import io
     from pypdf import PdfWriter
     from congress_api.retention.qualification_facts import model_qualification_input
@@ -215,7 +216,10 @@ def test_body_qualifications_route_unqualified_http_200_and_survive_304_or_valid
     u_healthy_hist = 'https://example.test/healthy-hist.pdf'
     u_healthy_live = 'https://example.test/healthy-live.pdf'
     u_pdf_got_html = 'https://example.test/html-at-pdf.pdf'
-    all_urls = [u_corrupt_304, u_corrupt_200_unchanged, u_fixed, u_healthy_hist, u_healthy_live, u_pdf_got_html]
+    u_typed_pdf_got_html = 'https://example.test/download?id=7'
+    u_html_statement = 'https://example.test/statement?id=8'
+    all_urls = [u_corrupt_304, u_corrupt_200_unchanged, u_fixed, u_healthy_hist, u_healthy_live, u_pdf_got_html,
+                u_typed_pdf_got_html, u_html_statement]
 
     requirements = [
         dict(original_url=u, target_requirement='historical_exact', acceptance_policy=policy,
@@ -258,7 +262,20 @@ def test_body_qualifications_route_unqualified_http_200_and_survive_304_or_valid
         dict(receipt_key='r9', receipt_line=1, capture_index=0, mode='fetch', complete=True, attempt=0,
              member_path=None, requested_url=u_pdf_got_html, original_url=None, body_hex=html_rec['body_sha256'],
              retrieved_at='2026-10-01T00:00:00Z', http_status=200, outcome='stored', fetch_http_status=200, fetch_outcome='stored'),
+        # 7. Extensionless URL answered with Content-Type application/pdf but an HTML body
+        dict(receipt_key='r10', receipt_line=1, capture_index=0, mode='fetch', complete=True, attempt=0,
+             member_path=None, requested_url=u_typed_pdf_got_html, original_url=None, body_hex=html_rec['body_sha256'],
+             retrieved_at='2026-10-01T00:00:00Z', http_status=200, outcome='stored', fetch_http_status=200, fetch_outcome='stored',
+             media_type='application/pdf'),
+        # 8. Extensionless HTML statement page answered as text/html
+        dict(receipt_key='r11', receipt_line=1, capture_index=0, mode='fetch', complete=True, attempt=0,
+             member_path=None, requested_url=u_html_statement, original_url=None, body_hex=html_rec['body_sha256'],
+             retrieved_at='2026-10-01T00:00:00Z', http_status=200, outcome='stored', fetch_http_status=200, fetch_outcome='stored',
+             media_type='text/html'),
     ]
+    for row in capture_rows:
+        row.setdefault('url', row['requested_url'])
+        row.setdefault('media_type', 'text/html' if row['body_hex'] == html_rec['body_sha256'] else 'application/pdf')
 
     def inp(name, rows, **fields):
         return json_input(tmp_path, name, rows, **fields)
@@ -269,43 +286,70 @@ def test_body_qualifications_route_unqualified_http_200_and_survive_304_or_valid
         inp('recovery_decisions', [], **{**{k: 'Utf8' for k in ('id', 'original_url', 'body_sha256', 'kind', 'target_requirement', 'acceptance_policy', 'acceptance_status', 'evidence_sha256', 'qualification_sha256', 'supersedes')}, 'recovery_record_version': 'Int32'}),
         inp('raw_captures', capture_rows, receipt_key='Utf8', receipt_line='Int32', capture_index='Int32', mode='Utf8',
             complete='Boolean', attempt='Int32', member_path='Utf8', requested_url='Utf8', original_url='Utf8',
-            body_hex='Utf8', retrieved_at='Utf8', http_status='Int32', outcome='Utf8', fetch_http_status='Int32', fetch_outcome='Utf8'),
+            body_hex='Utf8', retrieved_at='Utf8', http_status='Int32', outcome='Utf8', fetch_http_status='Int32', fetch_outcome='Utf8',
+            url='Utf8', media_type='Utf8'),
         inp('url_state_history', [dict(requested_url=u, attempts=2 if 'corrupt' in u or u == u_fixed else 1, last_status=304 if u == u_corrupt_304 else 200) for u in all_urls],
             requested_url='Utf8', attempts='Int32', last_status='Int32'),
         inp('url_state_latest', [dict(requested_url=u, family='documents') for u in all_urls], requested_url='Utf8', family='Utf8'),
         inp('url_state_scope_exclusions', [], family='Utf8', pattern='Utf8'),
     ]
-    selected_steps = [
-        s for s in url_state_steps(recovery_policy=dict(acceptance_policy=policy), include_qualifications=True)
-        if s['name'] in {'url_state_qualified_urls', 'url_state_latest_qualification', 'url_state'}
-    ]
-    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as eng:
-        res = run_job(
-            tmp_path / 'job',
-            eng,
-            inputs=inputs,
-            steps=[
-                qual_step,
-                dict(
-                    name='captures',
-                    sql="""SELECT * EXCLUDE(body_hex,retrieved_at),
-                        CASE WHEN body_hex IS NOT NULL THEN arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)')
-                             ELSE arrow_cast(NULL,'FixedSizeBinary(32)') END AS sha256,
-                        arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') AS retrieved_at
-                        FROM raw_captures""",
-                ),
-                *selected_steps,
-            ],
-            outputs=[],
-            queries=[dict(name='rows', sql='SELECT requested_url,capture_disposition,capture_reason,capture_decision_id FROM url_state ORDER BY requested_url')],
-        )
-    got = {r['requested_url']: (r['capture_disposition'], r['capture_reason'], r['capture_decision_id']) for r in res['rows']}
+    captures_step = dict(
+        name='captures',
+        sql="""SELECT * EXCLUDE(body_hex,retrieved_at),
+            CASE WHEN body_hex IS NOT NULL THEN arrow_cast(decode(body_hex,'hex'),'FixedSizeBinary(32)')
+                 ELSE arrow_cast(NULL,'FixedSizeBinary(32)') END AS sha256,
+            arrow_cast(cast(retrieved_at AS TIMESTAMP WITH TIME ZONE),'Timestamp(Microsecond, Some("UTC"))') AS retrieved_at
+            FROM raw_captures""",
+    )
+    rows_query = [dict(name='rows', sql='SELECT * FROM url_state ORDER BY requested_url')]
+
+    def state_rows(name, quals, include):
+        q_inp, q_step = model_qualification_input(quals, tmp_path / f'quals-{name}')
+        selected = [
+            s for s in url_state_steps(recovery_policy=dict(acceptance_policy=policy), include_qualifications=include)
+            if s['name'] in {'url_state_qualified_urls', 'url_state_latest_qualification', 'url_state'}
+        ]
+        with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as eng:
+            return run_job(tmp_path / name, eng, inputs=[q_inp, *inputs[1:]],
+                           steps=[q_step, captures_step, *selected], outputs=[], queries=rows_query)['rows']
+
+    got = {r['requested_url']: (r['capture_disposition'], r['capture_reason'], r['capture_decision_id'])
+           for r in state_rows('job', [corrupt_rec, good_rec, html_rec], True)}
     assert got[u_corrupt_304] == ('eligible', 'body_not_qualified', None)
     assert got[u_corrupt_200_unchanged] == ('eligible', 'body_not_qualified', None)
-    assert got[u_fixed] == ('satisfied', 'qualified_direct_body', None)
-    assert got[u_healthy_hist] == ('satisfied', 'qualified_direct_body', None)
+    assert got[u_fixed] == ('eligible', 'no_satisfying_recovery', None)
+    assert got[u_healthy_hist] == ('eligible', 'no_satisfying_recovery', None)
     assert got[u_healthy_live] == ('eligible', 'no_satisfying_recovery', None)
     assert got[u_pdf_got_html] == ('eligible', 'body_not_qualified', None)
+    assert got[u_typed_pdf_got_html] == ('eligible', 'body_not_qualified', None)
+    assert got[u_html_statement] == ('eligible', 'no_satisfying_recovery', None)
+    # Empty-input parity: with no qualification facts the model output equals the old step's.
+    assert state_rows('empty', [], True) == state_rows('without', [], False)
+
+
+def test_body_less_unchanged_recheck_is_not_a_good_fetch(tmp_path):
+    """Review 7: the shared good-fetch predicate (url_state last_good_at and the release gate's
+    url_state_proof both read it) counts a stored body, not a body-less 200/304 'unchanged' recheck.
+    Legacy 'unchanged' rows that carry a body keep counting."""
+    from congress_api.lake.model_sql import model_steps
+
+    rows = [
+        dict(key='stored', status=200, outcome='stored', body='a' * 64),
+        dict(key='legacy-unchanged-with-body', status=200, outcome='unchanged', body='b' * 64),
+        dict(key='bodyless-200-unchanged', status=200, outcome='unchanged', body=None),
+        dict(key='bodyless-304-unchanged', status=304, outcome='unchanged', body=None),
+    ]
+    inputs = [json_input(tmp_path, 'raw', rows, key='Utf8', status='Int32', outcome='Utf8', body='Utf8')]
+    evidence = dict(name='capture_evidence', sql="""SELECT key AS receipt_key,1 AS receipt_line,0 AS capture_index,
+        'fetch' AS mode,true AS complete,outcome,status AS http_status,cast(NULL AS VARCHAR) AS member_path,
+        cast(NULL AS VARCHAR) AS expansion,cast(NULL AS VARCHAR) AS context_url,
+        CASE WHEN body IS NULL THEN arrow_cast(NULL,'FixedSizeBinary(32)')
+             ELSE arrow_cast(decode(body,'hex'),'FixedSizeBinary(32)') END AS sha256 FROM raw""")
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as eng:
+        result = run_job(tmp_path / 'job', eng, inputs=inputs,
+                         steps=[evidence, *model_steps(['good-fetches'], provided=['capture_evidence'])], outputs=[],
+                         queries=[dict(name='good', sql='SELECT receipt_key FROM good_fetches ORDER BY receipt_key')])
+    assert [r['receipt_key'] for r in result['good']] == ['legacy-unchanged-with-body', 'stored']
 
 
 def test_real_model_spec_supports_pinned_body_qualifications(tmp_path):
@@ -340,8 +384,155 @@ def test_real_model_spec_supports_pinned_body_qualifications(tmp_path):
     validated = validate_spec(spec, base=tmp_path)
     execute(validated)
     profile = json.loads((tmp_path / 'model/profile.json').read_text())
-    assert profile['profile']['body_qualifications'] == {
+    # Physical qualification input selectors stay in snapshots, outside semantic profile_sha256.
+    assert 'body_qualifications' not in profile['profile']
+    assert profile['snapshots']['body_qualifications'] == {
         'sha256': file_pin(quals_path)['sha256'],
         'size': file_pin(quals_path)['size'],
     }
+
+
+def test_release_gate_url_state_proof_admits_verified_qualification_reason_and_refuses_unproven(tmp_path):
+    """url_state_proof admits qualification-driven capture_reason changes only with verified facts."""
+    import gzip
+    import hashlib
+    import io
+    import json
+    from datetime import datetime, timedelta, timezone
+    import pyarrow as pa
+    from pypdf import PdfWriter
+    from congress_api.retention.qualification_facts import build_qualification_fact
+    from congress_shared.custody import verify_local_file
+    from corpus_recovery.qualification import qualify
+    from viewer_publication.release_gate import automatic_causes, require_release_gates
+    from test_release_gate import DAY, FETCHED, LIVE, LIVE_RECEIPTS, NEW_RECEIPT, T0, URL_STATE, release_dir, state, write_captures
+
+    bad_pdf = b'%PDF-1.7\n1 0 obj\n<< /Type /Catalog >>\ntruncated'
+    pdf_writer = PdfWriter()
+    pdf_writer.add_blank_page(width=72, height=72)
+    pdf_buf = io.BytesIO()
+    pdf_writer.write(pdf_buf)
+    good_pdf = pdf_buf.getvalue()
+    bad_file = tmp_path / 'bad.pdf'
+    good_file = tmp_path / 'good.pdf'
+    bad_file.write_bytes(bad_pdf)
+    good_file.write_bytes(good_pdf)
+    q_cache = tmp_path / 'qcache'
+    bad_rec = qualify(verify_local_file(bad_file), q_cache)
+    good_rec = qualify(verify_local_file(good_file), q_cache)
+    bad_sha = bytes.fromhex(hashlib.sha256(bad_pdf).hexdigest())
+    good_sha = bytes.fromhex(hashlib.sha256(good_pdf).hexdigest())
+
+    u_newly_bad = 'https://docs.house.gov/meetings/FA/FA00/20261001/119001/HHRG-newly-bad.pdf'
+    u_fixed = 'https://docs.house.gov/meetings/FA/FA00/20261001/119001/HHRG-fixed.pdf'
+    u_unchanged = 'https://docs.house.gov/meetings/FA/FA00/20261001/119001/HHRG-unchanged.pdf'
+    meeting = datetime(2026, 10, 20).date()
+
+    def build_table(rows, reasons):
+        tbl = pa.Table.from_pylist(sorted(rows.values(), key=lambda r: r['requested_url']), schema=URL_STATE)
+        urls = tbl['requested_url'].to_pylist()
+        tbl = tbl.append_column('capture_disposition', pa.array(['eligible'] * len(urls), pa.string()))
+        tbl = tbl.append_column('capture_reason', pa.array([reasons[u] for u in urls], pa.string()))
+        tbl = tbl.append_column('capture_decision_id', pa.array([None] * len(urls), pa.string()))
+        return tbl
+
+    base_rows = {
+        u_newly_bad: state(u_newly_bad, 1, T0, 500, 'failed', None, 7 * DAY, meeting),
+        u_fixed: state(u_fixed, 1, T0, 200, 'stored', T0, 7 * DAY, meeting),
+        u_unchanged: state(u_unchanged, 1, T0, 200, 'stored', T0, 7 * DAY, meeting),
+    }
+    base_reasons = {
+        u_newly_bad: 'no_satisfying_recovery',
+        u_fixed: 'body_not_qualified',
+        u_unchanged: 'body_not_qualified',
+    }
+    cand_rows = {
+        u_newly_bad: state(u_newly_bad, 2, FETCHED, 200, 'stored', FETCHED, 7 * DAY, meeting),
+        u_fixed: state(u_fixed, 2, FETCHED, 200, 'stored', FETCHED, 7 * DAY, meeting),
+        # Body-less 200/unchanged recheck advances schedule/attempt, NOT last_good_at (remains T0)!
+        u_unchanged: state(u_unchanged, 2, FETCHED, 200, 'unchanged', T0, 7 * DAY, meeting),
+    }
+    cand_reasons = {
+        u_newly_bad: 'body_not_qualified',
+        u_fixed: 'no_satisfying_recovery',
+        u_unchanged: 'body_not_qualified',
+    }
+    release_dir(tmp_path / 'base', ['A'], url_state=build_table(base_rows, base_reasons))
+    release_dir(tmp_path / 'cand', ['A'], url_state=build_table(cand_rows, cand_reasons))
+
+    cap_rows = [
+        dict(mode='fetch', complete=True, attempt=0, http_status=500, receipt_key=LIVE, receipt_line=1,
+             requested_url=u_newly_bad, sha256=None, retrieved_at=T0, outcome='failed'),
+        dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=LIVE, receipt_line=2,
+             requested_url=u_fixed, sha256=bad_sha, retrieved_at=T0, outcome='stored'),
+        dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=LIVE, receipt_line=3,
+             requested_url=u_unchanged, sha256=bad_sha, retrieved_at=T0, outcome='stored'),
+        dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=NEW_RECEIPT, receipt_line=1,
+             requested_url=u_newly_bad, sha256=bad_sha, retrieved_at=FETCHED, outcome='stored'),
+        dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=NEW_RECEIPT, receipt_line=2,
+             requested_url=u_fixed, sha256=good_sha, retrieved_at=FETCHED, outcome='stored'),
+        dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=NEW_RECEIPT, receipt_line=3,
+             requested_url=u_unchanged, sha256=None, retrieved_at=FETCHED, outcome='unchanged'),
+    ]
+    write_captures(cap_rows, tmp_path / 'captures.parquet')
+    text = {}
+    for row in cap_rows:
+        body = [dict(sha256=row['sha256'].hex())] if row.get('sha256') else []
+        text.setdefault(row['receipt_key'], {})[row['receipt_line']] = json.dumps(dict(
+            record=dict(mode='fetch', requested_url=row['requested_url'], outcome=row['outcome']), captures=body))
+    blobs = {k: gzip.compress(('\n'.join(v[i] for i in sorted(v)) + '\n').encode(), mtime=0) for k, v in text.items()}
+
+    q_file = tmp_path / 'provenance-quals.jsonl'
+    q_file.write_text(
+        json.dumps(build_qualification_fact(bad_rec, requested_url=u_newly_bad, url=u_newly_bad,
+                                            receipt_key=NEW_RECEIPT, retrieved_at=FETCHED.isoformat(),
+                                            http_status=200, headers={'Content-Type': 'application/pdf'})) + '\n'
+        + json.dumps(build_qualification_fact(good_rec, requested_url=u_fixed, url=u_fixed,
+                                              receipt_key=NEW_RECEIPT, retrieved_at=FETCHED.isoformat(),
+                                              http_status=200, headers={'Content-Type': 'application/pdf'})) + '\n'
+    )
+
+    import os
+    from docspec_client.client import NativeDatasets
+
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as eng:
+        # 1. With verified qualification facts, capture_reason transitions + body-less 200 unchanged PASS.
+        passed = require_release_gates(
+            tmp_path / 'base', tmp_path / 'cand', None, report_path=tmp_path / 'pass.json',
+            automatic=lambda rep: automatic_causes(
+                rep, tmp_path / 'base', tmp_path / 'cand', engine=eng,
+                captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
+                live_receipt_keys=LIVE_RECEIPTS, read_receipt=blobs.__getitem__,
+                work=tmp_path / 'auto-pass', candidate_receipt_keys=LIVE_RECEIPTS | {NEW_RECEIPT},
+                qualification_files=[dict(key='provenance/qualifications/test.jsonl', path=str(q_file))],
+            ),
+        )
+        assert passed['reasons'] == [] and passed['automatic_reasons'] == []
+
+        # 2. Without qualification facts, changed capture_reason MUST refuse.
+        with pytest.raises(ValueError, match='capture_reason is not implied by verified body qualifications'):
+            require_release_gates(
+                tmp_path / 'base', tmp_path / 'cand', None, report_path=tmp_path / 'fail-no-q.json',
+                automatic=lambda rep: automatic_causes(
+                    rep, tmp_path / 'base', tmp_path / 'cand', engine=eng,
+                    captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
+                    live_receipt_keys=LIVE_RECEIPTS, read_receipt=blobs.__getitem__,
+                    work=tmp_path / 'auto-fail-no-q', candidate_receipt_keys=LIVE_RECEIPTS | {NEW_RECEIPT},
+                ),
+            )
+
+        # 3. Planted fault: moving capture_reason to 'qualified_recovery' refuses even with qualification files.
+        bad_cand_reasons = dict(cand_reasons, **{u_fixed: 'qualified_recovery'})
+        release_dir(tmp_path / 'cand-forged', ['A'], url_state=build_table(cand_rows, bad_cand_reasons))
+        with pytest.raises(ValueError, match='capture_reason is not implied by verified body qualifications'):
+            require_release_gates(
+                tmp_path / 'base', tmp_path / 'cand-forged', None, report_path=tmp_path / 'fail-forged.json',
+                automatic=lambda rep: automatic_causes(
+                    rep, tmp_path / 'base', tmp_path / 'cand-forged', engine=eng,
+                    captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
+                    live_receipt_keys=LIVE_RECEIPTS, read_receipt=blobs.__getitem__,
+                    work=tmp_path / 'auto-fail-forged', candidate_receipt_keys=LIVE_RECEIPTS | {NEW_RECEIPT},
+                    qualification_files=[dict(key='provenance/qualifications/test.jsonl', path=str(q_file))],
+                ),
+            )
 

@@ -94,7 +94,7 @@ class Fetcher:
 
     def _attempt(self, requested, adapter, transport, limit):
         import inspect
-        from congress_api.retention.qualification_facts import conditional_request_headers, validators_unchanged
+        from congress_api.retention.qualification_facts import conditional_request_headers
         target, redirects, timestamp = requested, [], self.clock()
         self.directory.mkdir(parents=True,exist_ok=True)
         params = inspect.signature(adapter.hop).parameters
@@ -134,9 +134,9 @@ class Fetcher:
                 return FetchAttempt(requested,transfer.url,timestamp,transport,304,
                     transfer.provider_status,headers,tuple(redirects),transfer.complete and valid_final,None,
                     transfer.error if valid_final else 'excluded_redirect')
-            if transfer.error == 'validator_unchanged' or (
-                    transfer.http_status is not None and 200 <= transfer.http_status < 300
-                    and validators_unchanged(prior, headers)):
+            if transfer.error == 'validator_unchanged' and (
+                    transfer.http_status == 200 and transfer.complete and 'content-range' not in headers):
+                # The direct adapter alone decides before streaming; only a full 200 qualifies.
                 destination.unlink(missing_ok=True)
                 return FetchAttempt(requested,transfer.url,timestamp,transport,transfer.http_status,
                     transfer.provider_status,headers,tuple(redirects),valid_final,None,

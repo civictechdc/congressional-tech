@@ -141,7 +141,7 @@ def main(argv=None):
                 store=store,identity=identity,direct=DirectAdapter(session),provider=provider,
                 cutoff_urls=cutoffs,max_discovery_jobs=args.max_discovery_jobs,headers=headers,workers=workers,campaign=campaign,
                 admission=admission,provider_cost=args.zyte_cost_bound_micros,firecrawl=firecrawl,firecrawl_cost=args.firecrawl_cost_bound_micros,
-                qualification_cache=args.qualification_cache,qualifications=args.qualifications)
+                qualification_cache=args.qualification_cache,qualifications=args.qualifications,qualification_store=store)
     (args.work/'summary.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
     print(json.dumps(result,ensure_ascii=False,indent=2))
 

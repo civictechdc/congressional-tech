@@ -13,6 +13,7 @@ from pathlib import Path
 import re
 import socket
 import threading
+import time
 from urllib.parse import parse_qsl, urlsplit
 
 import pyarrow as pa
@@ -774,7 +775,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                 archive_limits=None,seed_inventories=(),cutoff_urls=(),
                 discover=None,max_discovery_jobs=8,headers=None,worker_factory=None,workers=1,campaign=None,
                 admission=None,provider_cost=None,firecrawl=None,firecrawl_cost=None,max_entity_bytes=16<<20,
-                qualify=None,qualification_cache=None,qualifications=None):
+                qualify=None,qualification_cache=None,qualifications=None,qualification_store=None):
     """Bounded raw writer. No state/index or table writes occur here."""
     _require_capture_authority(release)
     for name,value in [('request budget',request_budget),('byte budget',byte_budget),('spool budget',spool_budget),('discovery jobs',max_discovery_jobs),('workers',workers)]:
@@ -813,12 +814,14 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
     stats=dict(release_id=release['release_id'],as_of=as_of,run_id=new_run_id(),requests=0,
         fetched_bytes=0,captures=0,receipts=[],refusals=[],discovery_errors=[],discovery_refused=0,cutoffs=[],cutoff_attempts=[],
         validator_unchanged=0,qualifications=dict(checked=0,qualified=0,failed=0,failed_urls=[]),
+        qualification_metrics=dict(elapsed_seconds=0.0,cache_hits=0,retried=0,provenance_key=None),
         budgets=dict(requests=request_budget,bytes=byte_budget,spool=spool_budget,max_entity_bytes=max_entity_bytes),spool_reserved_bound=0,
         url_key_definition_sha256=url_key_digest,writer=identity,reviewed_cutoff_urls=list(cutoff_urls),stop_reason=None)
     from congress_shared.custody import verify_local_file
     from congress_api.retention.qualification_facts import (
-        build_qualification_fact, expects_pdf_response, extract_validators,
-        load_qualification_facts, scan_local_store_validators, verify_qualification_fact,
+        StaleQualification, build_qualification_fact, expects_pdf_response, import_qualifications,
+        load_qualification_facts, load_store_qualifications, merge_fact, refresh_url_entry,
+        retry_retained_qualifications, scan_local_store_validators, verify_qualification_fact,
     )
     qual_cache_dir = Path(qualification_cache).resolve() if qualification_cache is not None else (work / 'qualification-cache')
     qualifications_ledger = work / 'qualifications.jsonl'
@@ -831,17 +834,62 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
     validator_lock = threading.Lock()
     by_sha256 = {}
     by_url = {}
-    for source in (qualifications, qual_cache_dir if qual_cache_dir.exists() else None,
-                   qualifications_ledger if qualifications_ledger.exists() else None):
-        if source is None:
-            continue
-        loaded = load_qualification_facts(source)
-        by_sha256.update(loaded['by_sha256'])
-        for u, info in loaded['by_url'].items():
+    retryable_candidates = {}
+    def _merge_url_entries(entries):
+        for u, info in entries.items():
             prev = by_url.get(u)
             if prev is None or (str(info.get('retrieved_at') or ''), str(info.get('receipt_key') or '')) >= (
                     str(prev.get('retrieved_at') or ''), str(prev.get('receipt_key') or '')):
                 by_url[u] = info
+    def _merge_loaded(loaded):
+        for sha, info in loaded['by_sha256'].items():
+            prev = by_sha256.get(sha)
+            if prev is None or (prev.get('retryable') and not info.get('retryable')):
+                by_sha256[sha] = info
+        _merge_url_entries(loaded['by_url'])
+        for rf in loaded.get('retryable_facts', ()):
+            retryable_candidates[(rf['body_sha256'], rf.get('url') or rf.get('requested_url'), rf.get('receipt_key'))] = rf
+    if qualification_store is not None:
+        _merge_loaded(load_store_qualifications(qualification_store, work=work / 'qualification-inventory'))
+    # The ledger is a convenience index; each operation's committed.json is the atomic record
+    # and is folded in below, so a torn ledger tail loses nothing.
+    for source in (qualifications, qual_cache_dir if qual_cache_dir.exists() else None,
+                   qualifications_ledger if qualifications_ledger.exists() else None):
+        if source is None:
+            continue
+        _merge_loaded(load_qualification_facts(source))
+    def _run_qualify(verified_body):
+        before = set(qual_cache_dir.glob('*.json')) if qual_cache_dir.is_dir() else set()
+        t0 = time.monotonic()
+        rec = qualify_fn(verified_body, qual_cache_dir)
+        elapsed = time.monotonic() - t0
+        after = set(qual_cache_dir.glob('*.json')) if qual_cache_dir.is_dir() else set()
+        hit = bool(before) and after == before
+        with validator_lock:
+            stats['qualification_metrics']['elapsed_seconds'] = round(
+                stats['qualification_metrics']['elapsed_seconds'] + elapsed, 6
+            )
+            if hit:
+                stats['qualification_metrics']['cache_hits'] += 1
+        return rec
+    pending_retries = [
+        rf for rf in retryable_candidates.values()
+        if by_sha256.get(rf['body_sha256'], {}).get('retryable')
+    ]
+    if qualify_fn is not False and pending_retries:
+        retried_facts = retry_retained_qualifications(
+            store, pending_retries,
+            qualify_fn=lambda vb, _cd: _run_qualify(vb),
+            cache_dir=qual_cache_dir,
+            work=work / 'qualification-retries',
+        )
+        for fact in retried_facts:
+            merge_fact(by_sha256, by_url, fact)
+            stats['qualification_metrics']['retried'] += 1
+            with qualifications_ledger.open('a', encoding='utf-8') as q_out:
+                q_out.write(json.dumps(fact, ensure_ascii=False, sort_keys=True, separators=(',', ':')) + '\n')
+                q_out.flush()
+                os.fsync(q_out.fileno())
     state_schema_names = set(pq.read_schema(release['state']).names)
     unqualified_state_urls = set()
     if 'capture_reason' in state_schema_names:
@@ -851,14 +899,9 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
         }
     local_store_root = getattr(store.adapter, 'root', None)
     if local_store_root is not None and (by_sha256 or unqualified_state_urls):
-        scanned_validators = scan_local_store_validators(
+        _merge_url_entries(scan_local_store_validators(
             local_store_root, by_sha256=by_sha256, unqualified_urls=unqualified_state_urls
-        )
-        for u, info in scanned_validators.items():
-            prev = by_url.get(u)
-            if prev is None or (str(info.get('retrieved_at') or ''), str(info.get('receipt_key') or '')) >= (
-                    str(prev.get('retrieved_at') or ''), str(prev.get('receipt_key') or '')):
-                by_url[u] = info
+        ))
     def lookup_validators(target_url):
         with validator_lock:
             entry = by_url.get(target_url)
@@ -921,7 +964,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
         discovered_receipts.update(link['source'] for link in links)
     stats['fetched_bytes']=sum((row.get('transfer',{}).get('wire_bytes') or row.get('transfer',{}).get('size',0))
         for p in (work/'attempts').glob('*/*.json') for row in [json.loads(p.read_text())])
-    restored_links=[];disabled_providers=set()
+    restored_links=[];disabled_providers=set();restored_qualifications=[]
     for committed in sorted((work/'attempts').glob('*/committed.json')):
         journal.cleanup(committed.parent.name)
         completed=json.loads(committed.read_text())
@@ -932,14 +975,20 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
         if line.get('error_type')=='validator_unchanged':
             stats['validator_unchanged']+=1
         if isinstance(completed.get('qualification'), dict):
-            q_restored = verify_qualification_fact(completed['qualification'])
-            stats['qualifications']['checked'] += 1
-            if q_restored.get('url_qualified', q_restored['qualified']):
-                stats['qualifications']['qualified'] += 1
-            else:
-                stats['qualifications']['failed'] += 1
-                if url not in stats['qualifications']['failed_urls']:
-                    stats['qualifications']['failed_urls'].append(url)
+            try:
+                q_restored = verify_qualification_fact(completed['qualification'])
+            except StaleQualification:
+                q_restored = None
+            if q_restored is not None:
+                merge_fact(by_sha256, by_url, q_restored)
+                restored_qualifications.append(q_restored)
+                stats['qualifications']['checked'] += 1
+                if q_restored['url_qualified']:
+                    stats['qualifications']['qualified'] += 1
+                else:
+                    stats['qualifications']['failed'] += 1
+                    if url not in stats['qualifications']['failed_urls']:
+                        stats['qualifications']['failed_urls'].append(url)
         _record_attempt(attempted,url,attempted=True,complete=completed['result']['final']['complete'],
             outcome=line['outcome'],http_status=line['http_status'],error_type=completed['result']['final']['error'],
             receipt_key=completed['key'])
@@ -995,16 +1044,10 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                 error.resource='scratch'
                 raise error
         def factory(directory):
-            prior_direct = directory / 'direct-0.json'
-            use_validators = lookup_validators
-            if prior_direct.is_file():
-                saved_req = json.loads(prior_direct.read_text()).get('request', {})
-                if 'validators_sha256' not in saved_req:
-                    use_validators = None
             return Fetcher(scope=policy,direct=_Counted(direct,local_stats,admission,'direct',0,max_entity_bytes,wire,spool_guard,provider_state),
                 provider=_Counted(provider,local_stats,admission,'zyte',provider_cost,max_entity_bytes,wire,spool_guard,provider_state) if provider is not None else None,
                 firecrawl=_Counted(firecrawl,local_stats,admission,'firecrawl',firecrawl_cost,max_entity_bytes,wire,spool_guard,provider_state) if firecrawl is not None else None,
-                pace=pace,directory=directory,spool_limit=limit,headers=headers,validators=use_validators)
+                pace=pace,directory=directory,spool_limit=limit,headers=headers,validators=lookup_validators)
         # The stable spool survives body PUT, qualification, and receipt failures.
         result=journal.fetch(operation_id,url,factory)
         # Completed acquisition bypasses request/byte admission, while receipt
@@ -1025,33 +1068,23 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
         parser=line['captures'][0]['sniffed_format'] if (body is not None and line['captures']) else None
         qualification_fact=None
         if qualify_fn is not False:
-            if result.final.http_status==304 or result.final.error=='validator_unchanged':
+            if line['outcome']=='unchanged' and body is None:
+                # A body-less recheck keeps the earlier verdict and validators of the resource
+                # that answered; changed metadata on a 304 is not a replacement (review 7).
+                target=result.final.url if isinstance(result.final.url,str) and result.final.url else url
                 with validator_lock:
-                    prior_v=by_url.get(url) or by_url.get(result.final.url)
+                    prior_v=by_url.get(target)
                     if prior_v is not None:
-                        fresh_v=extract_validators(line.get('response_headers'))
-                        updated_v=dict(prior_v,
-                            etag=fresh_v['etag'] or prior_v.get('etag'),
-                            last_modified=fresh_v['last_modified'] or prior_v.get('last_modified'),
-                            content_length=fresh_v['content_length'] or prior_v.get('content_length'),
-                            retrieved_at=line['retrieved_at'],
-                            receipt_key=key,
-                            http_status=line['http_status'])
-                        by_url[url]=updated_v
-                        if isinstance(result.final.url,str) and result.final.url:
-                            by_url[result.final.url]=updated_v
+                        by_url[target]=refresh_url_entry(prior_v,retrieved_at=line['retrieved_at'],
+                            receipt_key=key,http_status=line['http_status'])
             elif (body is not None and body.path is not None
                     and line['outcome'] in ('stored','unchanged')
                     and (parser=='pdf'
                          or expects_pdf_response(url,line.get('response_headers'))
                          or expects_pdf_response(result.final.url,line.get('response_headers')))):
-                with validator_lock:
-                    cached_q=by_sha256.get(body.sha256)
-                if cached_q is not None and not cached_q.get('retryable',False) and isinstance(cached_q.get('qualification_record'),dict):
-                    q_record=cached_q['qualification_record']
-                else:
-                    verified_body=verify_local_file(body.path,expected_sha256=body.sha256,expected_size=body.size)
-                    q_record=qualify_fn(verified_body,qual_cache_dir)
+                # qualify() keys its own cache on body, implementation and configuration.
+                verified_body=verify_local_file(body.path,expected_sha256=body.sha256,expected_size=body.size)
+                q_record=_run_qualify(verified_body)
                 qualification_fact=build_qualification_fact(
                     q_record,
                     requested_url=url,
@@ -1062,24 +1095,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                     headers=line.get('response_headers'),
                 )
                 with validator_lock:
-                    by_sha256[qualification_fact['body_sha256']]=qualification_fact
-                    for target_u in {url,result.final.url}:
-                        if isinstance(target_u,str) and target_u:
-                            by_url[target_u]=dict(
-                                url=target_u,
-                                body_sha256=qualification_fact['body_sha256'],
-                                body_bytes=qualification_fact['body_bytes'],
-                                qualified=qualification_fact['url_qualified'],
-                                reason=qualification_fact['reason'],
-                                retryable=qualification_fact['retryable'],
-                                qualification_sha256=qualification_fact['qualification_sha256'],
-                                etag=qualification_fact['etag'],
-                                last_modified=qualification_fact['last_modified'],
-                                content_length=qualification_fact['content_length'],
-                                retrieved_at=qualification_fact['retrieved_at'],
-                                receipt_key=key,
-                                http_status=line['http_status'],
-                            )
+                    merge_fact(by_sha256,by_url,qualification_fact)
                     with qualifications_ledger.open('a',encoding='utf-8') as q_out:
                         q_out.write(json.dumps(qualification_fact,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
                         q_out.flush()
@@ -1284,6 +1300,15 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                 scope='capture process high water; native/parser child limits are separate')
             # D discovery replans plus initial planning and this report give D+2
             # linear input passes (ten at the default D=8), not one per capture.
+            if qualification_store is not None:
+                qual_sources = [
+                    *([qualifications_ledger] if qualifications_ledger.is_file() and qualifications_ledger.stat().st_size > 0 else []),
+                    *restored_qualifications,
+                ]
+                if qual_sources:
+                    imported_q = import_qualifications(qualification_store, qual_sources, decided_at=as_of)
+                    if imported_q is not None:
+                        stats['qualification_metrics']['provenance_key'] = imported_q['key']
             stats['cutoffs']=cutoff_report(release,urls=cutoff_urls,attempted=attempted,engine=engine,
                 work=plan_work/'cutoff-report',as_of=as_of,stop_reason=stats['stop_reason'],
                 discovery_files=discovered,_keyed_states_cache=keyed_states_cache,campaign=campaign)

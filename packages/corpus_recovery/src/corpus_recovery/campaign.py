@@ -91,12 +91,11 @@ def plan(descriptor, *, output, engine):
         CASE WHEN coalesce(t.unresolved_reason,'')<>'' OR
                   (coalesce(t.usable_direct,false) AND coalesce(t.acquisition_excluded,false)) THEN 'unresolved'
              WHEN s.capture_disposition='satisfied' AND s.capture_decision_id IS NOT NULL THEN 'accepted_recovery'
-             WHEN (coalesce(t.usable_direct,false) AND coalesce(s.capture_reason,'')<>'body_not_qualified')
-                  OR (s.capture_disposition='satisfied' AND s.capture_reason='qualified_direct_body') THEN 'usable_direct'
+             WHEN coalesce(t.usable_direct,false) AND coalesce(s.capture_reason,'')<>'body_not_qualified' THEN 'usable_direct'
              WHEN coalesce(t.acquisition_excluded,false) OR s.capture_disposition='excluded' THEN 'acquisition_excluded'
              WHEN c.candidates>0 THEN 'retained_candidate_pending' ELSE 'needs_acquisition' END AS disposition,
         coalesce(t.unresolved_reason,
-                 CASE WHEN s.capture_reason IN ('body_not_qualified','qualified_direct_body') THEN s.capture_reason END,
+                 CASE WHEN s.capture_reason='body_not_qualified' THEN s.capture_reason END,
                  s.capture_disposition,'metadata_policy') AS reason,
         coalesce(s.capture_decision_id,t.evidence_id,{_q(campaign.descriptor_sha256)}) AS evidence_id,
         {_q(campaign.requirement)} AS target_requirement,{_q(VERSION)} AS acceptance_policy,t.refresh_policy,
