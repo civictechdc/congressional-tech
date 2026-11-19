@@ -111,17 +111,11 @@ from congress_docmeta import (  # noqa: E402
 
 SCHEMA_OBJ: dict[str, Any] = pv5.SCHEMA_OBJ
 
-TOP_KEYS_ORDER: tuple[str, ...] = zb6.TOP_KEYS_ORDER_V6
 PERSONA_KEYS_ORDER: tuple[str, ...] = zb6.PERSONA_KEYS_ORDER_V6
-DISCLOSURE_KEYS_ORDER: tuple[str, ...] = zb6.DISCLOSURE_KEYS_ORDER_V6
-
-TOP_ORDER_IDX = {k: i for i, k in enumerate(TOP_KEYS_ORDER)}
-PERSONA_ORDER_IDX = {k: i for i, k in enumerate(PERSONA_KEYS_ORDER)}
-DISCLOSURE_ORDER_IDX = {k: i for i, k in enumerate(DISCLOSURE_KEYS_ORDER)}
 
 VALID_ROLES_SET = frozenset(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["role"]["enum"])
 VALID_ETYPES_SET = frozenset(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["entity_type"]["enum"])
-NON_USABLE_TRIAGE_STATUSES = frozenset({"error_or_block", "stub_or_blank", "ocr_unreadable"})
+NON_USABLE_TRIAGE_STATUSES = pv5.NON_USABLE_TRIAGE_STATUSES
 ZERO_LLM_BYPASS_KINDS = frozenset(
     {
         "truth_in_testimony_disclosure",
@@ -143,145 +137,7 @@ GENERIC_EMPTY_CMS_BANNERS = frozenset(
 # 1. Strict Schema + Causal Key-Order Validator & Sanitizer
 # ---------------------------------------------------------------------------
 
-
-class _DuplicateKeyError(ValueError):
-    pass
-
-
-def _no_dup_pairs_hook(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-    out: dict[str, Any] = {}
-    for k, v in pairs:
-        if k in out:
-            raise _DuplicateKeyError(f"duplicate_key:{k}")
-        out[k] = v
-    return out
-
-
-def _validate_schema_node(val: Any, sub: Mapping[str, Any], root: Mapping[str, Any], path: str, errs: list[str]) -> None:
-    if "$ref" in sub:
-        ref = str(sub["$ref"])
-        if ref.startswith("#/$defs/"):
-            sub = root["$defs"][ref.split("/")[-1]]
-    if val is None:
-        errs.append(f"{path}: null not allowed")
-        return
-    tp = sub.get("type")
-    if tp == "object":
-        if not isinstance(val, dict):
-            errs.append(f"{path}: expected object, got {type(val).__name__}")
-            return
-        for req in sub.get("required", ()):
-            if req not in val:
-                errs.append(f"{path}: missing required key {req!r}")
-        props = sub.get("properties", {})
-        if sub.get("additionalProperties") is False:
-            for k in val:
-                if k not in props:
-                    errs.append(f"{path}: additional property {k!r} not allowed")
-        for k, v in val.items():
-            if k in props:
-                _validate_schema_node(v, props[k], root, f"{path}.{k}", errs)
-    elif tp == "array":
-        if not isinstance(val, list):
-            errs.append(f"{path}: expected array, got {type(val).__name__}")
-            return
-        if "minItems" in sub and len(val) < int(sub["minItems"]):
-            errs.append(f"{path}: len {len(val)} < minItems {sub['minItems']}")
-        if "maxItems" in sub and len(val) > int(sub["maxItems"]):
-            errs.append(f"{path}: len {len(val)} > maxItems {sub['maxItems']}")
-        if "items" in sub:
-            for idx, item in enumerate(val):
-                _validate_schema_node(item, sub["items"], root, f"{path}[{idx}]", errs)
-    elif tp == "string":
-        if not isinstance(val, str):
-            errs.append(f"{path}: expected string, got {type(val).__name__}")
-            return
-        if "minLength" in sub and len(val) < int(sub["minLength"]):
-            errs.append(f"{path}: len {len(val)} < minLength {sub['minLength']}")
-        if "enum" in sub and val not in sub["enum"]:
-            errs.append(f"{path}: {val!r} not in enum")
-    elif tp == "integer":
-        if isinstance(val, bool) or not isinstance(val, int):
-            errs.append(f"{path}: expected integer, got {type(val).__name__}")
-            return
-        if "minimum" in sub and val < int(sub["minimum"]):
-            errs.append(f"{path}: {val} < minimum {sub['minimum']}")
-        if "maximum" in sub and val > int(sub["maximum"]):
-            errs.append(f"{path}: {val} > maximum {sub['maximum']}")
-    elif tp == "boolean":
-        if not isinstance(val, bool):
-            errs.append(f"{path}: expected boolean, got {type(val).__name__}")
-
-
-def strict_validate_v4(obj_or_json: str | Mapping[str, Any] | None) -> tuple[bool, list[str]]:
-    """Strictly validate `DocMetaV4Causal` schema, types, enums, causal key ordering, and semantic invariants."""
-    if obj_or_json is None:
-        return False, ["null_docmeta"]
-    errs: list[str] = []
-    if isinstance(obj_or_json, str):
-        s = obj_or_json.strip()
-        if not s:
-            return False, ["empty_json_string"]
-        try:
-            parsed = json.loads(s, object_pairs_hook=_no_dup_pairs_hook)
-        except Exception as exc:
-            return False, [f"json_parse_error:{exc}"]
-        if not isinstance(parsed, dict):
-            return False, ["root_not_object"]
-        obj: dict[str, Any] = parsed
-    elif isinstance(obj_or_json, Mapping):
-        obj = dict(obj_or_json)
-    else:
-        return False, [f"unsupported_type:{type(obj_or_json).__name__}"]
-
-    _validate_schema_node(obj, SCHEMA_OBJ, SCHEMA_OBJ, "$", errs)
-
-    top_keys = list(obj.keys())
-    if any(k not in TOP_ORDER_IDX for k in top_keys):
-        errs.append(f"unknown_top_keys:{[k for k in top_keys if k not in TOP_ORDER_IDX]}")
-    else:
-        top_idxs = [TOP_ORDER_IDX[k] for k in top_keys]
-        if top_idxs != sorted(top_idxs):
-            errs.append(f"top_key_order_violation:{top_keys}")
-
-    for pi, p in enumerate(obj.get("personas") or ()):
-        if isinstance(p, dict):
-            p_keys = list(p.keys())
-            if any(k not in PERSONA_ORDER_IDX for k in p_keys):
-                errs.append(f"$.personas[{pi}]: unknown_keys")
-            else:
-                p_idxs = [PERSONA_ORDER_IDX[k] for k in p_keys]
-                if p_idxs != sorted(p_idxs):
-                    errs.append(f"$.personas[{pi}]: persona_key_order_violation:{p_keys}")
-
-    if isinstance(obj.get("disclosure"), dict):
-        d_keys = list(obj["disclosure"].keys())
-        if any(k not in DISCLOSURE_ORDER_IDX for k in d_keys):
-            errs.append("$.disclosure: unknown_keys")
-        else:
-            d_idxs = [DISCLOSURE_ORDER_IDX[k] for k in d_keys]
-            if d_idxs != sorted(d_idxs):
-                errs.append(f"$.disclosure: disclosure_key_order_violation:{d_keys}")
-
-    st = obj.get("status")
-    if st in NON_USABLE_TRIAGE_STATUSES:
-        extra = [k for k in obj.keys() if k not in ("status", "text_quality", "error_reason")]
-        if extra:
-            errs.append(f"non_usable_has_extra_keys:{extra}")
-        if not isinstance(obj.get("error_reason"), str) or not obj["error_reason"].strip():
-            errs.append("non_usable_missing_error_reason")
-    else:
-        if "error_reason" in obj:
-            errs.append("usable_status_has_error_reason")
-        if st == "usable":
-            for req_u in ("primary_kind", "composed_title", "gist", "topics"):
-                if req_u not in obj:
-                    errs.append(f"usable_missing_{req_u}")
-            gist = obj.get("gist")
-            if isinstance(gist, str) and len(gist.split()) > 25:
-                errs.append(f"gist_exceeds_word_budget:{len(gist.split())}")
-
-    return len(errs) == 0, errs
+strict_validate_v4 = pv5.validate_docmeta_v4_all
 
 
 def sanitize_persona_dict(p: Mapping[str, Any]) -> dict[str, Any] | None:
@@ -418,9 +274,6 @@ def finalize_and_validate_docmeta(raw_obj: Mapping[str, Any]) -> tuple[dict[str,
             working["gist"] = " ".join(gw)
 
     canon = pv5.canonicalize_docmeta_v4(working)
-    ok_v5, err_v5 = pv5.validate_docmeta_v4(canon)
-    if not ok_v5:
-        raise ValueError(f"validate_docmeta_v4 failed: {err_v5}")
     j_str = json.dumps(canon, separators=(",", ":"), ensure_ascii=False)
     ok_s, errs_s = strict_validate_v4(j_str)
     if not ok_s:

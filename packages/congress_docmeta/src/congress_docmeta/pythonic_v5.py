@@ -45,6 +45,7 @@ import sys
 import time
 import unicodedata
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Any, Sequence
 
 DOCMETA_DIR = Path(__file__).resolve().parent
@@ -64,7 +65,7 @@ TEXT_QUALITY_SET = set(SCHEMA_OBJ["properties"]["text_quality"]["enum"])
 ROLES_SET = set(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["role"]["enum"])
 ETYPES_SET = set(SCHEMA_OBJ["properties"]["personas"]["items"]["properties"]["entity_type"]["enum"])
 
-from .prompt_v4 import SYS_DOCMETA_V4, build_prompt_v4
+from .prompt_v4 import NON_USABLE_TRIAGE_STATUSES, SYS_DOCMETA_V4, build_prompt_v4
 from . import expanded_rules_v5 as _exv5
 from . import multipage_rules_v5 as _mpv5
 from . import provenance_rules_v5 as _prv5
@@ -888,104 +889,191 @@ def _is_empty_val(v: Any) -> bool:
     return False
 
 
-def _validate_node(val: Any, sub: dict[str, Any], root: dict[str, Any], path: str = "$") -> None:
+class DocMetaValidationError(ValueError):
+    """Raised when a DocMetaV4Causal object fails strict schema, order, or semantic validation."""
+
+
+class _DuplicateKeyError(ValueError):
+    """Raised when a JSON object string contains duplicate keys."""
+
+
+def _no_dup_pairs_hook(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for k, v in pairs:
+        if k in out:
+            raise _DuplicateKeyError(f"duplicate_key:{k}")
+        out[k] = v
+    return out
+
+
+def _validate_schema_node(
+    val: Any,
+    sub: Mapping[str, Any],
+    root: Mapping[str, Any],
+    path: str,
+    errs: list[str],
+) -> None:
     if "$ref" in sub:
-        ref = sub["$ref"]
-        sub = root["$defs"][ref.split("/")[-1]]
+        ref = str(sub["$ref"])
+        if ref.startswith("#/$defs/"):
+            sub = root["$defs"][ref.split("/")[-1]]
     if val is None:
-        raise ValueError(f"{path}: null not allowed")
+        errs.append(f"{path}: null not allowed")
+        return
     tp = sub.get("type")
     if tp == "object":
         if not isinstance(val, dict):
-            raise ValueError(f"{path}: expected object")
-        for req in sub.get("required", []):
+            errs.append(f"{path}: expected object, got {type(val).__name__}")
+            return
+        for req in sub.get("required", ()):
             if req not in val:
-                raise ValueError(f"{path}: missing required {req}")
-        if "minProperties" in sub and len(val) < sub["minProperties"]:
-            raise ValueError(f"{path}: fewer than {sub['minProperties']} properties")
+                errs.append(f"{path}: missing required key {req!r}")
+        if "minProperties" in sub and len(val) < int(sub["minProperties"]):
+            errs.append(f"{path}: fewer than {sub['minProperties']} properties")
         props = sub.get("properties", {})
         if sub.get("additionalProperties") is False:
             for k in val:
                 if k not in props:
-                    raise ValueError(f"{path}: unknown key {k}")
+                    errs.append(f"{path}: additional property {k!r} not allowed")
         for k, v in val.items():
             if k in props:
-                _validate_node(v, props[k], root, f"{path}.{k}")
+                _validate_schema_node(v, props[k], root, f"{path}.{k}", errs)
     elif tp == "array":
         if not isinstance(val, list):
-            raise ValueError(f"{path}: expected array")
-        if "minItems" in sub and len(val) < sub["minItems"]:
-            raise ValueError(f"{path}: len {len(val)} < minItems {sub['minItems']}")
-        if "maxItems" in sub and len(val) > sub["maxItems"]:
-            raise ValueError(f"{path}: len {len(val)} > maxItems {sub['maxItems']}")
+            errs.append(f"{path}: expected array, got {type(val).__name__}")
+            return
+        if "minItems" in sub and len(val) < int(sub["minItems"]):
+            errs.append(f"{path}: len {len(val)} < minItems {sub['minItems']}")
+        if "maxItems" in sub and len(val) > int(sub["maxItems"]):
+            errs.append(f"{path}: len {len(val)} > maxItems {sub['maxItems']}")
         if "items" in sub:
-            for i, item in enumerate(val):
-                _validate_node(item, sub["items"], root, f"{path}[{i}]")
+            for idx, item in enumerate(val):
+                _validate_schema_node(item, sub["items"], root, f"{path}[{idx}]", errs)
     elif tp == "string":
         if not isinstance(val, str):
-            raise ValueError(f"{path}: expected string")
-        if "minLength" in sub and len(val) < sub["minLength"]:
-            raise ValueError(f"{path}: len {len(val)} < minLength {sub['minLength']}")
+            errs.append(f"{path}: expected string, got {type(val).__name__}")
+            return
+        if "minLength" in sub and len(val) < int(sub["minLength"]):
+            errs.append(f"{path}: len {len(val)} < minLength {sub['minLength']}")
         if "enum" in sub and val not in sub["enum"]:
-            raise ValueError(f"{path}: {val!r} not in enum")
+            errs.append(f"{path}: {val!r} not in enum")
     elif tp == "integer":
         if isinstance(val, bool) or not isinstance(val, int):
-            raise ValueError(f"{path}: expected integer")
-        if "minimum" in sub and val < sub["minimum"]:
-            raise ValueError(f"{path}: {val} < {sub['minimum']}")
-        if "maximum" in sub and val > sub["maximum"]:
-            raise ValueError(f"{path}: {val} > {sub['maximum']}")
+            errs.append(f"{path}: expected integer, got {type(val).__name__}")
+            return
+        if "minimum" in sub and val < int(sub["minimum"]):
+            errs.append(f"{path}: {val} < minimum {sub['minimum']}")
+        if "maximum" in sub and val > int(sub["maximum"]):
+            errs.append(f"{path}: {val} > maximum {sub['maximum']}")
     elif tp == "boolean":
         if not isinstance(val, bool):
-            raise ValueError(f"{path}: expected boolean")
+            errs.append(f"{path}: expected boolean, got {type(val).__name__}")
 
 
-def validate_docmeta_v4(obj: dict[str, Any]) -> tuple[bool, str | None]:
-    """Validate `obj` against `docmeta_v4_causal.schema.json` and all 3 causal key orders (100% stdlib)."""
-    if not isinstance(obj, dict):
-        return False, "not_dict"
-    try:
-        _validate_node(obj, SCHEMA_OBJ, SCHEMA_OBJ)
-    except Exception as e:
-        return False, str(e).splitlines()[0][:160]
+def _validate_docmeta_v4_all(
+    obj_or_json: str | Mapping[str, Any] | None,
+    *,
+    check_usable_completeness: bool = True,
+) -> tuple[bool, list[str]]:
+    if obj_or_json is None:
+        return False, ["null_docmeta"]
+    if isinstance(obj_or_json, str):
+        s = obj_or_json.strip()
+        if not s:
+            return False, ["empty_json_string"]
+        try:
+            parsed = json.loads(s, object_pairs_hook=_no_dup_pairs_hook)
+        except Exception as exc:
+            return False, [f"json_parse_error:{exc}"]
+        if not isinstance(parsed, dict):
+            return False, ["root_not_object"]
+        obj: dict[str, Any] = parsed
+    elif isinstance(obj_or_json, Mapping):
+        obj = dict(obj_or_json)
+    else:
+        return False, [f"unsupported_type:{type(obj_or_json).__name__}"]
 
-    top_idxs = [TOP_ORDER_IDX[k] for k in obj.keys() if k in TOP_ORDER_IDX]
-    if len(top_idxs) != len(obj) or top_idxs != sorted(top_idxs):
-        return False, f"top_key_order_violation: {list(obj.keys())}"
+    errs: list[str] = []
+    _validate_schema_node(obj, SCHEMA_OBJ, SCHEMA_OBJ, "$", errs)
 
-    for p in obj.get("personas", []):
-        if not isinstance(p, dict):
-            return False, "persona_not_dict"
-        p_idxs = [PERSONA_ORDER_IDX[k] for k in p.keys() if k in PERSONA_ORDER_IDX]
-        if len(p_idxs) != len(p) or p_idxs != sorted(p_idxs):
-            return False, f"persona_key_order_violation: {list(p.keys())}"
+    top_keys = list(obj.keys())
+    if any(k not in TOP_ORDER_IDX for k in top_keys):
+        errs.append(f"unknown_top_keys:{[k for k in top_keys if k not in TOP_ORDER_IDX]}")
+    else:
+        top_idxs = [TOP_ORDER_IDX[k] for k in top_keys]
+        if top_idxs != sorted(top_idxs):
+            errs.append(f"top_key_order_violation:{top_keys}")
 
-    if "disclosure" in obj:
-        d = obj["disclosure"]
-        if not isinstance(d, dict):
-            return False, "disclosure_not_dict"
-        d_idxs = [DISCLOSURE_ORDER_IDX[k] for k in d.keys() if k in DISCLOSURE_ORDER_IDX]
-        if len(d_idxs) != len(d) or d_idxs != sorted(d_idxs):
-            return False, f"disclosure_key_order_violation: {list(d.keys())}"
+    if isinstance(obj.get("personas"), list):
+        for pi, p in enumerate(obj["personas"]):
+            if isinstance(p, dict):
+                p_keys = list(p.keys())
+                if any(k not in PERSONA_ORDER_IDX for k in p_keys):
+                    errs.append(f"$.personas[{pi}]: unknown_keys")
+                else:
+                    p_idxs = [PERSONA_ORDER_IDX[k] for k in p_keys]
+                    if p_idxs != sorted(p_idxs):
+                        errs.append(f"$.personas[{pi}]: persona_key_order_violation:{p_keys}")
 
-    return True, None
+    if isinstance(obj.get("disclosure"), dict):
+        d_keys = list(obj["disclosure"].keys())
+        if any(k not in DISCLOSURE_ORDER_IDX for k in d_keys):
+            errs.append("$.disclosure: unknown_keys")
+        else:
+            d_idxs = [DISCLOSURE_ORDER_IDX[k] for k in d_keys]
+            if d_idxs != sorted(d_idxs):
+                errs.append(f"$.disclosure: disclosure_key_order_violation:{d_keys}")
+
+    st = obj.get("status")
+    if isinstance(st, str) and st in NON_USABLE_TRIAGE_STATUSES:
+        extra = [k for k in obj.keys() if k not in ("status", "text_quality", "error_reason")]
+        if extra:
+            errs.append(f"non_usable_has_extra_keys:{extra}")
+        if not isinstance(obj.get("error_reason"), str) or not obj["error_reason"].strip():
+            errs.append("non_usable_missing_error_reason")
+    else:
+        if "error_reason" in obj:
+            errs.append("usable_status_has_error_reason")
+        if check_usable_completeness and st == "usable":
+            for req_u in ("primary_kind", "composed_title", "gist", "topics"):
+                if req_u not in obj:
+                    errs.append(f"usable_missing_{req_u}")
+            gist = obj.get("gist")
+            if isinstance(gist, str) and len(gist.split()) > 25:
+                errs.append(f"gist_exceeds_word_budget:{len(gist.split())}")
+
+    return len(errs) == 0, errs
 
 
-def canonicalize_docmeta_v4(raw_obj: dict[str, Any]) -> dict[str, Any]:
+def validate_docmeta_v4_all(obj_or_json: str | Mapping[str, Any] | None) -> tuple[bool, list[str]]:
+    """Strictly validate DocMetaV4Causal schema, types, causal key order, and semantic invariants (stdlib)."""
+    return _validate_docmeta_v4_all(obj_or_json, check_usable_completeness=True)
+
+
+def validate_docmeta_v4(obj: str | Mapping[str, Any] | None) -> tuple[bool, str | None]:
+    """Validate `obj` against the single strict DocMetaV4Causal validator (100% stdlib)."""
+    ok, errs = validate_docmeta_v4_all(obj)
+    return ok, (errs[0] if errs else None)
+
+
+def canonicalize_docmeta_v4(
+    raw_obj: dict[str, Any],
+    *,
+    _allow_incomplete_usable: bool = False,
+) -> dict[str, Any]:
     """Order keys causally at all levels, strip empty/null values, enforce caps, and validate."""
     out: dict[str, Any] = {}
     st = raw_obj.get("status", "usable")
     tq = raw_obj.get("text_quality", "native")
-    out["status"] = st if st in STATUS_SET else "usable"
-    out["text_quality"] = tq if tq in TEXT_QUALITY_SET else "native"
+    out["status"] = st if isinstance(st, str) and st in STATUS_SET else "usable"
+    out["text_quality"] = tq if isinstance(tq, str) and tq in TEXT_QUALITY_SET else "native"
 
-    if out["status"] in ("error_or_block", "stub_or_blank", "ocr_unreadable"):
+    if out["status"] in NON_USABLE_TRIAGE_STATUSES:
         er = raw_obj.get("error_reason")
-        if isinstance(er, str) and er.strip():
-            out["error_reason"] = er.strip()[:200]
+        out["error_reason"] = er.strip()[:200] if isinstance(er, str) and er.strip() else out["status"]
         ok, err = validate_docmeta_v4(out)
         if not ok:
-            raise ValueError(f"Invalid error-status DocMetaV4: {err}")
+            raise DocMetaValidationError(f"Invalid error-status DocMetaV4: {err}")
         return out
 
     max_caps = {
@@ -1017,10 +1105,10 @@ def canonicalize_docmeta_v4(raw_obj: dict[str, Any]) -> dict[str, Any]:
                     role = "author_or_speaker"
                 elif role == "submitter":
                     role = "sender"
-                if role not in ROLES_SET:
+                if not isinstance(role, str) or role not in ROLES_SET:
                     continue
                 etype = item.get("entity_type", "non_gov_person")
-                if etype not in ETYPES_SET:
+                if not isinstance(etype, str) or etype not in ETYPES_SET:
                     etype = "non_gov_person"
                 p_item: dict[str, Any] = {}
                 for pk in PERSONA_KEYS_ORDER:
@@ -1095,13 +1183,13 @@ def canonicalize_docmeta_v4(raw_obj: dict[str, Any]) -> dict[str, Any]:
                 }
 
         elif k == "primary_kind":
-            out[k] = val if val in DOC_KINDS_SET else "other"
+            out[k] = val if isinstance(val, str) and val in DOC_KINDS_SET else "other"
 
         elif k == "secondary_kinds" and isinstance(val, list):
             sk = []
             seen_sk = set()
             for x in val:
-                if x in DOC_KINDS_SET and x != out.get("primary_kind") and x not in seen_sk:
+                if isinstance(x, str) and x in DOC_KINDS_SET and x != out.get("primary_kind") and x not in seen_sk:
                     sk.append(x)
                     seen_sk.add(x)
             if sk:
@@ -1122,8 +1210,10 @@ def canonicalize_docmeta_v4(raw_obj: dict[str, Any]) -> dict[str, Any]:
         elif k == "congress":
             if not isinstance(val, bool) and isinstance(val, int) and 1 <= val <= 130:
                 out[k] = val
-            elif isinstance(val, str) and val.strip().isdigit() and 1 <= int(val.strip()) <= 130:
-                out[k] = int(val.strip())
+            elif isinstance(val, str):
+                s_cong = val.strip()
+                if s_cong.isascii() and s_cong.isdigit() and 1 <= int(s_cong) <= 130:
+                    out[k] = int(s_cong)
 
         elif k == "signatory_count":
             if not isinstance(val, bool) and isinstance(val, int) and val >= 1:
@@ -1146,9 +1236,9 @@ def canonicalize_docmeta_v4(raw_obj: dict[str, Any]) -> dict[str, Any]:
             else:
                 out[k] = s
 
-    ok, err = validate_docmeta_v4(out)
+    ok, errs = _validate_docmeta_v4_all(out, check_usable_completeness=not _allow_incomplete_usable)
     if not ok:
-        raise ValueError(f"Canonicalized DocMetaV4 failed validation: {err}")
+        raise DocMetaValidationError(f"Canonicalized DocMetaV4 failed validation: {errs[0]}")
     return out
 
 
@@ -1596,6 +1686,7 @@ def post_pass_v5(
     triage: dict[str, Any] | None = None,
     is_html_override: bool | None = None,
     skip_sidecar: bool = False,
+    _defer_completeness: bool = False,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Apply 100%-precision deterministic V5 post-pass rules and return `(clean_docmeta_v4, sidecar)`."""
     if isinstance(known, dict):
@@ -1622,9 +1713,9 @@ def post_pass_v5(
             triage=triage,
         )
 
-    obj = canonicalize_docmeta_v4(raw_obj)
+    obj = canonicalize_docmeta_v4(raw_obj, _allow_incomplete_usable=_defer_completeness)
 
-    if obj["status"] in ("error_or_block", "stub_or_blank", "ocr_unreadable"):
+    if obj["status"] in NON_USABLE_TRIAGE_STATUSES:
         return obj, derive_sidecar_v5(
             obj,
             filename=filename,
@@ -1802,7 +1893,7 @@ def post_pass_v5(
     if (
         pk == "oversight_letter"
         and obj.get("correspondence_flow") in ("agency_to_congress", "foreign_gov_to_congress")
-        and "personas" in obj
+        and isinstance(obj.get("personas"), list)
     ):
         head_sal = (cleaned_text or "")[:1200]
         has_cong_salutation = bool(
@@ -1918,7 +2009,7 @@ def post_pass_v5(
                 if cur_pers:
                     obj["personas"] = cur_pers
 
-    clean_obj = canonicalize_docmeta_v4(obj)
+    clean_obj = canonicalize_docmeta_v4(obj, _allow_incomplete_usable=_defer_completeness)
     if skip_sidecar:
         hsru_st = (
             resolved_prov.get("hsru_host_status")
@@ -1990,7 +2081,8 @@ def _salvage_truncated_docmeta_v4(raw_txt: str, filename: str = "") -> dict[str,
             if isinstance(obj, dict):
                 obj.setdefault("status", "usable")
                 obj.setdefault("text_quality", "native")
-                if obj["status"] not in ("error_or_block", "stub_or_blank", "ocr_unreadable"):
+                st_s = obj.get("status")
+                if not (isinstance(st_s, str) and st_s in NON_USABLE_TRIAGE_STATUSES):
                     obj.setdefault("primary_kind", "other")
                     obj.setdefault("composed_title", (filename or "Congressional Document")[:100])
                     obj.setdefault("gist", "Congressional committee document.")
@@ -2084,5 +2176,8 @@ __all__ = [
     "triage_non_usable_v5",
     "triage_unwrapped_http_or_empty",
     "unwrap_archive_url",
+    "DocMetaValidationError",
+    "NON_USABLE_TRIAGE_STATUSES",
     "validate_docmeta_v4",
+    "validate_docmeta_v4_all",
 ]

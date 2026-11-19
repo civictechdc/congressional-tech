@@ -43,6 +43,7 @@ from .compact_wire_v6 import (
     expand_compact_v6_to_v4,
 )
 from .pythonic_v5 import (
+    DocMetaValidationError,
     SCHEMA_OBJ,
     SCHEMA_V4_STR,
     SYS_DOCMETA_V4,
@@ -154,8 +155,8 @@ def compute_llm_vs_det_diff_v6(
         if raw_d.get(k) != final_obj.get(k):
             changed_fields.append(k)
 
-    raw_refs = set(raw_d.get("refs") or ()) if isinstance(raw_d.get("refs"), list) else set()
-    fin_refs = set(final_obj.get("refs") or ()) if isinstance(final_obj.get("refs"), list) else set()
+    raw_refs = {x for x in (raw_d.get("refs") or ()) if isinstance(x, str)} if isinstance(raw_d.get("refs"), list) else set()
+    fin_refs = {x for x in (final_obj.get("refs") or ()) if isinstance(x, str)} if isinstance(final_obj.get("refs"), list) else set()
     raw_cmts = list(raw_d.get("committees") or ()) if isinstance(raw_d.get("committees"), list) else []
     fin_cmts = list(final_obj.get("committees") or ()) if isinstance(final_obj.get("committees"), list) else []
 
@@ -242,7 +243,7 @@ def _build_precomputed_context_from_queue_row(
     triage_d = None
     if not raw_txt.strip() and not clean_txt.strip():
         triage_d = {
-            "docmeta": _build_triage_result(
+            **_build_triage_result(
                 "stub_or_blank",
                 "native",
                 f"Empty document text in queue row ({fn or 'unnamed'})",
@@ -561,22 +562,25 @@ def escalate_anomalies_gpt_oss(
         pmeta = pmetas[orig_i]
         fn = str(row.get("filename") or "")
         txt = str(row.get("p12_raw_text") or row.get("p12_clean_text") or row.get("text") or "")
-        clean_cand, sidecar_cand = post_pass_v6(
-            parsed_cand,
-            known=pmeta.get("known_dict"),
-            filename=fn,
-            text=txt,
-            p12_lines=pmeta.get("p12_lines"),
-            explicit_format=row.get("effective_format") or row.get("format"),
-            pre_meta=pmeta,
-            provenance=pmeta.get("provenance"),
-            multipage=pmeta.get("multipage"),
-            relational=pmeta.get("relational"),
-            citations=pmeta.get("citations"),
-            hygiene=pmeta.get("hygiene"),
-            usc_oracle=usc_oracle,
-        )
-        canon_cand = canonicalize_docmeta_v4(clean_cand)
+        try:
+            clean_cand, sidecar_cand = post_pass_v6(
+                parsed_cand,
+                known=pmeta.get("known_dict"),
+                filename=fn,
+                text=txt,
+                p12_lines=pmeta.get("p12_lines"),
+                explicit_format=row.get("effective_format") or row.get("format"),
+                pre_meta=pmeta,
+                provenance=pmeta.get("provenance"),
+                multipage=pmeta.get("multipage"),
+                relational=pmeta.get("relational"),
+                citations=pmeta.get("citations"),
+                hygiene=pmeta.get("hygiene"),
+                usc_oracle=usc_oracle,
+            )
+            canon_cand = canonicalize_docmeta_v4(clean_cand)
+        except DocMetaValidationError:
+            continue
         ok_v4, _ = validate_docmeta_v4(canon_cand)
         if not ok_v4:
             continue
@@ -884,14 +888,18 @@ def run_docmeta_parquet_sweep(
                 _apply_ext_verdict_to_anomaly(c_anomalies[i], v_dict)
 
             if repair_persona_roles and callable(getattr(external_verifier, "repair_suspect_personas", None)):
-                repairs = external_verifier.repair_suspect_personas(c_clean_objs, c_chunk, parsed_verdicts)  # type: ignore[attr-defined]
+                candidate_objs = copy.deepcopy(c_clean_objs)
+                repairs = external_verifier.repair_suspect_personas(candidate_objs, c_chunk, parsed_verdicts)  # type: ignore[attr-defined]
                 repaired_by_doc: dict[int, set[int]] = {}
                 for rep_item in repairs:
                     r_di = int(rep_item["doc_idx"])
-                    repaired_by_doc.setdefault(r_di, set()).add(int(rep_item["persona_idx"]))
-                    re_canon = canonicalize_docmeta_v4(c_clean_objs[r_di])
+                    try:
+                        re_canon = canonicalize_docmeta_v4(candidate_objs[r_di])
+                    except DocMetaValidationError:
+                        continue
                     ok_rep, _ = validate_docmeta_v4(re_canon)
                     if ok_rep:
+                        repaired_by_doc.setdefault(r_di, set()).add(int(rep_item["persona_idx"]))
                         c_clean_objs[r_di] = re_canon
                         c_clean_texts[r_di] = json.dumps(re_canon, separators=(",", ":"), ensure_ascii=False)
                 # De-escalate Pass-2 if ANE role repair resolved every suspect persona on a persona-only flag!
@@ -1212,32 +1220,53 @@ def run_docmeta_parquet_sweep(
                         salvaged = True
                         parsed_raw = _salvage_truncated_docmeta_v4(raw_txt_out, filename=fn)
 
-                clean_obj, sidecar = post_pass_v6(
-                    parsed_raw,
-                    known=pmeta.get("known_dict"),
-                    filename=fn,
-                    text=src_txt,
-                    p12_lines=pmeta.get("p12_lines"),
-                    explicit_format=row.get("effective_format") or row.get("format"),
-                    pre_meta=pmeta,
-                    provenance=pmeta.get("provenance"),
-                    multipage=pmeta.get("multipage"),
-                    triage=pmeta.get("triage"),
-                    relational=pmeta.get("relational"),
-                    citations=pmeta.get("citations"),
-                    hygiene=pmeta.get("hygiene"),
-                    usc_oracle=usc_oracle,
-                )
-                canon_obj = canonicalize_docmeta_v4(clean_obj)
-                ok_v4, _ = validate_docmeta_v4(canon_obj)
+                try:
+                    clean_obj, sidecar = post_pass_v6(
+                        parsed_raw,
+                        known=pmeta.get("known_dict"),
+                        filename=fn,
+                        text=src_txt,
+                        p12_lines=pmeta.get("p12_lines"),
+                        explicit_format=row.get("effective_format") or row.get("format"),
+                        pre_meta=pmeta,
+                        provenance=pmeta.get("provenance"),
+                        multipage=pmeta.get("multipage"),
+                        triage=pmeta.get("triage"),
+                        relational=pmeta.get("relational"),
+                        citations=pmeta.get("citations"),
+                        hygiene=pmeta.get("hygiene"),
+                        usc_oracle=usc_oracle,
+                    )
+                    canon_obj = canonicalize_docmeta_v4(clean_obj)
+                    ok_v4, _ = validate_docmeta_v4(canon_obj)
+                except DocMetaValidationError:
+                    ok_v4 = False
+                    canon_obj = {}
+                    sidecar = {}
+
                 if not ok_v4:
-                    # Guaranteed schema-valid fallback if truncated salvage failed a constraint
+                    # Guaranteed schema-valid fallback if model output or truncated salvage failed a constraint
                     fallback_triage = _build_triage_result(
                         "stub_or_blank",
                         "garbled",
                         f"Malformed 2B extraction output salvaged to non-usable triage ({fn[:60]})",
                     )
-                    canon_obj = canonicalize_docmeta_v4(fallback_triage)
+                    canon_obj, sidecar = post_pass_v6(
+                        fallback_triage["docmeta"],
+                        known=pmeta.get("known_dict"),
+                        filename=fn,
+                        text=src_txt,
+                        p12_lines=pmeta.get("p12_lines"),
+                        explicit_format=row.get("effective_format") or row.get("format"),
+                        pre_meta=pmeta,
+                        provenance=pmeta.get("provenance"),
+                        multipage=pmeta.get("multipage"),
+                        triage=fallback_triage,
+                        relational=pmeta.get("relational"),
+                        citations=pmeta.get("citations"),
+                        hygiene=pmeta.get("hygiene"),
+                        usc_oracle=usc_oracle,
+                    )
                     ok_v4, _ = validate_docmeta_v4(canon_obj)
 
                 diff_d = compute_llm_vs_det_diff_v6(

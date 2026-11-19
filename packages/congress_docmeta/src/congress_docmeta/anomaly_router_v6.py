@@ -40,6 +40,8 @@ import sys
 import unicodedata
 from typing import Any, Mapping, Sequence
 
+from .prompt_v4 import NON_USABLE_TRIAGE_STATUSES
+
 ACTOR_REQUIRED_KINDS_V6 = frozenset(
     {
         "witness_statement",
@@ -169,9 +171,7 @@ BACKBENCH_LEAK_TARGET_KINDS_V6 = frozenset(
     }
 )
 
-NON_USABLE_STATUSES_V6 = frozenset(
-    {"error_or_block", "stub_or_blank", "ocr_unreadable"}
-)
+NON_USABLE_STATUSES_V6 = NON_USABLE_TRIAGE_STATUSES
 
 _SD_SUPPLEMENTAL_RE = re.compile(r"(?:^|[-_])SD\d{2,4}(?:[-_.]|$)", re.I)
 _EXHIBIT_FILENAME_RE = re.compile(
@@ -738,7 +738,8 @@ def score_atomic_stdlib_v6(
                 ungrounded_cmts.append(c)
                 risk += 0.65
 
-    pk = docmeta.get("primary_kind")
+    raw_pk_atom = docmeta.get("primary_kind")
+    pk = raw_pk_atom if isinstance(raw_pk_atom, str) else None
     st = str(docmeta.get("status") or "usable")
     kind_conflicts: list[str] = []
     if (pk is None or st != "usable") and len(raw_text) > 600 and not det.get("triage_status"):
@@ -1110,7 +1111,7 @@ def score_docmeta_anomalies_v6(
     text = _extract_row_text_v6(det)
     raw_text_stripped = (text or "").strip()
 
-    if status in NON_USABLE_STATUSES_V6:
+    if isinstance(status, str) and status in NON_USABLE_STATUSES_V6:
         # Check if deterministic lock proved document was actually usable
         locked_pk = det.get("v6_locked_primary_kind") or det.get("v5_locked_primary_kind") or det.get("locked_primary_kind")
         if isinstance(locked_pk, str) and locked_pk:
@@ -1154,7 +1155,8 @@ def score_docmeta_anomalies_v6(
         res_nu2["atomic_stdlib"] = score_atomic_stdlib_v6(docmeta, det)
         return res_nu2
 
-    pk = docmeta.get("primary_kind")
+    raw_pk = docmeta.get("primary_kind")
+    pk = raw_pk if isinstance(raw_pk, str) else None
     is_sd_sub = bool(det.get("slug_is_sd_submission")) or bool(_SD_SUPPLEMENTAL_RE.search(filename))
     is_exhibit = bool(det.get("is_exhibit_or_external")) or bool(_EXHIBIT_FILENAME_RE.search(filename))
     hsru_status = str(det.get("hsru_host_status") or "not_hsru")
@@ -1233,7 +1235,7 @@ def score_docmeta_anomalies_v6(
             category="genre_uncertainty",
             severity="high",
             weight=1.0,
-            detail=f"Ambiguous catch-all primary_kind={pk!r}.",
+            detail=f"Ambiguous catch-all primary_kind={raw_pk!r}.",
         )
 
     # ------------------------------------------------------------------

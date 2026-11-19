@@ -71,12 +71,14 @@ from .pythonic_v5 import (
     DOC_FAMILY_MAP,
     DOC_KINDS_SET,
     DOMAIN_TO_COMMITTEE_CODE,
+    DocMetaValidationError,
     ETYPES_SET,
     EVAL_KIND_FAMILIES,
     FORMAL_COMMITTEE_KINDS,
     GPO_COVER_ROSTER_ALLOWED_ROLES,
     HOUSE_CLERK_2LETTER_TO_CODE,
     NEW_TIER1_SIGNATURE_TO_KIND_V5,
+    NON_USABLE_TRIAGE_STATUSES,
     PERSONA_KEYS_ORDER,
     PERSONA_ORDER_IDX,
     PROVENANCE_SAFE_COMMITTEE_KINDS,
@@ -153,6 +155,7 @@ from .pythonic_v5 import (
     triage_unwrapped_http_or_empty,
     unwrap_archive_url,
     validate_docmeta_v4,
+    validate_docmeta_v4_all,
 )
 from .anomaly_router_v6 import (
     ACTOR_REQUIRED_KINDS_V6,
@@ -1008,9 +1011,11 @@ def post_pass_v6(
         triage=triage,
         is_html_override=is_html_v6,
         skip_sidecar=True,
+        _defer_completeness=True,
     )
 
     if clean_obj.get("status") != "usable":
+        clean_obj = canonicalize_docmeta_v4(clean_obj)
         if "_resolved_prov" in sidecar or "status" not in sidecar:
             sidecar = _pv5.derive_sidecar_v5(
                 clean_obj,
@@ -2023,25 +2028,52 @@ class PythonicEngineV6:
                 except Exception:
                     parsed_raw = _salvage_truncated_docmeta_v4(raw_txt, filename=r.get("filename", ""))
 
-            clean_obj, sidecar = post_pass_v6(
-                parsed_raw,
-                known=r.get("known"),
-                filename=r.get("filename", ""),
-                text=r.get("text", ""),
-                p12_lines=pmeta.get("p12_lines"),
-                explicit_format=r.get("effective_format") or r.get("format"),
-                pre_meta=pmeta,
-                provenance=pmeta["provenance"],
-                multipage=pmeta["multipage"],
-                triage=pmeta["triage"] if short_circuit_triage else None,
-                relational=pmeta.get("relational"),
-                citations=pmeta.get("citations"),
-                hygiene=pmeta.get("hygiene"),
-                use_citations=use_citations,
-                use_relational=use_relational,
-                use_hygiene=use_hygiene,
-                usc_oracle=self.usc_oracle,
-            )
+            try:
+                clean_obj, sidecar = post_pass_v6(
+                    parsed_raw,
+                    known=r.get("known"),
+                    filename=r.get("filename", ""),
+                    text=r.get("text", ""),
+                    p12_lines=pmeta.get("p12_lines"),
+                    explicit_format=r.get("effective_format") or r.get("format"),
+                    pre_meta=pmeta,
+                    provenance=pmeta["provenance"],
+                    multipage=pmeta["multipage"],
+                    triage=pmeta["triage"] if short_circuit_triage else None,
+                    relational=pmeta.get("relational"),
+                    citations=pmeta.get("citations"),
+                    hygiene=pmeta.get("hygiene"),
+                    use_citations=use_citations,
+                    use_relational=use_relational,
+                    use_hygiene=use_hygiene,
+                    usc_oracle=self.usc_oracle,
+                )
+            except DocMetaValidationError:
+                fn_rec = str(r.get("filename") or "")
+                fallback_triage = _build_triage_result(
+                    "stub_or_blank",
+                    "garbled",
+                    f"Malformed 2B extraction output salvaged to non-usable triage ({fn_rec[:60]})",
+                )
+                clean_obj, sidecar = post_pass_v6(
+                    fallback_triage["docmeta"],
+                    known=r.get("known"),
+                    filename=fn_rec,
+                    text=r.get("text", ""),
+                    p12_lines=pmeta.get("p12_lines"),
+                    explicit_format=r.get("effective_format") or r.get("format"),
+                    pre_meta=pmeta,
+                    provenance=pmeta["provenance"],
+                    multipage=pmeta["multipage"],
+                    triage=fallback_triage,
+                    relational=pmeta.get("relational"),
+                    citations=pmeta.get("citations"),
+                    hygiene=pmeta.get("hygiene"),
+                    use_citations=use_citations,
+                    use_relational=use_relational,
+                    use_hygiene=use_hygiene,
+                    usc_oracle=self.usc_oracle,
+                )
             if use_zero_llm_bypass and pmeta["zero_llm_docmeta"] is not None:
                 sidecar["zero_llm_bypassed"] = True
             clean_objs.append(clean_obj)
