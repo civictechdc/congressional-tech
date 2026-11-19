@@ -211,10 +211,111 @@ def test_planted_nav_bar_footer_carousel_and_ordinal_href_faults_are_flagged(tmp
 
     assert report['raw_pages_unread'] == 1
     assert report['unread_pages'] == [missing_sha]
+    assert report['raw_byte_contradiction_counts'] == report['contradiction_counts']
+    assert report['unread_metadata_contradiction_counts'] == {}
     assert report['verdicts'] == {
         'raw_contradicts': 6,
         'raw_supports': 1,
         'unread_body_no_metadata_contradiction': 1,
+    }
+
+
+def test_planted_absent_senate_video_footer_script_and_unread_metadata_contradictions(tmp_path):
+    """Reproduces Re-Review #3b raw-checker defects: absent Senate video, footer/body <script> YouTube URLs, and unread metadata conflicts."""
+    mirror, rel, meetings, videos, _, _ = _fixture(tmp_path)
+    meetings.extend([
+        dict(event_id=336901, chamber='senate', meeting_date='2025-10-09', meeting_type='Hearing',
+             title='Hearing on Rural Health Care Access and Hospital Financing', subject_keys=[]),
+        dict(event_id=336902, chamber='senate', meeting_date='2025-10-10', meeting_type='Hearing',
+             title='Hearing on Rural Health Care Access and Hospital Financing', subject_keys=[]),
+        dict(event_id=336903, chamber='senate', meeting_date='2025-10-11', meeting_type='Hearing',
+             title='Hearing on Rural Health Care Access and Hospital Financing', subject_keys=[]),
+    ])
+    videos.extend([
+        dict(video_key='senate:help100925', title='Rural Health Care Access',
+             source_description='', stated_event_ids=[], published_at='2025-10-09T15:00:00Z', video_published_at='2025-10-09T15:00:00Z'),
+        dict(video_key='youtube:footScr0001', title='Full Committee Business Meeting',
+             source_description='', stated_event_ids=[], published_at='2022-05-17T15:00:00Z', video_published_at='2022-05-17T15:00:00Z'),
+        dict(video_key='youtube:bodyScr0002', title='Full Committee Business Meeting',
+             source_description='', stated_event_ids=[], published_at='2022-05-17T15:00:00Z', video_published_at='2022-05-17T15:00:00Z'),
+    ])
+
+    senate_absent_sha = _store_body(
+        mirror,
+        '<html><head><title>Rural Health Care Access and Hospital Financing | Senate HELP Committee</title></head>'
+        '<body><main><h1>Hearing on Rural Health Care Access and Hospital Financing</h1>'
+        '<p>No recording player embedded on this page.</p></main></body></html>',
+    )
+    senate_chrome_sha = _store_body(
+        mirror,
+        '<html><head><title>Rural Health Care Access and Hospital Financing | Senate HELP Committee</title></head>'
+        '<body><main><h1>Hearing on Rural Health Care Access and Hospital Financing</h1></main>'
+        '<footer><a href="https://www.senate.gov/isvp/?comm=help&filename=help100925">Footer Archive</a></footer></body></html>',
+    )
+    senate_good_sha = _store_body(
+        mirror,
+        '<html><head><title>Rural Health Care Access and Hospital Financing | Senate HELP Committee</title></head>'
+        '<body><main><h1>Hearing on Rural Health Care Access and Hospital Financing</h1>'
+        '<iframe src="https://www.senate.gov/isvp/?comm=help&filename=help100925"></iframe></main></body></html>',
+    )
+    footer_script_sha = _store_body(
+        mirror,
+        '<html><head><title>Business Meeting | House Agriculture Committee</title></head>'
+        '<body><main><h1>Business Meeting</h1>'
+        '<a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=114799">Repository</a></main>'
+        '<footer><script>var navVideo = "https://www.youtube.com/watch?v=footScr0001";</script></footer></body></html>',
+    )
+    body_script_sha = _store_body(
+        mirror,
+        '<html><head><title>Business Meeting | House Agriculture Committee</title></head>'
+        '<body><main><h1>Business Meeting</h1>'
+        '<a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=114799">Repository</a>'
+        '<script>window.__vid = "https://www.youtube.com/watch?v=bodyScr0002";</script></main></body></html>',
+    )
+    unread_rt_sha = 'cd' * 32
+
+    matches = [
+        dict(match_id='m_sen_absent', event_id=336901, video_key='senate:help100925', basis='committee_page',
+             status='asserted', note='senate_page', source_ref=f'committee_page:{senate_absent_sha}'),
+        dict(match_id='m_sen_chrome', event_id=336902, video_key='senate:help100925', basis='committee_page',
+             status='asserted', note='senate_page', source_ref=f'committee_page:{senate_chrome_sha}'),
+        dict(match_id='m_sen_good', event_id=336903, video_key='senate:help100925', basis='committee_page',
+             status='asserted', note='senate_page', source_ref=f'committee_page:{senate_good_sha}'),
+        dict(match_id='m_foot_scr', event_id=114799, video_key='youtube:footScr0001', basis='committee_page',
+             status='asserted', note='house_title_words: agricultural', source_ref=f'committee_page:{footer_script_sha}'),
+        dict(match_id='m_body_scr', event_id=114799, video_key='youtube:bodyScr0002', basis='committee_page',
+             status='asserted', note='house_title_words: agricultural', source_ref=f'committee_page:{body_script_sha}'),
+        dict(match_id='m_unread_rt', event_id=117496, video_key='youtube:PYk8qVbLMfA', basis='committee_page',
+             status='asserted', note='house_text_head_weak: board', source_ref=f'committee_page:{unread_rt_sha}'),
+    ]
+
+    report = _run(tmp_path, mirror, rel, meetings, videos, matches)
+    rv = report['_row_verdicts']
+    assert rv['336901/senate:help100925']['verdict'] == 'raw_contradicts'
+    assert 'video_not_in_raw_body' in rv['336901/senate:help100925']['flags']
+    assert rv['336902/senate:help100925']['verdict'] == 'raw_contradicts'
+    assert 'chrome_only_video_embed' in rv['336902/senate:help100925']['flags']
+    assert rv['336903/senate:help100925']['verdict'] == 'raw_supports'
+    assert rv['336903/senate:help100925']['flags'] == []
+    assert rv['114799/youtube:footScr0001']['verdict'] == 'raw_contradicts'
+    assert 'chrome_only_video_embed' in rv['114799/youtube:footScr0001']['flags']
+    assert rv['114799/youtube:bodyScr0002']['verdict'] == 'raw_inconclusive'
+    assert rv['114799/youtube:bodyScr0002']['flags'] == []
+    assert rv['117496/youtube:PYk8qVbLMfA']['verdict'] == 'unread_body_metadata_contradiction'
+    assert 'proceeding_genre_conflict' in rv['117496/youtube:PYk8qVbLMfA']['flags']
+
+    assert report['raw_byte_contradiction_counts'] == {
+        'video_not_in_raw_body': 1,
+        'chrome_only_video_embed': 2,
+    }
+    assert report['unread_metadata_contradiction_counts'] == {
+        'proceeding_genre_conflict': 1,
+    }
+    assert report['verdicts'] == {
+        'raw_contradicts': 3,
+        'raw_supports': 1,
+        'raw_inconclusive': 1,
+        'unread_body_metadata_contradiction': 1,
     }
 
 

@@ -6,7 +6,9 @@ Judges published committee_page recording matches directly from raw fetched byte
 against the SHA-256 cited in source_ref) and independent signals that do not mirror any
 production threshold:
   1. Direction A (published -> raw):
-     - Raw byte SHA-256 verification and presence of the claimed YouTube ID.
+     - Raw byte SHA-256 verification and editorial-DOM verification of the specific claimed
+       recording identifier (both YouTube IDs and non-YouTube/Senate stream identifiers; footer
+       scripts and chrome-only embeds never count as editorial evidence).
      - DOM-aware HTML structure separating editorial content from site navigation, footer,
        sidebar, and lightbox-carousel chrome (detecting chrome-only footer/sidebar embeds
        and nav-bar-only false topic overlap).
@@ -16,12 +18,13 @@ production threshold:
      - Independent bill-number comparison across video title, raw editorial page, and meeting.
      - Independent calendar-date comparison (video title dates and upload timestamps vs
        meeting dates) and Jaccard title-similarity check for conflicting stated EventIDs.
-     - Explicit four-way verdict: raw_supports (only with affirmative raw corroboration),
-       raw_inconclusive (read without contradiction or affirmative corroboration),
-       raw_contradicts, and unread_body_no_metadata_contradiction.
+     - Explicit five-way verdict separating raw-byte outcomes from unread-body metadata checks:
+       raw_supports (only with affirmative editorial corroboration of both meeting and specific
+       recording), raw_inconclusive, raw_contradicts, unread_body_metadata_contradiction, and
+       unread_body_no_metadata_contradiction.
   2. Direction B (raw -> published):
      - For every readable raw body (from --raw-pages or cited mirror bodies) that explicitly
-       links one known House meeting and embeds a YouTube video in editorial content, verify
+       links one known House meeting and embeds a YouTube video in editorial DOM, verify
        that (event_id, video_key) is published specifically under basis='committee_page'.
 
 Every cited body not present in the mirror is named in unread_pages rather than assumed valid.
@@ -57,7 +60,7 @@ BILL_RE = re.compile(
 )
 SUBJECT_BILL_RE = re.compile(r'^\d+-(hr|s|hjres|sjres|hconres|sconres|hres|sres)-(\d+)$', re.I)
 CHROME_ATTR_RE = re.compile(
-    r'\b(?:nav|navbar|navigation|menu|submenu|dropdown|site-header|main-header|top-header|footer|intfooter|sidebar|side-bar|breadcrumb|breadcrumbs|social|share|related|popup-holder|video-list|carousel|footer-links)\b',
+    r'(?<!no-)(?<!with-)(?<!has-)(?<!without-)\b(?:nav|navbar|navigation|menu|submenu|dropdown|site-header|main-header|top-header|footer|intfooter|sidebar|side-bar|breadcrumb|breadcrumbs|social|share|related|popup-holder|video-list|carousel|footer-links)\b',
     re.I,
 )
 EDITORIAL_ATTR_RE = re.compile(
@@ -131,8 +134,14 @@ def jaccard_similarity(a, b):
     return len(a & b) / len(a | b)
 
 
+def _has_token_boundary(blob, token):
+    if not blob or not token:
+        return False
+    return re.search(rf'(?<![a-z0-9]){re.escape(token.lower())}(?![a-z0-9])', blob) is not None
+
+
 class _RawHtmlDomReader(HTMLParser):
-    """DOM-aware stdlib HTML reader separating editorial content from site chrome/nav/footer/sidebar."""
+    """DOM-aware stdlib HTML reader separating editorial content from site chrome/nav/footer/sidebar and scripts."""
 
     VOID_TAGS = frozenset({'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'})
 
@@ -140,6 +149,7 @@ class _RawHtmlDomReader(HTMLParser):
         super().__init__(convert_charrefs=True)
         self._stack = []
         self._skip_depth = 0
+        self._script_depth = 0
         self._chrome_depth = 0
         self._editorial_depth = 0
         self._in_title = False
@@ -152,12 +162,16 @@ class _RawHtmlDomReader(HTMLParser):
         self.hrefs = []
         self.editorial_video_ids = set()
         self.chrome_video_ids = set()
+        self.script_video_ids = set()
+        self._editorial_attrs = []
+        self._chrome_attrs = []
 
     def handle_starttag(self, tag, attrs):
         tag = tag.lower()
         attr_map = dict(attrs)
         cls_id = (attr_map.get('class') or '') + ' ' + (attr_map.get('id') or '')
 
+        is_script = tag == 'script'
         is_skip = tag in {'script', 'style', 'noscript', 'svg'}
         is_editorial = tag in {'main', 'article'} or bool(EDITORIAL_ATTR_RE.search(cls_id))
         # A <header> inside <article>/<main> holds the article headline; a top-level <header> is site chrome.
@@ -169,21 +183,31 @@ class _RawHtmlDomReader(HTMLParser):
         )
 
         next_chrome = self._chrome_depth + (1 if is_chrome else 0)
-        for key in ('href', 'src', 'data-src', 'content'):
-            val = attr_map.get(key)
+        for key, val in attrs:
             if not val:
                 continue
-            self.hrefs.append(val)
-            for vid in YOUTUBE_URL_RE.findall(val):
+            lkey = key.lower()
+            if lkey in {'href', 'src', 'data-src', 'content'} or lkey.startswith('data-'):
+                if lkey in {'href', 'src', 'data-src', 'content'}:
+                    self.hrefs.append(val)
                 if next_chrome > 0:
-                    self.chrome_video_ids.add(vid)
-                else:
-                    self.editorial_video_ids.add(vid)
+                    self._chrome_attrs.append(val.lower())
+                elif not is_script:
+                    self._editorial_attrs.append(val.lower())
+                for vid in YOUTUBE_URL_RE.findall(val):
+                    if next_chrome > 0:
+                        self.chrome_video_ids.add(vid)
+                    elif is_script:
+                        self.script_video_ids.add(vid)
+                    else:
+                        self.editorial_video_ids.add(vid)
 
         if tag in self.VOID_TAGS:
             return
 
-        self._stack.append((tag, is_skip, is_chrome, is_editorial))
+        self._stack.append((tag, is_script, is_skip, is_chrome, is_editorial))
+        if is_script:
+            self._script_depth += 1
         if is_skip:
             self._skip_depth += 1
         if is_chrome:
@@ -192,7 +216,7 @@ class _RawHtmlDomReader(HTMLParser):
             self._editorial_depth += 1
         if tag == 'title' and not self._title_parts:
             self._in_title = True
-        elif tag == 'h1' and self._skip_depth == 0 and not any(t in {'nav', 'footer', 'aside'} for t, _, _, _ in self._stack[:-1]):
+        elif tag == 'h1' and self._skip_depth == 0 and not any(t in {'nav', 'footer', 'aside'} for t, _, _, _, _ in self._stack[:-1]):
             self._in_heading = True
             self._cur_heading = []
         elif tag == 'h2' and self._chrome_depth == 0 and self._skip_depth == 0:
@@ -212,11 +236,12 @@ class _RawHtmlDomReader(HTMLParser):
             self._in_heading = False
             self._cur_heading = []
 
-        # Unwind stack to matching open tag when present.
         for idx in range(len(self._stack) - 1, -1, -1):
             if self._stack[idx][0] == tag:
                 while len(self._stack) > idx:
-                    _, was_skip, was_chrome, was_ed = self._stack.pop()
+                    _, was_script, was_skip, was_chrome, was_ed = self._stack.pop()
+                    if was_script and self._script_depth > 0:
+                        self._script_depth -= 1
                     if was_skip and self._skip_depth > 0:
                         self._skip_depth -= 1
                     if was_chrome and self._chrome_depth > 0:
@@ -226,6 +251,14 @@ class _RawHtmlDomReader(HTMLParser):
                 break
 
     def handle_data(self, data):
+        if self._script_depth > 0:
+            # Never promote script-embedded URLs (especially inside <footer>/<nav>) to editorial video embeds.
+            for vid in YOUTUBE_URL_RE.findall(data):
+                if self._chrome_depth > 0:
+                    self.chrome_video_ids.add(vid)
+                else:
+                    self.script_video_ids.add(vid)
+            return
         if self._skip_depth > 0:
             return
         if self._in_title:
@@ -233,6 +266,11 @@ class _RawHtmlDomReader(HTMLParser):
             return
         if self._in_heading:
             self._cur_heading.append(data)
+        for vid in YOUTUBE_URL_RE.findall(data):
+            if self._chrome_depth > 0:
+                self.chrome_video_ids.add(vid)
+            else:
+                self.editorial_video_ids.add(vid)
         if self._chrome_depth == 0:
             self._non_chrome_parts.append(data)
             if self._editorial_depth > 0:
@@ -246,6 +284,14 @@ class _RawHtmlDomReader(HTMLParser):
     def editorial_body(self):
         src = self._editorial_parts if self._editorial_parts else self._non_chrome_parts
         return re.sub(r'\s+', ' ', ' '.join(src)).strip()
+
+    @property
+    def editorial_attr_blob(self):
+        return ' '.join(self._editorial_attrs)
+
+    @property
+    def chrome_attr_blob(self):
+        return ' '.join(self._chrome_attrs)
 
 
 def parse_raw_body(raw_bytes):
@@ -273,7 +319,10 @@ def parse_raw_body(raw_bytes):
                 editorial_bills=extract_bills(ed_text),
                 editorial_video_ids=vids,
                 chrome_only_video_ids=[],
+                script_only_video_ids=[],
                 all_video_ids=vids,
+                editorial_attr_blob=text.lower(),
+                chrome_attr_blob='',
                 linked_event_ids=linked,
                 title_event_ids=[],
             )
@@ -287,9 +336,10 @@ def parse_raw_body(raw_bytes):
     committee_tokens = distinctive_tokens(m_suf.group(1)) if m_suf else set()
     clean_title = CMTE_SUFFIX_RE.sub('', raw_title).strip()
 
-    all_vids = set(reader.editorial_video_ids) | set(reader.chrome_video_ids) | set(YOUTUBE_URL_RE.findall(text))
-    chrome_only = reader.chrome_video_ids - reader.editorial_video_ids
-    editorial_vids = all_vids - chrome_only
+    editorial_vids = set(reader.editorial_video_ids)
+    chrome_only = set(reader.chrome_video_ids) - editorial_vids
+    script_only = set(reader.script_video_ids) - editorial_vids - chrome_only
+    all_vids = editorial_vids | chrome_only | script_only
 
     linked_events = set()
     for href in reader.hrefs:
@@ -311,7 +361,10 @@ def parse_raw_body(raw_bytes):
         editorial_bills=extract_bills(ed_text),
         editorial_video_ids=sorted(editorial_vids),
         chrome_only_video_ids=sorted(chrome_only),
+        script_only_video_ids=sorted(script_only),
         all_video_ids=sorted(all_vids),
+        editorial_attr_blob=reader.editorial_attr_blob,
+        chrome_attr_blob=reader.chrome_attr_blob,
         linked_event_ids=sorted(linked_events),
         title_event_ids=sorted(title_events),
     )
@@ -444,7 +497,7 @@ def evaluate_release(
                 bills=extract_bills(vtitle),
             )
 
-    # Direction B must compare strictly against published basis='committee_page' pairs so another
+    # Direction B compares strictly against published basis='committee_page' pairs so another
     # basis (e.g. video_states_event_id or publisher_link) can never mask a missing committee_page row.
     published_cp_pairs = set()
     cp_rows = []
@@ -476,12 +529,18 @@ def evaluate_release(
         return parsed
 
     contradictions = Counter()
+    raw_byte_contradictions = Counter()
+    unread_metadata_contradictions = Counter()
     examples = defaultdict(list)
     verdicts = Counter()
     row_verdicts = {}
 
-    def flag(kind, row, detail):
+    def flag(kind, row, detail, *, body_read):
         contradictions[kind] += 1
+        if body_read:
+            raw_byte_contradictions[kind] += 1
+        else:
+            unread_metadata_contradictions[kind] += 1
         if len(examples[kind]) < max_examples:
             examples[kind].append(dict(
                 match_id=row.get('match_id'),
@@ -489,6 +548,7 @@ def evaluate_release(
                 video_key=row.get('video_key'),
                 source_ref=row.get('source_ref'),
                 note=row.get('note'),
+                body_read=body_read,
                 detail=detail,
             ))
 
@@ -500,8 +560,6 @@ def evaluate_release(
         row_flags = []
 
         if not sref.startswith('committee_page:') or not SHA64_RE.match(sref.split(':', 1)[1]):
-            row_flags.append('invalid_source_ref')
-            flag('invalid_source_ref', row, {'source_ref': sref})
             sha = None
         else:
             sha = sref.split(':', 1)[1]
@@ -509,21 +567,25 @@ def evaluate_release(
         via_match = VIA_SHA_RE.search(str(note or ''))
         win_sha = via_match.group(1) if via_match else None
 
-        if require_provenance and not (note and str(note).strip()):
-            row_flags.append('missing_provenance_note')
-            flag('missing_provenance_note', row, {'note': note})
-
         cited_page = get_page(sha) if sha else None
         win_page = get_page(win_sha) if (win_sha and win_sha != sha) else None
-        # Evaluate the winning supporting body when distinct and available, while still validating source_ref bytes.
         page = win_page if win_page is not None else cited_page
+        body_read = page is not None
+
+        if sha is None:
+            row_flags.append('invalid_source_ref')
+            flag('invalid_source_ref', row, {'source_ref': sref}, body_read=body_read)
+
+        if require_provenance and not (note and str(note).strip()):
+            row_flags.append('missing_provenance_note')
+            flag('missing_provenance_note', row, {'note': note}, body_read=body_read)
 
         if cited_page is not None and not cited_page['digest_ok']:
             row_flags.append('raw_html_digest_mismatch')
-            flag('raw_html_digest_mismatch', row, {'sha': sha})
+            flag('raw_html_digest_mismatch', row, {'sha': sha}, body_read=True)
         if win_page is not None and not win_page['digest_ok']:
             row_flags.append('raw_html_digest_mismatch')
-            flag('raw_html_digest_mismatch', row, {'sha': win_sha})
+            flag('raw_html_digest_mismatch', row, {'sha': win_sha}, body_read=True)
 
         meeting = meetings.get(int(eid)) if eid is not None else None
         video = videos.get(vk) if vk else None
@@ -534,27 +596,52 @@ def evaluate_release(
 
         corroborated = False
         if page is not None:
-            if yt_id is not None and yt_id not in page['all_video_ids']:
-                row_flags.append('video_not_in_raw_body')
-                flag('video_not_in_raw_body', row, {'expected_youtube_id': yt_id, 'found_ids': page['all_video_ids'][:10]})
+            # Verify the specific claimed recording appears in editorial DOM (never affirm absent or chrome/script-only embeds).
+            recording_in_editorial = False
+            if yt_id is not None:
+                if yt_id in page['editorial_video_ids']:
+                    recording_in_editorial = True
+                elif yt_id in page['chrome_only_video_ids']:
+                    row_flags.append('chrome_only_video_embed')
+                    flag('chrome_only_video_embed', row, {
+                        'youtube_id': yt_id,
+                        'video_title': v_title,
+                        'page_title': page['title'],
+                    }, body_read=True)
+                elif yt_id in page['script_only_video_ids']:
+                    # Present only inside a non-chrome <script> block, not in editorial DOM: cannot return raw_supports.
+                    recording_in_editorial = False
+                else:
+                    row_flags.append('video_not_in_raw_body')
+                    flag('video_not_in_raw_body', row, {
+                        'expected_youtube_id': yt_id,
+                        'found_ids': page['all_video_ids'][:10],
+                    }, body_read=True)
+            elif vk:
+                rec_token = vk.rsplit(':', 1)[-1].lower()
+                if _has_token_boundary(page['editorial_attr_blob'], rec_token):
+                    recording_in_editorial = True
+                elif _has_token_boundary(page['chrome_attr_blob'], rec_token):
+                    row_flags.append('chrome_only_video_embed')
+                    flag('chrome_only_video_embed', row, {
+                        'video_key': vk,
+                        'page_title': page['title'],
+                    }, body_read=True)
+                else:
+                    row_flags.append('video_not_in_raw_body')
+                    flag('video_not_in_raw_body', row, {
+                        'expected_video_key': vk,
+                        'expected_token': rec_token,
+                        'page_title': page['title'],
+                    }, body_read=True)
+
             page_explicit_events = sorted(set(page['linked_event_ids']) | set(page['title_event_ids']))
             if eid is not None and page_explicit_events and int(eid) not in page_explicit_events:
                 row_flags.append('raw_body_event_link_conflict')
-                flag('raw_body_event_link_conflict', row, {'explicit_event_ids': page_explicit_events})
+                flag('raw_body_event_link_conflict', row, {'explicit_event_ids': page_explicit_events}, body_read=True)
 
             m_toks = distinctive_tokens(meeting['title'], exclude=page['committee_tokens']) if meeting else set()
             m_bills = meeting['bills'] if meeting else set()
-            video_meeting_overlap = len(v_toks & m_toks)
-            video_meeting_bills = v_bills & m_bills
-
-            if yt_id is not None and yt_id in page['chrome_only_video_ids'] and video_meeting_overlap == 0 and not video_meeting_bills:
-                row_flags.append('chrome_only_video_embed')
-                flag('chrome_only_video_embed', row, {
-                    'youtube_id': yt_id,
-                    'video_title': v_title,
-                    'page_title': page['title'],
-                })
-
             ed_toks = distinctive_tokens(page['editorial_text'], exclude=page['committee_tokens'])
             ed_overlap = ed_toks & m_toks
             ed_bill_overlap = page['editorial_bills'] & m_bills
@@ -575,11 +662,10 @@ def evaluate_release(
                     'meeting_title': meeting['title'],
                     'page_title': page['title'],
                     'video_title': v_title,
-                })
+                }, body_read=True)
 
-            # Affirmative corroboration from raw bytes (never default uncorroborated reads to raw_supports).
-            in_editorial = yt_id is None or yt_id in page['editorial_video_ids']
-            if in_editorial:
+            # Affirmative corroboration requires BOTH editorial recording presence AND raw meeting corroboration.
+            if recording_in_editorial:
                 if page['body_kind'] == 'congress_gov_json' and eid is not None and int(eid) in page['linked_event_ids']:
                     corroborated = True
                 elif eid is not None and int(eid) in page_explicit_events:
@@ -603,10 +689,10 @@ def evaluate_release(
 
             if (p_rt or v_rt) and not m_rt:
                 row_flags.append('proceeding_genre_conflict')
-                flag('proceeding_genre_conflict', row, {'meeting_title': m_title, 'video_title': v_title, 'page_title': p_title.strip()})
+                flag('proceeding_genre_conflict', row, {'meeting_title': m_title, 'video_title': v_title, 'page_title': p_title.strip()}, body_read=body_read)
             elif m_rt and v_hm and not v_rt:
                 row_flags.append('proceeding_genre_conflict')
-                flag('proceeding_genre_conflict', row, {'meeting_title': m_title, 'video_title': v_title})
+                flag('proceeding_genre_conflict', row, {'meeting_title': m_title, 'video_title': v_title}, body_read=body_read)
 
             if video is not None:
                 cand_overlap = len(v_toks & m_toks_all)
@@ -627,7 +713,7 @@ def evaluate_release(
                             'video_bills': sorted(f'{bt}-{num}' for bt, num in v_bills),
                             'meeting_title': m_title,
                             'video_title': v_title,
-                        })
+                        }, body_read=body_read)
 
                 # Independent calendar date contradiction: explicit date in video title disagrees sharply with meeting_date.
                 title_date = extract_explicit_date(v_title)
@@ -639,7 +725,7 @@ def evaluate_release(
                             'video_title_date': str(title_date),
                             'video_title': v_title,
                             'meeting_title': m_title,
-                        })
+                        }, body_read=body_read)
 
                 # Independent stated-event check using calendar dates, bill numbers, and Jaccard title similarity.
                 stated = [se for se in video['stated_event_ids'] if se != int(eid)]
@@ -691,12 +777,12 @@ def evaluate_release(
                             break
                     if best_conflict is not None:
                         row_flags.append('conflicting_video_stated_event_id')
-                        flag('conflicting_video_stated_event_id', row, best_conflict)
+                        flag('conflicting_video_stated_event_id', row, best_conflict, body_read=body_read)
 
-        if row_flags:
+        if page is None:
+            verdict = 'unread_body_metadata_contradiction' if row_flags else 'unread_body_no_metadata_contradiction'
+        elif row_flags:
             verdict = 'raw_contradicts'
-        elif page is None:
-            verdict = 'unread_body_no_metadata_contradiction'
         elif corroborated:
             verdict = 'raw_supports'
         else:
@@ -744,6 +830,8 @@ def evaluate_release(
         unread_pages=sorted(unread_pages),
         verdicts=dict(sorted(verdicts.items())),
         contradiction_counts=dict(sorted(contradictions.items())),
+        raw_byte_contradiction_counts=dict(sorted(raw_byte_contradictions.items())),
+        unread_metadata_contradiction_counts=dict(sorted(unread_metadata_contradictions.items())),
         contradiction_examples={k: v for k, v in sorted(examples.items())},
         direction_b=dict(
             basis_checked='committee_page',

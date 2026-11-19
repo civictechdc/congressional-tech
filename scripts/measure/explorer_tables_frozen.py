@@ -17,7 +17,7 @@ from docspec_client.client import NativeDatasets
 from viewer_publication.archive_format import MEETING_DICTIONARY, _settings
 from viewer_publication.archive_model_lifetimes import retire_relations
 from viewer_publication.archive_model_profile import expand_parser_version_rows
-from viewer_publication.archive_model import (EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL, EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, SPICY_SCHEMAS, TRANSCRIPT_HEADINGS_UNAVAILABLE, WITNESSES_SQL, appearance_steps, channel_directory_rows, meeting_records_have_document_references,
+from viewer_publication.archive_model import (EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL, EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, SPICY_SCHEMAS, TRANSCRIPT_HEADINGS_UNAVAILABLE, VIDEO_KEY_ALIASES_SQL, WITNESSES_SQL, appearance_steps, channel_directory_rows, known_meetings_sql, meeting_records_have_document_references,
     meeting_steps, recording_match_prep_steps, registry_inputs, selected_record_step)
 from congress_api.retention.provenance import field, json_input, run_job
 
@@ -94,44 +94,16 @@ def positioned_detail(release, work):
     return path
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    for name in ('spec', 'release', 'lake', 'decisions', 'output', 'runtime'):
-        parser.add_argument('--' + name, type=Path, required=True)
-    parser.add_argument('--spicy-regs-dir', type=Path, default=DEFAULT_SPICY_REGS_DIR if DEFAULT_SPICY_REGS_DIR.is_dir() else None)
-    args = parser.parse_args(argv)
-    spec = json.loads(args.spec.read_text())
-    args.output.mkdir(parents=True)
-    work = args.output / '.work'
-    parquet = lambda name, path: dict(name=name, kind='parquet', path=str(path))
-    inputs = registry_inputs(work / 'registries') + [
-        parquet('captures', scoped_captures(spec, work)),
-        parquet('meeting_records', spec['meeting_records']['path']),
-        parquet('appearance_records_lake', spec['appearance_records']['path']),
-        parquet('video_records', args.lake / 'video_records.parquet'),
-        parquet('committee_records', args.lake / 'committee_records.parquet'),
-        parquet('released_list', positioned_list(args.release, work)),
-        parquet('released_meetings', args.release / 'meetings.parquet'),
-        parquet('released_detail', positioned_detail(args.release, work)),
-        parquet('page_facts', mods_page_facts(spec, work)),
-        parquet('recordings_entity', args.release / 'recordings.parquet'),
-        *(
-            [parquet('released_caption_resources', args.release / 'caption_resources.parquet')]
-            if (args.release / 'caption_resources.parquet').is_file() else []
-        ),
-        dict(name='recording_decision_records', kind='json_lines', files=[dict(key='decisions', path=str(args.decisions))],
-             schema=dict(fields=[field(k, v) for k, v in RECORDING_DECISION_FIELDS.items()], metadata={})),
-        json_input(work, 'channel_directory', channel_directory_rows(), handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8'),
-        *spicy_inputs(work, args.spicy_regs_dir),
-        json_input(work, 'parser_versions', expand_parser_version_rows(spec['parser_versions']), parser='Utf8', version='Utf8'),
-    ]
+def build_steps_and_outputs(*, output, has_document_references, has_caption_resources):
+    """Build the ordered frozen Explorer steps and outputs."""
+    output = Path(output)
     steps = [
         dict(name='meeting_records_input', sql="SELECT lower(encode(record_sha,'hex')) AS record_sha_hex,parser_version,status,error_type,source,meetings FROM meeting_records", materialize=True),
         selected_record_step('meeting_records', 'meeting_records_input'),
         # The lake table as the model's prepared appearance input (archive_model._normalize_appearance_rows).
         dict(name='appearance_records_input', sql="SELECT lower(encode(record_sha,'hex')) AS record_sha_hex,* EXCLUDE(record_sha),cast(NULL AS VARCHAR) AS context_url FROM appearance_records_lake", materialize=True),
         selected_record_step('appearance_records', 'appearance_records_input'),
-        *meeting_steps(has_document_references=meeting_records_have_document_references(spec['meeting_records']['path'])),
+        *meeting_steps(has_document_references=has_document_references),
         dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
         dict(name='package_mods_facts', sql=sql('package-mods-facts'), materialize=True),
         dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
@@ -153,31 +125,71 @@ def main(argv=None):
         dict(name='youtube_cache_bodies', sql=sql('youtube-cache-bodies'), materialize=True),
         dict(name='youtube_api_bodies', sql=sql('youtube-api-bodies'), materialize=True),
         dict(name='ordered', sql='SELECT meeting_keys,measure_keys,filename,format,chambers,committee_keys,congress,document_date,document_date_status,hidden,cast(list_row AS INT) AS list_row FROM released_list WHERE coalesce(array_length(meeting_keys),0)>0', materialize=True),
+        dict(name='known_meetings', sql=known_meetings_sql('ordered'), materialize=True),
+        dict(name='recording_url_sources', sql="SELECT id,pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'", materialize=True),
+        dict(name='video_key_aliases', sql=VIDEO_KEY_ALIASES_SQL, materialize=True),
         dict(name='recordings_export', sql='SELECT * FROM recordings_entity', materialize=True),
         dict(name='retained_caption_tracks', sql=(
             "SELECT DISTINCT video_key,track_body FROM released_caption_resources WHERE status='retained' AND ordinal>0 AND format IN ('vtt','srt','ttml')"
-            if (args.release / 'caption_resources.parquet').is_file()
+            if has_caption_resources
             else "SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(NULL,'FixedSizeBinary(32)') AS track_body WHERE false"
         ), materialize=True),
         dict(name='meeting_document_urls', sql=sql('meeting-document-urls'), materialize=True),
         dict(name='details', sql='SELECT package_id,cast(list_row AS INT) AS list_row,format,alternates,link_key FROM released_detail', materialize=True),
         dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),
     ]
-    outputs = [dict(name='resolved_meetings.parquet', path=str(args.output / 'resolved_meetings.parquet'),
+    outputs = [dict(name='resolved_meetings.parquet', path=str(output / 'resolved_meetings.parquet'),
         sql="SELECT event_id,chamber,title,meeting_date,session,status,committees,subject_keys,videos,congress,congress_gov_updated,house_xml_updated,congress_gov_meeting_type,meeting_type,sittings,access,access_basis,not_held,title_key,reschedule_candidate,committee_key,transcript_jackets FROM meetings_resolved",
         settings=_settings('whole', ['event_id']))]
-    outputs.append(dict(name='meetings.parquet', path=str(args.output / 'meetings.parquet'), sql='SELECT * FROM meetings_export', settings=_settings('whole', ['event_id'], dictionary=MEETING_DICTIONARY)))
-    outputs.append(dict(name='meeting_transcript_links.parquet', path=str(args.output / 'meeting_transcript_links.parquet'),
+    outputs.append(dict(name='meetings.parquet', path=str(output / 'meetings.parquet'), sql='SELECT * FROM meetings_export', settings=_settings('whole', ['event_id'], dictionary=MEETING_DICTIONARY)))
+    outputs.append(dict(name='meeting_transcript_links.parquet', path=str(output / 'meeting_transcript_links.parquet'),
         sql='SELECT DISTINCT package_id,event_id FROM meeting_transcript_links', settings=_settings('whole', ['package_id', 'event_id'])))
-    outputs.append(dict(name='witnesses.parquet', path=str(args.output / 'witnesses.parquet'), sql='SELECT * FROM witnesses_export',
+    outputs.append(dict(name='witnesses.parquet', path=str(output / 'witnesses.parquet'), sql='SELECT * FROM witnesses_export',
         settings=_settings('whole', ['occasion', 'panel_order', 'display_order', 'witness_key'])))
     for name, file, keys, dictionary in EXPLORER_TABLES:
         if name == 'recording_matches':
             steps.append(dict(name='recording_page_video_events', sql=EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL, materialize=True))
             steps.extend(recording_match_prep_steps(videos_relation='videos_export', include_stopwords=True))
         steps.append(dict(name=name + '_export', sql=sql(file), materialize=True))
-        outputs.append(dict(name=name + '.parquet', path=str(args.output / (name + '.parquet')), sql=f'SELECT * FROM {name}_export',
+        outputs.append(dict(name=name + '.parquet', path=str(output / (name + '.parquet')), sql=f'SELECT * FROM {name}_export',
             settings=_settings('whole', keys, dictionary=dictionary)))
+    return steps, outputs
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    for name in ('spec', 'release', 'lake', 'decisions', 'output', 'runtime'):
+        parser.add_argument('--' + name, type=Path, required=True)
+    parser.add_argument('--spicy-regs-dir', type=Path, default=DEFAULT_SPICY_REGS_DIR if DEFAULT_SPICY_REGS_DIR.is_dir() else None)
+    args = parser.parse_args(argv)
+    spec = json.loads(args.spec.read_text())
+    args.output.mkdir(parents=True)
+    work = args.output / '.work'
+    parquet = lambda name, path: dict(name=name, kind='parquet', path=str(path))
+    has_caption_resources = (args.release / 'caption_resources.parquet').is_file()
+    inputs = registry_inputs(work / 'registries') + [
+        parquet('captures', scoped_captures(spec, work)),
+        parquet('meeting_records', spec['meeting_records']['path']),
+        parquet('appearance_records_lake', spec['appearance_records']['path']),
+        parquet('video_records', args.lake / 'video_records.parquet'),
+        parquet('committee_records', args.lake / 'committee_records.parquet'),
+        parquet('released_list', positioned_list(args.release, work)),
+        parquet('released_meetings', args.release / 'meetings.parquet'),
+        parquet('released_detail', positioned_detail(args.release, work)),
+        parquet('page_facts', mods_page_facts(spec, work)),
+        parquet('recordings_entity', args.release / 'recordings.parquet'),
+        *([parquet('released_caption_resources', args.release / 'caption_resources.parquet')] if has_caption_resources else []),
+        dict(name='recording_decision_records', kind='json_lines', files=[dict(key='decisions', path=str(args.decisions))],
+             schema=dict(fields=[field(k, v) for k, v in RECORDING_DECISION_FIELDS.items()], metadata={})),
+        json_input(work, 'channel_directory', channel_directory_rows(), handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8'),
+        *spicy_inputs(work, args.spicy_regs_dir),
+        json_input(work, 'parser_versions', expand_parser_version_rows(spec['parser_versions']), parser='Utf8', version='Utf8'),
+    ]
+    steps, outputs = build_steps_and_outputs(
+        output=args.output,
+        has_document_references=meeting_records_have_document_references(spec['meeting_records']['path']),
+        has_caption_resources=has_caption_resources,
+    )
     # The maintained lifetime plan releases each relation at its last reader.
     job = retire_relations(dict(scratch=str(work / 'native'), inputs=inputs, steps=steps, outputs=outputs, queries=[]))
     path = work / 'job.json'

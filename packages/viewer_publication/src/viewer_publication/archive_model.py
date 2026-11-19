@@ -1082,24 +1082,67 @@ EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(arr
  array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'format',cast(NULL AS VARCHAR),
   'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks,cast(NULL AS VARCHAR) AS recording_scope WHERE false"""
 EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL="SELECT cast(NULL AS VARCHAR) AS video_key,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source_ref,cast(NULL AS VARCHAR) AS link_rule,cast(NULL AS VARCHAR) AS match_note WHERE false"
-EMPTY_RECORDING_PAGE_EVENT_LINKS_SQL="SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS BIGINT) AS event_id WHERE false"
+EMPTY_RECORDING_PAGE_EVENT_LINKS_SQL="SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS BIGINT) AS event_id,cast(NULL AS DATE) AS meeting_date,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS title_words WHERE false"
 RECORDING_MATCH_STOPWORDS_SQL="""SELECT make_array(
  '','the','a','an','of','and','to','in','on','for','with','from','at','by','is','are','be','as','or','its','it','this','that',
  'hearing','hearings','subcommittee','committee','house','united','states','congress','washington','full','open','closed','public',
  'session','examine','examining','review','oversight','part','http','https','www','gov','html','htm','aspx','events','event','calendar',
  'eventsingle','eventid','democrats','republicans','markups','markup','business','meeting','entitled','legislative','office'
 ) AS sw"""
-RECORDING_PAGE_EVENT_LINKS_SQL="""SELECT DISTINCT page_body,event_id FROM (
- SELECT vp.page_body,
-  try_cast(coalesce(
-   (regexp_match(l.target_url,'(?i)docs[.]house[.]gov/[^\\s"''<>]*[?&]eventid=0*(1[0-9]{5})\\b'))[1],
-   (regexp_match(l.target_url,'(?i)congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/0*(1[0-9]{5})\\b'))[1]
-  ) AS BIGINT) AS event_id
- FROM recording_video_pages vp
- JOIN resolved_link_targets l ON l.page_body=vp.page_body
- WHERE l.target_url IS NOT NULL
-  AND regexp_like(l.target_url,'(?i)(?:docs[.]house[.]gov/[^\\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/)0*1[0-9]{5}\\b')
-) x WHERE event_id IS NOT NULL"""
+VIDEO_KEY_ALIASES_SQL="""WITH raw_meeting_videos AS (
+ SELECT m.event_id,m.video_url AS url,m.explicit_key,
+  min(regexp_replace((regexp_match(m.video_url,rs.pattern))[1],'^(.+)$',rs.key_template)) AS extracted_key
+ FROM recording_url_sources rs
+ RIGHT JOIN (
+  SELECT event_id,v['url'] AS video_url,nullif(trim(v['video_key']),'') AS explicit_key
+  FROM (SELECT event_id,unnest(videos) AS v FROM meetings_resolved WHERE videos IS NOT NULL)
+ ) m ON m.video_url IS NOT NULL AND regexp_like(m.video_url,rs.pattern)
+ GROUP BY m.event_id,m.video_url,m.explicit_key
+)
+SELECT extracted_key AS alias_key,min(explicit_key) AS canonical_key
+FROM raw_meeting_videos
+WHERE extracted_key IS NOT NULL AND explicit_key IS NOT NULL AND extracted_key<>explicit_key
+GROUP BY extracted_key"""
+
+
+def known_meetings_sql(document_relation='normalized'):
+    return f"""SELECT k.event_id,r.meeting_type,r.title,
+ coalesce(r.subject_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys
+FROM meetings_resolved r
+RIGHT JOIN (
+ SELECT DISTINCT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM {document_relation} WHERE meeting_keys IS NOT NULL
+ UNION
+ SELECT DISTINCT event_id FROM meetings_resolved WHERE event_id IS NOT NULL
+) k ON r.event_id=k.event_id
+WHERE k.event_id IS NOT NULL"""
+
+
+RECORDING_PAGE_EVENT_LINKS_SQL="""WITH raw_links AS (
+ SELECT DISTINCT page_body,event_id FROM (
+  SELECT vp.page_body,
+   try_cast(coalesce(
+    (regexp_match(l.target_url,'(?i)docs[.]house[.]gov/[^\\s"''<>]*[?&]eventid=0*(1[0-9]{5})\\b'))[1],
+    (regexp_match(l.target_url,'(?i)congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/0*(1[0-9]{5})\\b'))[1]
+   ) AS BIGINT) AS event_id
+  FROM recording_video_pages vp
+  JOIN resolved_link_targets l ON l.page_body=vp.page_body
+  WHERE l.target_url IS NOT NULL
+   AND regexp_like(l.target_url,'(?i)(?:docs[.]house[.]gov/[^\\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/)0*1[0-9]{5}\\b')
+ ) x WHERE event_id IS NOT NULL
+), meeting_words AS (
+ SELECT m.event_id,m.meeting_date,
+  array_distinct(array_except(
+   string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(m.title,'')),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{1,2}\\b',' ','g')),' '),
+   sw.sw
+  )) AS title_words
+ FROM meetings_resolved m
+ CROSS JOIN recording_match_stopwords sw
+ WHERE m.event_id IS NOT NULL
+)
+SELECT l.page_body,l.event_id,mw.meeting_date,
+ coalesce(mw.title_words,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS title_words
+FROM meeting_words mw
+RIGHT JOIN raw_links l ON mw.event_id=l.event_id"""
 RECORDING_PAGE_MEETINGS_SQL="""WITH raw_routes AS (
  SELECT vp.page_body,unnest(pf.named_meetings) AS event_id,
   cast(0 AS INT) AS route_priority,
@@ -1268,28 +1311,38 @@ def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwor
           recording_page_video_facts pv
           RIGHT JOIN page_meeting_candidates pm ON pv.video_key=pm.video_key
          ) ON sv.video_key=pm.video_key
+        ), page_disambiguated AS (
+         SELECT e.*,
+          min(e.event_id) OVER (PARTITION BY e.source_ref,e.video_key)<>max(e.event_id) OVER (PARTITION BY e.source_ref,e.video_key) AS multi_event_source_page,
+          max(e.video_meeting_overlap) OVER (PARTITION BY e.source_ref,e.video_key) AS max_page_video_overlap
+         FROM page_evaluated e
         )
         SELECT DISTINCT cast('event' AS VARCHAR) AS subject_kind,cast(e.event_id AS VARCHAR) AS subject_id,
          e.event_id,cast(NULL AS VARCHAR) AS package_id,e.video_key,cast(NULL AS VARCHAR) AS url,
          cast('committee_page' AS VARCHAR) AS basis,cast('linked' AS VARCHAR) AS decision,cast(100 AS SMALLINT) AS score,
          cast('unknown' AS VARCHAR) AS recording_scope,cast('asserted' AS VARCHAR) AS status,
          e.match_note AS note,e.source_ref
-        FROM page_evaluated e
+        FROM page_disambiguated e
         WHERE (NOT e.is_markup_video OR e.is_markup_meeting)
          AND NOT (e.is_roundtable_video AND NOT e.is_roundtable_meeting)
          AND NOT (e.is_roundtable_meeting AND e.is_hearing_or_markup_video AND NOT e.is_roundtable_video)
          AND NOT (
+          e.multi_event_source_page
+          AND NOT e.is_generic_video_title
+          AND e.video_meeting_overlap=0
+          AND e.max_page_video_overlap>0
+         )
+         AND NOT (
           cardinality(e.stated_event_ids)>0
           AND NOT array_has(e.stated_event_ids,e.event_id)
+          AND NOT e.is_generic_video_title
           AND (
-           (NOT e.is_generic_video_title AND (
-            (e.video_meeting_overlap=0 AND e.max_stated_overlap>=2)
-            OR (e.video_meeting_overlap<=1 AND e.max_stated_overlap>=4)
-           ))
+           (e.video_meeting_overlap=0 AND e.max_stated_overlap>=2)
+           OR (e.video_meeting_overlap<=1 AND e.max_stated_overlap>=4)
            OR (e.link_rule IN ('house_title_words','house_title_and_full_words','house_text_head_strong','house_text_head_weak','house_single_day_title','house_single_day_generic')
             AND e.video_meeting_overlap=0
             AND (
-             (NOT e.is_generic_video_title AND e.has_explicit_event_id_in_title)
+             e.has_explicit_event_id_in_title
              OR (e.has_known_stated_meeting AND e.max_stated_overlap>0)
             ))
           )
@@ -1798,15 +1851,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         ]
     if prepared.get('explorer_inputs'):
         steps += _sql_steps(['youtube-cache-bodies','youtube-api-bodies'],root=root)+[
-            dict(name='known_meetings',sql="""SELECT k.event_id,r.meeting_type,r.title,
-                coalesce(r.subject_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')) AS subject_keys
-                FROM meetings_resolved r
-                RIGHT JOIN (
-                    SELECT DISTINCT try_cast(unnest(meeting_keys) AS BIGINT) AS event_id FROM normalized WHERE meeting_keys IS NOT NULL
-                    UNION
-                    SELECT DISTINCT event_id FROM meetings_resolved WHERE event_id IS NOT NULL
-                ) k ON r.event_id=k.event_id
-                WHERE k.event_id IS NOT NULL""",materialize=True),
+            dict(name='known_meetings',sql=known_meetings_sql('normalized'),materialize=True),
             dict(name='videos_entity',sql=(Path(root)/'model/sql/entity-videos.sql').read_text(),materialize=True),
         ]
         auxiliary += [(name,'SELECT * FROM videos_entity' if name=='videos' else (Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary)
@@ -1817,20 +1862,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             dict(name='recording_url_sources',sql="SELECT id,pattern,key_template,format,default_language,default_production FROM recording_sources WHERE kind='video_url'",materialize=True),
             dict(name='recording_track_formats',sql="SELECT pattern,format,default_language,default_production FROM recording_sources WHERE kind='track_format'",materialize=True),
             dict(name='recording_segment_exclusions',sql="SELECT pattern FROM recording_sources WHERE kind='segment_exclusion'",materialize=True),
-            dict(name='video_key_aliases',sql="""WITH raw_meeting_videos AS (
-                SELECT m.event_id,m.video_url AS url,m.explicit_key,
-                    min(regexp_replace((regexp_match(m.video_url,rs.pattern))[1],'^(.+)$',rs.key_template)) AS extracted_key
-                FROM recording_url_sources rs
-                RIGHT JOIN (
-                    SELECT event_id,v['url'] AS video_url,nullif(trim(v['video_key']),'') AS explicit_key
-                    FROM (SELECT event_id,unnest(videos) AS v FROM meetings_resolved WHERE videos IS NOT NULL)
-                ) m ON m.video_url IS NOT NULL AND regexp_like(m.video_url,rs.pattern)
-                GROUP BY m.event_id,m.video_url,m.explicit_key
-            )
-            SELECT extracted_key AS alias_key,min(explicit_key) AS canonical_key
-            FROM raw_meeting_videos
-            WHERE extracted_key IS NOT NULL AND explicit_key IS NOT NULL AND extracted_key<>explicit_key
-            GROUP BY extracted_key""",materialize=True),
+            dict(name='video_key_aliases',sql=VIDEO_KEY_ALIASES_SQL,materialize=True),
             dict(name='recording_link_candidates',sql="SELECT DISTINCT page_body,target_url FROM resolved_link_targets WHERE target_url IS NOT NULL AND regexp_like(target_url,'(?i)(?:youtube|youtu[.]be|senate)')",materialize=True),
             dict(name='recording_video_links',sql="""SELECT DISTINCT raw.page_body,
                 coalesce(a.canonical_key,raw.extracted_key) AS extracted_key
