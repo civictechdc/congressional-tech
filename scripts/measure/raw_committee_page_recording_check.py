@@ -67,6 +67,15 @@ EDITORIAL_ATTR_RE = re.compile(
     r'\b(?:bodycopy|newsbody|main-newscopy|user-content|evo-press-release|entry-content|post-content|page-content)\b',
     re.I,
 )
+NON_MEDIA_URL_RE = re.compile(
+    r'\.(?:pdf|docx?|xlsx?|pptx?|txt|csv|xml|json|rtf|zip|jpe?g|png|gif|webp|svg|css|js)(?:[?#]|$)',
+    re.I,
+)
+MEDIA_URL_RE = re.compile(
+    r'(?i)(?:senate\.gov/isvp|\.(?:m3u8|mp4|webm|mov)(?:[?#]|$)|(?:^|[/?&._-])(?:isvp|webcast|stream|video|player)(?:[/?&.=_-]|$))',
+)
+MEDIA_DATA_ATTR_TOKENS = ('video', 'stream', 'player', 'media', 'webcast', 'isvp', 'filename', 'src')
+EMBED_MEDIA_TAGS = frozenset({'iframe', 'video', 'source', 'embed', 'object'})
 CMTE_SUFFIX_RE = re.compile(r'(?:\||[-–—])\s*([^|–—-]*\bcommittee\b.*)$', re.I)
 CMTE_PHRASE_RE = re.compile(
     r'\bcommittee\s+on\s+[a-z\s,&-]+?(?=[.,;:]|\s+(?:democrats|republicans|gave|held|today|will|has|on|for|to|at|in)\b)',
@@ -140,6 +149,23 @@ def _has_token_boundary(blob, token):
     return re.search(rf'(?<![a-z0-9]){re.escape(token.lower())}(?![a-z0-9])', blob) is not None
 
 
+def _is_media_attr(tag, attr_key, val):
+    """True only when (tag, attr_key, val) represents a video/stream player embed or media URL,
+    never a document/transcript download (e.g. /downloads/help100925.pdf) or plain page href."""
+    if not val:
+        return False
+    url_path = val.split('#', 1)[0].split('?', 1)[0]
+    if NON_MEDIA_URL_RE.search(url_path):
+        return False
+    if tag in EMBED_MEDIA_TAGS and attr_key in {'src', 'data', 'data-src', 'data-video-url', 'data-stream-url'}:
+        return True
+    if attr_key.startswith('data-') and any(tok in attr_key for tok in MEDIA_DATA_ATTR_TOKENS):
+        return True
+    if attr_key in {'href', 'src', 'data-src', 'content'} and MEDIA_URL_RE.search(val):
+        return True
+    return False
+
+
 class _RawHtmlDomReader(HTMLParser):
     """DOM-aware stdlib HTML reader separating editorial content from site chrome/nav/footer/sidebar and scripts."""
 
@@ -190,10 +216,11 @@ class _RawHtmlDomReader(HTMLParser):
             if lkey in {'href', 'src', 'data-src', 'content'} or lkey.startswith('data-'):
                 if lkey in {'href', 'src', 'data-src', 'content'}:
                     self.hrefs.append(val)
-                if next_chrome > 0:
-                    self._chrome_attrs.append(val.lower())
-                elif not is_script:
-                    self._editorial_attrs.append(val.lower())
+                if _is_media_attr(tag, lkey, val):
+                    if next_chrome > 0:
+                        self._chrome_attrs.append(val.lower())
+                    elif not is_script:
+                        self._editorial_attrs.append(val.lower())
                 for vid in YOUTUBE_URL_RE.findall(val):
                     if next_chrome > 0:
                         self.chrome_video_ids.add(vid)
@@ -306,7 +333,12 @@ def parse_raw_body(raw_bytes):
             cm = payload['committeeMeeting']
             ev = cm.get('eventId')
             linked = [int(ev)] if ev is not None and str(ev).strip().isdigit() else []
-            vids = sorted(set(YOUTUBE_URL_RE.findall(text)))
+            video_urls = [
+                str(item.get('url'))
+                for item in (cm.get('videos') or [])
+                if isinstance(item, dict) and item.get('url')
+            ]
+            vids = sorted({vid for u in video_urls for vid in YOUTUBE_URL_RE.findall(u)})
             title = str(cm.get('title') or '')
             ed_text = title
             return dict(
@@ -321,7 +353,10 @@ def parse_raw_body(raw_bytes):
                 chrome_only_video_ids=[],
                 script_only_video_ids=[],
                 all_video_ids=vids,
-                editorial_attr_blob=text.lower(),
+                editorial_attr_blob=' '.join(
+                    u.lower() for u in video_urls
+                    if not NON_MEDIA_URL_RE.search(u.split('#', 1)[0].split('?', 1)[0])
+                ),
                 chrome_attr_blob='',
                 linked_event_ids=linked,
                 title_event_ids=[],

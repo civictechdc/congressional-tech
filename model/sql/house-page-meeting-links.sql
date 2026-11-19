@@ -319,7 +319,7 @@ WITH house_hosts AS (
     AND (
      coalesce(cardinality(outbound_same_date_event_ids),0)>0
      OR cast(cardinality(title_overlap_words) AS BIGINT)<2
-     OR max_outbound_title_overlap>=cast(cardinality(title_overlap_words) AS BIGINT)
+     OR max_outbound_title_overlap>cast(cardinality(title_overlap_words) AS BIGINT)
     )
    ) AS stated_event_conflict,
   held_ok,

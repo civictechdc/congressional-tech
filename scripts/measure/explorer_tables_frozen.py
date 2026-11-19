@@ -18,7 +18,10 @@ from viewer_publication.archive_format import MEETING_DICTIONARY, _settings
 from viewer_publication.archive_model_lifetimes import retire_relations
 from viewer_publication.archive_model_profile import expand_parser_version_rows
 from viewer_publication.archive_model import (EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL, EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, SPICY_SCHEMAS, TRANSCRIPT_HEADINGS_UNAVAILABLE, VIDEO_KEY_ALIASES_SQL, WITNESSES_SQL, appearance_steps, channel_directory_rows, known_meetings_sql, meeting_records_have_document_references,
-    meeting_steps, recording_match_prep_steps, registry_inputs, selected_record_step)
+    meeting_steps, recording_match_prep_steps, registry_inputs, selected_record_step, senate_page_prelim_links_sql)
+from viewer_publication.meeting_detail_observations import EMPTY_OBSERVATIONS
+from viewer_publication.release_gate import (BASE_PERSON_ALIASES, BASE_WITNESS_KEY_MAP, PRIOR_PEOPLE, PRIOR_WITNESSES,
+    _write_prior_table)
 from congress_api.retention.provenance import field, json_input, run_job
 
 
@@ -94,6 +97,25 @@ def positioned_detail(release, work):
     return path
 
 
+def frozen_ledger_inputs(release, work):
+    """Carry prior witness/person identity ledgers from the frozen release when present, else empty typed tables."""
+    release = Path(release)
+    out = Path(work) / 'ledgers'
+    out.mkdir(parents=True, exist_ok=True)
+    manifest_path = release / 'manifest.json'
+    base_release_id = json.loads(manifest_path.read_text()).get('release_id', '') if manifest_path.is_file() else ''
+    _write_prior_table(release / 'witnesses.parquet', out / 'prior_witnesses.parquet',
+                       PRIOR_WITNESSES, defaults={'listing_status': 'listed'})
+    _write_prior_table(release / 'witness_key_map.parquet', out / 'base_witness_key_map.parquet', BASE_WITNESS_KEY_MAP)
+    _write_prior_table(release / 'people.parquet', out / 'prior_people.parquet',
+                       PRIOR_PEOPLE, defaults={'release_id': base_release_id, 'ranks': []})
+    _write_prior_table(release / 'person_aliases.parquet', out / 'base_person_aliases.parquet', BASE_PERSON_ALIASES)
+    return [
+        dict(name=name, kind='parquet', path=str(out / f'{name}.parquet'))
+        for name in ('prior_witnesses', 'base_witness_key_map', 'prior_people', 'base_person_aliases')
+    ]
+
+
 def build_steps_and_outputs(*, output, has_document_references, has_caption_resources):
     """Build the ordered frozen Explorer steps and outputs."""
     output = Path(output)
@@ -104,8 +126,13 @@ def build_steps_and_outputs(*, output, has_document_references, has_caption_reso
         dict(name='appearance_records_input', sql="SELECT lower(encode(record_sha,'hex')) AS record_sha_hex,* EXCLUDE(record_sha),cast(NULL AS VARCHAR) AS context_url FROM appearance_records_lake", materialize=True),
         selected_record_step('appearance_records', 'appearance_records_input'),
         *meeting_steps(has_document_references=has_document_references),
+        dict(name='person_nicknames', sql=sql('person-nicknames'), materialize=True),
         dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
+        dict(name='person_same_family', sql=sql('person-same-family'), materialize=True),
+        dict(name='person_given_matches', sql=sql('person-given-matches'), materialize=True),
         dict(name='package_mods_facts', sql=sql('package-mods-facts'), materialize=True),
+        dict(name='senate_page_candidates', sql=sql('senate-page-candidates'), materialize=True),
+        dict(name='senate_page_prelim_links', sql=senate_page_prelim_links_sql(), materialize=True),
         dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
         dict(name='meeting_mods_links', sql=sql('meeting-mods-links'), materialize=True),
         dict(name='meeting_transcript_links', sql="""SELECT event_id,t['package_id'] AS package_id FROM (SELECT event_id,unnest(transcripts) AS t FROM released_meetings)
@@ -117,6 +144,8 @@ def build_steps_and_outputs(*, output, has_document_references, has_caption_reso
         # No transcript_headings input: the transcript decides nothing here (ct-sfra).
         dict(name='transcript_headings', sql=TRANSCRIPT_HEADINGS_UNAVAILABLE, materialize=True),
         selected_record_step('transcript_headings', 'transcript_headings'),
+        dict(name='document_packages', sql='SELECT package_id,cast(list_row AS BIGINT) AS component FROM released_detail WHERE package_id IS NOT NULL', materialize=True),
+        dict(name='document_metadata', sql='SELECT cast(list_row AS BIGINT) AS component,committee_keys,meeting_keys FROM released_list', materialize=True),
         *appearance_steps(),
         dict(name='witnesses_export', sql=WITNESSES_SQL, materialize=True),
         selected_record_step('video_records', 'video_records'),
@@ -136,6 +165,7 @@ def build_steps_and_outputs(*, output, has_document_references, has_caption_reso
         ), materialize=True),
         dict(name='meeting_document_urls', sql=sql('meeting-document-urls'), materialize=True),
         dict(name='details', sql='SELECT package_id,cast(list_row AS INT) AS list_row,format,alternates,link_key FROM released_detail', materialize=True),
+        dict(name='meeting_detail_observations', sql=EMPTY_OBSERVATIONS, materialize=True),
         dict(name='meetings_export', sql=sql('entity-meetings'), materialize=True),
     ]
     outputs = [dict(name='resolved_meetings.parquet', path=str(output / 'resolved_meetings.parquet'),
@@ -183,6 +213,7 @@ def main(argv=None):
              schema=dict(fields=[field(k, v) for k, v in RECORDING_DECISION_FIELDS.items()], metadata={})),
         json_input(work, 'channel_directory', channel_directory_rows(), handle='Utf8', channel_id='Utf8', system_code='Utf8', committee_label='Utf8', role='Utf8'),
         *spicy_inputs(work, args.spicy_regs_dir),
+        *frozen_ledger_inputs(args.release, work),
         json_input(work, 'parser_versions', expand_parser_version_rows(spec['parser_versions']), parser='Utf8', version='Utf8'),
     ]
     steps, outputs = build_steps_and_outputs(

@@ -76,7 +76,7 @@ def tables(tmp_path_factory):
         dict(name='selected_appearance_records', sql='SELECT * FROM appearance_records_input', materialize=True),
         dict(name='known_meetings', sql="SELECT event_id,meeting_type,title,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS subject_keys FROM meetings_export", materialize=True),
         dict(name='video_key_aliases', sql='SELECT cast(NULL AS VARCHAR) AS alias_key,cast(NULL AS VARCHAR) AS canonical_key WHERE false', materialize=True),
-        dict(name='recording_page_video_events', sql="SELECT cast(NULL AS VARCHAR) AS video_key,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source_ref,cast(NULL AS VARCHAR) AS link_rule,cast(NULL AS VARCHAR) AS match_note WHERE false", materialize=True),
+        dict(name='recording_page_video_events', sql=__import__('viewer_publication.archive_model', fromlist=['EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL']).EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL, materialize=True),
         *__import__('viewer_publication.archive_model', fromlist=['recording_match_prep_steps']).recording_match_prep_steps(videos_relation='videos_export', include_stopwords=True),
         dict(name='recording_matches_export', sql=sql('entity-recording-matches'), materialize=True),
         dict(name='ordered', sql="SELECT arrow_cast(make_array('1001'),'List(Utf8)') AS meeting_keys", materialize=True),
@@ -876,6 +876,10 @@ def test_ct_414r_house_page_date_vetoes_and_rule_provenance(tmp_path):
             UNION ALL SELECT 109100,'house',cast('2024-11-12' AS DATE),'Hearing',
               'Protecting Domestic Semiconductor Supply Chains and Workforce Training',false,
               make_array(named_struct('system_code','hsed00','role','host')),{empty_subj},{empty_vids}
+            -- 115116: Different-date prior Science hearing that TIES on 2 words ('weather', 'satellites') with 115134
+            UNION ALL SELECT 115116,'house',cast('2022-09-01' AS DATE),'Hearing',
+              'Oversight of Weather Satellites',false,
+              make_array(named_struct('system_code','hssy00','role','host')),{empty_subj},{empty_vids}
         )""", materialize=True),
         dict(name='meetings_export', sql="""SELECT event_id,chamber,meeting_type,title,
             array_slice(make_array(named_struct('source',cast(NULL AS VARCHAR),'package_id',cast(NULL AS VARCHAR),'list_row',cast(NULL AS INT),
@@ -924,16 +928,20 @@ def test_ct_414r_house_page_date_vetoes_and_rule_provenance(tmp_path):
             UNION ALL SELECT repeat('11',32),'youtube:prevNavKeep'
             -- 12: 116134 Federal Coal Leasing hearing page holding generic subcommittee video with stale stated_event_ids=[115975] -> must PRESERVE 116134!
             UNION ALL SELECT repeat('12',32),'youtube:237P3FQXQRg'
-            -- 13: Multi-event page naming BOTH 115115 and 115134 with one video per hearing -> each topical video links ONLY to its matching meeting!
+            -- 13: Multi-event page naming BOTH 115115 and 115134 with one video per hearing, PLUS lower-hash page 00 naming ONLY 115115 for multiEvYth1 -> multiEvYth1 must STILL link ONLY to 115115 (not 115134)!
+            UNION ALL SELECT repeat('00',32),'youtube:multiEvYth1'
             UNION ALL SELECT repeat('13',32),'youtube:multiEvYth1'
-            UNION ALL SELECT repeat('13',32),'youtube:multiEvSat1'""", materialize=True),
+            UNION ALL SELECT repeat('13',32),'youtube:multiEvSat1'
+            -- 14: 2-word current hearing ('Weather Satellites') on 2022-09-21 with a DIFFERENT-DATE 'Previous hearing' link to 115116 that TIES on those 2 words -> must PRESERVE 115134!
+            UNION ALL SELECT repeat('14',32),'youtube:prevTieKeep'""", materialize=True),
         dict(name='recording_video_pages', sql="SELECT DISTINCT page_body,arrow_cast(decode(page_body,'hex'),'FixedSizeBinary(32)') AS body_sha FROM recording_video_links", materialize=True),
         dict(name='resolved_link_targets', sql="""
             SELECT repeat('05',32) AS page_body,'https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=115115' AS target_url
             UNION ALL SELECT repeat('0c',32),'https://www.congress.gov/event/117th-congress/house-event/115115'
             UNION ALL SELECT repeat('0c',32),'https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=115134'
             UNION ALL SELECT repeat('0d',32),'https://www.congress.gov/event/119th-congress/house-event/0115135'
-            UNION ALL SELECT repeat('11',32),'https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=115115'""", materialize=True),
+            UNION ALL SELECT repeat('11',32),'https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=115115'
+            UNION ALL SELECT repeat('14',32),'https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=115116'""", materialize=True),
         dict(name='capture_source_contexts', sql="""SELECT 's01' AS source_id,repeat('01',32) AS body_sha
             UNION ALL SELECT 's02',repeat('02',32)
             UNION ALL SELECT 's03',repeat('03',32)
@@ -952,7 +960,9 @@ def test_ct_414r_house_page_date_vetoes_and_rule_provenance(tmp_path):
             UNION ALL SELECT 'sf0',repeat('f0',32)
             UNION ALL SELECT 's11',repeat('11',32)
             UNION ALL SELECT 's12',repeat('12',32)
-            UNION ALL SELECT 's13',repeat('13',32)""", materialize=True),
+            UNION ALL SELECT 's00',repeat('00',32)
+            UNION ALL SELECT 's13',repeat('13',32)
+            UNION ALL SELECT 's14',repeat('14',32)""", materialize=True),
         dict(name='source_addresses', sql="""SELECT 's01' AS source_id,'https://transportation.house.gov/calendar/eventsingle.aspx?EventID=407638' AS url
             UNION ALL SELECT 's02','https://transportation.house.gov/calendar/eventsingle.aspx?EventID=407699'
             UNION ALL SELECT 's03','https://democrats-financialservices.house.gov/events/eventsingle.aspx?EventID=414001'
@@ -971,7 +981,9 @@ def test_ct_414r_house_page_date_vetoes_and_rule_provenance(tmp_path):
             UNION ALL SELECT 'sf0','https://democrats-financialservices.house.gov/news/documentsingle.aspx?DocumentID=401462'
             UNION ALL SELECT 's11','https://science.house.gov/hearings?ID=PREV-NAV-115134'
             UNION ALL SELECT 's12','https://naturalresources.house.gov/calendar/eventsingle.aspx?EventID=414222'
-            UNION ALL SELECT 's13','https://science.house.gov/hearings?ID=MULTI-EVENT-INDEX'""", materialize=True),
+            UNION ALL SELECT 's00','https://science.house.gov/hearings?ID=SINGLE-115115'
+            UNION ALL SELECT 's13','https://science.house.gov/hearings?ID=MULTI-EVENT-INDEX'
+            UNION ALL SELECT 's14','https://science.house.gov/hearings?ID=PREV-TIE-115134'""", materialize=True),
         dict(name='recording_page_sources', sql="SELECT DISTINCT c.source_id,c.body_sha AS page_body FROM recording_video_pages vp JOIN capture_source_contexts c ON c.body_sha=vp.page_body", materialize=True),
         dict(name='page_facts', sql="""
             SELECT arrow_cast(decode(repeat('01',32),'hex'),'FixedSizeBinary(32)') AS body_sha,'completed' AS status,
@@ -1031,9 +1043,14 @@ def test_ct_414r_house_page_date_vetoes_and_rule_provenance(tmp_path):
             UNION ALL SELECT arrow_cast(decode(repeat('12',32),'hex'),'FixedSizeBinary(32)'),'completed',
               'Examining the Biden Administration Record on Federal Coal Leasing | House Natural Resources Committee',
               'Examining the Biden Administration Record on Federal Coal Leasing','2023-07-12','July 12, 2023',arrow_cast(NULL,'List(Int64)')
+            UNION ALL SELECT arrow_cast(decode(repeat('00',32),'hex'),'FixedSizeBinary(32)'),'completed',
+              'The Fountain of Youth? The Quest for Aging Therapies','Aging Therapies',NULL,'Single meeting page',
+              arrow_cast(make_array(cast(115115 AS BIGINT)),'List(Int64)')
             UNION ALL SELECT arrow_cast(decode(repeat('13',32),'hex'),'FixedSizeBinary(32)'),'completed',
               'Science Committee Hearings Archive','Hearings Archive',NULL,'Archive index',
-              arrow_cast(make_array(cast(115115 AS BIGINT),cast(115134 AS BIGINT)),'List(Int64)')""", materialize=True),
+              arrow_cast(make_array(cast(115115 AS BIGINT),cast(115134 AS BIGINT)),'List(Int64)')
+            UNION ALL SELECT arrow_cast(decode(repeat('14',32),'hex'),'FixedSizeBinary(32)'),'completed',
+              'Weather Satellites | Science Committee','Weather Satellites','2022-09-21','Previous hearing September 21, 2022',arrow_cast(NULL,'List(Int64)')""", materialize=True),
         dict(name='publisher_links', sql="SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS VARCHAR) AS source_id WHERE false", materialize=True),
         dict(name='document_members', sql="SELECT cast(NULL AS VARCHAR) AS source_id,cast(NULL AS BIGINT) AS component,cast(NULL AS VARCHAR) AS filename,cast(NULL AS VARCHAR) AS source_url WHERE false", materialize=True),
         dict(name='component_meeting_links', sql="SELECT cast(NULL AS BIGINT) AS component,arrow_cast(NULL,'List(Utf8)') AS meeting_keys WHERE false", materialize=True),
@@ -1073,8 +1090,9 @@ def test_ct_414r_house_page_date_vetoes_and_rule_provenance(tmp_path):
             UNION ALL SELECT 'youtube:oppOrderVid',arrow_cast(decode(repeat('d4',32),'hex'),'FixedSizeBinary(32)'),{empty_stated},false,3600,'Full Committee Hearing'
             UNION ALL SELECT 'youtube:prevNavKeep',arrow_cast(decode(repeat('d5',32),'hex'),'FixedSizeBinary(32)'),{empty_stated},false,3600,'Looking Back to Predict the Future: Weather Satellites'
             UNION ALL SELECT 'youtube:237P3FQXQRg',arrow_cast(decode(repeat('d6',32),'hex'),'FixedSizeBinary(32)'),arrow_cast(make_array(cast(115975 AS BIGINT)),'List(Int64)'),false,3600,'Oversight Hearing | Energy and Mineral Resources Subcommittee'
-            UNION ALL SELECT 'youtube:multiEvYth1',arrow_cast(decode(repeat('d7',32),'hex'),'FixedSizeBinary(32)'),{empty_stated},false,3600,'The Quest for Aging Therapies'
-            UNION ALL SELECT 'youtube:multiEvSat1',arrow_cast(decode(repeat('d8',32),'hex'),'FixedSizeBinary(32)'),{empty_stated},false,3600,'Next Generation of Weather Satellites'""", materialize=True),
+            UNION ALL SELECT 'youtube:multiEvYth1',arrow_cast(decode(repeat('d7',32),'hex'),'FixedSizeBinary(32)'),{empty_stated},false,3600,'The Fountain of Youth? The Quest for Aging Therapies'
+            UNION ALL SELECT 'youtube:multiEvSat1',arrow_cast(decode(repeat('d8',32),'hex'),'FixedSizeBinary(32)'),{empty_stated},false,3600,'Next Generation of Weather Satellites'
+            UNION ALL SELECT 'youtube:prevTieKeep',arrow_cast(decode(repeat('d9',32),'hex'),'FixedSizeBinary(32)'),{empty_stated},false,3600,'Weather Satellites Hearing'""", materialize=True),
         dict(name='meeting_transcript_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         dict(name='package_meeting_links', sql="SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id WHERE false", materialize=True),
         *archive_model.recording_match_prep_steps(videos_relation='videos_export'),
@@ -1123,14 +1141,17 @@ def test_ct_414r_house_page_date_vetoes_and_rule_provenance(tmp_path):
     assert cp[(108476, 'youtube:oppOrderVid')]['source_ref'] == 'committee_page:' + '0f' * 32
     assert cp[(108476, 'youtube:oppOrderVid')]['note'] == 'page_named_meeting [via committee_page:' + 'f0' * 32 + ']'
 
-    # 5. Different-date 'Previous hearing' nav anchor does NOT veto a strong title match to the current hearing,
+    # 5. Different-date 'Previous hearing' nav anchor (both non-overlapping and 2-word tied) preserves current hearing,
     #    generic subcommittee video (116134/237P3FQXQRg) with stale stated_event_ids=[115975] is preserved on a House date route,
-    #    and a multi-event page disambiguates topical videos to their matching meeting instead of Cartesian-joining:
+    #    and a multi-event page disambiguates per (page_body, video_key) BEFORE collapsing pages (even with lower-hash page 00 naming only 115115):
     assert (115134, 'youtube:prevNavKeep') in cp
     assert cp[(115134, 'youtube:prevNavKeep')]['note'].startswith('house_title_words: ')
+    assert (115134, 'youtube:prevTieKeep') in cp
+    assert cp[(115134, 'youtube:prevTieKeep')]['note'] == 'house_title_words: satellites, weather'
     assert (116134, 'youtube:237P3FQXQRg') in cp
     assert cp[(116134, 'youtube:237P3FQXQRg')]['note'].startswith('house_title_words: ')
     assert (115115, 'youtube:multiEvYth1') in cp
+    assert cp[(115115, 'youtube:multiEvYth1')]['source_ref'] == 'committee_page:' + '00' * 32
     assert (115134, 'youtube:multiEvYth1') not in cp
     assert (115134, 'youtube:multiEvSat1') in cp
     assert (115115, 'youtube:multiEvSat1') not in cp
@@ -1142,9 +1163,8 @@ def test_ct_414r_house_page_date_vetoes_and_rule_provenance(tmp_path):
 
 
 def test_explorer_tables_frozen_job_dag_resolves_all_relations(tmp_path):
-    """Verify scripts/measure/explorer_tables_frozen.py defines every input/step relation referenced by its
-    recording/video/match pipeline (video_key_aliases, known_meetings, recording_page_video_events,
-    recording_match_prep_steps, recording_matches_export) and passes retire_relations cleanly."""
+    """Verify scripts/measure/explorer_tables_frozen.py defines every input/step relation across its ENTIRE
+    DAG (all steps and all outputs) and passes full-job retire_relations across all four flag combinations."""
     import importlib.util
     from viewer_publication.archive_model import SPICY_SCHEMAS, registry_inputs
     from viewer_publication.archive_model_lifetimes import retire_relations, sql_dependencies
@@ -1156,53 +1176,45 @@ def test_explorer_tables_frozen_job_dag_resolves_all_relations(tmp_path):
     spec.loader.exec_module(mod)
 
     reg_names = {item['name'] for item in registry_inputs(tmp_path / 'regs')}
-    declared_inputs = reg_names | {
+    ledger_names = {item['name'] for item in mod.frozen_ledger_inputs(tmp_path / 'empty_release', tmp_path / 'work')}
+    declared_inputs = reg_names | ledger_names | {
         'captures', 'meeting_records', 'appearance_records_lake', 'video_records', 'committee_records',
         'released_list', 'released_meetings', 'released_detail', 'page_facts', 'recordings_entity',
         'released_caption_resources', 'recording_decision_records', 'channel_directory', 'parser_versions',
         *SPICY_SCHEMAS.keys(),
     }
-    recording_steps = {
-        'known_meetings', 'recording_url_sources', 'video_key_aliases', 'recordings_export',
-        'retained_caption_tracks', 'videos_export', 'recording_page_video_events',
-        'recording_match_stopwords', 'recording_publisher_match_rows', 'recording_page_video_facts',
-        'recording_page_video_stated_overlaps', 'recording_page_match_rows', 'recording_linked_packages',
-        'recording_matches_export',
+    required_steps = {
+        'person_nicknames', 'appearance_people', 'known_meetings', 'recording_url_sources', 'video_key_aliases',
+        'videos_export', 'recording_page_video_events', 'recording_match_stopwords',
+        'recording_publisher_match_rows', 'recording_page_video_facts', 'recording_page_video_stated_overlaps',
+        'recording_page_match_rows', 'recording_linked_packages', 'recording_matches_export',
     }
-    for has_caption in (True, False):
-        steps, outputs = mod.build_steps_and_outputs(
-            output=tmp_path / f'out_{has_caption}',
-            has_document_references=True,
-            has_caption_resources=has_caption,
-        )
-        available = set(declared_inputs) if has_caption else (declared_inputs - {'released_caption_resources'})
-        seen = set()
-        for step in steps:
-            sql_text = step['components']['sql'] if 'components' in step else step['sql']
-            if step['name'] in recording_steps:
+    for has_doc_refs in (True, False):
+        for has_caption in (True, False):
+            steps, outputs = mod.build_steps_and_outputs(
+                output=tmp_path / f'out_{has_doc_refs}_{has_caption}',
+                has_document_references=has_doc_refs,
+                has_caption_resources=has_caption,
+            )
+            in_names = set(declared_inputs) if has_caption else (declared_inputs - {'released_caption_resources'})
+            available = set(in_names)
+            for step in steps:
+                sql_text = step['components']['sql'] if 'components' in step else step['sql']
                 missing = sql_dependencies(sql_text) - available
-                assert not missing, f"step {step['name']} references undefined relation(s): {sorted(missing)}"
-                seen.add(step['name'])
-            available.add(step['name'])
-        assert seen == recording_steps
-        for out in outputs:
-            missing = sql_dependencies(out['sql']) - available
-            assert not missing, f"output {out['name']} references undefined relation(s): {sorted(missing)}"
-        rec_step_list = [s for s in steps if s['name'] in recording_steps]
-        rec_outputs = [o for o in outputs if o['name'] in {'videos.parquet', 'recording_matches.parquet'}]
-        upstream_names = (set(declared_inputs) | {s['name'] for s in steps}) - recording_steps
-        retired = retire_relations(dict(
-            scratch=str(tmp_path / 'native'),
-            inputs=[dict(name=n) for n in sorted(upstream_names)],
-            steps=rec_step_list,
-            outputs=rec_outputs,
-            queries=[],
-        ))
-        step_names = {s['name'] for s in retired['steps']}
-        assert {'known_meetings', 'recording_url_sources', 'video_key_aliases', 'videos_export',
-                'recording_page_video_events', 'recording_match_stopwords', 'recording_publisher_match_rows',
-                'recording_page_video_facts', 'recording_page_video_stated_overlaps',
-                'recording_page_match_rows', 'recording_linked_packages', 'recording_matches_export'} <= step_names
+                assert not missing, f"doc={has_doc_refs} cap={has_caption} step {step['name']} references undefined relation(s): {sorted(missing)}"
+                available.add(step['name'])
+            for out in outputs:
+                missing = sql_dependencies(out['sql']) - available
+                assert not missing, f"doc={has_doc_refs} cap={has_caption} output {out['name']} references undefined relation(s): {sorted(missing)}"
+            retired = retire_relations(dict(
+                scratch=str(tmp_path / 'native'),
+                inputs=[dict(name=n) for n in sorted(in_names)],
+                steps=steps,
+                outputs=outputs,
+                queries=[],
+            ))
+            step_names = {s['name'] for s in retired['steps']}
+            assert required_steps <= step_names
 
 
 

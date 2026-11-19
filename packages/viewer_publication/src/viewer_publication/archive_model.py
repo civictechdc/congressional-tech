@@ -1081,7 +1081,7 @@ def appearance_records_have_rank_credentials(value,*,root=ROOT):
 EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)') AS event_ids,
  array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'format',cast(NULL AS VARCHAR),
   'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks,cast(NULL AS VARCHAR) AS recording_scope WHERE false"""
-EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL="SELECT cast(NULL AS VARCHAR) AS video_key,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source_ref,cast(NULL AS VARCHAR) AS link_rule,cast(NULL AS VARCHAR) AS match_note WHERE false"
+EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL="SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS VARCHAR) AS video_key,cast(NULL AS BIGINT) AS event_id,cast(NULL AS INT) AS route_priority,cast(NULL AS VARCHAR) AS link_rule,cast(NULL AS VARCHAR) AS match_note WHERE false"
 EMPTY_RECORDING_PAGE_EVENT_LINKS_SQL="SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS BIGINT) AS event_id,cast(NULL AS DATE) AS meeting_date,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)') AS title_words WHERE false"
 RECORDING_MATCH_STOPWORDS_SQL="""SELECT make_array(
  '','the','a','an','of','and','to','in','on','for','with','from','at','by','is','are','be','as','or','its','it','this','that',
@@ -1186,22 +1186,10 @@ RECORDING_PAGE_MEETINGS_SQL="""WITH raw_routes AS (
 SELECT page_body,event_id,route_priority,link_rule,match_note
 FROM ranked
 WHERE rn=1"""
-RECORDING_PAGE_VIDEO_EVENTS_SQL="""WITH pairs AS (
- SELECT pvl.page_body,pvl.extracted_key AS video_key,pm.event_id,
-  pm.route_priority,pm.link_rule,pm.match_note
- FROM recording_page_meetings pm JOIN recording_video_links pvl ON pvl.page_body=pm.page_body
- WHERE pvl.extracted_key IS NOT NULL AND pm.event_id IS NOT NULL
-), ranked AS (
- SELECT video_key,event_id,page_body,link_rule,match_note,
-  min(page_body) OVER (PARTITION BY video_key,event_id) AS min_page_body,
-  row_number() OVER (PARTITION BY video_key,event_id ORDER BY route_priority ASC,page_body ASC) AS rn
- FROM pairs
-)
-SELECT video_key,event_id,'committee_page:'||min_page_body AS source_ref,link_rule,
- CASE WHEN page_body<>min_page_body THEN match_note||' [via committee_page:'||page_body||']'
-  ELSE match_note END AS match_note
-FROM ranked
-WHERE rn=1"""
+RECORDING_PAGE_VIDEO_EVENTS_SQL="""SELECT DISTINCT pvl.page_body,pvl.extracted_key AS video_key,pm.event_id,
+ pm.route_priority,pm.link_rule,pm.match_note
+FROM recording_page_meetings pm JOIN recording_video_links pvl ON pvl.page_body=pm.page_body
+WHERE pvl.extracted_key IS NOT NULL AND pm.event_id IS NOT NULL"""
 
 
 def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwords=False):
@@ -1279,7 +1267,7 @@ def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwor
         CROSS JOIN recording_match_stopwords sw
         GROUP BY s.video_key""",materialize=True),
         dict(name='recording_page_match_rows',sql="""WITH page_meeting_candidates AS (
-         SELECT p.video_key,p.event_id,p.source_ref,p.link_rule,p.match_note,
+         SELECT p.page_body,p.video_key,p.event_id,p.route_priority,p.link_rule,p.match_note,
           lower(coalesce(m.meeting_type,''))='markup'
            OR regexp_like(coalesce(m.title,''),'(?i)\\b(markup|business\\s+meeting|organizational|subcommittee\\s+assignments)\\b') AS is_markup_meeting,
           regexp_like(coalesce(m.title,''),'(?i)\\bround[- ]?tables?\\b') AS is_roundtable_meeting,
@@ -1292,7 +1280,7 @@ def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwor
          CROSS JOIN recording_match_stopwords sw
          WHERE p.video_key IS NOT NULL AND p.event_id IS NOT NULL
         ), page_evaluated AS (
-         SELECT pm.event_id,pm.video_key,pm.source_ref,pm.link_rule,pm.match_note,
+         SELECT pm.page_body,pm.event_id,pm.video_key,pm.route_priority,pm.link_rule,pm.match_note,
           pm.is_markup_meeting,pm.is_roundtable_meeting,
           coalesce(pv.is_markup_video,false) AS is_markup_video,
           coalesce(pv.is_roundtable_video,false) AS is_roundtable_video,
@@ -1313,45 +1301,53 @@ def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwor
          ) ON sv.video_key=pm.video_key
         ), page_disambiguated AS (
          SELECT e.*,
-          min(e.event_id) OVER (PARTITION BY e.source_ref,e.video_key)<>max(e.event_id) OVER (PARTITION BY e.source_ref,e.video_key) AS multi_event_source_page,
-          max(e.video_meeting_overlap) OVER (PARTITION BY e.source_ref,e.video_key) AS max_page_video_overlap
+          min(e.event_id) OVER (PARTITION BY e.page_body,e.video_key)<>max(e.event_id) OVER (PARTITION BY e.page_body,e.video_key) AS multi_event_source_page,
+          max(e.video_meeting_overlap) OVER (PARTITION BY e.page_body,e.video_key) AS max_page_video_overlap
          FROM page_evaluated e
+        ), page_kept AS (
+         SELECT e.event_id,e.video_key,e.page_body,e.match_note,
+          min(e.page_body) OVER (PARTITION BY e.video_key,e.event_id) AS min_page_body,
+          row_number() OVER (PARTITION BY e.video_key,e.event_id ORDER BY e.route_priority ASC,e.page_body ASC) AS rn
+         FROM page_disambiguated e
+         WHERE (NOT e.is_markup_video OR e.is_markup_meeting)
+          AND NOT (e.is_roundtable_video AND NOT e.is_roundtable_meeting)
+          AND NOT (e.is_roundtable_meeting AND e.is_hearing_or_markup_video AND NOT e.is_roundtable_video)
+          AND NOT (
+           e.multi_event_source_page
+           AND NOT e.is_generic_video_title
+           AND e.video_meeting_overlap=0
+           AND e.max_page_video_overlap>0
+          )
+          AND NOT (
+           cardinality(e.stated_event_ids)>0
+           AND NOT array_has(e.stated_event_ids,e.event_id)
+           AND NOT e.is_generic_video_title
+           AND (
+            (e.video_meeting_overlap=0 AND e.max_stated_overlap>=2)
+            OR (e.video_meeting_overlap<=1 AND e.max_stated_overlap>=4)
+            OR (e.link_rule IN ('house_title_words','house_title_and_full_words','house_text_head_strong','house_text_head_weak','house_single_day_title','house_single_day_generic')
+             AND e.video_meeting_overlap=0
+             AND (
+              e.has_explicit_event_id_in_title
+              OR (e.has_known_stated_meeting AND e.max_stated_overlap>0)
+             ))
+           )
+          )
+          AND NOT (
+           e.link_rule='house_text_head_weak'
+           AND NOT e.is_generic_video_title
+           AND e.video_meeting_overlap=0
+          )
         )
         SELECT DISTINCT cast('event' AS VARCHAR) AS subject_kind,cast(e.event_id AS VARCHAR) AS subject_id,
          e.event_id,cast(NULL AS VARCHAR) AS package_id,e.video_key,cast(NULL AS VARCHAR) AS url,
          cast('committee_page' AS VARCHAR) AS basis,cast('linked' AS VARCHAR) AS decision,cast(100 AS SMALLINT) AS score,
          cast('unknown' AS VARCHAR) AS recording_scope,cast('asserted' AS VARCHAR) AS status,
-         e.match_note AS note,e.source_ref
-        FROM page_disambiguated e
-        WHERE (NOT e.is_markup_video OR e.is_markup_meeting)
-         AND NOT (e.is_roundtable_video AND NOT e.is_roundtable_meeting)
-         AND NOT (e.is_roundtable_meeting AND e.is_hearing_or_markup_video AND NOT e.is_roundtable_video)
-         AND NOT (
-          e.multi_event_source_page
-          AND NOT e.is_generic_video_title
-          AND e.video_meeting_overlap=0
-          AND e.max_page_video_overlap>0
-         )
-         AND NOT (
-          cardinality(e.stated_event_ids)>0
-          AND NOT array_has(e.stated_event_ids,e.event_id)
-          AND NOT e.is_generic_video_title
-          AND (
-           (e.video_meeting_overlap=0 AND e.max_stated_overlap>=2)
-           OR (e.video_meeting_overlap<=1 AND e.max_stated_overlap>=4)
-           OR (e.link_rule IN ('house_title_words','house_title_and_full_words','house_text_head_strong','house_text_head_weak','house_single_day_title','house_single_day_generic')
-            AND e.video_meeting_overlap=0
-            AND (
-             e.has_explicit_event_id_in_title
-             OR (e.has_known_stated_meeting AND e.max_stated_overlap>0)
-            ))
-          )
-         )
-         AND NOT (
-          e.link_rule='house_text_head_weak'
-          AND NOT e.is_generic_video_title
-          AND e.video_meeting_overlap=0
-         )""",materialize=True),
+         CASE WHEN e.page_body<>e.min_page_body THEN e.match_note||' [via committee_page:'||e.page_body||']'
+          ELSE e.match_note END AS note,
+         'committee_page:'||e.min_page_body AS source_ref
+        FROM page_kept e
+        WHERE e.rn=1""",materialize=True),
         dict(name='recording_linked_packages',sql="""SELECT DISTINCT l.package_id
         FROM (SELECT event_id FROM recording_publisher_match_rows UNION SELECT event_id FROM recording_page_match_rows) p
         JOIN meeting_transcript_links l ON p.event_id=l.event_id""",materialize=True),
