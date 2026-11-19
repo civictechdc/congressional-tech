@@ -27,8 +27,9 @@ from pathlib import Path
 import re
 from typing import Any, Literal, Mapping, Sequence
 
-from .atomic_validator_v6 import ALL_KIND_DESC_V6
-from .pythonic_v5 import DOC_KINDS_SET, SCHEMA_OBJ, infer_is_html_v5, strip_html_cms_nav_v5
+from .atomic_validator_v6 import ALL_KIND_DESC_V6, verify_validators_manifest
+from .pythonic_v5 import DOC_KINDS_SET, SCHEMA_OBJ
+from .pythonic_v6 import clean_html_and_cms_v6, infer_is_html_v6
 
 RouterMode = Literal["fast", "ane"]
 _TOK_RE = re.compile(r"[a-z0-9_]{2,}")
@@ -218,6 +219,7 @@ class PreDecodeGrammarRouterV6:
         tau_top3: float | None = None,
         allow_multi_kind_set: bool = True,
         pipe_depth: int = 4,
+        verify_manifest: bool | str = "if_present",
     ) -> None:
         import numpy as np
 
@@ -233,6 +235,7 @@ class PreDecodeGrammarRouterV6:
 
         self.home_dir = resolve_docmeta_pkg_root(home)
         self.artifacts_dir = resolve_docmeta_validators_dir(artifacts_dir, home=home)
+        self.manifest_status = verify_validators_manifest(self.artifacts_dir, mode=verify_manifest)
 
         npz_path = self.artifacts_dir / "router_v63_linear.npz"
         cal_path = self.artifacts_dir / "router_v63_calibration.json"
@@ -274,21 +277,36 @@ class PreDecodeGrammarRouterV6:
                 self._owns_laya = True
 
     @staticmethod
-    def _extract_row_fields(row: Mapping[str, Any]) -> tuple[str, str, str, str]:
+    def _extract_row_fields(
+        row: Mapping[str, Any],
+        pmeta: Mapping[str, Any] | None = None,
+    ) -> tuple[str, str, str, str]:
         fn = str(row.get("filename") or "")
         kn_raw = row.get("known") if row.get("known") is not None else row.get("known_json")
+        if kn_raw is None and isinstance(pmeta, Mapping) and isinstance(pmeta.get("known_dict"), Mapping):
+            kn_raw = pmeta["known_dict"]
         if isinstance(kn_raw, Mapping):
-            kn_str = json.dumps(dict(kn_raw), separators=(",", ":"), ensure_ascii=False)
+            kn_str = json.dumps(dict(kn_raw), separators=(",", ":"), ensure_ascii=False) if kn_raw else "<NONE>"
         elif isinstance(kn_raw, str) and kn_raw.strip():
             kn_str = kn_raw.strip()
         else:
             kn_str = "<NONE>"
         raw_txt = str(row.get("p12_raw_text") or row.get("text") or row.get("p12_clean_text") or "")
-        clean_txt = row.get("p12_clean_text")
+        # Reuse precomputed V6 cleaned text from `pmetas[i]` when available instead of re-stripping HTML.
+        clean_txt: Any = None
+        if isinstance(pmeta, Mapping):
+            clean_txt = pmeta.get("clean_text_v6") or pmeta.get("p12_lines")
+        if not isinstance(clean_txt, str) or not clean_txt:
+            clean_txt = row.get("p12_clean_text")
         if not isinstance(clean_txt, str) or not clean_txt:
             clean_txt = raw_txt
-            if infer_is_html_v5(fn, clean_txt):
-                stripped, _ = strip_html_cms_nav_v5(clean_txt)
+            is_h = (
+                bool(pmeta.get("is_html"))
+                if (isinstance(pmeta, Mapping) and "is_html" in pmeta)
+                else infer_is_html_v6(fn, clean_txt, explicit_format=row.get("effective_format") or row.get("format"))
+            )
+            if is_h:
+                stripped, _, _ = clean_html_and_cms_v6(clean_txt, is_html=True)
                 if stripped:
                     clean_txt = stripped
             clean_txt = re.sub(r"[ \t]+", " ", clean_txt)
@@ -343,7 +361,7 @@ class PreDecodeGrammarRouterV6:
                 }
                 continue
             open_indices.append(i)
-            open_fields.append(self._extract_row_fields(row))
+            open_fields.append(self._extract_row_fields(row, pm))
 
         if not open_indices:
             return results

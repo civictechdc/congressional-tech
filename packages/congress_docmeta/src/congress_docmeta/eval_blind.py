@@ -251,14 +251,31 @@ def run_sweep_sets(
     from .parquet_runner_v6 import run_docmeta_parquet_sweep
 
     all_rows = {str(r["link_key_hex"]): r for rows, _ in sets.values() for r in rows}
+    tp_raw = str(getattr(args, "two_phase_pass2", "auto")).strip().lower()
+    two_phase_pass2: bool | str = True if tp_raw == "true" else (False if tp_raw == "false" else "auto")
     with tempfile.TemporaryDirectory(prefix="docmeta_eval_") as td:
         in_p, out_p = Path(td) / "in.parquet", Path(td) / "out.parquet"
         pq.write_table(pa.Table.from_pylist(list(all_rows.values())), in_p)
         summary = run_docmeta_parquet_sweep(
-            eng, in_p, out_p, b_slots=args.b_slots, max_tokens=args.max_tokens,
+            eng,
+            in_p,
+            out_p,
+            chunk_rows=getattr(args, "chunk_rows", 4096),
+            b_slots=args.b_slots,
+            refill_min=getattr(args, "refill_min", 32),
+            max_tokens=args.max_tokens,
             use_ane_ring="auto" if args.ane_ring else False,
-            wire_format=args.wire_format, atomic_verifier=args.atomic_verifier,
-            repair_persona_roles=args.repair_persona_roles, escalate_gpt_oss=args.escalate_gpt_oss,
+            wire_format=args.wire_format,
+            embed_ane=getattr(args, "embed_ane", "none"),
+            grammar_router=getattr(args, "grammar_router", "none"),
+            atomic_verifier=args.atomic_verifier,
+            kev_batch_docs=getattr(args, "kev_batch_docs", 8),
+            repair_persona_roles=args.repair_persona_roles,
+            escalate_gpt_oss=args.escalate_gpt_oss,
+            gpt_oss_model_dir=getattr(args, "gpt_oss_model_dir", None),
+            gpt_oss_batch_size=getattr(args, "gpt_oss_batch_size", 8),
+            gpt_oss_k=getattr(args, "gpt_oss_k", 1),
+            two_phase_pass2=two_phase_pass2,
         )
         out_rows = {str(r["link_key_hex"]): r for r in pq.read_table(out_p).to_pylist()}
 
@@ -324,7 +341,7 @@ def rescore(report_path: Path, out_path: Path, gold_jsonl: Path, label: str | No
     return 0
 
 
-def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model-dir", type=Path, default=None, help="required unless --rescore")
     ap.add_argument("--label", default=None)
@@ -334,20 +351,38 @@ def main() -> int:
                     help="score every queue doc of another labeled file as its own sweep set (repeatable)")
     ap.add_argument("--gold-jsonl", type=Path, default=DEFAULT_GOLD_JSONL)
     ap.add_argument("--max-tokens", type=int, default=768)
-    ap.add_argument("--b-slots", type=int, default=64)
+    ap.add_argument("--chunk-rows", type=int, default=4096)
+    ap.add_argument("--b-slots", type=int, default=256)
+    ap.add_argument("--refill-min", type=int, default=32)
     ap.add_argument("--max-chars", type=int, default=9000, help="head/tail char window applied to every doc text")
     ap.add_argument("--llm-only", action="store_true", help="disable deterministic pre/post rules")
+    ap.add_argument("--embed-ane", choices=("none", "bge-small", "embeddinggemma-2"), default="none",
+                    help="pure-ANE search embeddings for the *_sweep sets")
+    ap.add_argument("--grammar-router", choices=("none", "fast", "ane"), default="none",
+                    help="pre-decode calibrated grammar router for the *_sweep sets")
     ap.add_argument("--atomic-verifier", choices=("none", "laya-ane", "kev-0.8b", "both"), default="none",
                     help="post-LLM output validator for the *_sweep sets")
+    ap.add_argument("--kev-batch-docs", type=int, default=8,
+                    help="cross-document batch size for Stage-2 Kev-0.8B MLX validator (default: 8)")
     ap.add_argument("--repair-persona-roles", action="store_true", help="let the validator repair suspect roles")
     ap.add_argument("--ane-ring", action="store_true", help="hybrid ANE prefill ring for the *_sweep sets")
     ap.add_argument("--escalate-gpt-oss", action="store_true",
                     help="send anomaly-flagged docs to the fast-gpt-oss Pass-2 teacher (*_sweep sets)")
-    ap.add_argument("--ane-variant", choices=("w8", "fp16"), default="w8", help="bundle the ring runs")
+    ap.add_argument("--gpt-oss-model-dir", default=None, help="override GPT-OSS Pass-2 model directory")
+    ap.add_argument("--gpt-oss-batch-size", type=int, default=8)
+    ap.add_argument("--gpt-oss-k", type=int, default=1)
+    ap.add_argument("--two-phase-pass2", choices=("auto", "true", "false"), default="auto",
+                    help="unload Pass-1 Gemma-4 before loading GPT-OSS-20B Pass-2 ('auto' enables on <=48 GiB Macs)")
+    ap.add_argument("--ane-variant", choices=("w8", "fp16"), default="fp16", help="bundle the ring runs")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--rescore", type=Path, default=None,
                     help="re-score the saved predictions of an earlier report with this script's metrics; no model run")
-    args = ap.parse_args()
+    return ap
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = build_parser()
+    args = ap.parse_args(argv)
     if args.rescore is not None:
         return rescore(args.rescore, args.out, args.gold_jsonl, args.label)
     if args.model_dir is None:
@@ -355,69 +390,94 @@ def main() -> int:
 
     from fast_gemma4 import FastGemma4Engine
     from . import PythonicEngineV6, strict_validate_v4
+    from .silicon_runtime_v6 import clear_mlx_wave_cache, mlx_wired_limit_scope, run_silicon_preflight
+
+    preflight = run_silicon_preflight(
+        escalate_gpt_oss=bool(args.escalate_gpt_oss),
+        require_r8_deps=True,
+        once=True,
+    )
 
     names = [s.strip() for s in args.sets.split(",") if s.strip()]
     sets = load_record_sets(names)
     extra_sets = dict(item.split("=", 1) for item in args.extra_sweep_set)
     sweep_sets = load_sweep_sets(names, args.gold_jsonl, {k: Path(v) for k, v in extra_sets.items()})
-    eng = FastGemma4Engine(
-        model_dir=args.model_dir, default_mode="auto" if args.ane_ring else "gpu", ane_variant=args.ane_variant,
-        ane_ring_variant=args.ane_variant,
-        warmup=True,
-        warmup_ane=args.ane_ring,
-    )
-    pe = PythonicEngineV6(eng, wire_format=args.wire_format)
-    rule_flags = {
-        k: not args.llm_only
-        for k in (
-            "use_provenance", "use_multipage", "use_provenance_link_anchor", "use_hygiene", "use_cover_locks",
-            "use_citations", "use_relational", "use_zero_llm_bypass", "short_circuit_triage",
+    with mlx_wired_limit_scope():
+        eng = FastGemma4Engine(
+            model_dir=args.model_dir, default_mode="auto" if args.ane_ring else "gpu", ane_variant=args.ane_variant,
+            ane_ring_variant=args.ane_variant,
+            warmup=True,
+            warmup_ane=args.ane_ring,
         )
-    }
-
-    report: dict[str, Any] = {
-        "label": args.label or args.model_dir.name,
-        "model_dir": str(args.model_dir),
-        "wire_format": pe.wire_format,
-        "llm_only": args.llm_only,
-        "atomic_verifier": args.atomic_verifier,
-        "repair_persona_roles": args.repair_persona_roles,
-        "max_tokens": args.max_tokens,
-        "sets": {},
-    }
-    try:
-        for name, (recs, golds) in sets.items():
-            for r in recs:
-                r["text"] = head_tail_window_chars(r["text"], args.max_chars)
-            t0 = time.perf_counter()
-            res = pe.run_records(recs, max_tokens=args.max_tokens, B_slots=args.b_slots, **rule_flags)
-            wall = time.perf_counter() - t0
-            objs = res["clean_objs"]
-            valid = [bool(strict_validate_v4(o)[0]) if isinstance(o, dict) else False for o in objs]
-            scored = score(objs, golds, valid)
-            llm_n = len(recs) - len(res["zero_llm_bypassed_indices"]) - len(res["triage_short_circuited_indices"])
-            toks = [t for t in res["out_tok_lens"] if t]
-            scored["metrics"].update(
-                {
-                    "wall_sec": round(wall, 1),
-                    "docs_per_sec": round(len(recs) / wall, 3),
-                    "llm_docs": llm_n,
-                    "avg_out_tok": round(sum(toks) / max(len(toks), 1), 1),
-                    "truncated_docs": sum(1 for t in toks if t >= args.max_tokens),
-                    "mask_fallbacks": res["mask_fallbacks"],
-                }
+        pe = PythonicEngineV6(eng, wire_format=args.wire_format)
+        rule_flags = {
+            k: not args.llm_only
+            for k in (
+                "use_provenance", "use_multipage", "use_provenance_link_anchor", "use_hygiene", "use_cover_locks",
+                "use_citations", "use_relational", "use_zero_llm_bypass", "short_circuit_triage",
             )
-            for d, r, o in zip(scored["per_doc"], recs, objs):
-                d["filename"] = r["filename"]
-                d["pred"] = o
-            report["sets"][name] = scored
-            print(f"[{report['label']}] {name}: {json.dumps(scored['metrics'])}", flush=True)
-        if sweep_sets:
-            for name, scored in run_sweep_sets(eng, sweep_sets, args).items():
+        }
+
+        report: dict[str, Any] = {
+            "label": args.label or args.model_dir.name,
+            "model_dir": str(args.model_dir),
+            "wire_format": pe.wire_format,
+            "llm_only": args.llm_only,
+            "b_slots": args.b_slots,
+            "chunk_rows": args.chunk_rows,
+            "refill_min": args.refill_min,
+            "embed_ane": args.embed_ane,
+            "grammar_router": args.grammar_router,
+            "atomic_verifier": args.atomic_verifier,
+            "kev_batch_docs": args.kev_batch_docs,
+            "repair_persona_roles": args.repair_persona_roles,
+            "escalate_gpt_oss": args.escalate_gpt_oss,
+            "gpt_oss_k": args.gpt_oss_k,
+            "max_tokens": args.max_tokens,
+            "preflight": preflight,
+            "sets": {},
+        }
+        try:
+            for name, (recs, golds) in sets.items():
+                for r in recs:
+                    r["text"] = head_tail_window_chars(r["text"], args.max_chars)
+                t0 = time.perf_counter()
+                res = pe.run_records(
+                    recs,
+                    max_tokens=args.max_tokens,
+                    B_slots=args.b_slots,
+                    refill_min=args.refill_min,
+                    **rule_flags,
+                )
+                clear_mlx_wave_cache(256)
+                wall = time.perf_counter() - t0
+                objs = res["clean_objs"]
+                valid = [bool(strict_validate_v4(o)[0]) if isinstance(o, dict) else False for o in objs]
+                scored = score(objs, golds, valid)
+                llm_n = len(recs) - len(res["zero_llm_bypassed_indices"]) - len(res["triage_short_circuited_indices"])
+                toks = [t for t in res["out_tok_lens"] if t]
+                scored["metrics"].update(
+                    {
+                        "wall_sec": round(wall, 1),
+                        "docs_per_sec": round(len(recs) / wall, 3),
+                        "llm_docs": llm_n,
+                        "avg_out_tok": round(sum(toks) / max(len(toks), 1), 1),
+                        "truncated_docs": sum(1 for t in toks if t >= args.max_tokens),
+                        "mask_fallbacks": res["mask_fallbacks"],
+                    }
+                )
+                for d, r, o in zip(scored["per_doc"], recs, objs):
+                    d["filename"] = r["filename"]
+                    d["pred"] = o
                 report["sets"][name] = scored
-                print(f"[{report['label']}] {name}: {json.dumps(scored['metrics'])} {json.dumps(scored['sweep'])}", flush=True)
-    finally:
-        eng.close()
+                print(f"[{report['label']}] {name}: {json.dumps(scored['metrics'])}", flush=True)
+            if sweep_sets:
+                for name, scored in run_sweep_sets(eng, sweep_sets, args).items():
+                    report["sets"][name] = scored
+                    print(f"[{report['label']}] {name}: {json.dumps(scored['metrics'])} {json.dumps(scored['sweep'])}", flush=True)
+        finally:
+            eng.close()
+            clear_mlx_wave_cache(0, force=True)
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")

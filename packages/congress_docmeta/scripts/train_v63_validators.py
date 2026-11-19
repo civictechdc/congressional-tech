@@ -12,8 +12,8 @@ Uses `train_v6_3_complete_ssot_gold.jsonl` (2,917 docs / 5,117 personas, 100% di
   4. Held-out calibration (`cal_split` = 500 stratified docs) for temperatures, fusion weights, and
      gray-zone / grammar-locking thresholds (`validator_v63_calibration.json`).
 
-Moved from fast-gemma4 `scripts/` (8edf64b). Run under the fast-gemma4 interpreter with this package on the path:
-`PYTHONPATH=packages/congress_docmeta/src ../fast-gemma4/.venv/bin/python packages/congress_docmeta/scripts/train_v63_validators.py`.
+Moved from fast-gemma4 `scripts/` (8edf64b). Run under the unified `fast-silicon` interpreter with this package on the path:
+`PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python packages/congress_docmeta/scripts/train_v63_validators.py`.
 """
 
 from __future__ import annotations
@@ -39,7 +39,11 @@ from typing import Any, Iterator
 
 import numpy as np
 
-from congress_docmeta.atomic_validator_v6 import resolve_docmeta_pkg_root, resolve_docmeta_validators_dir
+from congress_docmeta.atomic_validator_v6 import (
+    resolve_docmeta_pkg_root,
+    resolve_docmeta_validators_dir,
+    write_validators_manifest,
+)
 from fast_decision_models import Kev08bMlxBackend, LayaAneBackend
 from fast_decision_models.paths import ensure_laya_dylib
 
@@ -879,32 +883,51 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument(
         "--train-jsonl",
-        required=True,
-        help="Path to train_v6_3_complete_ssot_gold.jsonl",
+        default=None,
+        help="Path to train_v6_3_complete_ssot_gold.jsonl (required unless --write-manifest-only)",
     )
     ap.add_argument(
         "--base-laya-dir",
-        required=True,
+        default=None,
         help="Directory containing base Laya-Typed model.safetensors, encoder/config.json, rl_agent_config.json",
     )
     ap.add_argument(
         "--coreml-python",
-        required=True,
+        default=None,
         help="Python executable with coremltools installed for W8A16 ANE compilation",
     )
     ap.add_argument("--home", default=None, help="Package root override (defaults to packages/congress_docmeta)")
     ap.add_argument("--artifacts-dir", default=None, help="Override atomic_validators output directory")
+    ap.add_argument(
+        "--write-manifest-only",
+        action="store_true",
+        help="Compute and write atomic_validators_manifest.json checksums for an existing bundle without retraining",
+    )
+    ap.add_argument("--bundle-version", default="v6_3", help="Version tag written into atomic_validators_manifest.json")
     ap.add_argument("--steps", type=int, default=420, help="MLX fine-tuning steps on train_split")
     ap.add_argument("--batch-size", type=int, default=16)
     ap.add_argument("--lr", type=float, default=3.5e-5)
     ap.add_argument("--distill-docs", type=int, default=320)
     args = ap.parse_args()
 
+    artifacts_dir = resolve_docmeta_validators_dir(args.artifacts_dir, home=args.home)
+    if args.write_manifest_only:
+        manifest_path = write_validators_manifest(artifacts_dir, bundle_version=args.bundle_version)
+        print(f"[MANIFEST] Wrote checksum manifest: {manifest_path}")
+        return 0
+
+    for req_flag, req_val in (
+        ("--train-jsonl", args.train_jsonl),
+        ("--base-laya-dir", args.base_laya_dir),
+        ("--coreml-python", args.coreml_python),
+    ):
+        if not req_val:
+            ap.error(f"{req_flag} is required unless --write-manifest-only is given")
+
     import mlx.core as mx
     import mlx.optimizers as optim
 
     repo_root = resolve_docmeta_pkg_root(args.home)
-    artifacts_dir = resolve_docmeta_validators_dir(args.artifacts_dir, home=args.home)
     laya_out_dir = artifacts_dir / "laya_typed"
     base_laya_dir = Path(args.base_laya_dir).expanduser().resolve()
 
@@ -1009,7 +1032,7 @@ def main() -> int:
         print(f"[3/6] MLX vs CoreML ANE W8A16 pre-train parity: ANE P(true)={ane_p1:.4f} vs MLX P(true)={mlx_p1:.4f} (|dp|={abs(ane_p1 - mlx_p1):.4f})")
         assert abs(ane_p1 - mlx_p1) < 0.05, f"Parity mismatch between MLX trainer and ANE bundle: {ane_p1} vs {mlx_p1}"
 
-        kev_teacher = Kev08bMlxBackend(artifacts_dir / "kev_08b", quant_mode="w8", batch_docs=1) if args.distill_docs > 0 else None
+        kev_teacher = Kev08bMlxBackend(artifacts_dir / "kev_08b", quant_mode="w8", batch_docs=8) if args.distill_docs > 0 else None
         train_items = synthesize_training_examples(
             train_records, oof_top6, laya_ane, kev_teacher, distill_docs=args.distill_docs, seed=20261116
         )
@@ -1412,7 +1435,9 @@ def main() -> int:
         "role_repair_min_prob": 0.72,
     }
     (artifacts_dir / "validator_v63_calibration.json").write_text(json.dumps(val_cal_meta, indent=2), encoding="utf-8")
+    manifest_path = write_validators_manifest(artifacts_dir, bundle_version=args.bundle_version)
     print(f"      [Validator Cal500] Noul T={best_tn} (Brier={best_brier:.4f}) | ANE Choice(16) Role Acc={role_acc_ane:.4f}")
+    print(f"      [Manifest] Wrote checksum manifest: {manifest_path}")
     print("[DONE] All V6.3 artifacts trained, distilled, calibrated, and compiled to Pure ANE!")
     return 0
 

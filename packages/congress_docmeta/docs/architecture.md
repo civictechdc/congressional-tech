@@ -1,19 +1,20 @@
 # DocMeta V6 Deterministic Architecture, `323,564`-Row Routing & Blind Benchmarks
 
-> Moved from fast-gemma4 on 2026-11-17 (ct-ihe7), with generic decision-model runners/builders (`LayaAneBackend`, `Kev08bMlxBackend`, `native/laya_ane_runner.{h,mm}`) moved to standalone sibling repo `fast-decision-models`. Paths written below as `fast_gemma4.docmeta` map to `congress_docmeta`; Congressional validator weights live under `.cache/archive-release/docmeta-v6-20261116/atomic_validators` (`DOCMETA_VALIDATORS_DIR` overrides) while base Gemma-4 generation weights remain in `fast-gemma4`.
+> Moved from fast-gemma4 on 2026-11-17 (ct-ihe7) to `packages/congress_docmeta/src/congress_docmeta/`, with generic decision-model runners/builders (`LayaAneBackend`, `Kev08bMlxBackend`, `native/laya_ane_runner.{h,mm}`) moved to `fast-decision-models` (and mirrored into the unified `fast-silicon` workspace). Congressional validator weights and `atomic_validators_manifest.json` live under `.cache/archive-release/docmeta-v6-20261116/atomic_validators` (`DOCMETA_VALIDATORS_DIR` overrides) while base Gemma-4 generation weights remain in `fast-gemma4`.
 
 ## 1. Overview
 
-`fast_gemma4.docmeta` packages the five-stage **DocMeta V6** deterministic extraction, text-hygiene, relational-graph, statutory-citation, per-slot grammar-locking, zero-LLM synthesis, and post-extraction anomaly-routing stack around the frozen `fused_gemma4_e2b_qat_v4` (`Gemma-4-E2B-it` QAT 4-bit + V4 LoRA) model.
+`congress_docmeta` packages the five-stage **DocMeta V6** deterministic extraction, text-hygiene, relational-graph, statutory-citation, per-slot grammar-locking, zero-LLM synthesis, and post-extraction anomaly-routing stack around the frozen `fused_gemma4_e2b_qat_v4` / `gemma4_e2b_v64a35_c2c4_w8` (`Gemma-4-E2B-it` QAT 4-bit + LoRA) model.
 
 Key engineering properties:
-- **100% Python Standard Library Isolation**: Importing and running `fast_gemma4.docmeta` (`pre_pass_v6`, `post_pass_v6`, `triage_non_usable_v6`, `try_zero_llm_bypass_v6`, `extract_citations_and_signals_v6`, `score_docmeta_anomalies_v6`, `strict_validate_v4`) requires zero external packages and passes `/usr/bin/python3 -B -I -S` isolation. `llguidance` is imported lazily only when constructing `PerDocGrammarHelperV6` / `PythonicEngineV6`.
-- **Graceful Corpus Degradation**: Optional external lookup tables (`DOCMETA_V6_DATA_DIR`, defaulting to `/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/docmeta-v6-20261116`, and `REFSPEC_ROOT`, defaulting to `/Users/mikewolfd/Work/spicy-stack/RefSpec`) are loaded when present and degrade cleanly to pure-stdlib operation when absent.
-- **Zero Prompt-Distribution Drift & Shared `1,368`-Token `prefix_kv`**: `pre_pass_v6` preserves the exact `<NONE>` advisory metadata format and raw text distribution expected by `fused_gemma4_e2b_qat_v4` while short-circuiting non-usable triage and high-confidence zero-LLM boilerplate documents prior to GPU execution, and keeping `SyncKindMatcher` fast-forward token alignment across per-slot `llguidance` grammars.
+- **100% Python Standard Library Isolation**: Importing and running `congress_docmeta` (`pre_pass_v6`, `post_pass_v6`, `triage_non_usable_v6`, `try_zero_llm_bypass_v6`, `extract_citations_and_signals_v6`, `score_docmeta_anomalies_v6`, `strict_validate_v4`, `silicon_runtime_v6`) requires zero external packages and passes `/usr/bin/python3 -B -I -S` isolation. `llguidance`, `mlx`, `pyarrow`, and `fast-*` engines are imported lazily only when instantiating constrained LLM/validator helpers.
+- **Unified Apple Silicon Runtime & Two-Phase Memory Lifecycle**: Production sweeps run under `../fast-silicon/.venv/bin/python` (synced via `uv sync --extra dev --extra extract` so all `fast-*` engines and pinned R8 postal-address dependencies live in one venv). `parquet_runner_v6.py` enforces OS/MLX/TF32/RAM/R8 preflight checks, context-managed `mx.set_wired_limit`, inter-wave `mx.clear_cache()`, `kev_batch_docs=8` Stage-2 batching, serialized ANE ownership, explicit `enable_thinking=False` chat formatting (match `enable_thinking=False` on the next LoRA training cycle to eliminate historical `<|think|>` turn drift), and two-phase Pass-1 unload before loading `GPT-OSS-20B` Pass-2 on `<= 48 GiB` Macs.
+- **Graceful Corpus Degradation**: Optional external lookup tables (`DOCMETA_V6_DATA_DIR`, defaulting to `<main checkout>/.cache/archive-release/docmeta-v6-20261116`, and `REFSPEC_ROOT`, defaulting to `../spicy-stack/RefSpec`) are loaded when present and degrade cleanly to pure-stdlib operation when absent.
+- **Zero Prompt-Distribution Drift & Shared `1,368`-Token `prefix_kv`**: `pre_pass_v6` preserves the exact `<NONE>` advisory metadata format and raw text distribution expected by the Gemma-4 checkpoint while short-circuiting non-usable triage and high-confidence zero-LLM boilerplate documents prior to GPU execution, and keeping `SyncKindMatcher` fast-forward token alignment across per-slot `llguidance` grammars.
 
 ---
 
-## 2. Five-Stage Pipeline (`src/fast_gemma4/docmeta/`)
+## 2. Five-Stage Pipeline (`packages/congress_docmeta/src/congress_docmeta/`)
 
 1. **Stage 1 — Text Hygiene, CMS Stripping & Line Parsers (`hygiene_and_line_parsers_v6.py`, `expanded_rules_v5.py`, `multipage_rules_v5.py`)**:
    - Restores `\n`-preserved `p12_lines` and strips GPO `VerDate` headers/footers (`gpo_blank_after_strip` detection for blank un-OCR'd wrapper scans).
@@ -93,7 +94,7 @@ All `323,564` archive documents in `docmeta-v6-20261116` partition cleanly with 
 ## 5. Quick Usage
 
 ```python
-from fast_gemma4.docmeta import (
+from congress_docmeta import (
     pre_pass_v6,
     post_pass_v6,
     score_docmeta_anomalies_v6,

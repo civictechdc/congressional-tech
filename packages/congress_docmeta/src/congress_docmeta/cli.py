@@ -14,68 +14,81 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
     from fast_gemma4.engine import FastGemma4Engine
 
     from .parquet_runner_v6 import run_docmeta_parquet_sweep
+    from .silicon_runtime_v6 import mlx_wired_limit_scope, run_silicon_preflight
+
+    run_silicon_preflight(
+        escalate_gpt_oss=bool(getattr(args, "escalate_gpt_oss", False)),
+        require_r8_deps=True,
+        once=True,
+    )
 
     ring_raw = str(getattr(args, "use_ane_ring", "auto")).strip().lower()
     use_ane_ring: bool | str = True if ring_raw == "true" else (False if ring_raw == "false" else "auto")
-    eng = FastGemma4Engine(
-        home=args.home,
-        model_dir=getattr(args, "model_dir", None),
-        default_mode=getattr(args, "mode", "auto"),
-        ane_variant=getattr(args, "ane_variant", "w8"),
-        ane_ring_variant=getattr(args, "ane_variant", "w8"),
-        lm_head_mode=getattr(args, "lm_head_mode", "q4"),
-        mlp_dtype=getattr(args, "mlp_dtype", "bfloat16"),
-        kv_i8=not getattr(args, "no_kv_i8", False),
-        warmup=not getattr(args, "no_warmup", False),
-        warmup_ane=bool(getattr(args, "mode", "auto") == "hetero" or use_ane_ring is not False),
-    )
-    try:
-        summary = run_docmeta_parquet_sweep(
-            eng,
-            args.input,
-            args.output,
-            chunk_rows=args.chunk_rows,
-            b_slots=args.b_slots,
-            refill_min=args.refill_min,
-            max_tokens=args.max_tokens,
-            use_ane_ring=use_ane_ring,
-            resume=args.resume,
-            wire_format=args.wire_format,
-            embed_ane=args.embed_ane,
-            grammar_router=args.grammar_router,
-            atomic_verifier=args.atomic_verifier,
-            repair_persona_roles=args.repair_persona_roles,
-            escalate_gpt_oss=args.escalate_gpt_oss,
-            gpt_oss_model_dir=args.gpt_oss_model_dir,
-            gpt_oss_batch_size=args.gpt_oss_batch_size,
-            gpt_oss_k=args.gpt_oss_k,
+    tp_raw = str(getattr(args, "two_phase_pass2", "auto")).strip().lower()
+    two_phase_pass2: bool | str = True if tp_raw == "true" else (False if tp_raw == "false" else "auto")
+
+    with mlx_wired_limit_scope():
+        eng = FastGemma4Engine(
+            home=args.home,
+            model_dir=getattr(args, "model_dir", None),
+            default_mode=getattr(args, "mode", "auto"),
+            ane_variant=getattr(args, "ane_variant", "fp16"),
+            ane_ring_variant=getattr(args, "ane_variant", "fp16"),
+            lm_head_mode=getattr(args, "lm_head_mode", "q4"),
+            mlp_dtype=getattr(args, "mlp_dtype", "bfloat16"),
+            kv_i8=not getattr(args, "no_kv_i8", False),
+            warmup=not getattr(args, "no_warmup", False),
+            warmup_ane=bool(getattr(args, "mode", "auto") == "hetero" or use_ane_ring is not False),
         )
-        print(
-            json.dumps(
-                {
-                    "docs_processed": summary.docs_processed,
-                    "docs_skipped_resume": summary.docs_skipped_resume,
-                    "llm_decoded_docs": summary.llm_decoded_docs,
-                    "triage_short_circuited_docs": summary.triage_short_circuited_docs,
-                    "strict_v4_valid_docs": summary.strict_v4_valid_docs,
-                    "anomaly_flagged_docs": summary.anomaly_flagged_docs,
-                    "pass2_escalated_docs": summary.pass2_escalated_docs,
-                    "pass2_accepted_docs": summary.pass2_accepted_docs,
-                    "ane_embedded_docs": summary.ane_embedded_docs,
-                    "chunks_written": summary.chunks_written,
-                    "prompt_tokens": summary.prompt_tokens,
-                    "completion_tokens": summary.completion_tokens,
-                    "elapsed_sec": round(summary.elapsed_sec, 3),
-                    "docs_per_sec": round(summary.docs_per_sec, 2),
-                    "decode_tok_s": round(summary.decode_tok_s, 1),
-                    "output_path": str(summary.output_path),
-                    "parts_dir": str(summary.parts_dir),
-                },
-                indent=2,
+        try:
+            summary = run_docmeta_parquet_sweep(
+                eng,
+                args.input,
+                args.output,
+                chunk_rows=args.chunk_rows,
+                b_slots=args.b_slots,
+                refill_min=args.refill_min,
+                max_tokens=args.max_tokens,
+                use_ane_ring=use_ane_ring,
+                resume=args.resume,
+                wire_format=args.wire_format,
+                embed_ane=args.embed_ane,
+                grammar_router=args.grammar_router,
+                atomic_verifier=args.atomic_verifier,
+                kev_batch_docs=getattr(args, "kev_batch_docs", 8),
+                repair_persona_roles=args.repair_persona_roles,
+                escalate_gpt_oss=args.escalate_gpt_oss,
+                gpt_oss_model_dir=args.gpt_oss_model_dir,
+                gpt_oss_batch_size=args.gpt_oss_batch_size,
+                gpt_oss_k=args.gpt_oss_k,
+                two_phase_pass2=two_phase_pass2,
             )
-        )
-    finally:
-        eng.close()
+            print(
+                json.dumps(
+                    {
+                        "docs_processed": summary.docs_processed,
+                        "docs_skipped_resume": summary.docs_skipped_resume,
+                        "llm_decoded_docs": summary.llm_decoded_docs,
+                        "triage_short_circuited_docs": summary.triage_short_circuited_docs,
+                        "strict_v4_valid_docs": summary.strict_v4_valid_docs,
+                        "anomaly_flagged_docs": summary.anomaly_flagged_docs,
+                        "pass2_escalated_docs": summary.pass2_escalated_docs,
+                        "pass2_accepted_docs": summary.pass2_accepted_docs,
+                        "ane_embedded_docs": summary.ane_embedded_docs,
+                        "chunks_written": summary.chunks_written,
+                        "prompt_tokens": summary.prompt_tokens,
+                        "completion_tokens": summary.completion_tokens,
+                        "elapsed_sec": round(summary.elapsed_sec, 3),
+                        "docs_per_sec": round(summary.docs_per_sec, 2),
+                        "decode_tok_s": round(summary.decode_tok_s, 1),
+                        "output_path": str(summary.output_path),
+                        "parts_dir": str(summary.parts_dir),
+                    },
+                    indent=2,
+                )
+            )
+        finally:
+            eng.close()
     return 0
 
 
@@ -103,7 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     dm_p.add_argument("--refill-min", type=int, default=32)
     dm_p.add_argument("--max-tokens", type=int, default=768)
     dm_p.add_argument("--mode", choices=("auto", "gpu", "hetero"), default="auto")
-    dm_p.add_argument("--ane-variant", choices=("fp16", "w8"), default="w8")
+    dm_p.add_argument("--ane-variant", choices=("fp16", "w8"), default="fp16")
     dm_p.add_argument("--use-ane-ring", choices=("auto", "true", "false"), default="auto")
     dm_p.add_argument(
         "--wire-format",
@@ -130,6 +143,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Post-LLM atomic Noul output verifier ('laya-ane', 'kev-0.8b', or 'both')",
     )
     dm_p.add_argument(
+        "--kev-batch-docs",
+        type=int,
+        default=8,
+        help="Cross-document batch size for Stage-2 Kev-0.8B MLX validator (default: 8)",
+    )
+    dm_p.add_argument(
         "--repair-persona-roles",
         action="store_true",
         help="Auto-repair grounded human personas flagged with role defects via Laya-Typed ANE Choice(16)",
@@ -138,6 +157,12 @@ def build_parser() -> argparse.ArgumentParser:
     dm_p.add_argument("--gpt-oss-model-dir", default=None)
     dm_p.add_argument("--gpt-oss-batch-size", type=int, default=8)
     dm_p.add_argument("--gpt-oss-k", type=int, default=1)
+    dm_p.add_argument(
+        "--two-phase-pass2",
+        choices=("auto", "true", "false"),
+        default="auto",
+        help="Unload Pass-1 Gemma-4 before loading GPT-OSS-20B Pass-2 ('auto' enables on <=48 GiB Macs)",
+    )
     dm_p.add_argument("--resume", action="store_true")
     dm_p.add_argument("--no-warmup", action="store_true")
     dm_p.set_defaults(func=_cmd_docmeta_sweep)

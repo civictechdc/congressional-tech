@@ -30,9 +30,12 @@ files keep their names so each can be compared with its original.
 | `atomic_validator_v6.py`, `grammar_router_ane_v6.py` | Congressional validator & pre-decode kind router (`fast-decision-models` backends) |
 | `gold.py`, `eval_blind.py`, `compare_evals.py` | Gold sets, the held-out split, training pairs, and the blind eval |
 
-Staged Congressional validator artifacts (`laya_typed/`, `kev_08b/`, `router_v63_*`, `validator_v63_calibration.json`) live under
+Staged Congressional validator artifacts (`laya_typed/`, `kev_08b/`, `router_v63_*`, `validator_v63_calibration.json`,
+and checksum manifest `atomic_validators_manifest.json`) live under
 `<main checkout>/.cache/archive-release/docmeta-v6-20261116/atomic_validators` (`DOCMETA_VALIDATORS_DIR` or
-`DOCMETA_V6_DATA_DIR` overrides it). Generic ANE CoreML / MLX runners and builders live in `../fast-decision-models`.
+`DOCMETA_V6_DATA_DIR` overrides it). Run `scripts/train_v63_validators.py --write-manifest-only` to pin/refresh
+`atomic_validators_manifest.json`; `AtomicOutputValidatorV6` and `PreDecodeGrammarRouterV6` verify checksums on load.
+Generic ANE CoreML / MLX runners and builders live in `../fast-silicon/packages/fast-decision-models` (synced from `../fast-decision-models`).
 
 ## Output contract
 
@@ -43,15 +46,29 @@ The sweep writes the columns `viewer_publication/docmeta_v6_1.py` requires (`lin
 
 ## Running with the model
 
-fast-gemma4 is an Apple Silicon checkout with no remote, so it is not in `uv.lock`. Anything that generates runs
-under fast-gemma4's interpreter with this package on the path:
+Apple Silicon inference engines (`fast-gemma4`, `fast-gpt-oss`, `fast-decision-models`, `fast-bge-small`,
+`fast-embeddinggemma-2`) are deliberately omitted from `congressional-tech/uv.lock`. Standardize on the single
+unified `../fast-silicon/.venv` interpreter synced with its `extract` extra (which installs `pyarrow`,
+`jsonschema`, and the pinned R8 postal-address dependencies `usaddress==0.5.14`, `pycountry==26.2.16`,
+`msgspec-schemaorg==0.2.1`, `msgspec==0.21.1` alongside `mlx>=0.32.4` and all 7 `fast-*` packages):
 
 ```bash
-PYTHONPATH=packages/congress_docmeta/src ../fast-gemma4/.venv/bin/python -m congress_docmeta.eval_blind --model-dir ../fast-gemma4/artifacts/models/gemma4_e2b_v64_c2c4_w8 --out /tmp/eval.json
+cd ../fast-silicon && uv sync --extra dev --extra extract
+```
+
+Then run evals and sweeps with `congress_docmeta` on `PYTHONPATH` (`FAST_SILICON_PYTHON` overrides the default
+`../fast-silicon/.venv/bin/python` in `scripts/model_lane.py`; `FAST_GEMMA4_PYTHON` remains a fallback). Both
+the sweep runner and `model_lane.py` fail loudly at startup if any R8 or schema dependency is missing, run
+Apple Silicon OS (`>=26.2`) / `mlx>=0.32.4` / `MLX_ENABLE_TF32` / RAM preflight checks, manage
+`mx.set_wired_limit` cleanly, default Stage-2 `Kev-0.8B` batching to `--kev-batch-docs 8`, and engage
+two-phase Pass-1 unload before loading `GPT-OSS-20B` on `<= 48 GiB` Macs (`--two-phase-pass2 auto`):
+
+```bash
+PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python -m congress_docmeta.eval_blind --model-dir ../fast-gemma4/artifacts/models/gemma4_e2b_v64_c2c4_w8 --out /tmp/eval.json
 ```
 
 ```bash
-PYTHONPATH=packages/congress_docmeta/src ../fast-gemma4/.venv/bin/python -m congress_docmeta.cli docmeta-sweep llm_queue_v6_2.parquet out.parquet
+PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python -m congress_docmeta.cli docmeta-sweep llm_queue_v6_2.parquet out.parquet --kev-batch-docs 8 --two-phase-pass2 auto
 ```
 
 ## Tests

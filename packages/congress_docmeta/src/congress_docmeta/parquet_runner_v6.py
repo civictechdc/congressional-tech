@@ -25,6 +25,7 @@ Key capabilities:
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
+from concurrent.futures import ThreadPoolExecutor
 import copy
 from dataclasses import dataclass
 import glob
@@ -32,6 +33,7 @@ import inspect
 import json
 import os
 from pathlib import Path
+import sys
 import threading
 import time
 from typing import Any, Union
@@ -62,6 +64,14 @@ from .pythonic_v6 import (
     per_doc_grammar_v6,
     post_pass_v6,
     pre_pass_v6,
+)
+from .silicon_runtime_v6 import (
+    clear_mlx_wave_cache,
+    format_chat_no_thinking,
+    mlx_wired_limit_scope,
+    probe_host_memory_gb,
+    run_silicon_preflight,
+    unload_engine_memory,
 )
 
 ExternalVerifierFn = Callable[
@@ -339,10 +349,16 @@ def _encode_batch_pure_ane(embedder: Any, model_tag: str, texts: Sequence[str]) 
 
     if not texts:
         return []
+    if getattr(embedder, "ane_available", True) is False:
+        raise RuntimeError(
+            f"Pure-ANE embedder {model_tag!r} reports ane_available=False; "
+            "refusing silent Metal GPU fallback during GPU co-execution."
+        )
     clipped = [t[:2400] if t else "document" for t in texts]
     if model_tag == "bge-small":
         tok_lists = embedder.tokenizer.encode_batch(clipped, add_query_prefix=False, max_length=512)
-        vecs = embedder.encode_corpus(tok_lists, mode="ane")
+        tok_lists_512 = [t[:512] for t in tok_lists]
+        vecs = embedder.encode_corpus(tok_lists_512, mode="ane")
     else:
         tok_lists = embedder.tokenizer.encode_batch(
             clipped,
@@ -352,8 +368,32 @@ def _encode_batch_pure_ane(embedder: Any, model_tag: str, texts: Sequence[str]) 
         # Ensure every sequence is `<= 512` tokens so `FastEmbeddingGemma2` sets `over_q = []` (`use_gpu = False`)!
         tok_lists_512 = [t[:512] for t in tok_lists]
         vecs = embedder.encode_corpus(tok_lists_512, mode="ane", dimensions=embedder.dim)
+
+    last_stats = getattr(embedder, "last_stats", None)
+    if isinstance(last_stats, Mapping):
+        gpu_dispatches = int(last_stats.get("gpu_docs") or last_stats.get("gpu") or 0)
+        if gpu_dispatches > 0:
+            raise RuntimeError(
+                f"Pure-ANE embedder {model_tag!r} silently dispatched {gpu_dispatches} doc(s) to Metal GPU "
+                f"under mode='ane' (stats={dict(last_stats)})."
+            )
+
     arr_f16 = np.asarray(vecs, dtype=np.float16)
     return arr_f16.astype(np.float32).tolist()
+
+
+def _engine_will_use_ane_ring(engine: Any, use_ane_ring: bool | str) -> bool:
+    """Return True if `engine.run_rolling` is expected to drive the ANE prefix ring concurrently."""
+    if use_ane_ring is False:
+        return False
+    if use_ane_ring is True:
+        return True
+    norm = str(use_ane_ring or "auto").strip().lower()
+    if norm == "false":
+        return False
+    if norm == "true":
+        return True
+    return bool(getattr(engine, "ane_available", False) or getattr(engine, "ane_ring_bundle", None) is not None)
 
 
 def build_excluded_kind_schema_v6(
@@ -451,7 +491,7 @@ def escalate_anomalies_gpt_oss(
     gpt_oss_engine: Any,
     *,
     flagged_indices: Sequence[int],
-    prompts_user_content: Sequence[str],
+    prompts_user_content: Sequence[str] | Mapping[int, str] | None = None,
     rows: Sequence[Mapping[str, Any]],
     pmetas: Sequence[Mapping[str, Any]],
     current_objs: list[dict[str, Any]],
@@ -468,13 +508,15 @@ def escalate_anomalies_gpt_oss(
     """Run closed-loop `fast-gpt-oss` (`H2_Sel` Pass-2 teacher escalation) on anomaly-flagged documents.
 
     Feeds structured Pass-1 verifier critique hints + excluded-kind grammar constraints into Pass-2,
-    and re-verifies Pass-2 candidates through `external_verifier` so teacher hallucinations never
-    overwrite faithful Pass-1 fields.
+    supports best-of-`k` candidate generation (`k >= 1`), passes explicit `enable_thinking=False` when
+    supported, and re-verifies Pass-2 candidates through `external_verifier` so teacher hallucinations
+    never overwrite faithful Pass-1 fields.
     Returns `(escalated_attempted_count, escalated_accepted_count, pass1_json_by_idx)`.
     """
     if not flagged_indices:
         return 0, 0, {}
 
+    eff_k = max(1, int(k))
     sub_prompts: list[str] = []
     sub_schemas: list[Any] = []
     for i in flagged_indices:
@@ -504,105 +546,144 @@ def escalate_anomalies_gpt_oss(
         else:
             schema_i = SCHEMA_V4_STR
 
+        if isinstance(prompts_user_content, Mapping) and i in prompts_user_content:
+            base_prompt = str(prompts_user_content[i])
+        elif isinstance(prompts_user_content, Sequence) and not isinstance(prompts_user_content, (str, bytes)):
+            base_prompt = str(prompts_user_content[i])
+        else:
+            row_i = rows[i]
+            kd_i = pmetas[i].get("known_dict")
+            known_s = json.dumps(kd_i, separators=(",", ":"), ensure_ascii=False) if isinstance(kd_i, Mapping) and kd_i else "<NONE>"
+            fn_i = str(row_i.get("filename") or "")
+            raw_i = str(row_i.get("p12_raw_text") or row_i.get("p12_clean_text") or row_i.get("text") or "")
+            base_prompt = build_prompt_v4(known_s, fn_i, raw_i)
+
         hint = _build_pass2_critique_hint(current_objs[i], anom_i, old_v, is_kind_locked=is_locked)
-        sub_prompts.append(prompts_user_content[i] + hint if hint else prompts_user_content[i])
+        sub_prompts.append(base_prompt + hint if hint else base_prompt)
         sub_schemas.append(schema_i)
 
     sig = inspect.signature(gpt_oss_engine.generate_batch)
-    supports_per_doc = "per_doc_grammars" in sig.parameters
+    params = sig.parameters
+    supports_per_doc = "per_doc_grammars" in params
+    supports_thinking = "enable_thinking" in params
+    supports_seed = "seed" in params
 
-    if supports_per_doc:
-        batch_res = gpt_oss_engine.generate_batch(
-            sub_prompts,
-            system_prompt=None,
-            json_schema=SCHEMA_V4_STR,
-            per_doc_grammars=sub_schemas,
-            max_tokens=max_tokens,
-            temperature=0.0,
-            batch_size=batch_size,
-            whitespace_flexible=False,
-        )
-        gen_items = list(batch_res.items)
-    else:
-        # Fallback if running against an older `FastGptOssEngine` without `per_doc_grammars`
-        gen_items = [None] * len(flagged_indices)
-        by_schema: dict[str, tuple[Any, list[int]]] = {}
-        for pos, sc_obj in enumerate(sub_schemas):
-            s_key = json.dumps(sc_obj, sort_keys=True) if isinstance(sc_obj, Mapping) else str(sc_obj)
-            if s_key not in by_schema:
-                by_schema[s_key] = (sc_obj, [])
-            by_schema[s_key][1].append(pos)
-        for _s_key, (schema_s, positions) in by_schema.items():
-            r_sub = gpt_oss_engine.generate_batch(
-                [sub_prompts[p] for p in positions],
+    valid_candidates: list[tuple[int, int, dict[str, Any], dict[str, Any]]] = []
+    for sample_idx in range(eff_k):
+        temp_s = 0.0 if sample_idx == 0 else 0.25
+        extra_kw: dict[str, Any] = {}
+        if supports_thinking:
+            extra_kw["enable_thinking"] = False
+        if sample_idx > 0 and supports_seed:
+            extra_kw["seed"] = 42 + sample_idx
+
+        if supports_per_doc:
+            batch_res = gpt_oss_engine.generate_batch(
+                sub_prompts,
                 system_prompt=None,
-                json_schema=schema_s,
+                json_schema=SCHEMA_V4_STR,
+                per_doc_grammars=sub_schemas,
                 max_tokens=max_tokens,
-                temperature=0.0,
+                temperature=temp_s,
                 batch_size=batch_size,
                 whitespace_flexible=False,
+                **extra_kw,
             )
-            for p, it in zip(positions, r_sub.items):
-                gen_items[p] = it
+            gen_items = list(batch_res.items)
+        else:
+            # Fallback if running against an older `FastGptOssEngine` without `per_doc_grammars`
+            gen_items = [None] * len(flagged_indices)
+            by_schema: dict[str, tuple[Any, list[int]]] = {}
+            for pos, sc_obj in enumerate(sub_schemas):
+                s_key = json.dumps(sc_obj, sort_keys=True) if isinstance(sc_obj, Mapping) else str(sc_obj)
+                if s_key not in by_schema:
+                    by_schema[s_key] = (sc_obj, [])
+                by_schema[s_key][1].append(pos)
+            for _s_key, (schema_s, positions) in by_schema.items():
+                r_sub = gpt_oss_engine.generate_batch(
+                    [sub_prompts[p] for p in positions],
+                    system_prompt=None,
+                    json_schema=schema_s,
+                    max_tokens=max_tokens,
+                    temperature=temp_s,
+                    batch_size=batch_size,
+                    whitespace_flexible=False,
+                    **extra_kw,
+                )
+                for p, it in zip(positions, r_sub.items):
+                    gen_items[p] = it
 
-    valid_candidates: list[tuple[int, dict[str, Any], dict[str, Any]]] = []
-    for orig_i, item in zip(flagged_indices, gen_items):
-        if item is None:
-            continue
-        parsed_cand = item.parsed
-        if not isinstance(parsed_cand, dict):
+        clear_mlx_wave_cache(256)
+
+        for orig_i, item in zip(flagged_indices, gen_items):
+            if item is None:
+                continue
+            parsed_cand = item.parsed
+            if not isinstance(parsed_cand, dict):
+                try:
+                    parsed_cand = json.loads(item.text)
+                except Exception:
+                    parsed_cand = None
+            if not isinstance(parsed_cand, dict):
+                continue
+
+            row = rows[orig_i]
+            pmeta = pmetas[orig_i]
+            fn = str(row.get("filename") or "")
+            txt = str(row.get("p12_raw_text") or row.get("p12_clean_text") or row.get("text") or "")
             try:
-                parsed_cand = json.loads(item.text)
-            except Exception:
-                parsed_cand = None
-        if not isinstance(parsed_cand, dict):
-            continue
+                clean_cand, sidecar_cand = post_pass_v6(
+                    parsed_cand,
+                    known=pmeta.get("known_dict"),
+                    filename=fn,
+                    text=txt,
+                    p12_lines=pmeta.get("p12_lines"),
+                    explicit_format=row.get("effective_format") or row.get("format"),
+                    pre_meta=pmeta,
+                    provenance=pmeta.get("provenance"),
+                    multipage=pmeta.get("multipage"),
+                    relational=pmeta.get("relational"),
+                    citations=pmeta.get("citations"),
+                    hygiene=pmeta.get("hygiene"),
+                    usc_oracle=usc_oracle,
+                )
+                canon_cand = canonicalize_docmeta_v4(clean_cand)
+            except DocMetaValidationError:
+                continue
+            ok_v4, _ = validate_docmeta_v4(canon_cand)
+            if not ok_v4:
+                continue
+            valid_candidates.append((orig_i, sample_idx, canon_cand, dict(sidecar_cand["anomaly_routing"])))
 
-        row = rows[orig_i]
-        pmeta = pmetas[orig_i]
-        fn = str(row.get("filename") or "")
-        txt = str(row.get("p12_raw_text") or row.get("p12_clean_text") or row.get("text") or "")
-        try:
-            clean_cand, sidecar_cand = post_pass_v6(
-                parsed_cand,
-                known=pmeta.get("known_dict"),
-                filename=fn,
-                text=txt,
-                p12_lines=pmeta.get("p12_lines"),
-                explicit_format=row.get("effective_format") or row.get("format"),
-                pre_meta=pmeta,
-                provenance=pmeta.get("provenance"),
-                multipage=pmeta.get("multipage"),
-                relational=pmeta.get("relational"),
-                citations=pmeta.get("citations"),
-                hygiene=pmeta.get("hygiene"),
-                usc_oracle=usc_oracle,
-            )
-            canon_cand = canonicalize_docmeta_v4(clean_cand)
-        except DocMetaValidationError:
-            continue
-        ok_v4, _ = validate_docmeta_v4(canon_cand)
-        if not ok_v4:
-            continue
-        valid_candidates.append((orig_i, canon_cand, dict(sidecar_cand["anomaly_routing"])))
-
-    cand_verdicts_by_i: dict[int, dict[str, Any] | None] = {}
+    cand_verdicts: list[dict[str, Any] | None] = [None] * len(valid_candidates)
     if external_verifier is not None and valid_candidates:
         raw_cand_vs = external_verifier(
-            [c for (_oi, c, _ca) in valid_candidates],
-            [rows[oi] for (oi, _c, _ca) in valid_candidates],
+            [c for (_oi, _si, c, _ca) in valid_candidates],
+            [rows[oi] for (oi, _si, _c, _ca) in valid_candidates],
         )
-        for (oi, _c, _ca), cv_raw in zip(valid_candidates, raw_cand_vs):
-            cand_verdicts_by_i[oi] = _normalize_ext_verdict(cv_raw)
+        for pos, cv_raw in enumerate(raw_cand_vs):
+            cand_verdicts[pos] = _normalize_ext_verdict(cv_raw)
+
+    # Best-of-`k`: pick lowest (unfaithful, defect_score, anomaly_score, sample_idx) per flagged doc.
+    best_by_doc: dict[int, tuple[tuple[int, float, float, int], dict[str, Any], dict[str, Any], dict[str, Any] | None]] = {}
+    for (orig_i, sample_idx, canon_cand, cand_anom), cand_v in zip(valid_candidates, cand_verdicts):
+        cand_def, cand_unfaith = _verdict_defect_and_unfaithful(cand_v)
+        rank = (int(cand_unfaith), cand_def, float(cand_anom.get("anomaly_score", 0.0)), sample_idx)
+        prev_best = best_by_doc.get(orig_i)
+        if prev_best is None or rank < prev_best[0]:
+            best_by_doc[orig_i] = (rank, canon_cand, cand_anom, cand_v)
 
     accepted = 0
     pass1_backup: dict[int, str] = {}
-    for orig_i, canon_cand, cand_anom in valid_candidates:
+    for orig_i in flagged_indices:
+        chosen = best_by_doc.get(orig_i)
+        if chosen is None:
+            continue
+        _rank, canon_cand, cand_anom, cand_v = chosen
         old_anom = current_anomalies[orig_i]
         if float(cand_anom.get("anomaly_score", 0.0)) > float(old_anom.get("anomaly_score", 1.0)):
             continue
 
-        cand_v = cand_verdicts_by_i.get(orig_i)
         if external_verifier is not None:
             old_v = current_verdicts[orig_i] if (current_verdicts is not None and orig_i < len(current_verdicts)) else None
             old_def, old_unfaith = _verdict_defect_and_unfaithful(old_v)
@@ -704,6 +785,7 @@ def run_docmeta_parquet_sweep(
     embed_ane: str = "none",
     grammar_router: str = "none",
     atomic_verifier: str = "none",
+    kev_batch_docs: int = 8,
     repair_persona_roles: bool = False,
     external_verifier: ExternalVerifierFn | None = None,
     escalate_gpt_oss: bool = False,
@@ -711,6 +793,10 @@ def run_docmeta_parquet_sweep(
     gpt_oss_model_dir: str | Path | None = None,
     gpt_oss_batch_size: int = 8,
     gpt_oss_k: int = 1,
+    two_phase_pass2: bool | str = "auto",
+    require_r8_deps: bool = True,
+    use_wired_limit: bool = True,
+    post_workers: int | None = None,
     model_source_tag: str = "fast-gemma4-e2b-v6_2",
     _after_chunk_hook: Callable[[int, Path], None] | None = None,
 ) -> DocMetaSweepSummary:
@@ -722,6 +808,26 @@ def run_docmeta_parquet_sweep(
 
     if chunk_rows <= 0:
         raise ValueError(f"chunk_rows must be >= 1, got {chunk_rows}")
+
+    preflight = run_silicon_preflight(
+        escalate_gpt_oss=escalate_gpt_oss,
+        require_r8_deps=require_r8_deps,
+        once=True,
+    )
+    host_ram_gb = int(preflight.get("mem_gb") or probe_host_memory_gb())
+
+    tp_raw = str(two_phase_pass2).strip().lower() if not isinstance(two_phase_pass2, bool) else (
+        "true" if two_phase_pass2 else "false"
+    )
+    if tp_raw not in ("auto", "true", "false"):
+        raise ValueError(f"Unsupported two_phase_pass2={two_phase_pass2!r}; expected 'auto', True, or False.")
+    use_two_phase_pass2 = bool(
+        escalate_gpt_oss
+        and (
+            tp_raw == "true"
+            or (tp_raw == "auto" and gpt_oss_engine is None and (host_ram_gb == 0 or host_ram_gb <= 48))
+        )
+    )
 
     t0 = time.perf_counter()
     in_files = _resolve_parquet_inputs(input_path)
@@ -780,10 +886,7 @@ def run_docmeta_parquet_sweep(
     kind_grammar_cache: dict[str, tuple[Any, list[int]]] = {}
 
     def _fmt_chat(user_content: str) -> str:
-        msgs = [{"role": "user", "content": user_content}]
-        if hasattr(tok, "apply_chat_template"):
-            return str(tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True))
-        return str(tok.format_chat(msgs, add_generation_prompt=True, enable_thinking=False))
+        return format_chat_no_thinking(tok, [{"role": "user", "content": user_content}])
 
     probe_a = tok.encode(_fmt_chat(pass1_prompt_fn('{"a":1}', "a.pdf", "Alpha")), add_special_tokens=False)
     probe_b = tok.encode(_fmt_chat(pass1_prompt_fn('{"b":2}', "b.pdf", "Beta")), add_special_tokens=False)
@@ -806,25 +909,48 @@ def run_docmeta_parquet_sweep(
     if external_verifier is None and av_mode != "none":
         from .atomic_validator_v6 import AtomicOutputValidatorV6
 
-        owned_atomic_verifier = AtomicOutputValidatorV6(mode=av_mode)  # type: ignore[arg-type]
+        owned_atomic_verifier = AtomicOutputValidatorV6(
+            mode=av_mode,  # type: ignore[arg-type]
+            kev_batch_docs=max(1, int(kev_batch_docs)),
+        )
         external_verifier = owned_atomic_verifier
 
     owned_grammar_router: Any = None
     gr_mode = str(grammar_router or "none").strip().lower()
     if gr_mode not in ("none", "fast", "ane"):
         raise ValueError(f"Unsupported grammar_router={grammar_router!r}; expected 'none', 'fast', or 'ane'.")
+    shared_laya: Any = None
     if gr_mode != "none":
         from .grammar_router_ane_v6 import PreDecodeGrammarRouterV6
 
         shared_laya = getattr(external_verifier, "laya_backend", None)
         owned_grammar_router = PreDecodeGrammarRouterV6(mode=gr_mode, shared_laya_backend=shared_laya)  # type: ignore[arg-type]
 
-    owned_gpt_oss = False
-    if escalate_gpt_oss and gpt_oss_engine is None:
-        from fast_gpt_oss import FastGptOssEngine
+    # Coordinate exclusive 16-core ANE ownership so `fg4-ane-ring-producer`, `docmeta-ane-b4`,
+    # `docmeta-laya-ane-stage1`, and `shared_laya._exec_lock` never contend simultaneously.
+    effective_use_ane_ring: bool | str = use_ane_ring
+    overlap_embed_ane = ane_embedder is not None
+    if ane_embedder is not None:
+        if isinstance(use_ane_ring, str) and use_ane_ring.strip().lower() == "auto":
+            # Give the 16-core ANE exclusively to `docmeta-ane-b4` while Gemma-4 runs GPU prefill.
+            effective_use_ane_ring = False
+        elif _engine_will_use_ane_ring(engine, effective_use_ane_ring):
+            # Explicit `use_ane_ring=True` owns ANE during `run_rolling`; serialize embedder after GPU decode.
+            overlap_embed_ane = False
 
-        gpt_oss_engine = FastGptOssEngine(model_dir=gpt_oss_model_dir, warmup=True)
-        owned_gpt_oss = True
+    ring_will_engage = _engine_will_use_ane_ring(engine, effective_use_ane_ring)
+    router_shares_laya = bool(owned_grammar_router is not None and gr_mode == "ane" and shared_laya is not None)
+
+    owned_gpt_oss = False
+
+    def _ensure_gpt_oss_engine() -> Any:
+        nonlocal gpt_oss_engine, owned_gpt_oss
+        if gpt_oss_engine is None:
+            from fast_gpt_oss import FastGptOssEngine
+
+            gpt_oss_engine = FastGptOssEngine(model_dir=gpt_oss_model_dir, warmup=True)
+            owned_gpt_oss = True
+        return gpt_oss_engine
 
     docs_processed = 0
     docs_skipped_resume = 0
@@ -848,11 +974,31 @@ def run_docmeta_parquet_sweep(
         and callable(getattr(external_verifier, "finish_stage2", None))
         and _after_chunk_hook is None
         and ane_embedder is None
+        and not ring_will_engage
+        and not router_shares_laya
     )
+    eff_post_workers = (
+        max(1, int(post_workers))
+        if post_workers is not None
+        else min(4, max(1, os.cpu_count() or 1))
+    )
+
     pending_prev: dict[str, Any] | None = None
     prev_stage1_thread: threading.Thread | None = None
     prev_stage1_out: list[dict[str, Any]] = []
     prev_stage1_err: list[BaseException] = []
+    deferred_pass2_parts: list[dict[str, Any]] = []
+
+    def _build_lazy_v4_prompts(
+        flagged_idxs: Sequence[int],
+        c_chunk: Sequence[Mapping[str, Any]],
+        c_known_strs: Sequence[str],
+        c_raw_txts: Sequence[str],
+    ) -> dict[int, str]:
+        return {
+            i: build_prompt_v4(c_known_strs[i], str(c_chunk[i].get("filename") or ""), c_raw_txts[i])
+            for i in flagged_idxs
+        }
 
     def _finalize_and_write_chunk(
         ctx: dict[str, Any],
@@ -863,7 +1009,8 @@ def run_docmeta_parquet_sweep(
 
         c_chunk: list[dict[str, Any]] = ctx["chunk"]
         c_pmetas: list[dict[str, Any]] = ctx["pmetas"]
-        c_user_contents: list[str] = ctx["user_contents"]
+        c_known_strs: list[str] = ctx["known_strs"]
+        c_raw_txts: list[str] = ctx["raw_txts"]
         c_out_tok_lens: list[int] = ctx["out_tok_lens"]
         c_ane_vectors: list[list[float] | None] = ctx["ane_vectors"]
         c_clean_objs: list[dict[str, Any]] = ctx["clean_objs"]
@@ -879,6 +1026,7 @@ def run_docmeta_parquet_sweep(
                 verdicts: Any = external_verifier.finish_stage2(precomputed_stage1)  # type: ignore[attr-defined]
             else:
                 verdicts = external_verifier(c_clean_objs, c_chunk)
+            clear_mlx_wave_cache(256)
             for i, v_item in enumerate(verdicts):
                 v_dict = _normalize_ext_verdict(v_item)
                 if v_dict is None:
@@ -920,18 +1068,23 @@ def run_docmeta_parquet_sweep(
                             anom_r["escalate_to_teacher"] = False
                             anom_r["needs_teacher_escalation"] = False
 
-        pass1_backup_by_i: dict[int, str] = {}
-        if escalate_gpt_oss and gpt_oss_engine is not None:
+        flagged_idxs: list[int] = []
+        if escalate_gpt_oss:
             flagged_idxs = [
                 i
                 for i, a in enumerate(c_anomalies)
                 if bool(a.get("escalate_to_teacher") or a.get("needs_teacher_escalation"))
                 and c_pmetas[i].get("triage") is None
             ]
+
+        pass1_backup_by_i: dict[int, str] = {}
+        if escalate_gpt_oss and flagged_idxs and not use_two_phase_pass2:
+            active_gpt_oss = _ensure_gpt_oss_engine()
+            lazy_prompts = _build_lazy_v4_prompts(flagged_idxs, c_chunk, c_known_strs, c_raw_txts)
             esc_n, acc_n, pass1_backup_by_i = escalate_anomalies_gpt_oss(
-                gpt_oss_engine,
+                active_gpt_oss,
                 flagged_indices=flagged_idxs,
-                prompts_user_content=c_user_contents,
+                prompts_user_content=lazy_prompts,
                 rows=c_chunk,
                 pmetas=c_pmetas,
                 current_objs=c_clean_objs,
@@ -1031,6 +1184,26 @@ def run_docmeta_parquet_sweep(
         shard_tbl = _cast_results_arrow_table(out_rows)
         _write_table_atomic(shard_tbl, part_path, row_group_size=min(32768, max(1, len(out_rows))))
 
+        if use_two_phase_pass2 and flagged_idxs:
+            # Retain only the flagged subset so Pass-2 can run after Pass-1 Gemma-4 is fully unloaded!
+            deferred_pass2_parts.append(
+                {
+                    "part_path": part_path,
+                    "part_row_indices": list(flagged_idxs),
+                    "prompts": [
+                        build_prompt_v4(c_known_strs[i], str(c_chunk[i].get("filename") or ""), c_raw_txts[i])
+                        for i in flagged_idxs
+                    ],
+                    "rows": [c_chunk[i] for i in flagged_idxs],
+                    "pmetas": [c_pmetas[i] for i in flagged_idxs],
+                    "objs": [c_clean_objs[i] for i in flagged_idxs],
+                    "texts": [c_clean_texts[i] for i in flagged_idxs],
+                    "anomalies": [c_anomalies[i] for i in flagged_idxs],
+                    "verdicts": [parsed_verdicts[i] for i in flagged_idxs],
+                    "verdicts_json": [ext_verdicts_json[i] for i in flagged_idxs],
+                }
+            )
+
         for row in c_chunk:
             done_keys.add(str(row["_resume_key"]))
         docs_processed += n_c
@@ -1041,321 +1214,504 @@ def run_docmeta_parquet_sweep(
         if _after_chunk_hook is not None:
             _after_chunk_hook(written_idx, part_path)
 
-    try:
-        def _iter_pending_chunks() -> Any:
-            nonlocal global_row_cursor, docs_skipped_resume
-            buf: list[dict[str, Any]] = []
-            for fp in in_files:
-                pf = pq.ParquetFile(fp)
-                for rb in pf.iter_batches(batch_size=min(chunk_rows, 4096)):
-                    for row in rb.to_pylist():
-                        r_key = _row_resume_key(row, global_row_cursor)
-                        global_row_cursor += 1
-                        if r_key in done_keys:
-                            docs_skipped_resume += 1
-                            continue
-                        row["_resume_key"] = r_key
-                        buf.append(row)
-                        if len(buf) >= chunk_rows:
-                            yield buf
-                            buf = []
-            if buf:
-                yield buf
+    def _prepare_chunk_cpu(chunk: list[dict[str, Any]]) -> dict[str, Any]:
+        """Pure-CPU chunk prep overlapped safely on a P-core thread while GPU runs the previous chunk."""
+        n_c = len(chunk)
+        pmetas_l: list[dict[str, Any]] = []
+        known_strs_l: list[str] = [""] * n_c
+        raw_txts_l: list[str] = [""] * n_c
+        active_l: list[int] = []
+        p1_u_contents_l: list[str] = []
+        doc_target_kinds_l: dict[int, str] = {}
+        triage_cnt = 0
 
-        for chunk in _iter_pending_chunks():
-            n_chunk = len(chunk)
-            pmetas: list[dict[str, Any]] = []
-            user_contents: list[str] = [""] * n_chunk
-            active_indices: list[int] = []
-            formatted_prompts: list[str] = []
-            doc_target_kinds: dict[int, str] = {}
+        for i, row in enumerate(chunk):
+            known_str, pmeta, fn, raw_txt, _ = _build_precomputed_context_from_queue_row(row)
+            pmetas_l.append(pmeta)
+            known_strs_l[i] = known_str
+            raw_txts_l[i] = raw_txt
+            if pmeta.get("triage") is not None:
+                triage_cnt += 1
+                continue
+            slot = len(active_l)
+            active_l.append(i)
+            p1_u_contents_l.append(pass1_prompt_fn(known_str, fn, raw_txt))
+            tk = pmeta.get("tier1_target_kind")
+            if tk in DOC_KINDS_SET:
+                doc_target_kinds_l[slot] = str(tk)
 
-            for i, row in enumerate(chunk):
-                known_str, pmeta, fn, raw_txt, _ = _build_precomputed_context_from_queue_row(row)
-                pmetas.append(pmeta)
-                if pmeta.get("triage") is not None:
-                    triage_short_circuited_docs += 1
-                    continue
-                u_content = build_prompt_v4(known_str, fn, raw_txt)
-                user_contents[i] = u_content
-                p1_u_content = pass1_prompt_fn(known_str, fn, raw_txt)
-                slot = len(active_indices)
-                active_indices.append(i)
-                formatted_prompts.append(_fmt_chat(p1_u_content))
-                tk = pmeta.get("tier1_target_kind")
-                if tk in DOC_KINDS_SET:
-                    doc_target_kinds[slot] = str(tk)
+        return {
+            "chunk": chunk,
+            "pmetas": pmetas_l,
+            "known_strs": known_strs_l,
+            "raw_txts": raw_txts_l,
+            "active_indices": active_l,
+            "p1_u_contents": p1_u_contents_l,
+            "doc_target_kinds": doc_target_kinds_l,
+            "triage_cnt": triage_cnt,
+        }
 
-            if owned_grammar_router is not None and active_indices:
-                route_decisions = owned_grammar_router.route_chunk(chunk, pmetas)
-                for slot_idx, orig_idx in enumerate(active_indices):
-                    if slot_idx not in doc_target_kinds:
-                        lspec = route_decisions[orig_idx].get("lock_spec")
-                        if isinstance(lspec, str) and lspec:
-                            doc_target_kinds[slot_idx] = lspec
-
-            # Start optional background ANE search embedding co-execution (`Proposal B4`) concurrently with GPU decode!
-            ane_vectors: list[list[float] | None] = [None] * n_chunk
-            ane_err: list[BaseException] = []
-            ane_thread: threading.Thread | None = None
-            if ane_embedder is not None:
-                embed_inputs = [
-                    f"{row.get('filename') or ''}\n{str(row.get('p12_clean_text') or row.get('p12_raw_text') or row.get('text') or '')[:2200]}".strip()
-                    for row in chunk
-                ]
-
-                def _bg_ane_worker(inp: list[str]) -> None:
-                    try:
-                        vecs = _encode_batch_pure_ane(ane_embedder, ane_model_tag, inp)
-                        for idx_v, v in enumerate(vecs):
-                            ane_vectors[idx_v] = v
-                    except BaseException as exc:
-                        ane_err.append(exc)
-
-                ane_thread = threading.Thread(target=_bg_ane_worker, args=(embed_inputs,), name="docmeta-ane-b4")
-                ane_thread.start()
-
-            raw_llm_texts: list[str] = [""] * n_chunk
-            out_tok_lens: list[int] = [0] * n_chunk
-            n_act = len(active_indices)
-
-            if n_act > 0:
-                prompts_ids = [tok.encode(p, add_special_tokens=False) for p in formatted_prompts]
-                total_prompt_tokens += sum(len(x) for x in prompts_ids)
-                if n_act >= 2:
-                    lcp = min(len(x) for x in prompts_ids)
-                    for k_i in range(lcp):
-                        if any(x[k_i] != prompts_ids[0][k_i] for x in prompts_ids[1:]):
-                            lcp = k_i
-                            break
-                    sys_ids = prompts_ids[0][:lcp]
+    def _postprocess_one_row(
+        args_tuple: tuple[dict[str, Any], dict[str, Any], str],
+    ) -> tuple[dict[str, Any], str, dict[str, Any], str]:
+        row, pmeta, raw_txt_out = args_tuple
+        fn = str(row.get("filename") or "")
+        src_txt = str(row.get("p12_raw_text") or row.get("p12_clean_text") or row.get("text") or "")
+        raw_ok = True
+        salvaged = False
+        if pmeta.get("triage") is not None:
+            parsed_raw: dict[str, Any] = dict(pmeta["triage"]["docmeta"])
+        else:
+            try:
+                parsed_cand = json.loads(raw_txt_out)
+                if isinstance(parsed_cand, dict):
+                    parsed_raw = expand_compact_v6_to_v4(parsed_cand) if is_compact_wire else parsed_cand
                 else:
-                    lcp = len(shared_sys_ids)
-                    sys_ids = shared_sys_ids if prompts_ids[0][:lcp] == shared_sys_ids else []
-                    lcp = len(sys_ids)
+                    raw_ok = False
+                    salvaged = True
+                    parsed_raw = _salvage_truncated_docmeta_v4(raw_txt_out, filename=fn)
+            except Exception:
+                raw_ok = False
+                salvaged = True
+                parsed_raw = _salvage_truncated_docmeta_v4(raw_txt_out, filename=fn)
 
-                std_up_ff = list(gh_std.upfront_ff)
-                suf_ids = [x[lcp:] + std_up_ff for x in prompts_ids]
-                eff_b = min(b_slots, n_act)
-                doc_order = compute_rolling_doc_order(
-                    suf_ids,
-                    b_slots=eff_b,
-                    sort_by_length=sort_by_length,
-                )
-                gh_dispatch: Any = (
-                    per_doc_grammar_v6(
-                        gh_std,
-                        doc_order,
-                        wire_format=pass1_wire,
-                        doc_target_kinds=doc_target_kinds,
-                        grammar_cache=kind_grammar_cache,
-                        sync_ff_with_std=True,
+        try:
+            clean_obj, sidecar = post_pass_v6(
+                parsed_raw,
+                known=pmeta.get("known_dict"),
+                filename=fn,
+                text=src_txt,
+                p12_lines=pmeta.get("p12_lines"),
+                explicit_format=row.get("effective_format") or row.get("format"),
+                pre_meta=pmeta,
+                provenance=pmeta.get("provenance"),
+                multipage=pmeta.get("multipage"),
+                triage=pmeta.get("triage"),
+                relational=pmeta.get("relational"),
+                citations=pmeta.get("citations"),
+                hygiene=pmeta.get("hygiene"),
+                usc_oracle=usc_oracle,
+            )
+            canon_obj = canonicalize_docmeta_v4(clean_obj)
+            ok_v4, _ = validate_docmeta_v4(canon_obj)
+        except DocMetaValidationError:
+            ok_v4 = False
+            canon_obj = {}
+            sidecar = {}
+
+        if not ok_v4:
+            # Guaranteed schema-valid fallback if model output or truncated salvage failed a constraint
+            fallback_triage = _build_triage_result(
+                "stub_or_blank",
+                "garbled",
+                f"Malformed 2B extraction output salvaged to non-usable triage ({fn[:60]})",
+            )
+            canon_obj, sidecar = post_pass_v6(
+                fallback_triage["docmeta"],
+                known=pmeta.get("known_dict"),
+                filename=fn,
+                text=src_txt,
+                p12_lines=pmeta.get("p12_lines"),
+                explicit_format=row.get("effective_format") or row.get("format"),
+                pre_meta=pmeta,
+                provenance=pmeta.get("provenance"),
+                multipage=pmeta.get("multipage"),
+                triage=fallback_triage,
+                relational=pmeta.get("relational"),
+                citations=pmeta.get("citations"),
+                hygiene=pmeta.get("hygiene"),
+                usc_oracle=usc_oracle,
+            )
+            ok_v4, _ = validate_docmeta_v4(canon_obj)
+
+        diff_d = compute_llm_vs_det_diff_v6(
+            parsed_raw,
+            canon_obj,
+            row,
+            raw_valid_json=raw_ok,
+            salvaged_truncated=salvaged,
+        )
+        return (
+            canon_obj,
+            json.dumps(canon_obj, separators=(",", ":"), ensure_ascii=False),
+            dict(sidecar["anomaly_routing"]),
+            json.dumps(diff_d, separators=(",", ":"), ensure_ascii=False),
+        )
+
+    post_pool: ThreadPoolExecutor | None = None
+    prep_pool: ThreadPoolExecutor | None = None
+
+    with mlx_wired_limit_scope(enabled=use_wired_limit):
+        try:
+            def _iter_pending_chunks() -> Any:
+                nonlocal global_row_cursor, docs_skipped_resume
+                buf: list[dict[str, Any]] = []
+                for fp in in_files:
+                    pf = pq.ParquetFile(fp)
+                    for rb in pf.iter_batches(batch_size=min(chunk_rows, 4096)):
+                        for row in rb.to_pylist():
+                            r_key = _row_resume_key(row, global_row_cursor)
+                            global_row_cursor += 1
+                            if r_key in done_keys:
+                                docs_skipped_resume += 1
+                                continue
+                            row["_resume_key"] = r_key
+                            buf.append(row)
+                            if len(buf) >= chunk_rows:
+                                yield buf
+                                buf = []
+                if buf:
+                    yield buf
+
+            chunk_iter = iter(_iter_pending_chunks())
+            prep_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="docmeta-prep")
+
+            def _fetch_and_prepare_next() -> dict[str, Any] | None:
+                nxt = next(chunk_iter, None)
+                if nxt is None:
+                    return None
+                return _prepare_chunk_cpu(nxt)
+
+            next_prep_fut = prep_pool.submit(_fetch_and_prepare_next)
+
+            while True:
+                prepared = next_prep_fut.result()
+                if prepared is None:
+                    break
+                # Overlap reading & CPU pre-pass of Chunk t+1 while Chunk t executes on GPU/ANE!
+                next_prep_fut = prep_pool.submit(_fetch_and_prepare_next)
+
+                chunk: list[dict[str, Any]] = prepared["chunk"]
+                pmetas: list[dict[str, Any]] = prepared["pmetas"]
+                known_strs: list[str] = prepared["known_strs"]
+                raw_txts: list[str] = prepared["raw_txts"]
+                active_indices: list[int] = prepared["active_indices"]
+                p1_u_contents: list[str] = prepared["p1_u_contents"]
+                doc_target_kinds: dict[int, str] = prepared["doc_target_kinds"]
+                triage_short_circuited_docs += int(prepared["triage_cnt"])
+
+                n_chunk = len(chunk)
+                formatted_prompts = [_fmt_chat(u) for u in p1_u_contents]
+
+                if owned_grammar_router is not None and active_indices:
+                    route_decisions = owned_grammar_router.route_chunk(chunk, pmetas)
+                    for slot_idx, orig_idx in enumerate(active_indices):
+                        if slot_idx not in doc_target_kinds:
+                            lspec = route_decisions[orig_idx].get("lock_spec")
+                            if isinstance(lspec, str) and lspec:
+                                doc_target_kinds[slot_idx] = lspec
+
+                # Start optional background ANE search embedding co-execution (`Proposal B4`) when ANE is uncontended.
+                ane_vectors: list[list[float] | None] = [None] * n_chunk
+                ane_err: list[BaseException] = []
+                ane_thread: threading.Thread | None = None
+                embed_inputs: list[str] | None = None
+                if ane_embedder is not None:
+                    embed_inputs = [
+                        f"{row.get('filename') or ''}\n{str(row.get('p12_clean_text') or row.get('p12_raw_text') or row.get('text') or '')[:2200]}".strip()
+                        for row in chunk
+                    ]
+                    if overlap_embed_ane:
+                        def _bg_ane_worker(inp: list[str]) -> None:
+                            try:
+                                vecs = _encode_batch_pure_ane(ane_embedder, ane_model_tag, inp)
+                                for idx_v, v in enumerate(vecs):
+                                    ane_vectors[idx_v] = v
+                            except BaseException as exc:
+                                ane_err.append(exc)
+
+                        ane_thread = threading.Thread(target=_bg_ane_worker, args=(embed_inputs,), name="docmeta-ane-b4")
+                        ane_thread.start()
+
+                raw_llm_texts: list[str] = [""] * n_chunk
+                out_tok_lens: list[int] = [0] * n_chunk
+                n_act = len(active_indices)
+
+                if n_act > 0:
+                    prompts_ids = [tok.encode(p, add_special_tokens=False) for p in formatted_prompts]
+                    total_prompt_tokens += sum(len(x) for x in prompts_ids)
+                    if n_act >= 2:
+                        lcp = min(len(x) for x in prompts_ids)
+                        for k_i in range(lcp):
+                            if any(x[k_i] != prompts_ids[0][k_i] for x in prompts_ids[1:]):
+                                lcp = k_i
+                                break
+                        sys_ids = prompts_ids[0][:lcp]
+                    else:
+                        lcp = len(shared_sys_ids)
+                        sys_ids = shared_sys_ids if prompts_ids[0][:lcp] == shared_sys_ids else []
+                        lcp = len(sys_ids)
+
+                    std_up_ff = list(gh_std.upfront_ff)
+                    suf_ids = [x[lcp:] + std_up_ff for x in prompts_ids]
+                    eff_b = min(b_slots, n_act)
+                    doc_order = compute_rolling_doc_order(
+                        suf_ids,
+                        b_slots=eff_b,
+                        sort_by_length=sort_by_length,
                     )
-                    if doc_target_kinds
-                    else gh_std
-                )
-                # Pre-warm any new kind grammars before GPU timer starts
-                if doc_target_kinds:
-                    for tk_warm in set(doc_target_kinds.values()):
-                        gh_dispatch.get_grammar_entry(tk_warm)
+                    gh_dispatch: Any = (
+                        per_doc_grammar_v6(
+                            gh_std,
+                            doc_order,
+                            wire_format=pass1_wire,
+                            doc_target_kinds=doc_target_kinds,
+                            grammar_cache=kind_grammar_cache,
+                            sync_ff_with_std=True,
+                        )
+                        if doc_target_kinds
+                        else gh_std
+                    )
+                    # Pre-warm any new kind grammars before GPU timer starts
+                    if doc_target_kinds:
+                        for tk_warm in set(doc_target_kinds.values()):
+                            gh_dispatch.get_grammar_entry(tk_warm)
 
-                res = engine.run_rolling(
-                    sys_ids=sys_ids,
-                    suf_ids_list=suf_ids,
-                    schema_str=pass1_schema_str,
-                    tok=tok,
-                    max_tokens=max_tokens,
-                    B_slots=eff_b,
-                    refill_min=min(refill_min, n_act),
-                    doc_cap_full=doc_cap_full,
-                    swa_ring_cap=swa_ring_cap,
-                    gh=gh_dispatch,
-                    sort_by_length=sort_by_length,
-                    use_ane_ring=use_ane_ring,
-                )
-                if doc_target_kinds:
-                    assert gh_dispatch._cursor == n_act
-                    assert set(gh_dispatch.dispatched_doc_indices) == set(range(n_act))
+                    res = engine.run_rolling(
+                        sys_ids=sys_ids,
+                        suf_ids_list=suf_ids,
+                        schema_str=pass1_schema_str,
+                        tok=tok,
+                        max_tokens=max_tokens,
+                        B_slots=eff_b,
+                        refill_min=min(refill_min, n_act),
+                        doc_cap_full=doc_cap_full,
+                        swa_ring_cap=swa_ring_cap,
+                        gh=gh_dispatch,
+                        sort_by_length=sort_by_length,
+                        use_ane_ring=effective_use_ane_ring,
+                    )
+                    if doc_target_kinds:
+                        assert gh_dispatch._cursor == n_act
+                        assert set(gh_dispatch.dispatched_doc_indices) == set(range(n_act))
 
-                for slot_i, gen_t in enumerate(res["gen_toks"]):
-                    orig_idx = active_indices[slot_i]
-                    full_t = std_up_ff + list(gen_t)
-                    raw_llm_texts[orig_idx] = tok.decode(full_t, skip_special_tokens=True)
-                    out_tok_lens[orig_idx] = len(full_t)
-                    total_completion_tokens += len(full_t)
+                    for slot_i, gen_t in enumerate(res["gen_toks"]):
+                        orig_idx = active_indices[slot_i]
+                        full_t = std_up_ff + list(gen_t)
+                        raw_llm_texts[orig_idx] = tok.decode(full_t, skip_special_tokens=True)
+                        out_tok_lens[orig_idx] = len(full_t)
+                        total_completion_tokens += len(full_t)
 
-                total_decode_sec += float(res.get("decode_sec", 0.0))
-                llm_decoded_docs += n_act
+                    total_decode_sec += float(res.get("decode_sec", 0.0))
+                    llm_decoded_docs += n_act
+                    # Release MLX arena between major Pass-1 rolling waves to cap unified RAM growth.
+                    clear_mlx_wave_cache(256)
 
-            if ane_thread is not None:
-                ane_thread.join()
-                if ane_err:
-                    raise ane_err[0]
-                ane_embedded_docs += sum(1 for v in ane_vectors if v is not None)
+                if ane_thread is not None:
+                    ane_thread.join()
+                    if ane_err:
+                        raise ane_err[0]
+                    ane_embedded_docs += sum(1 for v in ane_vectors if v is not None)
+                elif ane_embedder is not None and embed_inputs is not None:
+                    # Serialized ANE pass after `run_rolling` when `use_ane_ring=True` owned the ANE.
+                    vecs_sync = _encode_batch_pure_ane(ane_embedder, ane_model_tag, embed_inputs)
+                    for idx_v, v in enumerate(vecs_sync):
+                        ane_vectors[idx_v] = v
+                    ane_embedded_docs += sum(1 for v in ane_vectors if v is not None)
 
-            # Post-pass V6 + deterministic diff logging + C0_Stdlib anomaly scoring
-            clean_objs: list[dict[str, Any]] = []
-            clean_texts: list[str] = []
-            anomalies: list[dict[str, Any]] = []
-            diffs_json: list[str] = []
-
-            for i, (row, pmeta, raw_txt_out) in enumerate(zip(chunk, pmetas, raw_llm_texts)):
-                fn = str(row.get("filename") or "")
-                src_txt = str(row.get("p12_raw_text") or row.get("p12_clean_text") or row.get("text") or "")
-                raw_ok = True
-                salvaged = False
-                if pmeta.get("triage") is not None:
-                    parsed_raw: dict[str, Any] = dict(pmeta["triage"]["docmeta"])
+                # Post-pass V6 + deterministic diff logging + C0_Stdlib anomaly scoring (P-core threaded for large chunks)
+                work_items = list(zip(chunk, pmetas, raw_llm_texts))
+                if eff_post_workers > 1 and n_chunk >= 32:
+                    if post_pool is None:
+                        post_pool = ThreadPoolExecutor(max_workers=eff_post_workers, thread_name_prefix="docmeta-post")
+                    post_results = list(post_pool.map(_postprocess_one_row, work_items))
                 else:
-                    try:
-                        parsed_cand = json.loads(raw_txt_out)
-                        if isinstance(parsed_cand, dict):
-                            parsed_raw = expand_compact_v6_to_v4(parsed_cand) if is_compact_wire else parsed_cand
-                        else:
-                            raw_ok = False
-                            salvaged = True
-                            parsed_raw = _salvage_truncated_docmeta_v4(raw_txt_out, filename=fn)
-                    except Exception:
-                        raw_ok = False
-                        salvaged = True
-                        parsed_raw = _salvage_truncated_docmeta_v4(raw_txt_out, filename=fn)
+                    post_results = [_postprocess_one_row(item) for item in work_items]
 
-                try:
-                    clean_obj, sidecar = post_pass_v6(
-                        parsed_raw,
-                        known=pmeta.get("known_dict"),
-                        filename=fn,
-                        text=src_txt,
-                        p12_lines=pmeta.get("p12_lines"),
-                        explicit_format=row.get("effective_format") or row.get("format"),
-                        pre_meta=pmeta,
-                        provenance=pmeta.get("provenance"),
-                        multipage=pmeta.get("multipage"),
-                        triage=pmeta.get("triage"),
-                        relational=pmeta.get("relational"),
-                        citations=pmeta.get("citations"),
-                        hygiene=pmeta.get("hygiene"),
+                clean_objs = [r[0] for r in post_results]
+                clean_texts = [r[1] for r in post_results]
+                anomalies = [r[2] for r in post_results]
+                diffs_json = [r[3] for r in post_results]
+
+                cur_ctx: dict[str, Any] = {
+                    "chunk": chunk,
+                    "pmetas": pmetas,
+                    "known_strs": known_strs,
+                    "raw_txts": raw_txts,
+                    "out_tok_lens": out_tok_lens,
+                    "ane_vectors": ane_vectors,
+                    "clean_objs": clean_objs,
+                    "clean_texts": clean_texts,
+                    "anomalies": anomalies,
+                    "diffs_json": diffs_json,
+                }
+
+                if can_async_stage1:
+                    # 1. Flush previous chunk whose Pure-ANE Stage-1 ran in parallel with this chunk's Metal GPU decode!
+                    if pending_prev is not None:
+                        if prev_stage1_thread is not None:
+                            prev_stage1_thread.join()
+                            prev_stage1_thread = None
+                        if prev_stage1_err:
+                            raise prev_stage1_err[0]
+                        _finalize_and_write_chunk(pending_prev, prev_stage1_out[0] if prev_stage1_out else None)
+                        pending_prev = None
+
+                    # 2. Launch this chunk's Pure-ANE Stage-1 (`0` GPU ops) so it overlaps with the NEXT chunk's GPU decode!
+                    prev_stage1_out = []
+                    prev_stage1_err = []
+
+                    def _bg_stage1_ane_worker(
+                        objs_arg: list[dict[str, Any]],
+                        chunk_arg: list[dict[str, Any]],
+                        out_slot: list[dict[str, Any]],
+                        err_slot: list[BaseException],
+                    ) -> None:
+                        try:
+                            out_slot.append(external_verifier.run_stage1_ane(objs_arg, chunk_arg))  # type: ignore[union-attr]
+                        except BaseException as exc:
+                            err_slot.append(exc)
+
+                    pending_prev = cur_ctx
+                    prev_stage1_thread = threading.Thread(
+                        target=_bg_stage1_ane_worker,
+                        args=(clean_objs, chunk, prev_stage1_out, prev_stage1_err),
+                        name="docmeta-laya-ane-stage1",
+                    )
+                    prev_stage1_thread.start()
+                else:
+                    _finalize_and_write_chunk(cur_ctx, None)
+
+            if pending_prev is not None:
+                if prev_stage1_thread is not None:
+                    prev_stage1_thread.join()
+                    prev_stage1_thread = None
+                if prev_stage1_err:
+                    raise prev_stage1_err[0]
+                _finalize_and_write_chunk(pending_prev, prev_stage1_out[0] if prev_stage1_out else None)
+                pending_prev = None
+
+            # Phase-2 Memory Lifecycle: unload Pass-1 Gemma-4 (weights + 2.68 GB CPU tables + ring) & clear MLX
+            # cache BEFORE loading GPT-OSS-20B so 24 GiB Base M5 and 48 GiB M4 Pro stay clear of OOM/swapout.
+            if use_two_phase_pass2 and deferred_pass2_parts:
+                if owned_grammar_router is not None and hasattr(owned_grammar_router, "close"):
+                    owned_grammar_router.close()
+                    owned_grammar_router = None
+                if ane_embedder is not None and hasattr(ane_embedder, "close"):
+                    ane_embedder.close()
+                    ane_embedder = None
+                unload_engine_memory(engine)
+                if 0 < host_ram_gb < 32 and owned_atomic_verifier is not None:
+                    if hasattr(owned_atomic_verifier, "close_kev_backend") and getattr(
+                        owned_atomic_verifier, "laya_backend", None
+                    ) is not None:
+                        owned_atomic_verifier.close_kev_backend()
+                clear_mlx_wave_cache(0, force=True)
+
+                active_gpt_oss = _ensure_gpt_oss_engine()
+                for dp in deferred_pass2_parts:
+                    p_rows = dp["rows"]
+                    p_pmetas = dp["pmetas"]
+                    p_objs = dp["objs"]
+                    p_texts = dp["texts"]
+                    p_anoms = dp["anomalies"]
+                    p_verdicts = dp["verdicts"]
+                    p_verdicts_json = dp["verdicts_json"]
+                    local_idxs = list(range(len(p_rows)))
+                    old_valid_flags = [bool(validate_docmeta_v4(o)[0]) for o in p_objs]
+                    old_anom_flags = [
+                        bool(a.get("escalate_to_teacher") or a.get("needs_teacher_escalation")) for a in p_anoms
+                    ]
+
+                    esc_n, acc_n, backup_by_local = escalate_anomalies_gpt_oss(
+                        active_gpt_oss,
+                        flagged_indices=local_idxs,
+                        prompts_user_content=dp["prompts"],
+                        rows=p_rows,
+                        pmetas=p_pmetas,
+                        current_objs=p_objs,
+                        current_texts=p_texts,
+                        current_anomalies=p_anoms,
                         usc_oracle=usc_oracle,
+                        external_verifier=external_verifier,
+                        current_verdicts=p_verdicts,
+                        current_verdicts_json=p_verdicts_json,
+                        max_tokens=max_tokens,
+                        batch_size=gpt_oss_batch_size,
+                        k=gpt_oss_k,
                     )
-                    canon_obj = canonicalize_docmeta_v4(clean_obj)
-                    ok_v4, _ = validate_docmeta_v4(canon_obj)
-                except DocMetaValidationError:
-                    ok_v4 = False
-                    canon_obj = {}
-                    sidecar = {}
+                    pass2_escalated_docs += esc_n
+                    pass2_accepted_docs += acc_n
 
-                if not ok_v4:
-                    # Guaranteed schema-valid fallback if model output or truncated salvage failed a constraint
-                    fallback_triage = _build_triage_result(
-                        "stub_or_blank",
-                        "garbled",
-                        f"Malformed 2B extraction output salvaged to non-usable triage ({fn[:60]})",
-                    )
-                    canon_obj, sidecar = post_pass_v6(
-                        fallback_triage["docmeta"],
-                        known=pmeta.get("known_dict"),
-                        filename=fn,
-                        text=src_txt,
-                        p12_lines=pmeta.get("p12_lines"),
-                        explicit_format=row.get("effective_format") or row.get("format"),
-                        pre_meta=pmeta,
-                        provenance=pmeta.get("provenance"),
-                        multipage=pmeta.get("multipage"),
-                        triage=fallback_triage,
-                        relational=pmeta.get("relational"),
-                        citations=pmeta.get("citations"),
-                        hygiene=pmeta.get("hygiene"),
-                        usc_oracle=usc_oracle,
-                    )
-                    ok_v4, _ = validate_docmeta_v4(canon_obj)
+                    if backup_by_local:
+                        part_p: Path = dp["part_path"]
+                        part_rows_list = pq.read_table(part_p).to_pylist()
+                        for local_i, part_row_idx in enumerate(dp["part_row_indices"]):
+                            if local_i not in backup_by_local:
+                                continue
+                            c_obj = p_objs[local_i]
+                            c_json = p_texts[local_i]
+                            anom = p_anoms[local_i]
+                            row_orig = p_rows[local_i]
+                            ok_new, _ = validate_docmeta_v4(c_obj)
+                            is_flagged_new = bool(
+                                anom.get("escalate_to_teacher") or anom.get("needs_teacher_escalation")
+                            )
+                            strict_v4_valid_docs += int(ok_new) - int(old_valid_flags[local_i])
+                            anomaly_flagged_docs += int(is_flagged_new) - int(old_anom_flags[local_i])
 
-                diff_d = compute_llm_vs_det_diff_v6(
-                    parsed_raw,
-                    canon_obj,
-                    row,
-                    raw_valid_json=raw_ok,
-                    salvaged_truncated=salvaged,
-                )
-                clean_objs.append(canon_obj)
-                clean_texts.append(json.dumps(canon_obj, separators=(",", ":"), ensure_ascii=False))
-                anomalies.append(dict(sidecar["anomaly_routing"]))
-                diffs_json.append(json.dumps(diff_d, separators=(",", ":"), ensure_ascii=False))
+                            rec = part_rows_list[part_row_idx]
+                            rec["docmeta_source"] = "fast-gpt-oss-20b-pass2"
+                            rec["primary_kind"] = c_obj.get("primary_kind")
+                            rec["status"] = c_obj.get("status")
+                            rec["congress"] = (
+                                c_obj.get("congress")
+                                if c_obj.get("congress") is not None
+                                else row_orig.get("rel_congress")
+                            )
+                            rec["chamber"] = c_obj.get("chamber") or row_orig.get("rel_chamber")
+                            rec["committees"] = list(c_obj.get("committees") or row_orig.get("rel_committees") or ())
+                            rec["docmeta_json"] = c_json
+                            rec["strict_v4_valid"] = bool(ok_new)
+                            rec["anomaly_score"] = float(anom.get("anomaly_score", 0.0))
+                            rec["anomaly_flags"] = list(
+                                anom.get("anomaly_codes")
+                                or [
+                                    f["code"] if isinstance(f, Mapping) and "code" in f else str(f)
+                                    for f in (anom.get("anomalies") or anom.get("anomaly_flags") or ())
+                                ]
+                            )
+                            rec["needs_teacher_escalation"] = is_flagged_new
+                            rec["gist_grounding_score"] = float(
+                                (anom.get("gist_grounding") or {}).get("grounding_score", 1.0)
+                            )
+                            rec["external_verifier_json"] = p_verdicts_json[local_i]
+                            rec["pass2_escalated"] = True
+                            rec["pass1_docmeta_json"] = backup_by_local[local_i]
 
-            cur_ctx: dict[str, Any] = {
-                "chunk": chunk,
-                "pmetas": pmetas,
-                "user_contents": user_contents,
-                "out_tok_lens": out_tok_lens,
-                "ane_vectors": ane_vectors,
-                "clean_objs": clean_objs,
-                "clean_texts": clean_texts,
-                "anomalies": anomalies,
-                "diffs_json": diffs_json,
-            }
+                        re_tbl = _cast_results_arrow_table(part_rows_list)
+                        _write_table_atomic(re_tbl, part_p, row_group_size=min(32768, max(1, len(part_rows_list))))
+                if owned_gpt_oss and gpt_oss_engine is not None and hasattr(gpt_oss_engine, "close"):
+                    gpt_oss_engine.close()
+                    gpt_oss_engine = None
+                    owned_gpt_oss = False
+                    clear_mlx_wave_cache(0, force=True)
 
-            if can_async_stage1:
-                # 1. Flush previous chunk whose Pure-ANE Stage-1 ran in parallel with this chunk's Metal GPU decode!
-                if pending_prev is not None:
-                    if prev_stage1_thread is not None:
-                        prev_stage1_thread.join()
-                        prev_stage1_thread = None
-                    if prev_stage1_err:
-                        raise prev_stage1_err[0]
-                    _finalize_and_write_chunk(pending_prev, prev_stage1_out[0] if prev_stage1_out else None)
-                    pending_prev = None
+            # If caller requested a single `.parquet` output file, seal all parts atomically with `row_group_size=32768`
+            if seal_single_file:
+                all_part_files = sorted(parts_dir.glob("part-*.parquet"))
+                if all_part_files:
+                    tables = [pq.read_table(pf_p) for pf_p in all_part_files]
+                    merged = pa.concat_tables(tables, promote_options="default")
+                    _write_table_atomic(merged, out_target, row_group_size=32768)
 
-                # 2. Launch this chunk's Pure-ANE Stage-1 (`0` GPU ops) so it overlaps with the NEXT chunk's GPU decode!
-                prev_stage1_out = []
-                prev_stage1_err = []
-
-                def _bg_stage1_ane_worker(
-                    objs_arg: list[dict[str, Any]],
-                    chunk_arg: list[dict[str, Any]],
-                    out_slot: list[dict[str, Any]],
-                    err_slot: list[BaseException],
-                ) -> None:
-                    try:
-                        out_slot.append(external_verifier.run_stage1_ane(objs_arg, chunk_arg))  # type: ignore[union-attr]
-                    except BaseException as exc:
-                        err_slot.append(exc)
-
-                pending_prev = cur_ctx
-                prev_stage1_thread = threading.Thread(
-                    target=_bg_stage1_ane_worker,
-                    args=(clean_objs, chunk, prev_stage1_out, prev_stage1_err),
-                    name="docmeta-laya-ane-stage1",
-                )
-                prev_stage1_thread.start()
-            else:
-                _finalize_and_write_chunk(cur_ctx, None)
-
-        if pending_prev is not None:
-            if prev_stage1_thread is not None:
+        finally:
+            if prep_pool is not None:
+                prep_pool.shutdown(wait=True)
+            if post_pool is not None:
+                post_pool.shutdown(wait=True)
+            # Join any in-flight ANE worker BEFORE closing CoreML handles (`laya_ane_free`)
+            if prev_stage1_thread is not None and prev_stage1_thread.is_alive():
                 prev_stage1_thread.join()
-                prev_stage1_thread = None
-            if prev_stage1_err:
-                raise prev_stage1_err[0]
-            _finalize_and_write_chunk(pending_prev, prev_stage1_out[0] if prev_stage1_out else None)
-            pending_prev = None
-
-        # If caller requested a single `.parquet` output file, seal all parts atomically with `row_group_size=32768`
-        if seal_single_file:
-            all_part_files = sorted(parts_dir.glob("part-*.parquet"))
-            if all_part_files:
-                tables = [pq.read_table(pf_p) for pf_p in all_part_files]
-                merged = pa.concat_tables(tables, promote_options="default")
-                _write_table_atomic(merged, out_target, row_group_size=32768)
-
-    finally:
-        # Join any in-flight ANE worker BEFORE closing CoreML handles (`laya_ane_free`)
-        if prev_stage1_thread is not None and prev_stage1_thread.is_alive():
-            prev_stage1_thread.join()
-        if owned_grammar_router is not None and hasattr(owned_grammar_router, "close"):
-            owned_grammar_router.close()
-        if owned_atomic_verifier is not None and hasattr(owned_atomic_verifier, "close"):
-            owned_atomic_verifier.close()
-        if owned_gpt_oss and gpt_oss_engine is not None and hasattr(gpt_oss_engine, "close"):
-            gpt_oss_engine.close()
+            if owned_grammar_router is not None and hasattr(owned_grammar_router, "close"):
+                owned_grammar_router.close()
+            if ane_embedder is not None and hasattr(ane_embedder, "close"):
+                ane_embedder.close()
+            if owned_atomic_verifier is not None and hasattr(owned_atomic_verifier, "close"):
+                owned_atomic_verifier.close()
+            if owned_gpt_oss and gpt_oss_engine is not None and hasattr(gpt_oss_engine, "close"):
+                gpt_oss_engine.close()
+            clear_mlx_wave_cache(0, force=True)
 
     elapsed = time.perf_counter() - t0
     return DocMetaSweepSummary(

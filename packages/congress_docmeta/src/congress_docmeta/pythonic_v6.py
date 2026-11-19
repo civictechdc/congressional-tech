@@ -1725,16 +1725,10 @@ class PythonicEngineV6:
         self.gh_std = GrammarHelper(resolved_tok, self._schema_str, new_to_old, whitespace_flexible=False)
         self._kind_grammar_cache: dict[str, tuple[Any, list[int]]] = {}
 
+        from .silicon_runtime_v6 import format_chat_no_thinking
+
         def _fmt_chat(msgs: list[dict[str, str]]) -> str:
-            if hasattr(resolved_tok, "apply_chat_template"):
-                return str(
-                    resolved_tok.apply_chat_template(
-                        msgs,
-                        tokenize=False,
-                        add_generation_prompt=True,
-                    )
-                )
-            return str(resolved_tok.format_chat(msgs, add_generation_prompt=True, enable_thinking=False))
+            return format_chat_no_thinking(resolved_tok, msgs)
 
         self._fmt_chat = _fmt_chat
         probe_a = _fmt_chat([{"role": "user", "content": self._build_prompt_fn('{"a": 1}', "a.pdf", "Alpha")}])

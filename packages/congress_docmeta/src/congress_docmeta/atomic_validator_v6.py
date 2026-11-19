@@ -26,13 +26,16 @@ Apple Silicon M4 Pro Roofline Optimizations:
 from __future__ import annotations
 
 import ctypes
+import datetime
 from functools import partial
+import hashlib
 import json
 import math
 import os
 from pathlib import Path
 import re
 import subprocess
+import sys
 import threading
 from typing import Any, Literal, Mapping, Sequence
 
@@ -41,6 +44,11 @@ from .anomaly_router_v6 import (
     check_gist_title_grounding_v6,
     score_atomic_stdlib_v6,
     surname_token_v6,
+)
+from .silicon_runtime_v6 import (
+    clear_mlx_wave_cache,
+    get_and_cap_mlx_cache_limit,
+    restore_mlx_cache_limit,
 )
 
 ValidatorMode = Literal["laya-ane", "kev-0.8b", "both"]
@@ -551,6 +559,199 @@ def resolve_docmeta_validators_dir(
     return candidates[0]
 
 
+VALIDATORS_MANIFEST_NAME = "atomic_validators_manifest.json"
+VALIDATORS_MANIFEST_SCHEMA_VERSION = 1
+
+# Relative files/bundles hashed into `atomic_validators_manifest.json` when present.
+_MANIFEST_CANDIDATE_FILES: tuple[str, ...] = (
+    "router_v63_linear.npz",
+    "router_v63_calibration.json",
+    "validator_v63_calibration.json",
+    "laya_typed/rl_agent_config.json",
+    "laya_typed/encoder_config.json",
+    "laya_typed/laya_typed_emb_f16.npz",
+    "laya_typed/tokenizer/tokenizer.json",
+    "kev_08b/kev_meta_w8.json",
+    "kev_08b/kev_meta.json",
+    "kev_08b/model_w8.safetensors",
+    "kev_08b/tokenizer.json",
+)
+_MANIFEST_CANDIDATE_DIRS: tuple[str, ...] = (
+    "laya_typed/laya_typed_s256_w8.mlmodelc",
+    "laya_typed/laya_typed_s512_w8.mlmodelc",
+)
+
+
+def _sha256_file(path: Path) -> tuple[str, int]:
+    h = hashlib.sha256()
+    size = 0
+    with path.open("rb") as fh:
+        while True:
+            chunk = fh.read(1 << 20)
+            if not chunk:
+                break
+            h.update(chunk)
+            size += len(chunk)
+    return h.hexdigest(), size
+
+
+def build_validators_manifest(
+    artifacts_dir: str | Path,
+    *,
+    bundle_version: str = "v6_3",
+) -> dict[str, Any]:
+    """Build deterministic SHA-256 checksum & version manifest for Congressional `atomic_validators`."""
+    root = Path(artifacts_dir).expanduser().resolve()
+    files_map: dict[str, dict[str, Any]] = {}
+
+    for rel in _MANIFEST_CANDIDATE_FILES:
+        fp = root / rel
+        if fp.is_file():
+            digest, sz = _sha256_file(fp)
+            files_map[rel] = {"sha256": digest, "size": sz}
+
+    for rel_dir in _MANIFEST_CANDIDATE_DIRS:
+        dp = root / rel_dir
+        if dp.is_dir():
+            for fp in sorted(p for p in dp.rglob("*") if p.is_file()):
+                rel = fp.relative_to(root).as_posix()
+                digest, sz = _sha256_file(fp)
+                files_map[rel] = {"sha256": digest, "size": sz}
+
+    return {
+        "schema_version": VALIDATORS_MANIFEST_SCHEMA_VERSION,
+        "bundle_version": str(bundle_version),
+        "generated_at_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "files": files_map,
+    }
+
+
+def write_validators_manifest(
+    artifacts_dir: str | Path,
+    *,
+    bundle_version: str = "v6_3",
+) -> Path:
+    """Atomically write `atomic_validators_manifest.json` inside `artifacts_dir`."""
+    root = Path(artifacts_dir).expanduser().resolve()
+    manifest = build_validators_manifest(root, bundle_version=bundle_version)
+    out_path = root / VALIDATORS_MANIFEST_NAME
+    tmp_path = root / f".{VALIDATORS_MANIFEST_NAME}.tmp"
+    payload = json.dumps(manifest, indent=2, sort_keys=True) + "\n"
+    try:
+        tmp_path.write_text(payload, encoding="utf-8")
+        os.replace(tmp_path, out_path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
+    return out_path
+
+
+def verify_validators_manifest(
+    artifacts_dir: str | Path,
+    *,
+    mode: bool | str = "if_present",
+    required_files: Sequence[str] | None = None,
+    stream: Any = None,
+) -> dict[str, Any]:
+    """Verify `atomic_validators_manifest.json` checksums and bundle version parity.
+
+    ``mode`` controls behavior:
+      - ``False`` / ``"off"``: skip verification.
+      - ``"if_present"`` (default): verify strictly whenever ``atomic_validators_manifest.json``
+        exists; emit a stderr warning when absent (unless ``DOCMETA_ALLOW_UNVERIFIED_VALIDATORS=1``).
+      - ``True`` / ``"strict"``: require ``atomic_validators_manifest.json`` to exist and match.
+    """
+    if mode is False or str(mode).strip().lower() in ("false", "off", "none"):
+        return {"verified": False, "status": "skipped", "checked_files": 0}
+
+    strict = mode is True or str(mode).strip().lower() in ("true", "strict", "required")
+    root = Path(artifacts_dir).expanduser().resolve()
+    manifest_path = root / VALIDATORS_MANIFEST_NAME
+    if not manifest_path.is_file():
+        if strict:
+            raise FileNotFoundError(
+                f"Missing validator checksum manifest {manifest_path}. "
+                "Generate one with `scripts/train_v63_validators.py --write-manifest-only`."
+            )
+        if os.environ.get("DOCMETA_ALLOW_UNVERIFIED_VALIDATORS") != "1":
+            out = sys.stderr if stream is None else stream
+            print(
+                f"[congress_docmeta] WARNING: Unmanifested atomic_validators bundle at {root} "
+                f"(missing {VALIDATORS_MANIFEST_NAME}); run train_v63_validators.py --write-manifest-only to pin checksums.",
+                file=out,
+            )
+        return {"verified": False, "status": "missing_manifest", "checked_files": 0, "manifest_path": str(manifest_path)}
+
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise ValueError(f"Corrupt validator manifest {manifest_path}: {exc}") from exc
+
+    if not isinstance(manifest, Mapping) or int(manifest.get("schema_version") or 0) != VALIDATORS_MANIFEST_SCHEMA_VERSION:
+        raise ValueError(
+            f"Unsupported validator manifest schema_version in {manifest_path}: {manifest.get('schema_version')!r}"
+        )
+
+    files_spec = manifest.get("files")
+    if not isinstance(files_spec, Mapping) or not files_spec:
+        raise ValueError(f"Validator manifest {manifest_path} contains no file entries.")
+
+    bundle_ver = str(manifest.get("bundle_version") or "")
+    for cal_name in ("validator_v63_calibration.json", "router_v63_calibration.json"):
+        cal_p = root / cal_name
+        if cal_p.is_file():
+            try:
+                cal_obj = json.loads(cal_p.read_text(encoding="utf-8"))
+                cal_ver = str(cal_obj.get("version") or "")
+                if bundle_ver and cal_ver and cal_ver != bundle_ver:
+                    raise ValueError(
+                        f"Validator manifest bundle_version={bundle_ver!r} disagrees with {cal_name} version={cal_ver!r}"
+                    )
+            except ValueError:
+                raise
+            except Exception:
+                pass
+
+    targets = list(files_spec.keys())
+    if required_files:
+        for req in required_files:
+            if req not in files_spec:
+                raise ValueError(f"Required validator artifact {req!r} missing from manifest {manifest_path}")
+
+    errors: list[str] = []
+    for rel in targets:
+        meta = files_spec[rel]
+        if not isinstance(meta, Mapping) or not meta.get("sha256"):
+            errors.append(f"{rel}: malformed manifest entry")
+            continue
+        fp = root / rel
+        if not fp.is_file():
+            errors.append(f"{rel}: missing file")
+            continue
+        exp_size = meta.get("size")
+        actual_size = fp.stat().st_size
+        if exp_size is not None and int(exp_size) != actual_size:
+            errors.append(f"{rel}: size mismatch (expected {exp_size}, got {actual_size})")
+            continue
+        actual_sha, _ = _sha256_file(fp)
+        if actual_sha != str(meta["sha256"]):
+            errors.append(f"{rel}: sha256 mismatch (expected {meta['sha256'][:12]}..., got {actual_sha[:12]}...)")
+
+    if errors:
+        raise ValueError(
+            f"Validator artifact manifest verification failed for {root} ({len(errors)} error(s)): "
+            + "; ".join(errors[:5])
+        )
+
+    return {
+        "verified": True,
+        "status": "ok",
+        "bundle_version": bundle_ver,
+        "checked_files": len(targets),
+        "manifest_path": str(manifest_path),
+    }
+
+
 class AtomicOutputValidatorV6:
     """Post-`Gemma-4` Atomic `Noul` Output Validator (`laya-ane` | `kev-0.8b` | `both`).
 
@@ -576,8 +777,10 @@ class AtomicOutputValidatorV6:
         include_omission_check: bool = True,
         score_personas: bool = True,
         kev_quant: Literal["auto", "w8", "bf16"] = "auto",
-        kev_batch_docs: int = 1,
+        kev_batch_docs: int = 8,
         pipe_depth: int = 4,
+        verify_manifest: bool | str = "if_present",
+        max_kev_cache_mib: int = 256,
     ) -> None:
         if mode not in ("laya-ane", "kev-0.8b", "both"):
             raise ValueError(f"Unsupported mode={mode!r}; expected 'laya-ane', 'kev-0.8b', or 'both'.")
@@ -587,6 +790,11 @@ class AtomicOutputValidatorV6:
         self.mode: ValidatorMode = mode
         self.home_dir = resolve_docmeta_pkg_root(home)
         self.artifacts_dir = resolve_docmeta_validators_dir(artifacts_dir, home=home)
+        self.manifest_status = verify_validators_manifest(self.artifacts_dir, mode=verify_manifest)
+        self.kev_batch_docs = max(1, int(kev_batch_docs))
+        self._max_kev_cache_mib = max(0, int(max_kev_cache_mib))
+        self._saved_mlx_cache_limit: int | None = None
+
         cal_p = self.artifacts_dir / "validator_v63_calibration.json"
         cal: dict[str, Any] = json.loads(cal_p.read_text(encoding="utf-8")) if cal_p.is_file() else {}
         self.calibration_version: str = str(cal.get("version") or "v6_2")
@@ -627,11 +835,17 @@ class AtomicOutputValidatorV6:
                 pipe_depth=pipe_depth,
             )
         if mode in ("kev-0.8b", "both"):
-            self.kev_backend = Kev08bMlxBackend(
-                self.artifacts_dir / "kev_08b",
-                quant_mode=kev_quant,
-                batch_docs=kev_batch_docs,
-            )
+            # Guard against legacy Kev08bMlxBackend leaking a 1 GiB global mx.set_cache_limit override!
+            self._saved_mlx_cache_limit = get_and_cap_mlx_cache_limit(max_cache_mib=self._max_kev_cache_mib)
+            try:
+                self.kev_backend = Kev08bMlxBackend(
+                    self.artifacts_dir / "kev_08b",
+                    quant_mode=kev_quant,
+                    batch_docs=self.kev_batch_docs,
+                )
+            finally:
+                # Re-apply bounded cache cap immediately if Kev08bMlxBackend bumped it during __init__.
+                get_and_cap_mlx_cache_limit(max_cache_mib=self._max_kev_cache_mib)
 
     @property
     def supports_async_ane_stage1(self) -> bool:
@@ -690,22 +904,28 @@ class AtomicOutputValidatorV6:
                 obj = clean_objs[di]
                 row = chunk[di]
                 do_omit = self.include_omission_check and _should_check_omission(obj, v0_list[di])
-                st_core, _ = build_atomic_doc_questions_v6(
+                # Build atomic doc questions ONCE per document (`head=950, tail=350`) and derive the
+                # compact core/extended views cheaply without re-parsing row fields or rebuilding questions.
+                st_full, qs = build_atomic_doc_questions_v6(
                     obj,
                     row,
                     head_chars=950,
                     tail_chars=350,
-                    include_genre_check=False,
-                    include_omission_check=False,
-                )
-                st_ext, qs = build_atomic_doc_questions_v6(
-                    obj,
-                    row,
-                    head_chars=740,
-                    tail_chars=240,
                     include_genre_check=self.include_genre_check,
                     include_omission_check=do_omit,
                 )
+                cand_full = st_full["candidate_extraction"]
+                st_core = {
+                    "filename": st_full["filename"],
+                    "known_metadata": st_full["known_metadata"],
+                    "document_excerpt": st_full["document_excerpt"],
+                    "candidate_extraction": {
+                        k: cand_full[k]
+                        for k in ("status", "primary_kind", "committees", "composed_title", "gist")
+                        if k in cand_full
+                    },
+                }
+                st_ext: dict[str, Any] | None = None
                 laya_field_probs[di] = {"primary_kind": 0.98, "committees": 0.92, "gist": 0.5}
                 for q in qs:
                     fld = str(q.get("field") or q["id"])
@@ -714,7 +934,24 @@ class AtomicOutputValidatorV6:
                             continue
                         if fld == "committees" and _can_skip_empty_committees(obj, row, clean_texts[di]):
                             continue
-                    st_use = st_core if fld in ("primary_kind", "committees", "gist") else st_ext
+                    if fld in ("primary_kind", "committees", "gist"):
+                        st_use = st_core
+                    else:
+                        if st_ext is None:
+                            fn_d = "" if st_full["filename"] == "<NONE>" else str(st_full["filename"])
+                            st_ext = {
+                                "filename": st_full["filename"],
+                                "known_metadata": st_full["known_metadata"],
+                                "document_excerpt": _format_doc_head_tail(
+                                    clean_texts[di],
+                                    str(st_full["known_metadata"]),
+                                    fn_d,
+                                    head_chars=740,
+                                    tail_chars=240,
+                                ),
+                                "candidate_extraction": cand_full,
+                            }
+                        st_use = st_ext
                     doc_encs.append(self.laya_backend.encode_item(st_use, q))
                     doc_slots.append((di, fld))
 
@@ -865,6 +1102,7 @@ class AtomicOutputValidatorV6:
                             kev_pers_defects[di][pi] = round(1.0 - float(p1), 4)
                         else:
                             kev_field_probs[di][fld] = float(p1)
+                clear_mlx_wave_cache(self._max_kev_cache_mib)
 
         eval_set = set(eval_doc_indices)
         verdicts: list[dict[str, Any]] = []
@@ -1151,13 +1389,20 @@ class AtomicOutputValidatorV6:
     ) -> list[dict[str, Any]]:
         return self.score_batch(clean_objs, chunk)
 
+    def close_kev_backend(self) -> None:
+        """Release Stage-2 Metal MLX `Kev-0.8B` weights while preserving pure-ANE `Laya` if needed."""
+        if self.kev_backend is not None:
+            self.kev_backend.close()
+            self.kev_backend = None
+            restore_mlx_cache_limit(self._saved_mlx_cache_limit)
+            self._saved_mlx_cache_limit = None
+            clear_mlx_wave_cache(0, force=True)
+
     def close(self) -> None:
         if self.laya_backend is not None:
             self.laya_backend.close()
             self.laya_backend = None
-        if self.kev_backend is not None:
-            self.kev_backend.close()
-            self.kev_backend = None
+        self.close_kev_backend()
 
     def __enter__(self) -> "AtomicOutputValidatorV6":
         return self
@@ -1173,10 +1418,15 @@ __all__ = [
     "CFLOW_DESC_V6",
     "CONFUSABLE_ALTS_V6",
     "ROLE_DESC_V6",
+    "VALIDATORS_MANIFEST_NAME",
+    "VALIDATORS_MANIFEST_SCHEMA_VERSION",
     "ValidatorMode",
     "build_atomic_doc_questions_v6",
     "build_atomic_persona_question_v6",
     "build_genre_conditional_question_v6",
+    "build_validators_manifest",
     "resolve_docmeta_pkg_root",
     "resolve_docmeta_validators_dir",
+    "verify_validators_manifest",
+    "write_validators_manifest",
 ]
