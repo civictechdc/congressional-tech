@@ -536,3 +536,98 @@ def test_release_gate_url_state_proof_admits_verified_qualification_reason_and_r
                 ),
             )
 
+        # 4. Review 7b: supplying a qualification file that lacks a row for u_unchanged MUST refuse
+        # clearing body_not_qualified -> no_satisfying_recovery on its body-less unchanged recheck.
+        q_partial = tmp_path / 'provenance-quals-partial.jsonl'
+        q_partial.write_text(
+            json.dumps(build_qualification_fact(bad_rec, requested_url=u_newly_bad, url=u_newly_bad,
+                                                receipt_key=NEW_RECEIPT, retrieved_at=FETCHED.isoformat(),
+                                                http_status=200, headers={'Content-Type': 'application/pdf'})) + '\n'
+            + json.dumps(build_qualification_fact(good_rec, requested_url=u_fixed, url=u_fixed,
+                                                  receipt_key=NEW_RECEIPT, retrieved_at=FETCHED.isoformat(),
+                                                  http_status=200, headers={'Content-Type': 'application/pdf'})) + '\n'
+        )
+        unproven_clear_reasons = dict(cand_reasons, **{u_unchanged: 'no_satisfying_recovery'})
+        release_dir(tmp_path / 'cand-unproven-clear', ['A'], url_state=build_table(cand_rows, unproven_clear_reasons))
+        with pytest.raises(ValueError, match='capture_reason is not implied by verified body qualifications'):
+            require_release_gates(
+                tmp_path / 'base', tmp_path / 'cand-unproven-clear', None, report_path=tmp_path / 'fail-missing-row.json',
+                automatic=lambda rep: automatic_causes(
+                    rep, tmp_path / 'base', tmp_path / 'cand-unproven-clear', engine=eng,
+                    captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
+                    live_receipt_keys=LIVE_RECEIPTS, read_receipt=blobs.__getitem__,
+                    work=tmp_path / 'auto-fail-missing-row', candidate_receipt_keys=LIVE_RECEIPTS | {NEW_RECEIPT},
+                    qualification_files=[dict(key='provenance/qualifications/partial.jsonl', path=str(q_partial))],
+                ),
+            )
+
+        # 5. Review 7b: added URLs also enforce capture_reason against verified qualifications.
+        u_added = 'https://fixture.test/added-bad.pdf'
+        bad_pdf_added = b'%PDF-1.7\n2 0 obj\n<< /Type /Catalog >>\ntruncated-added'
+        bad_file_added = tmp_path / 'bad-added.pdf'
+        bad_file_added.write_bytes(bad_pdf_added)
+        bad_rec_added = qualify(verify_local_file(bad_file_added), q_cache)
+        bad_sha_added = bytes.fromhex(hashlib.sha256(bad_pdf_added).hexdigest())
+        added_cap_rows = [*cap_rows, dict(mode='fetch', complete=True, attempt=0, http_status=200,
+                                          receipt_key=NEW_RECEIPT, receipt_line=4, requested_url=u_added,
+                                          sha256=bad_sha_added, retrieved_at=FETCHED, outcome='stored')]
+        write_captures(added_cap_rows, tmp_path / 'captures-added.parquet')
+        added_text = {}
+        for row in added_cap_rows:
+            body = [dict(sha256=row['sha256'].hex())] if row.get('sha256') else []
+            added_text.setdefault(row['receipt_key'], {})[row['receipt_line']] = json.dumps(dict(
+                record=dict(mode='fetch', requested_url=row['requested_url'], outcome=row['outcome']), captures=body))
+        added_blobs = {k: gzip.compress(('\n'.join(v[i] for i in sorted(v)) + '\n').encode(), mtime=0) for k, v in added_text.items()}
+        added_cand_rows = dict(cand_rows, **{u_added: state(u_added, 1, FETCHED, 200, 'stored', FETCHED, 7 * DAY, meeting)})
+        added_cand_reasons = dict(cand_reasons, **{u_added: 'body_not_qualified'})
+        release_dir(tmp_path / 'cand-added-bad', ['A'], url_state=build_table(added_cand_rows, added_cand_reasons))
+        # Without a failed qualification record for bad_sha_added (q_file only covers bad_sha and good_sha), added body_not_qualified refuses:
+        with pytest.raises(ValueError, match='capture_reason is not implied by verified body qualifications'):
+            require_release_gates(
+                tmp_path / 'base', tmp_path / 'cand-added-bad', None, report_path=tmp_path / 'fail-added.json',
+                automatic=lambda rep: automatic_causes(
+                    rep, tmp_path / 'base', tmp_path / 'cand-added-bad', engine=eng,
+                    captures=dict(kind='parquet', path=str(tmp_path / 'captures-added.parquet')),
+                    live_receipt_keys=LIVE_RECEIPTS, read_receipt=added_blobs.__getitem__,
+                    work=tmp_path / 'auto-fail-added', candidate_receipt_keys=LIVE_RECEIPTS | {NEW_RECEIPT},
+                    qualification_files=[dict(key='provenance/qualifications/test.jsonl', path=str(q_file))],
+                ),
+            )
+        # With verified failed qualification for u_added included, added body_not_qualified passes:
+        q_with_added = tmp_path / 'quals-with-added.jsonl'
+        q_with_added.write_text(
+            q_file.read_text()
+            + json.dumps(build_qualification_fact(bad_rec_added, requested_url=u_added, url=u_added,
+                                                  receipt_key=NEW_RECEIPT, retrieved_at=FETCHED.isoformat(),
+                                                  http_status=200, headers={'Content-Type': 'application/pdf'})) + '\n'
+        )
+        passed_added = require_release_gates(
+            tmp_path / 'base', tmp_path / 'cand-added-bad', None, report_path=tmp_path / 'pass-added.json',
+            automatic=lambda rep: automatic_causes(
+                rep, tmp_path / 'base', tmp_path / 'cand-added-bad', engine=eng,
+                captures=dict(kind='parquet', path=str(tmp_path / 'captures-added.parquet')),
+                live_receipt_keys=LIVE_RECEIPTS, read_receipt=added_blobs.__getitem__,
+                work=tmp_path / 'auto-pass-added', candidate_receipt_keys=LIVE_RECEIPTS | {NEW_RECEIPT},
+                qualification_files=[dict(key='provenance/qualifications/with-added.jsonl', path=str(q_with_added))],
+            ),
+        )
+        assert passed_added['reasons'] == [] and passed_added['automatic_reasons'] == []
+
+    # 6. Review 7b: missing explicit qualification path and tampered selector pin raise, and
+    # standalone body_qualifications pin participates in input_digest.
+    from congress_api.retention.qualification_facts import load_qualification_facts
+    from viewer_publication.archive_publish import input_digest
+
+    with pytest.raises(FileNotFoundError):
+        load_qualification_facts(tmp_path / 'absent-qualifications.jsonl')
+    with pytest.raises(ValueError):
+        load_qualification_facts({'path': str(q_file), 'sha256': '0' * 64, 'size': q_file.stat().st_size})
+
+    base_digest = input_digest(receipt_keys=[LIVE], provenance=[], profile={'v': 1}, entity_digests={})
+    d_pin_a = input_digest(receipt_keys=[LIVE], provenance=[], profile={'v': 1}, entity_digests={},
+                           extra_pins={'body_qualifications': {'sha256': 'a' * 64, 'size': 10}})
+    d_pin_b = input_digest(receipt_keys=[LIVE], provenance=[], profile={'v': 1}, entity_digests={},
+                           extra_pins={'body_qualifications': {'sha256': 'b' * 64, 'size': 10}})
+    assert d_pin_a != base_digest and d_pin_a != d_pin_b
+    assert input_digest(receipt_keys=[LIVE], provenance=[], profile={'v': 1}, entity_digests={}, extra_pins=None) == base_digest
+

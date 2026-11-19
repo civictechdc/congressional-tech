@@ -114,6 +114,68 @@ def test_an_input_neither_side_names_cannot_be_called_equal(decide):
     assert decide(value, record=bare, records=[old])[1] == ['data-only night: the candidate names no unprofiled_inputs']
 
 
+def test_daily_qualification_provenance_may_grow_while_decisions_and_removed_ledgers_stop(tmp_path, releases):
+    """Review 7b: daily capture appends receipt-bound provenance/qualifications/ ledgers without
+    stopping a mixed data-only night, while decision edits, removed ledgers or unknown receipts stop."""
+    import hashlib
+    from congress_api.retention.provenance import file_pin
+    from congress_api.retention.qualification_facts import build_qualification_fact
+    from congress_shared.custody import verify_local_file
+    from corpus_recovery.qualification import qualify
+
+    base = releases('qbase', ['t'] * 1000, ['n'] * 200 + [None] * 800)
+    cand = releases('qcand', ['t'] * 1000, ['n'] * 200 + [None] * 800)
+    bad_pdf = tmp_path / 'bad.pdf'
+    bad_pdf.write_bytes(b'%PDF-1.7\ntruncated')
+    q_rec = qualify(verify_local_file(bad_pdf), tmp_path / 'qcache')
+
+    q_key_1 = 'provenance/qualifications/20261116T120000Z-' + '1' * 64 + '.jsonl'
+    q_key_2 = 'provenance/qualifications/20261117T120000Z-' + '2' * 64 + '.jsonl'
+    q_path_2 = tmp_path / 'q2.jsonl'
+    fact_2 = build_qualification_fact(q_rec, requested_url='https://fixture.test/doc.pdf', url='https://fixture.test/doc.pdf',
+                                      receipt_key=NIGHT[0], retrieved_at='2026-11-17T12:00:00Z', http_status=200,
+                                      headers={'Content-Type': 'application/pdf'})
+    q_bytes_2 = (json.dumps(fact_2, sort_keys=True) + '\n').encode()
+    q_path_2.write_bytes(q_bytes_2)
+    etag_1 = '"' + 'a' * 32 + '"'
+    etag_2 = '"' + hashlib.md5(q_bytes_2).hexdigest() + '"'
+
+    live_prov = [*INPUTS['provenance'], dict(key=q_key_1, etag=etag_1)]
+    cand_prov = [*live_prov, dict(key=q_key_2, etag=etag_2)]
+    val = report(group('list.parquet', 'changed title', 5))
+
+    entries, reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=cand_prov),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        qualification_files=[dict(key=q_key_2, path=str(q_path_2), **file_pin(q_path_2))],
+    )
+    assert reasons == [] and len(entries) == 1
+
+    # Dropping or mutating an existing live qualification ledger stops the night.
+    _, dropped_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*INPUTS['provenance'], dict(key=q_key_2, etag=etag_2)]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+    )
+    assert dropped_reasons == ['data-only night: the candidate differs from the live release in provenance']
+
+    # Citing an unknown receipt outside candidate_receipt_keys stops the night.
+    q_path_unknown = tmp_path / 'q-unknown.jsonl'
+    fact_unknown = build_qualification_fact(q_rec, requested_url='https://fixture.test/doc.pdf', url='https://fixture.test/doc.pdf',
+                                            receipt_key='receipts/documents/2026-11-19/outside.jsonl.gz',
+                                            retrieved_at='2026-11-19T12:00:00Z', http_status=200)
+    raw_unk = (json.dumps(fact_unknown, sort_keys=True) + '\n').encode()
+    q_path_unknown.write_bytes(raw_unk)
+    _, unk_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*live_prov, dict(key=q_key_2, etag='"' + hashlib.md5(raw_unk).hexdigest() + '"')]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        qualification_files=[dict(key=q_key_2, path=str(q_path_unknown), **file_pin(q_path_unknown))],
+    )
+    assert any('cites unknown receipts' in r for r in unk_reasons)
+
+
 def test_any_kept_input_of_the_live_release_with_the_same_inputs_serves_and_every_kept_receipt_counts_as_live(decide):
     older = live(keys=['receipts/documents/2026-11-15/z.jsonl.gz'], entity_digests={'members': 'o' * 64})
     value = report(group('list.parquet', 'added rows', 2, 'no surviving link key'))

@@ -1815,6 +1815,111 @@ def test_newer_failed_body_overrides_older_healthy_fetch_in_inventory(tmp_path):
                                    qualifications=[good_rec, bad_rec])
     assert inv['usable_direct'] is True and inv['evidence_id'] == 'receipts/c.jsonl.gz#1'
 
+    # Review 7b: a later incomplete 206 with a body MUST NOT resurrect older_good over newer_bad.
+    later_incomplete_206 = dict(
+        requested_url=target, url=target, sha256='e' * 64, outcome='request_failed', http_status=206,
+        complete=False, mode='fetch', media_type='application/pdf', retrieved_at='2026-10-15T00:00:00Z',
+        receipt_key='receipts/partial.jsonl.gz', receipt_line=1,
+    )
+    [inv_partial] = build_target_inventory([target], fetch_outcomes=[older_good, newer_bad, later_incomplete_206],
+                                           qualifications=[good_rec, bad_rec])
+    assert inv_partial['usable_direct'] is False and inv_partial['subtype'] == 'body_not_qualified'
+
+    # Review 7b: a retryable=True unresolved record does NOT mark a target failed (parity with model SQL).
+    from dataclasses import asdict
+    from corpus_recovery.qualification import QualificationConfig, _finish, _identity
+
+    retryable_rec = _finish({
+        'body_sha256': bad_rec['body_sha256'],
+        'body_bytes': bad_rec['body_bytes'],
+        'validator': _identity(),
+        'config': asdict(QualificationConfig()),
+        'status': 'unresolved',
+        'media_type': 'application/pdf',
+        'reason': 'worker_timeout',
+        'retryable': True,
+    })
+    [inv_retryable] = build_target_inventory([target], fetch_outcomes=[newer_bad], qualifications=[retryable_rec])
+    assert inv_retryable['usable_direct'] is True
+
+    # Review 7b: run_recovery_campaign(targets=None) unions published state failed URLs AND
+    # unpublished durable-store failed URLs using their original requested_url (not redirected URL).
+    import os
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.acquisition.capture_scheduler import CapturePolicy
+    from congress_api.retention.body_store import BodyStore, LocalAdapter
+    from congress_api.retention.qualification_facts import build_qualification_fact, import_qualifications
+    from corpus_recovery.pipeline import run_recovery_campaign
+    from docspec_client.client import NativeDatasets
+
+    ROOT_DIR = Path(__file__).resolve().parents[3]
+    u_state = 'https://docs.house.gov/meetings/FA/FA00/20261001/119101/state-failed.pdf'
+    u_orig = 'https://docs.house.gov/meetings/FA/FA00/20261001/119102/unpublished-orig.pdf'
+    u_redir = 'https://docs.house.gov/meetings/FA/FA00/20261001/119102/cdn-final.pdf'
+
+    union_store = BodyStore(LocalAdapter(tmp_path / 'union-raw'))
+    redir_fact = build_qualification_fact(
+        bad_rec, requested_url=u_orig, url=u_redir,
+        receipt_key='receipts/documents/2026-10-02/r-redir.jsonl.gz',
+        retrieved_at='2026-10-02T00:00:00Z', http_status=200,
+        headers={'Content-Type': 'application/pdf'},
+    )
+    import_qualifications(union_store, [redir_fact], decided_at='2026-10-02T00:05:00Z')
+
+    union_state = tmp_path / 'union-state.parquet'
+    pq.write_table(pa.table({
+        'requested_url': pa.array([u_state], pa.string()),
+        'capture_reason': pa.array(['body_not_qualified'], pa.string()),
+        'capture_disposition': pa.array(['eligible'], pa.string()),
+        'capture_decision_id': pa.array([None], pa.string()),
+    }), union_state)
+    union_caps = tmp_path / 'union-captures.parquet'
+    pq.write_table(pa.Table.from_pylist([
+        dict(requested_url=u_state, url=u_state, sha256=bytes.fromhex(bad_rec['body_sha256']),
+             outcome='stored', http_status=200, complete=True, mode='fetch', media_type='application/pdf',
+             retrieved_at='2026-10-01T00:00:00Z', receipt_key='receipts/documents/2026-10-01/s.jsonl.gz',
+             receipt_line=1, capture_index=0, attempt=0, member_path=None),
+        dict(requested_url=u_orig, url=u_redir, sha256=bytes.fromhex(bad_rec['body_sha256']),
+             outcome='stored', http_status=200, complete=True, mode='fetch', media_type='application/pdf',
+             retrieved_at='2026-10-02T00:00:00Z', receipt_key='receipts/documents/2026-10-02/r-redir.jsonl.gz',
+             receipt_line=1, capture_index=0, attempt=0, member_path=None),
+    ]), union_caps)
+
+    queried_urls = []
+    def _wb_union(_kind: str, q_url: str):
+        queried_urls.append(q_url)
+        return Response(200, json.dumps([WAYBACK_FIELDS]).encode('utf-8'), True, 'ev:wb:union', 'application/json', q_url)
+
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as eng:
+        from congress_api.models.archive_profile import build_capture_profile
+        from congress_api.retention.provenance import file_pin
+
+        union_reqs = tmp_path / 'union-reqs.parquet'
+        pq.write_table(pa.Table.from_pylist([
+            dict(original_url=u_state, target_requirement='historical_exact', acceptance_policy=VERSION, refresh_policy='historical_only'),
+            dict(original_url=u_orig, target_requirement='historical_exact', acceptance_policy=VERSION, refresh_policy='historical_only'),
+        ]), union_reqs)
+        union_prof_path = tmp_path / 'union-profile.json'
+        union_prof_path.write_text(json.dumps(build_capture_profile(
+            engine_revision=eng.source_revision,
+            url_normalized_sql=(ROOT_DIR / 'model/sql/url-normalized.sql').read_text(),
+            url_keys_sql=(ROOT_DIR / 'model/sql/url-keys.sql').read_text(),
+            url_rules=json.loads((ROOT_DIR / 'model/registries/url-rules.json').read_text()),
+            recovery_policy={'acceptance_policy': VERSION, 'requirements_sha256': file_pin(union_reqs)['sha256']},
+        ), sort_keys=True))
+        union_res = run_recovery_campaign(
+            tmp_path / 'union-campaign', campaign_id='m7-union', targets=None, engine=eng,
+            policy=CapturePolicy(ROOT_DIR / 'model/registries/capture-scope.json', resolve=lambda _: ['8.8.8.8']),
+            captures=union_caps, store=union_store, state=union_state,
+            state_profile=union_prof_path, state_requirements=union_reqs,
+            discovery_kwargs={'wayback_call': _wb_union, 'max_pages': 1},
+        )
+    assert {t['target_url'] for t in union_res['targets']} == {u_state, u_orig}
+    assert any('state-failed.pdf' in q for q in queried_urls)
+    assert any('unpublished-orig.pdf' in q for q in queried_urls)
+    assert not any('cdn-final.pdf' in q for q in queried_urls)
+
 
 def test_two_fresh_work_dirs_across_publication_boundary_and_discovery(tmp_path):
     """Minimum finish: fresh work dirs across capture -> durable provenance -> URL state -> discovery -> 304 -> replacement."""

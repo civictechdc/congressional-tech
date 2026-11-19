@@ -348,7 +348,11 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 else:
                     check_current_daily()
                     provenance=_provenance_snapshot(client,bucket,provenance)
-            digest=input_digest(receipt_keys=keys,provenance=provenance,profile=profile['profile'],entity_digests=entity_digests)
+            extra_pins={}
+            if isinstance(profile.get('snapshots'),dict) and profile['snapshots'].get('body_qualifications') is not None:
+                extra_pins['body_qualifications']=profile['snapshots']['body_qualifications']
+            digest=input_digest(receipt_keys=keys,provenance=provenance,profile=profile['profile'],entity_digests=entity_digests,
+                                extra_pins=extra_pins or None)
             status['input_digest']=digest
             if daily_pin:
                 if checkpoint is not None and checkpoint['input_digest']!=digest:
@@ -387,6 +391,24 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 probe_selectors=_probe_evidence(reports)
             else:
                 manifest=json.loads(Path(checkpoint['manifest_pin']['path']).read_text())
+            automatic_qualifications=()
+            if automatic_causes and manifest is not None:
+                from congress_api.retention.derived_files import copy_checked
+                qual_pairs=[*zip(model_spec.get('qualification_files') or (),arguments.get('qualification_files') or ())]
+                if model_spec.get('body_qualifications') is not None and arguments.get('body_qualifications') is not None:
+                    qual_pairs.append((model_spec['body_qualifications'],arguments['body_qualifications']))
+                if qual_pairs:
+                    gate_qual_dir=work/('gate-qualifications-'+uuid4().hex)
+                    retained_quals=[]
+                    for idx,(spec_item,arg_item) in enumerate(qual_pairs):
+                        src_path=Path(arg_item['path'])
+                        dest_path=gate_qual_dir/f'{idx}-{src_path.name}'
+                        with src_path.open('rb') as q_src:
+                            owned_q=copy_checked(q_src,dest_path,size=spec_item['size'],
+                                expected=dict(bytes=spec_item['size'],sha256=spec_item['sha256']),
+                                key=spec_item.get('key','body_qualifications'),exclusive=True)
+                        retained_quals.append(dict(spec_item,path=str(owned_q.path)))
+                    automatic_qualifications=tuple(retained_quals)
         # Local custody must still hold after native consumption and before any
         # successful status, reader probe, release upload or input-record write.
         require_comparison(comparison_acceptance,captures=model_spec['captures'])
@@ -433,8 +455,6 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                        pointer=pointer,pointer_etag=etag,stage=stage,**artifacts,**daily_pin,**built)
             _save_continuation(checkpoint_path,saved,seal=bool(daily_pin))
         delegate=True
-        automatic_qualifications=[*(model_spec.get('qualification_files') or ()),
-            *([model_spec['body_qualifications']] if model_spec.get('body_qualifications') is not None else [])]
         return publish_candidate(client=client,engine=engine,bucket=bucket,work=work/('candidate-'+uuid4().hex),
             release=Path(stage['output']),**artifacts,input_record=record,receipt_keys=keys,
             asset_journal=work/'publication-assets.json',

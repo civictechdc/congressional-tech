@@ -177,7 +177,7 @@ def _row_qualification_failed(row, url='', *, qual_by_sha=None, qual_by_url=None
     if not isinstance(row, dict):
         return False
     if (row.get('qualified') is False
-            or row.get('qualification_status') == 'unresolved'
+            or (row.get('qualification_status') == 'unresolved' and not row.get('retryable', False))
             or row.get('capture_reason') == 'body_not_qualified'):
         return True
     if not qual_by_sha and not qual_by_url:
@@ -190,6 +190,8 @@ def _row_qualification_failed(row, url='', *, qual_by_sha=None, qual_by_url=None
     )
     if sha is not None and qual_by_sha and sha in qual_by_sha:
         q = qual_by_sha[sha]
+        if q.get('retryable', False):
+            return False
         if not q.get('qualified', False):
             return True
         # The same PDF expectation capture and URL state apply: either spelling or the captured type.
@@ -200,18 +202,31 @@ def _row_qualification_failed(row, url='', *, qual_by_sha=None, qual_by_url=None
     if sha is None and qual_by_url:
         for cand_url in (url, row.get('requested_url'), row.get('url')):
             if isinstance(cand_url, str) and cand_url in qual_by_url:
-                if qual_by_url[cand_url].get('qualified') is False:
+                u_entry = qual_by_url[cand_url]
+                if not u_entry.get('retryable', False) and u_entry.get('qualified') is False:
                     return True
     return False
 
 
 def _carries_body_verdict(row):
-    """A fetched body, or an explicit qualification verdict, that can supersede an older one."""
+    """Whether a row is a complete primary body-bearing fetch (matching archive_url_state.py) or explicit state verdict."""
     if not isinstance(row, dict) or row.get('mode') == 'retained_import':
         return False
-    return bool(row.get('sha256') or row.get('body_sha256') or row.get('body_key')
-                or row.get('capture_reason') == 'body_not_qualified'
-                or row.get('qualified') is not None or row.get('qualification_status') is not None)
+    if (row.get('capture_reason') == 'body_not_qualified'
+            or row.get('qualified') is not None
+            or (row.get('qualification_status') is not None and not row.get('retryable', False))):
+        return True
+    if 'complete' in row and row['complete'] is not True:
+        return False
+    if row.get('attempt') not in (None, 0) or row.get('member_path') is not None:
+        return False
+    eff_status = row.get('fetch_http_status') if row.get('fetch_outcome') is not None else row.get('http_status')
+    if eff_status is not None and (type(eff_status) is not int or not (200 <= eff_status <= 299) or eff_status == 206):
+        return False
+    eff_outcome = row.get('fetch_outcome') if row.get('fetch_outcome') is not None else row.get('outcome')
+    if eff_outcome is not None and eff_outcome not in ('stored', 'unchanged', 'ok', 'completed'):
+        return False
+    return bool(row.get('sha256') or row.get('body_sha256') or row.get('body_key'))
 
 
 def _is_usable_direct_row(row, url='', *, qual_by_sha=None, qual_by_url=None):
@@ -571,16 +586,17 @@ def build_target_inventory(
             if usable_row is None and 'usable_attempt' not in hist and _is_usable_direct_row(latest, target_url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url):
                 usable_row = latest
             if 'latest_body_key' in hist:
-                # scan_receipt_history judged the newest body-bearing evidence.
+                # scan_receipt_history judged the newest complete primary body-bearing evidence.
                 qual_failed = bool(hist.get('qualification_failed'))
-                newer_usable = (usable_row is not None and hist.get('latest_body_key') is not None
-                                and _row_order_key(usable_row) > hist['latest_body_key'])
+                if usable_row is not None and hist.get('latest_body_key') is not None:
+                    if _row_order_key(usable_row) < hist['latest_body_key']:
+                        usable_row = None
+                if qual_failed:
+                    usable_row = None
             else:  # a caller-built history: judge its latest row
                 qual_failed = _row_qualification_failed(latest, target_url, qual_by_sha=qual_by_sha, qual_by_url=qual_by_url)
-                newer_usable = False
-            if qual_failed and not newer_usable:
-                # An older healthy fetch cannot stand in for the body the address serves now.
-                usable_row = None
+                if qual_failed:
+                    usable_row = None
             usable_direct = usable_row is not None
             hist_evidence_id = _row_evidence_id(usable_row) if usable_row is not None else _row_evidence_id(latest)
         else:

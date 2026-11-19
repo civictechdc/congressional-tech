@@ -478,9 +478,28 @@ def run_recovery_campaign(
     if qual_source is None:
         qual_store = store if store is not None else source_or_store
         if qual_store is not None:
-            from congress_api.retention.qualification_facts import load_qualification_facts, load_store_qualifications
+            from datetime import datetime, timezone
+            from congress_api.retention.qualification_facts import (
+                load_qualification_facts,
+                load_store_qualifications,
+                reconcile_store_receipt_qualifications,
+                state_reconcile_min_date,
+            )
+            from corpus_recovery.qualification import qualify as run_qualify
             if hasattr(qual_store, 'adapter'):
                 loaded_store_quals = load_store_qualifications(qual_store, work=inputs_dir / 'qualification-inventory')
+                reconciled = reconcile_store_receipt_qualifications(
+                    qual_store,
+                    existing_loaded=loaded_store_quals,
+                    qualify_fn=run_qualify,
+                    cache_dir=inputs_dir / 'qualification-cache',
+                    work=inputs_dir / 'qualification-reconcile',
+                    decided_at=datetime.now(timezone.utc).isoformat(),
+                    min_write_date=state_reconcile_min_date(state),
+                    persist=True,
+                )
+                if reconciled['imported'] is not None:
+                    loaded_store_quals = load_store_qualifications(qual_store, work=inputs_dir / 'qualification-inventory')
                 if loaded_store_quals['files']:
                     qual_source = loaded_store_quals['files']
             elif isinstance(qual_store, (str, Path)):
@@ -505,10 +524,11 @@ def run_recovery_campaign(
                     if row.get('capture_reason') == 'body_not_qualified' and isinstance(u, str) and u not in seen_urls:
                         seen_urls.add(u)
                         derived_urls.append(u)
-        if not derived_urls and (qual_source is not None or loaded_store_quals is not None):
+        if qual_source is not None or loaded_store_quals is not None:
             from congress_api.retention.qualification_facts import load_qualification_facts
             q_loaded = loaded_store_quals if loaded_store_quals is not None else load_qualification_facts(qual_source)
-            for u, entry in sorted(q_loaded['by_url'].items()):
+            req_map = q_loaded.get('by_requested_url') or q_loaded.get('by_url') or {}
+            for u, entry in sorted(req_map.items()):
                 if entry.get('qualified') is False and not entry.get('retryable', False) and u not in seen_urls:
                     seen_urls.add(u)
                     derived_urls.append(u)

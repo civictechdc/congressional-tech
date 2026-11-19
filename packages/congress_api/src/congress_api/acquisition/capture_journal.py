@@ -97,7 +97,10 @@ class DurableCapture:
                 record=root/f'{kind}-{index}.json'
                 owned=root/f'{kind}-{index}.sealed'
                 # Header values can contain credentials; bind by hash only.
-                request=dict(url=url,limit=limit,headers_sha256=hashlib.sha256(json.dumps(headers,sort_keys=True).encode()).hexdigest())
+                plain={k:v for k,v in headers.items() if k.lower() not in {'if-none-match','if-modified-since'}}
+                base_sha=hashlib.sha256(json.dumps(plain,sort_keys=True).encode()).hexdigest()
+                request=dict(url=url,limit=limit,headers_sha256=hashlib.sha256(json.dumps(headers,sort_keys=True).encode()).hexdigest(),
+                             base_headers_sha256=base_sha)
                 if prior_validators is not None:
                     request['validators_sha256']=hashlib.sha256(json.dumps(prior_validators,sort_keys=True,default=str).encode()).hexdigest()
                 previous=json.loads(record.read_text()) if record.exists() else None
@@ -106,14 +109,15 @@ class DurableCapture:
                     owner._finish_retry(root,kind,index)
                     previous=None
                 if previous is not None:
-                    if previous['request']!=request and prior_validators is not None:
-                        # A hop sealed before this URL had validators replays its own binding:
-                        # the same request without the conditional headers it never sent.
-                        plain={k:v for k,v in headers.items() if k.lower() not in {'if-none-match','if-modified-since'}}
-                        alternate=dict(url=url,limit=limit,headers_sha256=hashlib.sha256(json.dumps(plain,sort_keys=True).encode()).hexdigest())
-                        if previous['request']==alternate:
-                            request,headers,prior_validators=alternate,plain,None
-                    if previous['request']!=request:raise ValueError('Durable request definition changed')
+                    prev_req=previous['request']
+                    if prev_req!=request and previous['phase']=='downloaded':
+                        # A sealed hop's bytes and headers were already received in this operation:
+                        # allow validator/conditional-header state to appear, change, or clear across
+                        # restart while still refusing any URL, limit, or non-conditional header drift.
+                        prev_base=prev_req.get('base_headers_sha256',prev_req.get('headers_sha256'))
+                        if prev_req.get('url')==url and prev_req.get('limit')==limit and prev_base==base_sha:
+                            request=prev_req
+                    if prev_req!=request:raise ValueError('Durable request definition changed')
                     if previous['phase']=='started':raise UnknownRemoteOutcome('Remote outcome is unknown; reconcile or record an explicit retry decision')
                     facts=dict(previous['transfer']);_checked_file(owned,facts['sha256'],facts['size'])
                 else:

@@ -658,16 +658,28 @@ def _url_state_rules(*, has_capture_reason=False, has_qual_proof=False):
     pages = ('a page that linked a queued address is gone', 'NOT coalesce(list_has_all(c.linked_from,b.linked_from),false)')
     reason_moved = 'b.capture_reason IS DISTINCT FROM c.capture_reason' if has_capture_reason else 'false'
     if has_capture_reason and has_qual_proof:
+        # Clearing body_not_qualified requires positive evidence (url_qualified IS TRUE) on a newer
+        # capture line; a NULL lookup or a body-less 304 never clears a failed body (ct-zohj review 7b).
         qual_reason_ok = ("b.capture_disposition IS NOT DISTINCT FROM 'eligible' "
                           "AND c.capture_disposition IS NOT DISTINCT FROM 'eligible' "
                           "AND b.capture_reason IN ('no_satisfying_recovery','body_not_qualified') "
                           "AND c.capture_reason IN ('no_satisfying_recovery','body_not_qualified') "
-                          "AND c.capture_reason IS NOT DISTINCT FROM CASE WHEN q.url_qualified IS FALSE "
-                          "THEN 'body_not_qualified' ELSE 'no_satisfying_recovery' END")
+                          "AND ((c.capture_reason='body_not_qualified' AND q.url_qualified IS FALSE) "
+                          f"OR (c.capture_reason='no_satisfying_recovery' AND {n}>0 AND {later} AND q.url_qualified IS TRUE))")
         qual_settled = f"({reason_moved} AND {qual_reason_ok} AND c.capture_reason='body_not_qualified')"
+        added_reason_ok = ("(c.capture_disposition='excluded' AND c.capture_reason='scope_exclusion') "
+                           "OR (c.capture_disposition='eligible' AND "
+                           "(c.capture_reason='no_satisfying_recovery' "
+                           "OR (c.capture_reason='body_not_qualified' AND q.url_qualified IS FALSE)))")
+    elif has_capture_reason:
+        qual_reason_ok = 'false'
+        qual_settled = 'false'
+        added_reason_ok = ("(c.capture_disposition='excluded' AND c.capture_reason='scope_exclusion') "
+                           "OR (c.capture_disposition='eligible' AND c.capture_reason='no_satisfying_recovery')")
     else:
         qual_reason_ok = 'false'
         qual_settled = 'false'
+        added_reason_ok = 'true'
     fetched = [
         ('changed with no new line', f'{n}=0 AND NOT u.date_moved AND NOT ({qual_settled})'),
         ('attempts are not the live count plus the new lines', f'c.attempts IS DISTINCT FROM b.attempts+{n}'),
@@ -690,10 +702,18 @@ def _url_state_rules(*, has_capture_reason=False, has_qual_proof=False):
         ('the newest new line has no time', 'x.t IS NULL'),
         ('last_attempt, last_status or last_outcome is not the newest new line', f'NOT ({newest})'),
         ('last_good_at is not the newest good new line', 'epoch_us(c.last_good_at) IS DISTINCT FROM p.good'),
+        *(
+            [('capture_reason is not implied by verified body qualifications', f'NOT ({added_reason_ok})')]
+            if has_capture_reason else []
+        ),
         ('an address with attempts names linking pages', has_pages),
         (wrong_band, f'NOT ({band})')]
     queued = [('a queued address has new lines', f'{n}>0'),
               ('a queued address carries a schedule', ' OR '.join(f'c.{column} IS NOT NULL' for column in schedule))]
+    added_queued = [*queued, ('a queued address names no linking page', f'NOT {has_pages}')]
+    if has_capture_reason:
+        added_queued.append(('capture_reason is not implied by verified body qualifications',
+                             "NOT (c.capture_disposition='eligible' AND c.capture_reason='no_satisfying_recovery')"))
     queued_live = [*queued, pages]
     if has_capture_reason:
         queued_live.append(('capture_reason changed on a queued address', reason_moved))
@@ -702,7 +722,7 @@ def _url_state_rules(*, has_capture_reason=False, has_qual_proof=False):
         return 'CASE ' + ' '.join(f"WHEN {condition} THEN '{reason}'" for reason, condition in rules) + ' END'
     return f"""CASE WHEN c.attempts IS NULL OR c.attempts<0 THEN 'invalid attempt count'
         WHEN b.requested_url IS NULL AND c.attempts>0 THEN {first(added)}
-        WHEN b.requested_url IS NULL THEN {first([*queued, ('a queued address names no linking page', f'NOT {has_pages}')])}
+        WHEN b.requested_url IS NULL THEN {first(added_queued)}
         WHEN b.attempts=0 AND c.attempts=0 THEN {first(queued_live)}
         ELSE {first(fetched)} END"""
 
@@ -968,7 +988,8 @@ def url_state_proof(d, candidate_dir, *, engine, captures, new_receipts, work, k
     recheck_urls = _mark_moved_meeting_dates(d, updated_events)
     has_capture_reason = 'capture_reason' in common and 'capture_disposition' in common
     qual_urls = ({u for (u,) in d.rows(
-        'SELECT url FROM url_pairs WHERE b.requested_url IS NOT NULL AND b.capture_reason IS DISTINCT FROM c.capture_reason')}
+        "SELECT url FROM url_pairs WHERE (b.requested_url IS NOT NULL AND b.capture_reason IS DISTINCT FROM c.capture_reason) "
+        "OR (b.requested_url IS NULL AND c.capture_reason='body_not_qualified')")}
         if has_capture_reason else set())
     pages = {key.hex() for (key,) in d.rows("""SELECT DISTINCT k FROM (SELECT url,unnest(c.linked_from) AS k FROM url_pairs WHERE c.attempts=0)
         ANTI JOIN (SELECT url,unnest(b.linked_from) AS k FROM url_pairs WHERE b.requested_url IS NOT NULL) USING(url,k)""")}

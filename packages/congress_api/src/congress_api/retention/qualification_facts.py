@@ -198,6 +198,19 @@ def _verify_record(record: Mapping[str, Any]) -> dict[str, Any]:
     module.verify_qualification_record(
         dict(record), body_sha256=sha, body_bytes=size, config=module.QualificationConfig()
     )
+    current = module._identity()
+    if (
+        validator.get("implementation_sha256") != current["implementation_sha256"]
+        or validator.get("classifier_sha256") != current["classifier_sha256"]
+        or validator.get("pypdf") != current["pypdf"]
+        or validator.get("lxml") != current["lxml"]
+    ):
+        raise StaleQualification("Qualification record predates the current checker implementation or parser versions")
+    for tool in ("pdfinfo", "pdftoppm"):
+        cur_ver = current[tool]["version"]
+        rec_ver = (validator.get(tool) or {}).get("version")
+        if cur_ver not in ("missing", "unavailable") and rec_ver != cur_ver:
+            raise StaleQualification(f"Qualification record {tool} version differs from current environment")
     return dict(body, qualification_sha256=checksum, retryable=bool(body.get("retryable", False)))
 
 
@@ -329,6 +342,53 @@ def refresh_url_entry(prior: Mapping[str, Any], *, retrieved_at, receipt_key, ht
     return {**prior, "retrieved_at": retrieved_at, "receipt_key": receipt_key, "http_status": http_status}
 
 
+def repair_qualifications_ledger(path: str | Path) -> None:
+    """Truncate a torn final JSONL fragment from an interrupted append before further writes."""
+    import os
+    from uuid import uuid4
+
+    target = Path(path)
+    if not target.is_file():
+        return
+    raw = target.read_bytes()
+    if not raw:
+        return
+    lines = raw.splitlines(keepends=True)
+    kept: list[bytes] = []
+    needs_rewrite = False
+    for index, raw_line in enumerate(lines):
+        stripped = raw_line.strip()
+        if not stripped:
+            continue
+        is_last = index == len(lines) - 1
+        try:
+            json.loads(stripped.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            if is_last:
+                needs_rewrite = True
+                break
+            raise
+        if is_last and not raw_line.endswith(b"\n"):
+            kept.append(stripped + b"\n")
+            needs_rewrite = True
+        else:
+            kept.append(raw_line if raw_line.endswith(b"\n") else stripped + b"\n")
+    if not needs_rewrite:
+        return
+    tmp = target.with_name(f"{target.name}.{uuid4().hex}.tmp")
+    with tmp.open("xb") as out:
+        for item in kept:
+            out.write(item)
+        out.flush()
+        os.fsync(out.fileno())
+    os.replace(tmp, target)
+    dir_fd = os.open(target.parent, os.O_RDONLY)
+    try:
+        os.fsync(dir_fd)
+    finally:
+        os.close(dir_fd)
+
+
 def _jsonl_entries(stream) -> Iterable[Mapping[str, Any]]:
     """Yield JSONL objects, tolerating only a torn final line from an interrupted append."""
     lines = stream.read().split("\n")
@@ -350,7 +410,7 @@ def _iter_raw_entries(source: Any) -> Iterable[Mapping[str, Any]]:
     if isinstance(source, (str, Path)):
         path = Path(source)
         if not path.exists():
-            return
+            raise FileNotFoundError(f"Qualification input missing: {path}")
         if path.is_dir():
             ledger = path / "qualifications.jsonl"
             if ledger.is_file():
@@ -385,7 +445,10 @@ def _iter_raw_entries(source: Any) -> Iterable[Mapping[str, Any]]:
         if "body_sha256" in source:
             yield source
         elif isinstance(source.get("path"), (str, Path)):
-            yield from _iter_raw_entries(source["path"])
+            pin_path = Path(source["path"])
+            if "sha256" in source and "size" in source:
+                verify_local_file(pin_path, expected_sha256=source["sha256"], expected_size=source["size"])
+            yield from _iter_raw_entries(pin_path)
         else:
             for item in source.values():
                 yield from _iter_raw_entries(item)
@@ -401,8 +464,8 @@ def _url_order_key(fact: Mapping[str, Any]) -> tuple[str, str]:
     return (str(fact.get("retrieved_at") or ""), str(fact.get("receipt_key") or ""))
 
 
-def merge_fact(by_sha256: dict, by_url: dict, fact: Mapping[str, Any]) -> None:
-    """Fold one verified fact into body and responding-URL indexes (newest URL fact wins)."""
+def merge_fact(by_sha256: dict, by_url: dict, fact: Mapping[str, Any], by_requested_url: dict | None = None) -> None:
+    """Fold one verified fact into body, responding-URL, and requested-URL indexes."""
     sha = fact["body_sha256"]
     existing = by_sha256.get(sha)
     if existing is None or (existing.get("retryable") and not fact.get("retryable")):
@@ -417,12 +480,20 @@ def merge_fact(by_sha256: dict, by_url: dict, fact: Mapping[str, Any]) -> None:
         prev = by_url.get(target)
         if prev is None or _url_order_key(entry) >= _url_order_key(prev):
             by_url[target] = entry
+        if by_requested_url is not None:
+            req_target = fact.get("requested_url") if isinstance(fact.get("requested_url"), str) and fact["requested_url"] else target
+            req_entry = dict(entry, requested_url=req_target)
+            prev_req = by_requested_url.get(req_target)
+            if prev_req is None or _url_order_key(req_entry) >= _url_order_key(prev_req):
+                by_requested_url[req_target] = req_entry
 
 
 def load_qualification_facts(source: Any) -> dict[str, Any]:
-    """Load verified body and responding-URL facts; stale records are counted and ignored."""
+    """Load verified body and URL facts; stale records are counted and ignored."""
     by_sha256: dict[str, dict[str, Any]] = {}
     by_url: dict[str, dict[str, Any]] = {}
+    by_requested_url: dict[str, dict[str, Any]] = {}
+    covered_receipts: set[str] = set()
     retryable_by_key: dict[tuple[str, str | None, str | None], dict[str, Any]] = {}
     stale = 0
     for raw in _iter_raw_entries(source):
@@ -431,7 +502,10 @@ def load_qualification_facts(source: Any) -> dict[str, Any]:
         except StaleQualification:
             stale += 1
             continue
-        merge_fact(by_sha256, by_url, fact)
+        merge_fact(by_sha256, by_url, fact, by_requested_url)
+        rkey = fact.get("receipt_key")
+        if isinstance(rkey, str) and rkey and not fact.get("retryable"):
+            covered_receipts.add(rkey)
         if fact.get("retryable"):
             retryable_by_key[(fact["body_sha256"], responding_url(fact), fact.get("receipt_key"))] = fact
     retryable_facts = [
@@ -439,7 +513,14 @@ def load_qualification_facts(source: Any) -> dict[str, Any]:
         for fact in retryable_by_key.values()
         if by_sha256.get(fact["body_sha256"], {}).get("retryable")
     ]
-    return {"by_sha256": by_sha256, "by_url": by_url, "stale": stale, "retryable_facts": retryable_facts}
+    return {
+        "by_sha256": by_sha256,
+        "by_url": by_url,
+        "by_requested_url": by_requested_url,
+        "receipt_keys": covered_receipts,
+        "stale": stale,
+        "retryable_facts": retryable_facts,
+    }
 
 
 def _check_no_local_paths(value: Any) -> None:
@@ -459,9 +540,13 @@ def import_qualifications(
     source: Any,
     *,
     decided_at: str,
+    cache: str | Path | None = None,
+    remember: bool = False,
 ) -> dict[str, Any] | None:
     """Persist verified receipt-bound qualification facts create-only under ``provenance/qualifications/``."""
-    from tempfile import TemporaryDirectory
+    from tempfile import TemporaryDirectory, mkdtemp
+    from congress_shared.custody import issue_verified_file
+    from congress_api.retention.body_store import R2Adapter
 
     facts: list[dict[str, Any]] = []
     seen: set[tuple[Any, ...]] = set()
@@ -485,19 +570,43 @@ def import_qualifications(
     if not facts:
         return None
     stamp = timestamp_key(decided_at)
+    remote = isinstance(getattr(store, "adapter", None), R2Adapter)
     with TemporaryDirectory(prefix="raw-qualifications-") as temporary:
         frozen = Path(temporary) / "qualifications.jsonl"
         digest = hashlib.sha256()
+        md5_digest = hashlib.md5()
         size = 0
         with frozen.open("xb") as out:
             for fact in facts:
                 line = (json.dumps(fact, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n").encode("utf-8")
                 out.write(line)
                 digest.update(line)
+                md5_digest.update(line)
                 size += len(line)
         key = f"{QUALIFICATIONS_PREFIX}{stamp}-{digest.hexdigest()}.jsonl"
+        if remember:
+            cache_root = Path(cache).resolve() if cache is not None else Path(temporary)
+            cache_root.mkdir(parents=True, exist_ok=True)
+            persistent = Path(mkdtemp(prefix="ack-", dir=cache_root)) / "qualifications.jsonl"
+            frozen.replace(persistent)
+            frozen = persistent
         _put_identical(store, key, frozen)
-    return {"key": key, "records": len(facts), "sha256": digest.hexdigest(), "size": size}
+        md5_hex = md5_digest.hexdigest()
+        if remember:
+            local_target = frozen if remote else (store.adapter.root / key)
+            custody = issue_verified_file(local_target, {"sha256": digest.hexdigest(), "bytes": size, "md5": md5_hex})
+            public = {
+                "key": key,
+                "path": str(local_target),
+                "sha256": digest.hexdigest(),
+                "size": size,
+                "etag": md5_hex if remote else None,
+            }
+            with store._lock:
+                store._provenance_epoch += 1
+                store._provenance_acks[key] = (md5_hex if remote else None, size, store._provenance_epoch)
+            store.remember_provenance(public, custody)
+    return {"key": key, "records": len(facts), "sha256": digest.hexdigest(), "size": size, **({"etag": md5_hex} if remote else {})}
 
 
 def load_store_qualifications(store: Any, *, work: str | Path) -> dict[str, Any]:
@@ -523,14 +632,19 @@ def load_store_qualifications(store: Any, *, work: str | Path) -> dict[str, Any]
 
 
 def _read_retained_body(store: Any, body_sha256: str, dest: Path) -> Path | None:
-    """Materialize a retained raw body from BodyStore (Local or R2) into ``dest`` for qualification."""
+    """Materialize a retained raw body from BodyStore (Local or R2) into ``dest`` for qualification.
+
+    Handles uncompressed objects, ``.gz`` suffix objects, and suffix-free objects stored
+    with gzip ``ContentEncoding`` (compressible media such as ``text/html`` on a ``.pdf`` URL).
+    """
     adapter = getattr(store, "adapter", None)
     if adapter is None or not hasattr(adapter, "head") or not hasattr(adapter, "get"):
         return None
     base_key = f"bodies/sha256/{body_sha256[:2]}/{body_sha256}"
     for suffix in ("", ".gz"):
         key = base_key + suffix
-        if adapter.head(key) is None:
+        head_meta = adapter.head(key)
+        if head_meta is None:
             continue
         response = adapter.get(key)
         body_stream = response["Body"]
@@ -538,10 +652,204 @@ def _read_retained_body(store: Any, body_sha256: str, dest: Path) -> Path | None
             raw_bytes = body_stream.read()
         finally:
             body_stream.close()
-        payload = gzip.decompress(raw_bytes) if suffix == ".gz" else raw_bytes
+        enc = str(response.get("ContentEncoding") or head_meta.get("encoding") or "").lower()
+        if suffix == ".gz" or enc == "gzip":
+            payload = gzip.decompress(raw_bytes)
+        elif hashlib.sha256(raw_bytes).hexdigest() == body_sha256:
+            payload = raw_bytes
+        elif raw_bytes[:2] == b"\x1f\x8b":
+            payload = gzip.decompress(raw_bytes)
+        else:
+            payload = raw_bytes
         dest.write_bytes(payload)
         return dest
     return None
+
+
+MAX_RECONCILE_RECEIPT_BYTES = 4 << 20
+MAX_RECONCILE_RECEIPTS = 500
+
+
+def state_reconcile_min_date(state_path: str | Path | None) -> str | None:
+    """Bound fallback receipt reconciliation to receipts written on or after the release's last attempt day."""
+    from datetime import datetime, timedelta, timezone
+
+    if state_path is None:
+        return None
+    target = Path(state_path)
+    if not target.is_file():
+        return None
+    import pyarrow.compute as pc
+    import pyarrow.parquet as pq
+
+    if "last_attempt_at" not in set(pq.read_schema(target).names):
+        return None
+    max_val = pc.max(pq.read_table(target, columns=["last_attempt_at"])["last_attempt_at"]).as_py()
+    if max_val is None or not hasattr(max_val, "date"):
+        return None
+    anchor = min(max_val.date(), datetime.now(timezone.utc).date())
+    return (anchor - timedelta(days=1)).isoformat()
+
+
+def _receipt_write_date(receipt_key: str) -> str | None:
+    parts = receipt_key.split("/")
+    if len(parts) >= 3:
+        candidate = parts[-2]
+        if len(candidate) == 10 and candidate[4] == "-" and candidate[7] == "-" and candidate.replace("-", "").isdigit():
+            return candidate
+    return None
+
+
+def _list_store_receipt_keys(store: Any) -> list[tuple[str, int]]:
+    adapter = getattr(store, "adapter", None)
+    if adapter is None:
+        return []
+    local_root = getattr(adapter, "root", None)
+    if local_root is not None:
+        root = Path(local_root)
+        receipts_dir = root / "receipts"
+        if not receipts_dir.is_dir():
+            return []
+        return [
+            (p.relative_to(root).as_posix(), p.stat().st_size)
+            for p in sorted(receipts_dir.rglob("*.jsonl.gz"))
+            if p.is_file()
+        ]
+    if hasattr(adapter, "listing"):
+        return [
+            (row["key"], int(row.get("size") or 0))
+            for row in adapter.listing("receipts/")
+            if isinstance(row.get("key"), str) and row["key"].endswith(".jsonl.gz")
+        ]
+    return []
+
+
+def _read_store_receipt_lines(store: Any, receipt_key: str) -> list[Mapping[str, Any]]:
+    adapter = getattr(store, "adapter", None)
+    if adapter is None or not hasattr(adapter, "get"):
+        return []
+    try:
+        response = adapter.get(receipt_key)
+    except Exception:
+        return []
+    stream = response["Body"]
+    try:
+        raw_bytes = stream.read()
+    finally:
+        stream.close()
+    text = gzip.decompress(raw_bytes).decode("utf-8") if receipt_key.endswith(".gz") or raw_bytes[:2] == b"\x1f\x8b" else raw_bytes.decode("utf-8")
+    out: list[Mapping[str, Any]] = []
+    for line_str in text.splitlines():
+        line_str = line_str.strip()
+        if not line_str:
+            continue
+        parsed = json.loads(line_str)
+        if isinstance(parsed, Mapping):
+            out.append(parsed)
+    return out
+
+
+def reconcile_store_receipt_qualifications(
+    store: Any,
+    *,
+    existing_loaded: Mapping[str, Any],
+    qualify_fn: Any,
+    cache_dir: str | Path,
+    work: str | Path,
+    decided_at: str,
+    receipt_keys: Iterable[str] | None = None,
+    min_write_date: str | None = None,
+    max_receipts: int = MAX_RECONCILE_RECEIPTS,
+    persist: bool = True,
+    remember: bool = False,
+    provenance_cache: str | Path | None = None,
+) -> dict[str, Any]:
+    """Recover missing qualifications for durable receipts whose runner died before uploading provenance."""
+    from tempfile import TemporaryDirectory
+
+    covered = set(existing_loaded.get("receipt_keys") or ())
+    by_sha = dict(existing_loaded.get("by_sha256") or {})
+    if receipt_keys is not None:
+        candidates = [(rk, 0) for rk in receipt_keys if isinstance(rk, str) and rk not in covered]
+    else:
+        filtered = []
+        for rk, sz in _list_store_receipt_keys(store):
+            if rk in covered or "/assemble-" in rk or sz > MAX_RECONCILE_RECEIPT_BYTES:
+                continue
+            wdate = _receipt_write_date(rk)
+            if min_write_date is not None and wdate is not None and wdate < min_write_date:
+                continue
+            filtered.append((wdate or "", rk, sz))
+        filtered.sort(key=lambda item: (item[0], item[1]), reverse=True)
+        candidates = [(rk, sz) for _wd, rk, sz in filtered[:max_receipts]]
+        candidates.sort(key=lambda item: item[0])
+    if not candidates:
+        return {"facts": [], "imported": None}
+    work_dir = Path(work)
+    work_dir.mkdir(parents=True, exist_ok=True)
+    cache_path = Path(cache_dir)
+    recovered: list[dict[str, Any]] = []
+    with TemporaryDirectory(prefix="reconcile-qual-", dir=work_dir) as temp_dir:
+        temp_root = Path(temp_dir)
+        for idx, (rkey, _sz) in enumerate(candidates):
+            for line_idx, line in enumerate(_read_store_receipt_lines(store, rkey)):
+                if line.get("mode") != "fetch":
+                    continue
+                status = line.get("http_status")
+                if type(status) is not int or not (200 <= status <= 299) or status == 206:
+                    continue
+                if line.get("outcome") not in ("stored", "unchanged"):
+                    continue
+                primary = next(
+                    (c for c in line.get("captures") or []
+                     if isinstance(c, Mapping) and c.get("attempt", 0) == 0 and c.get("member_path") is None),
+                    None,
+                )
+                sha = extract_sha256_hex(primary.get("sha256")) if primary is not None else None
+                if sha is None:
+                    continue
+                req_url = line.get("requested_url") if isinstance(line.get("requested_url"), str) else None
+                fin_url = line.get("url") if isinstance(line.get("url"), str) else None
+                headers = line.get("response_headers") if isinstance(line.get("response_headers"), Mapping) else {}
+                sniffed = primary.get("sniffed_format")
+                if not (sniffed == "pdf" or expects_pdf_response(req_url, headers) or expects_pdf_response(fin_url, headers)):
+                    continue
+                existing_body = by_sha.get(sha)
+                if existing_body is not None and not existing_body.get("retryable", False):
+                    q_record = existing_body["qualification_record"]
+                else:
+                    target_file = _read_retained_body(store, sha, temp_root / f"{idx}-{line_idx}-{sha}.body")
+                    if target_file is None:
+                        continue
+                    expected_bytes = primary.get("bytes")
+                    verified = verify_local_file(
+                        target_file,
+                        expected_sha256=sha,
+                        expected_size=expected_bytes if type(expected_bytes) is int and expected_bytes >= 0 else target_file.stat().st_size,
+                    )
+                    q_record = qualify_fn(verified, cache_path)
+                fact = build_qualification_fact(
+                    q_record,
+                    requested_url=req_url,
+                    url=fin_url,
+                    receipt_key=rkey,
+                    retrieved_at=line.get("retrieved_at") if isinstance(line.get("retrieved_at"), str) else None,
+                    http_status=status,
+                    headers=headers,
+                )
+                recovered.append(fact)
+                if not fact.get("retryable"):
+                    by_sha[sha] = {
+                        k: fact[k]
+                        for k in ("body_sha256", "body_bytes", "status", "qualified", "media_type", "retryable",
+                                  "qualification_sha256", "qualification_record")
+                    } | {"reason": fact["qualification_record"]["reason"]}
+    imported = None
+    if persist and recovered:
+        imported = import_qualifications(
+            store, recovered, decided_at=decided_at, cache=provenance_cache, remember=remember
+        )
+    return {"facts": recovered, "imported": imported}
 
 
 def retry_retained_qualifications(
@@ -606,72 +914,74 @@ def scan_local_store_validators(
 ) -> dict[str, dict[str, Any]]:
     """Pair local receipts' HTTP validators with verified body qualifications.
 
-    Used when a caller supplies a ``qualification-cache`` directory or a release
-    ``url_state.parquet`` with ``capture_reason='body_not_qualified'`` alongside
-    a local ``BodyStore`` without a pre-joined ``qualifications.jsonl`` ledger.
-    Validators bind to the receipt's final URL (the resource that answered).
+    Used when a caller supplies a ``qualification-cache`` directory alongside a
+    local ``BodyStore`` without a pre-joined ``qualifications.jsonl`` ledger.
+    Only bodies with a verified ``QualificationRecord`` in ``by_sha256`` produce
+    an entry; never synthesize an unverified suppression record from URL state alone.
     """
+    del unqualified_urls
     root = Path(store_root) / "receipts"
-    if not root.is_dir() or (not by_sha256 and not unqualified_urls):
+    if not root.is_dir() or not by_sha256:
         return {}
     by_url: dict[str, dict[str, Any]] = {}
+    events: list[tuple[str, int, str, int, Mapping[str, Any]]] = []
     for receipt_path in sorted(root.rglob("*.jsonl.gz")):
         if not receipt_path.is_file():
             continue
         rel_key = receipt_path.relative_to(Path(store_root)).as_posix()
         with gzip.open(receipt_path, "rt", encoding="utf-8") as stream:
-            for line_str in stream:
+            for line_idx, line_str in enumerate(stream):
                 line_str = line_str.strip()
                 if not line_str:
                     continue
                 line = json.loads(line_str)
                 if not isinstance(line, Mapping) or line.get("mode") != "fetch":
                     continue
-                req_url, fin_url = line.get("requested_url"), line.get("url")
-                target = fin_url if isinstance(fin_url, str) and fin_url else req_url
-                if not isinstance(target, str) or not target:
-                    continue
-                status, retrieved_at = line.get("http_status"), line.get("retrieved_at")
-                headers = line.get("response_headers") if isinstance(line.get("response_headers"), Mapping) else {}
-                if status == 304 or line.get("error_type") == "validator_unchanged":
-                    prev = by_url.get(target)
-                    if prev is not None and (str(retrieved_at or ""), rel_key) >= _url_order_key(prev):
-                        by_url[target] = refresh_url_entry(prev, retrieved_at=retrieved_at, receipt_key=rel_key, http_status=status)
-                    continue
-                primary = next(
-                    (c for c in line.get("captures") or []
-                     if isinstance(c, Mapping) and c.get("attempt", 0) == 0 and c.get("member_path") is None),
-                    None,
-                )
-                sha = extract_sha256_hex(primary.get("sha256")) if primary is not None else None
-                if sha is None:
-                    continue
-                body_q = by_sha256.get(sha)
-                matched = bool(unqualified_urls and (req_url in unqualified_urls or fin_url in unqualified_urls))
-                if body_q is None and not matched:
-                    continue
-                if body_q is not None:
-                    content_type = _header_value(headers, "content-type")
-                    url_qual = _url_qualified(body_q, requested_url=req_url, url=fin_url, content_type=content_type)
-                    reason, q_sha, retryable = body_q["reason"], body_q["qualification_sha256"], bool(body_q.get("retryable"))
-                else:
-                    url_qual, reason, q_sha, retryable = False, "body_not_qualified", None, False
-                cand = {
-                    "url": target,
-                    "body_sha256": sha,
-                    "body_bytes": primary.get("bytes"),
-                    "qualified": url_qual,
-                    "reason": reason,
-                    "retryable": retryable,
-                    "qualification_sha256": q_sha,
-                    **extract_validators(headers),
-                    "retrieved_at": retrieved_at,
-                    "receipt_key": rel_key,
-                    "http_status": status,
-                }
-                prev = by_url.get(target)
-                if prev is None or _url_order_key(cand) >= _url_order_key(prev):
-                    by_url[target] = cand
+                is_recheck = 1 if (line.get("http_status") == 304 or line.get("error_type") == "validator_unchanged") else 0
+                events.append((str(line.get("retrieved_at") or ""), is_recheck, rel_key, line_idx, line))
+    events.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
+    for _stamp, _is_recheck, rel_key, _line_idx, line in events:
+        req_url, fin_url = line.get("requested_url"), line.get("url")
+        target = fin_url if isinstance(fin_url, str) and fin_url else req_url
+        if not isinstance(target, str) or not target:
+            continue
+        status, retrieved_at = line.get("http_status"), line.get("retrieved_at")
+        headers = line.get("response_headers") if isinstance(line.get("response_headers"), Mapping) else {}
+        if status == 304 or line.get("error_type") == "validator_unchanged":
+            prev = by_url.get(target)
+            if prev is not None and (str(retrieved_at or ""), rel_key) >= _url_order_key(prev):
+                by_url[target] = refresh_url_entry(prev, retrieved_at=retrieved_at, receipt_key=rel_key, http_status=status)
+            continue
+        primary = next(
+            (c for c in line.get("captures") or []
+             if isinstance(c, Mapping) and c.get("attempt", 0) == 0 and c.get("member_path") is None),
+            None,
+        )
+        sha = extract_sha256_hex(primary.get("sha256")) if primary is not None else None
+        if sha is None:
+            continue
+        body_q = by_sha256.get(sha)
+        if body_q is None:
+            continue
+        content_type = _header_value(headers, "content-type")
+        url_qual = _url_qualified(body_q, requested_url=req_url, url=fin_url, content_type=content_type)
+        reason, q_sha, retryable = body_q["reason"], body_q["qualification_sha256"], bool(body_q.get("retryable"))
+        cand = {
+            "url": target,
+            "body_sha256": sha,
+            "body_bytes": primary.get("bytes"),
+            "qualified": url_qual,
+            "reason": reason,
+            "retryable": retryable,
+            "qualification_sha256": q_sha,
+            **extract_validators(headers),
+            "retrieved_at": retrieved_at,
+            "receipt_key": rel_key,
+            "http_status": status,
+        }
+        prev = by_url.get(target)
+        if prev is None or _url_order_key(cand) >= _url_order_key(prev):
+            by_url[target] = cand
     return by_url
 
 
@@ -682,10 +992,7 @@ def model_qualification_input(source: Any, scratch: str | Path) -> tuple[dict[st
     """
     scratch_path = Path(scratch)
     scratch_path.mkdir(parents=True, exist_ok=True)
-    if isinstance(source, Mapping) and set(source.keys()) >= {"path", "sha256", "size"} and "body_sha256" not in source:
-        loaded = load_qualification_facts(source["path"])
-    else:
-        loaded = load_qualification_facts(source)
+    loaded = load_qualification_facts(source)
     rows = [
         {k: row[k] for k in MODEL_QUALIFICATION_FIELDS}
         for _, row in sorted(loaded["by_sha256"].items())

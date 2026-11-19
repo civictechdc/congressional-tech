@@ -73,6 +73,45 @@ DATA_ONLY_CAUSE = ("data-only night: built by the live release's definition and 
                    'that only grew; not traced to individual receipts (automatic, ct-pz32)')
 
 
+def _provenance_compatible(candidate_prov, live_prov):
+    """Decision provenance must match; receipt-bound qualification provenance may only grow."""
+    if candidate_prov == live_prov:
+        return True
+    if not isinstance(candidate_prov, list) or not isinstance(live_prov, list):
+        return False
+    from viewer_publication.archive_model_job import provenance_etag_md5, provenance_record_kind
+
+    def split_prov(items):
+        other, quals = [], {}
+        for item in items:
+            if not isinstance(item, dict) or not isinstance(item.get('key'), str) or not isinstance(item.get('etag'), str):
+                return None
+            if provenance_record_kind(item['key']) == 'qualifications':
+                try:
+                    md5 = provenance_etag_md5(item['etag'])
+                except ValueError:
+                    return None
+                if item['key'] in quals and quals[item['key']] != md5:
+                    return None
+                quals[item['key']] = md5
+            else:
+                other.append(item)
+        return other, quals
+
+    cand_split, live_split = split_prov(candidate_prov), split_prov(live_prov)
+    if cand_split is None or live_split is None:
+        return False
+    cand_other, cand_quals = cand_split
+    live_other, live_quals = live_split
+    return cand_other == live_other and all(cand_quals.get(k) == v for k, v in live_quals.items())
+
+
+def _same_input(name, candidate_val, live_val):
+    if name == 'provenance':
+        return _provenance_compatible(candidate_val, live_val)
+    return candidate_val == live_val
+
+
 def _first_difference(candidate, live, path=''):
     """Where two input values first differ, by sorted key."""
     if isinstance(candidate, dict) and isinstance(live, dict):
@@ -87,14 +126,14 @@ def _input_reasons(candidate, live_records):
     missing = [name for name in SAME_INPUTS if candidate.get(name) is None]
     if missing:
         return [f'data-only night: the candidate names no {", ".join(missing)}']
-    differing = lambda entry: [name for name in SAME_INPUTS if entry['record'].get(name) != candidate[name]]
+    differing = lambda entry: [name for name in SAME_INPUTS if not _same_input(name, candidate[name], entry['record'].get(name))]
     record = min(live_records, key=lambda entry: len(differing(entry)))['record']  # the nearest kept input
     kept = [name for name in SAME_INPUTS if record.get(name) is None]
     if kept:
         return [f'data-only night: the live release keeps no {", ".join(kept)} to compare with']
     return ['data-only night: the candidate differs from the live release in '
             + ', '.join(_first_difference(candidate[name], record[name], name) for name in SAME_INPUTS
-                        if candidate[name] != record[name])]
+                        if not _same_input(name, candidate[name], record[name]))]
 
 
 def _group_reasons(report, new_receipts):
@@ -269,7 +308,8 @@ def _link_reasons(rule, link_proof):
     return reasons, proven, facts
 
 
-def data_only_causes(report, *, candidate_record, live_records, candidate_receipt_keys, base_dir, candidate_dir, link_proof=None):
+def data_only_causes(report, *, candidate_record, live_records, candidate_receipt_keys, base_dir, candidate_dir, link_proof=None,
+                     qualification_files=None):
     """Cause entries for every failing group of a night only new receipts can explain.
 
     `live_records` are the live release's kept input records (`receipt_pins.kept_input_records`).
@@ -284,11 +324,29 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
     if not held:
         return [], ['data-only night: the live release has no receipt set to compare with'], {}
     same = [entry for entry in live_records
-            if all(candidate_record.get(name) is not None and entry['record'].get(name) == candidate_record[name]
+            if all(candidate_record.get(name) is not None and _same_input(name, candidate_record[name], entry['record'].get(name))
                    for name in SAME_INPUTS)]
     candidate = set(candidate_receipt_keys)
     new, groups = candidate - held, report['failing']
     reasons = [] if same else _input_reasons(candidate_record, live_records)
+    if same and qualification_files is not None:
+        from congress_api.retention.qualification_facts import load_qualification_facts
+        from viewer_publication.archive_model_job import provenance_record_kind
+        live_q_keys = {item['key'] for item in (same[-1]['record'].get('provenance') or ())
+                       if isinstance(item, dict) and provenance_record_kind(item.get('key')) == 'qualifications'}
+        cand_q_keys = {item['key'] for item in (candidate_record.get('provenance') or ())
+                       if isinstance(item, dict) and provenance_record_kind(item.get('key')) == 'qualifications'}
+        added_q_keys = cand_q_keys - live_q_keys
+        if added_q_keys:
+            by_key = {item['key']: item for item in qualification_files if isinstance(item, dict) and isinstance(item.get('key'), str)}
+            missing_q = sorted(added_q_keys - set(by_key))
+            if missing_q:
+                reasons.append(f'data-only night: added qualification provenance lacks verified files ({missing_q[:3]})')
+            else:
+                loaded_q = load_qualification_facts([by_key[k] for k in sorted(added_q_keys)])
+                outside_q = sorted((loaded_q.get('receipt_keys') or set()) - candidate)
+                if outside_q:
+                    reasons.append(f'data-only night: added qualification provenance cites unknown receipts ({outside_q[:3]})')
     if held - candidate:
         reasons.append(f'data-only night: {len(held - candidate)} receipts the live release read are absent from the '
                        f'candidate (first {sorted(held - candidate)[:3]})')

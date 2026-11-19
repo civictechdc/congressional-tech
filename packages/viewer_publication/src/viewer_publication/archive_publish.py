@@ -104,8 +104,8 @@ def _collect_spicy_generations(client,store,bucket,*,live,previous,candidate_dig
     return sorted(pairs)
 
 
-def input_digest(*,receipt_keys,provenance,profile,entity_digests):
-    """Hash semantic inputs only; snapshots and run fields never enter this API."""
+def input_digest(*,receipt_keys,provenance,profile,entity_digests,extra_pins=None):
+    """Hash semantic inputs and explicit standalone pins; table snapshots and run fields stay out."""
     if not isinstance(profile,dict) or not profile:
         raise ValueError('Input identity requires the semantic model profile')
     entities=_valid_entity_digests(entity_digests)
@@ -122,6 +122,8 @@ def input_digest(*,receipt_keys,provenance,profile,entity_digests):
         if key in pinned and pinned[key]!=etag:raise ValueError('Conflicting pinned provenance ETags')
         pinned[key]=etag
     identity=[keys,[[key,pinned[key]] for key in sorted(pinned)],entities,profile]
+    if extra_pins:
+        identity.append(extra_pins)
     return sha256(_encoded(identity)).hexdigest()
 
 
@@ -566,6 +568,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                         qualification_files=automatic_qualifications),
                     data_only=lambda value:data_only_causes(value,candidate_record=input_record,live_records=entries,
                         candidate_receipt_keys=receipt_keys,base_dir=base_release,candidate_dir=Path(release),
+                        qualification_files=automatic_qualifications,
                         # A page captured again at its own address is proven from the raw receipt that stored it.
                         link_proof=lambda rule:recaptured_pages(rule,base_release,Path(release),held=held,read_receipt=read_receipt,
                             trace=lambda keys:capture_job(Path(work)/'recaptures',engine,automatic_captures,keys=keys)['trace'])))

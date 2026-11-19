@@ -92,12 +92,14 @@ class DirectAdapter:
                 if response.status_code == 304:
                     return Transfer(Path(destination), response.url, 304,
                                     resp_headers, True, None, sha256=None, size=0, wire_bytes=0)
-                # Only a full HTTP 200 may be suppressed before its body: 202/206/ranged
-                # responses keep their own receipt semantics (ct-zohj review 7).
+                # Only a complete, non-ranged HTTP 200 answering the exact requested hop URL
+                # may be suppressed before its body (ct-zohj review 7b).
                 if (response.status_code == 200
+                        and getattr(response, 'capture_complete', True) is True
+                        and (response.url or url) == url
                         and not _partial_response(response.status_code, resp_headers)
                         and validators_unchanged(prior_validators, resp_headers)):
-                    return Transfer(Path(destination), response.url, response.status_code,
+                    return Transfer(Path(destination), url, response.status_code,
                                     resp_headers, True, 'validator_unchanged', sha256=None, size=0, wire_bytes=0)
                 sha, size, complete, error = _spool(response, destination, limit)
                 if _partial_response(response.status_code,response.headers):

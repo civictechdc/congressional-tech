@@ -286,10 +286,44 @@ def test_qualification_facts_refuse_unverified_overrides_retryable_and_length_on
     merge_fact(by_sha, by_url, fact)
     assert by_sha[fact['body_sha256']]['retryable'] is False
 
-    # A torn final ledger line from an interrupted append is skipped; earlier lines load.
+    # A torn final ledger line from an interrupted append is skipped; earlier lines load,
+    # and repair_qualifications_ledger truncates the fragment so subsequent appends stay valid JSONL.
+    from congress_api.retention.qualification_facts import repair_qualifications_ledger, scan_local_store_validators
+
     ledger = tmp_path / 'qualifications.jsonl'
     ledger.write_text(json.dumps(fact) + '\n' + json.dumps(fact)[:40])
     assert set(load_qualification_facts(ledger)['by_url']) == {'https://fixture.test/b.pdf'}
+    repair_qualifications_ledger(ledger)
+    fact2 = dict(fact, requested_url='https://fixture.test/second.pdf', url='https://fixture.test/second.pdf', receipt_key='r2')
+    with ledger.open('a', encoding='utf-8') as out:
+        out.write(json.dumps(fact2) + '\n')
+    repaired_loaded = load_qualification_facts(ledger)
+    assert set(repaired_loaded['by_url']) == {'https://fixture.test/b.pdf', 'https://fixture.test/second.pdf'}
+
+    # Review 7b: checker implementation hash, classifier hash, or parser version drift raises StaleQualification.
+    for mutated_validator in (
+        dict(rec['validator'], implementation_sha256='0' * 64),
+        dict(rec['validator'], classifier_sha256='1' * 64),
+        dict(rec['validator'], pypdf='0.0.0-ancient'),
+    ):
+        stale_body = {k: v for k, v in dict(rec).items() if k != 'qualification_sha256'}
+        stale_body['validator'] = mutated_validator
+        stale_rec = dict(stale_body, qualification_sha256=hashlib.sha256(canonical_json_bytes(stale_body)).hexdigest())
+        with pytest.raises(StaleQualification):
+            verify_qualification_fact(stale_rec)
+        assert load_qualification_facts([stale_rec])['stale'] == 1
+
+    # Review 7b: scan_local_store_validators never synthesizes a suppression entry without a verified record.
+    fake_store = tmp_path / 'local-raw'
+    fake_receipt = fake_store / 'receipts/documents/2026-10-01/r1.jsonl.gz'
+    fake_receipt.parent.mkdir(parents=True)
+    fake_receipt.write_bytes(gzip.compress((json.dumps({
+        'mode': 'fetch', 'http_status': 200, 'outcome': 'stored',
+        'requested_url': 'https://fixture.test/b.pdf', 'url': 'https://fixture.test/b.pdf',
+        'retrieved_at': ASOF_DAY1, 'response_headers': {'ETag': '"v1"'},
+        'captures': [{'attempt': 0, 'sha256': fact['body_sha256']}],
+    }) + '\n').encode()))
+    assert scan_local_store_validators(fake_store, by_sha256={}, unqualified_urls={'https://fixture.test/b.pdf'}) == {}
 
 
 @pytest.mark.parametrize('status,extra,body_expected', [
@@ -319,8 +353,46 @@ def test_only_a_full_http_200_can_be_validator_suppressed(tmp_path, status, extr
     assert outcome(forged, None) != 'unchanged'
 
 
+def test_incomplete_or_mismatched_url_200_cannot_be_validator_suppressed(tmp_path):
+    """Review 7b: DirectAdapter refuses pre-stream validator_unchanged when capture_complete is False
+    or response.url differs from the requested hop URL."""
+    url = 'https://fixture.test/chunked.pdf'
+    payload = b'%PDF-1.7\ntruncated'
+    headers = {'Content-Type': 'application/pdf', 'ETag': '"p1"', 'Content-Length': str(len(payload))}
+    prior = {'qualified': False, 'retryable': False, 'etag': '"p1"', 'last_modified': None,
+             'content_length': str(len(payload))}
+
+    class _CustomResp:
+        def __init__(self, *, capture_complete=True, resp_url=url):
+            self.status_code = 200
+            self.headers = dict(headers)
+            self.url = resp_url
+            self.capture_complete = capture_complete
+            self.reads = 0
+        def __enter__(self): return self
+        def __exit__(self, *_): return False
+        def iter_content(self, chunk_size=65536):
+            self.reads += 1
+            yield payload
+
+    class _CustomSess:
+        def __init__(self, resp):
+            self.resp = resp
+        def get(self, *_a, **_kw):
+            return self.resp
+
+    r_incomplete = _CustomResp(capture_complete=False)
+    t_inc = DirectAdapter(_CustomSess(r_incomplete)).hop(url, tmp_path / 'inc.bin', limit=1 << 20, headers={}, prior_validators=prior)
+    assert t_inc.error != 'validator_unchanged' and t_inc.complete is False and r_incomplete.reads == 1
+
+    r_diff_url = _CustomResp(capture_complete=True, resp_url='https://fixture.test/other.pdf')
+    t_diff = DirectAdapter(_CustomSess(r_diff_url)).hop(url, tmp_path / 'diff.bin', limit=1 << 20, headers={}, prior_validators=prior)
+    assert t_diff.error != 'validator_unchanged' and r_diff_url.reads == 1
+
+
 def test_journal_replays_a_hop_sealed_before_validators_existed(tmp_path):
-    """A sealed hop recorded without conditional headers resumes without a second network call."""
+    """A sealed hop replays across validator state transitions in both directions while refusing
+    URL, limit or non-conditional header drift."""
     from congress_api.acquisition.capture_journal import DurableCapture
     from congress_api.models.raw_fetch import Transfer
 
@@ -341,6 +413,27 @@ def test_journal_replays_a_hop_sealed_before_validators_existed(tmp_path):
     assert calls == [{}] and replay.http_status == 200 and (tmp_path / 'd2').read_bytes() == b'x'
     with pytest.raises(ValueError, match='request definition changed'):
         journal.adapter('op', Plain(), 'direct').hop(url, tmp_path / 'd3', limit=11, headers={})
+
+    # Reverse direction (Review 7b): hop sealed WITH conditional headers replays when validators change or clear,
+    # while non-conditional header changes still raise.
+    journal.adapter('op-cond', Plain(), 'direct').hop(
+        url, tmp_path / 'c1', limit=10,
+        headers={'Accept': 'application/pdf', 'If-None-Match': '"e"'},
+        prior_validators={'qualified': False, 'etag': '"e"'})
+    replay_changed = journal.adapter('op-cond', Plain(), 'direct').hop(
+        url, tmp_path / 'c2', limit=10,
+        headers={'Accept': 'application/pdf', 'If-None-Match': '"e2"'},
+        prior_validators={'qualified': False, 'etag': '"e2"'})
+    replay_cleared = journal.adapter('op-cond', Plain(), 'direct').hop(
+        url, tmp_path / 'c3', limit=10,
+        headers={'Accept': 'application/pdf'},
+        prior_validators=None)
+    assert len(calls) == 2 and replay_changed.http_status == 200 and replay_cleared.http_status == 200
+    with pytest.raises(ValueError, match='request definition changed'):
+        journal.adapter('op-cond', Plain(), 'direct').hop(
+            url, tmp_path / 'c4', limit=10,
+            headers={'Accept': 'text/html'},
+            prior_validators=None)
 
 
 def test_corrupt_http_200_pdf_preserved_and_not_refetched_on_unchanged_validators_or_304(tmp_path):
@@ -887,5 +980,103 @@ def test_durable_store_qualifications_survive_fresh_work_dirs_and_retry_transien
     r2_receipt = json.loads(gzip.decompress(r2.objects[res2['receipts'][0]]).decode('utf-8'))
     assert r2_receipt['http_status'] == 304 and r2_receipt['outcome'] == 'unchanged' and r2_receipt['captures'] == []
     assert len([k for k in r2.objects if k.startswith('provenance/qualifications/')]) == 2
+
+
+def test_retained_byte_retry_decompresses_gzip_suffix_free_html_on_local_and_r2(tmp_path):
+    """Review 7b: compressible text/html stored via BodyStore.put under a suffix-free key with
+    gzip encoding decompresses cleanly during retained-byte qualification retry on Local and R2."""
+    from dataclasses import asdict
+    import io
+    from botocore.exceptions import ClientError
+    from congress_api.retention.body_store import R2Adapter
+    from congress_api.retention.qualification_facts import retry_retained_qualifications
+    from corpus_recovery.qualification import QualificationConfig, _finish, _identity, qualify as real_qualify
+
+    html_bytes = b'<html><head><title>404 Not Found</title></head><body><p>' + (b'Missing PDF page. ' * 20) + b'</p></body></html>'
+    html_sha = hashlib.sha256(html_bytes).hexdigest()
+    html_src = tmp_path / 'error-page.html'
+    html_src.write_bytes(html_bytes)
+    body_key = f'bodies/sha256/{html_sha[:2]}/{html_sha}'
+    pdf_url = 'https://fixture.test/hearing/missing-statement.pdf'
+
+    transient_rec = _finish({
+        'body_sha256': html_sha,
+        'body_bytes': len(html_bytes),
+        'validator': _identity(),
+        'config': asdict(QualificationConfig()),
+        'status': 'unresolved',
+        'media_type': 'text/html',
+        'reason': 'worker_timeout',
+        'retryable': True,
+    })
+    retry_fact = build_qualification_fact(
+        transient_rec,
+        requested_url=pdf_url,
+        url=pdf_url,
+        receipt_key='receipts/documents/2026-10-01/r-html.jsonl.gz',
+        retrieved_at=ASOF_DAY1,
+        http_status=200,
+        headers={'Content-Type': 'text/html; charset=utf-8', 'ETag': '"html-err-1"'},
+    )
+
+    # 1. LocalAdapter: suffix-free key contains raw gzip bytes with no ContentEncoding header.
+    local_root = tmp_path / 'local-store'
+    local_store = BodyStore(LocalAdapter(local_root))
+    local_res = local_store.put(body_key, html_src, 'text/html')
+    assert local_res.suffix == ''
+    assert (local_root / body_key).read_bytes()[:2] == b'\x1f\x8b'
+    assert hashlib.sha256((local_root / body_key).read_bytes()).hexdigest() != html_sha
+
+    retried_local = retry_retained_qualifications(
+        local_store, [retry_fact], qualify_fn=real_qualify,
+        cache_dir=tmp_path / 'l-cache', work=tmp_path / 'l-work',
+    )
+    assert len(retried_local) == 1
+    assert retried_local[0]['body_sha256'] == html_sha and retried_local[0]['retryable'] is False
+    assert retried_local[0]['url_qualified'] is False and retried_local[0]['reason'] in ('error_or_challenge', 'candidate_format_mismatch')
+
+    # 2. R2Adapter: suffix-free key stores gzip bytes alongside ContentEncoding='gzip'.
+    class _EncodingR2Client:
+        def __init__(self):
+            self.objects: dict[str, tuple[bytes, str | None]] = {}
+
+        def head_object(self, *, Bucket, Key):
+            if Key not in self.objects:
+                raise ClientError({'Error': {'Code': '404', 'Message': 'Not Found'}}, 'HeadObject')
+            data, enc = self.objects[Key]
+            meta = {'ContentLength': len(data), 'ETag': f'"{hashlib.md5(data).hexdigest()}"'}
+            if enc:
+                meta['ContentEncoding'] = enc
+            return meta
+
+        def put_object(self, *, Bucket, Key, Body, IfNoneMatch=None, ContentEncoding=None, **kwargs):
+            if IfNoneMatch == '*' and Key in self.objects:
+                raise ClientError({'Error': {'Code': '412', 'Message': 'PreconditionFailed'}}, 'PutObject')
+            data = Body if isinstance(Body, (bytes, bytearray)) else Body.read()
+            self.objects[Key] = (bytes(data), ContentEncoding)
+            return {'ETag': f'"{hashlib.md5(data).hexdigest()}"'}
+
+        def get_object(self, *, Bucket, Key, IfMatch=None):
+            if Key not in self.objects:
+                raise ClientError({'Error': {'Code': 'NoSuchKey', 'Message': 'Missing'}}, 'GetObject')
+            data, enc = self.objects[Key]
+            resp = {'Body': io.BytesIO(data), 'ContentLength': len(data), 'ETag': f'"{hashlib.md5(data).hexdigest()}"'}
+            if enc:
+                resp['ContentEncoding'] = enc
+            return resp
+
+    r2_client = _EncodingR2Client()
+    r2_store = BodyStore(R2Adapter(r2_client, 'raw-bucket'))
+    r2_res = r2_store.put(body_key, html_src, 'text/html')
+    assert r2_res.suffix == '' and r2_client.objects[body_key][1] == 'gzip'
+    assert r2_client.objects[body_key][0][:2] == b'\x1f\x8b'
+
+    retried_r2 = retry_retained_qualifications(
+        r2_store, [retry_fact], qualify_fn=real_qualify,
+        cache_dir=tmp_path / 'r2-cache', work=tmp_path / 'r2-work',
+    )
+    assert len(retried_r2) == 1
+    assert retried_r2[0]['body_sha256'] == html_sha and retried_r2[0]['retryable'] is False
+    assert retried_r2[0]['url_qualified'] is False and retried_r2[0]['reason'] in ('error_or_challenge', 'candidate_format_mismatch')
 
 

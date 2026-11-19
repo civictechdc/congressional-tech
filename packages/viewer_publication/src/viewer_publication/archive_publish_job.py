@@ -142,11 +142,23 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
     else:
         with summary_path.open('x') as target:json.dump(summary,target,sort_keys=True)
     if production['status']!='completed':return dict(status=production['status'],daily=summary)
+    new_receipts=production.get('new_receipt_keys') or []
+    if new_receipts:
+        from congress_api.retention.qualification_facts import load_qualification_facts,reconcile_store_receipt_qualifications
+        from corpus_recovery.qualification import qualify as run_qualify
+        prov_work=work.with_name(work.name+'-provenance')
+        existing_quals=load_qualification_facts([r for r in records if provenance_record_kind(r['key'])=='qualifications'])
+        reconcile_store_receipt_qualifications(
+            raw_store,existing_loaded=existing_quals,qualify_fn=run_qualify,
+            cache_dir=work/'qualification-cache',work=work/'qualification-reconcile',
+            decided_at=daily['decided_at'],receipt_keys=new_receipts,persist=True,
+            remember=True,provenance_cache=prov_work)
     records=snapshot.rows()
     model,keys=completed_daily_inputs(template,production,records)
     for row in records:
         if row['key'] not in full:
-            if provenance_record_kind(row['key'])!='unreadable':raise ValueError('Unexpected daily provenance addition')
+            if provenance_record_kind(row['key']) not in {'unreadable','qualifications'}:
+                raise ValueError('Unexpected daily provenance addition')
             full[row['key']]=dict(key=row['key'],etag=row['etag'],size=row['size'])
     provenance=[dict(key=key,etag=full[key]['etag']) for key in sorted(full)]
     handoff={}
