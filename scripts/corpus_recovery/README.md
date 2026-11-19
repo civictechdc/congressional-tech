@@ -36,6 +36,8 @@ does not itself dispatch requests or change the automatic scheduler.
 
 5. **`run_corpus_recovery.py`** is a local supervisor for one of the commands above. It records the child process, its logs, and the exit code it actually waited for. A missing process is not success. Resume is a separate, explicit command.
 
+6. **`browser_session_capture.py`** bridges interactive browser-only origins (such as `webarchive.loc.gov` when an automated client hits an edge challenge) without changing pipeline custody or receipt rules. `emit-snippet` generates a same-origin, single-target-per-click DevTools snippet using `window.showDirectoryPicker`, `redirect: 'manual'`, `AbortController` timeouts, 15-second cooldown pacing, non-clobbering resume, and hard stop on redirects/`429`/`403`/`cf-mitigated`/`content-range`/HTML; `ingest` preflights timestamps, headers, URLs, and `%PDF-` bytes, writes standard `ReceiptWriter` receipts (`transport='browser_same_origin'`), enforces `acceptance.receipt_binding`, and qualifies every PDF locally before capture integration.
+
 Accepted recovery labels now enter raw through provenance staging and the common
 receipt writer (`corpus_recovery.reconcile`). The archive model and publisher
 consume them; the old shared-index import and catalog/viewer publication
