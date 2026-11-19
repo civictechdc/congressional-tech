@@ -1173,6 +1173,14 @@ def test_reconcile_min_date_reads_last_attempt_survives_505_304s_and_propagates_
         'response_headers': {'Content-Type': 'application/pdf', 'Content-Range': 'bytes 0-9/100'},
         'captures': [{'attempt': 0, 'sha256': bad_sha, 'bytes': len(bad_pdf), 'sniffed_format': 'pdf'}],
     }) + '\n').encode()))
+    inconsistent_cap_key = 'receipts/documents/2026-11-15/0003-incomplete-cap.jsonl.gz'
+    (raw_dir / inconsistent_cap_key).write_bytes(gzip.compress((json.dumps({
+        'mode': 'fetch', 'http_status': 206, 'outcome': 'stored',
+        'requested_url': 'https://fixture.test/inconsistent.pdf', 'url': 'https://fixture.test/inconsistent.pdf',
+        'retrieved_at': '2026-11-15T12:40:00Z',
+        'response_headers': {'Content-Type': 'application/pdf', 'Content-Range': f'bytes 0-{len(bad_pdf) - 1}/{len(bad_pdf)}'},
+        'captures': [{'attempt': 0, 'complete': False, 'sha256': bad_sha, 'bytes': len(bad_pdf), 'sniffed_format': 'pdf'}],
+    }) + '\n').encode()))
 
     rec_res = reconcile_store_receipt_qualifications(
         store, existing_loaded={'by_sha256': {}, 'receipt_keys': set()},
@@ -1220,5 +1228,3 @@ def test_reconcile_min_date_reads_last_attempt_survives_505_304s_and_propagates_
             decided_at='2026-11-16T13:00:00Z', persist=False,
         )
     assert get_calls == [(interrupted_key, '"pinned-etag-1"')]
-
-

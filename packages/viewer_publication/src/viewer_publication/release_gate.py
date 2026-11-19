@@ -769,9 +769,11 @@ QUAL_STATES_SQL = """WITH new_latest AS (
     LEFT JOIN new_latest nl ON nl.requested_url=q.requested_url"""
 
 
-def qual_states_job(work, engine, captures, *, new_receipts=(), held_receipts=(), qual_urls=(), qualification_files=None):
-    """Evaluate `(url_qualified, new_body_qualified)` by latest primary capture SHA for `qual_urls`."""
-    if not qual_urls or not qualification_files:
+def qual_states_job(work, engine, captures, *, new_receipts=(), held_receipts=(), qual_urls=(),
+                    qualification_files=None, added_failed_shas=()):
+    """Evaluate `(url_qualified, new_body_qualified)` by latest primary capture SHA for `qual_urls`
+    (plus any held/new URLs holding a newly recorded `added_failed_shas` body)."""
+    if (not qual_urls and not added_failed_shas) or not qualification_files:
         return {}
     from uuid import uuid4
     from congress_api.lake.tables import table_input
@@ -794,6 +796,26 @@ def qual_states_job(work, engine, captures, *, new_receipts=(), held_receipts=()
         dict(name='qual_urls', kind='parquet', path=str(run_dir / 'qual-urls.parquet')),
         qual_input,
     ]
+    url_source = 'qual_urls'
+    pre_steps = []
+    if added_failed_shas:
+        sha_bytes = [bytes.fromhex(s) for s in sorted(set(added_failed_shas))]
+        pq.write_table(pa.table({'body_sha': pa.array(sha_bytes, pa.binary(32))}), run_dir / 'added-shas.parquet')
+        inputs.append(dict(name='added_shas', kind='parquet', path=str(run_dir / 'added-shas.parquet')))
+        url_source = 'target_qual_urls'
+        pre_steps.append(dict(
+            name='target_qual_urls', materialize=True,
+            sql="SELECT qual_url FROM qual_urls UNION "
+                "SELECT DISTINCT c.requested_url AS qual_url "
+                "FROM new_receipts n RIGHT JOIN ("
+                "  held_receipts h RIGHT JOIN ("
+                "    added_shas a JOIN lake_captures c ON a.body_sha=c.sha256"
+                "  ) ON h.held_key=c.receipt_key"
+                ") ON n.new_key=c.receipt_key "
+                "WHERE (n.new_key IS NOT NULL OR h.held_key IS NOT NULL) "
+                "AND c.mode='fetch' AND c.complete AND c.requested_url IS NOT NULL "
+                "AND coalesce(c.attempt,0)=0 AND c.member_path IS NULL",
+        ))
     qual_cols = (
         ('receipt_key', 'VARCHAR'), ('receipt_line', 'INT'), ('capture_index', 'INT'),
         ('mode', 'VARCHAR'), ('outcome', 'VARCHAR'), ('requested_url', 'VARCHAR'),
@@ -807,12 +829,13 @@ def qual_states_job(work, engine, captures, *, new_receipts=(), held_receipts=()
     qual_model = {step['name']: step for step in url_state_steps(
         recovery_policy={'acceptance_policy': 'recovery-identity-v1'}, include_qualifications=True)}
     steps = [
+        *pre_steps,
         qual_step,
         dict(name='qual_captures', materialize=True,
              sql=f"SELECT {select_cols},n.new_key IS NOT NULL AS new_line "
                  "FROM new_receipts n RIGHT JOIN ("
                  "  held_receipts h RIGHT JOIN ("
-                 "    qual_urls q JOIN lake_captures c ON q.qual_url=c.requested_url"
+                 f"    {url_source} q JOIN lake_captures c ON q.qual_url=c.requested_url"
                  "  ) ON h.held_key=c.receipt_key"
                  ") ON n.new_key=c.receipt_key "
                  "WHERE n.new_key IS NOT NULL OR h.held_key IS NOT NULL"),

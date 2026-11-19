@@ -223,7 +223,10 @@ def _carries_body_verdict(row):
         return False
     if row.get('attempt') not in (None, 0) or row.get('member_path') is not None:
         return False
+    is_fetch = row.get('mode') == 'fetch'
     eff_status = row.get('fetch_http_status') if row.get('fetch_outcome') is not None else row.get('http_status')
+    if is_fetch and eff_status is None:
+        return False
     if eff_status is not None and (
         type(eff_status) is not int
         or not (200 <= eff_status <= 299)
@@ -232,6 +235,8 @@ def _carries_body_verdict(row):
     ):
         return False
     eff_outcome = row.get('fetch_outcome') if row.get('fetch_outcome') is not None else row.get('outcome')
+    if is_fetch and eff_outcome is None:
+        return False
     if eff_outcome is not None and eff_outcome not in ('stored', 'unchanged', 'ok', 'completed'):
         return False
     if row.get('sha256') or row.get('body_sha256') or row.get('body_key'):

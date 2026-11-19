@@ -578,9 +578,9 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                     data_only=lambda value:data_only_causes(value,candidate_record=input_record,live_records=entries,
                         candidate_receipt_keys=receipt_keys,base_dir=base_release,candidate_dir=Path(release),
                         qualification_files=automatic_qualifications,
-                        qual_proof=lambda urls:qual_states_job(Path(work)/'data-only-qualifications',engine,automatic_captures,
+                        qual_proof=lambda urls,shas=():qual_states_job(Path(work)/'data-only-qualifications',engine,automatic_captures,
                             new_receipts=set(receipt_keys)-held,held_receipts=held,
-                            qual_urls=urls,qualification_files=automatic_qualifications),
+                            qual_urls=urls,qualification_files=automatic_qualifications,added_failed_shas=shas),
                         # A page captured again at its own address is proven from the raw receipt that stored it.
                         link_proof=lambda rule:recaptured_pages(rule,base_release,Path(release),held=held,read_receipt=read_receipt,
                             trace=lambda keys:capture_job(Path(work)/'recaptures',engine,automatic_captures,keys=keys)['trace'])))

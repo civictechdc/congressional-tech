@@ -1910,6 +1910,19 @@ def test_newer_failed_body_overrides_older_healthy_fetch_in_inventory(tmp_path):
         assert arrow_inv[retry_url]['usable_direct'] is True
         assert arrow_inv[range_url]['usable_direct'] is True
 
+    # Review 7e: a fetch row with NULL effective status or NULL effective outcome does not carry a body verdict.
+    null_status_row = dict(requested_url=healthy_url, url=healthy_url, sha256=bad_rec['body_sha256'], outcome='stored',
+                           http_status=None, complete=True, mode='fetch', media_type='application/pdf',
+                           retrieved_at='2026-10-25T00:00:00Z', receipt_key='receipts/ns.jsonl.gz', receipt_line=1,
+                           qualified=False, qualification_status='unresolved', retryable=False)
+    [inv_ns] = build_target_inventory([healthy_url], fetch_outcomes=[
+        dict(requested_url=healthy_url, url=healthy_url, sha256=good_rec['body_sha256'], outcome='stored',
+             http_status=200, complete=True, mode='fetch', media_type='application/pdf',
+             retrieved_at='2026-10-01T00:00:00Z', receipt_key='receipts/h0.jsonl.gz', receipt_line=1),
+        null_status_row,
+    ], qualifications=[good_rec, bad_rec])
+    assert inv_ns['usable_direct'] is True
+
     # Review 7b: run_recovery_campaign(targets=None) unions published state failed URLs AND
     # unpublished durable-store failed URLs using their original requested_url (not redirected URL).
     import os

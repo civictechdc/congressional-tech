@@ -709,4 +709,3 @@ def test_release_gate_url_state_proof_admits_verified_qualification_reason_and_r
                            extra_pins={'body_qualifications': {'sha256': 'b' * 64, 'size': 10}})
     assert d_pin_a != base_digest and d_pin_a != d_pin_b
     assert input_digest(receipt_keys=[LIVE], provenance=[], profile={'v': 1}, entity_digests={}, extra_pins=None) == base_digest
-

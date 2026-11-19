@@ -352,14 +352,61 @@ def test_daily_qualification_provenance_may_grow_while_decisions_and_removed_led
                 r, candidate_record=dict(INPUTS, provenance=cand_ab_prov), live_records=[live()],
                 candidate_receipt_keys=[*LIVE_KEYS, NIGHT[0]], base_dir=base, candidate_dir=cand,
                 qualification_files=q_ab_files,
-                qual_proof=lambda urls: qual_states_job(
+                qual_proof=lambda urls, shas=(): qual_states_job(
                     tmp_path / 'qual-ok', eng, dict(kind='parquet', path=str(caps_ok_pq)),
                     new_receipts={NIGHT[0]}, held_receipts=set(LIVE_KEYS),
-                    qual_urls=urls, qualification_files=q_ab_files,
+                    qual_urls=urls, qualification_files=q_ab_files, added_failed_shas=shas,
                 ),
             ),
         )
         assert ok_reasons == [] and len(ok_entries) == 2
+
+        # Review 7e: held URL U already holds failed body B2 (unchanged attempts/dates), while tonight
+        # URL V supplies the first verified failure for B2 in an added ledger! Leaving U at
+        # 'no_satisfying_recovery' MUST be refused, and marking both U and V 'body_not_qualified' passes!
+        u_held = 'https://fixture.test/held-shared.pdf'
+        u_new_v = 'https://fixture.test/new-shared.pdf'
+        q_uv_path = tmp_path / 'q-uv.jsonl'
+        q_uv_bytes = (json.dumps(build_qualification_fact(
+            bad_rec_b2, requested_url=u_new_v, url=u_new_v,
+            receipt_key=NIGHT[0], retrieved_at=t_good_a.isoformat(), http_status=200,
+        ), sort_keys=True) + '\n').encode()
+        q_uv_path.write_bytes(q_uv_bytes)
+        q_uv_key = 'provenance/qualifications/20261117T140000Z-' + '4' * 64 + '.jsonl'
+        q_uv_files = [dict(key=q_uv_key, path=str(q_uv_path), **file_pin(q_uv_path))]
+        cand_uv_prov = [*INPUTS['provenance'], dict(key=q_uv_key, etag='"' + hashlib.md5(q_uv_bytes).hexdigest() + '"')]
+        caps_uv_pq = tmp_path / 'caps-uv.parquet'
+        write_captures([
+            dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=LIVE_KEYS[0], receipt_line=1,
+                 requested_url=u_held, sha256=bytes.fromhex(bad_rec_b2['body_sha256']), retrieved_at=t_live, outcome='stored'),
+            dict(mode='fetch', complete=True, attempt=0, http_status=200, receipt_key=NIGHT[0], receipt_line=1,
+                 requested_url=u_new_v, sha256=bytes.fromhex(bad_rec_b2['body_sha256']), retrieved_at=t_good_a, outcome='stored'),
+        ], caps_uv_pq)
+        pq.write_table(pa.table({
+            'requested_url': [u_held],
+            'attempts': pa.array([1], pa.int32()),
+            'last_good_at': pa.array([t_live], pa.timestamp('us', tz='UTC')),
+            'capture_disposition': ['eligible'],
+            'capture_reason': ['no_satisfying_recovery'],
+        }), base / 'url_state.parquet')
+        pq.write_table(pa.table({
+            'requested_url': [u_held, u_new_v],
+            'attempts': pa.array([1, 1], pa.int32()),
+            'last_good_at': pa.array([t_live, t_good_a], pa.timestamp('us', tz='UTC')),
+            'capture_disposition': ['eligible', 'eligible'],
+            'capture_reason': ['no_satisfying_recovery', 'body_not_qualified'],
+        }), cand / 'url_state.parquet')
+        _, uv_reasons, _ = data_only_causes(
+            mixed_rep, candidate_record=dict(INPUTS, provenance=cand_uv_prov), live_records=[live()],
+            candidate_receipt_keys=[*LIVE_KEYS, NIGHT[0]], base_dir=base, candidate_dir=cand,
+            qualification_files=q_uv_files,
+            qual_proof=lambda urls, shas=(): qual_states_job(
+                tmp_path / 'qual-uv', eng, dict(kind='parquet', path=str(caps_uv_pq)),
+                new_receipts={NIGHT[0]}, held_receipts=set(LIVE_KEYS),
+                qual_urls=urls, qualification_files=q_uv_files, added_failed_shas=shas,
+            ),
+        )
+        assert any(u_held in r and 'capture_reason is not implied' in r for r in uv_reasons)
 
 
 def test_any_kept_input_of_the_live_release_with_the_same_inputs_serves_and_every_kept_receipt_counts_as_live(decide):

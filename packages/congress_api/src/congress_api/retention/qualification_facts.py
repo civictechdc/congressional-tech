@@ -845,7 +845,9 @@ def reconcile_store_receipt_qualifications(
                      if isinstance(c, Mapping) and c.get("attempt", 0) == 0 and c.get("member_path") is None),
                     None,
                 )
-                sha = extract_sha256_hex(primary.get("sha256")) if primary is not None else None
+                if primary is None or ("complete" in primary and primary["complete"] is not True):
+                    continue
+                sha = extract_sha256_hex(primary.get("sha256"))
                 if sha is None:
                     continue
                 req_url = line.get("requested_url") if isinstance(line.get("requested_url"), str) else None

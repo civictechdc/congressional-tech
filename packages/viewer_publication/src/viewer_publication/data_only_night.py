@@ -308,11 +308,13 @@ def _link_reasons(rule, link_proof):
     return reasons, proven, facts
 
 
-def _url_state_qualification_reasons(base_dir, candidate_dir, *, qualification_files, new_receipts, qual_proof=None):
+def _url_state_qualification_reasons(base_dir, candidate_dir, *, qualification_files, new_receipts,
+                                     qual_proof=None, added_failed_shas=()):
     """Enforce verified body-qualification transitions on url_state even when a mixed night takes data_only_causes."""
     base_pq, cand_pq = Path(base_dir) / QUEUE_FILE, Path(candidate_dir) / QUEUE_FILE
     if not (base_pq.is_file() and cand_pq.is_file()):
         return []
+    import inspect
     import pyarrow.parquet as pq
     base_names, cand_names = set(pq.read_schema(base_pq).names), set(pq.read_schema(cand_pq).names)
     needed = {'requested_url', 'capture_disposition', 'capture_reason'}
@@ -348,7 +350,12 @@ def _url_state_qualification_reasons(base_dir, candidate_dir, *, qualification_f
                 qual_urls.add(u)
             elif has_quals and not (c['capture_disposition'] == 'excluded' and c['capture_reason'] == 'scope_exclusion'):
                 qual_urls.add(u)
-    proved = qual_proof(qual_urls) if (qual_proof is not None and qual_urls) else None
+    proved = None
+    if qual_proof is not None and (qual_urls or added_failed_shas):
+        if len(inspect.signature(qual_proof).parameters) >= 2:
+            proved = qual_proof(qual_urls, set(added_failed_shas))
+        else:
+            proved = qual_proof(qual_urls)
     unproven: list[str] = []
     for c in cand_rows:
         u = c['requested_url']
@@ -359,8 +366,10 @@ def _url_state_qualification_reasons(base_dir, candidate_dir, *, qualification_f
                 if c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'body_not_qualified':
                     if not (proved is not None and url_qual is False):
                         unproven.append(u)
-                elif c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'no_satisfying_recovery' and u in qual_urls:
-                    if proved is None or url_qual is False:
+                elif c['capture_disposition'] == 'eligible' and c['capture_reason'] == 'no_satisfying_recovery':
+                    if (u in qual_urls or (added_failed_shas and (c.get('attempts') or 0) > 0)) and proved is None:
+                        unproven.append(u)
+                    elif proved is not None and url_qual is False:
                         unproven.append(u)
                 continue
             if (b['capture_disposition'] != 'eligible' or c['capture_disposition'] != 'eligible'
@@ -421,6 +430,7 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
     candidate = set(candidate_receipt_keys)
     new, groups = candidate - held, report['failing']
     reasons = [] if same else _input_reasons(candidate_record, live_records)
+    added_failed_shas: set[str] = set()
     if same:
         from congress_api.retention.qualification_facts import load_qualification_facts
         from viewer_publication.archive_model_job import provenance_record_kind
@@ -441,8 +451,14 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
                 outside_q = sorted((loaded_q.get('all_receipt_keys') or set()) - candidate)
                 if outside_q:
                     reasons.append(f'data-only night: added qualification provenance cites unknown receipts ({outside_q[:3]})')
+                added_failed_shas = {
+                    sha for sha, bq in (loaded_q.get('by_sha256') or {}).items()
+                    if not bq.get('retryable', False)
+                    and (not bq.get('qualified', False) or bq.get('media_type') != 'application/pdf')
+                }
     reasons += _url_state_qualification_reasons(
-        base_dir, candidate_dir, qualification_files=qualification_files, new_receipts=new, qual_proof=qual_proof,
+        base_dir, candidate_dir, qualification_files=qualification_files, new_receipts=new,
+        qual_proof=qual_proof, added_failed_shas=added_failed_shas,
     )
     if held - candidate:
         reasons.append(f'data-only night: {len(held - candidate)} receipts the live release read are absent from the '

@@ -180,7 +180,7 @@ def produce_daily_inputs(template,daily,*,engine,raw_store,producer_records=None
                     continue
                 etags[rk]=etag
                 parts=rk.split('/')
-                family_ok=len(parts)>=3 and parts[0]=='receipts' and parts[1] in families
+                family_ok=len(parts)>=4 and parts[0]=='receipts' and '/'.join(parts[1:-2]) in families
                 wdate=_receipt_write_date(rk)
                 if family_ok and '/assemble-' not in rk and (wdate is None or wdate>=cutoff):
                     copied=work/'receipts'/rk
