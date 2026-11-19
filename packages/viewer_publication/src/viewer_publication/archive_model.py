@@ -1082,6 +1082,228 @@ EMPTY_RECORDINGS_SQL="""SELECT cast(NULL AS VARCHAR) AS video_key,arrow_cast(arr
  array_slice(make_array(named_struct('body',arrow_cast(NULL,'FixedSizeBinary(32)'),'suffix',cast(NULL AS VARCHAR),'format',cast(NULL AS VARCHAR),
   'language',cast(NULL AS VARCHAR),'production',cast(NULL AS VARCHAR))),1,0) AS tracks,cast(NULL AS VARCHAR) AS recording_scope WHERE false"""
 EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL="SELECT cast(NULL AS VARCHAR) AS video_key,cast(NULL AS BIGINT) AS event_id,cast(NULL AS VARCHAR) AS source_ref,cast(NULL AS VARCHAR) AS link_rule,cast(NULL AS VARCHAR) AS match_note WHERE false"
+EMPTY_RECORDING_PAGE_EVENT_LINKS_SQL="SELECT cast(NULL AS VARCHAR) AS page_body,cast(NULL AS BIGINT) AS event_id WHERE false"
+RECORDING_MATCH_STOPWORDS_SQL="""SELECT make_array(
+ '','the','a','an','of','and','to','in','on','for','with','from','at','by','is','are','be','as','or','its','it','this','that',
+ 'hearing','hearings','subcommittee','committee','house','united','states','congress','washington','full','open','closed','public',
+ 'session','examine','examining','review','oversight','part','http','https','www','gov','html','htm','aspx','events','event','calendar',
+ 'eventsingle','eventid','democrats','republicans','markups','markup','business','meeting','entitled','legislative','office'
+) AS sw"""
+RECORDING_PAGE_EVENT_LINKS_SQL="""SELECT DISTINCT page_body,event_id FROM (
+ SELECT vp.page_body,
+  try_cast(coalesce(
+   (regexp_match(l.target_url,'(?i)docs[.]house[.]gov/[^\\s"''<>]*[?&]eventid=0*(1[0-9]{5})\\b'))[1],
+   (regexp_match(l.target_url,'(?i)congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/0*(1[0-9]{5})\\b'))[1]
+  ) AS BIGINT) AS event_id
+ FROM recording_video_pages vp
+ JOIN resolved_link_targets l ON l.page_body=vp.page_body
+ WHERE l.target_url IS NOT NULL
+  AND regexp_like(l.target_url,'(?i)(?:docs[.]house[.]gov/[^\\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/)0*1[0-9]{5}\\b')
+) x WHERE event_id IS NOT NULL"""
+RECORDING_PAGE_MEETINGS_SQL="""WITH raw_routes AS (
+ SELECT vp.page_body,unnest(pf.named_meetings) AS event_id,
+  cast(0 AS INT) AS route_priority,
+  cast('page_named_meeting' AS VARCHAR) AS link_rule,
+  cast('page_named_meeting' AS VARCHAR) AS match_note
+ FROM recording_video_pages vp JOIN page_facts pf ON pf.body_sha=vp.body_sha
+ WHERE pf.status='completed' AND pf.named_meetings IS NOT NULL
+ UNION ALL
+ SELECT DISTINCT vps.page_body,try_cast(a.meeting_key AS BIGINT) AS event_id,
+  cast(1 AS INT) AS route_priority,
+  cast('source_annotation' AS VARCHAR) AS link_rule,
+  cast('source_annotation' AS VARCHAR) AS match_note
+ FROM recording_page_sources vps JOIN source_annotation_addresses a ON a.source_id=vps.source_id
+ WHERE try_cast(a.meeting_key AS BIGINT) IS NOT NULL
+ UNION ALL
+ SELECT vp.page_body,s.event_id,
+  cast(2 AS INT) AS route_priority,
+  cast('senate_page' AS VARCHAR) AS link_rule,
+  cast('senate_page' AS VARCHAR) AS match_note
+ FROM recording_video_pages vp JOIN senate_page_meeting_links s ON s.record_sha_hex=vp.page_body
+ UNION ALL
+ SELECT page_body,event_id,
+  CASE link_rule
+   WHEN 'house_doc_link' THEN cast(3 AS INT)
+   WHEN 'house_title_words' THEN cast(4 AS INT)
+   WHEN 'house_title_and_full_words' THEN cast(5 AS INT)
+   WHEN 'house_text_head_strong' THEN cast(6 AS INT)
+   WHEN 'house_single_day_title' THEN cast(7 AS INT)
+   WHEN 'house_single_day_generic' THEN cast(8 AS INT)
+   ELSE cast(9 AS INT)
+  END AS route_priority,
+  link_rule,
+  match_note
+ FROM house_page_meeting_links
+), ranked AS (
+ SELECT page_body,event_id,route_priority,link_rule,match_note,
+  row_number() OVER (PARTITION BY page_body,event_id ORDER BY route_priority ASC,match_note ASC) AS rn
+ FROM raw_routes
+ WHERE event_id IS NOT NULL
+)
+SELECT page_body,event_id,route_priority,link_rule,match_note
+FROM ranked
+WHERE rn=1"""
+RECORDING_PAGE_VIDEO_EVENTS_SQL="""WITH pairs AS (
+ SELECT pvl.page_body,pvl.extracted_key AS video_key,pm.event_id,
+  pm.route_priority,pm.link_rule,pm.match_note
+ FROM recording_page_meetings pm JOIN recording_video_links pvl ON pvl.page_body=pm.page_body
+ WHERE pvl.extracted_key IS NOT NULL AND pm.event_id IS NOT NULL
+), ranked AS (
+ SELECT video_key,event_id,page_body,link_rule,match_note,
+  min(page_body) OVER (PARTITION BY video_key,event_id) AS min_page_body,
+  row_number() OVER (PARTITION BY video_key,event_id ORDER BY route_priority ASC,page_body ASC) AS rn
+ FROM pairs
+)
+SELECT video_key,event_id,'committee_page:'||min_page_body AS source_ref,link_rule,
+ CASE WHEN page_body<>min_page_body THEN match_note||' [via committee_page:'||page_body||']'
+  ELSE match_note END AS match_note
+FROM ranked
+WHERE rn=1"""
+
+
+def recording_match_prep_steps(*,videos_relation='videos_export',include_stopwords=False):
+    """Materialize reusable recording-match sub-relations once per step so entity-recording-matches.sql
+    evaluates no CTE more than once (AGENTS.md: a CTE runs once per reference)."""
+    steps=[]
+    if include_stopwords:
+        steps.append(dict(name='recording_match_stopwords',sql=RECORDING_MATCH_STOPWORDS_SQL,materialize=True))
+    steps += [
+        dict(name='recording_publisher_match_rows',sql="""WITH publisher AS (
+         SELECT event_id,unnest(videos) AS v FROM meetings_resolved
+        )
+        SELECT DISTINCT cast('event' AS VARCHAR) AS subject_kind,cast(p.event_id AS VARCHAR) AS subject_id,
+         p.event_id,cast(NULL AS VARCHAR) AS package_id,
+         coalesce(a.canonical_key,p.v['video_key']) AS video_key,p.v['url'] AS url,
+         cast('publisher_link' AS VARCHAR) AS basis,cast('linked' AS VARCHAR) AS decision,cast(100 AS SMALLINT) AS score,
+         cast('unknown' AS VARCHAR) AS recording_scope,cast('asserted' AS VARCHAR) AS status,
+         cast(NULL AS VARCHAR) AS note,cast('meetings.videos' AS VARCHAR) AS source_ref
+        FROM video_key_aliases a
+        RIGHT JOIN publisher p ON a.alias_key=p.v['video_key']""",materialize=True),
+        dict(name='recording_page_video_facts',sql=f"""SELECT DISTINCT
+         v.video_key,
+         coalesce(v.stated_event_ids,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)')) AS stated_event_ids,
+         v.title IS NOT NULL AND regexp_like(v.title,'(?i)\\b(markup|organizational\\s+meeting|subcommittee\\s+assignments)\\b') AS is_markup_video,
+         v.title IS NOT NULL AND regexp_like(v.title,'(?i)\\bround[- ]?tables?\\b') AS is_roundtable_video,
+         v.title IS NOT NULL AND regexp_like(v.title,'(?i)\\b(hearing|markup)\\b') AS is_hearing_or_markup_video,
+         v.title IS NOT NULL AND regexp_like(v.title,'(?i)(?:\\bevent\\s*id|\\bid)\\s*[=:#]\\s*0*[0-9]{{5,6}}\\b') AS has_explicit_event_id_in_title,
+         v.title IS NULL
+          OR cardinality(array_distinct(array_except(
+              string_to_array(trim(regexp_replace(regexp_replace(lower(v.title),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{{1,2}}\\b',' ','g')),' '),
+              sw.sw
+             )))=0
+          OR (
+           NOT regexp_like(
+            regexp_replace(lower(v.title),'\\b(?:pending\\s+legislation|various\\s+measures|legislation)\\b','','g'),
+            '\\b(?:hearing|hearings|markup|mark-?up|meeting|session)\\s+(?:on|of|to|for|regarding|concerning|about|titled|entitled)\\s+[a-z0-9]'
+           )
+           AND NOT (
+            regexp_like(lower(v.title),'\\s+[-–—]\\s+[a-z]')
+            AND NOT regexp_like(lower(v.title),'\\s+[-–—]\\s+(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[.]?\\s+[0-9]|eventid|part\\s+[0-9]|full\\s+committee|subcommittee|the\\s+subcommittee|oversight|legislative|hearing|markup|live)')
+           )
+           AND (
+            regexp_like(trim(v.title),'(?i)^(?:(?:oversight|legislative|public|full\\s+committee|subcommittee|joint|budget|democratic|republican|virtual|hybrid|live)\\s+)*(?:(?:hearing|markup|mark-?up|business\\s+meeting)\\s*(?:\\||[-–—:])\\s*)?(?:(?:the\\s+)?(?:select\\s+)?subcommittee\\s+on\\s+[^:|–—]+|[^:|–—]+\\s+subcommittee|full\\s+committee)(?:\\s*(?:oversight|legislative|public|joint|budget|business)?\\s*(?:hearing|markup|mark-?up|meeting))?(?:\\s*[-–—:,]?\\s*(?:eventid\\s*=\\s*[0-9]+|[0-9]{{1,2}}[./-][0-9]{{1,2}}[./-][0-9]{{2,4}}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*[.]?\\s+[0-9]{{1,2}},?\\s+[0-9]{{4}}))*\\s*:?$')
+            OR cardinality(array_distinct(array_except(
+                string_to_array(trim(regexp_replace(regexp_replace(
+                 regexp_replace(lower(v.title),'(?i)\\b(?:[0-9]{{1,2}}[./:-][0-9]{{1,2}}[./:-][0-9]{{2,4}}|[0-9]{{1,2}}:[0-9]{{2}}\\s*(?:am|pm)|eventid\\s*=\\s*[0-9]+|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*[.]?\\s+[0-9]{{1,2}},?\\s+[0-9]{{4}}|part\\s+[0-9]+|full\\s+committee|subcommittee|joint|field|virtual|hybrid|oversight|legislative|public|democratic|republican|business|meeting|markup|mark-?up|hearing|hearings|pending\\s+legislation|various\\s+measures|live)\\b',' ','g'),
+                 '[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{{1,2}}\\b',' ','g')),' '),
+                sw.sw
+               )))=0
+           )
+          ) AS is_generic_video_title,
+         array_distinct(array_except(
+          string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(v.title,'')),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{{1,2}}\\b',' ','g')),' '),
+          sw.sw
+         )) AS video_words
+        FROM (SELECT DISTINCT video_key FROM recording_page_video_events WHERE video_key IS NOT NULL) k
+        JOIN {videos_relation} v ON v.video_key=k.video_key
+        CROSS JOIN recording_match_stopwords sw""",materialize=True),
+        dict(name='recording_page_video_stated_overlaps',sql="""SELECT
+         s.video_key,
+         max(CASE WHEN m.event_id IS NOT NULL THEN cast(1 AS BIGINT) ELSE cast(0 AS BIGINT) END)=1 AS has_known_stated_meeting,
+         max(coalesce(cast(cardinality(array_intersect(
+          s.video_words,
+          array_distinct(array_except(
+           string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(m.title,'')||' '||coalesce(array_to_string(m.subject_keys,' '),'')),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{1,2}\\b',' ','g')),' '),
+           sw.sw
+          ))
+         )) AS BIGINT),cast(0 AS BIGINT))) AS max_stated_overlap
+        FROM (
+         SELECT video_key,video_words,unnest(stated_event_ids) AS stated_id
+         FROM recording_page_video_facts
+         WHERE cardinality(stated_event_ids)>0
+        ) s
+        LEFT JOIN known_meetings m ON m.event_id=s.stated_id
+        CROSS JOIN recording_match_stopwords sw
+        GROUP BY s.video_key""",materialize=True),
+        dict(name='recording_page_match_rows',sql="""WITH page_meeting_candidates AS (
+         SELECT p.video_key,p.event_id,p.source_ref,p.link_rule,p.match_note,
+          lower(coalesce(m.meeting_type,''))='markup'
+           OR regexp_like(coalesce(m.title,''),'(?i)\\b(markup|business\\s+meeting|organizational|subcommittee\\s+assignments)\\b') AS is_markup_meeting,
+          regexp_like(coalesce(m.title,''),'(?i)\\bround[- ]?tables?\\b') AS is_roundtable_meeting,
+          array_distinct(array_except(
+           string_to_array(trim(regexp_replace(regexp_replace(lower(coalesce(m.title,'')||' '||coalesce(array_to_string(m.subject_keys,' '),'')),'[^a-z0-9]+',' ','g'),'\\b[a-z0-9]{1,2}\\b',' ','g')),' '),
+           sw.sw
+          )) AS meeting_words
+         FROM recording_page_video_events p
+         JOIN known_meetings m ON m.event_id=p.event_id
+         CROSS JOIN recording_match_stopwords sw
+         WHERE p.video_key IS NOT NULL AND p.event_id IS NOT NULL
+        ), page_evaluated AS (
+         SELECT pm.event_id,pm.video_key,pm.source_ref,pm.link_rule,pm.match_note,
+          pm.is_markup_meeting,pm.is_roundtable_meeting,
+          coalesce(pv.is_markup_video,false) AS is_markup_video,
+          coalesce(pv.is_roundtable_video,false) AS is_roundtable_video,
+          coalesce(pv.is_hearing_or_markup_video,false) AS is_hearing_or_markup_video,
+          coalesce(pv.has_explicit_event_id_in_title,false) AS has_explicit_event_id_in_title,
+          coalesce(pv.is_generic_video_title,true) AS is_generic_video_title,
+          coalesce(pv.stated_event_ids,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)')) AS stated_event_ids,
+          coalesce(sv.has_known_stated_meeting,false) AS has_known_stated_meeting,
+          coalesce(sv.max_stated_overlap,cast(0 AS BIGINT)) AS max_stated_overlap,
+          cast(cardinality(array_intersect(
+           coalesce(pv.video_words,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')),
+           pm.meeting_words
+          )) AS BIGINT) AS video_meeting_overlap
+         FROM recording_page_video_stated_overlaps sv
+         RIGHT JOIN (
+          recording_page_video_facts pv
+          RIGHT JOIN page_meeting_candidates pm ON pv.video_key=pm.video_key
+         ) ON sv.video_key=pm.video_key
+        )
+        SELECT DISTINCT cast('event' AS VARCHAR) AS subject_kind,cast(e.event_id AS VARCHAR) AS subject_id,
+         e.event_id,cast(NULL AS VARCHAR) AS package_id,e.video_key,cast(NULL AS VARCHAR) AS url,
+         cast('committee_page' AS VARCHAR) AS basis,cast('linked' AS VARCHAR) AS decision,cast(100 AS SMALLINT) AS score,
+         cast('unknown' AS VARCHAR) AS recording_scope,cast('asserted' AS VARCHAR) AS status,
+         e.match_note AS note,e.source_ref
+        FROM page_evaluated e
+        WHERE (NOT e.is_markup_video OR e.is_markup_meeting)
+         AND NOT (e.is_roundtable_video AND NOT e.is_roundtable_meeting)
+         AND NOT (e.is_roundtable_meeting AND e.is_hearing_or_markup_video AND NOT e.is_roundtable_video)
+         AND NOT (
+          cardinality(e.stated_event_ids)>0
+          AND NOT array_has(e.stated_event_ids,e.event_id)
+          AND (
+           (NOT e.is_generic_video_title AND (
+            (e.video_meeting_overlap=0 AND e.max_stated_overlap>=2)
+            OR (e.video_meeting_overlap<=1 AND e.max_stated_overlap>=4)
+           ))
+           OR (e.link_rule IN ('house_title_words','house_title_and_full_words','house_text_head_strong','house_text_head_weak','house_single_day_title','house_single_day_generic')
+            AND e.video_meeting_overlap=0
+            AND (
+             (NOT e.is_generic_video_title AND e.has_explicit_event_id_in_title)
+             OR (e.has_known_stated_meeting AND e.max_stated_overlap>0)
+            ))
+          )
+         )
+         AND NOT (
+          e.link_rule='house_text_head_weak'
+          AND NOT e.is_generic_video_title
+          AND e.video_meeting_overlap=0
+         )""",materialize=True),
+        dict(name='recording_linked_packages',sql="""SELECT DISTINCT l.package_id
+        FROM (SELECT event_id FROM recording_publisher_match_rows UNION SELECT event_id FROM recording_page_match_rows) p
+        JOIN meeting_transcript_links l ON p.event_id=l.event_id""",materialize=True),
+    ]
+    return steps
 
 
 def recordings_export_sql(*,root=ROOT,explorer_inputs=False):
@@ -1562,6 +1784,8 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     from viewer_publication.archive_url_state import url_state_steps,url_state_diagnostics
     steps += url_state_steps(root=root,recovery_policy=prepared.get('recovery_policy'))
     auxiliary=[]
+    if prepared.get('include_entities') or prepared.get('explorer_inputs'):
+        steps.append(dict(name='recording_match_stopwords',sql=RECORDING_MATCH_STOPWORDS_SQL,materialize=True))
     if not prepared.get('include_entities'):
         # Meetings list caption tracks among their transcripts (ct-1i4q); without entities there are none.
         steps += [
@@ -1583,8 +1807,10 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                     SELECT DISTINCT event_id FROM meetings_resolved WHERE event_id IS NOT NULL
                 ) k ON r.event_id=k.event_id
                 WHERE k.event_id IS NOT NULL""",materialize=True),
+            dict(name='videos_entity',sql=(Path(root)/'model/sql/entity-videos.sql').read_text(),materialize=True),
         ]
-        auxiliary += [(name,(Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary) for name,file,keys,dictionary in EXPLORER_TABLES[:3]]
+        auxiliary += [(name,'SELECT * FROM videos_entity' if name=='videos' else (Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary)
+                      for name,file,keys,dictionary in EXPLORER_TABLES[:3]]
     if prepared.get('include_entities'):
         from congress_api.lake.playlist_records import GOOD_FETCH_CAPTURE_SQL,PLAYLIST_CAPTURE_SQL
         steps += [
@@ -1619,50 +1845,9 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                 FROM recording_video_links WHERE page_body IS NOT NULL""",materialize=True),
             dict(name='recording_page_sources',sql="""SELECT DISTINCT c.source_id,c.body_sha AS page_body
                 FROM recording_video_pages vp JOIN capture_source_contexts c ON c.body_sha=vp.page_body""",materialize=True),
+            dict(name='recording_page_event_links',sql=RECORDING_PAGE_EVENT_LINKS_SQL,materialize=True),
             dict(name='house_page_meeting_links',sql=(Path(root)/'model/sql/house-page-meeting-links.sql').read_text(),materialize=True),
-            dict(name='recording_page_meetings',sql="""WITH raw_routes AS (
-                SELECT vp.page_body,unnest(pf.named_meetings) AS event_id,
-                    cast(0 AS INT) AS route_priority,
-                    cast('page_named_meeting' AS VARCHAR) AS link_rule,
-                    cast('page_named_meeting' AS VARCHAR) AS match_note
-                FROM recording_video_pages vp JOIN page_facts pf ON pf.body_sha=vp.body_sha
-                WHERE pf.status='completed' AND pf.named_meetings IS NOT NULL
-                UNION ALL
-                SELECT DISTINCT vps.page_body,try_cast(a.meeting_key AS BIGINT) AS event_id,
-                    cast(1 AS INT) AS route_priority,
-                    cast('source_annotation' AS VARCHAR) AS link_rule,
-                    cast('source_annotation' AS VARCHAR) AS match_note
-                FROM recording_page_sources vps JOIN source_annotation_addresses a ON a.source_id=vps.source_id
-                WHERE try_cast(a.meeting_key AS BIGINT) IS NOT NULL
-                UNION ALL
-                SELECT vp.page_body,s.event_id,
-                    cast(2 AS INT) AS route_priority,
-                    cast('senate_page' AS VARCHAR) AS link_rule,
-                    cast('senate_page' AS VARCHAR) AS match_note
-                FROM recording_video_pages vp JOIN senate_page_meeting_links s ON s.record_sha_hex=vp.page_body
-                UNION ALL
-                SELECT page_body,event_id,
-                    CASE link_rule
-                        WHEN 'house_doc_link' THEN cast(3 AS INT)
-                        WHEN 'house_title_words' THEN cast(4 AS INT)
-                        WHEN 'house_title_and_full_words' THEN cast(5 AS INT)
-                        WHEN 'house_text_head_strong' THEN cast(6 AS INT)
-                        WHEN 'house_single_day_title' THEN cast(7 AS INT)
-                        WHEN 'house_single_day_generic' THEN cast(8 AS INT)
-                        ELSE cast(9 AS INT)
-                    END AS route_priority,
-                    link_rule,
-                    match_note
-                FROM house_page_meeting_links
-            ), ranked AS (
-                SELECT page_body,event_id,route_priority,link_rule,match_note,
-                    row_number() OVER (PARTITION BY page_body,event_id ORDER BY route_priority ASC,match_note ASC) AS rn
-                FROM raw_routes
-                WHERE event_id IS NOT NULL
-            )
-            SELECT page_body,event_id,route_priority,link_rule,match_note
-            FROM ranked
-            WHERE rn=1""",materialize=True),
+            dict(name='recording_page_meetings',sql=RECORDING_PAGE_MEETINGS_SQL,materialize=True),
             dict(name='recording_fetch_candidates',sql=f"""SELECT c.receipt_key,c.receipt_line,c.capture_index,c.sha256,
                 coalesce(c.stored_suffix,'.gz') AS suffix,
                 coalesce(c.sniffed_format,CASE lower(split_part(c.media_type,';',1)) WHEN 'text/vtt' THEN 'vtt' WHEN 'application/vnd.apple.mpegurl' THEN 'm3u8' WHEN 'application/x-mpegurl' THEN 'm3u8' END) AS body_format,
@@ -1746,20 +1931,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             dict(name='caption_resources',sql=(Path(root)/'model/sql/caption-resources.sql').read_text(),materialize=True),
             dict(name='retained_caption_tracks',sql="SELECT DISTINCT video_key,track_body FROM caption_resources WHERE status='retained' AND ordinal>0 AND format IN ('vtt','srt','ttml')",materialize=True),
             dict(name='recordings_entity',sql=(Path(root)/'model/sql/entity-recordings.sql').read_text(),materialize=True),
-            dict(name='recording_page_video_events',sql="""WITH pairs AS (
-                SELECT pvl.page_body,pvl.extracted_key AS video_key,pm.event_id,
-                    pm.route_priority,pm.link_rule,pm.match_note
-                FROM recording_page_meetings pm JOIN recording_video_links pvl ON pvl.page_body=pm.page_body
-                WHERE pvl.extracted_key IS NOT NULL AND pm.event_id IS NOT NULL
-            ), ranked AS (
-                SELECT video_key,event_id,link_rule,match_note,
-                    min(page_body) OVER (PARTITION BY video_key,event_id) AS min_page_body,
-                    row_number() OVER (PARTITION BY video_key,event_id ORDER BY route_priority ASC,page_body ASC) AS rn
-                FROM pairs
-            )
-            SELECT video_key,event_id,'committee_page:'||min_page_body AS source_ref,link_rule,match_note
-            FROM ranked
-            WHERE rn=1""",materialize=True)]
+            dict(name='recording_page_video_events',sql=RECORDING_PAGE_VIDEO_EVENTS_SQL,materialize=True)]
         auxiliary += [
             ('recordings',recordings_export_sql(root=root,explorer_inputs=bool(prepared.get('explorer_inputs'))),['video_key'],['tracks.list.item.suffix','tracks.list.item.format','tracks.list.item.language','tracks.list.item.production','recording_scope']),
             ('meetings',(Path(root)/'model/sql/entity-meetings.sql').read_text(),['event_id'],MEETING_DICTIONARY),
@@ -1779,6 +1951,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         auxiliary.append(('meetings',(Path(root)/'model/sql/entity-meetings.sql').read_text(),['event_id'],MEETING_DICTIONARY))
     explorer_diagnostics=[]
     if prepared.get('explorer_inputs'):
+        steps += recording_match_prep_steps(videos_relation='videos_entity')
         auxiliary += [(name,(Path(root)/'model/sql'/(file+'.sql')).read_text(),keys,dictionary) for name,file,keys,dictionary in EXPLORER_TABLES[3:]]
         from congress_api.lake.committee_records import CANDIDATE_SQL
         explorer_diagnostics=[dict(name='explorer_invariants',sql=rf"""SELECT (SELECT count(*) FROM meeting_coverage_export)-5*(SELECT count(*) FROM meetings_export) AS coverage_row_mismatch,

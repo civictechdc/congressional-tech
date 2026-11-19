@@ -17,8 +17,8 @@ from docspec_client.client import NativeDatasets
 from viewer_publication.archive_format import MEETING_DICTIONARY, _settings
 from viewer_publication.archive_model_lifetimes import retire_relations
 from viewer_publication.archive_model_profile import expand_parser_version_rows
-from viewer_publication.archive_model import (EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, SPICY_SCHEMAS, TRANSCRIPT_HEADINGS_UNAVAILABLE, WITNESSES_SQL, appearance_steps, channel_directory_rows, meeting_records_have_document_references,
-    meeting_steps, registry_inputs, selected_record_step)
+from viewer_publication.archive_model import (EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL, EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, SPICY_SCHEMAS, TRANSCRIPT_HEADINGS_UNAVAILABLE, WITNESSES_SQL, appearance_steps, channel_directory_rows, meeting_records_have_document_references,
+    meeting_steps, recording_match_prep_steps, registry_inputs, selected_record_step)
 from congress_api.retention.provenance import field, json_input, run_job
 
 
@@ -172,6 +172,9 @@ def main(argv=None):
     outputs.append(dict(name='witnesses.parquet', path=str(args.output / 'witnesses.parquet'), sql='SELECT * FROM witnesses_export',
         settings=_settings('whole', ['occasion', 'panel_order', 'display_order', 'witness_key'])))
     for name, file, keys, dictionary in EXPLORER_TABLES:
+        if name == 'recording_matches':
+            steps.append(dict(name='recording_page_video_events', sql=EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL, materialize=True))
+            steps.extend(recording_match_prep_steps(videos_relation='videos_export', include_stopwords=True))
         steps.append(dict(name=name + '_export', sql=sql(file), materialize=True))
         outputs.append(dict(name=name + '.parquet', path=str(args.output / (name + '.parquet')), sql=f'SELECT * FROM {name}_export',
             settings=_settings('whole', keys, dictionary=dictionary)))

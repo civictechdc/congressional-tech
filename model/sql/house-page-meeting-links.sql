@@ -4,7 +4,8 @@
 -- and proceeding date, corroborated by substantive title/heading/measure word overlap (or unique
 -- same-kind proceeding when one side carries only a generic kind label).
 -- Proceeding kind separates roundtables from markups and hearings; explicit House event IDs on the
--- page (page_facts.named_meetings or House repository/congress.gov EventID citations) veto date
+-- page (page_facts.named_meetings, outbound docs.house.gov/congress.gov links in
+-- recording_page_event_links, or explicit EventID citations in title/heading/text/URL) veto date
 -- links to a conflicting event_id; and trailing committee site-name suffixes are stripped from
 -- page titles before overlap scoring. Each accepted row carries deterministic rule provenance
 -- (link_rule and match_note with sorted shared words when present).
@@ -15,14 +16,7 @@
 -- query on those hosts is one page. The two party sites are different publishers, so a date
 -- holding both a democrats- and a republicans- page is never one page (party_site). It cannot
 -- see an alias whose path or query differs.
-WITH stopwords AS (
- SELECT make_array(
-  '','the','a','an','of','and','to','in','on','for','with','from','at','by','is','are','be','as','or','its','it','this','that',
-  'hearing','hearings','subcommittee','committee','house','united','states','congress','washington','full','open','closed','public',
-  'session','examine','examining','review','oversight','part','http','https','www','gov','html','htm','aspx','events','event','calendar',
-  'eventsingle','eventid','democrats','republicans','markups','markup','business','meeting','entitled','legislative','office'
- ) AS sw
-), house_hosts AS (
+WITH house_hosts AS (
  SELECT 'agriculture' AS host,'hsag00' AS parent_committee
  UNION ALL SELECT 'appropriations','hsap00'
  UNION ALL SELECT 'armedservices','hsas00'
@@ -77,6 +71,11 @@ WITH stopwords AS (
  FROM page_doc_events
  GROUP BY page_body
  HAVING min(event_id)=max(event_id)
+), page_event_links AS (
+ SELECT page_body,array_sort(array_distinct(array_agg(event_id))) AS linked_event_ids
+ FROM recording_page_event_links
+ WHERE page_body IS NOT NULL AND event_id IS NOT NULL
+ GROUP BY page_body
 ), page_facts_matched AS (
  SELECT vp.page_body,pf.title,pf.heading,pf.content_date,pf.text_head,pf.named_meetings
  FROM recording_video_pages vp
@@ -104,18 +103,18 @@ WITH stopwords AS (
   array_distinct(array_concat(
    coalesce(pf.named_meetings,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)')),
    CASE
-    WHEN try_cast((regexp_match(coalesce(pf.heading,'')||' '||coalesce(pf.title,''),'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+/house-event/|\bevent\s*id\s*[=:#]\s*)(1[0-9]{5})\b'))[1] AS BIGINT) IS NOT NULL
-    THEN make_array(try_cast((regexp_match(coalesce(pf.heading,'')||' '||coalesce(pf.title,''),'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+/house-event/|\bevent\s*id\s*[=:#]\s*)(1[0-9]{5})\b'))[1] AS BIGINT))
+    WHEN try_cast((regexp_match(coalesce(pf.heading,'')||' '||coalesce(pf.title,''),'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/|\bevent\s*id\s*[=:#]\s*)0*(1[0-9]{5})\b'))[1] AS BIGINT) IS NOT NULL
+    THEN make_array(try_cast((regexp_match(coalesce(pf.heading,'')||' '||coalesce(pf.title,''),'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/|\bevent\s*id\s*[=:#]\s*)0*(1[0-9]{5})\b'))[1] AS BIGINT))
     ELSE arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)')
    END,
    CASE
-    WHEN try_cast((regexp_match(coalesce(pf.text_head,''),'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+/house-event/|\bevent\s*id\s*[=:#]\s*)(1[0-9]{5})\b'))[1] AS BIGINT) IS NOT NULL
-    THEN make_array(try_cast((regexp_match(coalesce(pf.text_head,''),'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+/house-event/|\bevent\s*id\s*[=:#]\s*)(1[0-9]{5})\b'))[1] AS BIGINT))
+    WHEN try_cast((regexp_match(coalesce(pf.text_head,''),'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/|\bevent\s*id\s*[=:#]\s*)0*(1[0-9]{5})\b'))[1] AS BIGINT) IS NOT NULL
+    THEN make_array(try_cast((regexp_match(coalesce(pf.text_head,''),'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/|\bevent\s*id\s*[=:#]\s*)0*(1[0-9]{5})\b'))[1] AS BIGINT))
     ELSE arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)')
    END,
    CASE
-    WHEN try_cast((regexp_match(u.source_url,'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+/house-event/)(1[0-9]{5})\b'))[1] AS BIGINT) IS NOT NULL
-    THEN make_array(try_cast((regexp_match(u.source_url,'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+/house-event/)(1[0-9]{5})\b'))[1] AS BIGINT))
+    WHEN try_cast((regexp_match(u.source_url,'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/)0*(1[0-9]{5})\b'))[1] AS BIGINT) IS NOT NULL
+    THEN make_array(try_cast((regexp_match(u.source_url,'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/)0*(1[0-9]{5})\b'))[1] AS BIGINT))
     ELSE arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)')
    END
   )) AS row_stated_ids,
@@ -125,16 +124,18 @@ WITH stopwords AS (
   regexp_match(u.source_url,'(?:^|-)([0-9])([0-9]{2})(20[0-9]{2})(?:[^0-9]|$)') AS u_mdy7
  FROM page_facts_matched pf
  RIGHT JOIN (
-  SELECT h.page_body,h.source_url,
-   regexp_replace(h.host,'^(?:edit-)?(?:democrats-|republicans-|archives[0-9]*-)','') AS host_stem,
-   (regexp_match(h.host,'^(?:edit-)?(democrats|republicans)-'))[1] AS party_site
-  FROM (
-   SELECT pu.page_body,pu.source_url,
-    lower((regexp_match(pu.source_url,'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]house[.]gov'))[1]) AS host
-   FROM page_urls pu
-  ) h
- ) u ON pf.page_body=u.page_body
- JOIN house_hosts hh ON hh.host=u.host_stem
+  house_hosts hh
+  JOIN (
+   SELECT h.page_body,h.source_url,
+    regexp_replace(h.host,'^(?:edit-)?(?:democrats-|republicans-|archives[0-9]*-)','') AS host_stem,
+    (regexp_match(h.host,'^(?:edit-)?(democrats|republicans)-'))[1] AS party_site
+   FROM (
+    SELECT pu.page_body,pu.source_url,
+     lower((regexp_match(pu.source_url,'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]house[.]gov'))[1]) AS host
+    FROM page_urls pu
+   ) h
+  ) u ON hh.host=u.host_stem
+ ) ON pf.page_body=u.page_body
 ), pages_text_dates AS (
  SELECT r.*,
   CASE WHEN t_full IS NOT NULL THEN try_cast(t_full[3]||'-'||lpad(cast(array_position(full_m,lower(t_full[1])) AS VARCHAR),2,'0')||'-'||lpad(t_full[2],2,'0') AS DATE) END AS text_full_date,
@@ -151,7 +152,7 @@ WITH stopwords AS (
    regexp_match(text_head,'\b([0-9]{2})[.]([0-9]{2})[.]([0-9]{2})\b') AS t_dot2
   FROM pages_raw
  ) r
-), pages_grouped AS (
+), pages_grouped_base AS (
  SELECT
   page_body,
   parent_committee,
@@ -175,6 +176,23 @@ WITH stopwords AS (
   ) AS page_date
  FROM pages_text_dates
  GROUP BY page_body,parent_committee
+), pages_grouped AS (
+ SELECT
+  g.page_body,
+  g.parent_committee,
+  g.page_key,
+  g.party_lo,
+  g.party_hi,
+  g.title_text,
+  g.full_text,
+  g.event_citation_text,
+  array_sort(array_distinct(array_concat(
+   g.stated_event_ids,
+   coalesce(pel.linked_event_ids,arrow_cast(array_slice(make_array(cast(NULL AS BIGINT)),1,0),'List(Int64)'))
+  ))) AS stated_event_ids,
+  g.page_date
+ FROM page_event_links pel
+ RIGHT JOIN pages_grouped_base g ON pel.page_body=g.page_body
 ), house_pages AS (
  SELECT
   g.page_body,
@@ -182,10 +200,10 @@ WITH stopwords AS (
   g.page_date,
   g.stated_event_ids,
   g.event_citation_text,
-  regexp_like(g.title_text,'(?i)\broundtable\b') AS is_roundtable,
+  regexp_like(g.title_text,'(?i)\bround[- ]?tables?\b') AS is_roundtable,
   regexp_like(g.title_text,'(?i)\b(markup|business\s+meeting)\b') AS is_markup,
   CASE
-   WHEN regexp_like(g.title_text,'(?i)\broundtable\b') THEN 'roundtable'
+   WHEN regexp_like(g.title_text,'(?i)\bround[- ]?tables?\b') THEN 'roundtable'
    WHEN regexp_like(g.title_text,'(?i)\b(markup|business\s+meeting)\b') THEN 'markup'
    ELSE 'hearing'
   END AS proceeding_kind,
@@ -202,7 +220,7 @@ WITH stopwords AS (
    AND coalesce(min(g.party_lo) OVER (PARTITION BY g.page_date,g.parent_committee)=
     max(g.party_hi) OVER (PARTITION BY g.page_date,g.parent_committee),true) AS single_page_on_date
  FROM pages_grouped g
- CROSS JOIN stopwords sw
+ CROSS JOIN recording_match_stopwords sw
  WHERE g.page_date IS NOT NULL
 ), raw_house_meetings AS (
  SELECT DISTINCT
@@ -211,10 +229,10 @@ WITH stopwords AS (
   coalesce(m.title,'') AS title,
   coalesce(m.title,'')||' '||coalesce(array_to_string(m.subject_keys,' '),'') AS title_and_subjects,
   coalesce(m.not_held,false) AS not_held,
-  regexp_like(coalesce(m.title,''),'(?i)\broundtable\b') AS is_roundtable,
+  regexp_like(coalesce(m.title,''),'(?i)\bround[- ]?tables?\b') AS is_roundtable,
   lower(coalesce(m.meeting_type,''))='markup' OR regexp_like(coalesce(m.title,''),'(?i)\b(markup|business\s+meeting)\b') AS is_markup,
   CASE
-   WHEN regexp_like(coalesce(m.title,''),'(?i)\broundtable\b') THEN 'roundtable'
+   WHEN regexp_like(coalesce(m.title,''),'(?i)\bround[- ]?tables?\b') THEN 'roundtable'
    WHEN lower(coalesce(m.meeting_type,''))='markup' OR regexp_like(coalesce(m.title,''),'(?i)\b(markup|business\s+meeting)\b') THEN 'markup'
    ELSE 'hearing'
   END AS proceeding_kind,
@@ -245,7 +263,7 @@ WITH stopwords AS (
   first_value(m.event_id) OVER (PARTITION BY m.meeting_date,m.parent_committee,m.proceeding_kind ORDER BY m.event_id ASC,m.title ASC)=
    first_value(m.event_id) OVER (PARTITION BY m.meeting_date,m.parent_committee,m.proceeding_kind ORDER BY m.event_id DESC,m.title ASC) AS single_kind_on_date
  FROM raw_house_meetings m
- CROSS JOIN stopwords sw
+ CROSS JOIN recording_match_stopwords sw
 ), dated_overlaps AS (
  SELECT
   p.page_body,
@@ -256,12 +274,13 @@ WITH stopwords AS (
   p.is_roundtable<>m.is_roundtable AS roundtable_mismatch,
   coalesce(cardinality(p.stated_event_ids),0)>0
    AND NOT array_has(p.stated_event_ids,m.event_id)
-   AND NOT regexp_like(p.event_citation_text,'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+/house-event/|\bevent\s*id\s*[=:#]\s*)'||cast(m.event_id AS VARCHAR)||'\b') AS stated_event_conflict,
+   AND NOT regexp_like(p.event_citation_text,'(?i)(?:docs[.]house[.]gov/[^\s"''<>]*[?&]eventid=|congress[.]gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/|\bevent\s*id\s*[=:#]\s*)0*'||cast(m.event_id AS VARCHAR)||'\b') AS stated_event_conflict,
   NOT m.not_held AS held_ok,
   cardinality(p.title_words)=0 OR cardinality(m.title_only_words)=0 AS generic_side,
   cast(cardinality(m.title_only_words) AS BIGINT) AS meeting_title_word_count,
   array_sort(array_intersect(p.title_words,m.words)) AS title_overlap_words,
-  array_sort(array_intersect(p.full_words,m.words)) AS full_overlap_words
+  array_sort(array_intersect(p.full_words,m.words)) AS full_overlap_words,
+  array_sort(array_intersect(p.full_words,m.title_only_words)) AS full_title_overlap_words
  FROM house_pages p
  JOIN house_meetings m ON m.parent_committee=p.parent_committee AND m.meeting_date=p.page_date
 ), dated_candidates AS (
@@ -278,8 +297,10 @@ WITH stopwords AS (
   meeting_title_word_count,
   title_overlap_words,
   full_overlap_words,
+  full_title_overlap_words,
   cast(cardinality(title_overlap_words) AS BIGINT) AS shared_title_words,
-  cast(cardinality(full_overlap_words) AS BIGINT) AS shared_full_words
+  cast(cardinality(full_overlap_words) AS BIGINT) AS shared_full_words,
+  cast(cardinality(full_title_overlap_words) AS BIGINT) AS shared_full_title_words
  FROM dated_overlaps
 ), dated_scored AS (
  SELECT
@@ -291,8 +312,8 @@ WITH stopwords AS (
   CASE
    WHEN shared_title_words>=2 THEN cast('house_title_words' AS VARCHAR)
    WHEN shared_title_words=1 AND shared_full_words>=2 AND same_kind THEN cast('house_title_and_full_words' AS VARCHAR)
-   WHEN shared_title_words=0 AND same_kind AND shared_full_words>=3
-    AND (shared_full_words>=4 OR shared_full_words*cast(2 AS BIGINT)>=meeting_title_word_count)
+   WHEN shared_title_words=0 AND same_kind AND meeting_title_word_count>0 AND shared_full_title_words>=3
+    AND (shared_full_title_words>=4 OR shared_full_title_words*cast(2 AS BIGINT)>=meeting_title_word_count)
     THEN cast('house_text_head_strong' AS VARCHAR)
    WHEN shared_title_words=0 AND same_kind AND shared_full_words>=2 THEN cast('house_text_head_weak' AS VARCHAR)
    WHEN single_kind_on_date AND single_page_on_date AND same_kind AND shared_title_words>=1 THEN cast('house_single_day_title' AS VARCHAR)
@@ -301,9 +322,9 @@ WITH stopwords AS (
   CASE
    WHEN shared_title_words>=2 THEN 'house_title_words: '||array_to_string(title_overlap_words,', ')
    WHEN shared_title_words=1 AND shared_full_words>=2 AND same_kind THEN 'house_title_and_full_words: '||array_to_string(full_overlap_words,', ')
-   WHEN shared_title_words=0 AND same_kind AND shared_full_words>=3
-    AND (shared_full_words>=4 OR shared_full_words*cast(2 AS BIGINT)>=meeting_title_word_count)
-    THEN 'house_text_head_strong: '||array_to_string(full_overlap_words,', ')
+   WHEN shared_title_words=0 AND same_kind AND meeting_title_word_count>0 AND shared_full_title_words>=3
+    AND (shared_full_title_words>=4 OR shared_full_title_words*cast(2 AS BIGINT)>=meeting_title_word_count)
+    THEN 'house_text_head_strong: '||array_to_string(full_title_overlap_words,', ')
    WHEN shared_title_words=0 AND same_kind AND shared_full_words>=2 THEN 'house_text_head_weak: '||array_to_string(full_overlap_words,', ')
    WHEN single_kind_on_date AND single_page_on_date AND same_kind AND shared_title_words>=1 THEN 'house_single_day_title: '||array_to_string(title_overlap_words,', ')
    WHEN shared_full_words>0 THEN 'house_single_day_generic: '||array_to_string(full_overlap_words,', ')
