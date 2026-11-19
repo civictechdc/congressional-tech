@@ -18,6 +18,7 @@ import os
 from pathlib import Path
 import re
 import time
+from uuid import uuid4
 
 import pyarrow.parquet as pq
 from docspec_client import NativeDatasets
@@ -109,44 +110,9 @@ def prepare_items(work, engine, targets, versions, origin):
     return items
 
 
-def reuse_completed(source, work, engine, catalog, table_ids, versions, *, equivalent_versions=None):
-    """Carry forward successful retries only when prior versions match or have an explicit equivalence record."""
-    source = Path(source).resolve()
-    receipt = work / 'carried-completed.json'
-    equiv = {p: set(v) for p, v in (equivalent_versions or {}).items()}
-    if receipt.exists():
-        retained = json.loads(receipt.read_text())
-        if not isinstance(retained, list):
-            raise ValueError('Invalid carried-completed receipt')
-        expected_source = str(source)
-        for o in retained:
-            if not isinstance(o, dict):
-                raise ValueError('Invalid carried-completed entry')
-            body_hex = o.get('body_sha256')
-            parser = o.get('parser')
-            target_version = versions.get(parser)
-            prior_version = o.get('prior_parser_version')
-            reused_from = o.get('reused_from')
-            if (not isinstance(body_hex, str) or not re.fullmatch(r'[0-9a-f]{64}', body_hex)
-                    or target_version is None
-                    or o.get('parser_version') != target_version
-                    or not isinstance(prior_version, str) or not re.fullmatch(r'[0-9a-f]{64}', prior_version)
-                    or not isinstance(reused_from, str) or str(Path(reused_from).resolve()) != expected_source):
-                raise ValueError(
-                    f'Retained carried-completed entry {body_hex!r} does not match current source or target versions'
-                )
-            allowed = {target_version} | equiv.get(parser, set())
-            if prior_version not in allowed:
-                raise ValueError(
-                    f'Retained carried-completed {parser} row {body_hex} from prior version {prior_version} '
-                    f'differs from target {target_version} with no recorded equivalence decision'
-                )
-        return retained
+def _check_source_completed(source, versions, equiv):
     outcomes = [o for p in sorted((source/'batches').glob('*/result.json'))
                 for o in json.loads(p.read_text())['body_outcomes'] if o.get('reading_status')=='completed']
-    if not outcomes:
-        write_json(receipt, [])
-        return []
     checked = {}
     for o in outcomes:
         body_hex = o.get('body_sha256')
@@ -167,6 +133,70 @@ def reuse_completed(source, work, engine, catalog, table_ids, versions, *, equiv
         checked[(body_hex, parser, prior_version)] = o
     if len({(b, p) for b, p, _ in checked}) != len(outcomes):
         raise ValueError('Duplicate or conflicting completed outcomes in reuse source')
+    return outcomes, checked
+
+
+def reuse_completed(source, work, engine, catalog, table_ids, versions, *, equivalent_versions=None):
+    """Carry forward successful retries only when prior versions match or have an explicit equivalence record."""
+    source = Path(source).resolve()
+    receipt = work / 'carried-completed.json'
+    equiv = {p: set(v) for p, v in (equivalent_versions or {}).items()}
+    if receipt.exists():
+        retained = json.loads(receipt.read_text())
+        if not isinstance(retained, list):
+            raise ValueError('Invalid carried-completed receipt')
+        expected_source = str(source)
+        seen_keys = set()
+        retained_triples = set()
+        for o in retained:
+            if not isinstance(o, dict) or o.get('reading_status') != 'completed':
+                raise ValueError('Invalid or non-completed carried-completed entry')
+            body_hex = o.get('body_sha256')
+            parser = o.get('parser')
+            target_version = versions.get(parser)
+            prior_version = o.get('prior_parser_version')
+            reused_from = o.get('reused_from')
+            if (not isinstance(body_hex, str) or not re.fullmatch(r'[0-9a-f]{64}', body_hex)
+                    or target_version is None
+                    or o.get('parser_version') != target_version
+                    or not isinstance(prior_version, str) or not re.fullmatch(r'[0-9a-f]{64}', prior_version)
+                    or not isinstance(reused_from, str) or str(Path(reused_from).resolve()) != expected_source):
+                raise ValueError(
+                    f'Retained carried-completed entry {body_hex!r} does not match current source or target versions'
+                )
+            if (body_hex, parser) in seen_keys:
+                raise ValueError(f'Duplicate carried-completed key: {body_hex}/{parser}')
+            seen_keys.add((body_hex, parser))
+            allowed = {target_version} | equiv.get(parser, set())
+            if prior_version not in allowed:
+                raise ValueError(
+                    f'Retained carried-completed {parser} row {body_hex} from prior version {prior_version} '
+                    f'differs from target {target_version} with no recorded equivalence decision'
+                )
+            retained_triples.add((body_hex, parser, prior_version))
+        _, source_checked = _check_source_completed(source, versions, equiv)
+        if retained_triples != set(source_checked):
+            raise ValueError('Retained carried-completed receipt does not match source completed outcomes')
+        if retained:
+            verify_dir = work / f'verify-reuse-{uuid4().hex}'
+            dest_pins = tables.resolve_tables(engine=engine, work=verify_dir / 'resolve', catalog_root=catalog, tables=table_ids)
+            dest_pred = ' OR '.join(
+                f"(encode(s.body_sha,'hex')='{b}' AND s.parser='{p}' AND s.parser_version='{versions[p]}')"
+                for b, p in sorted(seen_keys)
+            )
+            for name in ('body_text', 'readings'):
+                v_out = verify_dir / name
+                run_job(v_out, engine, inputs=[tables.table_input('source', dest_pins[name])], steps=[],
+                        outputs=[parquet_output(v_out, 'rows',
+                                                f"SELECT s.body_sha,s.parser,s.parser_version FROM source s WHERE {dest_pred}",
+                                                body_text.PK)])
+                if pq.ParquetFile(v_out / 'rows.parquet').metadata.num_rows != len(retained):
+                    raise ValueError(f'Destination {name} is missing retained carried-completed rows')
+        return retained
+    outcomes, checked = _check_source_completed(source, versions, equiv)
+    if not outcomes:
+        write_json(receipt, [])
+        return []
     pins = tables.resolve_tables(engine=engine,work=work/'resolve-reuse',catalog_root=source/'catalog',tables=table_ids)
     stage = work/'carried-stage'
     stage.mkdir(exist_ok=True)

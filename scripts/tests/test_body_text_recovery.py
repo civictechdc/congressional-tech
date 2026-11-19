@@ -166,6 +166,34 @@ def test_reuse_completed_refuses_version_drift_without_recorded_equivalence(tmp_
         )
         assert resumed == carried
 
+        # Tampered carried-completed receipts (pending status, duplicate key, empty vs non-empty source, missing dest row) refuse!
+        receipt_path = work_equiv / 'carried-completed.json'
+        saved_receipt = receipt_path.read_text()
+        try:
+            receipt_path.write_text(json.dumps([dict(carried[0], reading_status='pending')]))
+            with pytest.raises(ValueError, match='non-completed'):
+                module.reuse_completed(source, work_equiv, engine, dest_catalog, table_ids, target_versions,
+                                       equivalent_versions={'pdf_text': [prior_ver]})
+            receipt_path.write_text(json.dumps([carried[0], carried[0]]))
+            with pytest.raises(ValueError, match='Duplicate carried-completed key'):
+                module.reuse_completed(source, work_equiv, engine, dest_catalog, table_ids, target_versions,
+                                       equivalent_versions={'pdf_text': [prior_ver]})
+            receipt_path.write_text('[]')
+            with pytest.raises(ValueError, match='does not match source completed outcomes'):
+                module.reuse_completed(source, work_equiv, engine, dest_catalog, table_ids, target_versions,
+                                       equivalent_versions={'pdf_text': [prior_ver]})
+            receipt_path.write_text(saved_receipt)
+            empty_dest = tmp_path / 'empty-dest-catalog'
+            readings.create_table(engine=engine, work=tmp_path / 'create-r-empty', catalog_root=empty_dest,
+                                  table=table_ids['readings'], location=tmp_path / 'tbl-r-empty', create_namespace=True)
+            body_text.create_table(engine=engine, work=tmp_path / 'create-t-empty', catalog_root=empty_dest,
+                                   table=table_ids['body_text'], location=tmp_path / 'tbl-t-empty')
+            with pytest.raises(ValueError, match='missing retained carried-completed rows'):
+                module.reuse_completed(source, work_equiv, engine, empty_dest, table_ids, target_versions,
+                                       equivalent_versions={'pdf_text': [prior_ver]})
+        finally:
+            receipt_path.write_text(saved_receipt)
+
         # 3. Accepts exact matching version without equivalent_versions.
         exact_dest = tmp_path / 'exact-dest-catalog'
         readings.create_table(engine=engine, work=tmp_path / 'create-r-exact', catalog_root=exact_dest,

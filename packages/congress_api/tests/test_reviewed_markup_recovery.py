@@ -277,6 +277,21 @@ def test_stage_and_worker_reject_retired_recovery_and_stale_plan_ids_while_selec
     )).encode())
     assert null_ordinary_out['read_error'] == 'parser_version_mismatch' and 'row' not in null_ordinary_out
 
+    # Null parser_version + unsupported parser='pdf_text' in markup_recovery must NOT match None == None and decode!
+    null_mr_pdf_out = body_text.parse_payload(json.dumps(dict(
+        path=str(oversize_path),
+        stored_bytes=len(oversize_bytes),
+        body_sha=sha256(oversize_bytes).hexdigest(),
+        parser='pdf_text',
+        parser_version=None,
+        strategy='congress_api.parsers.body_text:native_only',
+        page_deadline_seconds=0,
+        texts=str(texts_dir),
+        diagnostics=str(tmp_path / 'diag2.txt'),
+        markup_recovery=dict(case=dict(case(), parser='pdf_text'), manifest_sha256='b' * 64),
+    )).encode())
+    assert null_mr_pdf_out['read_error'] == 'markup_recovery_input' and 'row' not in null_mr_pdf_out
+
     # Historical selection manifests continue to load retired recovery IDs cleanly.
     proof = tmp_path / 'proof.md'
     proof_bytes = b'qualified historical selection\n'

@@ -76,7 +76,7 @@ ORDINARY_STRATEGIES = frozenset({
     'congress_api.parsers.body_text:apple_vision',
 })
 RECOVERY_STRATEGIES = frozenset({
-    'congress_api.parsers.body_text:native_only',
+    'congress_api.parsers.body_text:recovery_native_only',
     'congress_api.parsers.body_text:recovery_apple_vision',
 })
 OPT_IN_PDF_STRATEGY_VERSIONS = {
@@ -103,6 +103,37 @@ def _execution_versions(strategy, *, recovery=False):
     if strategy in OPT_IN_PDF_STRATEGY_VERSIONS:
         return {'pdf_text': getattr(reading_versions, OPT_IN_PDF_STRATEGY_VERSIONS[strategy])}
     raise ValueError(f'Unsupported body-text staging strategy: {strategy}')
+
+
+def _validate_stage_versions(planned, items, *, strategy, recovery, expected_versions):
+    from congress_api.lake.reading_versions import MARKUP_RECOVERY_VERSIONS, RETIRED_MARKUP_RECOVERY_VERSIONS
+    items = list(items)
+    all_markup_recovery = set(MARKUP_RECOVERY_VERSIONS.values()) | {
+        v for ids in RETIRED_MARKUP_RECOVERY_VERSIONS.values() for v in ids
+    }
+    planned_versions = planned.get('versions')
+    if not isinstance(planned_versions, dict) or not planned_versions:
+        raise ValueError('Unlimited body reads require the explicit recovery reading versions'
+                         if recovery else 'Body-text staging requires explicit planned reading versions')
+    item_versions = {item.get('parser_version') for item in items if isinstance(item, dict)}
+    if (set(planned_versions.values()) | item_versions) & all_markup_recovery:
+        raise ValueError('Reviewed markup reading versions require their pinned recovery manifest')
+    if any(p not in expected_versions or not isinstance(v, str) or expected_versions[p] != v
+           for p, v in planned_versions.items()):
+        if recovery:
+            raise ValueError('Unlimited body reads require the explicit recovery reading versions')
+        if strategy in OPT_IN_PDF_STRATEGY_VERSIONS:
+            raise ValueError('Opt-in PDF staging requires its dedicated declared reading version')
+        raise ValueError('Ordinary body-text staging requires the current declared reading versions')
+    for item in items:
+        parser = item.get('parser') if isinstance(item, dict) else None
+        version = item.get('parser_version') if isinstance(item, dict) else None
+        if (not isinstance(item, dict) or parser not in expected_versions
+                or parser not in planned_versions
+                or not isinstance(version, str)
+                or planned_versions[parser] != version):
+            raise ValueError('Staged item parser or version differs from the planned execution versions')
+    return items
 
 
 def recovery_versions():
@@ -548,9 +579,13 @@ def _parse_payload(payload):
     if request.get('markup_recovery') is not None:
         mr = request['markup_recovery']
         case = mr.get('case') if isinstance(mr, dict) else None
+        parser = request.get('parser')
+        parser_version = request.get('parser_version')
         if (not isinstance(case, dict)
-                or case.get('parser') != request.get('parser')
-                or request.get('parser_version') != MARKUP_RECOVERY_VERSIONS.get(request.get('parser'))
+                or parser not in MARKUP_RECOVERY_VERSIONS
+                or case.get('parser') != parser
+                or not isinstance(parser_version, str)
+                or parser_version != MARKUP_RECOVERY_VERSIONS[parser]
                 or request.get('strategy') != derivation.DEFAULT_STRATEGY
                 or request.get('unlimited_body_bytes')):
             return dict(read_error='markup_recovery_input',
@@ -685,14 +720,20 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
     ``markup_recovery`` names a hash-pinned source-review manifest for separate,
     bounded recovery versions. It requires local originals and never invokes OCR.
     """
-    from congress_api.parsers.body_text import DEFAULT_STRATEGY, load_page_rule
-    from congress_api.lake.reading_versions import MARKUP_RECOVERY_VERSIONS, RETIRED_MARKUP_RECOVERY_VERSIONS
+    import importlib
+    from congress_api.parsers.body_text import DEFAULT_STRATEGY, RECOVERY_DEFAULT_STRATEGY, load_page_rule
     ParserWorkerPool.validate_budget(parser_workers, parser_memory_bytes, worker_memory_bytes)
     if recovery and (not isinstance(planned.get('versions'), dict) or not planned['versions']
-                     or any(recovery_versions().get(p) != v for p, v in planned['versions'].items())):
+                     or any(p not in recovery_versions() or not isinstance(v, str) or recovery_versions()[p] != v
+                            for p, v in planned['versions'].items())):
         raise ValueError('Unlimited body reads require the explicit recovery reading versions')
-    strategy = strategy or DEFAULT_STRATEGY
+    strategy = strategy or (RECOVERY_DEFAULT_STRATEGY if recovery else DEFAULT_STRATEGY)
+    if not isinstance(strategy, str) or ':' not in strategy:
+        raise ValueError(f'Unsupported body-text staging strategy: {strategy}')
+    module_name, attr_name = strategy.split(':', 1)
+    getattr(importlib.import_module(module_name), attr_name)
     recovery_cases = {}
+    expected_versions = None
     if markup_recovery is not None:
         from itertools import islice
         from congress_api.lake.markup_recovery import stage_cases
@@ -702,37 +743,19 @@ def stage(planned, items, *, engine, work, worker_factory=ParserWorker, unreadab
         if len(items) > MAX_BATCH_ITEMS:
             raise ValueError('Reviewed markup recovery exceeds the batch item bound')
         recovery_cases = stage_cases(planned, items, markup_recovery)
+    else:
+        expected_versions = _execution_versions(strategy, recovery=recovery)
+        if page_checkpoints is None or 'versions' in planned:
+            items = _validate_stage_versions(planned, items, strategy=strategy, recovery=recovery,
+                                             expected_versions=expected_versions)
     rule = load_page_rule(strategy)  # an engine this host lacks refuses before any body is read
     if page_checkpoints is not None and (rule.checkpoint_identity is None or any(
             replacement.checkpoint_identity is None
             for pages in rule.page_overrides.values() for replacement in pages.values())):
         raise ValueError('Page checkpoints require a strategy with reproducible identity')
-    if markup_recovery is None:
-        items = list(items)
-        all_markup_recovery = set(MARKUP_RECOVERY_VERSIONS.values()) | {
-            v for ids in RETIRED_MARKUP_RECOVERY_VERSIONS.values() for v in ids
-        }
-        planned_versions = planned.get('versions')
-        if not isinstance(planned_versions, dict) or not planned_versions:
-            raise ValueError('Body-text staging requires explicit planned reading versions')
-        item_versions = {item.get('parser_version') for item in items if isinstance(item, dict)}
-        if (set(planned_versions.values()) | item_versions) & all_markup_recovery:
-            raise ValueError('Reviewed markup reading versions require their pinned recovery manifest')
-        expected_versions = _execution_versions(strategy, recovery=recovery)
-        if any(expected_versions.get(p) != v for p, v in planned_versions.items()):
-            if recovery:
-                raise ValueError('Unlimited body reads require the explicit recovery reading versions')
-            if strategy in OPT_IN_PDF_STRATEGY_VERSIONS:
-                raise ValueError('Opt-in PDF staging requires its dedicated declared reading version')
-            raise ValueError('Ordinary body-text staging requires the current declared reading versions')
-        for item in items:
-            parser = item.get('parser') if isinstance(item, dict) else None
-            version = item.get('parser_version') if isinstance(item, dict) else None
-            if (not isinstance(item, dict) or parser not in expected_versions
-                    or parser not in planned_versions
-                    or not isinstance(version, str)
-                    or planned_versions[parser] != version):
-                raise ValueError('Staged item parser or version differs from the planned execution versions')
+    if markup_recovery is None and 'versions' not in planned:
+        items = _validate_stage_versions(planned, items, strategy=strategy, recovery=recovery,
+                                         expected_versions=expected_versions)
     work = Path(work).resolve()
     if page_checkpoints is not None:
         page_checkpoints = Path(page_checkpoints).resolve()

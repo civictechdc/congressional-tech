@@ -51,6 +51,7 @@ REPLACED_ISSUE = 'native-text-replaced'
 MARKUP_RENDITIONS = {'html_text': 'htm', 'xml_text': 'xml'}
 PAYLOAD_PARSERS = {'pdf': 'pdf_text', 'html': 'html_text', 'xml': 'xml_text'}
 DEFAULT_STRATEGY = 'congress_api.parsers.body_text:native_only'
+RECOVERY_DEFAULT_STRATEGY = 'congress_api.parsers.body_text:recovery_native_only'
 VISION_STRATEGY = 'congress_api.parsers.body_text:apple_vision'
 
 
@@ -227,6 +228,14 @@ def native_only():
     """The default page rule: the declared routing with no OCR engine."""
     return page_rule(NoEngine(), checkpoint_identity=dict(backend='none', reader='DefaultReader', dpi=200,
                                                          raw_rgb=False))
+
+
+def recovery_native_only():
+    """The no-OCR recovery page rule: removes the page-render pixel ceiling so oversized scans wait for OCR."""
+    from spicy_docs.extraction import DefaultReader
+    reader = DefaultReader(dpi=OCR_DPI, raw_rgb=False, max_pixels=(1 << 63) - 1)
+    return page_rule(NoEngine(), reader, checkpoint_identity=dict(
+        backend='none', reader='DefaultReader', dpi=OCR_DPI, raw_rgb=False, max_pixels=reader.max_pixels))
 
 
 def recovery_apple_vision():
