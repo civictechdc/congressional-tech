@@ -1,6 +1,6 @@
 ---
 id: ct-yy1r
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-18T15:41:39Z
@@ -43,3 +43,7 @@ CT's pinned wheel is rebuildable from a pushed spicy-docs commit on its main; th
 **2026-11-19T00:18:59Z**
 
 2026-11-18 Review #6 + M5 merge fixes: (0) merged spicy-docs main (6e9e40f9, M5 ss-n8eq/ss-a9f9) into ct-main-tesseract-20261118 (3f307b7b5752fdc827e3e6e2b886f7a1915da6ab, keeping DERIVATION_READS_AS["006"]=("005", frozenset()) and re-pinned PINNED_DIGEST=sha256:28da8253...), rebuilt byte-identical wheel vendor/spicy_docs-0.85.0+ctmain.20261118-py3-none-any.whl (3,746,296 B, sha256 92667256b5b20d293d834f31c9a0dbc9dc9f0f73bc28b7af270da3bef95ae4fb), and delegated OptInPdfReader.open to DefaultReader.open so opt-in PDF reads inherit non-PDF markup refusal; (1) redeclared pdf_text (9df9e8fa), PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION (bdf91962), and PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION (68400c11) alongside html_text (cbbcee1b), xml_text (4b30d66e), warc (1bed4bdb), and HTML/XML opt-in declarations so 3-band Vision edge recovery (pages 600 & 1100) and NativeGeometryError(invalid_box) refusals carry distinct execution IDs while keeping accepted-set-v12 historical selections intact; (2) guarded body_text.stage() and parse_payload() against RETIRED_MARKUP_RECOVERY_VERSIONS and stale/mismatched plan or item parser_version IDs before work.mkdir(); (3) updated ct_equivalence_replay.py, vendor/spicy_docs-0.85.0+ctmain.20261118.json, and docs/development.md to cover the 5 *.html.gz legislative fixtures (6/6 wrapper selections preserve text_sha256 with hr3916-introduced markup_events 18->3; 9/9 ordinary-HTML fallbacks reflect 006), (reading_status, fingerprint) parity, 5 event-count vs 4 metadata_element_chars cleanup diffs, U+00A0->space normalization, and <pre> line_endings_normalized=0. Remaining before ticket closure: merge port/ct-wheel-fixes-20261118 / ct-main-tesseract-20261118 onto mikewolfd/spicy-docs:main and push (plus verify final wheel against the pushed main commit) once user approves.
+
+**2026-11-19T17:24:56Z**
+
+Pushed merged spicy-docs main 462bcb1112dd76848394d6c8943760576a24bcb9 (git tree 38b8aeb260dd1f1749f502c56c9e92a28bce751f, byte-identical to wheel source_commit 3f307b7b5752fdc827e3e6e2b886f7a1915da6ab) to mikewolfd/spicy-docs:main and updated vendor/spicy_docs-0.85.0+ctmain.20261118.json.
