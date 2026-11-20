@@ -1,0 +1,1178 @@
+{
+ "version": 1,
+ "base_release_id": "ab0192939dfde68f241499b3eec484d79be2c9cdd8ee37f79bc523c60ddbc499",
+ "candidate_release_id": "0e7084cde775d0064646c56b2200a14e1f13d8b512f1a61a6fe815d597faf4d3",
+ "notes": {
+  "identifiers": [
+   {
+    "statement": "Capture publish across 2,010 new receipts (1,981 from capture run 44731588837 + 29 ct-z4w5 recovery receipts) with the reviewed Tier 1 batch: ct-fb29 schema descriptions, ct-n131 print_number (gpo_mods), ct-fk4w PDF cover evidence and saved-name decisions, ct-z4w5 source recovery. Control: morning publish 44737429192 (pre-batch code, same base) reported 39 of these groups at identical counts. ct-m704 v13 body-text selection publishes through body_text_publish after this release, not through these files.",
+    "decision": "ct-fb29, ct-n131, ct-fk4w, ct-z4w5, ct-m704"
+   }
+  ]
+ },
+ "groups": [
+  {
+   "id": "capture_profile.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "Model-definition and input pins moved for this reviewed batch: page-signals.json and body-signals.sql (ct-fk4w cover guards), saved-name-decisions.json, release-schema.json (ct-fb29), the gpo_mods parser and print-number SQL (ct-n131), pdf_cover_evidence and recovery_requirements inputs, ct-z4w5 provenance, and publish-daily.json job pins (gpo_mods derived scope after R2 backfill 44782224644, post_work_items=0).",
+   "tickets": [
+    "ct-fk4w",
+    "ct-fb29",
+    "ct-n131",
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|removed rows|no surviving link key",
+   "count": -27,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 1107,
+   "disposition": "explained",
+   "cause": "1,107 = 1,082 capture-night rows (identical group in pre-batch control publish 44737429192) + 25 from the batch. ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Single-row follow-on of the batch, not traced row by row: either a ct-z4w5 recovered document whose recovered body now supplies this field, or the one ct-fk4w committee-name decision (919838d0b98f). It is bounded by the 27 re-keyed recoveries and the 1 renamed document.",
+   "tickets": [
+    "ct-z4w5",
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_source|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Single-row follow-on of the batch, not traced row by row: either a ct-z4w5 recovered document whose recovered body now supplies this field, or the one ct-fk4w committee-name decision (919838d0b98f). It is bounded by the 27 re-keyed recoveries and the 1 renamed document.",
+   "tickets": [
+    "ct-z4w5",
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_status|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Single-row follow-on of the batch, not traced row by row: either a ct-z4w5 recovered document whose recovered body now supplies this field, or the one ct-fk4w committee-name decision (919838d0b98f). It is bounded by the 27 re-keyed recoveries and the 1 renamed document.",
+   "tickets": [
+    "ct-z4w5",
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_family|value differs on matched key",
+   "count": 1382,
+   "disposition": "explained",
+   "cause": "ct-fk4w qualified PDF cover evidence: pdf-cover-evidence-ct-fk4w-20261120.parquet (1,379 rows, Page-1 [:2048] of v13-selected text) feeds body-cover-kinds.sql, which changes kind/family only for empty, -Bio-/-SD-/-Wstate- slot, or single generic-slot documents; review pdf-cover-review-ct-fk4w-20261120.md (1,379 changes measured on 2ec7ae83; the +3 on this base are documents published since then whose bodies carry reviewed cover evidence).",
+   "tickets": [
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_kind|value differs on matched key",
+   "count": 1382,
+   "disposition": "explained",
+   "cause": "ct-fk4w qualified PDF cover evidence: pdf-cover-evidence-ct-fk4w-20261120.parquet (1,379 rows, Page-1 [:2048] of v13-selected text) feeds body-cover-kinds.sql, which changes kind/family only for empty, -Bio-/-SD-/-Wstate- slot, or single generic-slot documents; review pdf-cover-review-ct-fk4w-20261120.md (1,379 changes measured on 2ec7ae83; the +3 on this base are documents published since then whose bodies carry reviewed cover evidence).",
+   "tickets": [
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed facts|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Single-row follow-on of the batch, not traced row by row: either a ct-z4w5 recovered document whose recovered body now supplies this field, or the one ct-fk4w committee-name decision (919838d0b98f). It is bounded by the 27 re-keyed recoveries and the 1 renamed document.",
+   "tickets": [
+    "ct-z4w5",
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed filename|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "ct-fk4w saved-name decisions: 24 undecided non-slot official/committee contradictions on 2ec7ae83 were read from Page-1 text and recorded in saved-name-decisions.json (84 -> 108; 0 unmet, 0 unused). Only 919838d0b98f (ANS to H.R. 2789 misnamed BILLS-118HR2789ih.pdf) takes the committee name, 3DBE...ans-to-hr2789.pdf; the 23 official decisions keep their already-leading names.",
+   "tickets": [
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed rec_len|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_suffix|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 806,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 807,
+   "disposition": "explained",
+   "cause": "807 = 806 capture-night rows (identical group in pre-batch control publish 44737429192) + 1 from the batch. ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed witness_keys|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|removed keys|no evidence given",
+   "count": -27,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 1111,
+   "disposition": "explained",
+   "cause": "1,111 = 1,082 capture-night rows (identical group in pre-batch control publish 44737429192) + 29 from the batch. ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|removed rows|no surviving link key",
+   "count": -27,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 1107,
+   "disposition": "explained",
+   "cause": "1,107 = 1,082 capture-night rows (identical group in pre-batch control publish 44737429192) + 25 from the batch. ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Single-row follow-on of the batch, not traced row by row: either a ct-z4w5 recovered document whose recovered body now supplies this field, or the one ct-fk4w committee-name decision (919838d0b98f). It is bounded by the 27 re-keyed recoveries and the 1 renamed document.",
+   "tickets": [
+    "ct-z4w5",
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date_status|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Single-row follow-on of the batch, not traced row by row: either a ct-z4w5 recovered document whose recovered body now supplies this field, or the one ct-fk4w committee-name decision (919838d0b98f). It is bounded by the 27 re-keyed recoveries and the 1 renamed document.",
+   "tickets": [
+    "ct-z4w5",
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_family|value differs on matched key",
+   "count": 1382,
+   "disposition": "explained",
+   "cause": "ct-fk4w qualified PDF cover evidence: pdf-cover-evidence-ct-fk4w-20261120.parquet (1,379 rows, Page-1 [:2048] of v13-selected text) feeds body-cover-kinds.sql, which changes kind/family only for empty, -Bio-/-SD-/-Wstate- slot, or single generic-slot documents; review pdf-cover-review-ct-fk4w-20261120.md (1,379 changes measured on 2ec7ae83; the +3 on this base are documents published since then whose bodies carry reviewed cover evidence).",
+   "tickets": [
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_kind|value differs on matched key",
+   "count": 1382,
+   "disposition": "explained",
+   "cause": "ct-fk4w qualified PDF cover evidence: pdf-cover-evidence-ct-fk4w-20261120.parquet (1,379 rows, Page-1 [:2048] of v13-selected text) feeds body-cover-kinds.sql, which changes kind/family only for empty, -Bio-/-SD-/-Wstate- slot, or single generic-slot documents; review pdf-cover-review-ct-fk4w-20261120.md (1,379 changes measured on 2ec7ae83; the +3 on this base are documents published since then whose bodies carry reviewed cover evidence).",
+   "tickets": [
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed filename|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "ct-fk4w saved-name decisions: 24 undecided non-slot official/committee contradictions on 2ec7ae83 were read from Page-1 text and recorded in saved-name-decisions.json (84 -> 108; 0 unmet, 0 unused). Only 919838d0b98f (ANS to H.R. 2789 misnamed BILLS-118HR2789ih.pdf) takes the committee name, 3DBE...ans-to-hr2789.pdf; the 23 official decisions keep their already-leading names.",
+   "tickets": [
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 806,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed witness_keys|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 34,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 65,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 36,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 43,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_source_reference|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Single-row follow-on of the batch, not traced row by row: either a ct-z4w5 recovered document whose recovered body now supplies this field, or the one ct-fk4w committee-name decision (919838d0b98f). It is bounded by the 27 re-keyed recoveries and the 1 renamed document.",
+   "tickets": [
+    "ct-z4w5",
+    "ct-fk4w"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|added keys|no evidence given",
+   "count": 1135,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed appearance_count|value differs on matched key",
+   "count": 905,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed credentials|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed first_seen_date|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed hearing_count|value differs on matched key",
+   "count": 905,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed last_seen_date|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed name_variants|value differs on matched key",
+   "count": 159,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed organization|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed organizations|value differs on matched key",
+   "count": 93,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed positions|value differs on matched key",
+   "count": 233,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed witness_keys|value differs on matched key",
+   "count": 905,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|removed keys|no evidence given",
+   "count": -1,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [
+    "ct-618r"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 71,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [
+    "ct-618r"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed note|value differs on matched key",
+   "count": 18,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [
+    "ct-618r"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 23,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [
+    "ct-618r"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 55,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [
+    "ct-618r"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 673,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [
+    "ct-618r"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [
+    "ct-618r"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|added keys|unexplained",
+   "count": 29,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "retired_links.parquet|added keys|no evidence given",
+   "count": 27,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "schema.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "ct-fb29: 31 dataset description introductions and 248 nested/element notes added to release-schema.json (DDK catalog 437/437 JSON-equal); ct-n131: new print_number column on list and detail from GovInfo MODS preferredCitation (gate cannot_see: new column, no base values).",
+   "tickets": [
+    "ct-fb29",
+    "ct-n131"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|URLs gone|no live row has this address",
+   "count": -25,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 1083,
+   "disposition": "explained",
+   "cause": "1,083 = 1,082 capture-night rows (identical group in pre-batch control publish 44737429192) + 1 from the batch. ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|documents changed for a shared key|the key now answers other documents",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed is_saved|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 1544,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 1544,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 5632,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 1978,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed capture_decision_id|value differs on matched key",
+   "count": 29,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed capture_disposition|value differs on matched key",
+   "count": 29,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed capture_reason|value differs on matched key",
+   "count": 29,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 1978,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 1903,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 1904,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 1892,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 1935,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 1978,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 57,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys gone|every row for the key was removed",
+   "count": -3,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 1182,
+   "disposition": "explained",
+   "cause": "1,182 = 1,181 capture-night rows (identical group in pre-batch control publish 44737429192) + 1 from the batch. ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|documents changed for a shared key|the key now answers other documents",
+   "count": 27,
+   "disposition": "explained",
+   "cause": "ct-z4w5 source recovery: 29 accepted recoveries (28 vetted damaged PDFs + Mast &download=1) staged as create-only R2 receipts and provenance (recovery-requirements-ct-z4w5-20261120.parquet, 43 rows; provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl marks 27 truncated PDFs intact=false). The 27 damaged documents move onto their recovered bodies: 27 old link keys leave list/detail/links and enter retired_links (link rule passes, 0 missing/dangling), 25 recovered bodies publish as documents and 2 merge into existing copies (25b378fff39c Howle, 7d29f9acb71f Lindsey).",
+   "tickets": [
+    "ct-z4w5"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|added keys|no evidence given",
+   "count": 2800,
+   "disposition": "explained",
+   "cause": "Capture-night data: capture run 44731588837 (2026-11-20) delivered 1,981 new receipts. Morning publish 44737429192 built the same base ab0192939dfd with pre-batch code and its release gate reported this group at the identical count, so the batch does not cause it.",
+   "tickets": [],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/ab0192939dfd-0e7084cde775.json",
+     "sha256": "38b6ecb64425973f701cf3afb2ec9c4d5bb938cb805dff36f67a7d5e1ce73755",
+     "size": 12003
+    }
+   ]
+  }
+ ]
+}
