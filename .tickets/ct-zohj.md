@@ -1,6 +1,6 @@
 ---
 id: ct-zohj
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-18T17:57:22Z
@@ -99,3 +99,7 @@ Review 7d (`review-m7-ct-zohj-r4.md` on `fd82f805`) remediations verified in cod
 Review 7e (`review-m7-ct-zohj-r5.md` on `38c5d2c9`) remediations verified in code:
 - **Slash-containing `receipt_families` extraction (`archive_publish_job.py`):** Matched the full family path `'/'.join(parts[1:-2])` (`len(parts) >= 4 and parts[0] == 'receipts'`, mirroring `receipt_inventory.py:113`) so multi-segment families like `senate/pages` are reconciled while unconfigured nested siblings like `documents/other` are excluded.
 - **Additional `r5` hardening (`qualification_facts.py`, `release_gate.py`, `data_only_night.py`, `inventory.py`):** Checked `primary['complete']` in `reconcile_store_receipt_qualifications`, expanded `qual_states_job` with `added_failed_shas` so held URLs sharing a newly failed SHA are checked even when their `attempts`/`last_attempt` did not move, and excluded `mode='fetch'` rows with NULL effective status/outcome from `_carries_body_verdict`.
+
+**2026-11-20T11:15:03Z**
+
+Live capture and publish proven on 2026-11-19/20: capture run 44618310641 (commit 77c406fb) checked 162 bodies in 38.56s (161 qualified, 1 failed HTTP-200 PDF HHRG-119-FA05-20261119-SD001.pdf automatically routed to recovery; provenance/qualifications/20261119T212535+0000-7624fd35a6caba0c51f4311908afec6c3426d2b608692f0decbe30bbabe567eb.jsonl) and published in release ab0192939dfd (7a9a752e).

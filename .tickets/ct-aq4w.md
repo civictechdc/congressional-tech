@@ -1,6 +1,6 @@
 ---
 id: ct-aq4w
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-18T20:27:36Z
@@ -17,3 +17,9 @@ Found 2026-11-18 by the branch value review (.cache/archive-release/reviews/bran
 
 A hearing with a video shows its duration, a bill that became law shows its Public Law number, and a nomination without nominee rows says so; a site test covers each.
 
+
+## Notes
+
+**2026-11-20T11:15:03Z**
+
+Merged in PR #208 (6355b9d7): HearingDetail reads duration_seconds joined from videos.parquet, SubjectDetail and archive-entities read public_law_number from bills.parquet, and nominations without nominee rows show an explicit notice, covered by unit and archive presentation tests.

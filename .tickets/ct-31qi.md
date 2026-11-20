@@ -1,6 +1,6 @@
 ---
 id: ct-31qi
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-17T18:18:49Z
@@ -44,3 +44,7 @@ Held on purpose: archive_controller.py is in the model definition hash, so mergi
 **2026-11-18T22:03:24Z**
 
 2026-11-18 22:00Z: publish run 44399856473 (after capture 44395592746 failed on an R2 503) stopped at gate 1 and KEPT its candidate; it built fresh because the old kept candidate predated PR 207 (expected). Not recorded: Codex RCA (.cache/archive-release/investigations/publish-stop-44399856473/codex-rca.md) says FIX FIRST: a recording-to-hearing matching defect (branch recording-match-hearing-date). Plan: merge that fix with PR 211 together, dispatch publish, one cause record, re-run; pass = 'Resuming the kept candidate'. Handoff: .cache/archive-release/reviews/TONIGHT-HANDOFF-20261118.md
+
+**2026-11-20T11:15:03Z**
+
+Production stop-then-resume proven on 2026-11-20: publish run 44639166724 built candidate ab0192939dfd and stopped at Gate 1 (26m14s), cause record 7a9a752e merged, and re-run 44649252120 restored the cached candidate, logged 'Resuming the kept candidate if its inputs are this run's' with no rebuild, and published ab0192939dfd in 14m11s (~4m publisher step).
