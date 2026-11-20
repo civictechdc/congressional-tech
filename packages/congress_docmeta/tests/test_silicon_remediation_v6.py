@@ -670,3 +670,154 @@ def test_cli_and_eval_blind_parser_defaults() -> None:
     assert eval_args.gpt_oss_batch_size == 8
     assert eval_args.gpt_oss_k == 1
     assert eval_args.two_phase_pass2 == "auto"
+
+
+def test_router_fusion_thresholds_and_async_stage1_with_ane_router(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Verify normalized Top-6 PoE fusion, monotonic router thresholds, fast tau2/tau3, and async Stage-1 with router='ane'."""
+    import numpy as np
+    import threading
+    import warnings
+    from congress_docmeta.grammar_router_ane_v6 import fuse_top6_router_probs
+    from congress_docmeta.pythonic_v5 import DOC_KINDS_SET
+
+    # 1. Normalized conditional Top-6 PoE preserves tail mass & identity under agreement / alpha=1.0
+    rng_probs = np.array([[0.30, 0.25, 0.15, 0.10, 0.08, 0.07, 0.03, 0.02]], dtype=np.float32)
+    top6_order = np.array([[0, 1, 2, 3, 4, 5]], dtype=np.int64)
+    tail_mass = float(np.sum(rng_probs[0, 6:]))
+
+    fused_alpha1 = fuse_top6_router_probs(rng_probs, top6_order, [0], [[0.90, 0.05, 0.02, 0.01, 0.01, 0.01]], 1.0)
+    np.testing.assert_allclose(fused_alpha1[0], rng_probs[0], atol=1e-6)
+
+    p_lin_cond = rng_probs[0, :6] / np.sum(rng_probs[0, :6])
+    fused_agree = fuse_top6_router_probs(rng_probs, top6_order, [0], [p_lin_cond.tolist()], 0.35)
+    np.testing.assert_allclose(fused_agree[0], rng_probs[0], atol=1e-6)
+
+    fused_blend = fuse_top6_router_probs(rng_probs, top6_order, [0], [[0.02, 0.90, 0.04, 0.02, 0.01, 0.01]], 0.35)
+    assert abs(float(np.sum(fused_blend[0])) - 1.0) < 1e-6
+    assert abs(float(np.sum(fused_blend[0, 6:])) - tail_mass) < 1e-6
+    assert float(fused_blend[0, 1]) > float(fused_blend[0, 0])
+
+    # 2. Monotonic tau_top1 <= tau_top2 <= tau_top3 and separate fast_linear_tau_top2 / top3 + on_truncate='ignore'
+    art_dir = tmp_path / "router_art"
+    art_dir.mkdir(parents=True)
+    dim = 64
+    classes = np.array(sorted(DOC_KINDS_SET)[:8])
+    W_f16 = np.zeros((len(classes), dim), dtype=np.float16)
+    b_f32 = np.zeros((len(classes),), dtype=np.float32)
+    b_f32[0] = 0.8
+    b_f32[1] = 0.7
+    np.savez(art_dir / "router_v63_linear.npz", W_f16=W_f16, b_f32=b_f32, classes=classes, temperature=np.array(1.0), dim=np.array(dim))
+    (art_dir / "router_v63_calibration.json").write_text(
+        json.dumps(
+            {
+                "version": "v6_3",
+                "fusion_linear_alpha": 0.40,
+                "ane_choice_temperature": 1.5,
+                "ane_tau_top1": 0.72,
+                "ane_tau_top2": 0.88,
+                "ane_tau_top3": 0.79,  # Inverted in legacy JSON -> must clamp cleanly >= ane_tau_top2!
+                "fast_linear_tau_top1": 0.74,
+                "fast_linear_tau_top2": 0.89,
+                "fast_linear_tau_top3": 0.94,
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("DOCMETA_VALIDATORS_DIR", str(art_dir))
+
+    seen_trunc_modes: list[str] = []
+
+    class _ThreadSafeLayaMock:
+        def __init__(self) -> None:
+            self._exec_lock = threading.Lock()
+
+        def encode_item(self, st: Any, q: dict[str, Any], *, on_truncate: str = "warn") -> dict[str, Any]:
+            seen_trunc_modes.append(on_truncate)
+            if on_truncate != "ignore":
+                warnings.warn("unexpected truncation", UserWarning)
+            return {"q": q}
+
+        def score_choice_batch(self, encs: list[dict[str, Any]], *, temperature_override: float | None = None) -> list[list[float]]:
+            assert temperature_override == 1.5
+            return [[0.85, 0.08, 0.03, 0.02, 0.01, 0.01][:6] for _ in encs]
+
+        def close(self) -> None:
+            pass
+
+    r_fast = PreDecodeGrammarRouterV6(mode="fast", artifacts_dir=art_dir)
+    assert (r_fast.tau_top1, r_fast.tau_top2, r_fast.tau_top3) == (0.74, 0.89, 0.94)
+    r_fast.close()
+
+    shared_laya = _ThreadSafeLayaMock()
+    with warnings.catch_warnings(record=True) as rec_w:
+        warnings.simplefilter("always")
+        with PreDecodeGrammarRouterV6(mode="ane", artifacts_dir=art_dir, shared_laya_backend=shared_laya) as r_ane:
+            assert r_ane.tau_top1 == 0.72
+            assert r_ane.tau_top2 == 0.88
+            assert r_ane.tau_top3 == 0.88  # Monotonic clamp prevented inverted 0.79 < 0.88!
+            decs = r_ane.route_chunk(_sample_queue_rows(2))
+            assert len(decs) == 2
+    assert seen_trunc_modes and all(m == "ignore" for m in seen_trunc_modes)
+    assert not any(issubclass(w.category, UserWarning) for w in rec_w)
+
+    # 3. Async Stage-1 background ANE verification overlaps even with grammar_router='ane' + shared Laya!
+    _install_fake_fast_gemma4_grammar(monkeypatch)
+    monkeypatch.setenv("DOCMETA_NO_PREFLIGHT_WARN", "1")
+    tok = _ByteTokenizer()
+    valid_doc = _sample_valid_doc()
+    stage1_threads: list[str] = []
+
+    class _FakeEng:
+        tokenizer = tok
+        new_to_old = list(range(256))
+        ane_available = False
+
+        def run_rolling(self, **kwargs: Any) -> dict[str, Any]:
+            n = len(kwargs["suf_ids_list"])
+            return {
+                "gen_toks": [tok.encode(json.dumps(valid_doc, separators=(",", ":"))) for _ in range(n)],
+                "prefill_sec": 0.01,
+                "decode_sec": 0.01,
+                "mask_fallbacks": 0,
+                "llm_steps": n,
+                "ff_early14_steps": 0,
+            }
+
+    class _SharedStage1Verifier:
+        supports_async_ane_stage1 = True
+        role_repair_min_defect = 0.35
+
+        def __init__(self, laya: Any) -> None:
+            self.laya_backend = laya
+
+        def run_stage1_ane(self, objs: Any, chunk: Any) -> dict[str, Any]:
+            stage1_threads.append(threading.current_thread().name)
+            with self.laya_backend._exec_lock:
+                pass
+            return {"objs": objs}
+
+        def finish_stage2(self, s1: dict[str, Any]) -> list[dict[str, Any]]:
+            return [{"score": 0.95, "defect_score": 0.05, "is_faithful": True, "escalate": False} for _ in s1["objs"]]
+
+        def __call__(self, objs: Any, chunk: Any) -> list[dict[str, Any]]:
+            return self.finish_stage2(self.run_stage1_ane(objs, chunk))
+
+    in_pq = tmp_path / "async_in.parquet"
+    out_pq = tmp_path / "async_out.parquet"
+    pq.write_table(pa.Table.from_pylist(_sample_queue_rows(4)), in_pq)
+
+    run_docmeta_parquet_sweep(
+        _FakeEng(),
+        in_pq,
+        out_pq,
+        chunk_rows=2,
+        b_slots=2,
+        wire_format="v4",
+        use_ane_ring=False,
+        grammar_router="ane",
+        external_verifier=_SharedStage1Verifier(shared_laya),
+    )
+    assert stage1_threads == ["docmeta-laya-ane-stage1", "docmeta-laya-ane-stage1"]
