@@ -208,7 +208,15 @@ def test_a_daily_append_on_a_snapshot_another_registered_producer_wrote_ends_its
 def test_an_import_in_the_chain_must_be_checked_in_and_the_chain_needs_its_store(tmp_path):
     from viewer_publication.producer_proof import snapshot_reasons
     model, ledger, record = daily_chain(tmp_path, APPENDS, anchor_in_store=True)
-    assert snapshot_reasons(model, {'meeting_records': record}, ledger=ledger) == [
+    # O(1) nightly/Gate-5 mode (full_chain=False, ct-k7rw) checks base 2 in full and trusts its base.record pin;
+    # weekly maintenance / full_chain=True walks back to base 1 and flags the unchecked-in import anchor.
+    assert snapshot_reasons(model, {'meeting_records': record}, ledger=ledger) == []
+    assert snapshot_reasons(model, {'meeting_records': record}, ledger=ledger, full_chain=True) == [
+        'producer proof: meeting_records base 1: an import record in the chain must be checked in beside the publish spec']
+    # Direct append onto an unchecked-in import at base 1 still refuses even in O(1) mode.
+    direct_on_import, _ = ledger.find('meeting_records', record['base']['selector'])
+    assert snapshot_reasons(dict(model, meeting_records=record['base']['selector']),
+                            {'meeting_records': direct_on_import}, ledger=ledger) == [
         'producer proof: meeting_records base 1: an import record in the chain must be checked in beside the publish spec']
     assert 'cannot be read without the producer record store' in snapshot_reasons(model, {'meeting_records': record})[0]
 
