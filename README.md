@@ -28,7 +28,27 @@ This is a [Turborepo](https://turborepo.com) monorepo using npm workspaces, in t
 | **`committee_meeting`** | Committee meeting metadata helpers. |
 | **`corpus_recovery`** | Checks recovered committee documents and adds them to the raw archive. Commands are in [`scripts/corpus_recovery`](scripts/corpus_recovery/README.md). |
 | **`viewer_publication`** | Publishes the public filename viewer without rewriting archive objects. Commands are in [`scripts/publication`](scripts/publication/README.md). |
+| **`congress_docmeta`** | Local congressional metadata extractor (`DocMetaV4Causal`): deterministic rules + Gemma-4 2B with conformal `CROQ` (`alpha=0.05`) grammar locking and calibrated `ExtractConf` risk scoring ([package README](packages/congress_docmeta/README.md), [benchmarks](packages/congress_docmeta/BENCHMARKS.md)). |
 | **`news_lake`** | Political news lake: record contract, Iceberg storage boundary, and offline adapter/identity/analysis cores from the [design packet](packages/news-lake/docs/packet.md) (proposed; see `docs/adr/news-lake-contract.md`). |
+
+#### Document metadata extraction (`congress_docmeta`)
+
+Across a **`26`-sweep cross-Mac benchmark** (`212` held-out congressional documents, `100.0%` schema-valid outputs), single-pass **Gemma-4 2B** with **conformal `CROQ` (`alpha=0.05`)** grammar routing and zero-cost **`ExtractConf`** risk triage outperforms heavier multi-stage pipelines in both accuracy and speed:
+
+| Pipeline Mode | M4 Pro (`48 GiB`, `B=256`) | Base M5 (`24 GiB`, `B=128`) | Quality Highlights (`valid` / `val48` / PK) |
+|---|---:|---:|---|
+| Legacy multi-pass + `GPT-OSS 20B` (`cell0` / `cell1`) | `0.57–0.88 docs/s` | OOM / N/A | `87.30–88.04` / `88.31–89.14` / `87.2–89.4%` |
+| Pass-1 `router=fast`, 0 blocking validators (warm streaming) | `1.54 docs/s` (`1.54+`) | **`2.27 docs/s`** | `87.67–87.90` / `89.14–89.38` / `87.2–89.4%` |
+| **Promoted `CROQ alpha=0.05` + full text + `ExtractConf`** | **`1.34 docs/s`**\* | **`1.82 docs/s`**\* | **`88.49`** / **`90.92`** / **`93.6%`** (M4 Pro); **`87.84`** / `88.99` / `89.4%` (M5) |
+
+\*`CROQ` sweep timings above include `~20–23s` cold engine init/warmup per run (`cold_inclusive_init_plus_decode`); warm production streaming runs at **`~1.54+ docs/s` on M4 Pro** and **`~2.27 docs/s` on Base M5**.
+
+**Key lessons & production defaults:**
+- **Safer, faster classification without blocking validators or 20B retries:** `CROQ` (`alpha=0.05`, full uncut text) prevents aggressive-lock crashes (`alpha=0.10` drops `-3.19` pts on M4 `val48`), achieves `0` `"other"` fallbacks on M4 Pro (`+0.93` `valid` pts, `p=0.022`), and retires slower local Pass-2 `GPT-OSS`, blocking ANE `Laya/Kev`, Arm B `DCCD+MBR`, and Arm C `Single-Field Hunter` retries.
+- **Full text stays the accuracy default:** Unconditional `BM25`/ANE cropping cuts long-doc quality (`p=0.007` loss on M4), so `--bm25-multicrop` is opt-in only for `~2.48 docs/s` speed-shedding runs on Base M5.
+- **Calibrated risk triage (`ExtractConf`) & `24 GiB` auto-sizing:** Pure-Python per-field defect scoring reaches `0.707–0.745` any-defect AUROC (`0.876–0.907` kind, `0.807–0.844` dates, `0.779–0.808` role, `ECE ~0.04`) for async review routing, and `<= 24 GiB` Macs automatically cap working memory (`19.2 GiB` / `1.5 GiB` cache / `B=128`) out of the box.
+
+For full `26`-sweep leaderboards, cross-Mac confidence intervals, 5-fold CV tables, the retired-approaches ledger, and CLI commands, see **[`packages/congress_docmeta/BENCHMARKS.md`](packages/congress_docmeta/BENCHMARKS.md)** and [`packages/congress_docmeta/README.md`](packages/congress_docmeta/README.md).
 
 ## The project catalog
 
