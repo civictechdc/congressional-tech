@@ -17,10 +17,10 @@ WITH meeting_known_people AS (
 ), dated_candidates AS (
  SELECT
   s.record_sha_hex,
-  s.source_url,
+  s.page_key,
   s.banking_hearing_url,
   s.event_id,
-  s.single_url_on_date,
+  s.single_page_on_date,
   s.single_event_on_date,
   s.requires_overlap,
   coalesce(cast(cardinality(array_intersect(s.families,mp.families)) AS BIGINT),cast(0 AS BIGINT)) AS shared_surnames,
@@ -30,19 +30,19 @@ WITH meeting_known_people AS (
 ), dated_scored AS (
  SELECT
   record_sha_hex,
-  source_url,
+  page_key,
   banking_hearing_url,
   event_id,
   shared_surnames,
   shared_surnames*cast(100 AS BIGINT)+shared_words AS score
  FROM dated_candidates
- WHERE (single_event_on_date AND single_url_on_date AND NOT requires_overlap)
+ WHERE (single_event_on_date AND single_page_on_date AND NOT requires_overlap)
   OR shared_surnames>0
   OR shared_words>=2
 ), sha_ranked AS (
  SELECT
   record_sha_hex,
-  source_url,
+  page_key,
   banking_hearing_url,
   event_id,
   shared_surnames,
@@ -51,13 +51,13 @@ WITH meeting_known_people AS (
   lead(score) OVER (PARTITION BY record_sha_hex ORDER BY score DESC,event_id ASC) AS next_sha_score
  FROM dated_scored
 ), unique_sha_winners AS (
- SELECT record_sha_hex,source_url,banking_hearing_url,event_id,shared_surnames,score
+ SELECT record_sha_hex,page_key,banking_hearing_url,event_id,shared_surnames,score
  FROM sha_ranked
  WHERE sha_rn=1 AND (next_sha_score IS NULL OR next_sha_score<score)
 ), event_ranked AS (
  SELECT
   record_sha_hex,
-  source_url,
+  page_key,
   banking_hearing_url,
   event_id,
   shared_surnames,
@@ -69,8 +69,8 @@ WITH meeting_known_people AS (
   record_sha_hex,
   event_id,
   banking_hearing_url,
-  first_value(source_url) OVER (PARTITION BY event_id ORDER BY source_url ASC,record_sha_hex ASC)=
-   first_value(source_url) OVER (PARTITION BY event_id ORDER BY source_url DESC,record_sha_hex ASC)
+  first_value(page_key) OVER (PARTITION BY event_id ORDER BY page_key ASC,record_sha_hex ASC)=
+   first_value(page_key) OVER (PARTITION BY event_id ORDER BY page_key DESC,record_sha_hex ASC)
    OR first_value(shared_surnames) OVER (PARTITION BY event_id ORDER BY shared_surnames DESC,record_sha_hex ASC)>0 AS keep_event
  FROM event_ranked
  WHERE score=max_event_score

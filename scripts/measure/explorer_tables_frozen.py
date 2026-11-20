@@ -131,6 +131,7 @@ def build_steps_and_outputs(*, output, has_document_references, has_caption_reso
         dict(name='person_same_family', sql=sql('person-same-family'), materialize=True),
         dict(name='person_given_matches', sql=sql('person-given-matches'), materialize=True),
         dict(name='package_mods_facts', sql=sql('package-mods-facts'), materialize=True),
+        dict(name='senate_page_records', sql=sql('senate-page-records'), materialize=True),
         dict(name='senate_page_candidates', sql=sql('senate-page-candidates'), materialize=True),
         dict(name='senate_page_prelim_links', sql=senate_page_prelim_links_sql(), materialize=True),
         dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),

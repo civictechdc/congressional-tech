@@ -338,6 +338,7 @@ def resolve(tmp_path, records, links, prints, paths=(), meetings=((9001, DAY, TI
                  for sha, url, member_path in capture_contexts) + " UNION ALL SELECT mode,complete,outcome,http_status,"
                  "arrow_cast(decode(sha_hex,'hex'),'FixedSizeBinary(32)'),family,url,requested_url,context_url,member_path,"
                  "sniffed_format,media_type,retrieved_at,original_path,receipt_key,receipt_line,capture_index,run_id,fidelity FROM capture_inputs", materialize=True),
+             dict(name='senate_page_records', sql=sql('senate-page-records'), materialize=True),
              dict(name='senate_page_candidates', sql=sql('senate-page-candidates'), materialize=True),
              dict(name='senate_page_prelim_links', sql=senate_page_prelim_links_sql(), materialize=True),
              dict(name='print_meeting_agreement', sql=sql('print-meeting-agreement'), materialize=True),
@@ -1032,6 +1033,46 @@ def test_same_day_senate_pages_disambiguate_by_title_and_witness_overlap(tmp_pat
     assert got['Carol Unmatched'][0].startswith('page:') and got['Carol Unmatched'][1] is None
 
 
+def test_senate_mirror_preserves_the_meeting_and_existing_witness_key(tmp_path):
+    # A generic title and no known surnames force the one-page fallback and the event tie rule.
+    first = 'https://www.agriculture.senate.gov/hearings/session?ID=2'
+    mirror = 'http://ag.senate.gov:80/hearings/session/?ID=2&'
+    meetings = ((9001, DAY, 'Hearing', False, 'senate', 'ssaf00'),)
+
+    def run(case, urls, *, keys=False, prior=()):
+        path = tmp_path / case
+        path.mkdir()
+        records = [record(url, 'senate_page', [witness('Jane Doe')], context_url=url) for url in urls]
+        pages = [dict(body_hex=r['record_sha_hex'], status='completed', title='Hearing',
+                      heading=None, text_head='', content_date=DAY) for r in records]
+        return resolve(path, records, [], {}, meetings=meetings, pages=pages,
+                       prior_witnesses=prior, keys=keys, details=not keys)
+
+    base = run('original', [first], keys=True)
+    before = base['witnesses'][0]
+    assert before['occasion'] == 'meeting:9001'
+    both = run('mirrored', [first, mirror], prior=base['witnesses'])
+    assert {(r['record_sha_hex'], r['event_id']) for r in both['senate_links']} == {
+        (hashlib.sha256(url.encode()).hexdigest(), 9001) for url in (first, mirror)}
+    assert any(r['witness_key'] == before['witness_key'] and r['occasion'] == 'meeting:9001'
+               for r in both['resolved'])
+
+    other = run('different', [first, mirror.replace('ID=2', 'ID=3')])
+    assert other['senate_links'] == []
+
+
+def test_banking_witness_directory_cannot_supply_a_date_for_all_its_witnesses(tmp_path):
+    urls = ['https://www.banking.senate.gov/hearings/witness-list?PageNum_rs=2' + tail
+            for tail in ('', '&')]
+    records = [record(url, 'senate_page', [witness('Jane Doe')], context_url=url) for url in urls]
+    pages = [dict(body_hex=r['record_sha_hex'], status='completed', title=TITLE, heading=TITLE,
+                  content_date=DAY, text_head='') for r in records]
+    got = resolve(tmp_path, records, [], {}, meetings=((9001, DAY, TITLE, False, 'senate', 'ssbk00'),),
+                  pages=pages, details=True)
+    assert got['senate_links'] == []
+    assert len(got['resolved']) == 2 and all(r['occasion'].startswith('page:') for r in got['resolved'])
+
+
 def test_senate_special_and_joint_hosts_link_to_canonical_committee_codes(tmp_path):
     # F7: aging -> spag00, ethics -> slet00, jec -> jsec00, drugcaucus -> scnc00, ag -> ssaf00.
     cases = [
@@ -1283,7 +1324,7 @@ def test_seeded_rows_tell_each_wrong_witness_key_rewrite_from_the_oracle(witness
 
 def test_senate_page_plan_is_linear_and_coverage_codes_and_generic_titles_hold(tmp_path):
     # F1, F7, F9:
-    # 1. senate-page-meeting-links.sql physical plan has 1 scan of selected_appearance_records,
+    # 1. the page matcher reads materialized Senate records,
     #    no Decimal128 coercion, and no unbounded WindowAggExec.
     # 2. source-annotations-codes.sql maps ag/aging/ethics/jec/drugcaucus .senate.gov aliases even when
     #    spicy_committees.website_url differs or is NULL.
@@ -1313,6 +1354,7 @@ def test_senate_page_plan_is_linear_and_coverage_codes_and_generic_titles_hold(t
         dict(name='appearance_people', sql=sql('appearance-people'), materialize=True),
         dict(name='person_same_family', sql=sql('person-same-family'), materialize=True),
         dict(name='person_given_matches', sql=sql('person-given-matches'), materialize=True),
+        dict(name='senate_page_records', sql=sql('senate-page-records'), materialize=True),
         dict(name='senate_page_candidates', sql=sql('senate-page-candidates'), materialize=True),
         dict(name='package_meeting_links', sql='SELECT cast(NULL AS VARCHAR) AS package_id,cast(NULL AS BIGINT) AS event_id,false AS witness_eligible WHERE false', materialize=True),
     ]
@@ -1330,11 +1372,13 @@ def test_senate_page_plan_is_linear_and_coverage_codes_and_generic_titles_hold(t
         assert 'Decimal128' not in phys
         assert not any(line.lstrip().startswith('WindowAggExec:') for line in phys.splitlines())
     cand_logic = next(r['plan'] for r in explained['candidates_plan'] if r['plan_type'] == 'logical_plan')
-    # P1-2 (ct-uul8): captures must never be the left (build) input of its join with senate_candidates,
-    # and page_facts must be inner-joined against senate_candidates rather than LEFT JOIN scanned whole.
+    assert 'TableScan: selected_appearance_records' not in cand_logic
+    assert 'TableScan: senate_page_records' in cand_logic
+    # P1-2 (ct-uul8): captures must never be the left (build) input of its join with senate_page_records,
+    # and page_facts must join the candidate records before unmatched records are restored.
     for idx, line in enumerate(cand_logic.splitlines()):
         if 'Inner Join:' in line and 'sha256' in line:
-            # First TableScan beneath the join is its left (build) side; captures must come after selected_appearance_records.
+            # First TableScan beneath the join is its left (build) side; captures must come after the materialized candidate records.
             sub_scans = [l.strip() for l in cand_logic.splitlines()[idx + 1:idx + 18] if 'TableScan:' in l]
             assert sub_scans and not sub_scans[0].startswith('TableScan: captures'), cand_logic
     assert 'Left Join: pf.body_sha' not in cand_logic and 'Left Join: sc.sha256 = pf.body_sha' not in cand_logic, cand_logic
