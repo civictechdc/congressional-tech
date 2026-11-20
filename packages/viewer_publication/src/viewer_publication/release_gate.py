@@ -351,7 +351,8 @@ def load_causes(pin):
     verified = verify_local_file(path, pin['sha256'], pin['size'])
     record = json.loads(path.read_bytes())
     verified.require(path)
-    if not isinstance(record, dict) or record.get('version') != 1 or not isinstance(record.get('groups'), list):
+    if (not isinstance(record, dict) or type(record.get('version')) is not int or record['version'] != 1
+            or not isinstance(record.get('groups'), list)):
         raise ValueError('Cause record requires version 1 and a groups list')
     for side in ('base_release_id', 'candidate_release_id'):
         _sha(record.get(side), f'Cause record {side}')
@@ -373,8 +374,15 @@ def load_causes(pin):
         if entry['disposition'] == 'explained' and not entry.get('evidence'):
             # An explanation names what was read (raw lines, a query result) by pinned file.
             raise ValueError(f'An explained cause needs pinned evidence: {entry["id"]}')
-        for evidence in entry.get('evidence', []):
-            verify_local_file(evidence['path'], evidence['sha256'], evidence['size'])
+        pins = entry.get('evidence', [])
+        if not isinstance(pins, list):
+            raise ValueError(f'Cause evidence must be a list of file pins: {entry["id"]}')
+        for evidence in pins:
+            if (not isinstance(evidence, dict) or not isinstance(evidence.get('path'), str)
+                    or not evidence['path'] or type(evidence.get('size')) is not int or evidence['size'] < 0):
+                raise ValueError(f'Cause evidence requires a path and byte size: {entry["id"]}')
+            digest = _sha(evidence.get('sha256'), 'Cause evidence digest')
+            verify_local_file(evidence['path'], digest, evidence['size'])
     return record
 
 
@@ -452,6 +460,56 @@ def _raw_line_facts(line):
     if not isinstance(request, str) and isinstance(record, dict):
         request = record.get('requested_url')
     return bodies, request if isinstance(request, str) else None
+
+
+def new_recording_pages(video_keys, new_receipts, *, evidence_dir, trace, read_receipt):
+    """For each requested video, find linking pages whose full body first arrived in a new receipt.
+
+    The model keeps (extracted video key, page SHA-256) pairs. Use the prefix only to
+    find captures, then check the full digest and its exact raw receipt line. A page
+    already held before this night cannot explain a new recording. Read each receipt once.
+    """
+    from collections import defaultdict
+
+    path = Path(evidence_dir) / 'recording_video_links.parquet'
+    if not path.is_file() or not {'extracted_key', 'page_body'} <= set(pq.read_schema(path).names):
+        return {}
+    links = defaultdict(set)
+    for row in pq.read_table(path, columns=['extracted_key', 'page_body'],
+                             filters=[('extracted_key', 'in', sorted(video_keys))]).to_pylist():
+        body = row['page_body']
+        if isinstance(body, str) and DIGEST.fullmatch(body):
+            links[body].add(row['extracted_key'])
+    if not links:
+        return {}
+    lines = trace({body[:16] for body in links})
+    old = {row['sha'] for row in lines if row['receipt_key'] not in new_receipts}
+    by_receipt = defaultdict(lambda: defaultdict(set))
+    for row in lines:
+        body = row['sha']
+        if body in links and body not in old and row['receipt_key'] in new_receipts:
+            by_receipt[row['receipt_key']][row['receipt_line']].add(body)
+    proven = defaultdict(dict)
+    for key, wanted in sorted(by_receipt.items()):
+        with gzip.open(BytesIO(read_receipt(key)), 'rt') as stream:
+            for number, line in enumerate(stream, 1):
+                if number not in wanted:
+                    continue
+                receipt = json.loads(line)
+                if not isinstance(receipt, dict):
+                    continue
+                record = receipt if 'mode' in receipt else receipt.get('record')
+                if (not isinstance(record, dict) or record.get('mode') != 'fetch' or record.get('http_status') != 200
+                        or record.get('outcome') not in ('stored', 'unchanged')):
+                    continue
+                for capture in receipt.get('captures') or ():
+                    if not isinstance(capture, dict):
+                        continue
+                    body = capture.get('sha256')
+                    if body in wanted[number] and capture.get('complete') is True and capture.get('sniffed_format') == 'html':
+                        for video in links[body]:
+                            proven[video].setdefault(body, dict(receipt_key=key, receipt_line=number))
+    return proven
 
 
 def _captures_source(captures):

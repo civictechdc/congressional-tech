@@ -44,6 +44,7 @@ jobs:
     timeout-minutes: 180
     environment: archive-publish
     steps:
+      # Cause-record changes qualify through validate-explorer's binding check.
       # Production runs the newest commit of main that passed validation, never an untested tip
       # (run 44087092120's first attempt ran a commit whose validation had failed). A capture and
       # the publish after it both take this commit, so a producing commit is an ancestor of the

@@ -289,9 +289,11 @@ def test_tripwires_scale_with_the_nights_receipts_and_each_files_own_rows(decide
 
 def test_the_real_capture_night_passes_every_group_check_and_the_real_wipe_stops_on_them_alone(decide):
     night = json.loads((REAL / 'capture-night-20261117-c998ffa0766f.json').read_text())
-    entries, reasons, facts = decide(night)                                    # 1,173 receipts new, as that night had
-    assert reasons == [] and len(entries) == len(night['failing']) == 42 and facts['groups'] == 42
-    assert {e['id']: e['count'] for e in entries} == {f"{g['file']}|{g['group']}|{g['cause']}": g['count'] for g in night['failing']}
+    from viewer_publication.data_only_night import _group_reasons
+    assert _group_reasons(night, 1173) == []
+    # The historical report kept counts only. It cannot attest to these 44 recording keys.
+    entries, reasons, _ = decide(night)
+    assert entries == [] and len(reasons) == 1 and 'expected 44 added recordings' in reasons[0]
     wipe = json.loads((REAL / 'html-metadata-wipe-20261116-08c465599d7b.json').read_text())
     entries, reasons, _ = decide(wipe)
     assert entries == [] and len(reasons) >= 18
@@ -536,3 +538,134 @@ def test_replaced_committee_page_recording_match_passes_when_traced_and_stops_wh
     )
     assert entries_bad == [] and any('recording_matches.parquet|removed keys|no evidence given (-1)' in r for r in reasons_bad)
 
+
+
+@pytest.fixture
+def recording_sweep(tmp_path):
+    """Run 44737429192's actual report groups and meeting 116718, with synthetic bulk page links."""
+    import gzip
+    from hashlib import sha256
+    from viewer_publication.release_gate import new_recording_pages
+
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    base.mkdir()
+    candidate.mkdir()
+    old_video, publisher_video = 'youtube:I-xxDkL4cdI', 'youtube:Fyr9cXKd6NU'
+    old_page = 'd17c3b03720d639b04a8b33b4af1865ff4962f25406020d2138e320ef16f9ff7'
+    via = '9d0dd2e13545e853a38db29b3c0d36e5b7eb2bf24709187f1f713f57410c4457'
+    new_page = '63236de163cfa91880d2302494cc60ad5038ae8b40700566aed83af706350434'
+    removed = 'cb35933e6a0e06e0badea192a6eb00491beed358f6a48090ffeed9b0a62fb9ed'
+    generic = dict(match_id=removed, event_id=116718, video_key=old_video, basis='committee_page',
+                   decision='linked', status='asserted', source_ref='committee_page:' + old_page, note='house_single_day_generic')
+    committee = dict(generic, match_id='323ab6a5ab3aee32de624726160e10591a49d39c19867fb24880ba739e3f6fdc',
+                     video_key=publisher_video, source_ref='committee_page:' + via, note='house_doc_link')
+    publisher = dict(committee, match_id='50acb8ce1a88c442128a84ca418ef56dcad240bacad1c5d20203952df5d96827',
+                     basis='publisher_link', source_ref='meetings.videos', note=None)
+    pq.write_table(pa.Table.from_pylist([dict(event_id=116718, videos=[dict(video_key=publisher_video)])]),
+                   candidate / 'meetings.parquet')
+    known = {f'held:{n}': [] for n in range(16509)}
+    known.update({old_video: [116718], publisher_video: [116718], 'youtube:Hu6j7gNk_qM': [115606]})
+    added = {**{f'senate:banking{n:06}': [] for n in range(571)},
+             **{f'youtube:A{n:010}': [] for n in range(102)},
+             **{f'youtube:B{n:010}': [n] for n in range(51)}, **{f'senate:other{n:06}': [n] for n in range(4)}}
+    current = dict(known, **added)
+    current[old_video] = []
+    current['youtube:Hu6j7gNk_qM'] = [115606, 115610]
+    for directory, matches, recordings, bodies in [
+        (base, [generic, committee, publisher], known, [old_page, via]),
+        (candidate, [dict(committee, source_ref='committee_page:' + new_page,
+                          note=f'house_doc_link [via committee_page:{via}]'), publisher], current, [old_page, via, new_page]),
+    ]:
+        pq.write_table(pa.Table.from_pylist(matches), directory / 'recording_matches.parquet')
+        pq.write_table(pa.table({'video_key': list(recordings), 'event_ids': list(recordings.values())}),
+                       directory / 'recordings.parquet')
+        pq.write_table(pa.table({'saved_body': [bytes.fromhex(x) for x in bodies], 'saved_media_type': ['text/html'] * len(bodies)}),
+                       directory / 'detail.parquet')
+
+    keys = [f'receipts/house/pages/2026-11-20/{n}.jsonl.gz' for n in range(1981)]
+    links = [(publisher_video, new_page)] + [(k, sha256(str(i // 2).encode()).hexdigest()) for i, k in enumerate(added)]
+    path = tmp_path / 'recording_video_links.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(extracted_key=k, page_body=p) for k, p in links]), path)
+    traces, raw = [], {}
+    for key, body in zip(keys, dict.fromkeys(p for _, p in links)):
+        traces.append(dict(sha=body, prefix=body[:16], receipt_key=key, receipt_line=1))
+        record = dict(mode='fetch', outcome='stored', http_status=200, captures=[dict(sha256=body, complete=True, sniffed_format='html')])
+        raw[key] = gzip.compress(json.dumps(record).encode())
+    groups = [
+        group('recording_matches.parquet', 'removed keys', -1, 'no evidence given'),
+        group('recording_matches.parquet', 'added keys', 71, 'no evidence given'),
+        group('recording_matches.parquet', 'changed note', 18),
+        group('recording_matches.parquet', 'changed source_ref', 23),
+        group('recordings.parquet', 'added keys', 55, 'with event_ids; source not traced'),
+        group('recordings.parquet', 'added keys', 673, 'empty event_ids; source not traced'),
+        group('recordings.parquet', 'changed event_ids', 2),
+    ]
+    value = dict(link_rule=link_rule(), failing=groups, files={
+        file: dict(rows=dict(base=n, candidate=m), groups=[g for g in groups if g['file'] == file])
+        for file, n, m in [('recording_matches.parquet', 42827, 42897), ('recordings.parquet', 16512, 17240)]})
+
+    def decide():
+        return data_only_causes(value, candidate_record=INPUTS, candidate_receipt_keys=[*LIVE_KEYS, *keys],
+                                live_records=[live()], base_dir=base, candidate_dir=candidate,
+                                recording_page_proof=lambda videos, new: new_recording_pages(videos, new, evidence_dir=tmp_path,
+                                    trace=lambda prefixes: [r for r in traces if r['prefix'] in prefixes], read_receipt=raw.__getitem__))
+    return decide, path, traces, raw, value, candidate
+
+
+def test_nightly_recordings_pass_only_with_page_and_receipt_evidence(recording_sweep):
+    decide, _, _, _, _, _ = recording_sweep
+    entries, reasons, facts = decide()
+    assert reasons == [] and len(entries) == 7
+    assert facts['new_receipts'] == 1981 and len(facts['added_recording_pages']) == 673
+    assert facts['replaced_recording_matches'] == [dict(
+        match_id='cb35933e6a0e06e0badea192a6eb00491beed358f6a48090ffeed9b0a62fb9ed', event_id=116718,
+        video_key='youtube:I-xxDkL4cdI', reason='publisher_corroborated', replacement_video_key='youtube:Fyr9cXKd6NU',
+        candidate_page='63236de163cfa91880d2302494cc60ad5038ae8b40700566aed83af706350434',
+        receipt_key='receipts/house/pages/2026-11-20/0.jsonl.gz', receipt_line=1)]
+
+
+@pytest.mark.parametrize('fault', ['phantom', 'no evidence', 'held body', 'wrong line', 'prefix collision', 'wrong raw',
+                                   'no replacement receipt', 'lost publisher link', 'too many removals', 'wrong count',
+                                   'small phantom', 'not stored', 'unlisted video'])
+def test_nightly_recordings_refuse_unproven_changes(recording_sweep, fault):
+    import gzip
+    decide, path, traces, raw, value, candidate = recording_sweep
+    if fault == 'phantom':
+        rows = pq.read_table(path).to_pylist()
+        pq.write_table(pa.Table.from_pylist(rows[:-56]), path)  # remove the last unlinked key as well as all 55 linked keys
+    elif fault == 'no evidence':
+        path.unlink()
+    elif fault == 'held body':
+        traces.append(dict(traces[1], receipt_key=LIVE_KEYS[0]))
+    elif fault == 'wrong line':
+        traces[1]['receipt_line'] = 2
+    elif fault == 'prefix collision':
+        traces[1]['sha'] = traces[1]['prefix'] + 'f' * 48
+    elif fault == 'small phantom':
+        # A single invented key below every numeric cap still needs provenance.
+        path.unlink()
+        records = pq.read_table(candidate / 'recordings.parquet').to_pylist()
+        keep = [r for r in records if r['video_key'].startswith('held:') or r['event_ids'] or r['video_key'] == 'youtube:I-xxDkL4cdI']
+        pq.write_table(pa.Table.from_pylist([*keep, dict(video_key='youtube:phantom', event_ids=[])]), candidate / 'recordings.parquet')
+        value['failing'][5]['count'] = 1
+    elif fault == 'not stored':
+        line = json.loads(gzip.decompress(raw[traces[1]['receipt_key']]))
+        raw[traces[1]['receipt_key']] = gzip.compress(json.dumps(dict(line, http_status=404)).encode())
+    elif fault == 'wrong raw':
+        raw[traces[1]['receipt_key']] = gzip.compress(b'{"mode":"fetch","http_status":200,"outcome":"stored","captures":[]}')
+    elif fault == 'no replacement receipt':
+        traces.pop(0)
+    elif fault == 'unlisted video':
+        pq.write_table(pa.Table.from_pylist([dict(event_id=116718, videos=[dict(video_key='youtube:different')])]),
+                       candidate / 'meetings.parquet')
+    elif fault == 'lost publisher link':
+        matches = pq.read_table(candidate / 'recording_matches.parquet')
+        pq.write_table(matches.slice(0, 1), candidate / 'recording_matches.parquet')
+    elif fault == 'too many removals':
+        value['failing'][0]['count'] = -21
+    else:
+        value['failing'][5]['count'] = 672
+    entries, reasons, _ = decide()
+    assert not entries
+    assert any(('removed keys' if fault in ('no replacement receipt', 'lost publisher link', 'too many removals', 'unlisted video')
+                else 'added recordings') in reason for reason in reasons)

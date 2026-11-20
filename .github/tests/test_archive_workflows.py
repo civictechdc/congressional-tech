@@ -206,14 +206,16 @@ def test_deploy_and_validation_add_local_archive_contract_before_upload():
 def test_active_workflow_binding_requires_explicit_execute_before_preflight(tmp_path):
     cases=[(None,2),([],2),(['--plan'],2),('--execute',2),(['--execute'],0)]
     for index,(argv,expected) in enumerate(cases):
-        root=tmp_path/str(index);scripts=root/'.github/scripts';scripts.mkdir(parents=True)
-        script=scripts/'run-archive-job.py';script.write_bytes((ROOT/'.github/scripts/run-archive-job.py').read_bytes())
-        spec=root/'owner-job.json';spec.write_text(json.dumps({'version':1}))
-        binding=dict(module='viewer_publication.archive_publish',spec='owner-job.json',rss_gb=8)
-        if argv is not None:binding['argv']=argv
-        (root/'.github/archive-jobs.json').write_text(json.dumps({'publish':binding}))
+        root=tmp_path/str(index)
+        root.mkdir()
+        script=active_publisher_fixture(root)
+        bindings=root/'.github/archive-jobs.json'
+        value=json.loads(bindings.read_bytes())
+        if argv is None:del value['publish']['argv']
+        else:value['publish']['argv']=argv
+        bindings.write_text(json.dumps(value))
         result=subprocess.run([sys.executable,'-I',str(script),'publish','--check-binding'],
-            cwd=tmp_path,capture_output=True,text=True,timeout=10,env={'PATH':'/usr/bin:/bin'})
+            cwd=root,capture_output=True,text=True,timeout=10,env={'PATH':os.environ['PATH']})
         assert result.returncode==expected,result.stderr
         if expected:assert 'explicit --execute' in result.stderr
 
@@ -533,3 +535,204 @@ def test_daily_publish_spec_explains_new_receipt_additions_unattended():
     binding = json.loads((ROOT / '.github/archive-jobs.json').read_text())['publish']
     spec = json.loads((ROOT / binding['spec']).read_text())
     assert 'daily' in spec and spec['automatic_causes'] is True
+
+
+CAUSE_CLASSIFIER = ROOT / '.github/scripts/cause-record-changes.py'
+
+
+def classified(base, head, repo=ROOT):
+    result = subprocess.run([sys.executable, '-I', str(CAUSE_CLASSIFIER), base, head], cwd=repo,
+                            check=True, capture_output=True, text=True)
+    return result.stdout.strip() == 'true'
+
+
+def test_real_tier_one_cause_commit_uses_the_fast_path():
+    assert classified('fff9e04d~1', 'fff9e04d')
+
+
+def test_cause_diff_classifier_uses_committed_trees_and_only_the_release_pin(tmp_path):
+    def git(*args):
+        return subprocess.check_output(['git', *args], cwd=tmp_path, text=True).strip()
+
+    git('init', '-q')
+    git('config', 'user.name', 'Fixture')
+    git('config', 'user.email', 'fixture@example.org')
+    spec = tmp_path / 'model/jobs/publish.json'
+    record = spec.parent / 'release-causes/night.json'
+    record.parent.mkdir(parents=True)
+    record.write_text('{}')
+    original = dict(version=1, model_spec=dict(path='model.json', sha256='a' * 64), daily=dict(size=5))
+    spec.write_text(json.dumps(original))
+    git('add', '.')
+    git('commit', '-qm', 'base')
+    base = git('rev-parse', 'HEAD')
+    # Each diff starts at the same base. Write an actual tree without changing the checkout's branch.
+    def check(expected):
+        git('add', '-A')
+        tree = git('write-tree')
+        assert classified(base, tree, tmp_path) is expected
+
+    pin = dict(path='release-causes/night.json', sha256='b' * 64, size=3)
+    updated = dict(original, release_causes=pin)
+    spec.write_text(json.dumps(updated))
+    record.write_text('{"night": true}')
+    check(True)
+    note = tmp_path / '.tickets/note.md'
+    note.parent.mkdir()
+    note.write_text('Reviewed the night.')
+    check(True)
+    for path in ('docs/notes.md', 'model/jobs/release-causes/evidence/night.json'):
+        extra = tmp_path / path
+        extra.parent.mkdir(parents=True, exist_ok=True)
+        extra.write_text('{}')
+    check(True)
+    for other in (dict(model_spec=dict(path='other')), dict(daily=dict(size=6)), dict(version=True), dict(extra=None)):
+        spec.write_text(json.dumps(dict(updated, **other)))
+        check(False)
+    spec.write_text('{"version":2,"version":1}')
+    check(False)
+    spec.write_text(json.dumps(original))  # A record + ticket without a pin edit also qualifies.
+    check(True)
+    record.write_text('{"truncated"')
+    check(False)
+    record.unlink()
+    check(False)
+    record.write_text('{}')
+    sql = tmp_path / 'model/sql/list.sql'
+    sql.parent.mkdir()
+    sql.write_text('select 1')
+    check(False)
+    sql.unlink()
+    active = tmp_path / 'docs/experiments/test_input.py'
+    active.parent.mkdir()
+    active.write_text('assert False')
+    check(False)
+    active.unlink()
+    (tmp_path / 'model/jobs/release-causes/evidence/night.json').unlink()
+    check(False)  # Only docs and a ticket differ from base.
+    assert not classified('missing-base', 'HEAD', tmp_path)
+
+
+def test_checked_binding_refuses_wrong_cause_schema_record_hash_and_evidence_hash(tmp_path):
+    from hashlib import sha256
+    runner = active_publisher_fixture(tmp_path)
+    spec = tmp_path / 'publish.json'
+    cause = tmp_path / 'night.json'
+    evidence = tmp_path / 'evidence.json'
+    evidence.write_text('{}')
+
+    def pin(path):
+        data = path.read_bytes()
+        return dict(path=path.name, sha256=sha256(data).hexdigest(), size=len(data))
+
+    group = dict(id='f|group|detail', count=2, disposition='explained', cause='Measured', evidence=[pin(evidence)])
+    def bind(record):
+        cause.write_text(json.dumps(record))
+        spec.write_text(json.dumps(dict(json.loads(spec.read_bytes()), release_causes=pin(cause))))
+
+    def check():
+        return subprocess.run([sys.executable, '-I', str(runner), 'publish', '--check-binding'],
+                              cwd=tmp_path, capture_output=True, text=True, timeout=10).returncode
+
+    record = dict(version=1, base_release_id='a' * 64, candidate_release_id='b' * 64, groups=[group])
+    bind(record)
+    assert check() == 0
+    cause.write_text(json.dumps(dict(record, version=2)))  # Same size, different bytes.
+    assert check() != 0
+    for invalid in (dict(record, groups=[dict(group, count=True)]), dict(record, version=True),
+                    dict(record, groups=[dict(group, evidence=[dict(pin(evidence), sha256=None)])])):
+        bind(invalid)
+        assert check() != 0
+    bind(record)
+    evidence.write_text('[]')
+    assert check() != 0
+
+
+def test_cause_validation_checks_an_unbound_record_and_every_changed_evidence_pin(tmp_path):
+    import shutil
+    def git(*args):
+        return subprocess.run(['git', *args], cwd=tmp_path, check=True, capture_output=True)
+    git('init', '-q')
+    git('config', 'user.name', 'Fixture')
+    git('config', 'user.email', 'fixture@example.org')
+    history = Path('model/jobs/release-causes')
+    # This cause has portable evidence and existing tickets. Use its real, checked bytes.
+    record = history / 'ab0192939dfd-0e7084cde775.json'
+    evidence = history / 'evidence' / record.name
+    (tmp_path / evidence.parent).mkdir(parents=True)
+    for path in (record, evidence):
+        shutil.copyfile(ROOT / path, tmp_path / path)
+    git('add', '.')
+    git('commit', '-qm', 'base')
+    def verify():
+        git('add', '-A')
+        git('commit', '-qm', 'changed records')
+        return subprocess.run([sys.executable, '-I', str(CAUSE_CLASSIFIER), '--verify', 'HEAD~1', 'HEAD'],
+                              cwd=tmp_path, capture_output=True, text=True)
+    (tmp_path / evidence).write_text('{}')
+    assert verify().returncode != 0
+    bad = tmp_path / history / 'unbound.json'
+    bad.write_text('{"groups":[]}')
+    assert verify().returncode != 0
+    bad.unlink()
+    shutil.copyfile(ROOT / evidence, tmp_path / evidence)
+    assert verify().returncode == 0
+
+
+def test_cause_only_ci_runs_doctor_and_binding_and_preserves_the_merge_gate():
+    jobs = workflow('validate-explorer.yml')['jobs']
+    changes = jobs['changes']
+    steps = changes['steps']
+    classifier = next(s for s in steps if s.get('id') == 'scope')
+    assert classifier['env']['BASE'] == '${{ github.event.pull_request.base.sha || github.event.before }}'
+    assert 'git merge-base --is-ancestor "$validated" "$BASE"' in classifier['run']
+    assert changes['outputs']['cause_record_only'] == '${{ steps.scope.outputs.cause_record_only }}'
+    check = next(s for s in steps if 'publish --check-binding' in s.get('run', ''))
+    setup = next(s for s in steps if s.get('uses') == './.github/actions/setup-python-project')
+    assert setup['if'] == check['if'] == "steps.scope.outputs.check == 'true'"
+    assert steps.index(classifier) < steps.index(setup) < steps.index(check)
+    assert 'cause-record-changes.py --verify "$BASE" HEAD' in check['run']
+    assert 'continue-on-error' not in check and 'continue-on-error' not in changes
+    assert jobs['offline']['needs'] == 'changes' and jobs['validate']['needs'] == ['changes', 'offline']
+    for name in ('offline', 'validate'):
+        assert "needs.changes.outputs.cause_record_only != 'true'" in jobs[name]['if']
+    gate = workflow('merge-gate.yml')
+    assert gate['on'] == {'pull_request': ''} and 'if' not in gate['jobs']['merge-gate']
+
+
+def test_push_scope_inherits_only_code_that_already_passed(tmp_path):
+    import shutil
+    def git(*args):
+        return subprocess.check_output(['git', *args], cwd=tmp_path, text=True).strip()
+    git('init', '-q')
+    git('config', 'user.name', 'Fixture')
+    git('config', 'user.email', 'fixture@example.org')
+    helper = tmp_path / '.github/scripts' / CAUSE_CLASSIFIER.name
+    helper.parent.mkdir(parents=True)
+    shutil.copyfile(CAUSE_CLASSIFIER, helper)
+    def commit(message):
+        git('add', '.')
+        git('commit', '-qm', message)
+        return git('rev-parse', 'HEAD')
+    older = commit('validated code')
+    (tmp_path / 'code.py').write_text('print(1)')
+    before = commit('intervening code')
+    record = tmp_path / 'model/jobs/release-causes/night.json'
+    record.parent.mkdir(parents=True)
+    record.write_text('{}')
+    commit('cause only')
+    # Execute the Actions step with a local stand-in for the read-only run lookup.
+    gh = tmp_path / 'gh'
+    gh.write_text('#!/bin/sh\necho "$VALIDATED"\n')
+    gh.chmod(0o755)
+    job = workflow('validate-explorer.yml')['jobs']['changes']
+    shell = next(s['run'] for s in job['steps'] if s.get('id') == 'scope')
+    for validated, event, fast in ((before, 'push', 'true'), (older, 'push', 'false'), ('', 'push', 'false'),
+                                   (older, 'pull_request', 'true')):
+        output = tmp_path / 'job-output'
+        output.write_text('')
+        env = dict(os.environ, PATH=str(tmp_path) + os.pathsep + os.environ['PATH'], VALIDATED=validated,
+                   BASE=before, GITHUB_EVENT_NAME=event, GITHUB_REPOSITORY='fixture/repo', GITHUB_OUTPUT=str(output))
+        subprocess.run(['/bin/bash', '-eo', 'pipefail', '-c', shell], cwd=tmp_path, check=True, env=env)
+        values = dict(line.split('=', 1) for line in output.read_text().splitlines())
+        assert values['cause_record_only'] == fast and values['check'] == 'true'

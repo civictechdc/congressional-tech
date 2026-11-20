@@ -61,7 +61,60 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Check release cause changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      cause_record_only: ${{ steps.scope.outputs.cause_record_only }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+          filter: blob:none
+      - name: Classify the tested tree against its base
+        id: scope
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          fast=false
+          check=false
+          if [[ -n "$BASE" ]] && git rev-parse --verify --quiet "$BASE^{commit}" >/dev/null; then
+            fast=$(python3 .github/scripts/cause-record-changes.py "$BASE" HEAD)
+            if ! git diff --quiet "$BASE" HEAD -- model/jobs/release-causes model/jobs/publish.json; then check=true; fi
+            # Production selects a successful main push. A cause-only push following a
+            # failed or cancelled code change must still test that code.
+            if [[ "$fast" == true && "$GITHUB_EVENT_NAME" == push ]]; then
+              validated=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/validate-explorer.yml/runs?branch=main&event=push&status=success&per_page=1" --jq '.workflow_runs[0].head_sha' || true)
+              if [[ -n "$validated" ]] && git merge-base --is-ancestor "$validated" "$BASE"; then
+                BASE=$validated
+                fast=$(python3 .github/scripts/cause-record-changes.py "$BASE" HEAD)
+              else
+                fast=false
+              fi
+            fi
+          fi
+          echo "cause_record_only=$fast" >> "$GITHUB_OUTPUT"
+          echo "check=$check" >> "$GITHUB_OUTPUT"
+          echo "base=$BASE" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/setup-python-project
+        if: steps.scope.outputs.check == 'true'
+      - name: Verify the publish binding and changed cause records
+        if: steps.scope.outputs.check == 'true'
+        env:
+          BASE: ${{ steps.scope.outputs.base }}
+        run: |
+          .venv/bin/python -I .github/scripts/run-archive-job.py publish --check-binding
+          .venv/bin/python -I .github/scripts/cause-record-changes.py --verify "$BASE" HEAD
+
   offline:
+    needs: changes
+    if: always() && !cancelled() && needs.changes.outputs.cause_record_only != 'true'
     name: Offline regressions (${{ matrix.shard }}/6)
     runs-on: ubuntu-24.04
     # Shards took up to 27.4 minutes in Nov 2026, setup included; the shard
@@ -104,8 +157,8 @@ jobs:
           path: ${{ runner.temp }}/offline-${{ matrix.shard }}.xml
 
   validate:
-    needs: offline
-    if: always()
+    needs: [changes, offline]
+    if: always() && needs.changes.outputs.cause_record_only != 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:

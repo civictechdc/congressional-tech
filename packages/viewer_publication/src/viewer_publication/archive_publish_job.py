@@ -706,6 +706,9 @@ def main(argv=None):
     try:
         spec=load_spec(args.spec)
         if spec.get('status')=='blocked':print(json.dumps(spec,sort_keys=True));return 2
+        if not args.execute and 'release_causes' in spec:
+            from viewer_publication.release_gate import load_causes
+            load_causes(spec['release_causes'])
         if args.nightly_work is not None:spec=nightly_spec(spec,args.nightly_work)
         if args.keep_candidate:
             if spec.get('resume'):raise ValueError('A declared resume and a kept candidate are separate paths')
