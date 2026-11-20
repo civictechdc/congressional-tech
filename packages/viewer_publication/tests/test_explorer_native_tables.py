@@ -1162,21 +1162,65 @@ def test_ct_414r_house_page_date_vetoes_and_rule_provenance(tmp_path):
         assert m['note'] and isinstance(m['note'], str)
 
 
-def test_explorer_tables_frozen_job_dag_resolves_all_relations(tmp_path):
-    """Verify scripts/measure/explorer_tables_frozen.py defines every input/step relation across its ENTIRE
-    DAG (all steps and all outputs) and passes full-job retire_relations across all four flag combinations."""
+@pytest.fixture(scope='module')
+def frozen_runner():
     import importlib.util
-    from viewer_publication.archive_model import SPICY_SCHEMAS, registry_inputs
-    from viewer_publication.archive_model_lifetimes import retire_relations, sql_dependencies
-
     spec = importlib.util.spec_from_file_location(
         'explorer_tables_frozen', ROOT / 'scripts/measure/explorer_tables_frozen.py'
     )
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    return mod
+
+
+def test_frozen_page_facts_select_readings_before_filtering(tmp_path, frozen_runner):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    from congress_api.lake import compatible_versions
+
+    versions = json.loads((ROOT / 'model/jobs/publish-model.json').read_text())['parser_versions']
+    previous = {e['parser']: e['version'] for e in compatible_versions.load_registry()}
+    rows = []
+
+    def add(body, parser, version, date, root=None, fingerprint=b'ok'):
+        rows.append(dict(body_sha=body, parser=parser, parser_version=version, status='completed',
+                         content_date=date, xml_root=root, heading='', title='', text_head='',
+                         named_meetings=[9001], fingerprint=fingerprint, links=[dict(href='/hearing')]))
+
+    day = '2020-02-14'
+    add(b'updated', 'html', previous['html'], '2020-02-03')
+    add(b'updated', 'html', versions['html'], '2020-02-12')
+    add(b'compatible', 'html', previous['html'], day)
+    add(b'needs-reparse', 'html', previous['html'], day, fingerprint=None)
+    add(b'oversize', 'xml', previous['xml'], day, root='mods')
+    add(b'print', 'xml', previous['xml'], day, root='mods')
+    add(b'changed-root', 'xml', previous['xml'], day, root='mods')
+    add(b'changed-root', 'xml', versions['xml'], day, root='other')
+    add(b'unqualified', 'xml', 'unqualified-version', day, root='mods')
+    add(b'other-site', 'html', versions['html'], day)
+
+    spec = dict(parser_versions=versions)
+    for name, data in [
+        ('readings', rows),
+        ('appearance_records', [dict(source='senate_page', record_sha=body)
+                                for body in (b'updated', b'compatible', b'needs-reparse')]),
+        ('captures', [dict(sha256=b'oversize', bytes=compatible_versions.page_parse_max_bytes() + 1)]),
+    ]:
+        path = tmp_path / (name + '.parquet')
+        pq.write_table(pa.Table.from_pylist(data), path)
+        spec[name] = dict(path=str(path))
+    facts = pq.read_table(frozen_runner.mods_page_facts(spec, tmp_path)).to_pylist()
+    assert sorted((r['body_sha'], r['content_date']) for r in facts) == [
+        (b'compatible', day), (b'print', day), (b'updated', '2020-02-12')]
+
+
+def test_explorer_tables_frozen_job_dag_resolves_all_relations(tmp_path, frozen_runner):
+    """Verify every input, step and output and retire_relations across all four flag combinations."""
+    from viewer_publication.archive_model import SPICY_SCHEMAS, appearance_steps, package_link_steps, registry_inputs
+    from viewer_publication.archive_model_lifetimes import retire_relations, sql_dependencies
 
     reg_names = {item['name'] for item in registry_inputs(tmp_path / 'regs')}
-    ledger_names = {item['name'] for item in mod.frozen_ledger_inputs(tmp_path / 'empty_release', tmp_path / 'work')}
+    ledger_names = {item['name'] for item in frozen_runner.frozen_ledger_inputs(tmp_path / 'empty_release', tmp_path / 'work')}
     declared_inputs = reg_names | ledger_names | {
         'captures', 'meeting_records', 'appearance_records_lake', 'video_records', 'committee_records',
         'released_list', 'released_meetings', 'released_detail', 'page_facts', 'recordings_entity',
@@ -1189,13 +1233,15 @@ def test_explorer_tables_frozen_job_dag_resolves_all_relations(tmp_path):
         'recording_publisher_match_rows', 'recording_page_video_facts', 'recording_page_video_stated_overlaps',
         'recording_page_match_rows', 'recording_linked_packages', 'recording_matches_export',
     }
+    production_senate = [s for s in [*package_link_steps(), *appearance_steps()] if s['name'].startswith('senate_page_')]
     for has_doc_refs in (True, False):
         for has_caption in (True, False):
-            steps, outputs = mod.build_steps_and_outputs(
+            steps, outputs = frozen_runner.build_steps_and_outputs(
                 output=tmp_path / f'out_{has_doc_refs}_{has_caption}',
                 has_document_references=has_doc_refs,
                 has_caption_resources=has_caption,
             )
+            assert [s for s in steps if s['name'].startswith('senate_page_')] == production_senate
             in_names = set(declared_inputs) if has_caption else (declared_inputs - {'released_caption_resources'})
             available = set(in_names)
             for step in steps:

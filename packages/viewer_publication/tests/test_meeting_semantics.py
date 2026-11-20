@@ -947,6 +947,20 @@ def test_banking_hearing_date_survives_same_body_aliases(tmp_path, text_head, da
     ]
 
 
+def test_banking_default_port_mirror_uses_displayed_date(tmp_path):
+    urls = [f'https://www.banking.senate.gov{port}/hearings/02/03/2020/monetary-policy'
+            for port in ('', ':443')]
+    records = [record(url, 'senate_page', [witness('Jerome Powell')], context_url=url) for url in urls]
+    pages = [dict(body_hex=r['record_sha_hex'], status='completed', title='Monetary Policy',
+                  text_head='Date: Wednesday, February 12, 2020 Time: 09:30 AM') for r in records]
+    result = resolve(tmp_path, records, [], {}, pages=pages, details=True, meetings=(
+        (327100, '2020-02-03', 'Monetary Policy', False, 'senate', 'ssbk00'),
+        (327161, '2020-02-12', 'Monetary Policy', False, 'senate', 'ssbk00'),
+    ))
+    assert {(r['record_sha_hex'], r['event_id'], r['banking_hearing_url']) for r in result['senate_links']} == {
+        (r['record_sha_hex'], 327161, r['context_url']) for r in records}
+
+
 @pytest.mark.parametrize('second_title,expected', [
     ('Unrelated testimony concerning tax revenue', 335901),
     ('Made in America: The Boom in U.S. Manufacturing Investment', None),
@@ -1033,18 +1047,19 @@ def test_same_day_senate_pages_disambiguate_by_title_and_witness_overlap(tmp_pat
     assert got['Carol Unmatched'][0].startswith('page:') and got['Carol Unmatched'][1] is None
 
 
-def test_senate_mirror_preserves_the_meeting_and_existing_witness_key(tmp_path):
-    # A generic title and no known surnames force the one-page fallback and the event tie rule.
+@pytest.mark.parametrize('mirror_title', ['Hearing', 'Rural Credit'], ids=['equal-score', 'higher-score'])
+def test_senate_mirror_preserves_the_meeting_and_existing_witness_key(tmp_path, mirror_title):
+    # The original has zero overlap. The mirror contributes either zero or two title words.
     first = 'https://www.agriculture.senate.gov/hearings/session?ID=2'
     mirror = 'http://ag.senate.gov:80/hearings/session/?ID=2&'
-    meetings = ((9001, DAY, 'Hearing', False, 'senate', 'ssaf00'),)
+    meetings = ((9001, DAY, 'Rural Credit', False, 'senate', 'ssaf00'),)
 
     def run(case, urls, *, keys=False, prior=()):
         path = tmp_path / case
         path.mkdir()
         records = [record(url, 'senate_page', [witness('Jane Doe')], context_url=url) for url in urls]
-        pages = [dict(body_hex=r['record_sha_hex'], status='completed', title='Hearing',
-                      heading=None, text_head='', content_date=DAY) for r in records]
+        pages = [dict(body_hex=r['record_sha_hex'], status='completed', content_date=DAY,
+                      title=mirror_title if r['context_url'] == mirror else 'Hearing') for r in records]
         return resolve(path, records, [], {}, meetings=meetings, pages=pages,
                        prior_witnesses=prior, keys=keys, details=not keys)
 
@@ -1054,11 +1069,44 @@ def test_senate_mirror_preserves_the_meeting_and_existing_witness_key(tmp_path):
     both = run('mirrored', [first, mirror], prior=base['witnesses'])
     assert {(r['record_sha_hex'], r['event_id']) for r in both['senate_links']} == {
         (hashlib.sha256(url.encode()).hexdigest(), 9001) for url in (first, mirror)}
-    assert any(r['witness_key'] == before['witness_key'] and r['occasion'] == 'meeting:9001'
-               for r in both['resolved'])
+    assert {r['occasion'] for r in both['observations'] if r['record_sha_hex'] == before['record_sha_hex']} == {
+        before['occasion']}
+    assert [(r['witness_key'], r['occasion']) for r in both['resolved'] if r['name'] == 'Jane Doe'] == [
+        (before['witness_key'], before['occasion'])]
 
     other = run('different', [first, mirror.replace('ID=2', 'ID=3')])
     assert other['senate_links'] == []
+
+
+@pytest.mark.parametrize('mirror_title,other_title,tie', [
+    ('Rural Credit', 'Hearing', False),
+    ('Rural Credit', 'Rural Credit', True),
+    ('Rural Credit Policy', 'Rural Credit', False),
+], ids=['two-vs-zero', 'two-vs-two', 'both-qualify-three-vs-two'])
+def test_competing_senate_pages_use_the_best_score_per_page(tmp_path, mirror_title, other_title, tie):
+    origin = 'https://ag.senate.gov/hearings/'
+    cases = [('a', 'Hearing'), ('a/', mirror_title), ('b', other_title)]
+    records = [record(path, 'senate_page', [witness('Jane Doe')], context_url=origin + path) for path, _ in cases]
+    pages = [dict(body_hex=r['record_sha_hex'], status='completed', title=title, content_date=DAY)
+             for r, (_, title) in zip(records, cases)]
+    result = resolve(tmp_path, records, [], {}, pages=pages, details=True,
+                     meetings=((9001, DAY, 'Rural Credit Policy', False, 'senate', 'ssaf00'),))
+    assert {(r['record_sha_hex'], r['event_id']) for r in result['senate_links']} == (
+        set() if tie else {(r['record_sha_hex'], 9001) for r in records[:2]})
+
+
+def test_reused_senate_page_keeps_independent_event_matches(tmp_path):
+    # The same address served two different rosters on the same day. A generic
+    # copy cannot inherit a unique event, even if one roster scores higher.
+    titles = ['Rural Credit', 'Wetland Habitat Restoration', 'Hearing']
+    records = [record(title, 'senate_page', [witness('Jane Doe')],
+                      context_url='https://ag.senate.gov/hearings/session') for title in titles]
+    pages = [dict(body_hex=r['record_sha_hex'], status='completed', title=title, content_date=DAY)
+             for r, title in zip(records, titles)]
+    result = resolve(tmp_path, records, [], {}, pages=pages, details=True, meetings=(
+        (9001, DAY, titles[0], False, 'senate', 'ssaf00'), (9002, DAY, titles[1], False, 'senate', 'ssaf00')))
+    assert {(r['record_sha_hex'], r['event_id']) for r in result['senate_links']} == {
+        (records[0]['record_sha_hex'], 9001), (records[1]['record_sha_hex'], 9002)}
 
 
 def test_banking_witness_directory_cannot_supply_a_date_for_all_its_witnesses(tmp_path):
@@ -1071,6 +1119,20 @@ def test_banking_witness_directory_cannot_supply_a_date_for_all_its_witnesses(tm
                   pages=pages, details=True)
     assert got['senate_links'] == []
     assert len(got['resolved']) == 2 and all(r['occasion'].startswith('page:') for r in got['resolved'])
+
+
+@pytest.mark.parametrize('alias_path', ['/witness-list', '/archive/people'])
+def test_banking_directory_capture_excludes_the_body_at_other_addresses(tmp_path, alias_path):
+    origin = 'https://www.banking.senate.gov'
+    urls = [origin + path + '?PageNum_rs=2' for path in ('/hearings/witness-list', alias_path)]
+    body = record('directory', 'senate_page', [witness('Jane Doe')], context_url=urls[1])
+    captures = [dict(mode='fetch', family='senate/pages', complete=True, outcome='stored', http_status=200, url=url,
+                     sha_hex=body['record_sha_hex']) for url in urls]
+    pages = [dict(body_hex=body['record_sha_hex'], status='completed', title=TITLE, content_date=DAY)]
+    result = resolve(tmp_path, [body], [], {}, pages=pages, capture_rows=captures, details=True,
+                     meetings=((9001, DAY, TITLE, False, 'senate', 'ssbk00'),))
+    assert result['senate_links'] == []
+    assert len(result['resolved']) == 1 and result['resolved'][0]['occasion'].startswith('page:')
 
 
 def test_senate_special_and_joint_hosts_link_to_canonical_committee_codes(tmp_path):

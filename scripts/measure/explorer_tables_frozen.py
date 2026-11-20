@@ -13,10 +13,11 @@ import json
 from pathlib import Path
 
 import duckdb
+from congress_api.lake import compatible_versions
 from docspec_client.client import NativeDatasets
 from viewer_publication.archive_format import MEETING_DICTIONARY, _settings
 from viewer_publication.archive_model_lifetimes import retire_relations
-from viewer_publication.archive_model_profile import expand_parser_version_rows
+from viewer_publication.archive_model_profile import expand_parser_version_rows, readings_bundle_version
 from viewer_publication.archive_model import (EMPTY_RECORDING_PAGE_VIDEO_EVENTS_SQL, EXPLORER_TABLES, RECORDING_DECISION_FIELDS, ROOT, SPICY_SCHEMAS, TRANSCRIPT_HEADINGS_UNAVAILABLE, VIDEO_KEY_ALIASES_SQL, WITNESSES_SQL, appearance_steps, channel_directory_rows, known_meetings_sql, meeting_records_have_document_references,
     meeting_steps, recording_match_prep_steps, registry_inputs, selected_record_step, senate_page_prelim_links_sql)
 from viewer_publication.meeting_detail_observations import EMPTY_OBSERVATIONS
@@ -43,12 +44,24 @@ def scoped_captures(spec, work):
 
 
 def mods_page_facts(spec, work):
-    """Only MODS and Senate hearing page readings feed package_mods_facts and senate_page_meeting_links."""
+    """Select current or qualified readings before testing their MODS root or Senate body."""
     path = work / 'page-facts.parquet'
+    versions = spec['parser_versions']
+    entries = compatible_versions.load_registry(current={**versions, 'readings': readings_bundle_version(versions)})
     with duckdb.connect(config=dict(memory_limit='800MB', threads=2, temp_directory=str(work / 'duckdb'))) as db:
-        db.execute(f"""COPY (SELECT body_sha,status,title,heading,text_head,content_date,named_meetings FROM read_parquet('{spec['readings']['path']}')
+        db.read_parquet(spec['readings']['path']).create_view('readings')
+        db.read_parquet(spec['captures']['path']).create_view('captures')
+        db.read_parquet(spec['appearance_records']['path']).create_view('appearances')
+        db.execute('CREATE TEMP TABLE parser_versions(parser VARCHAR, version VARCHAR)')
+        parsers = ('html', 'xml')
+        db.executemany('INSERT INTO parser_versions VALUES (?, ?)', [(p, versions[p]) for p in parsers])
+        for step in compatible_versions.selected_readings_steps(entries, parsers=parsers):
+            kind = 'TABLE' if step.get('materialize') else 'VIEW'
+            db.execute(f"CREATE TEMP {kind} {step['name']} AS {step['sql']}")
+        db.execute("""COPY (SELECT body_sha,status,title,heading,text_head,content_date,named_meetings FROM selected_readings
             WHERE (parser='xml' AND xml_root='mods')
-               OR (parser='html' AND body_sha IN (SELECT record_sha FROM read_parquet('{spec['appearance_records']['path']}') WHERE source='senate_page'))) TO '{path}' (FORMAT PARQUET)""")
+               OR (parser='html' AND body_sha IN (SELECT record_sha FROM appearances WHERE source='senate_page')))
+            TO ? (FORMAT PARQUET)""", [str(path)])
     return path
 
 

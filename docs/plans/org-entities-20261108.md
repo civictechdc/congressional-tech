@@ -78,7 +78,9 @@ Churn has three causes, each a redirect event:
 - A link or decision is withdrawn: the bag's ID returns (`restored`).
 - A normalization bump moves bag keys; mapping old to new through the raw strings gives kept, `merged` or `split_from`.
 
-`org-priors.sql` reads the previous release (the `witness_key_map` pattern). A merge keeps the highest-ranked anchor; a split leaves the ID with the part holding its anchor. IDs are never reused, and redirects are rewritten each release to point straight at the current org.
+`org-priors.sql` reads the previous release. A merge keeps the highest-ranked anchor. After a split, the successor holding the old anchor keeps its ID.
+
+If normalization splits an old bag and neither successor holds its anchor, each new bag gets the ID derived from its own anchor. Retire the old ID with one `split_from` redirect to the successor containing the most distinct verbatim strings from the old bag. Count each old spelling once. Break an equal count by the ascending UTF-8 bytes of the new bag key. Both successors keep their own appearances. Each release points earlier redirects directly to the current live ID.
 
 The risk: about 50k bag IDs, and each later anchoring retires one; Wikidata alone could retire tens of thousands. Containment: IDs publish only after Phases 2–3, so the first public set already carries its anchors; redirects resolve forever in one hop, and MCP and site follow them; each release reports retired IDs by cause.
 
@@ -103,7 +105,7 @@ A component still joining two parties ruled `different` publishes unmerged and i
 ## Exposure
 
 - **Release:** the four tables in `release-schema.json`, identity `organizations.org_id`, relationships witnesses → `witness_organizations` → `organizations` → `organization_ids`, and an "appearances by organization" recipe.
-- **Explorer API:** expose organization search and lookup through the existing `search_entities` and `get_entity` tools. Test redirect handling explicitly. Keep person lookups and their alias behavior available alongside organization lookup.
+- **Explorer API.** Expose organization search through `search_entities`. Extend `get_entity` in `apps/explorer_mcp/src/congressional_explorer_mcp/reader.py` for `organizations`. Resolve a retired `org_id` through its latest `organization_redirects` entry before looking up the live row. Return the requested ID in `redirected_from`. Resolve appearances through `witness_organizations.witness_key`.
 - **Site:** witness rows link their organization; an organization page lists appearances and IDs and follows redirects.
 
 ## Phases and gates (epic ct-lwxs)
@@ -119,9 +121,9 @@ A component still joining two parties ruled `different` publishes unmerged and i
 3. **Wikidata (L), ct-39u8.** Capture, reading, acceptance, review queue.
    - A fresh hand label of 150 auto-accepted links finds at most 3 wrong.
    - Report reach, queue size and retired IDs.
-4. **Exposure (M), ct-lvdf.** Release schema, MCP note, site. Ships only after Phase 3.
-   - Contract tests resolve an org, its appearances and a redirect.
-   - Every prior ID resolves in one hop across two releases.
+4. **Exposure (M), ct-lvdf.** Publish the release schema, implement organization redirects in the Explorer reader, and add organization pages to the site. Ships after Phase 3.
+   - Reader and site tests look up a live ID and its appearances, then look up a retired ID and verify its live target.
+   - Across two releases, test a split that replaces the old anchor, including equal counts of inherited spellings in reversed input order. Every prior ID resolves directly or through one redirect.
 
 Deferred, each only on measured reach beyond Wikidata: `extend` for EIN/LEI/ROR/parent, ProPublica, LDA via SpicyRegs.
 

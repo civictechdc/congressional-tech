@@ -52,30 +52,28 @@ WITH stopwords AS (
  UNION SELECT 'sbc','sssb00'
  UNION SELECT 'veterans','ssva00'
  UNION SELECT 'jec','jjec00'
+), page_addresses AS (
+ SELECT sc.record_sha_hex,coalesce(cu.source_url,sc.context_url) AS source_url,
+  url_resolve(coalesce(cu.source_url,sc.context_url),cast(NULL AS VARCHAR)) AS parsed_url
+ FROM capture_urls cu RIGHT JOIN senate_page_records sc ON cu.record_sha_hex=sc.record_sha_hex
 ), senate_pages_raw AS (
  SELECT
-  sc.record_sha_hex,
-  -- url_resolve serializes the authority and removes the scheme's default port.
-  regexp_replace(split_part(url_resolve(coalesce(cu.source_url,sc.context_url),cast(NULL AS VARCHAR)),'#',1),
-   '^https?://[^/:?#]+','') AS address_tail,
-  sh.parent_committee,
+  a.record_sha_hex,
+  -- The page key keeps nondefault ports; the hearing classifier uses only the path.
+  regexp_replace(split_part(a.parsed_url,'#',1),'^https?://[^/:?#]+','') AS address_tail,
+  (regexp_match(a.parsed_url,'^https?://[^/?#]+([^?#]*)'))[1] AS path,
+  a.source_url,sh.host,sh.parent_committee,
   coalesce(pf.heading,'')||' '||coalesce(pf.title,'')||' '||
-   regexp_replace(coalesce(cu.source_url,sc.context_url,''),'^https?://[^/]+/','') AS page_text,
+   regexp_replace(a.source_url,'^https?://[^/]+/','') AS page_text,
   try_cast(pf.content_date AS DATE) AS pf_date,
   try_cast((regexp_match(coalesce(pf.title,''),'\[([0-9]{4}-[0-9]{2}-[0-9]{2})\]'))[1] AS DATE) AS title_bracket_date,
-  try_cast((regexp_match(coalesce(cu.source_url,sc.context_url,''),'/([0-9]{4}-[0-9]{2}-[0-9]{2})(?:[^0-9]|$)'))[1] AS DATE) AS url_iso_date,
-  regexp_match(coalesce(cu.source_url,sc.context_url,''),'/([0-9]{2})[/-]([0-9]{2})[/-]([0-9]{4})(?:[^0-9]|$)') AS url_mdy,
-  regexp_match(coalesce(cu.source_url,sc.context_url,''),'/([0-9]{2})-([0-9]{2})-([0-9]{2})-[a-zA-Z]') AS url_mdy2,
-  coalesce(pf.text_head,'') AS text_head,
-  CASE WHEN regexp_like(coalesce(cu.source_url,sc.context_url,''),'(?i)^https?://(?:www[.])?banking[.]senate[.]gov/hearings/')
-   THEN coalesce(cu.source_url,sc.context_url) END AS banking_hearing_url
+  try_cast((regexp_match(a.source_url,'/([0-9]{4}-[0-9]{2}-[0-9]{2})(?:[^0-9]|$)'))[1] AS DATE) AS url_iso_date,
+  regexp_match(a.source_url,'/([0-9]{2})[/-]([0-9]{2})[/-]([0-9]{4})(?:[^0-9]|$)') AS url_mdy,
+  regexp_match(a.source_url,'/([0-9]{2})-([0-9]{2})-([0-9]{2})-[a-zA-Z]') AS url_mdy2,
+  coalesce(pf.text_head,'') AS text_head
  FROM senate_hosts sh
- JOIN (
-  pf_matched pf
-  RIGHT JOIN (
-   capture_urls cu RIGHT JOIN senate_page_records sc ON cu.record_sha_hex=sc.record_sha_hex
-  ) ON pf.record_sha_hex=sc.record_sha_hex
- ) ON sh.host=lower((regexp_match(coalesce(cu.source_url,sc.context_url,''),'(?i)^https?://(?:www[.])?([a-z0-9-]+)[.]senate[.]gov(?:[:/?#]|$)'))[1])
+ JOIN (pf_matched pf RIGHT JOIN page_addresses a ON pf.record_sha_hex=a.record_sha_hex)
+  ON sh.host=(regexp_match(a.parsed_url,'^https?://(?:www[.])?([a-z0-9-]+)[.]senate[.]gov(?:[:/?#]|$)'))[1]
 ), senate_text_dates AS (
  SELECT r.*,
   -- Compare within the mapped parent (ag/agriculture are one publisher). Keep the
@@ -93,10 +91,10 @@ WITH stopwords AS (
    CASE WHEN banking_hearing_url IS NOT NULL
     THEN regexp_match(text_head,'(?i)\bDate:\s*(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s*)?(January|February|March|April|May|June|July|August|September|October|November|December)\s+([0-9]{1,2}),\s*([0-9]{4})\s+Time:')
    END AS labeled_mdy
-  FROM senate_pages_raw
-  -- This paginated directory lists people from different hearings. Dates in its
-  -- entries cannot establish a meeting for the directory itself.
-  WHERE NOT (parent_committee='ssbk00' AND rtrim(split_part(address_tail,'?',1),'/')='/hearings/witness-list')
+  FROM (
+   SELECT *,CASE WHEN host='banking' AND path ILIKE '/hearings/%' THEN source_url END AS banking_hearing_url
+   FROM senate_pages_raw
+  )
  ) r
 ), senate_pages_grouped AS (
  SELECT
@@ -120,6 +118,9 @@ WITH stopwords AS (
   min(r.page_text) AS page_text
  FROM senate_text_dates r
  GROUP BY r.record_sha_hex,r.parent_committee
+ -- A directory lists people across hearings. Any directory capture disqualifies
+ -- the body for this committee, including captures at otherwise unrecognized aliases.
+ HAVING NOT bool_or(r.host='banking' AND rtrim(r.path,'/') IN ('/hearings/witness-list','/witness-list'))
 ), senate_pages AS (
  SELECT
   g.record_sha_hex,
@@ -133,8 +134,8 @@ WITH stopwords AS (
   )) AS words,
   first_value(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee ORDER BY g.page_key ASC,g.record_sha_hex ASC)=
    first_value(g.page_key) OVER (PARTITION BY g.page_date,g.parent_committee ORDER BY g.page_key DESC,g.record_sha_hex ASC) AS single_page_on_date
- FROM senate_pages_grouped g
- CROSS JOIN stopwords sw
+ FROM stopwords sw
+ CROSS JOIN senate_pages_grouped g
  WHERE g.page_date IS NOT NULL
 ), meeting_committee_codes AS (
  SELECT event_id,meeting_date,title,chamber,substr(lower(c['system_code']),1,4)||'00' AS parent_committee
