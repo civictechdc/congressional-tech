@@ -314,7 +314,7 @@ def test_pdf_reading_versions_and_invalid_box_and_vision_band_edge_controls(monk
     assert recognized.text == "edge observation"
 
 
-def test_selective_page_review_flags_a_dropped_block_with_surviving_furniture():
+def test_cleanup_review_flags_a_dropped_native_block_with_surviving_furniture():
     from hashlib import sha256
     from congress_api.lake.text_quality import measure_quality
 
@@ -342,8 +342,89 @@ def test_selective_page_review_flags_a_dropped_block_with_surviving_furniture():
                         intermediate_body_sha256=body_sha, intermediate_page_number=1,
                         intermediate_scope="page", intermediate_kind="native")
         review = measure_quality(identity, text=output, intermediate=observed)
+        assert review["fts_triage"]["band"] == ("review_later" if omitted else "no_obvious_failure_detected")
         assert ("substantial_intermediate_difference" in review["fts_triage"]["reasons"]) == omitted
         assert ("possible_cleanup_loss" in review["signals"]) == omitted
+
+
+@pytest.mark.parametrize("case", ["complete", "reflow", "omitted", "short_page"])
+def test_selective_review_of_recognition_on_a_scanned_page(case, tmp_path):
+    from contextlib import closing
+    from hashlib import sha256
+    import json
+    from pathlib import Path
+    from unittest.mock import Mock
+
+    from spicy_docs.extraction.model import Recognition
+    from congress_api.cli.text_quality import measure_cases
+
+    header, footer = "Committee report", "Page 17"
+    passage = [
+        "The committee requires the department to inspect each site",
+        "before renewal. The district must publish the inspection",
+        "findings and provide a written response.",
+    ]
+    lines = [header, *passage, footer] if case != "short_page" else [header, footer]
+    source = _make_scanned_pdf(lines)
+    reader = OptInPdfReader(dpi=150)
+    with reader.open(source, "application/pdf") as pdf:
+        page = pdf.page(1)
+        assert not page.native().text.strip()
+        raster = page.render()
+    with closing(TesseractBackend()) as secondary:
+        reference = secondary.recognize(raster).text
+    assert " ".join(reference.split()) == " ".join(lines)
+
+    # Plant the loss at the image backend. The short-page control has exactly
+    # the same primary output as the damaged reading, on different source ink.
+    observed = "\n".join(lines)
+    if case == "omitted":
+        observed = f"{header}\n{footer}"
+    elif case == "reflow":
+        observed = observed.replace("\n", " ").replace("each site", "each\nsite")
+    primary = Mock()
+    primary.recognize.return_value = Recognition(observed, {}, None)
+    events = []
+    reading = body_text.pdf_text(source, strategy=body_text.page_rule(primary, reader),
+                                 page_deadline_seconds=30, evidence=events.append)
+    primary.recognize.assert_called_once_with(raster)
+    assert reading.status == "completed" and reading.ocr_pages == (1,)
+    [extracted] = [event for event in events if event["event"] == "page_extracted"]
+    assert extracted["pre_cleanup_text"] == observed
+    assert reading.text.split() == observed.split()
+
+    body_sha = sha256(source).hexdigest()
+    output = tmp_path / "page.txt"
+    output.write_text(reading.text, encoding="utf-8")
+    reference_file = tmp_path / "secondary-ocr.txt"
+    reference_file.write_text(reference, encoding="utf-8")
+    digest = sha256(output.read_bytes()).hexdigest()
+    manifest = tmp_path / "cases.jsonl"
+    manifest.write_text(json.dumps(dict(
+        case_id=case, body_sha256=body_sha, parser="pdf_text", parser_version="test",
+        source_format="pdf", source_state="retained", scope="page", page_number=1, source_page_count=1,
+        text_sha256=digest, output_sha256=digest, output_path=str(output),
+        intermediate_kind="independent_ocr", intermediate_path=str(reference_file),
+        intermediate_sha256=sha256(reference_file.read_bytes()).hexdigest(),
+        intermediate_body_sha256=body_sha, intermediate_scope="page", intermediate_page_number=1,
+    )))
+    result = measure_cases(manifest, tmp_path / "review")
+    review = json.loads(Path(result["measurements"]).read_text())
+    proposal = json.loads(Path(result["proposals"]).read_text())["proposal"]
+    comparison = review["axes"]["recognition"]["independent_ocr_comparison"]
+    assert comparison["status"] == "measured"
+    if case == "omitted":
+        assert any(" ".join(change["intermediate_slice"].split()) == " ".join(passage)
+                   for change in comparison["changes"])
+        assert review["signals"] == ["possible_missing_content"]
+        assert review["fts_triage"]["reasons"] == ["possible_missing_content"]
+        assert review["fts_triage"]["band"] == "review_later"
+        assert proposal["action"] == "manual_review"
+    else:
+        assert comparison["changes"] == []
+        assert review["signals"] == review["fts_triage"]["reasons"] == []
+        assert review["fts_triage"]["band"] == "no_obvious_failure_detected"
+        assert proposal["action"] == "keep"
 
 
 @pytest.mark.parametrize("angle", [90, 180, 270])

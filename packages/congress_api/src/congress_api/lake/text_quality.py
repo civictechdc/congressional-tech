@@ -15,7 +15,7 @@ from spicy_docs.extraction.quality import (
 
 from congress_api.parsers.response_roles import assess_response
 
-POLICY_VERSION = 'ct-text-quality-measures-v2'
+POLICY_VERSION = 'ct-text-quality-measures-v3'
 FEATURE_VERSION = 'pdf-page-features-20261113-1'
 MAX_TEXT_BYTES = 256 << 10
 _KEY = ('body_sha256', 'parser', 'parser_version', 'text_sha256')
@@ -87,6 +87,8 @@ def fts_triage(axes):
         reasons.append('severe_mechanical_garbling')
     elif bad_chars or r.get('longest_latin_single_letter_run', 0) >= 8:
         later.append('possible_mechanical_garbling')
+    if r.get('largest_unmatched_ocr_passage_tokens', 0) >= 20:
+        later.append('possible_missing_content')
     if (slots >= 3 and (c.get('sparse_repeated_line_char_fraction') or 0) >= 0.8
             and c.get('sparse_under_1000_slots', 0)/slots >= 0.8
             and c.get('nonspace_characters', 0)/slots < 200):
@@ -133,7 +135,17 @@ def measure_quality(identity, *, text=None, intermediate=None, feature=None, raw
     related_intermediate = (identity.get('intermediate_body_sha256') == identity['body_sha256']
                             and identity.get('intermediate_scope') == identity['scope']
                             and identity.get('intermediate_page_number') == identity.get('page_number'))
-    if intermediate is not None and not related_intermediate:
+    if identity.get('intermediate_kind') == 'independent_ocr':
+        if not related_intermediate or identity['scope'] != 'page' or identity['source_format'] != 'pdf':
+            raise ValueError('independent OCR requires a reference from the same PDF body and page')
+        if text is not None:
+            comparison = compare_intermediate(intermediate, text)
+            recognition['independent_ocr_comparison'] = comparison
+            if comparison['status'] == 'measured':
+                recognition['largest_unmatched_ocr_passage_tokens'] = max(
+                    (change['removed_content_tokens'] for change in comparison['changes']), default=0)
+        cleanup = {'status': 'missing_intermediate', 'changes': []}
+    elif intermediate is not None and not related_intermediate:
         cleanup = {'status': 'unassessed_intermediate_scope', 'changes': []}
     else:
         cleanup = compare_intermediate(intermediate, text) if text is not None else {'status': 'unmeasured_output_text', 'changes': []}
@@ -151,7 +163,8 @@ def measure_quality(identity, *, text=None, intermediate=None, feature=None, raw
         role = {'status': 'measured_source_structure', 'role': observed.role, 'reason': observed.reason,
                 'policy_version': observed.policy_version, 'evidence': list(observed.evidence)}
     axes = dict(coverage=coverage, recognition=recognition, cleanup=cleanup, role=role)
-    signals = []
+    triage = fts_triage(axes)
+    signals = ['possible_missing_content'] if 'possible_missing_content' in triage['reasons'] else []
     if coverage.get('under_200_slots', 0):
         signals.append('low_quantity')
     if coverage.get('longest_interior_empty_run', 0):
@@ -167,7 +180,7 @@ def measure_quality(identity, *, text=None, intermediate=None, feature=None, raw
     if role['role'] != 'unassessed':
         signals.append('role_phrase_match')  # Existing adapter code; evidence remains structural, not phrase-only.
     return {'policy_version': POLICY_VERSION, 'identity': identity, 'axes': axes, 'intermediate_identity': intermediate_identity,
-            'fts_triage': fts_triage(axes),
+            'fts_triage': triage,
             'signals': sorted(signals), 'axis_review_ranks': axis_ranks(axes),
             'calibration': 'development_only_unqualified', 'source_fidelity': 'unknown',
             'no_trigger_means': 'no_measured_trigger_not_source_agreement'}

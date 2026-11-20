@@ -183,7 +183,7 @@ def test_house_response_cli_keeps_extraction_status_separate_from_review(kind, t
     cases.write_text(json.dumps(case)+'\n')
     measure_cases(cases, tmp_path/'result')
     measured = json.loads((tmp_path/'result/measurements.jsonl').read_text())
-    assert measured['policy_version'] == 'ct-text-quality-measures-v2'
+    assert measured['policy_version'] == 'ct-text-quality-measures-v3'
     assert measured['axes']['role']['reason'] == f'house_{kind}_not_found'
     assert measured['axes']['role']['policy_version'] == 'ct-response-roles-v2'
     assert measured['fts_triage']['band'] == 'review_first'
@@ -244,6 +244,19 @@ def test_unstated_availability_and_unbound_intermediate_remain_unknown():
     assert facts['selected'] is None
     assert assess_text(facts)['facts']['selected'] is None
     assert measured['intermediate_identity']['sha256'] == sha256(b'native final').hexdigest()
+
+
+@pytest.mark.parametrize('updates', [
+    {'intermediate_body_sha256': 'b'*64}, {'intermediate_page_number': 2},
+    {'scope': 'reading', 'intermediate_scope': 'reading'}, {'source_format': 'html'},
+])
+def test_independent_ocr_requires_the_same_pdf_page(updates):
+    ident = identity('final')
+    ident.update(scope='page', page_number=1, source_page_count=2, intermediate_kind='independent_ocr',
+                 intermediate_scope='page', intermediate_page_number=1, intermediate_body_sha256=ident['body_sha256'])
+    ident.update(updates)
+    with pytest.raises(ValueError, match='same PDF body and page'):
+        measure_quality(ident, text='final', intermediate='reference')
 
 
 def test_cli_measure_bounds_hash_and_actual_proposal(tmp_path):

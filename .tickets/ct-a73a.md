@@ -171,3 +171,7 @@ Implemented selected 80/20 scope via subagents. The current implementation updat
 Among the separate 19 historical memory cases, 15 deliver qualified repairs. Both same-URL substitution holds remain. The visible f1e2e2 original still refuses pages 6–8 and 34–38. A private zero-area fallback restored 34–38. The 20M retry hit its watchdog and the 5M trials stayed at 0.40–0.55 GiB. Pages 7–8 remain held. The visible 644a00a9 slides retain failed_pages and expose no rejected text. All 27 live PDF errors have individual dispositions. Three newer portable handwriting readings deliver text with six explicitly held positions. Request-scoped RSS, page and worker deadlines, batch continuation and refusal persistence passed focused regressions.
 
 Evidence: /Users/mikewolfd/Work/congressional-tech/.cache/archive-release/long-tail-20261120/pdf-ocr/ct-a73a-reconciliation.json and ct-a73a-summary.md in the same directory. Doctor passed with zero drift warnings. No publication or corpus replay.
+
+**2026-11-20T23:43:30Z**
+
+The 27 live PDF errors comprise 21 damaged or incomplete originals, 1 incomplete recovery, 1 encrypted original and 4 failed-page originals. The incomplete recovery is the Walling statement (ed0298387f8c87d6c6bc70241e4510e490fe8e2b4668e2595cbc7f0220d156b8). The release detail row records saved_kind="recovery" and recoveries.parquet records recovered_document for the same digest and list row. The corrected ct-a73a-summary.md uses those release records.

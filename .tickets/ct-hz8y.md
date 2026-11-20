@@ -120,3 +120,7 @@ All 1,208 report slices were compared by UTF-8 byte offsets and hashes. Pages 7,
 The pinned SpicyDocs Tesseract backend already owned OCR. CT now delegates PDF rendering, both allocation guards and raster encoding to that same wheel, retaining the opt-in adaptive DPI and rotation settings. Sixteen prior/current source-backed raster pairs and both Tesseract strategy outputs matched. The planted omission triggered the existing selective review signal while clean and reflowed controls passed. Default native-first Apple Vision, reading IDs and the v13 selection are preserved. Doctor passed with zero drift warnings.
 
 Evidence: /Users/mikewolfd/Work/congressional-tech/.cache/archive-release/long-tail-20261120/pdf-ocr/ct-hz8y-251ea1a6-positions.json and ct-hz8y-reconciliation.json in the same directory. Tests and published outcomes are summarized in ct-a73a-summary.md. No corpus replay or remote mutation.
+
+**2026-11-20T23:44:51Z**
+
+Review follow-up. The original planted test exercised cleanup after native extraction. The new image-only PDF regression plants a 23-word omission in the recognizer. An independent Tesseract reading of the same rendered page sends that case to manual review. Complete text, a whitespace reflow and a genuinely short page with the same surviving header and page number all receive keep. On retained report page 151, the 300-DPI comparison also flags the 25 missing words about Endeavors testing. The recorded pre-cleanup text and the delivered page slice agree.
