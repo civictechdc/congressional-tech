@@ -1,6 +1,6 @@
 ---
 id: ct-fk4w
-status: in_progress
+status: closed
 deps: [ct-m704]
 links: [ct-h8dr, ct-29n4, ct-yuf0, ct-5q3g, ct-ihe7, ct-m704]
 created: 2026-11-10T10:16:58Z
@@ -77,3 +77,7 @@ Implemented selected 80/20 scope via subagents. The current implementation updat
 **2026-11-20T17:29:40Z**
 
 2026-11-20: Measured residual PDF contradictions on release 2ec7ae83 (298,013 PDF docs / 297,691 distinct PDF bodies), settled all 24 undecided non-slot official vs committee contradictions in model/registries/saved-name-decisions.json (84 -> 108 entries; 0 unmet, 0 unused), tightened Page-1 [:2048] pdf_cover_evidence.classify_selected_covers + body-signals.sql + page-signals.json with planted wrong-kind controls, generated model/jobs/inputs/pdf-cover-review-ct-fk4w-20261120.md and pdf-cover-evidence-ct-fk4w-20261120.{parquet,json} (1,379 rows, sha256 e64d547b1b19f913238b4f13f95456f729a062d5eef4b8387dba28861c8a1ef7, selection_sha256 bbeb4e1c94e195ac8ec5085578331543b2b2f709e77d2c83e523474e07bbe10b), and passed CI run 44776340037; awaiting archive-jobs.yml publish readback to close.
+
+**2026-11-20T19:55:13Z**
+
+2026-11-20: Live in production release 0e7084cde775d0064646c56b2200a14e1f13d8b512f1a61a6fe815d597faf4d3 (publish run 44802939293, published_at 2026-11-20T19:46:43Z, cause record model/jobs/release-causes/ab0192939dfd-0e7084cde775.json). Read back detail.parquet from R2: 1,382 verified PDF cover kind/family updates applied (e.g. HHRG-116-II13-Wstate-NezJ-20190626.pdf -> ['cost-estimate']), 919838d0b98f... renamed to 3DBE...ans-to-hr2789.pdf, and event 101019 publisher filing preserved.

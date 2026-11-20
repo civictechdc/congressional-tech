@@ -1,6 +1,6 @@
 ---
 id: ct-z4w5
-status: in_progress
+status: closed
 deps: []
 links: [ct-en4n, ct-saqg, ct-4jms, ct-6v77, ct-5cdu, ct-m704]
 created: 2026-11-13T17:46:16Z
@@ -152,3 +152,7 @@ The Library's archive cannot be a pipeline rung while it screens automated clien
 **2026-11-20T17:29:40Z**
 
 2026-11-20: Ran formal corpus_recovery.campaign.import_candidate acceptances on all 29 vetted targets (28 damaged PDFs + Mast &download=1 malformed URL -> 29/29 accepted), generated model/jobs/inputs/recovery-requirements-ct-z4w5-20261120.parquet (43 rows, sha256 f0ba05f6867c98a1456bda286208409dec53b5a87a3fd6a44f5052bfa0a24b9b), reconciled docs/plans/ocr-source-recovery-inventory.json (455 rows: 26 already_covered, 429 recovery_open, 6 needs_refetch; 47 broken publisher copies marked publisher_copy_broken_2026_11_15), and uploaded & HEAD-verified 29 create-only raw bodies, receipts, recovery provenance records, and provenance/verification/20261120T140000Z-1aeda80f03936bd7.jsonl on R2 (commits 0e554d3f, 4a2478fd); awaiting archive-jobs.yml publish ingestion & readback (10 LoC + 1 GAO remain gated by external Cloudflare/Akamai bot challenges).
+
+**2026-11-20T20:55:56Z**
+
+2026-11-20: Live ingestion, model association, and body_text extraction verified in publish run 44802939293 (release 0e7084cde775d0064646c56b2200a14e1f13d8b512f1a61a6fe815d597faf4d3): all 29 accepted recovery receipts and provenance records ingested (recoveries.parquet +29 -> 12,535 rows; 27 damaged documents promoted/merged onto recovered PDFs; Mast &download=1 satisfied in url_state; body_text pdf_text:error dropped 54 -> 27 and pdf_text:completed rose +25 to 297,968 in derived/body_text/7aea7925da32...parquet). Remaining unresolved items (including 47 publisher_copy_broken_2026_11_15 targets and 10 LoC + 1 GAO bot-screened targets) retain explicit named states in docs/plans/ocr-source-recovery-inventory.json.
