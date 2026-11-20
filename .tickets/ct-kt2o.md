@@ -1,8 +1,8 @@
 ---
 id: ct-kt2o
-status: open
+status: closed
 deps: [ct-ha10]
-links: [ct-46f3, ct-esuu, cat2-pkk1, ct-egoo]
+links: [ct-46f3, ct-esuu, cat2-pkk1, ct-egoo, ct-lwxs]
 created: 2026-11-11T00:35:01Z
 type: feature
 priority: 4
@@ -42,3 +42,9 @@ The retained `investigations/witness-identity-20261110/PLAN.md` sections 2/6 and
 **2026-11-17T09:17:02Z**
 
 Manual audit credits delivered slice-2 people, aliases and merge/split infrastructure. Rewrote this deferred ticket around the actual missing identity options and explicit acceptance for a small next slice. No new acquisition, model run or implementation started; existing low priority and joint CT/SpicyRegs ownership remain. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.
+
+**2026-11-20T23:23:14Z**
+
+2026-11-20 qualification of the bounded review slice is complete in e8e7eaed5f70ac31e5f096e5b1a62ad4ec57f382, docs/plans/witness-identity-next-slice-20261120.md. On production 0e7084cde775, the reviewer checked eight biographies linked to current appearances and four hearing prints from the matching packages. Seven biography roles had direct support. The biography filed for Laurie Hall names Hugh Halpern, so her role was withheld. The three options and the five deliberately wrong proposals are recorded in <main checkout>/.cache/archive-release/long-tail-20261120/senate-id/ct-kt2o-qualification.json, with full digests, witness and person keys, byte ranges and verbatim text. Zero wrong proposals were accepted, zero person merges and zero false merges. One additional pair of lawyers named Robert Smith remains unresolved.
+
+Reviewed organization aliases from ct-lwxs can supply affiliation context. A cross-employer suggestion remains uncertain and requires two appearance references. The qualified output is a dated role attached to one appearance. Person corrections continue through the ct-ha10 decisions and historical aliases. This closes definition and qualification only.

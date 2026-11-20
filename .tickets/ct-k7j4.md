@@ -1,6 +1,6 @@
 ---
 id: ct-k7j4
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-18T14:39:04Z
@@ -21,3 +21,13 @@ First measure: in the live release's sources and url_state, count Senate committ
 
 The count is recorded here; if not zero, the Senate rules count pages and a test covers a mirrored address.
 
+
+## Notes
+
+**2026-11-20T23:23:14Z**
+
+Measured release 0e7084cde775d0064646c56b2200a14e1f13d8b512f1a61a6fe815d597faf4d3 on 2026-11-20. The union of sources and URL state has 47,290 committee addresses, 35,378 held. Exactly 1 page has two held addresses after normalization. The Banking directory /hearings/witness-list?PageNum_rs=2 was stored both as written and with a trailing ampersand. Its two distinct bodies have seven witness rows each and two page occasions. Neither has an event. No lost valid meeting link was identified. The other 180 groups with multiple known addresses have fewer than two held copies. Literal path/query comparison alone finds zero.
+
+The full host/path counts, broader normalization probe, URLs, body digests and witness keys are in <main checkout>/.cache/archive-release/long-tail-20261120/senate-id/ct-k7j4-measurement.json. The adjacent measure_senate.py reproduces the measurement against manifest-verified tables.
+
+Commit 1b53167570f71ac34f1eb4c2b69d83e834099e1e updates model/sql/senate-page-candidates.sql and senate-page-meeting-links.sql. Both the date fallback and the tied-event rule compare page keys. Senate records are selected once in senate-page-records.sql. The Banking directory cannot supply a hearing date. In packages/viewer_publication/tests/test_meeting_semantics.py the generic-hearing mirror dropped both links under the old SQL. The repaired rule retains both record-to-event links and the original witness key. Different substantive queries remain distinct.
