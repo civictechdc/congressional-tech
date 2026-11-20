@@ -53,13 +53,14 @@ DET_V6_DIR = DOCMETA_DIR
 V4_DIR = DOCMETA_DIR
 DET_V5_DIR = DOCMETA_DIR
 
+from .relational_rules_v6 import (
+    HOUSE_SELECT_2LETTER_CODES_V6 as _HOUSE_SELECT_2LETTER_CODES_V6,
+    resolve_docmeta_v6_data_dir,
+)
+
 DOCMETA_V4_SCHEMA_PATH = DOCMETA_DIR / "docmeta_v4_causal.schema.json"
-DEFAULT_DOCMETA_V6_DATA_DIR_STR = (
-    "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/docmeta-v6-20261116"
-)
-DEFAULT_DOCMETA_V6_DATA_DIR = Path(
-    os.environ.get("DOCMETA_V6_DATA_DIR", DEFAULT_DOCMETA_V6_DATA_DIR_STR)
-)
+DEFAULT_DOCMETA_V6_DATA_DIR = resolve_docmeta_v6_data_dir()
+DEFAULT_DOCMETA_V6_DATA_DIR_STR = str(DEFAULT_DOCMETA_V6_DATA_DIR)
 
 from . import pythonic_v5 as _pv5
 from .pythonic_v5 import (
@@ -215,26 +216,10 @@ _BILL_TYPE_DISPLAY = {
     "sconres": "S.Con. Res.",
 }
 
-# 18 House Select `hl..00` 2-letter Clerk codes missing in V5 (`spicydocs_capabilities.md` A6)
+# Derived from single owner `relational_rules_v6.HOUSE_SELECT_2LETTER_CODES_V6` (`ct-pzaz`).
+_V5_SELECT_2LETTER = frozenset({"cn", "ef", "fd", "gw", "ig", "ij", "mh", "qj", "vc", "zi", "zs"})
 HOUSE_SELECT_2LETTER_EXTRA_V6: dict[str, str] = {
-    "bz": "hlbz00",
-    "cf": "hlcf00",
-    "cq": "hlcq00",
-    "eb": "hleb00",
-    "et": "hlet00",
-    "hk": "hlhk00",
-    "hn": "hlhn00",
-    "ie": "hlie00",
-    "ir": "hlir00",
-    "na": "hlna00",
-    "oc": "hloc00",
-    "rk": "hlrk00",
-    "se": "hlse00",
-    "zc": "hlzc00",
-    "zd": "hlzd00",
-    "ze": "hlze00",
-    "zf": "hlzf00",
-    "zg": "hlzg00",
+    c: f"hl{c}00" for c in sorted(_HOUSE_SELECT_2LETTER_CODES_V6 - _V5_SELECT_2LETTER)
 }
 
 # 5 Statutory/Chamber Commissions missing in V5 (`rulespec_and_specs_capabilities.md` §4.1)

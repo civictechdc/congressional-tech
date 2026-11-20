@@ -1,0 +1,756 @@
+{
+  "artifact": {
+    "md5": "c07ebe7c6d61574d37e1b73315eb6f67",
+    "path": "model/jobs/inputs/pdf-cover-evidence-ct-fk4w-20261120.parquet",
+    "sha256": "e64d547b1b19f913238b4f13f95456f729a062d5eef4b8387dba28861c8a1ef7",
+    "size": 96712
+  },
+  "before_after_summary": {
+    "breakdown": {
+      "competing_official_pair_docs_updated": 14,
+      "other_multi_source_slot_docs_updated": 269,
+      "single_source_slot_or_empty_docs_updated": 1096
+    },
+    "competing_official_pair_transitions": {
+      "meeting-support -> witness-list": 2,
+      "witness-biography -> testimony-disclosure": 2,
+      "witness-statement -> cost-estimate": 1,
+      "witness-statement -> testimony-disclosure": 9
+    },
+    "total_documents_changing_kind": 1379,
+    "transitions": {
+      "<empty> -> cost-estimate": 4,
+      "<empty> -> crs-report": 8,
+      "<empty> -> gao-report": 4,
+      "<empty> -> meeting-notice": 10,
+      "<empty> -> subpoena": 1,
+      "<empty> -> testimony-disclosure": 545,
+      "<empty> -> witness-list": 6,
+      "biography -> testimony-disclosure": 5,
+      "meeting-notice,meeting-support -> subpoena": 1,
+      "meeting-support -> cost-estimate": 3,
+      "meeting-support -> crs-report": 16,
+      "meeting-support -> federal-register-notice": 6,
+      "meeting-support -> gao-report": 4,
+      "meeting-support -> meeting-notice": 217,
+      "meeting-support -> staff-report": 3,
+      "meeting-support -> subpoena": 49,
+      "meeting-support -> testimony-disclosure": 7,
+      "meeting-support -> witness-list": 136,
+      "witness-biography -> testimony-disclosure": 276,
+      "witness-statement -> cost-estimate": 1,
+      "witness-statement -> testimony-disclosure": 41,
+      "witness-support -> crs-report": 1,
+      "witness-support -> testimony-disclosure": 35
+    }
+  },
+  "coverage": {
+    "classified_by_sql": 1378,
+    "distinct_pdf_bodies_in_release": 297691,
+    "eligible_cover_pdf_bodies": 126849,
+    "inspected_selected_pdf_bodies": 126554,
+    "pdf_bodies_in_local_export": 296798,
+    "pdf_bodies_unavailable_or_incremental": 893,
+    "pdf_documents_in_release": 298013,
+    "retained_nov17_direct_source_overrides": [
+      "00472521603f9b066f5fead27a3ad15f4f6c8d16fc52f066709f546b842abc69",
+      "008bdb052fca58f4d411e3cc8a24bd3fab486cbaf753bf9549066bb1b5bc345f"
+    ],
+    "total_evidence_rows": 1379,
+    "unavailable_breakdown": {
+      "incremental_post_v12_export": 893
+    }
+  },
+  "event_101019_misfiled_transcript": {
+    "actual_gpo_jacket": "21-104",
+    "actual_hearing_date_in_text": "2013-07-10",
+    "actual_hearing_serial": "113-HL06",
+    "body_sha256": "0674d6153bdf15d9b591390cf3f76e6845a06a997f4252769ef1363ded548609",
+    "disposition": "publisher_filing_preserved_per_scope",
+    "filename": "HHRG-113-WM02-Transcript-20130620.pdf",
+    "link_key": "0674d6153bdf15d9",
+    "meeting_key": "101019"
+  },
+  "prior_source_review": {
+    "md5": "834c15722676b2762fb953c19acf0596",
+    "path": "model/jobs/inputs/pdf-cover-review-ct-fk4w-20261117.md",
+    "sha256": "096660d3f74a2b6780dcb669f376aa2c6edbbaa9236aa089fa9027edee9237d8",
+    "size": 3346
+  },
+  "saved_name_decisions_update": {
+    "added_count": 24,
+    "decision_counts": {
+      "committee": 66,
+      "neither": 1,
+      "official": 41
+    },
+    "total_count": 108
+  },
+  "selected_policy": {
+    "identity_sha256": "bbeb4e1c94e195ac8ec5085578331543b2b2f709e77d2c83e523474e07bbe10b",
+    "md5": "ef7d748263b86ca54c921f566ee70a7b",
+    "path": "model/jobs/inputs/body-text-selection-v13/selection.json.gz",
+    "sha256": "ce3392597e2b7539137ad0e704bda542a9f1138dc4c4eea36d074705ff1df256",
+    "size": 1868951
+  },
+  "source_release_id": "2ec7ae83a852dc1c6e791f59ea829aea12ab04d77c96781f15ee3d6d916d4767",
+  "source_review": {
+    "md5": "a84f560db39e38ce3f116e0622cc5e78",
+    "path": "model/jobs/inputs/pdf-cover-review-ct-fk4w-20261120.md",
+    "sha256": "62a5e671225c8a85aade87146b72efc648d41c0c48b5edb0f3c3273633f69303",
+    "size": 13886
+  },
+  "stratified_sample": {
+    "<empty> -> cost-estimate": [
+      {
+        "after_family": [
+          "cost-estimate"
+        ],
+        "after_kind": [
+          "cost-estimate"
+        ],
+        "before_kind": [],
+        "body_sha256": "0337dfca62590d6923c59d222b5198064914323d8528012127232fd62c888477",
+        "doc_key": "0337dfca62590d69",
+        "filename": "hr5078.pdf",
+        "head_excerpt": "CONGRESSIONAL BUDGET OFFICE COST ESTIMATE August 1, 2014   H.R. 5078 Waters of the United States Regulatory Overreach Protection Act of 2014  As ordered reported by the House Committee on Transportation and Infrastructure on July 16, 2014   H.R. 5078 would pr"
+      },
+      {
+        "after_family": [
+          "cost-estimate"
+        ],
+        "after_kind": [
+          "cost-estimate"
+        ],
+        "before_kind": [],
+        "body_sha256": "8f3981de292580c01b616e33d8180d1eaa9918a17ebe85d529034453aa825f71",
+        "doc_key": "8f3981de292580c0",
+        "filename": "hr6083.pdf",
+        "head_excerpt": "CONGRESSIONAL BUDGET OFFICE COST ESTIMATE  July 26, 2012   H.R. 6083 Federal Agriculture Reform and Risk Management Act of 2012  As ordered reported by the House Committee on Agriculture July 11, 2012  SUMMARY  H.R. 6083 would amend and extend a number of ma"
+      }
+    ],
+    "<empty> -> crs-report": [
+      {
+        "after_family": [
+          "crs-report"
+        ],
+        "after_kind": [
+          "crs-report"
+        ],
+        "before_kind": [],
+        "body_sha256": "28bf48c5379b0d6c54a99b4de1e61824ff287b9e450b851c07cda75e5a42974c",
+        "doc_key": "28bf48c5379b0d6c",
+        "filename": "20210820_CRS_AfghanistanFAQ_R46879.pdf",
+        "head_excerpt": "U.S. Military Withdrawal and Taliban Takeover in Afghanistan: Frequently Asked Questions August 20, 2021 Congressional Research Service https://crsreports.congress.gov R46879  Congressional Research Service  SUMMARY U.S. Military Withdrawal and Taliban Take"
+      },
+      {
+        "after_family": [
+          "crs-report"
+        ],
+        "after_kind": [
+          "crs-report"
+        ],
+        "before_kind": [],
+        "body_sha256": "59b4300d4ee52b243e4fd91e73d083ab88ae2895f6658977cff64ea7ade3cb43",
+        "doc_key": "59b4300d4ee52b24",
+        "filename": "3.10.10_crs_r40738.pdf",
+        "head_excerpt": "CRS Report for Congress Prepared for Members and Committees of Congress   The Public Safety Employer-Employee Cooperation Act Jon O. Shimabukuro Legislative Attorney Gerald Mayer Analyst in Labor Policy August 13, 2009 Congressional Research Service 7-5700 www"
+      }
+    ],
+    "<empty> -> gao-report": [
+      {
+        "after_family": [
+          "gao-report"
+        ],
+        "after_kind": [
+          "gao-report"
+        ],
+        "before_kind": [],
+        "body_sha256": "13d58814fce3bb9fc229b81f25a54301cae197790ebf025a355cb8471da4bb8e",
+        "doc_key": "13d58814fce3bb9f",
+        "filename": "20090507GAO.pdf",
+        "head_excerpt": "GAO  United States Government Accountability Office Report to the Subcommittee on National Security and Foreign Affairs, Committee on Oversight and Government Reform, House of Representatives GLOBAL POSITIONING SYSTEM Significant Challenges in Susta"
+      },
+      {
+        "after_family": [
+          "gao-report"
+        ],
+        "after_kind": [
+          "gao-report"
+        ],
+        "before_kind": [],
+        "body_sha256": "b5a967ac00f9c145f38f31cfe118de6d08e43ba7448058d65ef5980285216254",
+        "doc_key": "110937b9d322ea9f",
+        "filename": "20060928152351-63290.pdf",
+        "head_excerpt": "United States Government Accountability Office GAO Report to Congressional Committees IRAQ CONTRACT COSTS DOD Consideration of Defense Contract Audit Agency's Findings   September 2006   GAO-06-1132 What GAO Found United States Government Accountab"
+      }
+    ],
+    "<empty> -> meeting-notice": [
+      {
+        "after_family": [
+          "notice"
+        ],
+        "after_kind": [
+          "meeting-notice"
+        ],
+        "before_kind": [],
+        "body_sha256": "16228294b4916e9cfce5af51e48a25788d3f9b88bdd7c491f0e2fecd65f1c874",
+        "doc_key": "16228294b4916e9c",
+        "filename": "DB59D55AEEB004CA648CDB4660B53C36FC0FE6B4134C6D07646A70B7315BAB3C.2024.05.16-full-committee-markup.pdf",
+        "head_excerpt": "COMMITTEE ON FOREIGN AFFAIRS FULL COMMITTEE MARKUP NOTICE U.S. HOUSE OF REPRESENTATIVES WASHINGTON, DC 20515-6128  Michael T. McCaul (R-TX), Chairman  May 13, 2024  Revised  TO: MEMBERS OF THE COMMITTEE ON FOREIGN AFFAIRS  You are respectfully requested to a"
+      },
+      {
+        "after_family": [
+          "notice"
+        ],
+        "after_kind": [
+          "meeting-notice"
+        ],
+        "before_kind": [],
+        "body_sha256": "49544da1f777085351b71505438017ed74df3d18b1b2c6286fdac9e0da38bfb1",
+        "doc_key": "49544da1f7770853",
+        "filename": "1E52202525ABE95A8B2AB7110E0D633C3802FB0C7EE9EAD326F05EAC2FE9D0C9.02-06-19-foreign-affairs-committee-hearing-markup-1-.pdf",
+        "head_excerpt": "FULL COMMITTEE HEARING AND MARKUP NOTICE COMMITTEE ON FOREIGN AFFAIRS U.S. HOUSE OF REPRESENTATIVES WASHINGTON, DC 20515-6128  Eliot L. Engel (D-NY), Chairman   February 5, 2019  TO: MEMBERS OF THE COMMITTEE ON FOREIGN AFFAIRS  You are respectfully requested t"
+      }
+    ],
+    "<empty> -> subpoena": [
+      {
+        "after_family": [
+          "subpoena"
+        ],
+        "after_kind": [
+          "subpoena"
+        ],
+        "before_kind": [],
+        "body_sha256": "cba5c00521e5cb2c1e477dcd4a0777ae8662d970ffa2b7e95ecb999734002792",
+        "doc_key": "cba5c00521e5cb2c",
+        "filename": "subpoenafinal111202.pdf",
+        "head_excerpt": "SUBPOENA BY AUTHORITY OF THE HOUSE OF REPRESENTATIVES OF THE CONGRESS OF THE UNITED STATES OF AMERICA To You are hereby commanded to be and appear before the Committee on Agriculture \u2022 of the House of Representatives of the United States at the place, date and"
+      }
+    ],
+    "<empty> -> testimony-disclosure": [
+      {
+        "after_family": [
+          "disclosure"
+        ],
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [],
+        "body_sha256": "000f2e673a019668fc2c09c1b4576422bdd776be01c95660f569f04a51a6b5ad",
+        "doc_key": "000f2e673a019668",
+        "filename": "07.14.11_hara_tt.pdf",
+        "head_excerpt": "COMMITTEE ON EDUCATION AND THE WORKFORCE U.S. HOUSE OF REPRESENTATIVES Truth in Testimony Disclosure Form clause 2(g) of rule XI of the Rules of the House of Representatives and the Rules of the Committee on -ducation and the Workforce require the disclosure o"
+      },
+      {
+        "after_family": [
+          "disclosure"
+        ],
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [],
+        "body_sha256": "00244bcbdb758d915033dc132e630967bcd2e9adf3a61b4ef83070670f6f4047",
+        "doc_key": "00244bcbdb758d91",
+        "filename": "Pages_from_Maestas_TIT_.pdf",
+        "head_excerpt": "Committee on Ways and Means Witness Disclosure Requirement \u2013 \"Truth in Testimony\" Required by House Rule XI, Clause 2(g)    Your Name: Nicole Maestas   1. Are you testifying on behalf of a Federal, State, or Local Government entity? a. Name of entity(ies).   b"
+      }
+    ],
+    "<empty> -> witness-list": [
+      {
+        "after_family": [
+          "list"
+        ],
+        "after_kind": [
+          "witness-list"
+        ],
+        "before_kind": [],
+        "body_sha256": "509e8f2cdebd091e4d81cae7bb84d8ab513e4c0b210cf7caa038b2abc603f6da",
+        "doc_key": "509e8f2cdebd091e",
+        "filename": "20090519172147.pdf",
+        "head_excerpt": "WITNESS LIST  COMMITTEE ON OVERSIGHT AND GOVERNMENT REFORM  Hearing on \"State and Local Pandemic Preparedness\"  Wednesday, May 20, 2009  PANEL I  \u2022 Dr. Daniel M. Sosin Director Coordinating Office for Terrorism Preparedness and Emergency Response C"
+      },
+      {
+        "after_family": [
+          "list"
+        ],
+        "after_kind": [
+          "witness-list"
+        ],
+        "before_kind": [],
+        "body_sha256": "5fab2d0365f00c3231aa3d9c4ff91ceea8bb04fcf62dac7f31c970764fa303a4",
+        "doc_key": "5fab2d0365f00c32",
+        "filename": "3-14-2013_final_witness_lsit.pdf",
+        "head_excerpt": "SAM GRAVES, MISSOURI CHAIRMAN NYDIA M. VELAZQUEZ, NEW YORK RANKING MEMBER Congress of the Mnited States 21.S. Thouse of Representatives Committee on Small Business 2501 Raybum Phouse Office Building Washington, DE 20515-6315 Committee on Small Business Subcomm"
+      }
+    ],
+    "biography -> testimony-disclosure": [
+      {
+        "after_family": [
+          "disclosure"
+        ],
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "biography"
+        ],
+        "body_sha256": "048ecb1c59d184fe23e79f4346587fe60184406344dcc56ff14cc143e3209fd4",
+        "doc_key": "048ecb1c59d184fe",
+        "filename": "Stuart_Archer_CV_Feb_2023_9c23250944.pdf",
+        "head_excerpt": "Committee on Energy and Commerce U.S. House of Representatives Witness Disclosure Requirement - \"Truth in Testimony\" Required by House Rule XI, Clause 2(g)(5) 1. Your Name: Stuart Archer 2. Your Title: President and CEO 3. The Entity(ies) You are Representing:"
+      },
+      {
+        "after_family": [
+          "disclosure"
+        ],
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "biography"
+        ],
+        "body_sha256": "4c0d612a9bb79fcfb46e7048343f939e5f45f1179b9014e9262b068e315b013d",
+        "doc_key": "4c0d612a9bb79fcf",
+        "filename": "04_18_23_TNT_Bio_Repko_Redacted_1_a8d572e960.pdf",
+        "head_excerpt": "Committee on Energy and Commerce U.S. House of Representatives Witness Disclosure Requirement - \"Truth in Testimony\" Required by House Rule XI, Clause 2(g)(5) . Your Name: Regis Thomas Repko 2. Your Title: Senior Vice President, Generation and Transmission Str"
+      }
+    ],
+    "meeting-notice,meeting-support -> subpoena": [
+      {
+        "after_family": [
+          "subpoena"
+        ],
+        "after_kind": [
+          "subpoena"
+        ],
+        "before_kind": [
+          "meeting-notice",
+          "meeting-support"
+        ],
+        "body_sha256": "2f66258e49d04b0d801a8f11b0269c021dc6ad0147a677fa16c80611ae042e51",
+        "doc_key": "102017e3c1cc8a69",
+        "filename": "HMTG-112-HHRG-IF02-20121114-SD002.pdf",
+        "head_excerpt": "SUBPOENA By AUTHORITY OF THE HOUSE OF REPRESENTATIVES OF THE CONGRESS OF THE UNITED STATES OF AMERICA Barry Cadden, President, Co-owner, and Managing Pharmacist, New England Compounding Center You are hereby commanded to be and appear before the Commitee on En"
+      }
+    ],
+    "meeting-support -> cost-estimate": [
+      {
+        "after_family": [
+          "cost-estimate"
+        ],
+        "after_kind": [
+          "cost-estimate"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "7e79c4007e9ec25e7a1344bbf261250f2eaa75c192050876a736d84cf346cf76",
+        "doc_key": "7e79c4007e9ec25e",
+        "filename": "HMKP-117-GO00-20210720-SD006.pdf",
+        "head_excerpt": "See also CBO's Cost Estimates Explained, www.cbo.gov/publication/54437; How CBO Prepares Cost Estimates, www.cbo.gov/publication/53519; and Glossary, www.cbo.gov/publication/42904.  Congressional Budget Office Cost Estimate   September 15, 2021   At a Glance"
+      },
+      {
+        "after_family": [
+          "cost-estimate"
+        ],
+        "after_kind": [
+          "cost-estimate"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "e8a64675401ddf561fcc474598e88eb91d5f772d9981f9e807254eb18205468a",
+        "doc_key": "e8a64675401ddf56",
+        "filename": "HMKP-115-BU00-20170719-SD001.pdf",
+        "head_excerpt": "CONGRESSIONAL BUDGET OFFICE COST ESTIMATE  July 11, 2017   H.R. 2997 21st Century Aviation Innovation, Reform, and Reauthorization Act  As ordered reported by the House Committee on Transportation and Infrastructure on June 27, 2017   SUMMARY  H.R. 2997 woul"
+      }
+    ],
+    "meeting-support -> crs-report": [
+      {
+        "after_family": [
+          "crs-report"
+        ],
+        "after_kind": [
+          "crs-report"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "15226b6a78e39bf70368691db3d0c93d6b47682532bb61b6fe6011c2e4081ebd",
+        "doc_key": "15226b6a78e39bf7",
+        "filename": "HHRG-118-FD00-20240206-SD002.pdf",
+        "head_excerpt": "CRS INSIGHT Prepared for Members and Committees of Congress      INSIGHTi The AI Executive Order and Its Potential Implications for DOD December 12, 2023 On October 20, 2023, President Biden issued an Executive Order (E.O.) on the Safe, Secure, and Trustworthy"
+      },
+      {
+        "after_family": [
+          "crs-report"
+        ],
+        "after_kind": [
+          "crs-report"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "1d11108cc91ca0061a1cac971b1fd649f68861b22f318e5b95070937c479e4b3",
+        "doc_key": "1d11108cc91ca006",
+        "filename": "HHRG-119-JU10-20251119-SD004-U4.pdf",
+        "head_excerpt": "Apportioning Seats in the U.S. House of Representatives Using the 2013 Estimated Citizen Population  Updated October 30, 2015 Congressional Research Service https://crsreports.congress.gov R41636 Apportioning Seats in the U.S. House of Representatives Using"
+      }
+    ],
+    "meeting-support -> federal-register-notice": [
+      {
+        "after_family": [
+          "federal-register-notice"
+        ],
+        "after_kind": [
+          "federal-register-notice"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "19e7d19ee4651108864e7fec0661a167d69e83e5c86a86fbf2bf8729fc82e626",
+        "doc_key": "19e7d19ee4651108",
+        "filename": "HHRG-116-IF02-20190521-SD009.pdf",
+        "head_excerpt": "GP 2670 Federal Register/ Vol. 84, No. 26/Thursday, February 7, 2019/Proposed Rules ENVIRONMENTAL PROTECTION AGENCY 40 CFR Part 63 [EPA-HQ-OAR-2018-0794; FRL-9988-93- OAR] RIN 2060-AT99 National Emission Standards for Hazardous Air Pollutants: Coal- and Oil-Fi"
+      },
+      {
+        "after_family": [
+          "federal-register-notice"
+        ],
+        "after_kind": [
+          "federal-register-notice"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "c3b6e5fa9f6c967e21b1c7ccd2aec0b8ce7e63c1b16a3f9b7d03938944348604",
+        "doc_key": "c3b6e5fa9f6c967e",
+        "filename": "HMKP-118-II00-20231108-SD019.pdf",
+        "head_excerpt": "60173 Federal Register / Vol. 73, No. 198 / Friday, October 10, 2008 / Rules and Regulations October 1, 2009, through December 31, 2009: Cost submission due January 30, 2010. Federal Communications Commission. Nicole McGinnis, Deputy Chief, Consumer and Govern"
+      }
+    ],
+    "meeting-support -> gao-report": [
+      {
+        "after_family": [
+          "gao-report"
+        ],
+        "after_kind": [
+          "gao-report"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "022e80cdf4f98a6471848b45e40ee1d707c8ebc29d79f9f565d8ad18dd11932a",
+        "doc_key": "022e80cdf4f98a64",
+        "filename": "HHRG-118-II06-20230228-SD015.pdf",
+        "head_excerpt": "GAO January 2016 United States Government Accountability Office Report to the Chairman, Committee on Natural Resources, House of Representatives HARDROCK MINING BLM and Forest Service Have Taken Some Actions to Expedite the Mine Plan Review Process but Could D"
+      },
+      {
+        "after_family": [
+          "gao-report"
+        ],
+        "after_kind": [
+          "gao-report"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "767fd4b1a4c16d0eb2b9018361b13660927f21d3c85a32ca26bf53e0428c8f43",
+        "doc_key": "767fd4b1a4c16d0e",
+        "filename": "HHRG-118-II00-20230622-SD005.pdf",
+        "head_excerpt": "GAO April 2014 United States Government Accountability Office Report to Congressional Requesters NATIONAL ENVIRONMENTAL POLICY ACT Little Information Exists on NEPA Analyses GAO-14-370 GAO Highlights Highlights of GAO-14-370, a report to congressional requeste"
+      }
+    ],
+    "meeting-support -> meeting-notice": [
+      {
+        "after_family": [
+          "notice"
+        ],
+        "after_kind": [
+          "meeting-notice"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "005a0ada49a739641489011e118f2320d1bce517178e4af5d4971ddbe890d0d7",
+        "doc_key": "005a0ada49a73964",
+        "filename": "HMKP-117-IF16-20220615-SD002.pdf",
+        "head_excerpt": "June 13, 2022  SUBCOMMITTEE ON COMMUNICATIONS AND TECHNOLOGY  MARKUP NOTICE   TO:   Members, Subcommittee on Communications and Technology  FROM:  Mike Doyle, Chairman  SUBJECT: Subcommittee on Communications and Technology Markup, Wednesday, June 15,"
+      },
+      {
+        "after_family": [
+          "notice"
+        ],
+        "after_kind": [
+          "meeting-notice"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "0108268254b3b7e72cd717bab2d3bec2b387f5a57bf89e33947792748dcdf313",
+        "doc_key": "0108268254b3b7e7",
+        "filename": "HMKP-117-II00-20220713-SD001.pdf",
+        "head_excerpt": "* * * HYBRID FC MARKUP NOTICE * * *  TO: All Members, Committee on Natural Resources   FROM: The Honorable Ra\u00fal M. Grijalva, Chair   SUBJECT: Hybrid FC Markup Notice 7.13.2022  On Wednesday, July 13, 2022, at 10:00 a.m. ET in 1324 Longworth Hearing Ro"
+      }
+    ],
+    "meeting-support -> staff-report": [
+      {
+        "after_family": [
+          "staff-report"
+        ],
+        "after_kind": [
+          "staff-report"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "a6d7ab2101bf7ae27156671367feef324ec6cc0a3c7f13109b4162e529bb3860",
+        "doc_key": "a6d7ab2101bf7ae2",
+        "filename": "HMKP-116-JU00-20191211-SD1045.pdf",
+        "head_excerpt": "STATE SECRETS: HOW AN AVALANCHE OF MEDIA LEAKS IS HARMING NATIONAL SECURITY                A Majority Staff Report of the  Committee on Homeland Security and Governmental Affairs United States Senate Senator Ron Johnson, Chairman    July 6, 2017    1  E"
+      },
+      {
+        "after_family": [
+          "staff-report"
+        ],
+        "after_kind": [
+          "staff-report"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "b77c9af163ac008fc657aa8003050226898a8f91f795dd963d20c7cf68a1b9af",
+        "doc_key": "b77c9af163ac008f",
+        "filename": "HHRG-116-IF16-20190207-SD009.pdf",
+        "head_excerpt": "REGULATING THE INTERNET: HOW THE WHITE HOUSE BOWLED OVER FCC INDEPENDENCE   A Majority Staff Report of the Committee on Homeland Security and Governmental Affairs United States Senate Senator Ron Johnson, Chairman    February 29, 2016     Majority Staff Rep"
+      }
+    ],
+    "meeting-support -> subpoena": [
+      {
+        "after_family": [
+          "subpoena"
+        ],
+        "after_kind": [
+          "subpoena"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "0264f939ba14d40824125bffbd2ee37e1b088df522c502b4eb72aa1dc931dd9e",
+        "doc_key": "0264f939ba14d408",
+        "filename": "HMTG-117-IJ00-20211201-SD001-U1.pdf",
+        "head_excerpt": "SUBPOENA BY AUTHORITY OF THE HOUSE OF REPRESENTATIVES OF THE CONGRESS OF THE UNITED STATES OF AMERICA Jeflrey B. Clark To c/o Robert Driscoll, Esq., McGlinchey, Stafford, PLLC You are hereby commanded to be and appear before the Select Committee to Investigate"
+      },
+      {
+        "after_family": [
+          "subpoena"
+        ],
+        "after_kind": [
+          "subpoena"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "04da3ffdc60ca6a820a35819cf47f21ac1bad37cb897e8f97d4053409773e5e9",
+        "doc_key": "04da3ffdc60ca6a8",
+        "filename": "HMKP-116-JU00-20191211-SD924.pdf",
+        "head_excerpt": "To \u2022 SUBPOENA By AUTHORITY OF THE HOUSE OF REPRESENTATIVES OF THE CONGRESS OF THE UNITED STATES OF AMERICA Davia Holmes You are hereby commanded to be and appear before the Permanent Select Committee on Intelligence of the House of Representatives of the Unite"
+      }
+    ],
+    "meeting-support -> testimony-disclosure": [
+      {
+        "after_family": [
+          "disclosure"
+        ],
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "2037f77d38da03d4c0f72905d64184484b9c3fa2ff8873c37d189191d3a15acf",
+        "doc_key": "2037f77d38da03d4",
+        "filename": "HHRG-114-BU00-20160615-SD001.pdf",
+        "head_excerpt": "Committee on the Budget Witness Disclosure Requirement - \"Truth in Testimony\" Required by House Rule XI, Clause 2(g) Your Name: Dovalas Holtz-Eakin Yes No 1. Will you be representing a Federal, State, or local government entity? (If the answer is yes please co"
+      },
+      {
+        "after_family": [
+          "disclosure"
+        ],
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "69a5634f8287c870fb8806c049d3d6e2e910a2b4852d1114077a59cabe70a072",
+        "doc_key": "69a5634f8287c870",
+        "filename": "HHRG-116-AP04-20200312-SD002.pdf",
+        "head_excerpt": "Truth in Testimony Disclosure Form Witness Name: Position/Title: Witness Type: Governmental Non-governmental Are you representing yourself or an organization? Self Organization Committee: Subcommittee: Hearing Date: Hearing : If you are a non-governmental witn"
+      }
+    ],
+    "meeting-support -> witness-list": [
+      {
+        "after_family": [
+          "list"
+        ],
+        "after_kind": [
+          "witness-list"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "0313f4d02ea7cb38fe714187c3fe6a45c07c33514e36ee569aabb72d37a3deb7",
+        "doc_key": "0313f4d02ea7cb38",
+        "filename": "HHRG-116-VR11-20200916-SD085.pdf",
+        "head_excerpt": "Witness List 116th Congress U.S. House of Representatives Committee on Veterans' Affairs Subcommittees on Technology Modernization and Health Hearing  \"Moving Beyond Patchwork Systems: The Future of Education Services IT\" Wednesday, September 16, 2020, at 10:"
+      },
+      {
+        "after_family": [
+          "list"
+        ],
+        "after_kind": [
+          "witness-list"
+        ],
+        "before_kind": [
+          "meeting-support"
+        ],
+        "body_sha256": "0418935562afd048c1f431f6b2af37e6dafb59c0ced0e41899e8e5adf3b2a1fd",
+        "doc_key": "0418935562afd048",
+        "filename": "HHRG-114-VR00-20160210-SD001.pdf",
+        "head_excerpt": "Witness List Committee on Veterans' Affairs U.S. House of Representatives  \"U.S. Department of Veterans Affairs Budget Request for Fiscal Year 2017\"  Wednesday, February 10, 2016, at 10:00 a.m. 334 Cannon House Office Building  Panel 1  The Honorable Robert A."
+      }
+    ],
+    "witness-biography -> testimony-disclosure": [
+      {
+        "after_family": [
+          "disclosure"
+        ],
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "witness-biography"
+        ],
+        "body_sha256": "003e32aa303fc1f6d659615b4a06e38db1cc305ccf2d8276e60e6645f3f45387",
+        "doc_key": "003e32aa303fc1f6",
+        "filename": "HHRG-117-AG29-Bio-MeierE-20220203.pdf",
+        "head_excerpt": "Truth in Testimony Disclosure Form In accordance with Rule XI, clause 2(g)(5)* of the Rules of the House of Representatives, witnesses are asked :o disclose the following information. Please complete this form electronically by filling in the provided blanks."
+      },
+      {
+        "after_family": [
+          "disclosure"
+        ],
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "witness-biography"
+        ],
+        "body_sha256": "0201014207ca22f3f4519fadbd5ade2f75fe23064fc1aeac629cd0eeac2eb637",
+        "doc_key": "0201014207ca22f3",
+        "filename": "HHRG-116-SM23-Bio-SapersteinM-20200227.pdf",
+        "head_excerpt": "Truth in Testimony Disclosure Form In accordance with Rule XI, clause 2(g)(5)*, of the Rules of the House of Representatives, witnesses are asked to disclose the following information. Please complete this form electronically by filling in the provided blanks."
+      }
+    ],
+    "witness-statement -> cost-estimate": [
+      {
+        "after_family": [
+          "cost-estimate"
+        ],
+        "after_kind": [
+          "cost-estimate"
+        ],
+        "before_kind": [
+          "witness-statement"
+        ],
+        "body_sha256": "57e1d8046b50890d720af7040d1056536af7d5fbfff000cf3be6ce33310b8713",
+        "doc_key": "57e1d8046b50890d",
+        "filename": "HHRG-116-II13-Wstate-NezJ-20190626.pdf",
+        "head_excerpt": "See also CBO's Cost Estimates Explained, www.cbo.gov/publication/54437; How CBO Prepares Cost Estimates, www.cbo.gov/publication/53519; and Glossary, www.cbo.gov/publication/42904. Congressional Budget Office Cost Estimate   June 19, 2019   At a Glance S. 120"
+      }
+    ],
+    "witness-statement -> testimony-disclosure": [
+      {
+        "after_family": [
+          "disclosure"
+        ],
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "witness-statement"
+        ],
+        "body_sha256": "02c094f1be4533568c2f5d4707eabca8cd9385f05bed31f7bb3b5aebf44ca294",
+        "doc_key": "02c094f1be453356",
+        "filename": "HHRG-115-ED02-Wstate-SossaE-20170518.pdf",
+        "head_excerpt": "COMMITTEE ON EDUCATION AND THE WORKFORCE U.S. HOUSE OF REPRESENTATIVES Truth in Testimony Disclosure Form Clause 2(g) of rule XI of the Rules of the House of Representatives and the Rules of the Committee on Education and the Worktorce require the disclosure o"
+      },
+      {
+        "after_family": [
+          "disclosure"
+        ],
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "witness-statement"
+        ],
+        "body_sha256": "07dc4dd78d155ecdd0b97d3752206394a2fbbe3f5f591c83b544cd78a5920597",
+        "doc_key": "07dc4dd78d155ecd",
+        "filename": "HHRG-117-SY16-Wstate-HejdukM-20220512.pdf",
+        "head_excerpt": "Truth in Testimony Disclosure Form Witness Name: Position/Title: Witness Type: Governmental Non-governmental Are you representing yourself or an organization? Self Organization Committee: Subcommittee: Hearing Date: Hearing : In accordance with Rule XI, clause"
+      }
+    ],
+    "witness-support -> crs-report": [
+      {
+        "after_family": [
+          "crs-report"
+        ],
+        "after_kind": [
+          "crs-report"
+        ],
+        "before_kind": [
+          "witness-support"
+        ],
+        "body_sha256": "09d78241cf44a44113cb5ae103df37691d49e7a32fd129b8167f1f4d921275cd",
+        "doc_key": "09d78241cf44a441",
+        "filename": "HHRG-117-JU10-Wstate-MaskellJ-20210311-SD001.pdf",
+        "head_excerpt": "Expulsion, Censure, Reprimand, and Fine: Legislative Discipline in the House of Representatives Jack Maskell Legislative Attorney June 27, 2016 Congressional Research Service 7-5700 www.crs.gov RL31382 Expulsion, Censure, Reprimand, and Fine in the House of"
+      }
+    ],
+    "witness-support -> testimony-disclosure": [
+      {
+        "after_family": [
+          "disclosure"
+        ],
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "witness-support"
+        ],
+        "body_sha256": "00472521603f9b066f5fead27a3ad15f4f6c8d16fc52f066709f546b842abc69",
+        "doc_key": "00472521603f9b06",
+        "filename": "HHRG-115-II13-Wstate-GudesS-20171130-SD011.pdf",
+        "head_excerpt": "1   COMMITTEE ON NATURAL RESOURCES 115th Congress Disclosure Form As required by and provided for in House Rule XI, clause 2(g)(5)  Legislative Hearing on H.R. 4419 (Rep. Dan Newhouse) To facilitate and streamline the Bureau of Reclamation and Bureau of Indian"
+      },
+      {
+        "after_family": [
+          "disclosure"
+        ],
+        "after_kind": [
+          "testimony-disclosure"
+        ],
+        "before_kind": [
+          "witness-support"
+        ],
+        "body_sha256": "008bdb052fca58f4d411e3cc8a24bd3fab486cbaf753bf9549066bb1b5bc345f",
+        "doc_key": "008bdb052fca58f4",
+        "filename": "HHRG-115-II13-Wstate-ColosimoA-20171206-SD333.pdf",
+        "head_excerpt": "1   COMMITTEE ON NATURAL RESOURCES 115th Congress Disclosure Form As required by and provided for in House Rule XI, clause 2(g)(5)  H.R. 4465 (Rep. John Curtis), To maintain annual base funding for the Upper Colorado and San Juan fish recovery programs through"
+      }
+    ]
+  }
+}

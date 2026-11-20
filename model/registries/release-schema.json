@@ -17,6 +17,12 @@
           "nullable": true
         },
         {
+          "name": "print_number",
+          "type": "string",
+          "meaning": "Official hearing print number (such as S. Hrg. 117-336 or Serial No. 115-3) from GovInfo MODS preferredCitation or Content Details when known",
+          "nullable": true
+        },
+        {
           "name": "document_kind",
           "type": "list<dict>",
           "meaning": "Document kinds",
@@ -144,7 +150,12 @@
         "version_keys[]": "Shared lowercase hexadecimal endpoint keys identify different editions, not alternate formats of one document. A document can have several keys.",
         "document_kind[]": "Embedded classification values, not foreign keys. Words listed together under synonyms name one kind (the first is the House naming guide's word); filter them as one.",
         "document_family[]": "Embedded filename classification values.",
-        "chambers[]": "Embedded chamber labels."
+        "chambers[]": "Embedded chamber labels.",
+        "committee_keys[]": "Congress.gov committee system code associated with this document.",
+        "meeting_keys[]": "Decimal event identifier associated with this document.",
+        "measure_keys[]": "Referenced bill or nomination identifier.",
+        "bioguide_ids[]": "Referenced member Bioguide identifier.",
+        "witness_keys[]": "Referenced witness appearance identifier."
       },
       "synonyms": {
         "document_kind[]": [
@@ -170,7 +181,8 @@
           ]
         ]
       },
-      "nullability": "Nullability transcribes data model \u00a78.1 (list.parquet bullet): a type without \"nullable\" there is required."
+      "nullability": "Nullability transcribes data model §8.1 (list.parquet bullet): a type without \"nullable\" there is required.",
+      "description": "Browse and search document editions included in this release."
     },
     {
       "name": "detail.parquet",
@@ -338,6 +350,12 @@
           "nullable": true
         },
         {
+          "name": "print_number",
+          "type": "string",
+          "meaning": "Official hearing print number (such as S. Hrg. 117-336 or Serial No. 115-3) from GovInfo MODS preferredCitation or Content Details when known",
+          "nullable": true
+        },
+        {
           "name": "document_kind",
           "type": "list<dict>",
           "meaning": "Document kinds",
@@ -478,9 +496,37 @@
         "version_keys[]": "Same values as list.version_keys; see that field.",
         "publisher_labels[]": "Embedded declared section labels; not a key into another table.",
         "page_metadata[]": "Embedded declared values with their JSON Pointer path into the pinned html_metadata reading; path is evidence, not a key. Reproduce it from saved_body with the release pin.",
-        "main_content": "Embedded reference to selected text. Verify selected_text with text_sha256 and find the marked element in saved_body with selector."
+        "main_content": "Embedded reference to selected text. Verify selected_text with text_sha256 and find the marked element in saved_body with selector.",
+        "alternates[].format": "Format of this alternate document file.",
+        "alternates[].body": "SHA-256 digest of the alternate file body, stored as 32 bytes.",
+        "alternates[].suffix": "Stored file suffix for this alternate body.",
+        "alternates[].size": "Size of the alternate file body in bytes.",
+        "facts[].field": "Name of the extracted fact.",
+        "facts[].value": "Literal value of the extracted fact.",
+        "page_metadata[].field": "Kind of publisher-declared page metadata.",
+        "page_metadata[].value": "Literal publisher-declared value.",
+        "page_metadata[].format": "Metadata syntax or format used by the publisher.",
+        "page_metadata[].path": "Source pointer for this metadata declaration.",
+        "page_metadata[].date": "Parsed calendar date, when the declaration provides a recognized date.",
+        "page_metadata[].precision": "Precision of the parsed publisher date.",
+        "page_metadata[].resolved": "Declared address resolved against its capture context and base address, when available.",
+        "page_metadata[].selected": "Whether this declaration supplies a selected description, publication date, modification date or publisher label.",
+        "page_metadata[].context_url": "Captured page address used to resolve this declaration.",
+        "main_content.outcome": "Recorded main-content result: marked, marked_no_content, fallback, failed, none, unreadable or unread.",
+        "main_content.selector": "XPath or JSON Pointer identifying the selected content, when supplied by the reader.",
+        "main_content.text_sha256": "SHA-256 digest of the selected text encoded as UTF-8, when supplied.",
+        "main_content.text_bytes": "Text byte count supplied by the HTML metadata reading.",
+        "main_content.snippet": "Bounded text head retained for marked or marked_no_content readings.",
+        "main_content.reader_version": "Parser version of the selected HTML metadata reading or unreadable decision.",
+        "main_content.reading_status": "Status of the selected reading, or unreadable when supported by an unreadable decision.",
+        "main_content.reason": "Reader result reason or qualified unreadable decision reason.",
+        "main_content.facts_limited": "Whether the reading recorded a detail-facts limit.",
+        "main_content.text_available": "Whether selected text was retained in the reading.",
+        "main_content.decision_id": "Qualified unreadable decision identifier when there is no selected reading.",
+        "main_content.evidence_limited": "Whether metadata declarations or address contexts exceeded the retained evidence budget."
       },
-      "nullability": "Nullability transcribes data model \u00a78.1 (list and detail bullets)."
+      "nullability": "Nullability transcribes data model §8.1 (list and detail bullets).",
+      "description": "Explore document details, associated files and repeated information for each document edition. Stable link keys identify document entries."
     },
     {
       "name": "links.parquet",
@@ -512,7 +558,8 @@
       "notes": {
         "link_key": "First 8 body SHA-256 bytes, or first 8 SHA-256 bytes of url: plus exact original URL for recovery links. Binary key; hex is a display encoding."
       },
-      "nullability": "Both columns are required by data model \u00a78.1."
+      "nullability": "Both columns are required by data model §8.1.",
+      "description": "Resolve a stable public document link key to a document entry in this release."
     },
     {
       "name": "retired_links.parquet",
@@ -560,10 +607,12 @@
         "kind": "primary_key"
       },
       "notes": {
-        "link_key": "Disjoint from links.link_key. A key published again leaves the ledger. Data model \u00a78.2, Retired keys.",
-        "address_versions": "Set only when successor_key is null; an address can hold several editions (data model \u00a77.5), so the notice lists them instead of choosing one."
+        "link_key": "Disjoint from links.link_key. A key published again leaves the ledger. Data model §8.2, Retired keys.",
+        "address_versions": "Set only when successor_key is null; an address can hold several editions (data model §7.5), so the notice lists them instead of choosing one.",
+        "address_versions[]": "Eight-byte endpoint key associated with the retired document address."
       },
-      "nullability": "Nullability transcribes data model \u00a78.1 (retired_links.parquet row)."
+      "nullability": "Nullability transcribes data model §8.1 (retired_links.parquet row).",
+      "description": "Find a successor link or removal notice for a document link key no longer published."
     },
     {
       "name": "corrections.parquet",
@@ -617,7 +666,8 @@
         "validation": "native publication key checks",
         "kind": "primary_key"
       },
-      "nullability": "original_url, rejected_body, decision_id and decided_at are required on every active rejection decision; recovered_url and identity_note are optional provenance fields."
+      "nullability": "original_url, rejected_body, decision_id and decided_at are required on every active rejection decision; recovered_url and identity_note are optional provenance fields.",
+      "description": "Inspect permanent recovery rejections recorded when dead-link answers were corrected. Each entry names the original address and rejected recovery copy."
     },
     {
       "name": "urls.parquet",
@@ -650,7 +700,8 @@
       "notes": {
         "lookup_key": "Exact: first 8 SHA-256 bytes of lookup: plus fixed lookup_url(u): remove scheme, leading www, default port, fragment and one trailing path slash; lowercase host; preserve query bytes. Only after an exact miss, use lookup-alias:serialization-v1: plus that spelling with U+0020 serialized as %20 and valid percent triplets uppercased. Keep every matching edition. Both namespaces refuse different full hash inputs sharing eight bytes. This is not capture-profile url_key."
       },
-      "nullability": "Both columns are required by data model \u00a78.1."
+      "nullability": "Both columns are required by data model §8.1.",
+      "description": "Find document entries through normalized source-address lookup keys. One address can identify several document editions."
     },
     {
       "name": "sources.parquet",
@@ -732,7 +783,8 @@
         "member_path": "Path inside a captured archive container. Interpret together with the source URL; not a document key.",
         "url": "Required. A member of a ZIP keeps the ZIP URL here and its place in member_path; the ZIP itself is never a document when its contents were captured."
       },
-      "nullability": "Nullability transcribes data model \u00a78.1 (sources.parquet row)."
+      "nullability": "Nullability transcribes data model §8.1 (sources.parquet row).",
+      "description": "Inspect source addresses and listing context captured for each document. Each source occurrence remains separate."
     },
     {
       "name": "recoveries.parquet",
@@ -804,7 +856,8 @@
         "validation": "native publication key checks",
         "kind": "primary_key"
       },
-      "nullability": "Nullability transcribes data model \u00a78.1 (recoveries.parquet row)."
+      "nullability": "Nullability transcribes data model §8.1 (recoveries.parquet row).",
+      "description": "Inspect recovered files associated with document editions. Repeated file occurrences remain separate records."
     },
     {
       "name": "meetings.parquet",
@@ -1026,9 +1079,74 @@
         "congress_gov_detail_observation.successful_read": "One qualified successful receipt and its response digest, retrieval time and selected reader versions. Nullable; retained independently of later failures.",
         "congress_gov_detail_observation.latest_attempt": "One latest dated detail attempt and its raw outcome, HTTP status and qualification state. Undated attempts are signaled separately; ties use the receipt locator.",
         "congress_gov_detail_observation.latest_attempt.evidence": "The attempt clock and locator are bound to the same capture. Receipt lines are one-based and capture indexes are zero-based; body digest and clocks may be null.",
-        "congress_gov_detail_observation.listing": "A bound successful listing route whose selected response supplied this meeting. A listing-only claim is confined to selected release inputs."
+        "congress_gov_detail_observation.listing": "A bound successful listing route whose selected response supplied this meeting. A listing-only claim is confined to selected release inputs.",
+        "sittings[].start": "Start instant of this sitting, when stated.",
+        "sittings[].end": "End instant of this sitting, when stated.",
+        "sittings[].place": "Room, building and address joined with commas, when supplied.",
+        "sittings[].room": "Room stated for this sitting.",
+        "sittings[].building": "Building stated for this sitting.",
+        "sittings[].address": "Address stated for this sitting.",
+        "committees[].system_code": "Congress.gov system code of the participating committee.",
+        "committees[].role": "Recorded role of this committee in the meeting.",
+        "subject_keys[]": "Bill or nomination identifier associated with this meeting.",
+        "transcripts[].source": "Transcript source: printed_hearing, committee_transcript or captions.",
+        "transcripts[].package_id": "GovInfo package identifier for a printed transcript, when applicable.",
+        "transcripts[].list_row": "Release-local document row for this transcript, when applicable.",
+        "transcripts[].formats[]": "Available format label for this transcript.",
+        "transcripts[].video_key": "Provider-prefixed recording key for caption transcripts, when applicable.",
+        "transcripts[].language": "Language of this transcript or caption track, when stated.",
+        "transcripts[].production": "Recorded production label for this transcript or caption track.",
+        "videos[].name": "Recorded name of this meeting video.",
+        "videos[].url": "Recorded address of this meeting video.",
+        "videos[].video_key": "Provider-prefixed recording identifier, when resolved.",
+        "document_references[]": "One document reference stated in the meeting record.",
+        "document_references[].description": "Description stated for this document reference.",
+        "document_references[].name": "Name stated for this document reference.",
+        "document_references[].last_listed_on": "Latest Congress.gov read date on which this document link appeared.",
+        "document_references[].unlisted_since": "First Congress.gov read date on which this previously listed document link was absent.",
+        "document_references[].unlisted_by_record_sha": "Hexadecimal SHA-256 digest of the Congress.gov meeting body that first omitted this document link.",
+        "unlisted_subjects[].subject_key": "Bill or nomination identifier listed on an earlier Congress.gov read of this meeting and omitted from the current read.",
+        "unlisted_subjects[].last_listed_on": "Latest Congress.gov read date on which this subject appeared on the meeting.",
+        "unlisted_subjects[].unlisted_since": "First Congress.gov read date on which this previously listed subject was absent.",
+        "unlisted_subjects[].unlisted_by_record_sha": "Hexadecimal SHA-256 digest of the Congress.gov meeting body that first omitted this subject.",
+        "publisher_status_observations[].source": "Publisher source family reporting this status observation (congress_gov or house_xml).",
+        "publisher_status_observations[].status": "Normalized meeting status stated by this publisher observation.",
+        "publisher_status_observations[].meeting_date": "Meeting calendar date stated alongside this publisher status observation.",
+        "publisher_status_observations[].record_sha": "Hexadecimal SHA-256 digest of the raw publisher record stating this observation.",
+        "publisher_status_observations[].observed_at": "Capture or publisher timestamp associated with this status observation, when known.",
+        "congress_gov_detail_observation.state": "Overall Congress.gov event-detail state: successful, failed, listing_only_in_scope or unknown.",
+        "congress_gov_detail_observation.coverage": "Scope of evaluated Congress.gov detail inputs: selected_release_inputs or unknown.",
+        "congress_gov_detail_observation.successful_read.source_url": "Captured Congress.gov address for this successful read evidence.",
+        "congress_gov_detail_observation.successful_read.retrieved_at": "Capture timestamp of this successful read evidence, when recorded.",
+        "congress_gov_detail_observation.successful_read.receipt_key": "Raw capture receipt key recording this successful read.",
+        "congress_gov_detail_observation.successful_read.receipt_line": "Zero-based line number inside the capture receipt for this successful read.",
+        "congress_gov_detail_observation.successful_read.capture_index": "Capture index within the receipt line for this successful read.",
+        "congress_gov_detail_observation.successful_read.body_sha256": "Hexadecimal SHA-256 digest of the captured response body for this successful read.",
+        "congress_gov_detail_observation.successful_read.meeting_parser_version": "Version of the meeting_records parser that read this successful read body.",
+        "congress_gov_detail_observation.successful_read.proof_parser_version": "Version of the appearance_records detail reader qualifying this successful read body.",
+        "congress_gov_detail_observation.latest_attempt.evidence.source_url": "Captured Congress.gov address for this latest attempt.evidence evidence.",
+        "congress_gov_detail_observation.latest_attempt.evidence.retrieved_at": "Capture timestamp of this latest attempt.evidence evidence, when recorded.",
+        "congress_gov_detail_observation.latest_attempt.evidence.receipt_key": "Raw capture receipt key recording this latest attempt.evidence.",
+        "congress_gov_detail_observation.latest_attempt.evidence.receipt_line": "Zero-based line number inside the capture receipt for this latest attempt.evidence.",
+        "congress_gov_detail_observation.latest_attempt.evidence.capture_index": "Capture index within the receipt line for this latest attempt.evidence.",
+        "congress_gov_detail_observation.latest_attempt.evidence.body_sha256": "Hexadecimal SHA-256 digest of the captured response body for this latest attempt.evidence.",
+        "congress_gov_detail_observation.latest_attempt.evidence.meeting_parser_version": "Version of the meeting_records parser that read this latest attempt.evidence body.",
+        "congress_gov_detail_observation.latest_attempt.evidence.proof_parser_version": "Version of the appearance_records detail reader qualifying this latest attempt.evidence body.",
+        "congress_gov_detail_observation.latest_attempt.state": "Recorded state of the latest Congress.gov detail capture attempt.",
+        "congress_gov_detail_observation.latest_attempt.outcome": "Capture outcome recorded on the latest Congress.gov detail attempt.",
+        "congress_gov_detail_observation.latest_attempt.http_status": "HTTP response status code recorded on the latest Congress.gov detail attempt, when present.",
+        "congress_gov_detail_observation.listing.source_url": "Captured Congress.gov address for this listing evidence.",
+        "congress_gov_detail_observation.listing.retrieved_at": "Capture timestamp of this listing evidence, when recorded.",
+        "congress_gov_detail_observation.listing.receipt_key": "Raw capture receipt key recording this listing.",
+        "congress_gov_detail_observation.listing.receipt_line": "Zero-based line number inside the capture receipt for this listing.",
+        "congress_gov_detail_observation.listing.capture_index": "Capture index within the receipt line for this listing.",
+        "congress_gov_detail_observation.listing.body_sha256": "Hexadecimal SHA-256 digest of the captured response body for this listing.",
+        "congress_gov_detail_observation.listing.meeting_parser_version": "Version of the meeting_records parser that read this listing body.",
+        "congress_gov_detail_observation.listing.proof_parser_version": "Version of the appearance_records detail reader qualifying this listing body.",
+        "congress_gov_detail_observation.has_undated_attempt": "Whether any Congress.gov detail attempt lacked a retrieval timestamp for chronological ordering."
       },
-      "nullability": "Nullability transcribes data model \u00a78.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null, except document_references."
+      "nullability": "Nullability transcribes data model §8.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null, except document_references.",
+      "description": "Explore congressional meetings and hearings. Each record describes one event using the shared House and Senate event identifier system."
     },
     {
       "name": "witnesses.parquet",
@@ -1234,7 +1352,8 @@
         "occasion": "meeting:{event_id}, package:{package_id}, or page:{sha256_prefix}. Live witness keys carry forward across re-fetches and parser updates; genuinely new entries mint witness-appearance-v3 keys. Names alone never join or deduplicate appearances.",
         "witness_type": "A sitting Member of Congress acting officially is a Member appearance, not a witness (ct-kw85): witness_type member_appearance, kept in the hearing's list with that label and left out of witness counts. An archive match needs the row's own state, chamber or committee role and an agreeing first name, a stated House seat whose holder's family name the row gives, a bare initial only one sitting Member in the stated chamber and state shares, or a name alone at a Member Day hearing that only one sitting Member's name fits (match_basis); several fitting Members, a former Member, a state legislator, a congressional employee and the hearing's own nominee stay witnesses, and a row that names a Member with nothing else stays a witness. A committee member's own opening statement at the hearing is a member_statement with its matched Member, not a Member appearance (owner decision 2026-11-10): the row says opening statement and the Member is seated, in the Congress of the hearing date, on the hearing's committee (the meeting's, else the print's: its own documents' committees and its own MODS committee code) or on its parent committee (a subcommittee code's first four letters and '00', since a full committee's chair and ranking member open its subcommittees' hearings but rosters seat them on the full committee only). Seated means the pinned rosters, or, for a Congress they do not hold (before the 113th), the print's own MODS committee member list."
       },
-      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "nullability": "Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required.",
+      "description": "Explore witness observations from meetings, packages and pages. Each record is a source occurrence, so repeated appearances do not identify a deduplicated person."
     },
     {
       "name": "witness_key_map.parquet",
@@ -1297,9 +1416,11 @@
       },
       "notes": {
         "old_key": "Disjoint from witnesses.witness_key. Carried witness keys stay in witnesses.parquet across re-fetches and parser splits; only edited names (locator), ambiguous multiplicity changes, carried 1-hop ledger entries, and reviewed historical Senate keys enter witness_key_map (ct-46f3). Any unmapped live key refuses export (lost_witness_keys). A name alone never maps (ct-30fp).",
-        "witness_key": "The successor can itself be superseded_by a higher-ranked row of the same person; follow witnesses.superseded_by to the row to show."
+        "witness_key": "The successor can itself be superseded_by a higher-ranked row of the same person; follow witnesses.superseded_by to the row to show.",
+        "candidate_keys[]": "Possible current witness key for an ambiguous earlier key."
       },
-      "nullability": "witness_key is set exactly when status is unambiguous; basis is null exactly when status is unresolved (ct-kb4w)."
+      "nullability": "witness_key is set exactly when status is unambiguous; basis is null exactly when status is unresolved (ct-kb4w).",
+      "description": "Look up earlier witness keys and their recorded successors or candidates. Some earlier keys remain unresolved."
     },
     {
       "name": "people.parquet",
@@ -1421,7 +1542,8 @@
         "positions[]": "Stated position/title strings from hearing records; values, not keys.",
         "witness_keys[]": "Canonical witness_key references into witnesses.parquet; superseded witness rows also carry person_key on witnesses.parquet."
       },
-      "nullability": "person_key, name, grouping_basis, counts, and list columns are required; bioguide_id, rank, credentials, organization, and date bounds are nullable."
+      "nullability": "person_key, name, grouping_basis, counts, and list columns are required; bioguide_id, rank, credentials, organization, and date bounds are nullable.",
+      "description": "Explore congressional members and recurring hearing witnesses grouped across appearances. Non-member witnesses group only when normalized names and full normalized organizations agree under middle-initial and suffix guards."
     },
     {
       "name": "person_aliases.parquet",
@@ -1484,7 +1606,8 @@
         "old_person_key": "Disjoint from people.person_key; a key published again leaves person_aliases. Any vanished prior person_key absent from both people and person_aliases refuses export (lost_person_keys).",
         "candidate_keys[]": "Current people.person_key values when status is ambiguous; empty otherwise."
       },
-      "nullability": "person_key is set exactly when status is unambiguous; kind is null exactly when status is unresolved; candidate_keys has two or more entries exactly when status is ambiguous."
+      "nullability": "person_key is set exactly when status is unambiguous; kind is null exactly when status is unresolved; candidate_keys has two or more entries exactly when status is ambiguous.",
+      "description": "Look up retired person keys and their current successors or split candidates. Keys published in earlier releases carry forward here when groupings change."
     },
     {
       "name": "recordings.parquet",
@@ -1526,9 +1649,16 @@
         "kind": "primary_key"
       },
       "notes": {
-        "tracks[]": "Embedded captured caption/subtitle/playlist files. Language and production describe each track; these are not document-list rows."
+        "tracks[]": "Embedded captured caption/subtitle/playlist files. Language and production describe each track; these are not document-list rows.",
+        "event_ids[]": "Meeting event identifier associated with this recording.",
+        "tracks[].body": "SHA-256 digest of this captured track body, stored as 32 bytes.",
+        "tracks[].suffix": "Stored file suffix of this track body.",
+        "tracks[].format": "Format label of this track.",
+        "tracks[].language": "Language of this track, when stated.",
+        "tracks[].production": "Production label of this track, when stated."
       },
-      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "nullability": "Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required.",
+      "description": "Explore meeting recordings and captured tracks, identified by recording provider."
     },
     {
       "name": "caption_resources.parquet",
@@ -1610,7 +1740,8 @@
         "validation": "native publication key checks",
         "kind": "primary_key"
       },
-      "nullability": "Root identity and source URL are required. Missing children have null body/suffix/format. Declared URI is null only for roots; direct caption files have no playlist parser version."
+      "nullability": "Root identity and source URL are required. Missing children have null body/suffix/format. Declared URI is null only for roots; direct caption files have no playlist parser version.",
+      "description": "Inspect archived caption playlists and declared child caption segments for meeting recordings, including missing child segments."
     },
     {
       "name": "committees.parquet",
@@ -1676,9 +1807,13 @@
         "kind": "primary_key"
       },
       "notes": {
-        "names[]": "Embedded names with half-open [start,end) dates, ordered latest start first. Null endpoints mean unknown or open-ended."
+        "names[]": "Embedded names with half-open [start,end) dates, ordered latest start first. Null endpoints mean unknown or open-ended.",
+        "names[].name": "Committee name during this recorded period.",
+        "names[].start": "Start date of this committee-name period.",
+        "names[].end": "End date of this committee-name period."
       },
-      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "nullability": "Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required.",
+      "description": "Look up current and historical congressional committees by their Congress.gov system codes."
     },
     {
       "name": "members.parquet",
@@ -1721,9 +1856,23 @@
       },
       "notes": {
         "terms[]": "Embedded service terms with half-open [start,end) dates, latest first. Terms do not establish historical committee seats.",
-        "cross_ids": "External dataset identifiers; an identifier does not imply that dataset is included in this release."
+        "cross_ids": "External dataset identifiers; an identifier does not imply that dataset is included in this release.",
+        "terms[].chamber": "Chamber of service for this term.",
+        "terms[].state": "State represented during this term.",
+        "terms[].district": "District represented during this term, when applicable.",
+        "terms[].party": "Party recorded for this term.",
+        "terms[].start": "Start date of this term.",
+        "terms[].end": "End date of this term.",
+        "cross_ids.lis": "Legislative Information System member identifier.",
+        "cross_ids.opensecrets": "OpenSecrets member identifier.",
+        "cross_ids.govtrack": "GovTrack member identifier.",
+        "cross_ids.icpsr": "Inter-university Consortium for Political and Social Research member identifier.",
+        "cross_ids.wikidata": "Wikidata entity identifier.",
+        "cross_ids.fec": "Federal Election Commission identifiers retained for this member.",
+        "cross_ids.fec[]": "One Federal Election Commission identifier retained for this member."
       },
-      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "nullability": "Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required.",
+      "description": "Look up current and historical congressional members by their Bioguide identifiers."
     },
     {
       "name": "rosters.parquet",
@@ -1832,7 +1981,8 @@
         "title": "Chamber-file titles are verbatim (Chairman, Ranking Member); directory titles are normalized (Chair, Vice Chair, Ranking Member).",
         "system_code": "hsba00-tf-terrorism-financing is directory-defined: that House Financial Services task force has no Congress.gov code; its committees row is synthesized with parent hsba00."
       },
-      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "nullability": "Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required.",
+      "description": "Explore member assignments to congressional committees and subcommittees for the Congresses included in the retained source snapshot."
     },
     {
       "name": "bills.parquet",
@@ -1978,9 +2128,33 @@
         "floor_votes[]": "One embedded vote per vote_id per bill; basis distinguishes vote_record from bill_action. Counts are vote totals, not member positions.",
         "amendments[]": "Embedded direct/chained amendment summaries; 119th Congress coverage until upstream backfill.",
         "committee_activities[]": "Embedded committee events; several activities can refer to the same committee.",
-        "subjects[]": "Published legislative subject labels, independent of policy_area; no title-keyword inference."
+        "subjects[]": "Published legislative subject labels, independent of policy_area; no title-keyword inference.",
+        "related_bills[].bill_id": "Identifier of the related bill.",
+        "related_bills[].title": "Title of the related bill.",
+        "related_bills[].relationship_types": "Recorded relationship types between this bill and the related bill.",
+        "committees[]": "Congress.gov system code of a committee associated with this measure.",
+        "cbo_estimates[].publication_id": "Congressional Budget Office publication identifier for this estimate.",
+        "cbo_estimates[].date": "Publication date of this estimate.",
+        "cbo_estimates[].description": "Recorded description of this estimate.",
+        "floor_votes[].vote_id": "Identifier of this floor vote.",
+        "floor_votes[].basis": "Recorded basis for associating this floor vote with the bill.",
+        "floor_votes[].chamber": "Chamber that held this vote.",
+        "floor_votes[].date": "Calendar date of this vote.",
+        "floor_votes[].question": "Question put to this vote.",
+        "floor_votes[].result": "Recorded result of this vote.",
+        "floor_votes[].yea": "Recorded number of yea votes.",
+        "floor_votes[].nay": "Recorded number of nay votes.",
+        "amendments[].amendment_id": "Identifier of this amendment.",
+        "amendments[].purpose": "Stated purpose of this amendment.",
+        "amendments[].sponsor_bioguide_id": "Bioguide identifier of this amendment sponsor.",
+        "amendments[].latest_action_date": "Date of the latest recorded amendment action.",
+        "amendments[].latest_action_text": "Text of the latest recorded amendment action.",
+        "committee_activities[].system_code": "Congress.gov system code of the committee performing this activity.",
+        "committee_activities[].activity": "Recorded committee activity on this bill.",
+        "committee_activities[].date": "Calendar date of this committee activity."
       },
-      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+      "nullability": "Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required.",
+      "description": "Explore bills referenced by documents, meetings and committee activities, plus substantive or enacted bills from the 113th Congress onward and directly related bills. The collection is limited to data retained by the upstream source."
     },
     {
       "name": "nominations.parquet",
@@ -2070,9 +2244,21 @@
         "floor_votes[]": "Embedded Senate roll-call summaries; no individual member positions.",
         "transcripts[]": "GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions.",
         "committee_activities[].activities[].date": "Exact source date or timestamp string, including offset and precision. Null when missing.",
-        "committee_activities[].activities": "Null when not supplied or unreadable, empty when the source supplied an empty list."
+        "committee_activities[].activities": "Null when not supplied or unreadable, empty when the source supplied an empty list.",
+        "committees[]": "Congress.gov system code of a committee associated with this measure.",
+        "committee_activities[]": "One committee activity group in the retained nomination source order.",
+        "committee_activities[].system_code": "Congress.gov system code of the committee in this activity group.",
+        "committee_activities[].activities[]": "One activity stated for this committee in the retained source order.",
+        "committee_activities[].activities[].name": "Name of this committee activity.",
+        "floor_votes[].vote_id": "Identifier of this floor vote.",
+        "floor_votes[].date": "Calendar date of this vote.",
+        "floor_votes[].question": "Question put to this vote.",
+        "floor_votes[].result": "Recorded result of this vote.",
+        "floor_votes[].yea": "Recorded number of yea votes.",
+        "floor_votes[].nay": "Recorded number of nay votes."
       },
-      "nullability": "Nullability transcribes the phase-2 annex \u00a73 file table, except description: upstream military promotion lists carry no description (in the pinned spicy-regs nominations generation, 1,349 of its 1,363 rows without one are military), so it is nullable, a legitimate upstream gap rather than a mapping loss."
+      "nullability": "Nullability transcribes the phase-2 annex §3 file table, except description: upstream military promotion lists carry no description (in the pinned spicy-regs nominations generation, 1,349 of its 1,363 rows without one are military), so it is nullable, a legitimate upstream gap rather than a mapping loss.",
+      "description": "Explore referenced nominations and their legislative facts. Each record includes the nomination part when one is supplied; coverage is limited to retained upstream data."
     },
     {
       "name": "url_state.parquet",
@@ -2145,9 +2331,11 @@
       },
       "notes": {
         "requested_url": "Exact scheduled address. Missing success is not missing publication; this is operational capture state, not an entity or document catalogue.",
-        "linked_from": "A page key resolves in links.parquet only when the page is itself a listed document; wrapper and listing pages are kept as evidence, not listed. Published, with recheck_meeting_date, so the release gate can trace a scheduling change to the receipts that caused it (ct-9j3z)."
+        "linked_from": "A page key resolves in links.parquet only when the page is itself a listed document; wrapper and listing pages are kept as evidence, not listed. Published, with recheck_meeting_date, so the release gate can trace a scheduling change to the receipts that caused it (ct-9j3z).",
+        "linked_from[]": "Eight-byte page key (first 8 bytes of the linking page body's SHA-256) for a read page that links to this queued address."
       },
-      "nullability": "Nullability transcribes data model \u00a77.7."
+      "nullability": "Nullability transcribes data model §7.7.",
+      "description": "Inspect the recorded capture state for each requested web address, including requests without a successful capture."
     },
     {
       "name": "url_variants.parquet",
@@ -2180,7 +2368,8 @@
       "notes": {
         "canonical_url": "Capture-profile aliases only. Do not use this table to reproduce the fixed public URL lookup hash."
       },
-      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null.",
+      "description": "Inspect canonical and alternate web-address pairs used by the capture policy."
     },
     {
       "name": "videos.parquet",
@@ -2284,7 +2473,8 @@
       "notes": {
         "stated_event_ids[]": "A claim the video makes, not a verified link; recording_matches keeps it as claimed."
       },
-      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null.",
+      "description": "Explore uploads listed in the retained committee YouTube cache, including uploads that have not been matched to a meeting."
     },
     {
       "name": "channels.parquet",
@@ -2362,7 +2552,8 @@
         "kind": "primary_key"
       },
       "notes": {},
-      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null.",
+      "description": "Find the curated YouTube channel handles for congressional committees."
     },
     {
       "name": "recording_matches.parquet",
@@ -2472,10 +2663,13 @@
         "kind": "primary_key"
       },
       "notes": {
-        "meeting_links[].basis": "direct_event for the observation\u2019s stated event or print_agreement for vetted printed-hearing evidence.",
-        "meeting_links[].scope": "event identifies the subject of the observation. package_context supplies related evidence without establishing coverage for a sitting."
+        "meeting_links[].basis": "direct_event for the observation’s stated event or print_agreement for vetted printed-hearing evidence.",
+        "meeting_links[].scope": "event identifies the subject of the observation. package_context supplies related evidence without establishing coverage for a sitting.",
+        "meeting_links[]": "One supported meeting link for this recording observation.",
+        "meeting_links[].event_id": "Event identifier of the supported meeting."
       },
-      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null.",
+      "description": "Inspect recorded decisions about whether a subject has a recording, together with the basis for each decision."
     },
     {
       "name": "historical_recording_matches.parquet",
@@ -2603,7 +2797,8 @@
         "validation": "native publication key checks",
         "kind": "primary_key"
       },
-      "nullability": "A blank score becomes null. Other empty CSV fields remain empty strings."
+      "nullability": "A blank score becomes null. Other empty CSV fields remain empty strings.",
+      "description": "Inspect retained package-level scores, methods and observations from the historical recording matcher snapshot."
     },
     {
       "name": "committee_records.parquet",
@@ -2693,7 +2888,8 @@
         "kind": "primary_key"
       },
       "notes": {},
-      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+      "nullability": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null.",
+      "description": "Find amendment and vote document links listed in House meeting records. A vote document link is not a ballot or a vote tally."
     },
     {
       "name": "meeting_coverage.parquet",
@@ -2748,9 +2944,10 @@
         "kind": "primary_key"
       },
       "notes": {
-        "state": "confirmed_absent only from an undisputed curated negative verdict with event scope; package context alone does not establish absence and zero rows never prove absence. partial means excerpts only; claimed means only a video\u2019s own text; for captions, no observation is unknown, never empty. States rank present > unresolved > empty > unknown > not_stated: unknown, never not_stated, where held evidence is not yet linked. A Senate meeting is unknown for documents and witnesses until Senate committee-page links land (ct-gi01 R2). Captions are not_stated only when the recording is confirmed_absent or not_public."
+        "state": "confirmed_absent only from an undisputed curated negative verdict with event scope; package context alone does not establish absence and zero rows never prove absence. partial means excerpts only; claimed means only a video’s own text; for captions, no observation is unknown, never empty. States rank present > unresolved > empty > unknown > not_stated: unknown, never not_stated, where held evidence is not yet linked. A Senate meeting is unknown for documents and witnesses until Senate committee-page links land (ct-gi01 R2). Captions are not_stated only when the recording is confirmed_absent or not_public."
       },
-      "nullability": "The documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known."
+      "nullability": "The documents are silent; entity-meeting-coverage.sql always sets basis (a CASE with an else) and count (coalesced), so both are required; reason is stated only when known.",
+      "description": "See what the catalog records about recordings, transcripts, documents, witnesses and captions for each meeting. Unknown and not-stated values do not mean that materials do not exist."
     },
     {
       "name": "bill_actions.parquet",
@@ -2850,7 +3047,8 @@
       "gaps": [
         "All rows of the selected upstream generation; publisher collection completeness is not established.",
         "Action dates and member vote dates preserve source spelling and precision; voice votes are actions, never individual ballots."
-      ]
+      ],
+      "description": "Explore recorded legislative actions and derived stages across upstream bills, without filtering to locally referenced bill profiles."
     },
     {
       "name": "roll_call_votes.parquet",
@@ -3063,13 +3261,43 @@
         "documents[]": "Literal nested upstream values; source order and missing fields are preserved.",
         "amendments[]": "Literal nested upstream values; source order and missing fields are preserved.",
         "party_totals[]": "Literal nested upstream values; source order and missing fields are preserved.",
-        "bill_references[]": "Source associations retain their action_index, literal date and bill-family generation/path. The vote itself belongs to roll-call-votes. A referenced bill may be absent from local bill profiles."
+        "bill_references[]": "Source associations retain their action_index, literal date and bill-family generation/path. The vote itself belongs to roll-call-votes. A referenced bill may be absent from local bill profiles.",
+        "tallies[].choice": "Recorded ballot choice label (such as Yea, Nay, Present or Not Voting).",
+        "tallies[].count": "Number of members recorded under this ballot choice.",
+        "documents[].congress": "Congress number of the measure or document associated with this roll-call vote.",
+        "documents[].name": "Display name or citation of the associated measure or document.",
+        "documents[].number": "Measure or document number as stated in the upstream vote record.",
+        "documents[].short_title": "Short title of the associated measure or document, when supplied.",
+        "documents[].title": "Official title of the associated measure or document, when supplied.",
+        "documents[].type": "Measure or document type code (such as HR, S, HRES or PN).",
+        "amendments[].number": "Amendment number stated in the roll-call vote record.",
+        "amendments[].purpose": "Stated purpose or description of the amendment.",
+        "amendments[].to_amendment_number": "Target first-degree amendment number when voting on a second-degree amendment.",
+        "amendments[].to_amendment_to_amendment_number": "Nested target amendment number when stated in the upstream vote record.",
+        "amendments[].to_document_number": "Measure or document number that this amendment proposes to amend.",
+        "amendments[].to_document_short_title": "Short title of the measure or document that this amendment proposes to amend.",
+        "party_totals[].party": "Party code or label for this party vote-tally breakdown.",
+        "party_totals[].yea-total": "Count of Yea ballots cast by members of this party.",
+        "party_totals[].nay-total": "Count of Nay ballots cast by members of this party.",
+        "party_totals[].present-total": "Count of Present responses recorded for members of this party.",
+        "party_totals[].not-voting-total": "Count of non-voting members recorded for this party.",
+        "bill_references[].bill_id": "Canonical bill identifier ({congress}-{type}-{number}) matched from bill actions.",
+        "bill_references[].action_index": "Index of the matching action in the bill's upstream action history.",
+        "bill_references[].congress": "Congress number stated on the matching bill-action vote reference.",
+        "bill_references[].chamber": "Chamber stated on the matching bill-action vote reference.",
+        "bill_references[].session": "Congressional session stated on the matching bill-action vote reference.",
+        "bill_references[].roll_number": "Roll-call number stated on the matching bill-action vote reference.",
+        "bill_references[].date": "Action date stated on the matching bill-action vote reference.",
+        "bill_references[].full_action_name": "Full action text naming this roll-call vote in the bill history.",
+        "bill_references[].source_generation": "Upstream bill-family generation digest from which this bill reference was read.",
+        "bill_references[].source_reference": "Upstream locator for the bill-action record naming this roll-call vote."
       },
       "nullability": "Only source primary keys and release provenance are required; missing source values stay null.",
       "gaps": [
         "All rows of the selected upstream generation; publisher collection completeness is not established.",
         "member_key remains authoritative when bioguide_id is missing; vote totals do not imply recorded individual ballots."
-      ]
+      ],
+      "description": "Explore House and Senate roll-call votes, party totals and linked measures across the retained upstream vote collection."
     },
     {
       "name": "member_votes.parquet",
@@ -3187,7 +3415,8 @@
       "gaps": [
         "All rows of the selected upstream generation; publisher collection completeness is not established.",
         "member_key remains authoritative when bioguide_id is missing; vote totals do not imply recorded individual ballots."
-      ]
+      ],
+      "description": "Explore individual recorded member ballots cast in House and Senate roll-call votes."
     }
   ],
   "relationships_version": 1,
@@ -3227,7 +3456,7 @@
           "link_key"
         ]
       },
-      "meaning": "Resolve the document\u2019s primary public link to the canonical document row; the lookup key identifies one row even when several records reference the same body.",
+      "meaning": "Resolve the document’s primary public link to the canonical document row; the lookup key identifies one row even when several records reference the same body.",
       "cardinality": "many-to-one",
       "nullable": true,
       "resolution": "required",
@@ -3479,7 +3708,7 @@
           "witness_key"
         ]
       },
-      "meaning": "Documents attached from this witness appearance\u2019s own document URLs; not every document from the meeting.",
+      "meaning": "Documents attached from this witness appearance’s own document URLs; not every document from the meeting.",
       "cardinality": "many-to-many",
       "nullable": true,
       "resolution": "required",
@@ -3794,7 +4023,7 @@
           "system_code"
         ]
       },
-      "meaning": "Subcommittee\u2019s parent committee when identified.",
+      "meaning": "Subcommittee’s parent committee when identified.",
       "cardinality": "many-to-one",
       "nullable": true,
       "resolution": "unresolved_allowed",
@@ -4575,7 +4804,7 @@
           "event_id"
         ]
       },
-      "meaning": "Meetings linked by the observation\u2019s direct event evidence or by print agreement. See basis and scope before drawing conclusions about a sitting.",
+      "meaning": "Meetings linked by the observation’s direct event evidence or by print agreement. See basis and scope before drawing conclusions about a sitting.",
       "cardinality": "many-to-many",
       "nullable": false,
       "resolution": "required",
@@ -5490,7 +5719,7 @@
         }
       ],
       "row_meaning": "One committee assignment",
-      "limits": "Schema supports 113th\u2013119th Congress committee and subcommittee assignments; populated only for the Congresses the pinned generation holds, which rosters.parquet coverage congress_start and congress_end bound. Directory seats are dated snapshots (edition_date)."
+      "limits": "Schema supports 113th–119th Congress committee and subcommittee assignments; populated only for the Congresses the pinned generation holds, which rosters.parquet coverage congress_start and congress_end bound. Directory seats are dated snapshots (edition_date)."
     }
   ]
 }

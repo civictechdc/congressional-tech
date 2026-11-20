@@ -14,6 +14,8 @@ SQL examples use DuckDB and positional `?` parameters. They are guidance, never 
 
 ## `list` — Searchable documents
 
+Browse and search document editions included in this release.
+
 One document edition in this release.
 
 Identity: `list_row` (row_position; release).
@@ -26,6 +28,7 @@ Coverage: Date bounds span accepted document dates only and Congress bounds skip
 | --- | --- | --- | --- |
 | `filename` | `string` | no | Displayed filename |
 | `title` | `string` | yes | Document or publisher title when known |
+| `print_number` | `string` | yes | Official hearing print number (such as S. Hrg. 117-336 or Serial No. 115-3) from GovInfo MODS preferredCitation or Content Details when known |
 | `document_kind` | `list<dict>` | no | Document kinds |
 | `document_family` | `list<dict>` | no | Filename document families |
 | `committee_keys` | `list<dict>` | no | Congress.gov committee system codes |
@@ -50,6 +53,11 @@ Nullability: Nullability transcribes data model §8.1 (list.parquet bullet): a t
 - `document_kind[]`: Embedded classification values, not foreign keys. Words listed together under synonyms name one kind (the first is the House naming guide's word); filter them as one.
 - `document_family[]`: Embedded filename classification values.
 - `chambers[]`: Embedded chamber labels.
+- `committee_keys[]`: Congress.gov committee system code associated with this document.
+- `meeting_keys[]`: Decimal event identifier associated with this document.
+- `measure_keys[]`: Referenced bill or nomination identifier.
+- `bioguide_ids[]`: Referenced member Bioguide identifier.
+- `witness_keys[]`: Referenced witness appearance identifier.
 - `document_kind[]` synonyms: `witness-statement` = `testimony`; `committee-amendment` = `amendment`; `witness-biography` = `biography`; `member-statement` = `opening-statement`; `committee-transcript` = `transcript`.
 
 Outgoing: `document_detail`, `document_meetings`, `document_committees`, `document_bills`, `document_nominations`, `document_members`, `witness_submitted_documents`, `document_editions`.
@@ -57,6 +65,8 @@ Outgoing: `document_detail`, `document_meetings`, `document_committees`, `docume
 Incoming: `links_document`, `urls_document`, `sources_document`, `recoveries_document`, `document_editions`, `meeting_transcript_documents`.
 
 ## `detail` — The keyed document table: one row per document with its stable link_key, files and every list field; list is its no-ID browser projection
+
+Explore document details, associated files and repeated information for each document edition. Stable link keys identify document entries.
 
 One document edition, in exactly the same order as list.
 
@@ -95,6 +105,7 @@ Coverage: Date bounds span accepted document dates only and Congress bounds skip
 | `selected_text` | `string` | yes | Bounded plain text from the cited marked element. Load only on request. Its SHA-256 and length are in main_content. The original remains available for larger or unselected pages. |
 | `filename` | `string` | no | Displayed filename |
 | `title` | `string` | yes | Document or publisher title when known |
+| `print_number` | `string` | yes | Official hearing print number (such as S. Hrg. 117-336 or Serial No. 115-3) from GovInfo MODS preferredCitation or Content Details when known |
 | `document_kind` | `list<dict>` | no | Document kinds |
 | `document_family` | `list<dict>` | no | Filename document families |
 | `committee_keys` | `list<dict>` | no | Congress.gov committee system codes |
@@ -132,12 +143,41 @@ Nullability: Nullability transcribes data model §8.1 (list and detail bullets).
 - `publisher_labels[]`: Embedded declared section labels; not a key into another table.
 - `page_metadata[]`: Embedded declared values with their JSON Pointer path into the pinned html_metadata reading; path is evidence, not a key. Reproduce it from saved_body with the release pin.
 - `main_content`: Embedded reference to selected text. Verify selected_text with text_sha256 and find the marked element in saved_body with selector.
+- `alternates[].format`: Format of this alternate document file.
+- `alternates[].body`: SHA-256 digest of the alternate file body, stored as 32 bytes.
+- `alternates[].suffix`: Stored file suffix for this alternate body.
+- `alternates[].size`: Size of the alternate file body in bytes.
+- `facts[].field`: Name of the extracted fact.
+- `facts[].value`: Literal value of the extracted fact.
+- `page_metadata[].field`: Kind of publisher-declared page metadata.
+- `page_metadata[].value`: Literal publisher-declared value.
+- `page_metadata[].format`: Metadata syntax or format used by the publisher.
+- `page_metadata[].path`: Source pointer for this metadata declaration.
+- `page_metadata[].date`: Parsed calendar date, when the declaration provides a recognized date.
+- `page_metadata[].precision`: Precision of the parsed publisher date.
+- `page_metadata[].resolved`: Declared address resolved against its capture context and base address, when available.
+- `page_metadata[].selected`: Whether this declaration supplies a selected description, publication date, modification date or publisher label.
+- `page_metadata[].context_url`: Captured page address used to resolve this declaration.
+- `main_content.outcome`: Recorded main-content result: marked, marked_no_content, fallback, failed, none, unreadable or unread.
+- `main_content.selector`: XPath or JSON Pointer identifying the selected content, when supplied by the reader.
+- `main_content.text_sha256`: SHA-256 digest of the selected text encoded as UTF-8, when supplied.
+- `main_content.text_bytes`: Text byte count supplied by the HTML metadata reading.
+- `main_content.snippet`: Bounded text head retained for marked or marked_no_content readings.
+- `main_content.reader_version`: Parser version of the selected HTML metadata reading or unreadable decision.
+- `main_content.reading_status`: Status of the selected reading, or unreadable when supported by an unreadable decision.
+- `main_content.reason`: Reader result reason or qualified unreadable decision reason.
+- `main_content.facts_limited`: Whether the reading recorded a detail-facts limit.
+- `main_content.text_available`: Whether selected text was retained in the reading.
+- `main_content.decision_id`: Qualified unreadable decision identifier when there is no selected reading.
+- `main_content.evidence_limited`: Whether metadata declarations or address contexts exceeded the retained evidence budget.
 
 Outgoing: `document_public_link`, `document_body`, `alternate_bodies`, `document_package`.
 
 Incoming: `document_detail`, `witness_transcript_documents`, `nomination_transcript_documents`.
 
 ## `links` — Public document link lookup
+
+Resolve a stable public document link key to a document entry in this release.
 
 One stable link key mapped to one release-local document row.
 
@@ -158,6 +198,8 @@ Incoming: `document_public_link`, `retired_link_successor`.
 
 ## `retired_links` — Redirects and removal notices for link keys no longer published
 
+Find a successor link or removal notice for a document link key no longer published.
+
 One retired link key with its successor or a removal notice.
 
 Identity: `link_key` (primary_key; published identifier).
@@ -174,12 +216,15 @@ Nullability: Nullability transcribes data model §8.1 (retired_links.parquet row
 
 - `link_key`: Disjoint from links.link_key. A key published again leaves the ledger. Data model §8.2, Retired keys.
 - `address_versions`: Set only when successor_key is null; an address can hold several editions (data model §7.5), so the notice lists them instead of choosing one.
+- `address_versions[]`: Eight-byte endpoint key associated with the retired document address.
 
 Outgoing: `retired_link_successor`.
 
 Incoming: none.
 
 ## `corrections` — Permanent recovery rejections that corrected dead-link answers
+
+Inspect permanent recovery rejections recorded when dead-link answers were corrected. Each entry names the original address and rejected recovery copy.
 
 One rejected recovery copy for an original dead address.
 
@@ -203,6 +248,8 @@ Incoming: none.
 
 ## `urls` — Normalized source address lookup
 
+Find document entries through normalized source-address lookup keys. One address can identify several document editions.
+
 One lookup key and document row pair; an address can identify several editions.
 
 Identity: `lookup_key, list_row` (primary_key; release).
@@ -221,6 +268,8 @@ Outgoing: `urls_document`.
 Incoming: none.
 
 ## `sources` — Publisher addresses and listing context
+
+Inspect source addresses and listing context captured for each document. Each source occurrence remains separate.
 
 One source address/context occurrence within a document.
 
@@ -250,6 +299,8 @@ Incoming: none.
 
 ## `recoveries` — Recovered document files
 
+Inspect recovered files associated with document editions. Repeated file occurrences remain separate records.
+
 One recovered file occurrence within a document.
 
 Identity: `list_row, ordinal` (primary_key; release).
@@ -274,6 +325,8 @@ Outgoing: `recoveries_document`, `recovery_body`, `recovery_address`.
 Incoming: none.
 
 ## `meetings` — Congressional meetings and hearings
+
+Explore congressional meetings and hearings. Each record describes one event using the shared House and Senate event identifier system.
 
 One event, shared House/Senate event ID namespace.
 
@@ -334,12 +387,78 @@ Nullability: Nullability transcribes data model §8.1 (meetings.parquet row); ac
 - `congress_gov_detail_observation.latest_attempt`: One latest dated detail attempt and its raw outcome, HTTP status and qualification state. Undated attempts are signaled separately; ties use the receipt locator.
 - `congress_gov_detail_observation.latest_attempt.evidence`: The attempt clock and locator are bound to the same capture. Receipt lines are one-based and capture indexes are zero-based; body digest and clocks may be null.
 - `congress_gov_detail_observation.listing`: A bound successful listing route whose selected response supplied this meeting. A listing-only claim is confined to selected release inputs.
+- `sittings[].start`: Start instant of this sitting, when stated.
+- `sittings[].end`: End instant of this sitting, when stated.
+- `sittings[].place`: Room, building and address joined with commas, when supplied.
+- `sittings[].room`: Room stated for this sitting.
+- `sittings[].building`: Building stated for this sitting.
+- `sittings[].address`: Address stated for this sitting.
+- `committees[].system_code`: Congress.gov system code of the participating committee.
+- `committees[].role`: Recorded role of this committee in the meeting.
+- `subject_keys[]`: Bill or nomination identifier associated with this meeting.
+- `transcripts[].source`: Transcript source: printed_hearing, committee_transcript or captions.
+- `transcripts[].package_id`: GovInfo package identifier for a printed transcript, when applicable.
+- `transcripts[].list_row`: Release-local document row for this transcript, when applicable.
+- `transcripts[].formats[]`: Available format label for this transcript.
+- `transcripts[].video_key`: Provider-prefixed recording key for caption transcripts, when applicable.
+- `transcripts[].language`: Language of this transcript or caption track, when stated.
+- `transcripts[].production`: Recorded production label for this transcript or caption track.
+- `videos[].name`: Recorded name of this meeting video.
+- `videos[].url`: Recorded address of this meeting video.
+- `videos[].video_key`: Provider-prefixed recording identifier, when resolved.
+- `document_references[]`: One document reference stated in the meeting record.
+- `document_references[].description`: Description stated for this document reference.
+- `document_references[].name`: Name stated for this document reference.
+- `document_references[].last_listed_on`: Latest Congress.gov read date on which this document link appeared.
+- `document_references[].unlisted_since`: First Congress.gov read date on which this previously listed document link was absent.
+- `document_references[].unlisted_by_record_sha`: Hexadecimal SHA-256 digest of the Congress.gov meeting body that first omitted this document link.
+- `unlisted_subjects[].subject_key`: Bill or nomination identifier listed on an earlier Congress.gov read of this meeting and omitted from the current read.
+- `unlisted_subjects[].last_listed_on`: Latest Congress.gov read date on which this subject appeared on the meeting.
+- `unlisted_subjects[].unlisted_since`: First Congress.gov read date on which this previously listed subject was absent.
+- `unlisted_subjects[].unlisted_by_record_sha`: Hexadecimal SHA-256 digest of the Congress.gov meeting body that first omitted this subject.
+- `publisher_status_observations[].source`: Publisher source family reporting this status observation (congress_gov or house_xml).
+- `publisher_status_observations[].status`: Normalized meeting status stated by this publisher observation.
+- `publisher_status_observations[].meeting_date`: Meeting calendar date stated alongside this publisher status observation.
+- `publisher_status_observations[].record_sha`: Hexadecimal SHA-256 digest of the raw publisher record stating this observation.
+- `publisher_status_observations[].observed_at`: Capture or publisher timestamp associated with this status observation, when known.
+- `congress_gov_detail_observation.state`: Overall Congress.gov event-detail state: successful, failed, listing_only_in_scope or unknown.
+- `congress_gov_detail_observation.coverage`: Scope of evaluated Congress.gov detail inputs: selected_release_inputs or unknown.
+- `congress_gov_detail_observation.successful_read.source_url`: Captured Congress.gov address for this successful read evidence.
+- `congress_gov_detail_observation.successful_read.retrieved_at`: Capture timestamp of this successful read evidence, when recorded.
+- `congress_gov_detail_observation.successful_read.receipt_key`: Raw capture receipt key recording this successful read.
+- `congress_gov_detail_observation.successful_read.receipt_line`: Zero-based line number inside the capture receipt for this successful read.
+- `congress_gov_detail_observation.successful_read.capture_index`: Capture index within the receipt line for this successful read.
+- `congress_gov_detail_observation.successful_read.body_sha256`: Hexadecimal SHA-256 digest of the captured response body for this successful read.
+- `congress_gov_detail_observation.successful_read.meeting_parser_version`: Version of the meeting_records parser that read this successful read body.
+- `congress_gov_detail_observation.successful_read.proof_parser_version`: Version of the appearance_records detail reader qualifying this successful read body.
+- `congress_gov_detail_observation.latest_attempt.evidence.source_url`: Captured Congress.gov address for this latest attempt.evidence evidence.
+- `congress_gov_detail_observation.latest_attempt.evidence.retrieved_at`: Capture timestamp of this latest attempt.evidence evidence, when recorded.
+- `congress_gov_detail_observation.latest_attempt.evidence.receipt_key`: Raw capture receipt key recording this latest attempt.evidence.
+- `congress_gov_detail_observation.latest_attempt.evidence.receipt_line`: Zero-based line number inside the capture receipt for this latest attempt.evidence.
+- `congress_gov_detail_observation.latest_attempt.evidence.capture_index`: Capture index within the receipt line for this latest attempt.evidence.
+- `congress_gov_detail_observation.latest_attempt.evidence.body_sha256`: Hexadecimal SHA-256 digest of the captured response body for this latest attempt.evidence.
+- `congress_gov_detail_observation.latest_attempt.evidence.meeting_parser_version`: Version of the meeting_records parser that read this latest attempt.evidence body.
+- `congress_gov_detail_observation.latest_attempt.evidence.proof_parser_version`: Version of the appearance_records detail reader qualifying this latest attempt.evidence body.
+- `congress_gov_detail_observation.latest_attempt.state`: Recorded state of the latest Congress.gov detail capture attempt.
+- `congress_gov_detail_observation.latest_attempt.outcome`: Capture outcome recorded on the latest Congress.gov detail attempt.
+- `congress_gov_detail_observation.latest_attempt.http_status`: HTTP response status code recorded on the latest Congress.gov detail attempt, when present.
+- `congress_gov_detail_observation.listing.source_url`: Captured Congress.gov address for this listing evidence.
+- `congress_gov_detail_observation.listing.retrieved_at`: Capture timestamp of this listing evidence, when recorded.
+- `congress_gov_detail_observation.listing.receipt_key`: Raw capture receipt key recording this listing.
+- `congress_gov_detail_observation.listing.receipt_line`: Zero-based line number inside the capture receipt for this listing.
+- `congress_gov_detail_observation.listing.capture_index`: Capture index within the receipt line for this listing.
+- `congress_gov_detail_observation.listing.body_sha256`: Hexadecimal SHA-256 digest of the captured response body for this listing.
+- `congress_gov_detail_observation.listing.meeting_parser_version`: Version of the meeting_records parser that read this listing body.
+- `congress_gov_detail_observation.listing.proof_parser_version`: Version of the appearance_records detail reader qualifying this listing body.
+- `congress_gov_detail_observation.has_undated_attempt`: Whether any Congress.gov detail attempt lacked a retrieval timestamp for chronological ordering.
 
 Outgoing: `meeting_bills`, `meeting_nominations`, `meeting_committees`, `meeting_transcript_documents`, `meeting_recordings`, `meeting_transcript_packages`, `meeting_video_address`, `meeting_treaties`.
 
 Incoming: `document_meetings`, `recording_meetings`, `witness_meeting`, `match_meeting`, `match_meeting_associations`, `committee_record_meeting`, `coverage_meeting`.
 
 ## `witnesses` — Witness appearances
+
+Explore witness observations from meetings, packages and pages. Each record is a source occurrence, so repeated appearances do not identify a deduplicated person.
 
 One source-occurrence witness observation at a meeting, package, or page; not a deduplicated person.
 
@@ -397,6 +516,8 @@ Incoming: `witness_submitted_documents`, `person_witnesses`, `witness_key_map_su
 
 ## `witness_key_map` — Earlier witness keys and the current witness each resolves to
 
+Look up earlier witness keys and their recorded successors or candidates. Some earlier keys remain unresolved.
+
 One witness key this release no longer publishes, with its successor, its candidates, or neither.
 
 Identity: `old_key` (primary_key; published identifier).
@@ -417,12 +538,15 @@ Nullability: witness_key is set exactly when status is unambiguous; basis is nul
 
 - `old_key`: Disjoint from witnesses.witness_key. Carried witness keys stay in witnesses.parquet across re-fetches and parser splits; only edited names (locator), ambiguous multiplicity changes, carried 1-hop ledger entries, and reviewed historical Senate keys enter witness_key_map (ct-46f3). Any unmapped live key refuses export (lost_witness_keys). A name alone never maps (ct-30fp).
 - `witness_key`: The successor can itself be superseded_by a higher-ranked row of the same person; follow witnesses.superseded_by to the row to show.
+- `candidate_keys[]`: Possible current witness key for an ambiguous earlier key.
 
 Outgoing: `witness_key_map_successor`, `witness_key_map_candidates`.
 
 Incoming: none.
 
 ## `people` — Hearing people grouped across appearances
+
+Explore congressional members and recurring hearing witnesses grouped across appearances. Non-member witnesses group only when normalized names and full normalized organizations agree under middle-initial and suffix guards.
 
 One Member of Congress (by Bioguide) or one non-Member witness group sharing normalized name and full normalized organization under middle-initial and suffix guards (or one singleton appearance).
 
@@ -463,6 +587,8 @@ Incoming: `witness_person`, `person_alias_target`, `person_alias_candidates`.
 
 ## `person_aliases` — Retired person_key redirects and split notices
 
+Look up retired person keys and their current successors or split candidates. Keys published in earlier releases carry forward here when groupings change.
+
 One previously published person_key not in people.parquet, carried one hop per release.
 
 Identity: `old_person_key` (primary_key; published identifier).
@@ -488,6 +614,8 @@ Incoming: none.
 
 ## `recordings` — Meeting recordings and captured tracks
 
+Explore meeting recordings and captured tracks, identified by recording provider.
+
 One provider-prefixed recording.
 
 Identity: `video_key` (primary_key; published identifier).
@@ -502,12 +630,20 @@ Identity: `video_key` (primary_key; published identifier).
 Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
 - `tracks[]`: Embedded captured caption/subtitle/playlist files. Language and production describe each track; these are not document-list rows.
+- `event_ids[]`: Meeting event identifier associated with this recording.
+- `tracks[].body`: SHA-256 digest of this captured track body, stored as 32 bytes.
+- `tracks[].suffix`: Stored file suffix of this track body.
+- `tracks[].format`: Format label of this track.
+- `tracks[].language`: Language of this track, when stated.
+- `tracks[].production`: Production label of this track, when stated.
 
 Outgoing: `recording_meetings`, `recording_tracks`.
 
 Incoming: `meeting_recordings`, `caption_resource_recording`.
 
 ## `caption_resources` — Archived caption roots and ordered playlist resources
+
+Inspect archived caption playlists and declared child caption segments for meeting recordings, including missing child segments.
 
 One selected caption root or declared child, including a missing child.
 
@@ -539,6 +675,8 @@ Incoming: none.
 
 ## `committees` — Current and historical committees
 
+Look up current and historical congressional committees by their Congress.gov system codes.
+
 One Congress.gov system code.
 
 Identity: `system_code` (primary_key; published identifier).
@@ -557,12 +695,17 @@ Identity: `system_code` (primary_key; published identifier).
 Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without "nullable" there is required. A required column is refused at write time.
 
 - `names[]`: Embedded names with half-open [start,end) dates, ordered latest start first. Null endpoints mean unknown or open-ended.
+- `names[].name`: Committee name during this recorded period.
+- `names[].start`: Start date of this committee-name period.
+- `names[].end`: End date of this committee-name period.
 
 Outgoing: `committee_parent`, `committee_website`.
 
 Incoming: `document_committees`, `meeting_committees`, `committee_parent`, `roster_committee`, `bill_activity_committee`, `bills_committees`, `nominations_committees`, `channel_committee`.
 
 ## `members` — Current and historical members
+
+Look up current and historical congressional members by their Bioguide identifiers.
 
 One Bioguide member.
 
@@ -579,12 +722,27 @@ Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plan
 
 - `terms[]`: Embedded service terms with half-open [start,end) dates, latest first. Terms do not establish historical committee seats.
 - `cross_ids`: External dataset identifiers; an identifier does not imply that dataset is included in this release.
+- `terms[].chamber`: Chamber of service for this term.
+- `terms[].state`: State represented during this term.
+- `terms[].district`: District represented during this term, when applicable.
+- `terms[].party`: Party recorded for this term.
+- `terms[].start`: Start date of this term.
+- `terms[].end`: End date of this term.
+- `cross_ids.lis`: Legislative Information System member identifier.
+- `cross_ids.opensecrets`: OpenSecrets member identifier.
+- `cross_ids.govtrack`: GovTrack member identifier.
+- `cross_ids.icpsr`: Inter-university Consortium for Political and Social Research member identifier.
+- `cross_ids.wikidata`: Wikidata entity identifier.
+- `cross_ids.fec`: Federal Election Commission identifiers retained for this member.
+- `cross_ids.fec[]`: One Federal Election Commission identifier retained for this member.
 
 Outgoing: `member_lis`, `member_opensecrets`, `member_govtrack`, `member_icpsr`, `member_wikidata`, `member_fec`.
 
 Incoming: `document_members`, `witness_member`, `witness_matched_member`, `person_member`, `roster_member`, `bill_sponsor`, `amendment_sponsor`, `committee_record_sponsor`, `ballot_member`.
 
 ## `rosters` — Committee and subcommittee seats across published Congresses
+
+Explore member assignments to congressional committees and subcommittees for the Congresses included in the retained source snapshot.
 
 One member assignment to a committee or subcommittee in a Congress (keyed by congress, system_code, bioguide_id; only Congresses populated in the pinned upstream committee_assignments snapshot appear; congress_basis and edition_date say which source and date state it).
 
@@ -628,6 +786,8 @@ Incoming: none.
 
 ## `bills` — Referenced bills and embedded legislative facts
 
+Explore bills referenced by documents, meetings and committee activities, plus substantive or enacted bills from the 113th Congress onward and directly related bills. The collection is limited to data retained by the upstream source.
+
 One bill referenced by documents, meetings, or committee activities, or a substantive/enacted bill (congress >= 113), plus 1-hop related bills of referenced bills; bounded by upstream retained data.
 
 Identity: `bill_id` (primary_key; published identifier).
@@ -666,12 +826,37 @@ Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plan
 - `amendments[]`: Embedded direct/chained amendment summaries; 119th Congress coverage until upstream backfill.
 - `committee_activities[]`: Embedded committee events; several activities can refer to the same committee.
 - `subjects[]`: Published legislative subject labels, independent of policy_area; no title-keyword inference.
+- `related_bills[].bill_id`: Identifier of the related bill.
+- `related_bills[].title`: Title of the related bill.
+- `related_bills[].relationship_types`: Recorded relationship types between this bill and the related bill.
+- `committees[]`: Congress.gov system code of a committee associated with this measure.
+- `cbo_estimates[].publication_id`: Congressional Budget Office publication identifier for this estimate.
+- `cbo_estimates[].date`: Publication date of this estimate.
+- `cbo_estimates[].description`: Recorded description of this estimate.
+- `floor_votes[].vote_id`: Identifier of this floor vote.
+- `floor_votes[].basis`: Recorded basis for associating this floor vote with the bill.
+- `floor_votes[].chamber`: Chamber that held this vote.
+- `floor_votes[].date`: Calendar date of this vote.
+- `floor_votes[].question`: Question put to this vote.
+- `floor_votes[].result`: Recorded result of this vote.
+- `floor_votes[].yea`: Recorded number of yea votes.
+- `floor_votes[].nay`: Recorded number of nay votes.
+- `amendments[].amendment_id`: Identifier of this amendment.
+- `amendments[].purpose`: Stated purpose of this amendment.
+- `amendments[].sponsor_bioguide_id`: Bioguide identifier of this amendment sponsor.
+- `amendments[].latest_action_date`: Date of the latest recorded amendment action.
+- `amendments[].latest_action_text`: Text of the latest recorded amendment action.
+- `committee_activities[].system_code`: Congress.gov system code of the committee performing this activity.
+- `committee_activities[].activity`: Recorded committee activity on this bill.
+- `committee_activities[].date`: Calendar date of this committee activity.
 
 Outgoing: `bill_sponsor`, `amendment_sponsor`, `bill_activity_committee`, `bills_committees`, `bills_votes`, `bill_cbo_publications`, `bill_amendments`.
 
 Incoming: `document_bills`, `meeting_bills`, `bill_action_bill`, `roll_call_bill`.
 
 ## `nominations` — Referenced nominations and embedded legislative facts
+
+Explore referenced nominations and their legislative facts. Each record includes the nomination part when one is supplied; coverage is limited to retained upstream data.
 
 One nomination including its part when present, referenced by archive documents or meetings; bounded by upstream retained data.
 
@@ -701,12 +886,25 @@ Nullability: Nullability transcribes the phase-2 annex §3 file table, except de
 - `transcripts[]`: GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions.
 - `committee_activities[].activities[].date`: Exact source date or timestamp string, including offset and precision. Null when missing.
 - `committee_activities[].activities`: Null when not supplied or unreadable, empty when the source supplied an empty list.
+- `committees[]`: Congress.gov system code of a committee associated with this measure.
+- `committee_activities[]`: One committee activity group in the retained nomination source order.
+- `committee_activities[].system_code`: Congress.gov system code of the committee in this activity group.
+- `committee_activities[].activities[]`: One activity stated for this committee in the retained source order.
+- `committee_activities[].activities[].name`: Name of this committee activity.
+- `floor_votes[].vote_id`: Identifier of this floor vote.
+- `floor_votes[].date`: Calendar date of this vote.
+- `floor_votes[].question`: Question put to this vote.
+- `floor_votes[].result`: Recorded result of this vote.
+- `floor_votes[].yea`: Recorded number of yea votes.
+- `floor_votes[].nay`: Recorded number of nay votes.
 
 Outgoing: `nominations_committees`, `nominations_votes`, `nomination_transcript_documents`, `nomination_packages`.
 
 Incoming: `document_nominations`, `meeting_nominations`.
 
 ## `url_state` — Capture scheduling state
+
+Inspect the recorded capture state for each requested web address, including requests without a successful capture.
 
 One exact requested URL, including requests without a successful capture.
 
@@ -728,12 +926,15 @@ Nullability: Nullability transcribes data model §7.7. A required column is refu
 
 - `requested_url`: Exact scheduled address. Missing success is not missing publication; this is operational capture state, not an entity or document catalogue.
 - `linked_from`: A page key resolves in links.parquet only when the page is itself a listed document; wrapper and listing pages are kept as evidence, not listed. Published, with recheck_meeting_date, so the release gate can trace a scheduling change to the receipts that caused it (ct-9j3z).
+- `linked_from[]`: Eight-byte page key (first 8 bytes of the linking page body's SHA-256) for a read page that links to this queued address.
 
 Outgoing: `capture_request_address`.
 
 Incoming: none.
 
 ## `url_variants` — Active capture URL aliases
+
+Inspect canonical and alternate web-address pairs used by the capture policy.
 
 One canonical/variant URL pair used by capture policy.
 
@@ -753,6 +954,8 @@ Outgoing: `capture_canonical_address`, `capture_variant_address`.
 Incoming: none.
 
 ## `videos` — Collected committee channel uploads, matched or not
+
+Explore uploads listed in the retained committee YouTube cache, including uploads that have not been matched to a meeting.
 
 One upload a retained YouTube cache lists.
 
@@ -785,6 +988,8 @@ Incoming: `match_recording`.
 
 ## `channels` — Curated committee YouTube channel directory
 
+Find the curated YouTube channel handles for congressional committees.
+
 One curated channel handle.
 
 Identity: `handle` (primary_key; published identifier).
@@ -810,6 +1015,8 @@ Outgoing: `channel_committee`.
 Incoming: `video_channel`.
 
 ## `recording_matches` — Recording links and decisions with their basis
+
+Inspect recorded decisions about whether a subject has a recording, together with the basis for each decision.
 
 One observation that a subject has, or lacks, a recording.
 
@@ -839,12 +1046,16 @@ Nullability: The documents are silent; decided from the row meaning: the key and
 
 - `meeting_links[].basis`: direct_event for the observation’s stated event or print_agreement for vetted printed-hearing evidence.
 - `meeting_links[].scope`: event identifies the subject of the observation. package_context supplies related evidence without establishing coverage for a sitting.
+- `meeting_links[]`: One supported meeting link for this recording observation.
+- `meeting_links[].event_id`: Event identifier of the supported meeting.
 
 Outgoing: `match_meeting`, `match_meeting_associations`, `match_recording`.
 
 Incoming: none.
 
 ## `historical_recording_matches` — Retained package-level scores, methods and observations from the historical recording matcher
+
+Inspect retained package-level scores, methods and observations from the historical recording matcher snapshot.
 
 One original CSV record from one exact historical matcher snapshot.
 
@@ -882,6 +1093,8 @@ Incoming: none.
 
 ## `committee_records` — Amendment and vote documents House meeting XML lists
 
+Find amendment and vote document links listed in House meeting records. A vote document link is not a ballot or a vote tally.
+
 One document link in a meeting record; a vote row is a document link, not a ballot or tally.
 
 Identity: `record_key` (primary_key; published identifier).
@@ -910,6 +1123,8 @@ Incoming: none.
 
 ## `meeting_coverage` — Typed coverage facts per meeting
 
+See what the catalog records about recordings, transcripts, documents, witnesses and captions for each meeting. Unknown and not-stated values do not mean that materials do not exist.
+
 One aspect of one meeting: recording, transcript, documents, witnesses or captions.
 
 Identity: `event_id, aspect` (primary_key; published identifier).
@@ -932,6 +1147,8 @@ Outgoing: `coverage_meeting`.
 Incoming: none.
 
 ## `bill_actions` — Recorded bill actions and derived stages
+
+Explore recorded legislative actions and derived stages across upstream bills, without filtering to locally referenced bill profiles.
 
 One retained upstream row; no filter to local bill profiles.
 
@@ -965,6 +1182,8 @@ Outgoing: `bill_action_bill`.
 Incoming: none.
 
 ## `roll_call_votes` — Full roll calls, including votes outside local bill profiles
+
+Explore House and Senate roll-call votes, party totals and linked measures across the retained upstream vote collection.
 
 One retained upstream row; no filter to local bill profiles.
 
@@ -1016,12 +1235,43 @@ Nullability: Only source primary keys and release provenance are required; missi
 - `amendments[]`: Literal nested upstream values; source order and missing fields are preserved.
 - `party_totals[]`: Literal nested upstream values; source order and missing fields are preserved.
 - `bill_references[]`: Source associations retain their action_index, literal date and bill-family generation/path. The vote itself belongs to roll-call-votes. A referenced bill may be absent from local bill profiles.
+- `tallies[].choice`: Recorded ballot choice label (such as Yea, Nay, Present or Not Voting).
+- `tallies[].count`: Number of members recorded under this ballot choice.
+- `documents[].congress`: Congress number of the measure or document associated with this roll-call vote.
+- `documents[].name`: Display name or citation of the associated measure or document.
+- `documents[].number`: Measure or document number as stated in the upstream vote record.
+- `documents[].short_title`: Short title of the associated measure or document, when supplied.
+- `documents[].title`: Official title of the associated measure or document, when supplied.
+- `documents[].type`: Measure or document type code (such as HR, S, HRES or PN).
+- `amendments[].number`: Amendment number stated in the roll-call vote record.
+- `amendments[].purpose`: Stated purpose or description of the amendment.
+- `amendments[].to_amendment_number`: Target first-degree amendment number when voting on a second-degree amendment.
+- `amendments[].to_amendment_to_amendment_number`: Nested target amendment number when stated in the upstream vote record.
+- `amendments[].to_document_number`: Measure or document number that this amendment proposes to amend.
+- `amendments[].to_document_short_title`: Short title of the measure or document that this amendment proposes to amend.
+- `party_totals[].party`: Party code or label for this party vote-tally breakdown.
+- `party_totals[].yea-total`: Count of Yea ballots cast by members of this party.
+- `party_totals[].nay-total`: Count of Nay ballots cast by members of this party.
+- `party_totals[].present-total`: Count of Present responses recorded for members of this party.
+- `party_totals[].not-voting-total`: Count of non-voting members recorded for this party.
+- `bill_references[].bill_id`: Canonical bill identifier ({congress}-{type}-{number}) matched from bill actions.
+- `bill_references[].action_index`: Index of the matching action in the bill's upstream action history.
+- `bill_references[].congress`: Congress number stated on the matching bill-action vote reference.
+- `bill_references[].chamber`: Chamber stated on the matching bill-action vote reference.
+- `bill_references[].session`: Congressional session stated on the matching bill-action vote reference.
+- `bill_references[].roll_number`: Roll-call number stated on the matching bill-action vote reference.
+- `bill_references[].date`: Action date stated on the matching bill-action vote reference.
+- `bill_references[].full_action_name`: Full action text naming this roll-call vote in the bill history.
+- `bill_references[].source_generation`: Upstream bill-family generation digest from which this bill reference was read.
+- `bill_references[].source_reference`: Upstream locator for the bill-action record naming this roll-call vote.
 
 Outgoing: `roll_call_bill`.
 
 Incoming: `ballot_roll_call`.
 
 ## `member_votes` — Individual recorded member ballots
+
+Explore individual recorded member ballots cast in House and Senate roll-call votes.
 
 One retained upstream row; no filter to local bill profiles.
 

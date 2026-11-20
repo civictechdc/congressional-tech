@@ -76,7 +76,7 @@ PAGE_DEFAULTS = dict(description='cast(NULL AS VARCHAR)', published_on='cast(NUL
     page_metadata=EMPTY_PAGE_METADATA, main_content=NO_MAIN_CONTENT, selected_text='cast(NULL AS VARCHAR)')
 
 
-LIST_COLUMNS = ['filename', 'title', 'document_kind', 'document_family', 'committee_keys', 'chambers',
+LIST_COLUMNS = ['filename', 'title', 'print_number', 'document_kind', 'document_family', 'committee_keys', 'chambers',
     'congress', 'format', 'document_date', 'document_date_status', 'first_captured', 'date_kind', 'saved_kind', 'hidden',
     'meeting_keys', 'measure_keys', 'bioguide_ids', 'witness_keys', 'version_keys']
 
@@ -232,7 +232,7 @@ def _release_schema(available=None, entity_digests=None):
     return build_schema(available, entity_digests=entity_digests)
 
 
-NORMAL_DEFAULTS = dict(body_expected='true', title='cast(NULL AS VARCHAR)', title_source='cast(NULL AS VARCHAR)', document_kind=EMPTY_STRINGS,
+NORMAL_DEFAULTS = dict(body_expected='true', title='cast(NULL AS VARCHAR)', print_number='cast(NULL AS VARCHAR)', title_source='cast(NULL AS VARCHAR)', document_kind=EMPTY_STRINGS,
     document_family=EMPTY_STRINGS, committee_keys=EMPTY_STRINGS, chambers=EMPTY_STRINGS,
     congress='cast(NULL AS SMALLINT)', format="'other'", document_date='cast(NULL AS DATE)',
     first_captured='cast(NULL AS DATE)', date_kind="'unknown'", saved_kind="'original'", hidden='false',

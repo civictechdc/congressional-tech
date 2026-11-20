@@ -123,7 +123,7 @@
   "decision": "official",
   "official_name": "HHRG-114-GO24-Transcript-20150415.pdf",
   "committee_name": "4-15-15-The-Taxpayer-Advocate-Annual-Report.pdf",
-  "evidence": "text read: GPO printed hearing: \"THE TAXPAYER ADVOCATE ANNUAL REPORT HEARING ... APRIL 15, 2015 Serial No. 114–22\"; transcript, Ms. Olson's written statement and an NTEU statement; not the report; the committee name is the hearing's title"
+  "evidence": "text read: GPO printed hearing: \"THE TAXPAYER ADVOCATE ANNUAL REPORT HEARING ... APRIL 15, 2015 Serial No. 114\u201322\"; transcript, Ms. Olson's written statement and an NTEU statement; not the report; the committee name is the hearing's title"
  },
  {
   "body_sha": "16d84087aaf6028ff9ca91eac460af60275d37a29ad068988021561a147a021b",
@@ -586,5 +586,173 @@
   "official_name": "BILLS-119000ih.pdf",
   "committee_name": "ans_to_ti_committee_print_reconciliation.pdf",
   "evidence": "text read: \"AMENDMENT IN THE NATURE OF THE SUBSTITUTE TO COMMITTEE PRINT\": an amendment; right kind is amendment; committee name says 'ans' but the reader took 'print'"
+ },
+ {
+  "body_sha": "d10ef863d669afcd19c72f4134dc748882090eb6455095d6c3d12c8ee7dc2f71",
+  "decision": "official",
+  "official_name": "BILLS-114-HRes-R000570-Amdt-1.pdf",
+  "committee_name": "Amendment-in-the-Nature-of-a-Substitute-to-the-Committee-Print-Relating-to-Repeal-of-Certain-Excise-Taxes-Enacted-in-the-Patient-Protection-and-Affordable-Care-Act.pdf",
+  "evidence": "text read: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO THE COMMITTEE PRINT RELATING TO REPEAL OF CERTAIN EXCISE TAXES ENACTED IN THE PATIENT PROTECTION AND AFFORDABLE CARE ACT OFFERED BY MR. RYAN OF WISCONSIN\"; committee name says Amendment-in-the-Nature-of-a-Substitute-to-the-Committee-Print, which the filename reader took as print"
+ },
+ {
+  "body_sha": "3f40b5a7d85232894db69ffa2b6c3963ba39ddcdcf32823a7cf548cade840216",
+  "decision": "official",
+  "official_name": "BILLS-118-OversightPlan-S001195-Amdt-1.pdf",
+  "committee_name": "Amendment-in-the-Nature-of-a-Substitute-to-118th-Oversight-Plan.pdf",
+  "evidence": "text read: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO THE OVERSIGHT AND AUTHORIZATION PLAN LETTER OF TRANSMITTAL OFFERED BY MR. SMITH OF MISSOURI\"; committee name says Amendment-in-the-Nature-of-a-Substitute-to-118th-Oversight-Plan, which the filename reader took as oversight-plan"
+ },
+ {
+  "body_sha": "919838d0b98f13201fffa190a3d93bbfc53ff164d860d11edb28db1c79ffe43a",
+  "decision": "committee",
+  "official_name": "BILLS-118HR2789ih.pdf",
+  "committee_name": "3DBE62036240C41F942F7C58746B69EB5C4A450566F73A6EC88B65CF3014C166.ans-to-hr2789.pdf",
+  "evidence": "text read: \"AMENDMENT IN THE NATURE OF A SUBSTITUTE TO H.R. 2789 OFFERED BY Ml. llllll Strike all after the enacting clause and insert the following\"; House repository misnamed the ANS under BILLS-118HR2789ih.pdf while committee copy 3DBE62036240C41F942F7C58746B69EB5C4A450566F73A6EC88B65CF3014C166.ans-to-hr2789.pdf names the amendment"
+ },
+ {
+  "body_sha": "97bf3999dacf7a5d057279114dd33c1393101a855f2dda7c3e5ea0f6af8ad9f3",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote001-20180117.pdf",
+  "committee_name": "rc_1_fav_report_hr_553.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc_1_fav_report_hr_553.pdf means roll call 1 on motion to favorably report H.R. 553, which the filename reader took as report"
+ },
+ {
+  "body_sha": "16aebba9c43132fe7fc94c3f0062eb39f3afc8b2cf0d6f227a699eb61566ca97",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote001-20180508.pdf",
+  "committee_name": "roll_call_05.08.18_fav._report_hr_3535.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename roll_call_05.08.18_fav._report_hr_3535.pdf means roll call on motion to favorably report H.R. 3535, which the filename reader took as report"
+ },
+ {
+  "body_sha": "c6924b78c79d948efe94adb1c0f8c20c44d4416051fd4015238f64de1097979a",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote001-20180613.pdf",
+  "committee_name": "rc_1_fav_report_hr_3744_06.13.18.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc_1_fav_report_hr_3744_06.13.18.pdf means roll call 1 on motion to favorably report H.R. 3744, which the filename reader took as report"
+ },
+ {
+  "body_sha": "7e77b3422cfec977245155f792da7f98404d72d03460e12a2aaaf329dec41b1a",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote001-20181115.pdf",
+  "committee_name": "rc_1_fav_report_hr_6939_11.15.18.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc_1_fav_report_hr_6939_11.15.18.pdf means roll call 1 on motion to favorably report H.R. 6939, which the filename reader took as report"
+ },
+ {
+  "body_sha": "ebe74a51819d858e608549de08a9c933de4738dd8b483a78e3e5913e95e4dada",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote002-20180516.pdf",
+  "committee_name": "rc_2_fav_report_hr_4419.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc_2_fav_report_hr_4419.pdf means roll call 2 on motion to favorably report H.R. 4419, which the filename reader took as report"
+ },
+ {
+  "body_sha": "fdd94aa7c7feceb25c590c47abf4abf70caa416649fd9021a0b46937834da212",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote002-20180613.pdf",
+  "committee_name": "rc_2_fav_report_hr_2365_06.13.18.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc_2_fav_report_hr_2365_06.13.18.pdf means roll call 2 on motion to favorably report H.R. 2365, which the filename reader took as report"
+ },
+ {
+  "body_sha": "72f07a17870e0ac47c3d7497a47ad37f6922c4fbc69bf907e2a3e8136554aced",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote002-20181115.pdf",
+  "committee_name": "rc_2_fav_report_hr_3593_11.15.18.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc_2_fav_report_hr_3593_11.15.18.pdf means roll call 2 on motion to favorably report H.R. 3593, which the filename reader took as report"
+ },
+ {
+  "body_sha": "3a5c5c1f48c2c7838296fe4a847e192b1414dc868765304e00f3a5f6a24e5775",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote003-20180117.pdf",
+  "committee_name": "rc_3_fav_report_hr_553.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc_3_fav_report_hr_553.pdf means roll call 3 on motion to favorably report H.R. 553, which the filename reader took as report"
+ },
+ {
+  "body_sha": "112a0d539894923af8b51797e4916482e6a8592739637568aa3731afcdeac016",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote003-20180307.pdf",
+  "committee_name": "rc_3_fav_report_hr_520.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc_3_fav_report_hr_520.pdf means roll call 3 on motion to favorably report H.R. 520, which the filename reader took as report"
+ },
+ {
+  "body_sha": "20e59828a2a86708bed69df663a4cc6e4038783ee894fbbb235bf10c77cec548",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote003-20180516.pdf",
+  "committee_name": "rc_3_fav_report_hr_224.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc_3_fav_report_hr_224.pdf means roll call 3 on motion to favorably report H.R. 224, which the filename reader took as report"
+ },
+ {
+  "body_sha": "cc24bef43918b5f9e76b9e45c70fdc863e0d31042815d51091b164a95689f563",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote003-20180718.pdf",
+  "committee_name": "rc3_fav_report_hr_5347_07.18.18.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc3_fav_report_hr_5347_07.18.18.pdf means roll call 3 on motion to favorably report H.R. 5347, which the filename reader took as report"
+ },
+ {
+  "body_sha": "fa20ecd44f16fe207db78f5cab3343b736ec0e737aad22850464e421ecc0cc34",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote004-20180620.pdf",
+  "committee_name": "rc4_fav_report_hr_6106.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc4_fav_report_hr_6106.pdf means roll call 4 on motion to favorably report H.R. 6106, which the filename reader took as report"
+ },
+ {
+  "body_sha": "6423f099ac06dd2fe7b7f632004a23ed8e03e3884780b4a3e1a4b4ea746ad6ae",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote004-20180627.pdf",
+  "committee_name": "rc4_fav_report_hr_6088.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc4_fav_report_hr_6088.pdf means roll call 4 on motion to favorably report H.R. 6088, which the filename reader took as report"
+ },
+ {
+  "body_sha": "fdba6ecd717654925a2f0cc62fe3a29ce7f239b2499f63d374c3e6b5b82b62bb",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote006-20180627.pdf",
+  "committee_name": "rc6_fav_report_hr_6107.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc6_fav_report_hr_6107.pdf means roll call 6 on motion to favorably report H.R. 6107, which the filename reader took as report"
+ },
+ {
+  "body_sha": "9b56afc61a465e1681f0c837637f639969e42983bf2701571abff8238131edcd",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote006-20180926.pdf",
+  "committee_name": "rc_6_fav_report_hr_6784_09.26.2018.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc_6_fav_report_hr_6784_09.26.2018.pdf means roll call 6 on motion to favorably report H.R. 6784, which the filename reader took as report"
+ },
+ {
+  "body_sha": "14856927f92a6f48b0b306d6656a25e689e28be1cf91bc3acfee0159afe36ef3",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote009-20171212.pdf",
+  "committee_name": "rc_9_fav_report_on_hr_1349.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc_9_fav_report_on_hr_1349.pdf means roll call 9 on motion to favorably report H.R. 1349, which the filename reader took as report"
+ },
+ {
+  "body_sha": "025ebb8742e5a4336b6884d7cbbda69c93c468978d6788668468230982a21b2b",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote009-20180627.pdf",
+  "committee_name": "rc9_fav_report_hr_6087.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc9_fav_report_hr_6087.pdf means roll call 9 on motion to favorably report H.R. 6087, which the filename reader took as report"
+ },
+ {
+  "body_sha": "b140ff884d3f6192810c714b355c6e65187e5dfa3b52ba34a0cc51935d3170e4",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote010-20180627.pdf",
+  "committee_name": "rc10_fav_report_hr_5859.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc10_fav_report_hr_5859.pdf means roll call 10 on motion to favorably report H.R. 5859, which the filename reader took as report"
+ },
+ {
+  "body_sha": "77f04f3b17f029d64a2284c10f59ca26283c9a303bacd90b388f5803f4c9986b",
+  "decision": "official",
+  "official_name": "CRPT-115-II00-Vote011-20180926.pdf",
+  "committee_name": "rc_11_fav_report_hr_4644_09.26.2018.pdf",
+  "evidence": "text read: Natural Resources committee roll-call tally sheet (\"MEMBERS Yes No Pres ... Mr. Bishop, UT, Chairman\"); committee filename rc_11_fav_report_hr_4644_09.26.2018.pdf means roll call 11 on motion to favorably report H.R. 4644, which the filename reader took as report"
+ },
+ {
+  "body_sha": "a2c283f697bc6415dfc9fb741a8c25deadfa97538e360cf1fdba5868b393f997",
+  "decision": "official",
+  "official_name": "CRPT-116-ED00-Vote005-20190226-U1.pdf",
+  "committee_name": "HR7Bonamici_toReport_rc5.pdf",
+  "evidence": "text read: \"COMMITTEE ON EDUCATION AND LABOR RECORD OF COMMITTEE VOTE\"; committee filename HR7Bonamici_toReport_rc5.pdf means roll call 5 on motion to report H.R. 7, which the filename reader took as report"
+ },
+ {
+  "body_sha": "0c36672f9978e76da75b08880959e803ad56cfaabe4e56e89e31cc4d5a1d6ef4",
+  "decision": "official",
+  "official_name": "CRPT-116-ED00-Vote10-hr865-20190226.pdf",
+  "committee_name": "H.R. 865 - toReport_rc10 .pdf | h.r. 865 - toreport_rc10 .pdf",
+  "evidence": "text read: \"COMMITTEE ON EDUCATION AND LABOR RECORD OF COMMITTEE VOTE\"; committee filename \"H.R. 865 - toReport_rc10 .pdf\" means roll call 10 on motion to report H.R. 865, which the filename reader took as report"
  }
 ]

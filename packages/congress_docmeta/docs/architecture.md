@@ -116,3 +116,19 @@ if pre_meta["zero_llm_docmeta"] is not None:
     ok, err = strict_validate_v4(clean_obj)
     assert ok, err
 ```
+
+---
+
+## 6. Release Sidecar Builder & Sweep Resume Ownership (`ct-0zry`)
+
+### 6.1 Release-Parameterized Sidecar Builder (`sidecar_builder.py`)
+
+`congress_docmeta.sidecar_builder.build_release_sidecar` (CLI: `python -m congress_docmeta.sidecar_builder` or `packages/congress_docmeta/scripts/build_docmeta_sidecar.py`) replaces the single-release `55c14dcda87a` migration script (`scripts/build_v6_2_ssot_sidecar.py`) as the maintained sidecar producer:
+- Accepts any published release directory (`--release-dir`), optional `BodyTextSSOT` export directory (`--body-text-dir`), optional `body_text` selection JSON/gzip (`--selection`), and `--limit` for bounded verification.
+- Applies current V6 rules (R4–R8, single-owner `HOUSE_CLERK_2LETTER_TO_CODE_V6`, and `ct-2cig` lock guards) and writes the three canonical sidecar parts (`completed_no_llm.parquet`, `llm_queue.parquet`, `sha_dup_alias.parquet`) plus `sidecar_manifest.json`.
+
+### 6.2 Architectural Decision on Sweep Checkpointing vs `docspec-rs`
+
+Under the repository's engine-first rule, **relational table ownership and local GPU/ANE inference checkpointing are separated at the sweep output boundary**:
+1. **Local GPU/ANE inference checkpointing stays in `parquet_runner_v6.py`:** During a `FastGemma4Engine` + `Laya` ANE + two-phase `GPT-OSS-20B` sweep, `run_docmeta_parquet_sweep` streams local `part-NNNNN.parquet` shards via `.tmp` + `os.replace` and skips already-decoded `link_key_hex` keys on `--resume`. Spawning a native `docspec-rs` DataFusion process per decode chunk alongside a 24 GiB MLX/ANE working set on unified memory would add multi-GB RSS spikes without relational benefit.
+2. **Lake ingestion, deduplication, and release publication belong exclusively to `docspec-rs`:** Completed DocMeta sidecar Parquets (`completed_no_llm.parquet` + sealed sweep outputs) must enter Iceberg lake tables or published release artifacts solely through `congress_api.lake.tables.append_rows` / `run_job` (`docspec-rs`), never through ad-hoc Python table merges.

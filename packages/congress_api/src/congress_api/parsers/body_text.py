@@ -124,7 +124,11 @@ def markup_text(data, parser, *, select_publisher_content=False):
         from congress_api.parsers.congress_bill_content import select_congress_bill_content
         from congress_api.parsers.congress_cms_content import POLICY as CMS_POLICY, select_congress_cms_content
         from congress_api.parsers.congress_legislative_content import POLICY, select_congress_legislative_content
-        from congress_api.parsers.main_content import strip_cms_time_travel_lines
+        from congress_api.parsers.main_content import (
+            CMS_GUARD_MAX_CHOSEN_BYTES,
+            cms_cleaned_text_too_small,
+            strip_cms_time_travel_lines,
+        )
         if select_publisher_content is True:
             selection = select_congress_bill_content(data)
         elif select_publisher_content == POLICY:
@@ -146,7 +150,19 @@ def markup_text(data, parser, *, select_publisher_content=False):
                     )
                     if cleaned_text != rendition.text:
                         rendition = _replace_rendition(rendition, text=cleaned_text)
-                if not rendition.text.strip():
+                    chosen_bytes = len(rendition.text.encode('utf-8'))
+                    if chosen_bytes < CMS_GUARD_MAX_CHOSEN_BYTES:
+                        default_rendition = rendition_text(data, rendition=MARKUP_RENDITIONS[parser])
+                        default_bytes = len(default_rendition.text.encode('utf-8'))
+                        if cms_cleaned_text_too_small(chosen_bytes, default_bytes):
+                            rendition = default_rendition
+                            selection_evidence.update(
+                                outcome='fallback',
+                                reason='excessive_shrinkage_guard',
+                                chosen_bytes=chosen_bytes,
+                                default_bytes=default_bytes,
+                            )
+                if rendition is not None and not rendition.text.strip():
                     rendition = None
                     selection_evidence.update(outcome='fallback', reason=(
                         'empty_selected_bill' if select_publisher_content is True else 'empty_selected_content'))

@@ -43,7 +43,7 @@ WORKER_TIMEOUT_SECONDS=15
 LINK_FIELDS=('href','text','tag','basis','group_path','doc_type','add_date','publish_date','remove_date')
 # A derived parser reads bodies another leaf already classified, in its own pass and
 # partition, outside the combined bundle: its failure never erases a leaf's reading.
-READ_AS={'html_metadata':'html','house_floor_feed':'xml'}
+READ_AS={'html_metadata':'html','house_floor_feed':'xml','gpo_mods':'xml'}
 STRINGS=('parser','parser_version','status','error_type','format','xml_root','title','heading',
          'text_head','content_date','base_href')
 INTEGERS=('text_bytes','link_count','link_text_bytes')
@@ -108,6 +108,9 @@ def read_body(data,parser):
         return reading_row(data)
     if parser=='house_floor_feed':
         from congress_api.parsers.house_floor_feed import reading_row
+        return reading_row(data)
+    if parser=='gpo_mods':
+        from congress_api.parsers.gpo_mods import reading_row
         return reading_row(data)
     from congress_api.parsers.archive_readings import read_page
     return read_page(data,parser)
@@ -305,7 +308,7 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     inputs=[json_input(work,'parser_versions',[dict(parser=p,version=v) for p,v in selected.items()],parser='Utf8',version='Utf8'),
             compatible_versions.accepted_versions_input(work,[e for e in entries if e['parser'] in covered+['readings']],
                 pins={**selected,'readings':pins['readings']}),
-            table_input('feed_capture_inputs' if parser=='house_floor_feed' else 'captures',captures)]
+            table_input('scoped_capture_inputs' if parser in ('house_floor_feed','gpo_mods') else 'captures',captures)]
     if body_inventory is not None:
         inputs.append(dict(name='body_inventory',kind='parquet',path=str(Path(body_inventory).resolve())))
     if body_listing is not None:
@@ -325,10 +328,18 @@ def plan(*,captures,body_inventory,local_root,engine,work,decided_at,parser,
     if parser=='house_floor_feed':
         # Scope captures before every downstream aggregate. This derived route
         # reads only retained House feed responses, never all XML or any PDF.
-        steps.append(dict(name='captures',sql="""SELECT * FROM feed_capture_inputs
+        steps.append(dict(name='captures',sql="""SELECT * FROM scoped_capture_inputs
             WHERE complete AND http_status BETWEEN 200 AND 299 AND http_status<>202 AND sha256 IS NOT NULL
             AND (lower(url) IN ('https://docs.house.gov/billsthisweek-rss.xml','http://docs.house.gov/billsthisweek-rss.xml')
               OR lower(requested_url) IN ('https://docs.house.gov/billsthisweek-rss.xml','http://docs.house.gov/billsthisweek-rss.xml'))""",materialize=True))
+    elif parser=='gpo_mods':
+        # Scope captures before every downstream aggregate. This derived route
+        # reads only retained GovInfo MODS XML responses, never all XML or any PDF.
+        steps.append(dict(name='captures',sql="""SELECT * FROM scoped_capture_inputs
+            WHERE complete AND http_status BETWEEN 200 AND 299 AND http_status<>202 AND sha256 IS NOT NULL
+            AND (starts_with(coalesce(receipt_key,''),'receipts/govinfo/mods/')
+              OR ends_with(lower(split_part(coalesce(url,''),'?',1)),'/mods.xml')
+              OR ends_with(lower(split_part(coalesce(requested_url,''),'?',1)),'/mods.xml'))""",materialize=True))
     if raw_ranges or captured_copies:
         steps.append(dict(name='body_storage',sql="""SELECT sha256 AS body_sha,coalesce(stored_suffix,'.gz') AS stored_suffix,
             concat('bodies/sha256/',substr(encode(sha256,'hex'),1,2),'/',encode(sha256,'hex'),

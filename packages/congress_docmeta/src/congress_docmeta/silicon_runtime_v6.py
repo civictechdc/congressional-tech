@@ -24,6 +24,9 @@ MIN_MACOS_METAL4_INT_VERSION: tuple[int, ...] = (26, 4)
 MIN_MACOS_ANE_CORE_FIX_VERSION: tuple[int, ...] = (27, 2, 1)
 MIN_MLX_VERSION: tuple[int, ...] = (0, 32, 4)
 
+DEFAULT_MLX_MEMORY_LIMIT_GB: float = 24.0
+DEFAULT_MLX_CACHE_LIMIT_GB: float = 2.0
+
 REQUIRED_R8_MODULES: tuple[tuple[str, str], ...] = (
     ("usaddress", "usaddress==0.5.14"),
     ("pycountry", "pycountry==26.2.16"),
@@ -295,6 +298,95 @@ def mlx_wired_limit_scope(
                 pass
 
 
+def apply_mlx_limits(
+    *,
+    memory_limit_gb: float | None = DEFAULT_MLX_MEMORY_LIMIT_GB,
+    cache_limit_gb: float | None = DEFAULT_MLX_CACHE_LIMIT_GB,
+    mx_module: Any = None,
+) -> dict[str, int | None]:
+    """Set MLX global memory and free-buffer cache limits (`ct-s9l2`).
+
+    ``memory_limit_gb <= 0`` (or ``None``) leaves the active memory limit untouched;
+    ``cache_limit_gb < 0`` (or ``None``) leaves the cache limit untouched (``0`` disables caching).
+    Returns applied and previous byte limits so callers can record or restore them.
+    """
+    out: dict[str, int | None] = {
+        "memory_limit_bytes": None,
+        "prev_memory_limit_bytes": None,
+        "cache_limit_bytes": None,
+        "prev_cache_limit_bytes": None,
+    }
+    mx = mx_module
+    if mx is None:
+        try:
+            if importlib.util.find_spec("mlx") is not None:
+                import mlx.core as mx  # type: ignore[import-not-found]
+        except Exception:
+            mx = None
+    if mx is None:
+        return out
+
+    if memory_limit_gb is not None and float(memory_limit_gb) > 0.0:
+        set_mem = getattr(mx, "set_memory_limit", None)
+        if callable(set_mem):
+            mem_bytes = int(round(float(memory_limit_gb) * (1024**3)))
+            try:
+                out["prev_memory_limit_bytes"] = int(set_mem(mem_bytes))
+                out["memory_limit_bytes"] = mem_bytes
+            except Exception:
+                pass
+
+    if cache_limit_gb is not None and float(cache_limit_gb) >= 0.0:
+        set_cache = getattr(mx, "set_cache_limit", None)
+        if callable(set_cache):
+            cache_bytes = int(round(float(cache_limit_gb) * (1024**3)))
+            try:
+                out["prev_cache_limit_bytes"] = int(set_cache(cache_bytes))
+                out["cache_limit_bytes"] = cache_bytes
+            except Exception:
+                pass
+
+    return out
+
+
+@contextmanager
+def mlx_limits_scope(
+    *,
+    memory_limit_gb: float | None = DEFAULT_MLX_MEMORY_LIMIT_GB,
+    cache_limit_gb: float | None = DEFAULT_MLX_CACHE_LIMIT_GB,
+    mx_module: Any = None,
+) -> Iterator[dict[str, int | None]]:
+    """Apply ``mx.set_memory_limit`` + ``mx.set_cache_limit`` for a run and restore prior limits on exit."""
+    mx = mx_module
+    if mx is None:
+        try:
+            if importlib.util.find_spec("mlx") is not None:
+                import mlx.core as mx  # type: ignore[import-not-found]
+        except Exception:
+            mx = None
+    info = apply_mlx_limits(
+        memory_limit_gb=memory_limit_gb,
+        cache_limit_gb=cache_limit_gb,
+        mx_module=mx,
+    )
+    try:
+        yield info
+    finally:
+        if mx is not None:
+            prev_mem = info.get("prev_memory_limit_bytes")
+            if prev_mem is not None and callable(getattr(mx, "set_memory_limit", None)):
+                try:
+                    mx.set_memory_limit(int(prev_mem))
+                except Exception:
+                    pass
+            prev_cache = info.get("prev_cache_limit_bytes")
+            if prev_cache is not None and callable(getattr(mx, "set_cache_limit", None)):
+                try:
+                    mx.set_cache_limit(int(prev_cache))
+                except Exception:
+                    pass
+
+
 def get_and_cap_mlx_cache_limit(*, max_cache_mib: int = 256) -> int | None:
     """Cap MLX's global free-buffer cache to `max_cache_mib` MiB and return the previous limit."""
     try:
@@ -411,15 +503,19 @@ def format_chat_no_thinking(tok: Any, msgs: Sequence[Mapping[str, str]]) -> str:
 
 
 __all__ = [
+    "DEFAULT_MLX_CACHE_LIMIT_GB",
+    "DEFAULT_MLX_MEMORY_LIMIT_GB",
     "MIN_MACOS_ANE_CORE_FIX_VERSION",
     "MIN_MACOS_METAL4_INT_VERSION",
     "MIN_MACOS_NAX_VERSION",
     "MIN_MLX_VERSION",
     "REQUIRED_R8_MODULES",
+    "apply_mlx_limits",
     "check_r8_dependencies",
     "clear_mlx_wave_cache",
     "format_chat_no_thinking",
     "get_and_cap_mlx_cache_limit",
+    "mlx_limits_scope",
     "mlx_wired_limit_scope",
     "parse_semver",
     "probe_host_memory_gb",

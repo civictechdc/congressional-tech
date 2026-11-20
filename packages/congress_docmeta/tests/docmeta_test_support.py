@@ -17,13 +17,9 @@ import pytest
 
 from congress_docmeta import score_docmeta_anomalies_v6, surname_token_v6
 from congress_docmeta.pythonic_v5 import infer_is_html_v5, strip_html_cms_nav_v5
+from congress_docmeta.relational_rules_v6 import resolve_docmeta_v6_data_dir
 
-VAL48_ARCHIVE_DIR = Path(
-    os.environ.get(
-        "DOCMETA_V6_ARCHIVE_DIR",
-        "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/docmeta-v6-20261116",
-    )
-)
+VAL48_ARCHIVE_DIR = resolve_docmeta_v6_data_dir(os.environ.get("DOCMETA_V6_ARCHIVE_DIR"))
 HW_LOCK_PATH = Path("/tmp/m4_gpu_validation.lock")
 
 

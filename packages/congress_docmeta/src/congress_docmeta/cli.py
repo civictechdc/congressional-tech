@@ -14,7 +14,13 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
     from fast_gemma4.engine import FastGemma4Engine
 
     from .parquet_runner_v6 import run_docmeta_parquet_sweep
-    from .silicon_runtime_v6 import mlx_wired_limit_scope, run_silicon_preflight
+    from .silicon_runtime_v6 import (
+        DEFAULT_MLX_CACHE_LIMIT_GB,
+        DEFAULT_MLX_MEMORY_LIMIT_GB,
+        mlx_limits_scope,
+        mlx_wired_limit_scope,
+        run_silicon_preflight,
+    )
 
     run_silicon_preflight(
         escalate_gpt_oss=bool(getattr(args, "escalate_gpt_oss", False)),
@@ -26,8 +32,13 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
     use_ane_ring: bool | str = True if ring_raw == "true" else (False if ring_raw == "false" else "auto")
     tp_raw = str(getattr(args, "two_phase_pass2", "auto")).strip().lower()
     two_phase_pass2: bool | str = True if tp_raw == "true" else (False if tp_raw == "false" else "auto")
+    mem_limit_gb = float(getattr(args, "memory_limit_gb", DEFAULT_MLX_MEMORY_LIMIT_GB))
+    cache_limit_gb = float(getattr(args, "cache_limit_gb", DEFAULT_MLX_CACHE_LIMIT_GB))
 
-    with mlx_wired_limit_scope():
+    with (
+        mlx_limits_scope(memory_limit_gb=mem_limit_gb, cache_limit_gb=cache_limit_gb) as mlx_limits,
+        mlx_wired_limit_scope(),
+    ):
         eng = FastGemma4Engine(
             home=args.home,
             model_dir=getattr(args, "model_dir", None),
@@ -83,6 +94,7 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
                         "decode_tok_s": round(summary.decode_tok_s, 1),
                         "output_path": str(summary.output_path),
                         "parts_dir": str(summary.parts_dir),
+                        "mlx_limits": mlx_limits,
                     },
                     indent=2,
                 )
@@ -165,6 +177,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     dm_p.add_argument("--resume", action="store_true")
     dm_p.add_argument("--no-warmup", action="store_true")
+    dm_p.add_argument(
+        "--memory-limit-gb",
+        type=float,
+        default=24.0,
+        help="MLX active memory cap in GiB (default: 24.0; <=0 disables)",
+    )
+    dm_p.add_argument(
+        "--cache-limit-gb",
+        type=float,
+        default=2.0,
+        help="MLX free-buffer cache cap in GiB (default: 2.0; <0 disables, 0 turns caching off)",
+    )
     dm_p.set_defaults(func=_cmd_docmeta_sweep)
 
     return p

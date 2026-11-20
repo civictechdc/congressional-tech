@@ -14,6 +14,7 @@ import time
 from pathlib import Path
 
 STOP_SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
+CLEANUP_WAIT_SECONDS = 5.0
 # The longest a sampling loop sleeps before checking a recorded stop signal again:
 # PEP 475 restarts time.sleep after a non-raising handler returns, so waits run in slices.
 WAKE_SECONDS = 0.05
@@ -195,10 +196,18 @@ raise SystemExit(code)
 """
 
 
+def group_members(group):
+    """Return the exact group inventory; a failed or empty ps result is unknown."""
+    result=subprocess.run(['ps','-axo','pid=,pgid=,stat='],capture_output=True,text=True,check=True,timeout=5)
+    if not result.stdout.strip():
+        raise RuntimeError('Process inventory returned no rows')
+    rows=[line.split() for line in result.stdout.splitlines()]
+    return sorted((dict(pid=int(pid),state=state) for pid,pgid,state in rows if int(pgid)==group),
+                  key=lambda row:row['pid'])
+
+
 def _group_is_live(group):
-    result=subprocess.run(['ps','-axo','pgid=,stat='],capture_output=True,text=True,check=True,timeout=5)
-    return any(int(parts[0])==group and not parts[1].startswith('Z')
-        for line in result.stdout.splitlines() if len(parts:=line.split())==2)
+    return any(not row['state'].startswith('Z') for row in group_members(group))
 
 
 def _signal_group(group,number,send,is_live):
@@ -211,18 +220,23 @@ def _signal_group(group,number,send,is_live):
 
 def _cleanup_child(child,send):
     errors=[]
-    def attempt(operation):
+    def attempt(action,operation):
         try:
             note=operation()
-            if isinstance(note,dict):errors.append(note)
+            if isinstance(note,dict):errors.append(dict(action=action,**note))
         except Exception as error:
-            errors.append(dict(type=type(error).__name__,message=str(error)))
-    if child.poll() is None:
-        attempt(lambda:send(signal.SIGTERM))
-        attempt(lambda:child.wait(timeout=5))
+            errors.append(dict(action=action,type=type(error).__name__,message=str(error)))
+    try:
+        running=child.poll() is None
+    except Exception as error:
+        errors.append(dict(action='poll',type=type(error).__name__,message=str(error)))
+        running=True
+    if running:
+        attempt('term',lambda:send(signal.SIGTERM))
+        attempt('term_wait',lambda:child.wait(timeout=5))
     # A TERM-ignoring descendant may outlive the already-exited leader.
-    attempt(lambda:send(signal.SIGKILL))
-    attempt(lambda:child.wait(timeout=5))
+    attempt('kill',lambda:send(signal.SIGKILL))
+    attempt('kill_wait',lambda:child.wait(timeout=5))
     return errors
 
 
@@ -233,5 +247,20 @@ def start_owned(command,**popen):
 
 
 def stop_owned(child):
-    """TERM the owned group, wait 5 s, then always KILL it; return cleanup notes, never raise."""
-    return _cleanup_child(child,lambda number:_signal_group(child.pid,number,os.killpg,_group_is_live))
+    """Attempt all cleanup, then retain a positive group inventory or its failure."""
+    notes=_cleanup_child(child,lambda number:_signal_group(child.pid,number,os.killpg,_group_is_live))
+    try:
+        deadline=time.monotonic()+CLEANUP_WAIT_SECONDS
+        while True:
+            members=group_members(child.pid)
+            if not members or time.monotonic()>=deadline:
+                break
+            time.sleep(.05)
+        note=dict(action='group_inventory',group=child.pid,members=members,group_exited=not members)
+        if members:
+            note.update(type='OwnedGroupSurvived',message='Owned process group is not empty after cleanup')
+        notes.append(note)
+    except Exception as error:
+        notes.append(dict(action='group_inventory',group=child.pid,members=None,
+            type=type(error).__name__,message=str(error)))
+    return notes

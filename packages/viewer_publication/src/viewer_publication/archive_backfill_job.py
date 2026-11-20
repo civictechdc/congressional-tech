@@ -11,7 +11,7 @@ from congress_api.lake.daily import ALL_TABLE_NAMES,DAILY_CAPTURE_RECORDS
 from viewer_publication.archive_model_job import _local,provenance_record_kind
 
 FIELDS={'version','bucket','catalog_root','work','tables','batch_size','max_batches'}
-OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through','producers','derived_parsers','derived_scopes','qualify_html_metadata'}
+OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through','producers','derived_parsers','derived_scopes','qualify_html_metadata','qualify_gpo_mods'}
 FILENAME_PRIOR_VERSION = '6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1'
 FILENAME_ACT_CITATION_VERSION = 'c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09'
 
@@ -160,6 +160,12 @@ def load_spec(path):
         if value['qualify_html_metadata'] and ('selective' in value or (catalog_root is None and 'producers' not in value)):
             raise ValueError('HTML metadata R2 qualification requires R2 producer anchors and cannot combine with selective')
         result['qualify_html_metadata']=value['qualify_html_metadata']
+    if 'qualify_gpo_mods' in value:
+        if type(value['qualify_gpo_mods']) is not bool:
+            raise ValueError('Backfill qualify_gpo_mods must be boolean')
+        if value['qualify_gpo_mods'] and ('selective' in value or value.get('qualify_html_metadata') or (catalog_root is None and 'producers' not in value)):
+            raise ValueError('GPO MODS R2 qualification requires R2 producer anchors and cannot combine with selective')
+        result['qualify_gpo_mods']=value['qualify_gpo_mods']
     return result
 
 
@@ -346,8 +352,8 @@ def _filename_transition(spec, runtime_factory):
     return dict(report, producer=dict(path=str(producer_path), **file_pin(producer_path)))
 
 
-def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factory=None):
-    """Append missing html_metadata readings across the R2 captures head and prove 0 pending items."""
+def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factory=None, parser='html_metadata'):
+    """Append missing derived readings across the R2 captures head and prove 0 pending items."""
     from concurrent.futures import ThreadPoolExecutor
     import sys
     import pyarrow as pa
@@ -400,7 +406,7 @@ def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factor
             captures=heads['captures'], existing=heads['readings'],
             unreadable_files=unreadable_snapshot.files(), body_inventory=None, captured_copies=True,
             raw_ranges=False, local_root=work / 'unopened', engine=engine, work=work / 'initial-plan',
-            decided_at=decided_at, parser='html_metadata',
+            decided_at=decided_at, parser=parser,
         )
         wl = pq.read_table(initial_plan['work_list'], columns=['body_sha'])
         hex_shas = sorted({b.hex() for b in wl['body_sha'].to_pylist()})
@@ -439,9 +445,10 @@ def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factor
                 unreadable_snapshot=unreadable_snapshot,
                 batch_size=max(spec['batch_size'], 10000), parser_workers=4, max_get_workers=64,
                 body_listing=dict(path=str(listing_path), **file_pin(listing_path)),
+                parser=parser,
             )
             if result.get('status') != 'completed':
-                raise ValueError('HTML metadata R2 qualification did not complete: ' + str(result.get('status')))
+                raise ValueError(f'{parser} R2 qualification did not complete: ' + str(result.get('status')))
             final_pins = result['pins']
             batches_count = len(result['readings']['batches'])
         else:
@@ -451,15 +458,15 @@ def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factor
             captures=final_pins['captures'], existing=final_pins['readings'],
             unreadable_files=unreadable_snapshot.files(), body_inventory=None, captured_copies=True,
             raw_ranges=False, local_root=work / 'post-unopened', engine=engine, work=work / 'post-plan',
-            decided_at=decided_at, parser='html_metadata',
+            decided_at=decided_at, parser=parser,
         )
         if post_plan['work_items'] != 0:
-            raise ValueError(f"HTML metadata qualification left {post_plan['work_items']} pending items")
+            raise ValueError(f"{parser} qualification left {post_plan['work_items']} pending items")
 
         proof_model = dict(
             captures=dict(kind='native_table', **final_pins['captures']),
             readings=dict(kind='native_table', **final_pins['readings']),
-            parser_versions=archive_model_profile.current_parser_versions(('html_metadata',)),
+            parser_versions=archive_model_profile.current_parser_versions((parser,)),
             catalog_version=filenames.current_version(),
         )
         records = producer_proof.find_records(proof_model, ledger, anchors)
@@ -467,10 +474,12 @@ def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factor
             proof_model, engine=engine, work=work / 'gate5-proof', records=records, ledger=ledger,
         )
 
+    flag_key = 'qualify_gpo_mods' if parser == 'gpo_mods' else 'qualify_html_metadata'
     report = dict(
         status='executed',
         executed=True,
-        qualify_html_metadata=True,
+        **{flag_key: True},
+        parser=parser,
         initial_heads=heads,
         initial_work_items=initial_plan['work_items'],
         listing_objects=len(listing_rows),
@@ -507,6 +516,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None,activ
         return execute_selective(spec,runtime_factory=runtime_factory)
     if spec.get('qualify_html_metadata'):
         return _execute_qualify_html_metadata(spec, runtime_factory=runtime_factory, storage_factory=storage_factory)
+    if spec.get('qualify_gpo_mods'):
+        return _execute_qualify_html_metadata(spec, runtime_factory=runtime_factory, storage_factory=storage_factory, parser='gpo_mods')
     work=Path(spec['work'])
     if work.exists() or work.is_symlink():
         raise ValueError('Backfill work directory must be fresh')

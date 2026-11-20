@@ -220,7 +220,7 @@ def _record_reasons(name, record, model, mapping_current, root, *, label, select
                                      versions=_versions(name, model, mapping_current, root) if versions else None)
 
 
-def _chain_reasons(name, record, root, ledger, *, label):
+def _chain_reasons(name, record, root, ledger, *, label, full_chain=False):
     """A daily record's link to its base, then the base by the rule the daily preflight also
     applies before it appends (producer_records.base_problems); the head's Iceberg metadata
     gives the lineage."""
@@ -228,10 +228,10 @@ def _chain_reasons(name, record, root, ledger, *, label):
         return [f'producer proof: {label}: a daily record\'s base cannot be read without the producer record store']
     lineage = ledger.lineage(record['selector']['metadata_location'])
     return (link_problems(record, lineage, label=label)
-            or base_problems(name, record['base'], ledger, root, label=label, lineage=lineage))
+            or base_problems(name, record['base'], ledger, root, label=label, lineage=lineage, full=full_chain))
 
 
-def snapshot_reasons(model, records, *, root=ROOT, mapping_current=None, ledger=None):
+def snapshot_reasons(model, records, *, root=ROOT, mapping_current=None, ledger=None, full_chain=False):
     """Refusals for the per-snapshot rule: one record per pinned table, bound to its selector.
 
     An import (archive_import_job) copies rows it did not produce, so its record must carry
@@ -255,7 +255,7 @@ def snapshot_reasons(model, records, *, root=ROOT, mapping_current=None, ledger=
         if imported:
             reasons += import_problems(name, record, root, label=name, versions=_versions(name, model, mapping_current, root))
         elif record.get('job') == DAILY and selector.get('kind') == 'native_table':
-            reasons += _chain_reasons(name, record, root, ledger, label=name)
+            reasons += _chain_reasons(name, record, root, ledger, label=name, full_chain=full_chain)
     return reasons
 
 
@@ -282,7 +282,7 @@ def record(path, *, input, selector, job, root=ROOT):
     return value
 
 
-def require_producers(model, *, engine, work, mapping_current=None, records=None, root=ROOT, ledger=None):
+def require_producers(model, *, engine, work, mapping_current=None, records=None, root=ROOT, ledger=None, full_chain=False):
     """Refuse unless every consumed row of every pinned table names a current or compatible producer.
 
     Returns the per-table report, including retained-history counts that do not refuse.
@@ -297,7 +297,8 @@ def require_producers(model, *, engine, work, mapping_current=None, records=None
         selector = model[name]
         source = selector['path'] if selector.get('kind') == 'parquet' else {k: v for k, v in selector.items() if k != 'kind'}
         inputs.append(table_input(name, source))
-    report, reasons = {}, snapshot_reasons(model, records, root=root, mapping_current=mapping_current, ledger=ledger)
+    report, reasons = {}, snapshot_reasons(model, records, root=root, mapping_current=mapping_current, ledger=ledger,
+                                           full_chain=full_chain)
     for query in proof_queries(model, present, mapping_current=mapping_current):
         try:
             rows = run_job(Path(work) / query['name'], engine, inputs=[i for i in inputs if i['name'] == query['name']],
@@ -316,3 +317,39 @@ def require_producers(model, *, engine, work, mapping_current=None, records=None
     if reasons:
         raise ValueError('Publication refused by gate 5:\n' + '\n'.join(reasons))
     return report
+
+
+def verify_producer_chains(publish_spec_path, *, engine, client, bucket, catalog_root, tables, work, root=ROOT, full_chain=True):
+    """Resolve current table heads and verify their producer chains (full walk by default, ct-k7rw)."""
+    from congress_api.lake import captures, tables as lake_tables
+    from congress_api.lake.producer_records import ProducerRecords
+    from viewer_publication.archive_publish_job import _metadata_pin, _verify_metadata
+
+    publish_path = Path(publish_spec_path).resolve()
+    publish_raw = json.loads(publish_path.read_text(encoding='utf-8'))
+    model_pin = _metadata_pin(publish_raw['model_spec'], publish_path.parent)
+    model_identity = _verify_metadata(model_pin)
+    model_raw = json.loads(Path(model_pin['path']).read_text(encoding='utf-8'))
+    model_identity.require(model_pin['path'])
+    anchors = {}
+    for name, pin_raw in (publish_raw.get('producers') or {}).items():
+        pin = _metadata_pin(pin_raw, publish_path.parent)
+        identity = _verify_metadata(pin)
+        anchors[name] = Path(pin['path']).read_bytes()
+        identity.require(pin['path'])
+
+    ledger = ProducerRecords(anchors, client=client, bucket=bucket) if catalog_root is None else ProducerRecords(
+        anchors, root=Path(catalog_root).parent)
+    heads = lake_tables.resolve_tables(engine=engine, catalog_root=catalog_root, work=Path(work) / 'heads', tables=tables)
+    model = dict(
+        {name: dict(kind='native_table', **pin) for name, pin in heads.items() if pin.get('snapshot') is not None},
+        parser_versions=model_raw['parser_versions'],
+        catalog_version=model_raw['catalog_version'],
+    )
+    records = find_records(model, ledger, anchors)
+    reasons = snapshot_reasons(model, records, root=root, mapping_current=captures.current_version(), ledger=ledger,
+                               full_chain=full_chain)
+    if reasons:
+        raise ValueError('Producer chain verification failed:\n' + '\n'.join(reasons))
+    return dict(tables=sorted(records), full_chain=bool(full_chain), stored_records_read=len(ledger._records))
+

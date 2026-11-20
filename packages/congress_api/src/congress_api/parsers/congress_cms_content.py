@@ -15,6 +15,7 @@ from lxml import etree
 from congress_api.parsers.congress_bill_content import HtmlContentSelection
 from congress_api.parsers.html_metadata import parse_document
 from congress_api.parsers.main_content import (
+    CMS_GUARD_MAX_CHOSEN_BYTES,
     CONTENT_NAMESPACE,
     CONTENT_PROPERTY,
     SHORT_MARKED_CHARS,
@@ -24,12 +25,13 @@ from congress_api.parsers.main_content import (
     _is_cms_chrome,
     _rebound_content_prefix,
     block_text,
+    cms_cleaned_text_too_small,
     infer_document_congress,
     strip_cms_time_travel_lines,
 )
 from congress_api.parsers.response_roles import assess_response
 
-POLICY = 'congressional-cms-main-content/001'
+POLICY = 'congressional-cms-main-content/002'
 _LEGISLATIVE_MARKERS = (b'billTextUslm', b'billTextContainer', b'generated-html-container')
 _CMS_FAST_MARKERS = (
     b'<nav', b'<NAV',
@@ -211,6 +213,35 @@ def select_congress_cms_content(body: bytes) -> HtmlContentSelection | None:
 
     serialized = etree.tostring(work_root, encoding='utf-8', method='html')
     fragment = b'<!DOCTYPE html><html><head><meta charset="utf-8"></head><body>' + serialized + b'</body></html>'
+
+    # Empirical shrinkage guard fitted to 3 observed main_landmark losses (ct-m704):
+    # only evaluate spicy-docs rendition_text when the pruned preview is near/below 500 B.
+    if len(after_tt.encode('utf-8')) < 1024:
+        from spicy_docs.extraction.body_text import rendition_text
+
+        try:
+            chosen_rendition = rendition_text(fragment, rendition='htm')
+            chosen_text = strip_cms_time_travel_lines(
+                chosen_rendition.text,
+                declared_dates=declared_dates,
+                reference_congress=doc_congress,
+            )
+            chosen_bytes = len(chosen_text.encode('utf-8'))
+            if chosen_bytes < CMS_GUARD_MAX_CHOSEN_BYTES:
+                default_bytes = len(rendition_text(body, rendition='htm').text.encode('utf-8'))
+                if cms_cleaned_text_too_small(chosen_bytes, default_bytes):
+                    return HtmlContentSelection(
+                        None,
+                        evidence | dict(
+                            reason='excessive_shrinkage_guard',
+                            scope=selection_scope,
+                            chosen_bytes=chosen_bytes,
+                            default_bytes=default_bytes,
+                        ),
+                    )
+        except (ValueError, UnicodeError, RecursionError):
+            pass
+
     return HtmlContentSelection(
         fragment,
         evidence | dict(

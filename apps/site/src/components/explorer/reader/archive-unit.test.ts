@@ -677,3 +677,19 @@ test('current bill and nomination records preserve public_law_number and unavail
   assert.equal(fallbackNomination?.nominees,null);
   assert.equal(fallbackNomination?.public_law_number,null);
 });
+
+test('ct-n131: presentDocument exposes hearing print_number alongside Congress and committee context',()=>{
+  const row={
+    title:'THE NEXT FARM BILL',
+    print_number:'Serial No. 115-3, Part 1',
+    filename:'CHRG-115hhrg24725-pt1.pdf',
+    format:'pdf',
+    congress:115,
+    committee_keys:['hsag00'],
+    document_kind:['published-hearing'],
+  };
+  const presented=presentDocument(row);
+  assert.equal(presented.title,'THE NEXT FARM BILL');
+  assert.equal(presented.printNumber,'Serial No. 115-3, Part 1');
+  assert.ok(presented.contextParts.includes('Serial No. 115-3, Part 1'));
+});

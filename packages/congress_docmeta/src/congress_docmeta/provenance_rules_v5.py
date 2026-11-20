@@ -156,42 +156,7 @@ _DATE_RESCUE_SAFE_KINDS: frozenset[str] = frozenset(
     }
 )
 
-# House Clerk 2-letter meeting/slug codes (`docs.house.gov/meetings/<XX>/` and `HHRG-<cong>-<XX><sub2>-`).
-HOUSE_CLERK_2LETTER_TO_CODE: dict[str, str] = {
-    "AG": "hsag00",
-    "AP": "hsap00",
-    "AS": "hsas00",
-    "BA": "hsba00",
-    "BU": "hsbu00",
-    "ED": "hsed00",
-    "FA": "hsfa00",
-    "GO": "hsgo00",
-    "HA": "hsha00",
-    "HM": "hshm00",
-    "IF": "hsif00",
-    "IG": "hlig00",
-    "II": "hsii00",
-    "JU": "hsju00",
-    "PW": "hspw00",
-    "RU": "hsru00",
-    "SM": "hssm00",
-    "SO": "hsso00",
-    "SY": "hssy00",
-    "VR": "hsvr00",
-    "WM": "hswm00",
-    # Select committees, select subcommittees, and task forces
-    "CN": "hlcn00",
-    "EF": "hlef00",
-    "FD": "hlfd00",
-    "GW": "hlgw00",
-    "IJ": "hlij00",
-    "MH": "hlmh00",
-    "QJ": "hlqj00",
-    "VC": "hlvc00",
-    "ZI": "hlzi00",
-    "ZS": "hlzs00",
-    "ZT": "htzt00",
-}
+from .relational_rules_v6 import HOUSE_CLERK_2LETTER_TO_CODE_V6 as HOUSE_CLERK_2LETTER_TO_CODE
 
 # Exhaustive mapping of unambiguous Congressional committee/commission domains & committee CDNs
 # verified across all 316 distinct hosts in `sources.parquet` + `detail.page_metadata`.
@@ -1052,7 +1017,11 @@ def extract_url_official_slug_info(
     if m_c:
         c2 = m_c.group(2).upper()
         cmt_code = HOUSE_CLERK_2LETTER_TO_CODE.get(c2)
-        chamber = "house"
+        chamber = (
+            "commission"
+            if (cmt_code and cmt_code.startswith("jc"))
+            else ("joint" if (cmt_code and cmt_code.startswith("js")) else "house")
+        )
     else:
         if prefix in ("HHRG", "HMTG", "HMKP", "HRPT"):
             chamber = "house"
@@ -1377,7 +1346,9 @@ def detect_provenance_link_anchor(
             not is_html
             and len(t_head) >= 40
             and not _EXHIBIT_FILENAME_RE.search(fn_s)
+            and "press_release" not in fn_s.lower()
             and not _BODY_QUEST_FOR_RE.search(t_head[:400])
+            and not re.search(r"\bFOR\s+IMMEDIATE\s+RELEASE\b", t_head[:700], re.I)
         ):
             return "link_nomination_support_letter", "nomination_or_support_letter", clean_lts
 

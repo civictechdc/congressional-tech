@@ -83,8 +83,10 @@ __all__ = [
 # Constants & Python 3.9-3.13 Portable Regex Primitives
 # ---------------------------------------------------------------------------
 
-DEFAULT_REFSPEC_ROOT_STR = "/Users/mikewolfd/Work/spicy-stack/RefSpec"
-DEFAULT_REFSPEC_ROOT = Path(os.environ.get("REFSPEC_ROOT", DEFAULT_REFSPEC_ROOT_STR))
+from .relational_rules_v6 import resolve_refspec_root
+
+DEFAULT_REFSPEC_ROOT = resolve_refspec_root()
+DEFAULT_REFSPEC_ROOT_STR = str(DEFAULT_REFSPEC_ROOT)
 
 _ATOMIC = "(?>" if sys.version_info >= (3, 11) else "(?:"
 

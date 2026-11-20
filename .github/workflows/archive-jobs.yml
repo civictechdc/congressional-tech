@@ -280,6 +280,7 @@ jobs:
         with:
           ref: ${{ steps.validated.outputs.sha }}
           persist-credentials: false
+          fetch-depth: 0  # maintenance full producer-chain walk checks commit reachability
       - uses: ./.github/actions/setup-python-project
       - name: Admit the maintenance binding before runtime or storage access
         run: .venv/bin/python -I .github/scripts/run-archive-job.py maintenance --check-binding

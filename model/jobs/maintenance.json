@@ -22,5 +22,8 @@
     "observations": {},
     "rebuild": {},
     "purge": []
+  },
+  "producer_chains": {
+    "publish_spec": "publish.json"
   }
 }

@@ -98,6 +98,9 @@ def _stage_raw_fixture(tmp_path, engine, capture_specs):
     )
     # Page readings for every page format a fixture stores; the model requires each at its pinned version.
     page_formats = ['html'] + sorted({spec['format'] for spec in capture_specs} & {'xml', 'json'})
+    has_gpo_mods = any(spec.get('format') == 'xml' and str(spec.get('url', '')).lower().endswith('/mods.xml') for spec in capture_specs)
+    if has_gpo_mods:
+        page_formats.append('gpo_mods')
     staged_pages = [readings.stage(
         captures=captures,
         body_inventory=inventory / 'bodies.parquet',
@@ -123,7 +126,7 @@ def _stage_raw_fixture(tmp_path, engine, capture_specs):
         readings=page_readings,
         filename_readings=names['readings'],
         parser_versions={
-            **{p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json']},
+            **{p: readings.current_version(p) for p in ['sniff', 'html', 'xml', 'json', *(['gpo_mods'] if has_gpo_mods else [])]},
             'meeting_records': mr_lake.current_versions(),
             'appearance_records': ar_lake.current_versions(),
         },
@@ -2328,9 +2331,58 @@ def test_a_govinfo_landing_page_is_another_address_of_the_hearing_it_names(tmp_p
     reports = {q['name']: q['data'] for q in json.loads((tmp_path / 'after-model/result.json').read_text())['queries']}
     assert reports['unplaced_landing_pages'] == []
     assert reports['landing_page_invariants'] == [dict(saved_landing_addresses=0, unaddressed_landing_pages=0, lost_landing_addresses=0)]
+    after_list = read('after', 'list')
+    expected_print_numbers = ['Serial No. 119-7', 'S. Hrg. 119-8', 'Serial No. 119-9, Part 1', 'Serial No. 119-9, Part 2', None]
+    target_rows = [hearing, text_only, part, part2, row_of(files['other'])]
+    assert [after[r]['print_number'] for r in target_rows] == expected_print_numbers
+    assert [after_list[r]['print_number'] for r in target_rows] == expected_print_numbers
+    assert [after[r]['title'] for r in (hearing, text_only)] == ['Hearing 7', 'Hearing 8']
     # The publish gate's link rule: no key vanishes, and no live key, lookup key or address answers another file.
     rule = compare(tmp_path / 'before', tmp_path / 'after')['link_rule']
     assert rule['ok'], rule
+
+
+def test_govinfo_print_number_from_mods_preferred_citation(tmp_path):
+    """ct-n131: detail and list carry print_number read from MODS preferredCitation (parsers/gpo.py) without overwriting title."""
+    from viewer_publication.archive_model import build_release
+
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    mods_dir = Path(__file__).parents[2] / 'congress_api/tests/fixtures/gpo_metadata'
+    single_mods = (mods_dir / 'CHRG-116shrg42251.xml').read_bytes()
+    multi_mods = (mods_dir / 'CHRG-115hhrg24725.xml').read_bytes()
+    single_pdf = b'%PDF-1.7\n% CHRG-116shrg42251\n%%EOF\n'
+    pt1_pdf = b'%PDF-1.7\n% CHRG-115hhrg24725-pt1\n%%EOF\n'
+    pt2_pdf = b'%PDF-1.7\n% CHRG-115hhrg24725-pt2\n%%EOF\n'
+    non_hearing_pdf = b'%PDF-1.7\n% HHRG-119-AG00-Wstate-DoeJ-20260604\n%%EOF\n'
+
+    staged = _stage_raw_fixture(tmp_path, engine, [
+        dict(url='https://www.govinfo.gov/metadata/pkg/CHRG-116shrg42251/mods.xml', data=single_mods, format='xml'),
+        dict(url='https://www.govinfo.gov/content/pkg/CHRG-116shrg42251/pdf/CHRG-116shrg42251.pdf', data=single_pdf, format='pdf'),
+        dict(url='https://www.govinfo.gov/metadata/pkg/CHRG-115hhrg24725/mods.xml', data=multi_mods, format='xml'),
+        dict(url='https://www.govinfo.gov/content/pkg/CHRG-115hhrg24725/pdf/CHRG-115hhrg24725-pt1.pdf', data=pt1_pdf, format='pdf'),
+        dict(url='https://www.govinfo.gov/content/pkg/CHRG-115hhrg24725/pdf/CHRG-115hhrg24725-pt2.pdf', data=pt2_pdf, format='pdf'),
+        dict(url='https://docs.house.gov/meetings/AG/AG00/20260604/119301/HHRG-119-AG00-Wstate-DoeJ-20260604.pdf', data=non_hearing_pdf, format='pdf'),
+    ])
+    build_release(
+        captures=staged['captures'],
+        readings=staged['readings'],
+        filename_readings=staged['filename_readings'],
+        parser_versions={p: staged['parser_versions'][p] for p in ['sniff', 'html', 'xml', 'json', 'gpo_mods']},
+        catalog_version=staged['catalog_version'],
+        engine=engine,
+        output=tmp_path / 'release',
+        scratch=tmp_path / 'model',
+    )
+    details = {r['filename']: r for r in pq.read_table(tmp_path / 'release/detail.parquet').to_pylist()}
+    listed = {r['filename']: r for r in pq.read_table(tmp_path / 'release/list.parquet').to_pylist()}
+    expected = {
+        'CHRG-116shrg42251.pdf': 'S. Hrg. 116-439',
+        'CHRG-115hhrg24725-pt1.pdf': 'Serial No. 115-3, Part 1',
+        'CHRG-115hhrg24725-pt2.pdf': 'Serial No. 115-3, Part 2',
+        'HHRG-119-AG00-Wstate-DoeJ-20260604.pdf': None,
+    }
+    assert {k: details[k]['print_number'] for k in expected} == expected
+    assert {k: listed[k]['print_number'] for k in expected} == expected
 
 
 @pytest.mark.parametrize('sql, sound, broken, invariant, count', [
@@ -3441,6 +3493,7 @@ def roster_coverage_disagreements(congresses, manifest, schema):
     if coverage['gaps'] != table['gaps']:
         problems.append('manifest coverage gaps differ from schema.json gaps')
     texts = [*coverage['gaps'], *table['gaps'], table['purpose'], table['row_meaning'],
+             *([table['description']] if table.get('description') else []),
              *table.get('notes', {}).values(), *(column['meaning'] for column in table['columns'])]
     texts += [r[key] for r in schema['relationships'] if 'rosters' in (r['source'].get('table'), r['target'].get('table'))
               for key in ('meaning', 'scope')]

@@ -649,7 +649,8 @@ def _parse_payload(payload):
                 reading = read_reviewed_markup(data, request['markup_recovery'], evidence_dir=directory)
             else:
                 from congress_api.lake.reading_versions import HTML_CMS_CONTENT_SELECTION_VERSION
-                select_cms = ('congressional-cms-main-content/001'
+                from congress_api.parsers.congress_cms_content import POLICY as CMS_POLICY
+                select_cms = (CMS_POLICY
                               if (request['parser'] == 'html_text'
                                   and request.get('parser_version') == HTML_CMS_CONTENT_SELECTION_VERSION)
                               else False)

@@ -17,6 +17,13 @@ from congress_api.models.html_metadata import ContentCandidate, ContentLink, Htm
 from congress_api.parsers.html_metadata import page_facts, parse_document
 
 SHORT_MARKED_CHARS = 200
+# Empirical shrinkage guard fitted to 3 observed main_landmark content-loss cases
+# (9d3094e1 Nicaragua open letter outside role=main, 653afe17 Senate Commerce header
+# outside main, 9b166e1e Senate Banking notice inside a display:none container; ct-m704).
+# Fitted to three cases: this is a safety guard, not a proof against other losses.
+CMS_GUARD_MAX_CHOSEN_BYTES = 500
+CMS_GUARD_MIN_DEFAULT_BYTES = 2000
+CMS_GUARD_RATIO_DENOMINATOR = 10
 CONTENT_PROPERTY = 'content:encoded'
 CONTENT_NAMESPACE = 'http://purl.org/rss/1.0/modules/content/'
 CONTENT_PREFIX = re.compile(r'(?:^|\s)content:\s+(\S+)', re.I)
@@ -205,6 +212,43 @@ def block_text(node) -> str:
     return '\n'.join(out_lines)
 
 
+def cms_cleaned_text_too_small(chosen_bytes: int, default_bytes: int) -> bool:
+    """Return True when cleaned HTML leaves <500 UTF-8 bytes and <10% of a >=2,000-byte default.
+
+    Fitted to three observed main_landmark losses (9d3094e1, 653afe17, 9b166e1e; ct-m704):
+    guard only, not a proof that larger selections never lose content.
+    """
+    return (
+        chosen_bytes < CMS_GUARD_MAX_CHOSEN_BYTES
+        and default_bytes >= CMS_GUARD_MIN_DEFAULT_BYTES
+        and chosen_bytes * CMS_GUARD_RATIO_DENOMINATOR < default_bytes
+    )
+
+
+def _unpruned_dom_text(node) -> str:
+    """Visible+hidden non-script/style/title DOM text for shrinkage-guard baseline comparison."""
+    parts = []
+    dropped = _DROPPED | {'title'}
+    walker = etree.iterwalk(node, events=('start', 'end', 'comment', 'pi'))
+    for event, element in walker:
+        tag = element.tag.lower() if isinstance(element.tag, str) else None
+        if event == 'start':
+            if tag in dropped:
+                walker.skip_subtree()
+                continue
+            if tag in _BLOCKS:
+                parts.append('\n')
+            parts.append(element.text or '')
+            continue
+        if event == 'end' and tag in _BLOCKS and tag not in dropped:
+            parts.append('\n')
+        if element is not node:
+            parts.append(element.tail or '')
+    joined = ''.join(parts).replace(SOFT_HYPHEN, '')
+    lines = (' '.join(line.split()) for line in joined.splitlines())
+    return '\n'.join(line for line in lines if line)
+
+
 def clean_congressional_html(raw_html: str | bytes, *, declared_dates: tuple[str, ...] = ()) -> str:
     """Extract clean Congressional page text, stripping CMS ``<nav>``/header/sidebar chrome,
     preserving ``<pre>`` hearing transcripts, keeping text past void chrome tags, and removing
@@ -214,8 +258,18 @@ def clean_congressional_html(raw_html: str | bytes, *, declared_dates: tuple[str
     if tree is None:
         return ''
     roots = tree.xpath('//body') or [tree]
-    text = block_text(roots[0])
-    return strip_cms_time_travel_lines(text, declared_dates=declared_dates)
+    mains = [
+        m for m in roots[0].xpath('.//main | .//*[@role="main"]')
+        if not _hidden(m) and not any(_hidden(a) for a in m.iterancestors())
+    ]
+    target = mains[0] if len(mains) == 1 and sum(not c.isspace() for c in block_text(mains[0])) >= 40 else roots[0]
+    cleaned = strip_cms_time_travel_lines(block_text(target), declared_dates=declared_dates)
+    chosen_bytes = len(cleaned.encode('utf-8'))
+    if chosen_bytes < CMS_GUARD_MAX_CHOSEN_BYTES:
+        default_text = _unpruned_dom_text(roots[0])
+        if cms_cleaned_text_too_small(chosen_bytes, len(default_text.encode('utf-8'))):
+            return default_text
+    return cleaned
 
 
 def _tokens(name: str) -> str:

@@ -587,7 +587,7 @@ def test_the_reviewed_name_decisions_are_keyed_by_saved_bytes_and_hold_what_no_r
     assert all(re.fullmatch('[0-9a-f]{64}',row['body_sha']) and row['evidence'] and row['official_name'] and row['committee_name']
                for row in rows)
     assert len({row['body_sha'] for row in rows})==len(rows)
-    assert Counter(row['decision'] for row in rows)==dict(committee=65,official=18,neither=1)
+    assert Counter(row['decision'] for row in rows)==dict(committee=66,official=41,neither=1)
 
 
 def test_the_name_decisions_registry_is_refused_at_load_when_a_decision_could_act_unread(tmp_path):

@@ -29,6 +29,7 @@ READERS = {
     'page': ((SOURCE / 'parsers/archive_readings.py',), (*SHARED_READING_FILES, SCHEMA)),
     'html_metadata': ((SOURCE / 'parsers/html_metadata.py',), (*SHARED_READING_FILES, SCHEMA)),
     'house_floor_feed': ((SOURCE / 'parsers/house_floor_feed.py',), (*SHARED_READING_FILES, SCHEMA)),
+    'gpo_mods': ((SOURCE / 'parsers/gpo_mods.py',), (*SHARED_READING_FILES, SCHEMA)),
     # parse_once_payload runs the sniff and the page reader. compatible_versions builds the
     # selected_readings that pinned-readings.sql reads; by bytes, since it imports job plumbing.
     'readings': ((SOURCE / 'retention/sniff.py', SOURCE / 'parsers/archive_readings.py'),
@@ -99,6 +100,8 @@ def snapshot(root=ROOT):
         'house_floor_feed': dict(version=pins['house_floor_feed'], **_fingerprints(closure, 'house_floor_feed'),
                                 limits=dict(stored_bytes=readings.MAX_STORED_BYTES, decoded_bytes=readings.MAX_DECODED_BYTES),
                                 policy=readings.worker_limits('house_floor_feed')),
+        'gpo_mods': dict(version=pins['gpo_mods'], **_fingerprints(closure, 'gpo_mods'),
+                        limits=limits, policy=readings.worker_limits('gpo_mods')),
         'readings': dict(version=pins['readings'], **bundle, limits=limits, policy=readings.worker_limits()),
         **body_text_evidence(closure),
     }
@@ -183,6 +186,9 @@ def sample_digest(parser, *, root=ROOT):
         values = readings.read_body(fixture.read_bytes(), parser)
     elif parser == 'house_floor_feed':
         fixture = root / 'packages/congress_api/tests/fixtures/house_floor/retained-entries.xml'
+        values = readings.read_body(fixture.read_bytes(), parser)
+    elif parser == 'gpo_mods':
+        fixture = root / 'packages/congress_api/tests/fixtures/gpo_metadata/CHRG-115hhrg24725.xml'
         values = readings.read_body(fixture.read_bytes(), parser)
     else:
         cases = json.loads((root / 'model/fixtures/parser-cases.json').read_text())

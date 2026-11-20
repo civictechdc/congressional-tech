@@ -214,9 +214,9 @@ def _final_provenance(initial,raw_store,imported,identities,*,acknowledgements=N
 def derived_parsers(spec):
     """Derived readings passes a run asks for; default none, so a first run never demands a backfill."""
     value=spec.get('derived_parsers',[])
-    # The scoped daily path below currently implements HTML metadata admission.
+    # The scoped daily path below implements HTML metadata and GPO MODS admission.
     # Other derived readers run explicitly until their daily baseline is qualified.
-    supported=('html_metadata',)
+    supported=('html_metadata','gpo_mods')
     if (not isinstance(value,list) or any(not isinstance(p,str) or p not in supported for p in value)
             or len(set(value))!=len(value)):
         raise ValueError('derived_parsers must list distinct supported daily parsers: '+', '.join(supported))
@@ -691,7 +691,7 @@ def _copy_html_input(pin, target):
     return target
 
 
-def _scope_html_inputs(scope, heads, *, engine, work, allow_empty=False):
+def _scope_html_inputs(scope, heads, *, engine, work, allow_empty=False, parser='html_metadata'):
     keys = pq.read_table(scope, columns=['body_sha']).column('body_sha')
     if (not pa.types.is_string(keys.type) or (not len(keys) and not allow_empty) or keys.null_count
             or (len(keys) and not pc.all(pc.match_substring_regex(keys, '^[0-9a-f]{64}$')).as_py())
@@ -700,19 +700,21 @@ def _scope_html_inputs(scope, heads, *, engine, work, allow_empty=False):
     inputs = [tables.table_input('scope_keys', scope),
               tables.table_input('captures', heads['captures']),
               tables.table_input('readings', heads['readings'])]
+    extra_cols = ',c.complete,c.http_status,c.url,c.requested_url' if parser != 'html_metadata' else ''
+    parser_sql = "'" + parser.replace("'", "''") + "'"
     steps = [
         dict(name='candidate_shas', materialize=True,
              sql="SELECT arrow_cast(decode(body_sha,'hex'),'FixedSizeBinary(32)') AS body_sha FROM scope_keys"),
-        dict(name='scoped_captures', materialize=True, sql='''
+        dict(name='scoped_captures', materialize=True, sql=f'''
             SELECT c.sha256,c.sniffed_format,c.sniff_version,c.intact,c.media_type,c.bytes,
-                c.stored_suffix,c.stored_bytes,c.stored_md5,c.receipt_key,c.receipt_line,c.capture_index
+                c.stored_suffix,c.stored_bytes,c.stored_md5,c.receipt_key,c.receipt_line,c.capture_index{extra_cols}
             FROM candidate_shas k JOIN captures c ON k.body_sha=c.sha256'''),
     ]
     checks = run_job(work, engine, inputs=inputs, steps=steps, outputs=[
         parquet_output(work, 'captures', 'SELECT * FROM scoped_captures',
                        ['receipt_key', 'receipt_line', 'capture_index']),
-        parquet_output(work, 'readings', """SELECT r.* FROM candidate_shas k
-            JOIN readings r ON k.body_sha=r.body_sha WHERE r.parser IN ('sniff','html_metadata')""", readings.PK),
+        parquet_output(work, 'readings', f"""SELECT r.* FROM candidate_shas k
+            JOIN readings r ON k.body_sha=r.body_sha WHERE r.parser IN ('sniff',{parser_sql})""", readings.PK),
     ], queries=[dict(name='coverage', sql='SELECT count(DISTINCT sha256) AS bodies FROM scoped_captures')])
     if checks['coverage'][0]['bodies'] != len(keys):
         raise ValueError('HTML metadata scope contains bodies missing from the pinned captures')
@@ -759,7 +761,7 @@ def _carry_html_metadata(work_list,scoped,max_items,max_bytes,*,engine,work):
     return carried
 
 
-def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work):
+def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work,parser='html_metadata'):
     """Read only missing pairs for bodies admitted after a qualified immutable baseline.
 
     A fresh attempt uses the same baseline, so committed receipts cannot hide an
@@ -771,7 +773,7 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
     read (_carry_html_metadata) and the report names the rest, which the next night's
     selection finds still unread. Unknown stored sizes at the read still refuse.
     """
-    scope=derived_scopes(spec)['html_metadata']
+    scope=derived_scopes(spec)[parser]
     baseline=scope['captures']
     if baseline['table_uuid']!=heads['captures']['table_uuid']:
         raise ValueError('Derived baseline must name the current captures table')
@@ -784,10 +786,11 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
     inputs.append(dict(name='unreadable',kind='json_lines',files=files,
         schema=dict(fields=[field(k,v) for k,v in schema.items()],metadata={})) if files
         else json_input(scope_work,'unreadable',[],**schema))
+    parser_sql="'"+parser.replace("'","''")+"'"
     observed=run_job(scope_work,engine,inputs=inputs,steps=[
-        dict(name='reconsidered_shas',materialize=True,sql='''
+        dict(name='reconsidered_shas',materialize=True,sql=f'''
             SELECT decode(u.body_sha256,'hex') AS body_sha FROM unreadable u
-            WHERE u.parser='html_metadata' AND u.body_sha256 IS NOT NULL
+            WHERE u.parser={parser_sql} AND u.body_sha256 IS NOT NULL
                 AND coalesce(u.reason,'')<>'withdrawn'
                 AND EXISTS (SELECT 1 FROM unreadable newer WHERE newer.supersedes=u.id)'''),
         # Baseline captures repeat a body for each capture occurrence. Membership
@@ -806,7 +809,7 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
             FROM reconsidered_shas r JOIN captures c ON r.body_sha=c.sha256
             WHERE EXISTS (SELECT 1 FROM baseline_keys b WHERE b.sha256=r.body_sha)''')])
     scoped=work/'scope'
-    count=_scope_html_inputs(scope_work/'body-scope.parquet',heads,engine=engine,work=scoped,allow_empty=True)
+    count=_scope_html_inputs(scope_work/'body-scope.parquet',heads,engine=engine,work=scoped,allow_empty=True,parser=parser)
     source=_body_source(spec,raw_store,work/'readings')
     if _listed_reads(spec,raw_store):source['captured_copies']=True
     reconsidered=observed['reconsidered_baseline'][0]['n']
@@ -816,7 +819,7 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
         return readings.run(engine=engine,work=work/name,mode='daily',execute=False,
             max_work_items=spec['max_work_items'],existing=scoped/'readings.parquet',
             captures=scoped/'captures.parquet',unreadable_files=unreadable_snapshot.files(),
-            decided_at=spec['decided_at'],parser='html_metadata',**source)
+            decided_at=spec['decided_at'],parser=parser,**source)
     try:
         planned=admit(scoped,'admission');pending=planned['work_list']
         known,unknown=_stored_bytes(pending)
@@ -834,7 +837,7 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
     if _listed_reads(spec,raw_store):
         custody=_listed_custody(spec,engine,raw_store,
             dict(captures=scoped/'captures.parquet',readings=scoped/'readings.parquet'),
-            planned,None,unreadable_snapshot,work/'custody',parser='html_metadata')
+            planned,None,unreadable_snapshot,work/'custody',parser=parser)
         planned=custody['planned'];listing=custody['listing']
         if planned['raw_custody']['missing_pins'] or planned['raw_custody']['conflicts']:
             raise readings.RawCustodyRequired(planned)
@@ -845,8 +848,8 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
     if missing_sizes or (stored_bytes>scope['max_stored_bytes'] and planned['work_items']>1):
         # The generic nightly backfill fallback cannot repair this scoped byte budget. One body
         # past it is read alone (at most MAX_STORED_BYTES, as _batches allows), so it cannot block.
-        return dict(status='derived_budget_required',parser='html_metadata',
-            parser_version=readings.current_version('html_metadata'),batches=[],**details)
+        return dict(status='derived_budget_required',parser=parser,
+            parser_version=readings.current_version(parser),batches=[],**details)
     current=tables.resolve_tables(engine=engine,catalog_root=spec['catalog_root'],work=work/'admitted-heads',
         tables={name:spec['tables'][name] for name in ('captures','readings')})
     if current!={name:heads[name] for name in current}:
@@ -857,14 +860,15 @@ def _daily_html_metadata(spec,heads,*,engine,raw_store,unreadable_snapshot,work)
         batch_size=spec['max_work_items'],batch_bytes=scope['max_stored_bytes'],
         table=spec['tables']['readings'],catalog_root=spec['catalog_root'],
         read_current=lambda **_:scoped/'readings.parquet',captures=scoped/'captures.parquet',
-        parser='html_metadata',decided_at=spec['decided_at'],unreadable_store=raw_store,
+        parser=parser,decided_at=spec['decided_at'],unreadable_store=raw_store,
         unreadable_snapshot=unreadable_snapshot,**source)
     return dict(result,**details)
 
 
 def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, work, decided_at,
                           tables_spec, expected_heads, scope, unreadable_snapshot, batch_size,
-                          batch_bytes=64 << 20, parser_workers=1, max_get_workers=64, body_listing=None):
+                          batch_bytes=64 << 20, parser_workers=1, max_get_workers=64, body_listing=None,
+                          parser='html_metadata'):
     """Append missing HTML metadata for a pinned body scope in bounded batches.
 
     The caller holds the archive writer lock across this call and supplies the complete
@@ -914,9 +918,9 @@ def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, 
 
     scoped = work/'scope'
     scope_file = _copy_html_input(scope, work/'body-scope.parquet')
-    report['scope_bodies'] = _scope_html_inputs(scope_file, heads, engine=engine, work=scoped)
+    report['scope_bodies'] = _scope_html_inputs(scope_file, heads, engine=engine, work=scoped, parser=parser)
     listing = _copy_html_input(body_listing, work/'body-listing.parquet') if body_listing is not None else None
-    reading_work = work/'html_metadata'
+    reading_work = work/parser
     source = _body_source({}, raw_store, reading_work, listing)
     source['captured_copies'] = listing is None
 
@@ -928,7 +932,7 @@ def produce_html_metadata(*, engine, raw_store, producer_records, catalog_root, 
     stopped = None
     try:
         result = readings.run(engine=engine, work=reading_work, mode='backfill', execute=True,
-            table=tables_spec['readings'], catalog_root=catalog_root, parser='html_metadata',
+            table=tables_spec['readings'], catalog_root=catalog_root, parser=parser,
             captures=scoped/'captures.parquet', read_current=lambda **_: scoped/'readings.parquet',
             batch_size=batch_size, batch_bytes=batch_bytes,
             decided_at=decided_at, unreadable_store=raw_store, unreadable_snapshot=unreadable_snapshot,
@@ -1257,7 +1261,7 @@ def _produce(spec,engine,raw_store,work,provenance,identities,unreadable_snapsho
                 derived_heads.update(tables.resolve_tables(**authority,work=work/(name+'-head'),
                     tables={'readings':spec['tables']['readings']}))
                 passes[step]=_daily_html_metadata(spec,derived_heads,engine=engine,raw_store=raw_store,
-                    unreadable_snapshot=unreadable_snapshot,work=work/(name+'-scoped'))
+                    unreadable_snapshot=unreadable_snapshot,work=work/(name+'-scoped'),parser=name)
                 if passes[step]['status']=='derived_budget_required':
                     report.update(status='derived_budget_required')
                     report['producerreports'][step]=passes[step]

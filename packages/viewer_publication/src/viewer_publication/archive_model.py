@@ -1789,7 +1789,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         dict(name='component_meeting_links',sql=(Path(root)/'model/sql/component-meeting-links.sql').read_text(),materialize=True)]
     steps += [dict(name='base_normalized',sql=(Path(root)/'model/sql/document-normalized.sql').read_text()+' UNION ALL '+(Path(root)/'model/sql/document-recovery-normalized.sql').read_text(),materialize=True)]
     steps += [dict(name='html_uuid_candidates',sql="SELECT doc_key,component,filename,source_url FROM base_normalized WHERE format='html' AND regexp_like(coalesce(filename,''),'(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$')",materialize=True)]
-    steps += _sql_steps(['titles','document-hearing-date-corrections','transcript-print-covers','body-cover-kinds','html-uuid-slug-fills'],root=root)
+    steps += _sql_steps(['titles','gpo-mods-fields','gpo-mods-packages','gpo-mods-granules','landing-page-print-numbers','document-print-numbers','document-hearing-date-corrections','transcript-print-covers','body-cover-kinds','html-uuid-slug-fills'],root=root)
     from viewer_publication.archive_model_profile import completeness_checks
     steps += application_steps(root=root)
     steps += _sql_steps(PAGE_METADATA_STEPS,root=root)
@@ -1809,7 +1809,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
     final_source='CASE WHEN h.doc_key IS NULL THEN n.document_date_source ELSE h.document_date_source END'
     steps += [dict(name='normalized',sql=f"""SELECT n.* EXCLUDE(filename,own_title,own_title_source,link_title,mods_title,component,document_kind,document_family,congress,hidden,review_note,review_decided_at,removed_on,document_date,document_date_source,facts),
         CASE WHEN uf.doc_key IS NULL THEN n.filename ELSE uf.filename END AS filename,
-        t.title,t.title_source,coalesce(r.kind_override,{printed('document_kind')}) AS document_kind,
+        t.title,pn.print_number,t.title_source,coalesce(r.kind_override,{printed('document_kind')}) AS document_kind,
         {printed('document_family')} AS document_family,
         coalesce(n.congress,CASE WHEN coalesce({final_source},'')<>'filename'
          AND ({final_date})>=DATE '1935-01-04' AND date_part('year',{final_date})<=2028
@@ -1820,10 +1820,10 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         {final_date} AS document_date,
         {final_source} AS document_date_source,
         CASE WHEN coalesce(array_length(n.facts),0)>0 OR uf.doc_key IS NULL THEN n.facts ELSE uf.facts END AS facts,{page}
-        FROM titles t RIGHT JOIN (document_page_metadata pm RIGHT JOIN (document_removals x RIGHT JOIN (review_overrides r RIGHT JOIN
+        FROM document_print_numbers pn RIGHT JOIN (titles t RIGHT JOIN (document_page_metadata pm RIGHT JOIN (document_removals x RIGHT JOIN (review_overrides r RIGHT JOIN
             (document_identities d JOIN (html_uuid_slug_fills uf RIGHT JOIN (body_cover_kinds ck RIGHT JOIN (transcript_print_covers pc RIGHT JOIN (document_hearing_date_corrections h RIGHT JOIN base_normalized n ON n.doc_key=h.doc_key)
              ON n.doc_key=pc.doc_key) ON n.doc_key=ck.doc_key) ON n.doc_key=uf.doc_key) ON n.doc_key=d.document_id)
-            ON d.component=r.component) ON d.component=x.component) ON pm.doc_key=n.doc_key) ON t.doc_key=n.doc_key""",materialize=True),
+            ON d.component=r.component) ON d.component=x.component) ON pm.doc_key=n.doc_key) ON t.doc_key=n.doc_key) ON pn.doc_key=n.doc_key""",materialize=True),
         dict(name='source_input',sql=(Path(root)/'model/sql/document-source-input.sql').read_text(),materialize=True),
         dict(name='recovery_input',sql=(Path(root)/'model/sql/document-recovery-input.sql').read_text(),materialize=True)]
     url_state_meeting_dates_sql="""SELECT requested_url,cast(meeting_date AS DATE) AS meeting_date FROM url_state_meeting_dates_input

@@ -365,7 +365,7 @@ def maintain_releases(store,*,now,external_pins=(),external_pins_source=None,exe
 
 
 JOB_FIELDS={'version','bucket','catalog_root','work','external_pins','tables','thresholds'}
-JOB_OPTIONAL={'engine_config','external_pins_source','raw_verification','lake_maintenance'}
+JOB_OPTIONAL={'engine_config','external_pins_source','raw_verification','lake_maintenance','producer_chains'}
 
 
 def _daily_tables(value,base):
@@ -484,6 +484,11 @@ def load_spec(path):
         if isinstance(value['tables'],str) and (lake_cfg.get('rebuild') or lake_cfg.get('purge')):
             raise ValueError('Lake rebuild and purge name their targets: give an explicit tables map')
         result['lake_maintenance']=dict(lake_cfg)
+    if 'producer_chains' in value and value['producer_chains'] is not None:
+        chains_cfg=value['producer_chains']
+        if not isinstance(chains_cfg,dict) or set(chains_cfg)!={'publish_spec'}:
+            raise ValueError('Maintenance producer_chains requires a publish_spec path')
+        result['producer_chains']=dict(publish_spec=_local(chains_cfg['publish_spec'],base))
     return result
 
 
@@ -530,7 +535,7 @@ def plan(spec,*,storage_factory=None,now=None):
         tables=spec['tables'],
         thresholds=spec['thresholds'],
     )
-    for key in ('external_pins_source','raw_verification','lake_maintenance'):
+    for key in ('external_pins_source','raw_verification','lake_maintenance','producer_chains'):
         if key in spec:
             result[key]=spec[key]
     client=ReadOnlyClient(_connect(spec,storage_factory,retries={'total_max_attempts':1}))
@@ -625,10 +630,11 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
     from docspec_client.client import NativeDatasets,runtime_record
     runtime_factory=runtime_factory or NativeDatasets.from_config
     current_time=_time(now or datetime.now(timezone.utc))
-    need_engine=bool(spec.get('raw_verification') or spec.get('lake_maintenance'))
+    need_engine=bool(spec.get('raw_verification') or spec.get('lake_maintenance') or (execute and spec.get('producer_chains')))
     engine_config,choice=_engine_config(spec,need_engine=need_engine)
     ran=None
     raw_report=None
+    chains_report=None
     lake_report=dict(decisions={},rebuilt={},purged=[])
     with (runtime_factory(engine_config) if engine_config else nullcontext(None)) as engine:
         if engine is not None:
@@ -691,6 +697,17 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
                     catalog_root=spec['catalog_root'],
                 )
                 lake_report['purged'].append(dict(table=table_name,result=purged))
+        if execute and spec.get('producer_chains'):
+            from viewer_publication.producer_proof import verify_producer_chains
+            chains_report=verify_producer_chains(
+                spec['producer_chains']['publish_spec'],
+                engine=engine,
+                client=reader,
+                bucket=spec['bucket'],
+                catalog_root=spec['catalog_root'],
+                tables=spec['tables'],
+                work=work/'producer-chains',
+            )
     work.mkdir(parents=True,exist_ok=True)
     result=dict(
         status='executed' if execute else 'dry_run',
@@ -703,6 +720,7 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,now=None,execute=Tr
         releases=releases,
         raw_verification=raw_report,
         lake_maintenance=lake_report,
+        **({'producer_chains':chains_report} if chains_report is not None else {}),
     )
     (work/'maintenance-report.json').write_text(json.dumps(result,sort_keys=True)+'\n',encoding='utf-8')
     return result

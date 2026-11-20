@@ -40,16 +40,30 @@ def _scan_pdf(label: str) -> bytes:
     return raw
 
 
-def test_committed_v12_selection_manifest_loads_and_matches_pinned_digest():
+def test_committed_v12_and_v13_selection_manifests_load_and_match_pinned_digests():
+    parsers = {p: readings.current_version(p) for p in ('pdf_text', 'html_text', 'xml_text', 'warc')}
+    v12_path = body_text_publish.ROOT / 'model/jobs/inputs/body-text-selection-v12/selection.json.gz'
+    assert v12_path.is_file()
+    loaded_v12 = body_text_selection.load(v12_path, parsers)
+    assert loaded_v12['identity']['sha256'] == 'c270fe1bfa190976511f9077d9ae9b1bb45cea9c44f78ae6567564cff64fa91b'
+    assert loaded_v12['identity']['overrides'] == 22_921
+    assert loaded_v12['identity']['excluded_bodies'] == 416
+
     sel_path = body_text_publish.DEFAULT_SELECTION
     assert sel_path.is_file()
-    loaded = body_text_selection.load(
-        sel_path,
-        {p: readings.current_version(p) for p in ('pdf_text', 'html_text', 'xml_text', 'warc')},
-    )
-    assert loaded['identity']['sha256'] == 'c270fe1bfa190976511f9077d9ae9b1bb45cea9c44f78ae6567564cff64fa91b'
-    assert loaded['identity']['overrides'] == 22_921
-    assert loaded['identity']['excluded_bodies'] == 416
+    assert sel_path.parent.name == 'body-text-selection-v13'
+    assert body_text_publish.DEFAULT_LIMITS_DOC.is_file()
+    loaded_v13 = body_text_selection.load(sel_path, parsers)
+    assert loaded_v13['identity']['sha256'] == 'bbeb4e1c94e195ac8ec5085578331543b2b2f709e77d2c83e523474e07bbe10b'
+    assert loaded_v13['identity']['overrides'] == 22_918
+    assert loaded_v13['identity']['excluded_bodies'] == 416
+    v13_override_shas = {r['body_sha256'] for r in loaded_v13['overrides']}
+    for reverted in (
+        '653afe17debd09439793c2472faa1035f771dd2e45a02b98ccd5fdd22f5e7592',
+        '9b166e1e24e5999d4166f4f0ec130c3fc4f3fc6b946b10f17a17a391897f457f',
+        '9d3094e1f7f54a147d4f9da1b3adbc5b1663b7618f0f4d6d4b5a898450e346a7',
+    ):
+        assert reverted not in v13_override_shas
 
 
 def test_portable_incremental_pipeline_separates_sniff_table_and_exports_mixed_iceberg_versions(tmp_path):

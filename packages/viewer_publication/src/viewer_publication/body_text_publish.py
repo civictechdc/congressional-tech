@@ -32,7 +32,8 @@ from viewer_publication.archive_publish_job import publication_configuration
 from viewer_publication.body_text_ssot import verify_ssot_export
 
 ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_SELECTION = ROOT / 'model/jobs/inputs/body-text-selection-v12/selection.json.gz'
+DEFAULT_SELECTION = ROOT / 'model/jobs/inputs/body-text-selection-v13/selection.json.gz'
+DEFAULT_LIMITS_DOC = ROOT / 'model/jobs/inputs/body-text-selection-v13/LIMITS.md'
 DEFAULT_DAILY_SPEC = ROOT / 'model/jobs/publish-daily.json'
 DEFAULT_PUBLISH_SPEC = ROOT / 'model/jobs/publish.json'
 RELEASE_POINTER_KEY = 'viewer-publications/manifest.json'

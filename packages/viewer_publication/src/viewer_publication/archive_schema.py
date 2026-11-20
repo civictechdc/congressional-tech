@@ -76,6 +76,8 @@ def validate_schema(schema):
     for name, table in tables.items():
         if not table.get('purpose') or not table.get('row_meaning'):
             raise ValueError(f'Missing table meaning: {name}')
+        if 'description' in table and (not isinstance(table['description'], str) or not table['description'].strip()):
+            raise ValueError(f'Invalid table description: {name}')
         identity = table['identity']
         kinds = endpoint(dict(table=name, fields=identity['fields']))
         if len(set(identity['fields'])) != len(identity['fields']):
@@ -360,7 +362,10 @@ def render_reference(schema):
     for table in schema['files']:
         name = table['name'].removesuffix('.parquet')
         identity = table['identity']
-        lines += [f'## `{name}` — {table["purpose"]}', '', table['row_meaning'] + '.', '',
+        lines += [f'## `{name}` — {table["purpose"]}', '']
+        if table.get('description'):
+            lines += [table['description'], '']
+        lines += [table['row_meaning'] + '.', '',
             f'Identity: `{", ".join(identity["fields"])}` ({identity["kind"]}; {identity["scope"]}).', '']
         if identity.get('note'):
             lines += [identity['note'], '']

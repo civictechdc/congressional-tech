@@ -11,7 +11,7 @@ import pyarrow.parquet as pq
 
 from congress_api.retention.provenance import json_input, run_job
 from viewer_publication.archive_format import _settings
-from viewer_publication.body_text_ssot import slice_pages
+from viewer_publication.body_text_slices import slice_pages
 
 ROOT = Path(__file__).parents[4]
 FIELDS = ("body_sha256", "parser_version", "text_sha256", "source_review_sha256", "cover_document_kind")
@@ -62,7 +62,7 @@ def classify_selected_covers(records, *, engine, work, source_review_sha256, roo
             raise ValueError("PDF cover input requires selected PDF text")
         if sha256(row["text"].encode()).digest() != row["text_sha256"]:
             raise ValueError("PDF cover input text digest mismatch")
-        text_head = slice_pages(row["text"], row["page_offsets"], max_pages=2)[:8000]
+        text_head = slice_pages(row["text"], row["page_offsets"], max_pages=1)[:2048]
         rows.append(dict(body_sha256=row["body_sha"].hex(), parser_version=row["parser_version"],
                          text_sha256=row["text_sha256"].hex(), source_review_sha256=source_review_sha256,
                          text_head=text_head, text_bytes=len(text_head.encode())))

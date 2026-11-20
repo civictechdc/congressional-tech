@@ -53,8 +53,16 @@ WITH thresholds AS (
         ) AS is_gpo_or_steno_hearing,
         regexp_like(
             coalesce(text_head, ''),
-            '(?is)\b(?:memorandum|congressional\s+distribution\s+memorandum|testimony\s+before\s+the)\b'
+            '(?is)\b(?:memorandum|m\s+e\s+m\s+o\s+r\s+a\s+n\s+d\s+u\s+m|(?:staff|majority|minority|subcommittee|committee)\s+memo\b|to\s*:\s*[^\n]{3,160}\s+from\s*:\s*[^\n]{0,120}\b(?:staff|counsel|chairman|chairwoman|chair|ranking\s+member)|congressional\s+distribution\s+memorandum|hearing\s+charter|mark-?up\s+memorandum|testimony\s+(?:before\s+the|of\b)|(?:prepared\s+|written\s+)?statement\s+of\b)\b'
         ) AS is_crs_memo_or_testimony,
+        regexp_like(
+            coalesce(text_head, ''),
+            '(?is)\b(?:1[0-2][0-9]th\s+congress.{0,160}?\b(?:rept\.|report)\b|committed\s+to\s+the\s+committee\s+of\s+the\s+whole\s+house|ordered\s+to\s+be\s+printed)\b'
+        ) AS is_committee_report,
+        regexp_like(
+            coalesce(text_head, ''),
+            '(?is)\b(?:re\s*:\s*letter\s+in\s+support|letter\s+(?:in|of)\s+support|dear\s+(?:chairman|chairwoman|chair|senator|senators|representative|representatives|ranking\s+member))\b'
+        ) AS is_support_letter,
         regexp_like(
             coalesce(text_head, ''),
             '(?is)\bGAO-[0-9]{2}-[0-9]{3,6}[TR]\b|\btestimony\b'
@@ -89,12 +97,14 @@ SELECT f.body_sha, max(f.status) AS status,
             AND NOT f.is_pdf_magic
             AND coalesce(f.text_bytes, 0) >= 80
             AND CASE r.id
+                WHEN 'cover:questionnaire' THEN NOT f.is_support_letter
                 WHEN 'cover:subpoena' THEN NOT f.is_subpoena_memo
                 WHEN 'cover:attendance-sheet' THEN NOT f.is_roll_call_vote
                 WHEN 'cover:meeting-notice' THEN NOT f.is_markup_action_or_subpoena
                 WHEN 'cover:witness-list' THEN NOT f.is_gpo_or_steno_hearing
-                WHEN 'cover:crs-report' THEN NOT f.is_crs_memo_or_testimony
-                WHEN 'cover:gao-report' THEN NOT f.is_gao_testimony_or_corresp
+                WHEN 'cover:crs-report' THEN NOT f.is_crs_memo_or_testimony AND NOT f.is_committee_report
+                WHEN 'cover:gao-report' THEN NOT f.is_gao_testimony_or_corresp AND NOT f.is_committee_report
+                WHEN 'cover:cost-estimate' THEN NOT f.is_crs_memo_or_testimony AND NOT f.is_committee_report
                 WHEN 'cover:staff-report' THEN NOT f.is_staff_report_excluded
                 ELSE true
             END

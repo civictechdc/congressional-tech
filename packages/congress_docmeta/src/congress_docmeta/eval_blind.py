@@ -21,7 +21,8 @@ import json
 from pathlib import Path
 import re
 import time
-from typing import Any
+from typing import Any, Mapping
+import unicodedata
 
 from .gold import (
     DEFAULT_DOCS8_JSON,
@@ -85,6 +86,148 @@ def _norm_str(x: Any) -> str:
     return re.sub(r"\s+", " ", str(x)).strip().lower()
 
 
+def _norm_subc(name: Any) -> str:
+    """Subcommittee comparison key insensitive to `&`/`and`, `the`, punctuation, and leading committee prefix."""
+    flat = re.sub(r"[^a-z0-9]+", " ", unicodedata.normalize("NFKC", str(name or "")).lower().replace("&", "and"))
+    flat = re.sub(r"^.*?\b(?:select )?subcommittee (?:on|for) ", "", f" {flat} ").strip()
+    return " ".join(re.sub(r"\b(?:the|and)\b", " ", flat).split())
+
+
+_PARTY_STATE_RE = re.compile(r"\(\s*[DRI]\s*[-–]\s*[A-Z]{2}(?:\s*[-–]\s*(?:\d{1,2}|AL|At\s+Large))?\s*\)", re.I)
+_TRAILING_TITLE_RE = re.compile(
+    r",\s*(?:(?:Subcommittee\s+|Full\s+Committee\s+|Acting\s+|Vice\s+|Co-?)?"
+    r"(?:Chair(?:man|woman|person)?|Ranking\s+(?:Minority\s+)?Member|Member|Senator|Representative|"
+    r"Director|Secretary|President|Commissioner|Administrator|Counsel|Chief|CEO)\b.*)$",
+    re.I,
+)
+_HONORIFIC_EXT_RE = re.compile(
+    r"\b(?:The\s+Honorable|Honorable|Hon\.?|Rep\.?|Representative|Sen\.?|Senator|Congressman|Congresswoman|"
+    r"Chairman|Chairwoman|Chair|Mr\.?|Ms\.?|Mrs\.?|Miss|Dr\.?|Prof\.?|Professor|Amb\.?|Ambassador|"
+    r"Gen\.?|General|Adm\.?|Admiral|Col\.?|Colonel|Jr\.?|Sr\.?|II|III|IV|V|M\.?D\.?|Ph\.?D\.?|Esq\.?|Ret\.?)\b",
+    re.I,
+)
+_NICKNAME_GROUPS: tuple[frozenset[str], ...] = (
+    frozenset({"elizabeth", "liz", "beth", "betsy"}),
+    frozenset({"william", "bill", "billy", "will"}),
+    frozenset({"robert", "bob", "bobby", "rob"}),
+    frozenset({"james", "jim", "jimmy"}),
+    frozenset({"michael", "mike"}),
+    frozenset({"richard", "dick", "rick"}),
+    frozenset({"charles", "chuck", "charlie"}),
+    frozenset({"thomas", "tom", "tommy"}),
+    frozenset({"joseph", "joe"}),
+    frozenset({"edward", "ed", "ted"}),
+    frozenset({"daniel", "dan", "danny"}),
+    frozenset({"christopher", "chris"}),
+    frozenset({"benjamin", "ben"}),
+    frozenset({"bernard", "bernie"}),
+    frozenset({"patrick", "pat"}),
+    frozenset({"kenneth", "ken"}),
+    frozenset({"stephen", "steven", "steve"}),
+    frozenset({"gregory", "greg"}),
+    frozenset({"timothy", "tim"}),
+    frozenset({"anthony", "tony"}),
+    frozenset({"matthew", "matt"}),
+    frozenset({"nicholas", "nick"}),
+    frozenset({"alexander", "alex"}),
+    frozenset({"katherine", "catherine", "kathy", "katie", "kate"}),
+    frozenset({"margaret", "peggy", "meg", "maggie"}),
+    frozenset({"deborah", "debbie", "deb"}),
+)
+_NICKNAME_MAP: dict[str, frozenset[str]] = {n: grp for grp in _NICKNAME_GROUPS for n in grp}
+
+
+def _fold_ascii_letters(text: str) -> str:
+    nfkd = unicodedata.normalize("NFKD", text or "")
+    return "".join(ch for ch in nfkd if not unicodedata.combining(ch))
+
+
+def parse_person_key_v2(p: Mapping[str, Any] | str) -> tuple[str, str, tuple[str, ...]]:
+    """Return `(kind, primary_token, given_tokens)` for 1-to-1 persona matching (`ct-2cig`)."""
+    if isinstance(p, Mapping):
+        raw_name = str(p.get("name") or "")
+        etype = str(p.get("entity_type") or "")
+    else:
+        raw_name, etype = str(p or ""), ""
+
+    folded = _fold_ascii_letters(raw_name).strip()
+    if etype == "organization":
+        org_key = re.sub(r"[^a-z0-9]+", " ", folded.lower()).strip()
+        return ("org", org_key, ())
+
+    s = _PARTY_STATE_RE.sub(" ", folded)
+    s = _TRAILING_TITLE_RE.sub("", s)
+    s = _HONORIFIC_EXT_RE.sub(" ", s)
+    s = re.sub(r"\s+", " ", s).strip(" ,.;:-")
+    # Handle `Last, First [Middle]` inversion when a single comma separates two alpha segments
+    if "," in s:
+        left, right = s.split(",", 1)
+        left_t = [t for t in re.findall(r"[A-Za-z'-]+", left) if any(c.isalpha() for c in t)]
+        right_t = [t for t in re.findall(r"[A-Za-z'-]+", right) if any(c.isalpha() for c in t)]
+        if 1 <= len(left_t) <= 2 and 1 <= len(right_t) <= 3:
+            s = f"{right.strip()} {left.strip()}"
+
+    toks = [t.strip("'-").lower() for t in re.findall(r"[A-Za-z'-]+", s)]
+    toks = [t for t in toks if t and any(c.isalpha() for c in t)]
+    if not toks:
+        return ("person", _norm_str(raw_name), ())
+    # Drop trailing 1-char initials left by stray citations (`Paul S. 558` -> `paul`, given=`s`? No: keep `paul` only if no surname)
+    while len(toks) > 1 and len(toks[-1]) == 1:
+        toks.pop()
+    surname = toks[-1]
+    given = tuple(toks[:-1])
+    return ("person", surname, given)
+
+
+def _given_compatible(ga: tuple[str, ...], gb: tuple[str, ...]) -> tuple[bool, int]:
+    """`(compatible, specificity_rank)` for two given-name token tuples sharing a surname."""
+    if not ga or not gb:
+        return True, 1  # bare surname (`Chairman Pallone`) matches `Frank Pallone` when unambiguous
+    set_a, set_b = set(ga), set(gb)
+    if set_a & set_b:
+        return True, 3 if any(len(x) > 1 for x in (set_a & set_b)) else 2
+    fa, fb = ga[0], gb[0]
+    if _NICKNAME_MAP.get(fa) and fb in _NICKNAME_MAP[fa]:
+        return True, 3
+    if len(fa) == 1 and any(t.startswith(fa) for t in gb):
+        return True, 2
+    if len(fb) == 1 and any(t.startswith(fb) for t in ga):
+        return True, 2
+    if len(fa) >= 3 and len(fb) >= 3 and (fa.startswith(fb) or fb.startswith(fa)):
+        return True, 2
+    return False, 0
+
+
+def _match_persona_pairs(
+    pred_pers: list[dict[str, Any]],
+    gold_pers: list[dict[str, Any]],
+) -> list[tuple[int, int]]:
+    """Greedy 1-to-1 matching by specificity so two Smiths stay distinct and `Jane` != `John` (`ct-2cig`)."""
+    p_keys = [parse_person_key_v2(p) for p in pred_pers]
+    g_keys = [parse_person_key_v2(g) for g in gold_pers]
+    cands: list[tuple[int, int, int]] = []
+    for pi, pk in enumerate(p_keys):
+        for gi, gk in enumerate(g_keys):
+            if pk[0] != gk[0] or pk[1] != gk[1] or not pk[1]:
+                continue
+            if pk[0] == "org":
+                cands.append((4, pi, gi))
+            else:
+                ok, rank = _given_compatible(pk[2], gk[2])
+                if ok:
+                    cands.append((rank, pi, gi))
+    cands.sort(key=lambda item: (-item[0], item[1], item[2]))
+    used_p: set[int] = set()
+    used_g: set[int] = set()
+    pairs: list[tuple[int, int]] = []
+    for _, pi, gi in cands:
+        if pi not in used_p and gi not in used_g:
+            used_p.add(pi)
+            used_g.add(gi)
+            pairs.append((pi, gi))
+    return pairs
+
+
 class _F1:
     def __init__(self) -> None:
         self.tp = self.p = self.g = 0
@@ -93,6 +236,11 @@ class _F1:
         self.tp += len(pred & gold)
         self.p += len(pred)
         self.g += len(gold)
+
+    def add_counts(self, tp: int, p: int, g: int) -> None:
+        self.tp += tp
+        self.p += p
+        self.g += g
 
     def value(self) -> float:
         return 100.0 if self.p + self.g == 0 else round(200.0 * self.tp / (self.p + self.g), 1)
@@ -114,8 +262,8 @@ def _personas(obj: dict[str, Any]) -> list[dict[str, Any]]:
     return [p for p in (raw if isinstance(raw, list) else []) if isinstance(p, dict) and str(p.get("name") or "").strip()]
 
 
-def score(objs: list[dict[str, Any] | None], golds: list[dict[str, Any]], valid_flags: list[bool]) -> dict[str, Any]:
-    """Score final V4 objects against gold. Missing scalar keys count as wrong only when gold has the key."""
+def score_legacy(objs: list[dict[str, Any] | None], golds: list[dict[str, Any]], valid_flags: list[bool]) -> dict[str, Any]:
+    """Pre-`ct-2cig` scorer kept so reports emit old and new metrics side by side."""
     n = len(golds)
     hit: Counter[str] = Counter()
     tot: Counter[str] = Counter()
@@ -160,14 +308,100 @@ def score(objs: list[dict[str, Any] | None], golds: list[dict[str, Any]], valid_
             {(surname_of(p["name"]), str(p.get("entity_type"))) for p in p_pers},
             {(surname_of(str(p["name"])), str(p.get("entity_type"))) for p in g_pers},
         )
-        # `work_addr`, person by person. Gold leaves it blank for many people whose office the text prints, so a
-        # predicted address on a gold-blank person is counted apart: gold can neither confirm nor refute it.
         g_addr = {surname_of(str(p["name"])): str(p["work_addr"]) for p in g_pers if p.get("work_addr")}
         p_addr = {surname_of(p["name"]): str(p["work_addr"]) for p in p_pers if p.get("work_addr")}
         addr["gold"] += len(g_addr)
         addr["pred"] += len(p_addr)
         addr["matched"] += sum(1 for k, a in p_addr.items() if k in g_addr and work_addr_match(a, g_addr[k]))
         addr["pred_gold_has"] += sum(1 for k in p_addr if k in g_addr)
+        per_doc.append({"gold_kind": pk_g, "pred_kind": pk_p, "kind_ok": pk_p == pk_g})
+
+    def pct(a: int, b: int) -> float:
+        return round(100.0 * a / max(b, 1), 1)
+
+    metrics: dict[str, Any] = {
+        "n": n,
+        "strict_valid_pct": pct(sum(valid_flags), n),
+        **{f"{k}_acc": pct(hit[k], tot[k]) for k in SCALAR_KEYS},
+        "primary_kind_family_acc": pct(kind_family, tot["primary_kind"]),
+        **{f"{k}_f1": v.value() for k, v in f1.items()},
+        "other_count": other,
+        "roster_spam_docs": roster_spam,
+        "work_addr_gold": addr["gold"],
+        "work_addr_pred": addr["pred"],
+        "work_addr_matched": addr["matched"],
+        "work_addr_recall": pct(addr["matched"], addr["gold"]),
+        "work_addr_precision": pct(addr["matched"], addr["pred"]),
+        "work_addr_agreement": pct(addr["matched"], addr["pred_gold_has"]),
+        "work_addr_pred_gold_blank": addr["pred"] - addr["pred_gold_has"],
+    }
+    headline = (
+        "primary_kind_acc", "status_acc", "chamber_acc", "congress_acc", "committees_f1",
+        "dates_f1", "personas_name_f1", "personas_name_role_f1",
+    )
+    metrics["headline_mean"] = round(sum(float(metrics[k]) for k in headline) / len(headline), 2)
+    return {"metrics": metrics, "per_doc": per_doc}
+
+
+def score(objs: list[dict[str, Any] | None], golds: list[dict[str, Any]], valid_flags: list[bool]) -> dict[str, Any]:
+    """Score final V4 objects against gold (`ct-2cig`: role-aware dates, false-positive scalars, normalized subcommittees, 1-to-1 personas)."""
+    n = len(golds)
+    hit: Counter[str] = Counter()
+    tot: Counter[str] = Counter()
+    f1 = {k: _F1() for k in ("committees", "dates", "personas_name", "personas_name_role", "personas_name_etype", *LIST_KEYS)}
+    kind_family = other = roster_spam = 0
+    addr: Counter[str] = Counter()
+    per_doc: list[dict[str, Any]] = []
+
+    for obj_raw, gold in zip(objs, golds):
+        obj = obj_raw if isinstance(obj_raw, dict) else {}
+        for k in SCALAR_KEYS:
+            g_has = gold.get(k) not in (None, "")
+            p_has = obj.get(k) not in (None, "")
+            if g_has or p_has:
+                tot[k] += 1
+                hit[k] += int(g_has and p_has and obj.get(k) == gold.get(k))
+        pk_p, pk_g = obj.get("primary_kind"), gold.get("primary_kind")
+        other += int(pk_p == "other")
+        if pk_g is not None or pk_p is not None:
+            kind_family += int(
+                pk_g is not None
+                and pk_p is not None
+                and (pk_p == pk_g or KIND_FAMILIES.get(pk_p, pk_p) == KIND_FAMILIES.get(pk_g, pk_g))
+            )
+
+        f1["committees"].add(
+            {norm_cmt(x) for x in obj.get("committees") or [] if isinstance(x, str) and norm_cmt(x)},
+            {norm_cmt(x) for x in gold.get("committees") or [] if isinstance(x, str) and norm_cmt(x)},
+        )
+        f1["dates"].add(
+            {(k, str(obj[k])) for k in DATE_KEYS if obj.get(k) not in (None, "", "N/A")},
+            {(k, str(gold[k])) for k in DATE_KEYS if gold.get(k) not in (None, "", "N/A")},
+        )
+        for k in LIST_KEYS:
+            norm_fn = _norm_subc if k == "subcommittees" else _norm_str
+            f1[k].add(
+                {v for x in obj.get(k) or [] if isinstance(x, (str, int)) and (v := norm_fn(x))},
+                {v for x in gold.get(k) or [] if isinstance(x, (str, int)) and (v := norm_fn(x))},
+            )
+
+        p_pers, g_pers = _personas(obj), _personas(gold)
+        roster_spam += int(len(p_pers) > 10 or (pk_g == "committee_vote" and len(p_pers) > 4))
+        pairs = _match_persona_pairs(p_pers, g_pers)
+        f1["personas_name"].add_counts(len(pairs), len(p_pers), len(g_pers))
+        role_tp = sum(1 for pi, gi in pairs if str(p_pers[pi].get("role")) == str(g_pers[gi].get("role")))
+        etype_tp = sum(1 for pi, gi in pairs if str(p_pers[pi].get("entity_type")) == str(g_pers[gi].get("entity_type")))
+        f1["personas_name_role"].add_counts(role_tp, len(p_pers), len(g_pers))
+        f1["personas_name_etype"].add_counts(etype_tp, len(p_pers), len(g_pers))
+
+        g_addr_idx = {gi: str(g_pers[gi]["work_addr"]) for gi in range(len(g_pers)) if g_pers[gi].get("work_addr")}
+        p_addr_idx = {pi: str(p_pers[pi]["work_addr"]) for pi in range(len(p_pers)) if p_pers[pi].get("work_addr")}
+        addr["gold"] += len(g_addr_idx)
+        addr["pred"] += len(p_addr_idx)
+        for pi, gi in pairs:
+            if pi in p_addr_idx and gi in g_addr_idx:
+                addr["pred_gold_has"] += 1
+                addr["matched"] += int(work_addr_match(p_addr_idx[pi], g_addr_idx[gi]))
         per_doc.append({"gold_kind": pk_g, "pred_kind": pk_p, "kind_ok": pk_p == pk_g})
 
     def pct(a: int, b: int) -> float:
@@ -215,19 +449,31 @@ def load_record_sets(names: list[str]) -> dict[str, tuple[list[dict[str, Any]], 
 
 
 def load_sweep_sets(
-    names: list[str], gold_jsonl: Path, extra: dict[str, Path] | None = None
+    names: list[str],
+    gold_jsonl: Path,
+    extra: dict[str, Path] | None = None,
+    *,
+    augment_personas: bool = False,
 ) -> dict[str, tuple[list[dict[str, Any]], list[dict[str, Any]]]]:
     """`name -> (queue rows, golds)` for the held-out docs the sweep queue contains.
 
-    `extra` adds whole labeled files as their own sets (every row that is in the queue), for gold that was
-    never trained on or was split off before training.
+    Held-out evaluation defaults to `augment_personas=False` (untouched reviewer gold, `ct-2cig`);
+    pass `augment_personas=True` only when computing side-by-side legacy metrics.
     """
     out: dict[str, tuple[list[dict[str, Any]], list[dict[str, Any]]]] = {}
     for name, path in (extra or {}).items():
-        rows = [r for r in parse_gold_rows(path, (DEFAULT_VAL48_JSON, DEFAULT_DOCS8_JSON))[0] if r["queue_row"] is not None]
+        rows = [
+            r
+            for r in parse_gold_rows(
+                path, (DEFAULT_VAL48_JSON, DEFAULT_DOCS8_JSON), augment_personas=augment_personas
+            )[0]
+            if r["queue_row"] is not None
+        ]
         out[name] = ([r["queue_row"] for r in rows], [r["gold_v4"] for r in rows])
     if "valid_sweep" in names:
-        parsed, _ = parse_gold_rows(gold_jsonl, (DEFAULT_VAL48_JSON, DEFAULT_DOCS8_JSON))
+        parsed, _ = parse_gold_rows(
+            gold_jsonl, (DEFAULT_VAL48_JSON, DEFAULT_DOCS8_JSON), augment_personas=augment_personas
+        )
         val_idx, _ = select_val_indices(parsed)
         rows = [parsed[i] for i in sorted(val_idx) if parsed[i]["queue_row"] is not None]
         out["valid_sweep"] = ([r["queue_row"] for r in rows], [r["gold_v4"] for r in rows])
@@ -240,7 +486,11 @@ def load_sweep_sets(
 
 
 def run_sweep_sets(
-    eng: Any, sets: dict[str, tuple[list[dict[str, Any]], list[dict[str, Any]]]], args: argparse.Namespace
+    eng: Any,
+    sets: dict[str, tuple[list[dict[str, Any]], list[dict[str, Any]]]],
+    args: argparse.Namespace,
+    *,
+    legacy_golds: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, dict[str, Any]]:
     """One pass of the real sweep over every set's queue rows, scored per set."""
     import tempfile
@@ -283,7 +533,10 @@ def run_sweep_sets(
     for name, (rows, golds) in sets.items():
         outs = [out_rows.get(str(r["link_key_hex"])) or {} for r in rows]
         objs = [json.loads(o["docmeta_json"]) if o.get("docmeta_json") else None for o in outs]
-        scored = score(objs, golds, [bool(o.get("strict_v4_valid")) for o in outs])
+        valids = [bool(o.get("strict_v4_valid")) for o in outs]
+        scored = score(objs, golds, valids)
+        leg_g = (legacy_golds or {}).get(name, golds)
+        scored["legacy_metrics"] = score_legacy(objs, leg_g, valids)["metrics"]
         toks = [int(o.get("completion_tokens") or 0) for o in outs]
         toks = [t for t in toks if t]
         scored["metrics"].update(
@@ -318,20 +571,27 @@ def run_sweep_sets(
 
 
 def rescore(report_path: Path, out_path: Path, gold_jsonl: Path, label: str | None) -> int:
-    """Score an earlier report's saved predictions again, so a metric added later can be read off an old run."""
+    """Score an earlier report's saved predictions again, reporting legacy and fixed metrics side by side (`ct-2cig`)."""
     from . import strict_validate_v4
 
     report = json.loads(report_path.read_text(encoding="utf-8"))
     names = list(report["sets"])
-    golds = {**load_record_sets(names), **load_sweep_sets(names, gold_jsonl)}
+    golds = {**load_record_sets(names), **load_sweep_sets(names, gold_jsonl, augment_personas=False)}
+    legacy_golds = {**load_record_sets(names), **load_sweep_sets(names, gold_jsonl, augment_personas=True)}
     for name, old in report["sets"].items():
         objs = [d.get("pred") for d in old["per_doc"]]
         assert len(objs) == len(golds[name][1]), f"{name}: the gold set changed size since {report_path}"
         valid = [bool(strict_validate_v4(o)[0]) if isinstance(o, dict) else False for o in objs]
+        leg = score_legacy(objs, legacy_golds[name][1], valid)
         fresh = score(objs, golds[name][1], valid)
-        moved = {k: (old["metrics"][k], v) for k, v in fresh["metrics"].items() if old["metrics"].get(k, v) != v}
+        old["legacy_metrics"] = {**{k: v for k, v in old["metrics"].items() if k not in leg["metrics"]}, **leg["metrics"]}
+        moved = {
+            k: (old["legacy_metrics"].get(k), v)
+            for k, v in fresh["metrics"].items()
+            if old["legacy_metrics"].get(k, v) != v
+        }
         if moved:
-            print(f"[{name}] metrics that differ from the saved report (old, new): {moved}")
+            print(f"[{name}] side-by-side (legacy, new): {moved}")
         old["metrics"].update(fresh["metrics"])
     if label:
         report["label"] = label
@@ -374,6 +634,10 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--two-phase-pass2", choices=("auto", "true", "false"), default="auto",
                     help="unload Pass-1 Gemma-4 before loading GPT-OSS-20B Pass-2 ('auto' enables on <=48 GiB Macs)")
     ap.add_argument("--ane-variant", choices=("w8", "fp16"), default="fp16", help="bundle the ring runs")
+    ap.add_argument("--memory-limit-gb", type=float, default=24.0,
+                    help="MLX active memory cap in GiB (default: 24.0; <=0 disables)")
+    ap.add_argument("--cache-limit-gb", type=float, default=2.0,
+                    help="MLX free-buffer cache cap in GiB (default: 2.0; <0 disables, 0 turns caching off)")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--rescore", type=Path, default=None,
                     help="re-score the saved predictions of an earlier report with this script's metrics; no model run")
@@ -390,7 +654,12 @@ def main(argv: list[str] | None = None) -> int:
 
     from fast_gemma4 import FastGemma4Engine
     from . import PythonicEngineV6, strict_validate_v4
-    from .silicon_runtime_v6 import clear_mlx_wave_cache, mlx_wired_limit_scope, run_silicon_preflight
+    from .silicon_runtime_v6 import (
+        clear_mlx_wave_cache,
+        mlx_limits_scope,
+        mlx_wired_limit_scope,
+        run_silicon_preflight,
+    )
 
     preflight = run_silicon_preflight(
         escalate_gpt_oss=bool(args.escalate_gpt_oss),
@@ -400,9 +669,15 @@ def main(argv: list[str] | None = None) -> int:
 
     names = [s.strip() for s in args.sets.split(",") if s.strip()]
     sets = load_record_sets(names)
-    extra_sets = dict(item.split("=", 1) for item in args.extra_sweep_set)
-    sweep_sets = load_sweep_sets(names, args.gold_jsonl, {k: Path(v) for k, v in extra_sets.items()})
-    with mlx_wired_limit_scope():
+    extra_sets = {k: Path(v) for k, v in (item.split("=", 1) for item in args.extra_sweep_set)}
+    sweep_sets = load_sweep_sets(names, args.gold_jsonl, extra_sets, augment_personas=False)
+    legacy_sweep_golds = {
+        k: v[1] for k, v in load_sweep_sets(names, args.gold_jsonl, extra_sets, augment_personas=True).items()
+    }
+    with (
+        mlx_limits_scope(memory_limit_gb=args.memory_limit_gb, cache_limit_gb=args.cache_limit_gb) as mlx_limits,
+        mlx_wired_limit_scope(),
+    ):
         eng = FastGemma4Engine(
             model_dir=args.model_dir, default_mode="auto" if args.ane_ring else "gpu", ane_variant=args.ane_variant,
             ane_ring_variant=args.ane_variant,
@@ -434,6 +709,7 @@ def main(argv: list[str] | None = None) -> int:
             "escalate_gpt_oss": args.escalate_gpt_oss,
             "gpt_oss_k": args.gpt_oss_k,
             "max_tokens": args.max_tokens,
+            "mlx_limits": mlx_limits,
             "preflight": preflight,
             "sets": {},
         }
@@ -454,6 +730,7 @@ def main(argv: list[str] | None = None) -> int:
                 objs = res["clean_objs"]
                 valid = [bool(strict_validate_v4(o)[0]) if isinstance(o, dict) else False for o in objs]
                 scored = score(objs, golds, valid)
+                scored["legacy_metrics"] = score_legacy(objs, golds, valid)["metrics"]
                 llm_n = len(recs) - len(res["zero_llm_bypassed_indices"]) - len(res["triage_short_circuited_indices"])
                 toks = [t for t in res["out_tok_lens"] if t]
                 scored["metrics"].update(
@@ -472,7 +749,7 @@ def main(argv: list[str] | None = None) -> int:
                 report["sets"][name] = scored
                 print(f"[{report['label']}] {name}: {json.dumps(scored['metrics'])}", flush=True)
             if sweep_sets:
-                for name, scored in run_sweep_sets(eng, sweep_sets, args).items():
+                for name, scored in run_sweep_sets(eng, sweep_sets, args, legacy_golds=legacy_sweep_golds).items():
                     report["sets"][name] = scored
                     print(f"[{report['label']}] {name}: {json.dumps(scored['metrics'])} {json.dumps(scored['sweep'])}", flush=True)
         finally:

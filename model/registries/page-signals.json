@@ -204,6 +204,12 @@
     "sample_id": "page-signals:govinfo_details_name"
   },
   {
+    "id": "govinfo_details_title",
+    "kind": "landing_title",
+    "pattern": "^((?:(?i:S[.] Hrg[.])|Serial No[.]|Series No[.]|H[.]A[.]S[.]C[.] No[.]|Small Business Committee Document Number|Joint Committee) [^ ].*?) - .* - [A-Z]+-[0-9A-Za-z_]+(?:-[0-9A-Za-z_]+)* [|] Content Details [|] GovInfo$",
+    "sample_id": "page-signals:govinfo_details_title"
+  },
+  {
     "id": "gpo_printed_hearing_cover",
     "kind": "print_cover",
     "pattern": "(?s)(?:(?:\\bHEARINGS?\\s+BEFORE\\s+THE\\b.{0,1000}?(?i:\\bSERIAL\\s+NO\\.|\\bS\\.\\s*HRG\\.)|(?i:\\bSERIAL\\s+NO\\.|\\bS\\.\\s*HRG\\.).{0,1000}?\\bHEARINGS?\\s+BEFORE\\s+THE\\b).{0,1000}?\\bU\\.S\\.\\s+GOVERNMENT\\s+(?:PRINTING|PUBLISHING)\\s+OFFICE\\b|\\bU\\.S\\.\\s+GOVERNMENT\\s+(?:PRINTING|PUBLISHING)\\s+OFFICE\\b.{0,1000}?(?:\\bHEARINGS?\\s+BEFORE\\s+THE\\b.{0,1000}?(?i:\\bSERIAL\\s+NO\\.|\\bS\\.\\s*HRG\\.)|(?i:\\bSERIAL\\s+NO\\.|\\bS\\.\\s*HRG\\.).{0,1000}?\\bHEARINGS?\\s+BEFORE\\s+THE\\b))",
@@ -241,7 +247,7 @@
     "id": "cover:meeting-notice",
     "kind": "cover_kind",
     "number": 5,
-    "pattern": "(?is)(?:\\b(?:NOTICE\\s+OF\\s+(?:FULL\\s+COMMITTEE\\s+|SUBCOMMITTEE\\s+|HYBRID\\s+)?MARKUP|(?:FULL\\s+COMMITTEE\\s+|SUBCOMMITTEE\\s+)?MARKUP\\s+NOTICE)\\b|\\b(?:MEMORANDUM|NOTICE)\\b.{0,450}?\\b(?:RE|SUBJECT)\\s*:\\s*(?:(?:AMENDED|REVISED)\\s+)?(?:FULL\\s+COMMITTEE\\s+|SUBCOMMITTEE\\s+)?MARKUP\\b).{0,900}?\\b(?:WILL\\s+MEET\\b|CONVENING\\b|DATE\\s*:|TIME\\s*:|PLACE\\s*:|LOCATION\\s*:|ROOM\\s*:)",
+    "pattern": "(?is)(?:\\b(?:NOTICE\\s+OF\\s+(?:FULL\\s+COMMITTEE\\s+|SUBCOMMITTEE\\s+|HYBRID\\s+)?MARKUP|(?:FULL\\s+COMMITTEE\\s+|SUBCOMMITTEE\\s+)?MARKUP\\s+NOTICE)\\b|\\bNOTICE\\b.{0,450}?\\b(?:RE|SUBJECT)\\s*:\\s*(?:(?:AMENDED|REVISED)\\s+)?(?:FULL\\s+COMMITTEE\\s+|SUBCOMMITTEE\\s+)?MARKUP\\b).{0,900}?\\b(?:WILL\\s+MEET\\b|CONVENING\\b|DATE\\s*:|TIME\\s*:|PLACE\\s*:|LOCATION\\s*:|ROOM\\s*:)",
     "sample_id": "page-signals:cover_meeting_notice"
   },
   {
@@ -262,7 +268,7 @@
     "id": "cover:crs-report",
     "kind": "cover_kind",
     "number": 8,
-    "pattern": "(?is)\\b(?:CONGRESSIONAL\\s+RESEARCH\\s+SERVICE|CRS\\s+REPORT\\s+FOR\\s+CONGRESS|CRS\\s+IN\\s+FOCUS|CRS\\s+INSIGHT|CRS\\s+LEGAL\\s+SIDEBAR|INFORMING\\s+THE\\s+LEGISLATIVE\\s+DEBATE\\s+SINCE\\s+1914)\\b.{0,1000}?\\b(?:R[0-9]{4,5}|RL[0-9]{4,5}|RS[0-9]{4,5}|IF[0-9]{5}|IN[0-9]{5}|LSB[0-9]{5})\\b",
+    "pattern": "(?is)\\b(?:CRS\\s+REPORT\\s+FOR\\s+CONGRESS|CRS\\s+IN\\s+FOCUS|CRS\\s+INSIGHT|CRS\\s+LEGAL\\s+SIDEBAR|INFORMING\\s+THE\\s+LEGISLATIVE\\s+DEBATE\\s+SINCE\\s+1914|CONGRESSIONAL\\s+RESEARCH\\s+SERVICE.{0,250}?(?:7-5700|(?:WWW\\.)?CRS\\.GOV|CRSREPORTS\\.CONGRESS\\.GOV))\\b.{0,1000}?\\b(?:R[0-9]{4,5}|RL[0-9]{4,5}|RS[0-9]{4,5}|IF[0-9]{5}|IN[0-9]{5}|LSB[0-9]{5})\\b",
     "sample_id": "page-signals:cover_crs_report"
   },
   {

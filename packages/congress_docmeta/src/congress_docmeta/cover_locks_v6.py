@@ -48,6 +48,8 @@ __all__ = [
     "detect_nominee_opening_override_v6",
     "get_sha_kind_override_v6",
     "lookup_saved_name_sha_override_v6",
+    "reconcile_queue_lock_v6",
+    "resolve_govinfo_pkg_lock_v6",
     "resolve_sha_override_v6",
     "senate_hearing_citation_v6",
 ]
@@ -457,7 +459,9 @@ _BUDGET_VIEWS_COVER_RE = re.compile(
     re.I,
 )
 _PLAN_OR_VIEWS_NEG_RE = re.compile(
-    r"\b(?:AMENDMENT|SUBSTITUTE|OFFERED\s+BY|NOTICE\s+OF|MARKUP\s+NOTICE|MEMORANDUM|ROLL\s+CALL|RECORDED\s+VOTE)\b",
+    r"\b(?:AMENDMENT|SUBSTITUTE|OFFERED\s+BY|NOTICE\s+OF|MARKUP\s+NOTICE|MARKUP\s+OF|"
+    r"MEMORANDUM|ROLL\s+CALL|RECORDED\s+VOTE|RPTS\s+[A-Z]{2,}|"
+    r"The\s+(?:committee|subcommittee)\s+(?:met|convened),\s+pursuant\s+to)\b",
     re.I,
 )
 
@@ -706,10 +710,13 @@ def detect_all_cover_locks_v6(
             hits.append(("bill_draft_or_print_cover_v6", "bill_or_draft", "cover_lock_v6"))
             return hits
 
+    is_transcript_fn = "-transcript-" in (filename or "").lower()
+
     # 9. Budget Views & Estimates (`budget_views_and_estimates_cover_v6`)
     if (
         "views and estimates" in low_900
         and "fiscal year" in low_900
+        and not is_transcript_fn
         and not _PLAN_OR_VIEWS_NEG_RE.search(head_900)
     ):
         if _BUDGET_VIEWS_COVER_RE.search(head_560):
@@ -720,6 +727,7 @@ def detect_all_cover_locks_v6(
     if (
         "oversight plan" in low_900
         and "congress" in low_900
+        and not is_transcript_fn
         and not _PLAN_OR_VIEWS_NEG_RE.search(head_900)
     ):
         if _OVERSIGHT_PLAN_COVER_RE.search(head_560):
@@ -776,3 +784,82 @@ def detect_cover_lock_v6(
 
 detect_exact_cover_lock_v6 = detect_cover_lock_v6
 classify_cover_lock_v6 = detect_cover_lock_v6
+
+_CHRG_ANNUAL_REPORT_REPRINT_RE = re.compile(
+    r"\bREPRINTED\s+FROM\s+THE\s+(?:\d{4}\s+)?ANNUAL\s+REPORT\b",
+    re.I,
+)
+_CHRG_PROCEEDING_HEADING_RE = re.compile(
+    r"\b(?:HEARINGS?|OVERSIGHT\s+HEARING|FIELD\s+HEARING|JOINT\s+HEARING|ROUNDTABLE|BRIEFING|FORUM|SYMPOSIUM)\s+"
+    r"(?:BEFORE\s+THE|OF\s+THE)\b",
+    re.I,
+)
+_CHRG_NON_HEARING_PRINT_RE = re.compile(
+    r"\b(?:RULES\s+OF\s+THE\s+COMMITTEE\s+ON|Congressional\s+Budget\s+Justification)\b",
+    re.I,
+)
+_PRESS_RELEASE_CUE_RE = re.compile(r"\bFOR\s+IMMEDIATE\s+RELEASE\b", re.I)
+
+
+def resolve_govinfo_pkg_lock_v6(
+    package_id: str | None,
+    document_kinds: Sequence[str] = (),
+    *,
+    title: str = "",
+    filename: str = "",
+    text: str = "",
+) -> tuple[str | None, str | None, str | None]:
+    """Return `(lock_id, locked_primary_kind, lock_source)` for GovInfo package rows (`ct-2cig`).
+
+    Avoids forcing ``hearing_transcript`` on annual-report chapter reprints (e.g. CECC ``CHRG-110jhrg40482``,
+    ``46038``, ``46039``) and committee rules / agency budget justifications mis-packaged under ``CHRG-*``.
+    """
+    pkg_s = (package_id or "").strip().upper()
+    dk_set = {str(x) for x in (document_kinds or ())}
+    fn_u = (filename or "").upper()
+    head = re.sub(r"\s+", " ", (text or "")[:2400])
+
+    if pkg_s.startswith("CRPT-") or "published-report" in dk_set:
+        return "govinfo_crpt_pkg_lock", "committee_report", "govinfo_crpt_pkg_lock"
+    if pkg_s.startswith("CHRG-") and ("published-hearing" in dk_set or "committee-transcript" in dk_set):
+        if "[errata]" in (title or "").lower():
+            return None, None, None
+        if head and _CHRG_ANNUAL_REPORT_REPRINT_RE.search(head) and not _CHRG_PROCEEDING_HEADING_RE.search(head):
+            return "govinfo_chrg_reprint_report_v6", "committee_report", "govinfo_chrg_reprint_report_v6"
+        if head and _CHRG_NON_HEARING_PRINT_RE.search(head[:1200]) and not _CHRG_PROCEEDING_HEADING_RE.search(head):
+            return None, None, None
+        return "govinfo_chrg_pkg_lock", "hearing_transcript", "govinfo_chrg_pkg_lock"
+    if (
+        (pkg_s.startswith("BILLS-") or "bill-numbered" in dk_set)
+        and "RCP" not in fn_u
+        and "bill-measure-list" not in dk_set
+    ):
+        return "govinfo_bills_pkg_lock", "bill_or_draft", "govinfo_bills_pkg_lock"
+    return None, None, None
+
+
+def reconcile_queue_lock_v6(
+    locked_primary_kind: str | None,
+    lock_source: str | None,
+    lock_id: str | None,
+    *,
+    filename: str = "",
+    text: str = "",
+) -> tuple[str | None, str | None, str | None]:
+    """Re-validate pre-stamped queue locks against `ct-2cig` misfire guards without rebuilding 258k rows."""
+    if not locked_primary_kind:
+        return None, lock_source, lock_id
+    head = re.sub(r"\s+", " ", (text or "")[:2400])
+    fn_l = (filename or "").lower()
+    if lock_source == "govinfo_chrg_pkg_lock":
+        if head and _CHRG_ANNUAL_REPORT_REPRINT_RE.search(head) and not _CHRG_PROCEEDING_HEADING_RE.search(head):
+            return "committee_report", "govinfo_chrg_reprint_report_v6", "govinfo_chrg_reprint_report_v6"
+        if head and _CHRG_NON_HEARING_PRINT_RE.search(head[:1200]) and not _CHRG_PROCEEDING_HEADING_RE.search(head):
+            return None, None, None
+    elif lock_id in ("oversight_plan_cover_v6", "budget_views_and_estimates_cover_v6"):
+        if "-transcript-" in fn_l or _PLAN_OR_VIEWS_NEG_RE.search(head[:900]):
+            return None, None, None
+    elif lock_id == "link_nomination_support_letter":
+        if "press_release" in fn_l or _PRESS_RELEASE_CUE_RE.search(head[:700]):
+            return None, None, None
+    return locked_primary_kind, lock_source, lock_id

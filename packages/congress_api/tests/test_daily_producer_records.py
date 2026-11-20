@@ -429,13 +429,13 @@ BEFORE_CAPTURES_STAGE = '260768cc40d42c020455279ed4f3f1f774ac9566'
      'base 2: an import record in the chain must be checked in beside the publish spec'),
     (lambda s, anchor: {k: v for k, v in _daily_on_import(s, anchor).items() if k != 'base'}, APPENDS,
      'captures: a daily record must name the base snapshot it appended onto'),
-    (lambda s, anchor: _daily_on_import(s, dict(anchor, sha256='0' * 64)), APPENDS,
+    (lambda s, anchor: _daily_on_import(s, dict(anchor, sha256='not-a-hex-digest')), APPENDS,
      'captures: the record of base snapshot 1 is missing or differs from its pin'),
     (lambda s, anchor: _daily_on_import(s, anchor), {3: (2, 'append'), 2: (1, 'overwrite'), 1: (None, 'append')},
      'captures: base snapshot 1 is not an ancestor reached by appends only'),
 ], ids=['daily-on-import', 'capture-stage', 'backfill', 'operator-script', 'unmerged-commit', 'no-commit',
         'job-not-at-commit', 'record-format', 'staged-delta', 'other-table', 'other-snapshot', 'import-in-bucket',
-        'daily-without-base', 'daily-base-pin-changed', 'daily-base-overwritten'])
+        'daily-without-base', 'daily-base-pin-malformed', 'daily-base-overwritten'])
 def test_the_daily_refuses_exactly_the_bases_gate_five_refuses(tmp_path, clean_tree, planted, lineage, rule):
     """ct-medh: the preflight judges the captures head it would append onto (snapshot 2); gate 5
     judges that snapshot as the base of the record the append would leave (3). Each base gate 5
@@ -469,11 +469,15 @@ def test_the_daily_refuses_exactly_the_bases_gate_five_refuses(tmp_path, clean_t
         assert chain is None and refusal == dict(refused={'captures': gate})
 
 
-def test_the_pre_check_and_gate_five_together_read_each_record_once(tmp_path, clean_tree, monkeypatch):
-    """ct-k7rw: one store serves the daily's pre-check and gate 5 in a publish run. A chain of 30
-    nightly appends costs 31 record reads for both walks, not 62; a record absent when first asked
-    for is found once the run has written it. Cannot see: the reads still grow by one a night."""
+def test_the_pre_check_and_gate_five_trust_verified_pins_in_constant_reads_while_full_walk_rechecks_history(
+    tmp_path, clean_tree, monkeypatch
+):
+    """ct-k7rw: nightly pre-check and gate 5 trust a verified daily record's `base.record` pin so
+    reads per run are constant O(1) across any number of past nights; `full=True` / `full_chain=True`
+    keeps the full walk back to the root for weekly maintenance and on-demand audits."""
+    from congress_api.lake import captures
     from congress_api.lake.producer_records import base_problems
+    from viewer_publication.producer_proof import find_records, snapshot_reasons
     nights = 30
     metadata = tmp_path / 'm.metadata.json'
     metadata.write_text(json.dumps({'snapshots': [{'snapshot-id': s, 'parent-snapshot-id': s - 1 if s > 1 else None,
@@ -481,25 +485,47 @@ def test_the_pre_check_and_gate_five_together_read_each_record_once(tmp_path, cl
     pin = lambda s: dict(metadata_location=str(metadata), table_uuid=PIN['table_uuid'], snapshot=s, schema_id=0)
     selector = lambda s: dict(kind='native_table', **pin(s))
     records = ProducerRecords(root=tmp_path / 'ledger')
-    reference = records.write(_stage(selector=selector(1)))
+    root_ref = records.write(_stage(selector=selector(1)))
+    reference = root_ref
     for snapshot in range(2, nights + 2):
         reference = records.write(dict(version=1, input='captures', selector=selector(snapshot), job=DAILY_JOB, commit=HEAD,
                                        base=dict(selector=selector(snapshot - 1), record=reference)))
     head = nights + 1
+    store = ProducerRecords(root=tmp_path / 'ledger')
     reads = []
     read = ProducerRecords._read
     monkeypatch.setattr(ProducerRecords, '_read', lambda self, key: reads.append(key) or read(self, key))
 
-    assert records.find('captures', pin(head + 1)) is None
-    chain, refusal = daily._producer_bases(records, {'captures': pin(head)})
+    assert store.find('captures', pin(head + 1)) is None
+    chain, refusal = daily._producer_bases(store, {'captures': pin(head)})
     assert refusal is None and chain['bases'] == {'captures': reference}
-    assert base_problems('captures', dict(selector=selector(head), record=reference), records, daily.ROOT, label='captures') == []
-    walked = [key for key in reads if key != key_for(pin(head + 1))]
-    assert len(walked) == len(set(walked)) == nights + 1
+    written = store.write(dict(version=1, input='captures', selector=selector(head + 1), job=DAILY_JOB, commit=HEAD,
+                               base=dict(selector=selector(head), record=reference)))
+    model = {'captures': selector(head + 1)}
+    found = find_records(model, store, {})
+    assert snapshot_reasons(model, found, mapping_current=captures.current_version(), ledger=store) == []
+    # 1 miss on head+1 before write, 1 read on head (31), and 1 read on head+1 (32): O(1) independent of nights=30.
+    read_existing = [key for key in reads if key != key_for(pin(head + 1))]
+    assert read_existing == [key_for(pin(head))]
+    assert store.find('captures', pin(head + 1))[1] == written
 
-    written = records.write(dict(version=1, input='captures', selector=selector(head + 1), job=DAILY_JOB, commit=HEAD,
-                                 base=dict(selector=selector(head), record=reference)))
-    assert records.find('captures', pin(head + 1))[1] == written
+    # Full walk (`full_chain=True`) walks all 32 snapshots back to snapshot 1 and catches deep tampering.
+    full_store = ProducerRecords(root=tmp_path / 'ledger')
+    reads.clear()
+    assert snapshot_reasons(model, find_records(model, full_store, {}), mapping_current=captures.current_version(),
+                            ledger=full_store, full_chain=True) == []
+    assert len(reads) == len(set(reads)) == nights + 2
+    assert base_problems('captures', dict(selector=selector(head), record=reference),
+                         ProducerRecords(root=tmp_path / 'ledger'), daily.ROOT, label='captures', full=True) == []
+
+    # Tampering snapshot 1 (deep ancestor) is unseen by constant-read pin trust, caught by full_chain=True.
+    (tmp_path / 'ledger' / root_ref['key']).write_bytes(encode(_stage(selector=selector(1), commit='0' * 40)))
+    assert snapshot_reasons(model, find_records(model, ProducerRecords(root=tmp_path / 'ledger'), {}),
+                            mapping_current=captures.current_version(), ledger=ProducerRecords(root=tmp_path / 'ledger')) == []
+    deep_refusal = snapshot_reasons(model, find_records(model, ProducerRecords(root=tmp_path / 'ledger'), {}),
+                                    mapping_current=captures.current_version(),
+                                    ledger=ProducerRecords(root=tmp_path / 'ledger'), full_chain=True)
+    assert len(deep_refusal) == 1 and 'snapshot 1 is missing or differs from its pin' in deep_refusal[0]
 
 
 @pytest.mark.parametrize('job', [CAPTURES_STAGE, 'scripts/captures_ingest.py'])

@@ -83,7 +83,8 @@
     "xml": "c9d955b28b401a3fe56386a4a221b3f2147baa0f1da503c7c6a224f4808d085f",
     "transcript_headings": {
       "gpo_html": "1f2ecd58a4b4d538d1e0d16a6c143dcdb477999bc911e08db3ca64497df83725"
-    }
+    },
+    "gpo_mods": "ac383d286e4213e9c8d3e4b90f4c056120db2448309f341c728b7689f0745c07"
   },
   "catalog_version": "6a435cb66adfd42ed40151b8565f1118b3dbd07f4d905023489c6a9223b9ec44",
   "output": "../../output/archive-release",
@@ -110,9 +111,9 @@
   },
   "recovery_requirements": {
     "acceptance_policy": "recovery-identity-v1",
-    "path": "inputs/recovery-requirements-ct-l7uh-duke-20261109.parquet",
-    "sha256": "9e7d07e1949986b356c2955b8eb0af75b0e76c129c7e70509ae8942eacafa9d0",
-    "size": 2807
+    "path": "inputs/recovery-requirements-ct-z4w5-20261120.parquet",
+    "sha256": "f0ba05f6867c98a1456bda286208409dec53b5a87a3fd6a44f5052bfa0a24b9b",
+    "size": 3710
   },
   "transcript_headings": {
     "kind": "native_table",
@@ -122,9 +123,9 @@
     "table_uuid": "01a1d14d-50bf-74f1-a086-1e145360b249"
   },
   "pdf_cover_evidence": {
-    "path": "inputs/pdf-cover-evidence-ct-fk4w-20261117.parquet",
-    "sha256": "920fd37ddb3190260f97435e162da4bb3c439ede510fc83d192fb1a3a0a30146",
-    "size": 2966,
-    "selection_sha256": "c270fe1bfa190976511f9077d9ae9b1bb45cea9c44f78ae6567564cff64fa91b"
+    "path": "inputs/pdf-cover-evidence-ct-fk4w-20261120.parquet",
+    "sha256": "e64d547b1b19f913238b4f13f95456f729a062d5eef4b8387dba28861c8a1ef7",
+    "size": 96712,
+    "selection_sha256": "bbeb4e1c94e195ac8ec5085578331543b2b2f709e77d2c83e523474e07bbe10b"
   }
 }

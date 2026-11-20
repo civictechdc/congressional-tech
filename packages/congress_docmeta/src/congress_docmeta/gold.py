@@ -14,8 +14,9 @@ import re
 from typing import Any
 
 from .compact_wire_v6 import SYS_DOCMETA_V6_COMPACT, build_prompt_v6_compact, encode_v4_to_compact_v6
+from .relational_rules_v6 import resolve_docmeta_v6_data_dir
 
-DEFAULT_ARCHIVE_DIR = Path("/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/docmeta-v6-20261116")
+DEFAULT_ARCHIVE_DIR = resolve_docmeta_v6_data_dir()
 DEFAULT_GOLD_JSONL = DEFAULT_ARCHIVE_DIR / "lookups_and_gold" / "train_v6_4_complete_ssot_gold.jsonl"
 DEFAULT_VAL48_JSON = DEFAULT_ARCHIVE_DIR / "lookups_and_gold" / "eval_val48_v4_gold.json"
 DEFAULT_DOCS8_JSON = DEFAULT_ARCHIVE_DIR / "lookups_and_gold" / "eval_docs8_v4_gold.json"
@@ -81,6 +82,8 @@ def parse_gold_rows(
     gold_jsonl: Path,
     blind_jsons: tuple[Path, ...],
     queue_parquet: Path | None = None,
+    *,
+    augment_personas: bool = True,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """Gold rows as the sweep presents them: queue `known`/`filename`/`text` when the doc is in the queue.
 
@@ -103,6 +106,7 @@ def parse_gold_rows(
     stats = {"skipped_blind_eval_overlap": 0, "queue_context_rows": 0, "text_grounded_personas_added": 0}
     for raw in raw_rows:
         u = raw["messages"][0]["content"]
+        raw_gold_v4 = json.loads(raw["messages"][-1]["content"])
         gold_v4 = json.loads(raw["messages"][-1]["content"])
         m = _PROMPT_PARSE_RE.search(u)
         known, fn, gold_txt = (
@@ -123,10 +127,9 @@ def parse_gold_rows(
             continue
         stats["queue_context_rows"] += int(q_row is not None)
 
-        # Rules R4-R6 restore one listing convention across gold batches: the chair / ranking member a witness
-        # addresses (listed in 28% of cluster-gold witness statements, 92-100% of re-hydrated V4 and blind gold),
-        # a bill's sponsor line, and a letter's addressees. Additive only: nothing a reviewer wrote is changed.
-        if gold_v4.get("status", "usable") == "usable":
+        # Rules R4-R6 restore one listing convention across training gold batches; held-out evaluation sets pass
+        # `augment_personas=False` (or score `raw_gold_v4`) so a rule never grades its own additions (`ct-2cig`).
+        if augment_personas and gold_v4.get("status", "usable") == "usable":
             fixed = add_text_grounded_personas_v6(
                 gold_v4.get("personas") or [],
                 primary_kind=gold_v4.get("primary_kind"),
@@ -147,6 +150,7 @@ def parse_gold_rows(
                 "text": text,
                 "alt_text": gold_txt if _norm_ws(gold_txt) != _norm_ws(text) else None,
                 "cls_key": str(gold_v4.get("primary_kind") or "other") if st == "usable" else f"status:{st}",
+                "raw_gold_v4": raw_gold_v4,
                 "gold_v4": gold_v4,
                 "compact_json": json.dumps(
                     encode_v4_to_compact_v6(gold_v4), separators=(",", ":"), ensure_ascii=False

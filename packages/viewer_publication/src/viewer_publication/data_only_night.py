@@ -65,6 +65,8 @@ RECURRING_UNEXPLAINED = {'recoveries.parquet|changed bytes, no key or value diff
 SAME_INPUTS = ('profile', 'entity_digests', 'provenance', 'unprofiled_inputs')
 # Pages one night may capture again with new bytes; a site-wide template change would exceed it.
 RECAPTURED_PAGES = 100
+REMOVED_RECORDING_MATCHES = 20
+RECORDING_MATCH_REMOVAL_ID = 'recording_matches.parquet|removed keys|no evidence given'
 # A page: saved as HTML, with a title read from the page itself. A PDF's title is its listing's
 # link text, which does not change when the file is replaced, so an equal title proves nothing.
 PAGE_MEDIA, PAGE_TITLES = 'text/html', {'page_title', 'page_heading'}
@@ -136,7 +138,7 @@ def _input_reasons(candidate, live_records):
                         if not _same_input(name, candidate[name], record[name]))]
 
 
-def _group_reasons(report, new_receipts):
+def _group_reasons(report, new_receipts, *, proven_groups=frozenset()):
     """Every difference a data night may not carry, then every cap it passes.
 
     All of the comparison's groups but the re-fetch ones are read, verified or not: a verified
@@ -147,7 +149,7 @@ def _group_reasons(report, new_receipts):
     for file, facts in report['files'].items():
         for group in (dict(g, file=file) for g in facts['groups'] if not g.get('refetch_only')):
             name, count, base = group_id(group), group['count'], facts['rows']['base']
-            recurring = name in RECURRING_UNEXPLAINED
+            recurring = name in RECURRING_UNEXPLAINED or name in proven_groups
             if group['status'] != 'verified' and not recurring and (
                     group['status'] != 'unverified' or group.get('flag')
                     or not (group.get('value') or group['group'] in EXPLAINABLE)):
@@ -308,6 +310,107 @@ def _link_reasons(rule, link_proof):
     return reasons, proven, facts
 
 
+def _prove_replaced_recording_matches(base_dir, candidate_dir, *, expected_removed, recaptures=()):
+    """Prove removed `committee_page` recording matches replaced on a data-only night (ct-618r).
+
+    A removed `recording_matches` row is proven only when `0 < expected_removed <= REMOVED_RECORDING_MATCHES`
+    and every removed row (`base_recording_matches` minus `candidate_recording_matches` on `match_id`,
+    excluding `publisher_link` rows already verified by `MEETING_UPDATE`) is a `committee_page` match
+    whose `event_id` still carries an active `linked` match in `candidate_recording_matches` AND either:
+      1. `recaptured_page`: its cited `committee_page:<live_body>` was proven recaptured at its own
+         address under an unchanged HTML title (`live_body -> candidate_body`), and `event_id` now has
+         a `committee_page` match citing `candidate_body`; or
+      2. `event_ids_replaced`: its `video_key` changed `event_ids` in `recordings.parquet` to a non-empty
+         set (never dropping the video to `[]`), and every added `event_id` on `video_key` is backed by a
+         candidate `committee_page` match citing a newly added HTML body absent from `base` `detail.parquet`.
+    Returns a list of proven replacement dicts, or `None` when any removed row is unproven.
+    """
+    import pyarrow.parquet as pq
+    if not (0 < expected_removed <= REMOVED_RECORDING_MATCHES):
+        return None
+    base_rm_path = Path(base_dir) / 'recording_matches.parquet'
+    cand_rm_path = Path(candidate_dir) / 'recording_matches.parquet'
+    if not (base_rm_path.is_file() and cand_rm_path.is_file()):
+        return None
+    rm_cols = ['match_id', 'event_id', 'video_key', 'basis', 'decision', 'status', 'source_ref', 'note']
+    for path in (base_rm_path, cand_rm_path):
+        if not set(rm_cols).issubset(pq.read_schema(path).names):
+            return None
+    base_rows = {r['match_id']: r for r in pq.read_table(base_rm_path, columns=rm_cols).to_pylist() if r.get('match_id')}
+    cand_list = pq.read_table(cand_rm_path, columns=rm_cols).to_pylist()
+    cand_ids = {r['match_id'] for r in cand_list if r.get('match_id')}
+    removed = [base_rows[mid] for mid in sorted(base_rows.keys() - cand_ids) if base_rows[mid].get('basis') != 'publisher_link']
+    if len(removed) != expected_removed:
+        return None
+
+    recapture_map = {item['live_body']: item['candidate_body'] for item in (recaptures or ())
+                     if isinstance(item, dict) and item.get('live_body') and item.get('candidate_body')}
+    covered_events = {
+        r['event_id'] for r in cand_list
+        if r.get('event_id') is not None and r.get('decision') == 'linked' and r.get('status') in ('asserted', 'decided')
+    }
+    cand_page_by_event = {}
+    cand_page_by_video_event = {}
+    for r in cand_list:
+        if r.get('basis') == 'committee_page' and r.get('event_id') is not None:
+            sref = r.get('source_ref') or ''
+            cites = set()
+            if sref.startswith('committee_page:'):
+                cites.add(sref.removeprefix('committee_page:'))
+            note = r.get('note') or ''
+            if '[via committee_page:' in note:
+                cites.add(note.split('[via committee_page:', 1)[1].split(']', 1)[0])
+            cand_page_by_event.setdefault(r['event_id'], set()).update(cites)
+            if r.get('video_key'):
+                cand_page_by_video_event.setdefault((r['video_key'], r['event_id']), set()).update(cites)
+
+    base_rec_path, cand_rec_path = Path(base_dir) / 'recordings.parquet', Path(candidate_dir) / 'recordings.parquet'
+    base_det_path, cand_det_path = Path(base_dir) / 'detail.parquet', Path(candidate_dir) / 'detail.parquet'
+    base_rec, cand_rec, new_html_bodies = {}, {}, set()
+    if (base_rec_path.is_file() and cand_rec_path.is_file()
+            and {'video_key', 'event_ids'}.issubset(pq.read_schema(base_rec_path).names)
+            and {'video_key', 'event_ids'}.issubset(pq.read_schema(cand_rec_path).names)):
+        base_rec = {r['video_key']: set(r.get('event_ids') or ())
+                    for r in pq.read_table(base_rec_path, columns=['video_key', 'event_ids']).to_pylist() if r.get('video_key')}
+        cand_rec = {r['video_key']: set(r.get('event_ids') or ())
+                    for r in pq.read_table(cand_rec_path, columns=['video_key', 'event_ids']).to_pylist() if r.get('video_key')}
+    if (base_det_path.is_file() and cand_det_path.is_file()
+            and 'saved_body' in pq.read_schema(base_det_path).names
+            and {'saved_body', 'saved_media_type'}.issubset(pq.read_schema(cand_det_path).names)):
+        held_bodies = {b.hex() if isinstance(b, bytes) else str(b).lower()
+                       for b in pq.read_table(base_det_path, columns=['saved_body'])['saved_body'].to_pylist() if b}
+        for r in pq.read_table(cand_det_path, columns=['saved_body', 'saved_media_type']).to_pylist():
+            b = r.get('saved_body')
+            if b and r.get('saved_media_type') == PAGE_MEDIA:
+                hx = b.hex() if isinstance(b, bytes) else str(b).lower()
+                if hx not in held_bodies:
+                    new_html_bodies.add(hx)
+
+    proven = []
+    for row in removed:
+        ev, vk = row.get('event_id'), row.get('video_key')
+        if row.get('basis') != 'committee_page' or ev is None or ev not in covered_events:
+            return None
+        sref = row.get('source_ref') or ''
+        live_page = sref.removeprefix('committee_page:') if sref.startswith('committee_page:') else None
+        cand_page = recapture_map.get(live_page) if live_page else None
+        if cand_page and cand_page in cand_page_by_event.get(ev, set()):
+            proven.append(dict(match_id=row['match_id'], event_id=ev, video_key=vk, reason='recaptured_page',
+                               live_page=live_page, candidate_page=cand_page))
+            continue
+        if vk and vk in base_rec and vk in cand_rec:
+            old_evs, new_evs = base_rec[vk], cand_rec[vk]
+            added_evs = new_evs - old_evs
+            if ev in old_evs and ev not in new_evs and new_evs and added_evs and all(
+                bool(cand_page_by_video_event.get((vk, aev), set()) & new_html_bodies) for aev in added_evs
+            ):
+                proven.append(dict(match_id=row['match_id'], event_id=ev, video_key=vk, reason='event_ids_replaced',
+                                   new_event_ids=sorted(added_evs)))
+                continue
+        return None
+    return proven
+
+
 def data_only_causes(report, *, candidate_record, live_records, candidate_receipt_keys, base_dir, candidate_dir, link_proof=None,
                      qualification_files=None):
     """Cause entries for every failing group of a night only new receipts can explain.
@@ -354,23 +457,41 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
                        f'candidate (first {sorted(held - candidate)[:3]})')
     if not new:
         reasons.append('data-only night: the candidate read no receipt the live release did not, so nothing explains a difference')
-    reasons += _group_reasons(report, len(new))
+    rm_removed = next(
+        (-g['count'] for g in report.get('files', {}).get('recording_matches.parquet', {}).get('groups', ())
+         if not g.get('refetch_only') and g.get('group') == 'removed keys' and g.get('cause') == 'no evidence given'
+         and g.get('count', 0) < 0),
+        0,
+    )
+    tentative_proven = {RECORDING_MATCH_REMOVAL_ID} if 0 < rm_removed <= REMOVED_RECORDING_MATCHES else frozenset()
+    other_group_reasons = _group_reasons(report, len(new), proven_groups=tentative_proven)
     lost, columns = _column_reasons(base_dir, candidate_dir)
-    reasons += lost
+    pre_reasons = [*reasons, *other_group_reasons, *lost]
     # Last: the recapture proof scans the capture table, so it runs only on a night nothing else stopped.
-    stopped, proven, link_facts = _link_reasons(report['link_rule'], link_proof if not reasons else None)
-    reasons = [*stopped, *reasons]
+    stopped, proven, link_facts = _link_reasons(report['link_rule'], link_proof if not pre_reasons else None)
+    proven_rm = (
+        _prove_replaced_recording_matches(base_dir, candidate_dir, expected_removed=rm_removed,
+                                          recaptures=link_facts.get('recaptures', ()))
+        if tentative_proven and not pre_reasons and not stopped else None
+    )
+    final_group_reasons = other_group_reasons if proven_rm is not None else _group_reasons(report, len(new))
+    reasons = [*stopped, *reasons, *final_group_reasons, *lost]
     if reasons:
         return [], reasons, {}
+    extra_rm = dict(replaced_recording_matches=proven_rm) if proven_rm is not None else {}
     facts = dict(version=1, profile_sha256=version_digest(packages={}, files={}, values=candidate_record['profile']),
                  live_input=same[-1]['key'], live_receipts=len(held), new_receipts=len(new), new_receipt_keys=sorted(new),
-                 groups=len(groups), columns_compared=columns, proven_corrections=proven, **link_facts,
-                 caps=dict(recaptured_pages=RECAPTURED_PAGES, group_share=GROUP_SHARE, group_floor=GROUP_FLOOR,
+                 groups=len(groups), columns_compared=columns, proven_corrections=proven, **link_facts, **extra_rm,
+                 caps=dict(recaptured_pages=RECAPTURED_PAGES, removed_recording_matches=REMOVED_RECORDING_MATCHES,
+                           group_share=GROUP_SHARE, group_floor=GROUP_FLOOR,
                            group_rows_per_receipt=GROUP_ROWS_PER_RECEIPT, file_rows_per_receipt=FILE_ROWS_PER_RECEIPT,
                            removal_share=REMOVAL_SHARE, removed_documents=REMOVED_DOCUMENTS,
                            column_loss_share=COLUMN_LOSS_SHARE, column_loss_floor=COLUMN_LOSS_FLOOR))
+    proven_rm_ids = {RECORDING_MATCH_REMOVAL_ID} if proven_rm is not None else frozenset()
     return [dict(id=group_id(group), count=group['count'], disposition='explained', automatic=True,
-                 cause=DATA_ONLY_CAUSE, tickets=['ct-pz32']) for group in groups], [], facts
+                 cause=DATA_ONLY_CAUSE,
+                 tickets=['ct-618r', 'ct-pz32'] if group_id(group) in proven_rm_ids else ['ct-pz32'])
+            for group in groups], [], facts
 
 
 def unattended_causes(report, *, traced, data_only):

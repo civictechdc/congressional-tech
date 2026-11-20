@@ -459,3 +459,80 @@ def test_the_traced_proof_decides_every_night_it_can_read_and_data_only_only_the
     # A verified group the traced proof cannot read is a difference too, with nothing failing.
     quiet = report(group('url_state.parquet', 'removed URLs', -40_000, 'never attempted', 'verified'))
     assert quiet['failing'] == [] and unattended_causes(quiet, traced=forbidden, data_only=lambda value: ([], ['over the cap'], {}))[1][0] == 'over the cap'
+
+
+def test_replaced_committee_page_recording_match_passes_when_traced_and_stops_when_dropped(tmp_path):
+    """ct-618r step 2: a removed `committee_page` match passes unattended only when traced to a
+    proven page recapture or a non-empty `recordings.event_ids` move onto a newly captured HTML page
+    while the prior meeting retains coverage; a dropped match (`ct-mwod` shape) still stops."""
+    base_d, cand_d = tmp_path / 'base', tmp_path / 'cand'
+    base_d.mkdir(); cand_d.mkdir()
+    old_page, new_page, kept_page = bytes.fromhex('11' * 32), bytes.fromhex('22' * 32), bytes.fromhex('33' * 32)
+    for d, bodies, medias in (
+        (base_d, [old_page, kept_page], ['text/html', 'text/html']),
+        (cand_d, [old_page, kept_page, new_page], ['text/html', 'text/html', 'text/html']),
+    ):
+        pq.write_table(pa.table({'title': ['t'] * len(bodies)}), d / 'list.parquet')
+        pq.write_table(pa.table({'saved_body': bodies, 'saved_media_type': medias}), d / 'detail.parquet')
+
+    rm_schema = pa.schema([
+        ('match_id', pa.string()), ('event_id', pa.int64()), ('video_key', pa.string()),
+        ('basis', pa.string()), ('decision', pa.string()), ('status', pa.string()),
+        ('source_ref', pa.string()), ('note', pa.string()),
+    ])
+    pq.write_table(pa.Table.from_pylist([
+        dict(match_id='m_old', event_id=100, video_key='youtube:vidA', basis='committee_page',
+             decision='linked', status='asserted', source_ref='committee_page:' + old_page.hex(), note=None),
+        dict(match_id='m_kept', event_id=100, video_key='youtube:vidKeep', basis='committee_page',
+             decision='linked', status='asserted', source_ref='committee_page:' + kept_page.hex(), note=None),
+    ], schema=rm_schema), base_d / 'recording_matches.parquet')
+    pq.write_table(pa.Table.from_pylist([
+        dict(match_id='m_kept', event_id=100, video_key='youtube:vidKeep', basis='committee_page',
+             decision='linked', status='asserted', source_ref='committee_page:' + kept_page.hex(), note=None),
+        dict(match_id='m_new', event_id=200, video_key='youtube:vidA', basis='committee_page',
+             decision='linked', status='asserted', source_ref='committee_page:' + new_page.hex(), note=None),
+    ], schema=rm_schema), cand_d / 'recording_matches.parquet')
+
+    rec_schema = pa.schema([('video_key', pa.string()), ('event_ids', pa.list_(pa.int64()))])
+    pq.write_table(pa.Table.from_pylist([
+        dict(video_key='youtube:vidA', event_ids=[100]),
+        dict(video_key='youtube:vidKeep', event_ids=[100]),
+    ], schema=rec_schema), base_d / 'recordings.parquet')
+    pq.write_table(pa.Table.from_pylist([
+        dict(video_key='youtube:vidA', event_ids=[200]),
+        dict(video_key='youtube:vidKeep', event_ids=[100]),
+    ], schema=rec_schema), cand_d / 'recordings.parquet')
+
+    rm_group = group('recording_matches.parquet', 'removed keys', -1, 'no evidence given')
+    add_group = group('recording_matches.parquet', 'added keys', 1, 'no evidence given')
+    rep = dict(
+        link_rule=link_rule(True),
+        failing=[rm_group, add_group],
+        files={
+            'recording_matches.parquet': dict(rows=dict(base=1000, candidate=1000), groups=[
+                {k: v for k, v in rm_group.items() if k != 'file'},
+                {k: v for k, v in add_group.items() if k != 'file'},
+            ]),
+        },
+    )
+    entries, reasons, facts = data_only_causes(
+        rep, candidate_record=INPUTS, live_records=[live()], candidate_receipt_keys=[*LIVE_KEYS, *NIGHT],
+        base_dir=base_d, candidate_dir=cand_d,
+    )
+    assert reasons == [] and len(entries) == 2
+    assert facts['replaced_recording_matches'] == [
+        dict(match_id='m_old', event_id=100, video_key='youtube:vidA', reason='event_ids_replaced', new_event_ids=[200])
+    ]
+    assert next(e for e in entries if 'removed keys' in e['id'])['tickets'] == ['ct-618r', 'ct-pz32']
+
+    # Planted loss (`ct-mwod` shape: video drops to event_ids=[]): must STOP.
+    pq.write_table(pa.Table.from_pylist([
+        dict(video_key='youtube:vidA', event_ids=[]),
+        dict(video_key='youtube:vidKeep', event_ids=[100]),
+    ], schema=rec_schema), cand_d / 'recordings.parquet')
+    entries_bad, reasons_bad, _ = data_only_causes(
+        rep, candidate_record=INPUTS, live_records=[live()], candidate_receipt_keys=[*LIVE_KEYS, *NIGHT],
+        base_dir=base_d, candidate_dir=cand_d,
+    )
+    assert entries_bad == [] and any('recording_matches.parquet|removed keys|no evidence given (-1)' in r for r in reasons_bad)
+

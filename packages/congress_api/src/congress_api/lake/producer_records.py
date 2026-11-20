@@ -359,30 +359,38 @@ def import_problems(name, record, root, *, label, versions=None):
 
 
 def link_problems(record, lineage, *, label):
-    """A daily record's link: it names a base of its own table, reached from its snapshot by
-    appends only (`lineage`, from appended_from)."""
+    """A daily record's link: it names a base of its own table with a valid record pin, reached from
+    its snapshot by appends only (`lineage`, from appended_from)."""
     base = record.get('base')
     if not isinstance(base, dict) or not isinstance(base.get('selector'), dict):
         return [f'producer proof: {label}: a daily record must name the base snapshot it appended onto']
     if base['selector'].get('table_uuid') != record['selector'].get('table_uuid'):
         return [f'producer proof: {label}: the base snapshot belongs to another table']
-    if not appended_from(lineage, record['selector']['snapshot'], base['selector'].get('snapshot')):
-        return [f'producer proof: {label}: base snapshot {base["selector"].get("snapshot")} is not an ancestor reached by appends only']
+    base_snapshot = base['selector'].get('snapshot')
+    pinned = base.get('record')
+    if base_snapshot is None:
+        if pinned is not None:
+            return [f'producer proof: {label}: an empty base has no record']
+    elif (type(base_snapshot) is not int or not isinstance(pinned, dict)
+          or not isinstance(pinned.get('sha256'), str) or re.fullmatch('[0-9a-f]{64}', pinned['sha256']) is None
+          or type(pinned.get('size')) is not int or pinned['size'] <= 0):
+        return [f'producer proof: {label}: the record of base snapshot {base_snapshot} is missing or differs from its pin']
+    if not appended_from(lineage, record['selector']['snapshot'], base_snapshot):
+        return [f'producer proof: {label}: base snapshot {base_snapshot} is not an ancestor reached by appends only']
     return []
 
 
-def base_problems(name, base, records, root, *, label, lineage=None):
+def base_problems(name, base, records, root, *, label, lineage=None, full=False):
     """Refusals for appending onto `base`, {selector, record}: a snapshot and the pin of its record.
 
-    Walks the records back to an empty table, a checked-in import, or a snapshot another
-    registered producer wrote (a capture stage, a backfill), which names no base. Each record
-    is the one pinned by hash, names this snapshot and table, and passes record_problems
-    (import_problems for an import); a daily record's own link must hold (link_problems).
-    Versions are not checked: the rows' versions are the row rule's, the head's gate 5's.
+    Nightly preflight and publish Gate 5 (`full=False`, ct-k7rw) check `base` in full — its bytes
+    equal `pinned`, it names this snapshot and table, passes `record_problems` (`import_problems`
+    for an import), and for a `DAILY_JOB` record passes `link_problems` — then trust that daily
+    record's `base.record` pin as the receipt for the pre-append base check that wrote it, reading
+    one stored base record per table regardless of chain length.
 
-    One record read and two git calls per link, and one table metadata read (`lineage`,
-    read from the first base when not given) once a daily record is walked: linear in the
-    nightly records since the chain's root.
+    Weekly maintenance and on-demand verification pass `full=True` to walk every `DAILY_JOB` link
+    back to an empty table, a checked-in import, or another registered producer's root snapshot.
     """
     seen = set()
     while True:
@@ -415,4 +423,6 @@ def base_problems(name, base, records, root, *, label, lineage=None):
             lineage = records.lineage(selector['metadata_location'])
         if problems := link_problems(prior, lineage, label=label):
             return problems
+        if not full:
+            return []
         base = prior['base']

@@ -199,3 +199,60 @@ def test_bill_transcript_recipe_missing_meetings_is_unavailable(tmp_path, linked
         assert reader.dataset_info({'recipe': 'bill_documents'})['available']
     finally:
         reader.close()
+
+
+def test_dataset_info_returns_descriptions_for_every_published_dataset_and_nested_field(reader):
+    """ct-fb29: get_dataset_info returns plain descriptions for every published dataset and nested field."""
+    import json
+    from pathlib import Path
+
+    def split_parts(text):
+        depth, start = 0, 0
+        for index, character in enumerate(text):
+            if character == '<':
+                depth += 1
+            elif character == '>':
+                depth -= 1
+            elif character == ',' and depth == 0:
+                yield text[start:index]
+                start = index + 1
+        yield text[start:]
+
+    def nested_paths(table):
+        out = []
+
+        def visit(path, kind):
+            if '.' in path or '[]' in path:
+                out.append(path)
+            if kind.startswith('list<'):
+                visit(path + '[]', kind[5:-1])
+            elif kind.startswith('struct<'):
+                for field in split_parts(kind[7:-1]):
+                    name, child = field.strip().split(' ', 1)
+                    visit(path + '.' + name, child)
+
+        for column in table['columns'] + table.get('virtual_columns', []):
+            visit(column['name'], column['type'])
+        return out
+
+    repo = Path(__file__).resolve().parents[3]
+    registry = json.loads((repo / 'model/registries/release-schema.json').read_text())
+    expected_nested = {t['name'].removesuffix('.parquet'): nested_paths(t) for t in registry['files']}
+
+    summary = reader.dataset_info({})
+    assert summary['tables']
+    for name, table_entry in summary['tables'].items():
+        if name in expected_nested:
+            assert isinstance(table_entry.get('description'), str) and table_entry['description'].strip(), name
+        else:
+            assert table_entry.get('description') is None, name
+
+    for item in registry['files']:
+        name = item['name'].removesuffix('.parquet')
+        focused = reader.dataset_info({'table': name})
+        assert isinstance(focused.get('description'), str) and focused['description'].strip(), name
+        assert focused['description'] == item['description']
+        assert all(isinstance(col.get('meaning'), str) and col['meaning'].strip() for col in focused['meanings']), name
+        for nested_path in expected_nested[name]:
+            assert isinstance(focused['notes'].get(nested_path), str) and focused['notes'][nested_path].strip(), f'{name}.{nested_path}'
+

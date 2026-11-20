@@ -63,7 +63,8 @@ def committed_maintenance():
     """The committed spec, its references to other job files made absolute so a copy can live elsewhere."""
     spec=json.loads((JOBS/'maintenance.json').read_text())
     captures=dict(spec['raw_verification']['captures'],model_spec=str(JOBS/spec['raw_verification']['captures']['model_spec']))
-    return dict(spec,tables=str(JOBS/spec['tables']),raw_verification=dict(spec['raw_verification'],captures=captures))
+    extra=dict(producer_chains=dict(publish_spec=str(JOBS/spec['producer_chains']['publish_spec']))) if 'producer_chains' in spec else {}
+    return dict(spec,tables=str(JOBS/spec['tables']),raw_verification=dict(spec['raw_verification'],captures=captures),**extra)
 
 
 def fixture():
@@ -656,6 +657,7 @@ def test_cli_dry_run_stages_bucket_receipts_and_verification_for_native_checks(t
     pq.write_table(pa.table({'body_key':pa.array([],type=pa.string())}),captures)
     spec=committed_maintenance()
     spec.pop('external_pins_source')
+    spec.pop('producer_chains',None)
     work=tmp_path/'run'
     spec.update(work=str(work),engine_config=os.environ['DOCSPEC_JOB_CONFIG'],external_pins=[PINNED],
         raw_verification=dict(captures=str(captures),body_workers=8))

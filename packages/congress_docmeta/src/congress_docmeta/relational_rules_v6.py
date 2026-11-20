@@ -44,15 +44,52 @@ from typing import Any, Iterable, Mapping, Sequence
 import unicodedata
 from urllib.parse import unquote
 
-DEFAULT_DOCMETA_V6_DATA_DIR_STR = (
-    "/Users/mikewolfd/Work/congressional-tech/.cache/archive-release/docmeta-v6-20261116"
-)
-DEFAULT_DOCMETA_V6_DATA_DIR = Path(
-    os.environ.get("DOCMETA_V6_DATA_DIR", DEFAULT_DOCMETA_V6_DATA_DIR_STR)
-)
+def _discover_main_checkout_root(start: Path | None = None) -> Path:
+    """Resolve `<main checkout>` from `start` without spawning git (`-B -I -S` stdlib safe, worktree-aware)."""
+    here = (start or Path(__file__)).resolve()
+    for anc in (here, *here.parents):
+        dot_git = anc / ".git"
+        if dot_git.is_dir():
+            return anc
+        if dot_git.is_file():
+            try:
+                raw = dot_git.read_text(encoding="utf-8", errors="ignore").strip()
+                if raw.startswith("gitdir:"):
+                    gitdir = (anc / raw.split(":", 1)[1].strip()).resolve()
+                    commondir_f = gitdir / "commondir"
+                    if commondir_f.is_file():
+                        common = (gitdir / commondir_f.read_text(encoding="utf-8").strip()).resolve()
+                        if common.name == ".git":
+                            return common.parent
+            except OSError:
+                pass
+            return anc
+    return here.parents[4] if len(here.parents) > 4 else here.parent
+
+
+def resolve_docmeta_v6_data_dir(env_override: str | None = None) -> Path:
+    """Single owner of DocMeta V6 bundle directory resolution (`DOCMETA_V6_DATA_DIR` or `<main checkout>/.cache/...`)."""
+    raw = env_override if env_override is not None else os.environ.get("DOCMETA_V6_DATA_DIR")
+    if raw:
+        return Path(raw)
+    return _discover_main_checkout_root() / ".cache" / "archive-release" / "docmeta-v6-20261116"
+
+
+def resolve_refspec_root(env_override: str | None = None) -> Path:
+    """Single owner of sibling `RefSpec` directory resolution (`REFSPEC_ROOT` or `../spicy-stack/RefSpec`)."""
+    raw = env_override if env_override is not None else os.environ.get("REFSPEC_ROOT")
+    if raw:
+        return Path(raw)
+    return _discover_main_checkout_root().parent / "spicy-stack" / "RefSpec"
+
+
+DEFAULT_DOCMETA_V6_DATA_DIR = resolve_docmeta_v6_data_dir()
+DEFAULT_DOCMETA_V6_DATA_DIR_STR = str(DEFAULT_DOCMETA_V6_DATA_DIR)
 
 __all__ = [
     "DEFAULT_DOCMETA_V6_DATA_DIR",
+    "resolve_docmeta_v6_data_dir",
+    "resolve_refspec_root",
     "PROVENANCE_SAFE_COMMITTEE_KINDS_V6",
     "CONTEMPORARY_CONGRESSIONAL_KINDS_V6",
     "PRIMARY_WITNESS_AUTHOR_KINDS_V6",
@@ -103,7 +140,7 @@ _ROSTERS_CACHE_BY_PATH: dict[str, dict[str, Any]] = {}
 
 
 def _resolve_default_rosters_path() -> Path:
-    data_dir = Path(os.environ.get("DOCMETA_V6_DATA_DIR", DEFAULT_DOCMETA_V6_DATA_DIR_STR))
+    data_dir = resolve_docmeta_v6_data_dir()
     candidates = (
         data_dir / "lookups_and_gold" / "rosters_lookup_v6.json",
         data_dir / "rosters_lookup_v6.json",
@@ -328,10 +365,13 @@ HOUSE_CLERK_2LETTER_TO_CODE_V6: dict[str, str] = {
     "WM": "hswm00",
     # All 29 Select `hl..00` committees/subcommittees (`spicy_docs.sources.congress.committee_rosters`)
     **{c.upper(): f"hl{c}00" for c in sorted(HOUSE_SELECT_2LETTER_CODES_V6)},
-    # Task forces & Clerk joint codes
+    # Task forces, commissions & Clerk joint folder codes (`house_naming` guide parity, `ct-pzaz`)
     "ZT": "htzt00",
+    "EC": "jsec00",
+    "HL": "jcse00",
     "JL": "jslc00",
     "JP": "jspr00",
+    "JR": "jsdf00",
     "IT": "jstx00",
 }
 
@@ -769,7 +809,7 @@ def subcommittee_code_to_canonical_v6(
         for entry in meta.get("names") or ():
             st = entry.get("start_year")
             en = entry.get("end_year")
-            if (st is None or st <= y_end) and (en is None or en >= y_start):
+            if (st is None or st < y_end) and (en is None or en > y_start):
                 nm = entry.get("name")
                 if nm:
                     return str(nm)
@@ -1883,10 +1923,11 @@ _SAL_MEMBERS_TAIL = (
 )
 _SAL_CHAIR_AND_RM_RE = re.compile(
     rf"{_SAL_CHAIR}\s+(?P<c>{_SAL_NAME}){_SAL_SEP}"
-    rf"(?:Vice\s+Chair\w*\s+[A-Z][\w'’\-]+{_SAL_SEP})?Ranking\s+(?:Minority\s+)?Member\s+(?P<r>{_SAL_NAME})"
+    rf"(?:Vice\s+(?:Madam\s+)?Chair\w*\s+{_SAL_NAME}{_SAL_SEP})?Ranking\s+(?:Minority\s+)?Member\s+(?P<r>{_SAL_NAME})"
 )
 _SAL_CHAIR_ONLY_RE = re.compile(rf"{_SAL_CHAIR}\s+(?P<c>{_SAL_NAME}){_SAL_MEMBERS_TAIL}")
 _SAL_RM_ONLY_RE = re.compile(rf"Ranking\s+(?:Minority\s+)?Member\s+(?P<r>{_SAL_NAME}){_SAL_MEMBERS_TAIL}")
+_SAL_VICE_PREFIX_RE = re.compile(r"\b(?:vice|co)\s*[- ]?$", re.I)
 _SAL_NOT_A_NAME = frozenset(
     "member members the and of committee subcommittee emeritus ranking chairman chairwoman chair vice thank thanks "
     "dear good mr ms mrs madam i my we it as on in for to this distinguished honorable "
@@ -1909,7 +1950,12 @@ def salutation_chair_personas_v6(text: str, *, window: int = 4000) -> list[tuple
         (_SAL_RM_ONLY_RE, (("ranking_member", "r"),)),
     ):
         for m in rx.finditer(flat):
-            found.extend((role, m.group(g)) for role, g in groups)
+            pre_chair = flat[max(0, m.start() - 16) : m.start()]
+            chair_is_vice = bool(_SAL_VICE_PREFIX_RE.search(pre_chair))
+            for role, g in groups:
+                if role == "chair" and chair_is_vice:
+                    continue
+                found.append((role, m.group(g)))
 
     out: list[tuple[str, str]] = []
     seen: set[str] = set()
@@ -1982,8 +2028,14 @@ _LETTER_ADDRESSEE_KINDS = _LETTER_TO_MEMBER_KINDS | {"oversight_letter", "qfr_re
 
 
 def _name_parts(name: str) -> set[str]:
-    # `Herseth-Sandlin` and `Herseth Sandlin` are one person: compare on every surname piece.
-    return {t for t in re.split(r"[\s\-]+", name.lower()) if len(t) > 2}
+    # `Herseth-Sandlin`, `Herseth Sandlin`, and `Sensenbrenner, Jr.` are one person: strip punctuation and suffixes.
+    cleaned = unicodedata.normalize("NFKC", name or "").lower()
+    return {
+        tok
+        for raw in re.split(r"[\s\-,.;:()/]+", cleaned)
+        if len(tok := raw.strip("'’\"[]{}")) > 2
+        and tok not in ("iii", "ii", "iv", "jr", "sr", "esq", "phd", "md", "ret", "usa", "usn", "usaf", "usmc")
+    }
 
 
 def _gpo_caps_to_name(raw: str) -> str:

@@ -1416,8 +1416,10 @@ export function presentDocument(
 
   const title = validTitle || (!bareUuidFile ? cleanFile : '') || urlLabel || uuidContextTitle || `${fallbackKind}${fallbackSuffix}`;
   const subtitle = cleanFile && cleanFile !== title ? cleanFile : '';
+  const printNumber = String(detail?.print_number ?? document?.print_number ?? '').trim();
   const contextParts = [
     congress,
+    printNumber,
     ...committees.slice(0, 2),
     ...kindLabels.slice(0, 2),
     ...measures.slice(0, 2),
@@ -1426,6 +1428,7 @@ export function presentDocument(
   return {
     title,
     subtitle,
+    printNumber,
     contextParts,
     format: fmt,
     congress,

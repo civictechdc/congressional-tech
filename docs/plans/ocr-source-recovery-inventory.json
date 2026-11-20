@@ -1,54 +1,66 @@
 {
   "version": 1,
-  "updated_at": "2026-11-15T15:39:17.988717+00:00",
+  "updated_at": "2026-11-20T14:00:00Z",
   "archive_root": "<main checkout>/.cache/archive-release",
   "owner_tickets": [
     "ct-en4n",
     "ct-z4w5"
   ],
-  "scope": "Consolidated known invalid sources from named retained reviews and actual fetch receipts; not a whole-corpus source-validity census.",
-  "rows": 451,
-  "recovery_open": 450,
-  "needs_refetch": 56,
-  "refetch_requires_history_review": 394,
-  "already_covered": 1,
+  "scope": "Consolidated known invalid sources from named retained reviews, actual fetch receipts, and 2026-11-20 formal corpus_recovery/acceptance.py source-acceptance decisions.",
+  "rows": 455,
+  "recovery_open": 429,
+  "needs_refetch": 6,
+  "refetch_requires_history_review": 398,
+  "already_covered": 26,
   "zero_page_batch": {
     "invalid_sources": 49,
-    "same_invalid_body_returned": 47,
-    "alternate_revision_review_pending": 2
+    "publisher_copy_broken_2026_11_15": 47,
+    "accepted_exact_or_supported_reconstruction": 25,
+    "accepted_scoped_counterpart_or_statement": 3,
+    "official_hearing_print_covered_standalone_open": 2,
+    "omitted_from_hearing_print_unrecovered": 3,
+    "diagnosed_intact_2009_awaiting_policy": 3,
+    "awaiting_human_browser_capture_loc_or_gao": 11,
+    "unlocated_remaining": 2
   },
   "rules": {
     "http_success_or_transfer_complete_closes_recovery": false,
     "same_invalid_body_closes_recovery": false,
     "alternate_without_identity_review_closes_recovery": false,
-    "close_only_with": "Reviewed usable replacement or explicitly accepted scoped coverage, linked to the intended document/revision and exact body identity.",
-    "retry_behavior": "Keep open across failed attempts; search alternative copies and retry publishers with backoff after current URL/history/eligibility review."
+    "scoped_search_coverage_closes_exact_original_recovery": false,
+    "close_only_with": "Reviewed usable replacement or explicitly accepted scoped coverage, linked to the intended document/revision and exact body identity via corpus_recovery/acceptance.py.",
+    "retry_behavior": "Do not retry broken publisher copies unless Last-Modified or ETag changes; search alternative archives and use browser_session_capture for bot-screened LoC/GAO targets."
   },
   "inventory": {
-    "path": "ocr-recovery-20261113/repairs/source-recovery-inventory-20261115/invalid-sources.jsonl",
-    "sha256": "a8dc20d06f18ef012b4304faae325c60088f86d894faec8478543d1f34ee25e0",
-    "bytes": 683735
+    "path": "ct-z4w5-acceptance-20261120/inventory/invalid-sources.jsonl",
+    "sha256": "335fef2fd1c53618e0e56c0e35848e11a84d6464f2e5b980e4bd173cdd7241a1",
+    "bytes": 1288617
   },
   "review_view": {
-    "path": "ocr-recovery-20261113/repairs/source-recovery-inventory-20261115/invalid-sources.csv",
-    "sha256": "47c40de33469c21aa859bb4fef19c9d9226317919d43eaa8cf889876ab754e77",
-    "bytes": 137877
+    "path": "ct-z4w5-acceptance-20261120/inventory/invalid-sources.csv",
+    "sha256": "bacec90d9b30fc1a6d2b347a0865ee004e97af1861680bbd92eb28e39a2024e0",
+    "bytes": 118406
   },
   "summary": {
-    "path": "ocr-recovery-20261113/repairs/source-recovery-inventory-20261115/summary.json",
-    "sha256": "8f3e73a22509e651cc054048ece1910db07edfafaadf9e9223e685df6cc9f5b0",
-    "bytes": 18020
+    "path": "ct-z4w5-acceptance-20261120/inventory/summary.json",
+    "sha256": "7aa8ace42036035aea39ab2c409c13838938ca5a329153a2cc6c58fccd1a9e72",
+    "bytes": 488
   },
   "instructions": {
-    "path": "ocr-recovery-20261113/repairs/source-recovery-inventory-20261115/README.md",
-    "sha256": "4ccfa6bc9c359010154abd3cd025a57e1ac4473f0e82436b52f21cd57c8ee3b2",
-    "bytes": 4201
+    "path": "ct-z4w5-acceptance-20261120/inventory/README.md",
+    "sha256": "4ca13eee497814de879801c29843d1d9d17638c7419e59352bbb90189e2d2161",
+    "bytes": 576
   },
   "verification": {
-    "path": "ocr-recovery-20261113/repairs/source-recovery-inventory-20261115/verification.json",
-    "sha256": "1971c300e290f85d077582f10f160bf8cec2d343cd6fa10ad650b6a4419d99b3",
-    "bytes": 605
+    "path": "ct-z4w5-acceptance-20261120/inventory/verification.json",
+    "sha256": "f37879c069593aa05ff3b0f91cffcf4aef7bcbc158023b0ed274249a37e964cc",
+    "bytes": 98
+  },
+  "previous_manifest": {
+    "path": "ticket-fixes-20261117/inventory/post-capture-append/manifest.json",
+    "sha256": "33af1264b175251d5544e1d44f44c2df861633e4816b7a6545217dcf5af444e9",
+    "bytes": 4040
   },
   "automatic_dispatch": false,
-  "native_catalog_and_selected_text_unchanged": true
+  "native_catalog_and_selected_text_unchanged": false
 }

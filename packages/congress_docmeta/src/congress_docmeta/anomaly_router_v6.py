@@ -996,11 +996,9 @@ def load_default_usc_oracle_v6(
     refspec_repo: str | Path | None = None,
 ) -> Any | None:
     """Optionally load SHA256-pinned `UscSectionOracle` (`citations_and_signals_v6` fast loader or `RefSpec`)."""
-    resolved_repo = (
-        Path(refspec_repo)
-        if refspec_repo is not None
-        else Path(os.environ.get("REFSPEC_ROOT", "/Users/mikewolfd/Work/spicy-stack/RefSpec"))
-    )
+    from .relational_rules_v6 import resolve_refspec_root
+
+    resolved_repo = Path(refspec_repo) if refspec_repo is not None else resolve_refspec_root()
     if not resolved_repo.exists():
         return None
     try:

@@ -6,6 +6,7 @@ READING_VERSIONS = {
     'json': 'f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93',
     'house_floor_feed': 'b08fb4d8577bb72a97a0b6624eac8d1d21cee01a2db42184e8f7d38c80423a8f',
     'html_metadata': 'c226ccd99877c497474ffee673baa301f37bc14972b9b9f391af594da9b2b7be',
+    'gpo_mods': 'ac383d286e4213e9c8d3e4b90f4c056120db2448309f341c728b7689f0745c07',
     'readings': '7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed',
     # Body-text parsers (data model §6.6), declared 2026-11-08: each ID is the SHA-256 of its
     # declaration below, computed once and never recomputed; warc's names the IDs it routes to.
@@ -35,6 +36,7 @@ MIGRATION_BUNDLE_INPUTS = 'eb1390f56e0216d7ed9ea94db85264a51a2dfd63c1831bc87e2f2
 # New derived source meaning, independent of generic XML and document-text readings.
 HOUSE_FLOOR_DECLARATION = 'house_floor_feed 2026-11-13: spicy-docs house-floor-feed/002; complete Atom entries with exact original byte spans and hashes, literal publisher metadata and link occurrences; weekly-page HTML base unless explicit xml:base; preserve repeated IDs and weekly URLs; schedule/discovery only, no prose or legislative actions; a separate extra-leading-slash target repair requires the exact absolute URL elsewhere in the same feed, with raw spellings and repair reason retained; malformed input refuses whole; 64 MiB decoded bound'
 HTML_METADATA_DECLARATION = 'html_metadata 2026-11-16: extruct json-ld/opengraph/dublincore/microdata/microformat/rdfa with canonical RDFa blank-node coloring, per-format 10s deadline, comment-tolerant HTML5 prefix and bare-UUID route detection, RDFa content:encoded main-content selection preserving multi-line preformatted transcripts while stripping nested CMS navigation/header/footer/share chrome and retroactive live-CMS Congress banners when page dates/years establish an earlier Congress'
+GPO_MODS_DECLARATION = 'gpo_mods 2026-11-20: congress_api.parsers.gpo.parse_mods_document over GovInfo MODS XML; root accessId and preferredCitation plus constituent granule accessId and preferredCitation or root preferredCitation with constituent titleInfo partName/partNumber; normalized whitespace; non-MODS or malformed XML refuses whole; 24 MiB page-parse bound'
 
 # Opt-in reviewed repairs do not replace the ordinary body-text declarations above.
 MARKUP_RECOVERY_BASE_VERSIONS = {
@@ -76,8 +78,12 @@ HTML_LEGISLATIVE_SELECTION_DECLARATION = 'body_text html_text publisher selectio
 HTML_LEGISLATIVE_SELECTION_VERSION = 'd61921744487a92b3e3ef74257217c2f79836316cc1e758b1444b1fa31db911b'
 
 # Opt-in Congressional CMS chrome & retroactive Congress-banner stripping policy.
-HTML_CMS_CONTENT_SELECTION_DECLARATION = 'body_text html_text publisher selection 2026-11-18: opt-in congressional-cms-main-content/001 over original HTML bytes; skip Congress.gov legislative wrappers and response-role error/wait/feed pages; select single RDFa content:encoded (>=200 chars), single main landmark (>=40 nonspace chars), or body subtree with CMS nav/header/footer/sidebar/share/search/cookie/hidden containers pruned while preserving element tails, preformatted hearing transcripts, tables and inline word boundaries; render pruned UTF-8 HTML fragment through spicy-docs htm derivation 006 and strip standalone retroactive live-CMS Congress banner lines when page dates or prose years establish an earlier Congress; fallback to ordinary html_text when no CMS chrome or banner is removed or under 40 nonspace characters remain; distinct candidate version, one page, 64 MiB input bound, no network or OCR'
-HTML_CMS_CONTENT_SELECTION_VERSION = 'cda208eb7150cd0c2d7f10684f9dee141ffd3ebd6c5036b0ac695a30cdcc4ac3'
+HTML_CMS_CONTENT_SELECTION_DECLARATION = 'body_text html_text publisher selection 2026-11-20: opt-in congressional-cms-main-content/002 over original HTML bytes; skip Congress.gov legislative wrappers and response-role error/wait/feed pages; select single RDFa content:encoded (>=200 chars), single main landmark (>=40 nonspace chars), or body subtree with CMS nav/header/footer/sidebar/share/search/cookie/hidden containers pruned while preserving element tails, preformatted hearing transcripts, tables and inline word boundaries; render pruned UTF-8 HTML fragment through spicy-docs htm derivation 006 and strip standalone retroactive live-CMS Congress banner lines when page dates or prose years establish an earlier Congress; fallback to ordinary html_text when no CMS chrome or banner is removed, when under 40 nonspace characters remain, or when the empirical shrinkage guard fires (cleaned output under 500 UTF-8 bytes and under 10% of an ordinary html_text output of at least 2,000 UTF-8 bytes, fitted to 3 observed main_landmark losses); distinct candidate version, one page, 64 MiB input bound, no network or OCR'
+HTML_CMS_CONTENT_SELECTION_VERSION = 'b06d356ad5e3030f93ec02462f0c2f9a24172608ed39d1adfc506546d0e4e33d'
+RETIRED_HTML_CMS_CONTENT_SELECTION_VERSIONS = (
+    'fe2a39f4f194a8888d38b1e07354f169f80fbed1e36156960a998640628044d7',
+    'cda208eb7150cd0c2d7f10684f9dee141ffd3ebd6c5036b0ac695a30cdcc4ac3',
+)
 
 # Opt-in verified 1:1 capture-receipt sibling composition for WARC/ARC provider envelopes.
 WARC_CAPTURE_PAYLOAD_COMPOSITION_DECLARATION = 'body_text warc capture-payload composition 2026-11-16: opt-in verified 1:1 same-receipt-line capture_evidence composition for application/warc+gzip and application/arc+gzip external/provider-responses envelopes (capture_index>=1, complete=true, http_status=200) whose unique capture_index=0 documents sibling payload_sha256 has a qualified completed pdf_text, html_text or xml_text reading and is not a response-role error, wait, wrapper or feed body; preserves exact payload text, UTF-8 page_offsets, ocr_pages, macos_build and text_sha256, recording payload_sha256, payload_parser, payload_parser_version, receipt_key and receipt_line in readings fields; distinct version for explicit selection'

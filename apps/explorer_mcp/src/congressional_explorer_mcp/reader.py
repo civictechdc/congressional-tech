@@ -83,7 +83,8 @@ class Reader(HearingReader, LegislativeReader):
             self.schemas = {table: {row[0]: row[1] for row in self.db.execute(f'DESCRIBE {quote(table)}').fetchall()}
                             for table in [*selection['tables'], 'documents']}
             self.document_summary = DOCUMENT_SUMMARY_COLUMNS + (
-                ',d.document_date_status' if 'document_date_status' in self.schemas['detail'] else '')
+                ',d.document_date_status' if 'document_date_status' in self.schemas['detail'] else '') + (
+                ',d.print_number' if 'print_number' in self.schemas['detail'] else '')
             self.entity_keys, self.document_links = published_entities(selection['controls']['schema'])
             self._ballot_date_buckets = None
             self._warmed = False
@@ -357,7 +358,9 @@ class Reader(HearingReader, LegislativeReader):
             if table not in declared:
                 self.require(table)
             meaning = declared.get(table, {})
-            return dict(release_id=self.release_id, table=table, available=table in self.schemas, columns=self.schemas.get(table, {}),
+            return dict(release_id=self.release_id, table=table, available=table in self.schemas,
+                description=meaning.get('description') or meaning.get('purpose'),
+                columns=self.schemas.get(table, {}),
                 meanings=meaning.get('columns', []), purpose=meaning.get('purpose'), row_meaning=meaning.get('row_meaning'),
                 identity=meaning.get('identity'), scope=meaning.get('gaps', []), notes=meaning.get('notes', {}),
                 relationships_version=version,
@@ -367,7 +370,9 @@ class Reader(HearingReader, LegislativeReader):
                 entity_response=dict(default_mode='detail', modes=['detail', 'summary'],
                     summary_fields=self.entity_summary_fields(table), fields=list(self.schemas.get(table, {})),
                     omitted_details='Use mode=detail, fields=[...], or query_sql to slice large nested lists.'))
-        tables = {name: dict(rows=sum(p['rows'] for p in parts), columns=list(self.schemas[name]))
+        tables = {name: dict(rows=sum(p['rows'] for p in parts),
+                             description=declared.get(name, {}).get('description') or declared.get(name, {}).get('purpose'),
+                             columns=list(self.schemas[name]))
                   for name, parts in self.selection['tables'].items()}
         return dict(release_id=self.release_id, tables=tables,
             views=dict(documents='List and detail joined by release-local list_row'),

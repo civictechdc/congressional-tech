@@ -229,6 +229,7 @@ export function ArchiveDetail({
     <div className="archive-dates">
       {labels.document&&<p><strong>Document date:</strong> {labels.document}</p>}
       <p>{labels.capture}</p>
+      {presented.printNumber&&<p><strong>Print number:</strong> {presented.printNumber}</p>}
       {packageId&&<p><strong>GovInfo package:</strong> {packageId} · <a href={`https://www.govinfo.gov/app/details/${encodeURIComponent(packageId)}`} target="_blank" rel="noreferrer">View on GovInfo</a></p>}
       {allMeasures.length>0&&<p className="archive-dates-measures"><strong>Related legislation:</strong> <span className="archive-measure-list">{allMeasures.map(m=>{
         const key=m.subject_key??m.key;
