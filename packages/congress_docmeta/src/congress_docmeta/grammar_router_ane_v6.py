@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import collections
 import copy
+from dataclasses import dataclass
+from decimal import Decimal
 import json
 import math
 from pathlib import Path
@@ -37,6 +39,8 @@ from .pythonic_v5 import DOC_KINDS_SET, SCHEMA_OBJ
 from .pythonic_v6 import clean_html_and_cms_v6, infer_is_html_v6
 
 RouterMode = Literal["fast", "ane"]
+ScoreMode = Literal["aps_det", "lac", "raps_det"]
+CANONICAL_CROQ_KINDS: tuple[str, ...] = tuple(sorted(DOC_KINDS_SET))
 _TOK_RE = re.compile(r"[a-z0-9_]{2,}")
 
 
@@ -244,11 +248,11 @@ def fuse_top6_router_probs(
 
 
 class PreDecodeGrammarRouterV6:
-    """Calibrated Pre-Decode Grammar Router (`fast` linear CPU or `ane` Top-6 `Laya-Typed` ANE)."""
+    """Calibrated Pre-Decode Grammar Router (`fast` linear CPU + CROQ or `ane` Top-6 `Laya-Typed` ANE)."""
 
     def __init__(
         self,
-        mode: RouterMode = "ane",
+        mode: RouterMode = "fast",
         *,
         home: str | Path | None = None,
         artifacts_dir: str | Path | None = None,
@@ -259,6 +263,10 @@ class PreDecodeGrammarRouterV6:
         allow_multi_kind_set: bool = True,
         pipe_depth: int = 4,
         verify_manifest: bool | str = "if_present",
+        use_croq: bool | str = "auto",
+        croq_alpha: float = 0.05,
+        croq_max_lock_k: int = 4,
+        croq_calibration_path: str | Path | None = None,
     ) -> None:
         import numpy as np
 
@@ -303,6 +311,37 @@ class PreDecodeGrammarRouterV6:
         self.tau_top1 = float(tau_top1 if tau_top1 is not None else t1_def)
         self.tau_top2 = max(self.tau_top1, float(tau_top2 if tau_top2 is not None else t2_def))
         self.tau_top3 = max(self.tau_top2, float(tau_top3 if tau_top3 is not None else t3_def))
+
+        self.croq_router: ConformalKindRouter | None = None
+        self._croq_kind_indices: list[int] = []
+        wants_croq: bool
+        if isinstance(use_croq, str):
+            if use_croq != "auto":
+                raise ValueError(f"Unsupported use_croq={use_croq!r}; expected bool or 'auto'.")
+            wants_croq = (
+                mode == "fast"
+                and self.allow_multi_kind_set
+                and tau_top1 is None
+                and tau_top2 is None
+                and tau_top3 is None
+                and set(CANONICAL_CROQ_KINDS).issubset(self.classes)
+            )
+        else:
+            wants_croq = bool(use_croq)
+
+        if wants_croq:
+            missing_kinds = [k for k in CANONICAL_CROQ_KINDS if k not in self.classes]
+            if missing_kinds:
+                raise ValueError(
+                    f"Conformal CROQ requires all 47 canonical kinds in router classes; missing {missing_kinds[:5]!r}"
+                )
+            self.croq_router = load_bundled_croq_router_v6(
+                croq_calibration_path,
+                alpha=croq_alpha,
+                max_lock_k=croq_max_lock_k,
+            )
+            cls_idx = {c: i for i, c in enumerate(self.classes)}
+            self._croq_kind_indices = [cls_idx[k] for k in self.croq_router.kinds]
 
         self._owns_laya = False
         self.laya_backend: Any = None
@@ -458,29 +497,40 @@ class PreDecodeGrammarRouterV6:
             lock_spec: str | None = None
             lock_type = "open"
             tag_prefix = "ane" if self.mode == "ane" else "fast"
+            croq_dec_dict: dict[str, Any] | None = None
 
-            if not c0.startswith("status:") and c0 in DOC_KINDS_SET and p0 >= self.tau_top1:
-                lock_spec = c0
-                lock_type = f"{tag_prefix}_top1"
-            elif (
-                self.allow_multi_kind_set
-                and not c0.startswith("status:")
-                and not c1.startswith("status:")
-                and (p0 + p1) >= self.tau_top2
-            ):
-                lock_spec = "|".join(sorted((c0, c1)))
-                lock_type = f"{tag_prefix}_top2"
-            elif (
-                self.allow_multi_kind_set
-                and not c0.startswith("status:")
-                and not c1.startswith("status:")
-                and not c2.startswith("status:")
-                and (p0 + p1 + p2) >= self.tau_top3
-            ):
-                lock_spec = "|".join(sorted((c0, c1, c2)))
-                lock_type = f"{tag_prefix}_top3"
+            if self.croq_router is not None:
+                if c0.startswith("status:") or c0 not in DOC_KINDS_SET:
+                    lock_type = "croq_open_status"
+                else:
+                    p47 = [float(p_row[idx_c]) for idx_c in self._croq_kind_indices]
+                    croq_dec = self.croq_router.route_one(p47)
+                    lock_spec = croq_dec.lock_spec
+                    lock_type = croq_dec.lock_type
+                    croq_dec_dict = croq_dec.to_dict()
+            else:
+                if not c0.startswith("status:") and c0 in DOC_KINDS_SET and p0 >= self.tau_top1:
+                    lock_spec = c0
+                    lock_type = f"{tag_prefix}_top1"
+                elif (
+                    self.allow_multi_kind_set
+                    and not c0.startswith("status:")
+                    and not c1.startswith("status:")
+                    and (p0 + p1) >= self.tau_top2
+                ):
+                    lock_spec = "|".join(sorted((c0, c1)))
+                    lock_type = f"{tag_prefix}_top2"
+                elif (
+                    self.allow_multi_kind_set
+                    and not c0.startswith("status:")
+                    and not c1.startswith("status:")
+                    and not c2.startswith("status:")
+                    and (p0 + p1 + p2) >= self.tau_top3
+                ):
+                    lock_spec = "|".join(sorted((c0, c1, c2)))
+                    lock_type = f"{tag_prefix}_top3"
 
-            results[orig_i] = {
+            row_res: dict[str, Any] = {
                 "lock_spec": lock_spec,
                 "lock_type": lock_type,
                 "top1_class": c0,
@@ -490,6 +540,13 @@ class PreDecodeGrammarRouterV6:
                     for k in range(min(3, len(order)))
                 ],
             }
+            if croq_dec_dict is not None:
+                row_res["conformal_set"] = croq_dec_dict["conformal_set"]
+                row_res["set_size"] = croq_dec_dict["set_size"]
+                row_res["set_prob_mass"] = croq_dec_dict["set_prob_mass"]
+                row_res["q_hat"] = croq_dec_dict["q_hat"]
+                row_res["croq_decision"] = croq_dec_dict
+            results[orig_i] = row_res
 
         return results
 
@@ -505,11 +562,408 @@ class PreDecodeGrammarRouterV6:
         self.close()
 
 
+def split_conformal_quantile(scores: Sequence[float] | Any, alpha: float) -> float:
+    """Exact finite-sample split conformal quantile `ceil((n + 1)(1 - alpha))`-th order statistic.
+
+    Uses exact `Decimal` arithmetic so binary float rounding never under-selects the rank.
+    Returns `+inf` when `ceil((n + 1)(1 - alpha)) > n` so finite-sample coverage
+    `>= 1 - alpha` holds even on small calibration splits (`n < 1/alpha - 1`).
+    """
+    if hasattr(scores, "ravel"):
+        flat = [float(x) for x in scores.ravel().tolist()]
+    else:
+        flat = [float(x) for x in scores]
+    n = len(flat)
+    if n == 0:
+        raise ValueError("Calibration score sequence must be non-empty.")
+    if not (0.0 < float(alpha) < 1.0):
+        raise ValueError(f"alpha must lie strictly in (0, 1), got {alpha!r}.")
+    if any(not math.isfinite(x) for x in flat):
+        raise ValueError("Calibration scores must be finite.")
+
+    target = Decimal(n + 1) * (Decimal("1") - Decimal(str(alpha)))
+    rank = int(math.ceil(target))
+    if rank <= 0:
+        return float("-inf")
+    if rank > n:
+        return float("inf")
+    flat.sort()
+    return float(flat[rank - 1])
+
+
+def _normalize_prob_row(row: Sequence[float] | Any, n_classes: int | None = None) -> list[float]:
+    if hasattr(row, "tolist"):
+        vals = [float(x) for x in row.tolist()]
+    else:
+        vals = [float(x) for x in row]
+    k = n_classes if n_classes is not None else len(vals)
+    if len(vals) != k:
+        raise ValueError(f"Expected probability vector of length {k}, got {len(vals)}.")
+    clean = [v if math.isfinite(v) and v > 0.0 else 0.0 for v in vals]
+    s = sum(clean)
+    if s > 0.0:
+        return [v / s for v in clean]
+    return [1.0 / max(1, k)] * k
+
+
+def _row_nonconformity_scores(
+    probs_row: list[float],
+    *,
+    score_mode: ScoreMode = "aps_det",
+    k_reg: int = 4,
+    lam: float = 0.05,
+) -> tuple[list[float], list[int]]:
+    """Return `(scores_by_class_idx, order_desc_indices)` for one normalized probability vector."""
+    n_c = len(probs_row)
+    order = sorted(range(n_c), key=lambda idx: (-probs_row[idx], idx))
+    scores = [0.0] * n_c
+    cprev = 0.0
+    for rank_0, cls_idx in enumerate(order):
+        p = probs_row[cls_idx]
+        if score_mode == "lac":
+            s_val = 1.0 - p
+        elif score_mode == "aps_det":
+            s_val = cprev
+        elif score_mode == "raps_det":
+            s_val = cprev + float(lam) * max(0.0, float(rank_0 + 1 - k_reg))
+        else:
+            raise ValueError(f"Unsupported score_mode={score_mode!r}")
+        scores[cls_idx] = s_val
+        cprev += p
+    return scores, order
+
+
+def compute_class_nonconformity_scores(
+    probs: Sequence[Sequence[float]] | Any,
+    *,
+    score_mode: ScoreMode = "aps_det",
+    k_reg: int = 4,
+    lam: float = 0.05,
+) -> Any:
+    """Compute per-class nonconformity score matrix matching `probs` shape `(N, K)`."""
+    if hasattr(probs, "ndim"):
+        import numpy as np
+
+        p_arr = np.asarray(probs, dtype=np.float64)
+        if p_arr.ndim != 2:
+            raise ValueError(f"Expected 2D probability matrix, got shape {p_arr.shape!r}.")
+        out = np.empty_like(p_arr)
+        n_c = p_arr.shape[1]
+        for i in range(p_arr.shape[0]):
+            norm_r = _normalize_prob_row(p_arr[i], n_c)
+            row_s, _ = _row_nonconformity_scores(norm_r, score_mode=score_mode, k_reg=k_reg, lam=lam)
+            out[i] = row_s
+        return out
+
+    rows_out: list[list[float]] = []
+    for row in probs:
+        norm_r = _normalize_prob_row(row)
+        row_s, _ = _row_nonconformity_scores(norm_r, score_mode=score_mode, k_reg=k_reg, lam=lam)
+        rows_out.append(row_s)
+    return rows_out
+
+
+def build_croq_union_schema(
+    allowed_kinds: Sequence[str],
+    *,
+    wire_format: Literal["compact", "v4"] = "compact",
+) -> dict[str, Any]:
+    """Build a valid compact or V4 JSON schema constrained to surviving CROQ kinds `C(x)`."""
+    deduped = list(dict.fromkeys(str(k).strip() for k in allowed_kinds if str(k).strip()))
+    if not deduped:
+        raise ValueError("allowed_kinds must contain at least 1 valid DocMeta kind.")
+    unknown = [k for k in deduped if k not in DOC_KINDS_SET]
+    if unknown:
+        raise ValueError(f"Unknown DocMeta kinds for union schema: {unknown!r}")
+    if wire_format == "compact":
+        from .compact_wire_v6 import build_doc_kind_compact_schema_v6
+
+        return build_doc_kind_compact_schema_v6(deduped)
+    if wire_format == "v4":
+        return build_doc_kind_set_schema_v6(deduped)
+    raise ValueError(f"Unsupported wire_format={wire_format!r}")
+
+
+@dataclass(frozen=True)
+class ConformalRoutingDecision:
+    """Per-document Conformal Risk-Controlled Routing (`CROQ`) decision."""
+
+    conformal_set: list[str]
+    set_size: int
+    lock_type: Literal["croq_singleton", "croq_compact_set", "croq_open"]
+    lock_spec: str | None
+    top1_kind: str
+    top1_prob: float
+    set_prob_mass: float
+    q_hat: float
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "conformal_set": list(self.conformal_set),
+            "set_size": self.set_size,
+            "lock_type": self.lock_type,
+            "lock_spec": self.lock_spec,
+            "top1_kind": self.top1_kind,
+            "top1_prob": self.top1_prob,
+            "set_prob_mass": self.set_prob_mass,
+            "q_hat": self.q_hat,
+        }
+
+
+class ConformalKindRouter:
+    """Distribution-free split-conformal class-set router over the 47 usable DocMeta kinds."""
+
+    def __init__(
+        self,
+        *,
+        alpha: float = 0.05,
+        score_mode: ScoreMode = "aps_det",
+        k_reg: int = 4,
+        lam: float = 0.05,
+        max_lock_k: int = 4,
+        allow_empty: bool = True,
+        kinds: Sequence[str] = CANONICAL_CROQ_KINDS,
+        q_hat: float | None = None,
+        n_cal: int = 0,
+        cal_summary: Mapping[str, Any] | None = None,
+    ) -> None:
+        if not (0.0 < float(alpha) < 1.0):
+            raise ValueError(f"alpha must lie in (0, 1), got {alpha!r}.")
+        if score_mode not in ("aps_det", "lac", "raps_det"):
+            raise ValueError(f"Unsupported score_mode={score_mode!r}.")
+        if int(max_lock_k) < 1:
+            raise ValueError(f"max_lock_k must be >= 1, got {max_lock_k!r}.")
+        self.alpha = float(alpha)
+        self.score_mode: ScoreMode = score_mode
+        self.k_reg = int(k_reg)
+        self.lam = float(lam)
+        self.max_lock_k = int(max_lock_k)
+        self.allow_empty = bool(allow_empty)
+        self.kinds: tuple[str, ...] = tuple(str(k) for k in kinds)
+        if not self.kinds:
+            raise ValueError("kinds must be non-empty.")
+        self._kind_to_idx: dict[str, int] = {k: i for i, k in enumerate(self.kinds)}
+        self.q_hat: float | None = float(q_hat) if q_hat is not None else None
+        self.n_cal: int = int(n_cal)
+        self.cal_summary: dict[str, Any] = dict(cal_summary or {})
+
+    def _label_indices(self, labels: Sequence[int | str]) -> list[int]:
+        out: list[int] = []
+        n_c = len(self.kinds)
+        for y in labels:
+            if isinstance(y, str):
+                if y not in self._kind_to_idx:
+                    raise KeyError(f"Unknown label kind {y!r}")
+                out.append(self._kind_to_idx[y])
+            else:
+                yi = int(y)
+                if not (0 <= yi < n_c):
+                    raise IndexError(f"Label index {yi} out of bounds [0, {n_c}).")
+                out.append(yi)
+        return out
+
+    def fit(self, cal_probs: Sequence[Sequence[float]] | Any, cal_labels: Sequence[int | str]) -> "ConformalKindRouter":
+        """Fit split-conformal quantile `q_hat` strictly on held-out calibration pairs."""
+        rows = cal_probs.tolist() if hasattr(cal_probs, "tolist") else list(cal_probs)
+        y_idx = self._label_indices(cal_labels)
+        if len(rows) != len(y_idx):
+            raise ValueError(f"cal_probs rows ({len(rows)}) != cal_labels ({len(y_idx)}).")
+        if not rows:
+            raise ValueError("Calibration set cannot be empty.")
+
+        cal_scores: list[float] = []
+        for row, yi in zip(rows, y_idx):
+            norm_r = _normalize_prob_row(row, len(self.kinds))
+            row_s, _ = _row_nonconformity_scores(norm_r, score_mode=self.score_mode, k_reg=self.k_reg, lam=self.lam)
+            cal_scores.append(row_s[yi])
+
+        self.q_hat = split_conformal_quantile(cal_scores, alpha=self.alpha)
+        self.n_cal = len(rows)
+        self.cal_summary = self.evaluate(rows, y_idx)
+        return self
+
+    def predict_set(self, probs_1d: Sequence[float] | Any) -> list[str]:
+        """Predict ordered conformal class set `C(x)` (descending prob) for one distribution."""
+        if self.q_hat is None:
+            raise RuntimeError("ConformalKindRouter must be fit or loaded with q_hat before predicting.")
+        norm_r = _normalize_prob_row(probs_1d, len(self.kinds))
+        row_s, order = _row_nonconformity_scores(
+            norm_r, score_mode=self.score_mode, k_reg=self.k_reg, lam=self.lam
+        )
+        c_set = [self.kinds[idx] for idx in order if row_s[idx] <= self.q_hat + 1e-12]
+        if not c_set and not self.allow_empty:
+            c_set = [self.kinds[order[0]]]
+        return c_set
+
+    def predict_sets(self, probs_2d: Sequence[Sequence[float]] | Any) -> list[list[str]]:
+        rows = probs_2d.tolist() if hasattr(probs_2d, "tolist") else list(probs_2d)
+        return [self.predict_set(row) for row in rows]
+
+    def route_one(self, probs_1d: Sequence[float] | Any) -> ConformalRoutingDecision:
+        """Route one distribution to `croq_singleton`, `croq_compact_set` (`<= max_lock_k`), or `croq_open`."""
+        if self.q_hat is None:
+            raise RuntimeError("ConformalKindRouter must be fit or loaded with q_hat before route_one().")
+        norm_r = _normalize_prob_row(probs_1d, len(self.kinds))
+        c_set = self.predict_set(norm_r)
+        top1_idx = max(range(len(self.kinds)), key=lambda i: (norm_r[i], -i))
+        top1_kind = self.kinds[top1_idx]
+        top1_prob = float(norm_r[top1_idx])
+        set_mass = float(sum(norm_r[self._kind_to_idx[k]] for k in c_set))
+        n_set = len(c_set)
+        if n_set == 1:
+            lock_type: Literal["croq_singleton", "croq_compact_set", "croq_open"] = "croq_singleton"
+            lock_spec: str | None = c_set[0]
+        elif 1 < n_set <= self.max_lock_k:
+            lock_type = "croq_compact_set"
+            lock_spec = "|".join(sorted(c_set))
+        else:
+            lock_type = "croq_open"
+            lock_spec = None
+        return ConformalRoutingDecision(
+            conformal_set=c_set,
+            set_size=n_set,
+            lock_type=lock_type,
+            lock_spec=lock_spec,
+            top1_kind=top1_kind,
+            top1_prob=round(top1_prob, 6),
+            set_prob_mass=round(set_mass, 6),
+            q_hat=float(self.q_hat),
+        )
+
+    def evaluate(self, probs_2d: Sequence[Sequence[float]] | Any, labels: Sequence[int | str]) -> dict[str, Any]:
+        rows = probs_2d.tolist() if hasattr(probs_2d, "tolist") else list(probs_2d)
+        y_idx = self._label_indices(labels)
+        if len(rows) != len(y_idx):
+            raise ValueError(f"probs_2d rows ({len(rows)}) != labels ({len(y_idx)}).")
+        if not rows:
+            return {"n": 0, "empirical_coverage": 0.0, "mean_set_size": 0.0}
+        covered = 0
+        sizes: list[int] = []
+        singletons = 0
+        compacts = 0
+        opens = 0
+        for row, yi in zip(rows, y_idx):
+            dec = self.route_one(row)
+            y_kind = self.kinds[yi]
+            if y_kind in dec.conformal_set:
+                covered += 1
+            sizes.append(dec.set_size)
+            if dec.lock_type == "croq_singleton":
+                singletons += 1
+            elif dec.lock_type == "croq_compact_set":
+                compacts += 1
+            else:
+                opens += 1
+        n = len(rows)
+        return {
+            "n": n,
+            "empirical_coverage": round(covered / n, 6),
+            "target_coverage": round(1.0 - self.alpha, 6),
+            "mean_set_size": round(sum(sizes) / n, 4),
+            "singleton_rate": round(singletons / n, 6),
+            "compact_rate": round((singletons + compacts) / n, 6),
+            "open_fallback_rate": round(opens / n, 6),
+        }
+
+    def build_grammar_schema(
+        self,
+        decision_or_kinds: ConformalRoutingDecision | Sequence[str],
+        *,
+        wire_format: Literal["compact", "v4"] = "compact",
+    ) -> dict[str, Any] | None:
+        if isinstance(decision_or_kinds, ConformalRoutingDecision):
+            if decision_or_kinds.lock_spec is None:
+                return None
+            kinds = decision_or_kinds.conformal_set
+        else:
+            kinds = list(decision_or_kinds)
+            if not (1 <= len(kinds) <= self.max_lock_k):
+                return None
+        return build_croq_union_schema(kinds, wire_format=wire_format)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "alpha": self.alpha,
+            "score_mode": self.score_mode,
+            "k_reg": self.k_reg,
+            "lam": self.lam,
+            "max_lock_k": self.max_lock_k,
+            "allow_empty": self.allow_empty,
+            "kinds": list(self.kinds),
+            "q_hat": self.q_hat,
+            "n_cal": self.n_cal,
+            "cal_summary": dict(self.cal_summary),
+        }
+
+    @classmethod
+    def from_dict(cls, payload: Mapping[str, Any]) -> "ConformalKindRouter":
+        cal_summary = dict(payload.get("cal_summary") or {})
+        if not cal_summary:
+            for k_src, k_dst in (
+                ("cal_empirical_coverage", "empirical_coverage"),
+                ("cal_mean_set_size", "mean_set_size"),
+                ("cal_singleton_rate", "singleton_rate"),
+                ("cal_open_fallback_rate", "open_fallback_rate"),
+            ):
+                if k_src in payload and payload[k_src] is not None:
+                    cal_summary[k_dst] = float(payload[k_src])
+        obj = cls(
+            alpha=float(payload["alpha"]),
+            score_mode=payload["score_mode"],
+            k_reg=int(payload.get("k_reg", 4)),
+            lam=float(payload.get("lam", 0.05)),
+            max_lock_k=int(payload.get("max_lock_k", 4)),
+            allow_empty=bool(payload.get("allow_empty", True)),
+            kinds=tuple(payload.get("kinds") or CANONICAL_CROQ_KINDS),
+            q_hat=float(payload["q_hat"]) if payload.get("q_hat") is not None else None,
+            n_cal=int(payload.get("n_cal", 0)),
+            cal_summary=cal_summary,
+        )
+        return obj
+
+
+DEFAULT_CROQ_CAL_PATH = Path(__file__).with_name("croq_v64_calibration.json")
+
+
+def load_bundled_croq_router_v6(
+    calibration_path: str | Path | None = None,
+    *,
+    alpha: float | None = None,
+    max_lock_k: int | None = None,
+) -> ConformalKindRouter:
+    """Load pre-calibrated Conformal `CROQ` (`alpha=0.05, aps_det, max_lock_k=4`) router from package JSON."""
+    c_path = Path(calibration_path) if calibration_path is not None else DEFAULT_CROQ_CAL_PATH
+    if not c_path.is_file():
+        raise FileNotFoundError(f"Missing CROQ calibration artifact: {c_path}")
+    payload = json.loads(c_path.read_text(encoding="utf-8"))
+    cal_alpha = float(payload["alpha"])
+    if alpha is not None and abs(float(alpha) - cal_alpha) > 1e-9:
+        raise ValueError(
+            f"Bundled CROQ artifact {c_path.name} was calibrated at alpha={cal_alpha}, not alpha={alpha}; "
+            "fit ConformalKindRouter explicitly for another alpha."
+        )
+    router = ConformalKindRouter.from_dict(payload)
+    if max_lock_k is not None:
+        if int(max_lock_k) < 1:
+            raise ValueError(f"max_lock_k must be >= 1, got {max_lock_k!r}")
+        router.max_lock_k = int(max_lock_k)
+    return router
+
+
 __all__ = [
+    "CANONICAL_CROQ_KINDS",
+    "DEFAULT_CROQ_CAL_PATH",
+    "ConformalKindRouter",
+    "ConformalRoutingDecision",
     "PreDecodeGrammarRouterV6",
     "RouterMode",
+    "ScoreMode",
+    "build_croq_union_schema",
     "build_doc_kind_set_schema_v6",
+    "compute_class_nonconformity_scores",
     "extract_router_sparse_features_v6",
     "fuse_top6_router_probs",
     "is_valid_kind_lock_spec_v6",
+    "load_bundled_croq_router_v6",
+    "split_conformal_quantile",
 ]

@@ -26,6 +26,8 @@ MIN_MLX_VERSION: tuple[int, ...] = (0, 32, 4)
 
 DEFAULT_MLX_MEMORY_LIMIT_GB: float = 24.0
 DEFAULT_MLX_CACHE_LIMIT_GB: float = 2.0
+DEFAULT_DOCMETA_BATCH_SIZE: int = 256
+_AUTO_LIMIT = object()
 
 REQUIRED_R8_MODULES: tuple[tuple[str, str], ...] = (
     ("usaddress", "usaddress==0.5.14"),
@@ -83,6 +85,29 @@ def probe_host_memory_gb() -> int:
         except (ValueError, OSError):
             pass
     return int(round(mem_bytes / (1024**3))) if mem_bytes > 0 else 0
+
+
+def resolve_default_mlx_limits(host_mem_gb: int | None = None) -> tuple[float, float]:
+    """Return ``(memory_limit_gb, cache_limit_gb)`` auto-sized for host unified RAM.
+
+    On ``<= 24 GiB`` hosts (e.g. Base M5 24 GiB), cap MLX active working-set memory
+    at ``min(20.0, round(0.80 * host_mem_gb, 1))`` (``19.2`` GiB, staying within the
+    Metal wired ceiling) and free-buffer cache at ``1.5`` GiB to prevent swap/OOM.
+    On ``> 24 GiB`` hosts (e.g. 48 GiB M4 Pro) or unknown RAM (``0``), preserve
+    ``(DEFAULT_MLX_MEMORY_LIMIT_GB, DEFAULT_MLX_CACHE_LIMIT_GB)`` (``(24.0, 2.0)``).
+    """
+    mem = probe_host_memory_gb() if host_mem_gb is None else int(host_mem_gb)
+    if 0 < mem <= 24:
+        return min(20.0, round(0.80 * float(mem), 1)), 1.5
+    return DEFAULT_MLX_MEMORY_LIMIT_GB, DEFAULT_MLX_CACHE_LIMIT_GB
+
+
+def resolve_default_docmeta_batch_size(host_mem_gb: int | None = None) -> int:
+    """Return default rolling DocMeta slot/batch budget auto-sized to host unified RAM."""
+    mem = probe_host_memory_gb() if host_mem_gb is None else int(host_mem_gb)
+    if 0 < mem <= 24:
+        return 128
+    return DEFAULT_DOCMETA_BATCH_SIZE
 
 
 def check_r8_dependencies(*, strict: bool = True) -> list[str]:
@@ -300,16 +325,24 @@ def mlx_wired_limit_scope(
 
 def apply_mlx_limits(
     *,
-    memory_limit_gb: float | None = DEFAULT_MLX_MEMORY_LIMIT_GB,
-    cache_limit_gb: float | None = DEFAULT_MLX_CACHE_LIMIT_GB,
+    memory_limit_gb: float | None | Any = _AUTO_LIMIT,
+    cache_limit_gb: float | None | Any = _AUTO_LIMIT,
     mx_module: Any = None,
 ) -> dict[str, int | None]:
     """Set MLX global memory and free-buffer cache limits (`ct-s9l2`).
 
-    ``memory_limit_gb <= 0`` (or ``None``) leaves the active memory limit untouched;
-    ``cache_limit_gb < 0`` (or ``None``) leaves the cache limit untouched (``0`` disables caching).
+    When omitted, defaults are auto-sized via :func:`resolve_default_mlx_limits`.
+    ``memory_limit_gb <= 0`` (or explicit ``None``) leaves the active memory limit
+    untouched; ``cache_limit_gb < 0`` (or explicit ``None``) leaves the cache limit
+    untouched (``0`` disables caching).
     Returns applied and previous byte limits so callers can record or restore them.
     """
+    if memory_limit_gb is _AUTO_LIMIT or cache_limit_gb is _AUTO_LIMIT:
+        def_mem, def_cache = resolve_default_mlx_limits()
+        if memory_limit_gb is _AUTO_LIMIT:
+            memory_limit_gb = def_mem
+        if cache_limit_gb is _AUTO_LIMIT:
+            cache_limit_gb = def_cache
     out: dict[str, int | None] = {
         "memory_limit_bytes": None,
         "prev_memory_limit_bytes": None,
@@ -352,8 +385,8 @@ def apply_mlx_limits(
 @contextmanager
 def mlx_limits_scope(
     *,
-    memory_limit_gb: float | None = DEFAULT_MLX_MEMORY_LIMIT_GB,
-    cache_limit_gb: float | None = DEFAULT_MLX_CACHE_LIMIT_GB,
+    memory_limit_gb: float | None | Any = _AUTO_LIMIT,
+    cache_limit_gb: float | None | Any = _AUTO_LIMIT,
     mx_module: Any = None,
 ) -> Iterator[dict[str, int | None]]:
     """Apply ``mx.set_memory_limit`` + ``mx.set_cache_limit`` for a run and restore prior limits on exit."""
@@ -503,6 +536,7 @@ def format_chat_no_thinking(tok: Any, msgs: Sequence[Mapping[str, str]]) -> str:
 
 
 __all__ = [
+    "DEFAULT_DOCMETA_BATCH_SIZE",
     "DEFAULT_MLX_CACHE_LIMIT_GB",
     "DEFAULT_MLX_MEMORY_LIMIT_GB",
     "MIN_MACOS_ANE_CORE_FIX_VERSION",
@@ -520,6 +554,8 @@ __all__ = [
     "parse_semver",
     "probe_host_memory_gb",
     "probe_silicon_environment",
+    "resolve_default_docmeta_batch_size",
+    "resolve_default_mlx_limits",
     "restore_mlx_cache_limit",
     "run_silicon_preflight",
     "unload_engine_memory",

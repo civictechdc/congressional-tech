@@ -46,7 +46,7 @@ from pathlib import Path
 import re
 import sys
 import time
-from typing import Any, Mapping, Sequence
+from typing import Any, Callable, Mapping, Sequence
 
 DOCMETA_DIR = Path(__file__).resolve().parent
 DET_V6_DIR = DOCMETA_DIR
@@ -1670,6 +1670,36 @@ def per_doc_grammar_v6(
     )
 
 
+def compute_shared_prefix_ids(
+    encode_fn: Callable[[str], Sequence[int]],
+    format_user_prompt_fn: Callable[[str, str, str], str],
+) -> list[int]:
+    """Compute token-level LCP across diverse metadata probes including empty `{}` / `none`.
+
+    Probing only `'{"a": 1}'` vs `'{"b": 2}'` leaves a BPE-merged `' {"'` token in the shared
+    prefix that fails when a real document row carries empty `known='{}'`.
+    """
+    probes = (
+        ('{"a": 1}', "a.pdf", "Alpha"),
+        ('{"b": 2}', "b.pdf", "Beta"),
+        ('{"a":1}', "a.pdf", "Alpha"),
+        ("{}", "c.pdf", "Gamma"),
+        ("none", "d.pdf", "Delta"),
+        ("", "e.pdf", "Epsilon"),
+    )
+    tok_lists = [list(encode_fn(format_user_prompt_fn(k_s, fn, txt))) for k_s, fn, txt in probes]
+    if not tok_lists:
+        return []
+    lcp = min(len(ids) for ids in tok_lists)
+    base = tok_lists[0]
+    for ids in tok_lists[1:]:
+        for k in range(lcp):
+            if ids[k] != base[k]:
+                lcp = k
+                break
+    return base[:lcp]
+
+
 class PythonicEngineV6:
     """Unified V6 Pre-Pass -> Zero-LLM Short-Circuit -> Per-Doc `SyncKindMatcher` -> `FastGemma4Engine` -> Post-Pass V6."""
 
@@ -1716,16 +1746,10 @@ class PythonicEngineV6:
             return format_chat_no_thinking(resolved_tok, msgs)
 
         self._fmt_chat = _fmt_chat
-        probe_a = _fmt_chat([{"role": "user", "content": self._build_prompt_fn('{"a": 1}', "a.pdf", "Alpha")}])
-        probe_b = _fmt_chat([{"role": "user", "content": self._build_prompt_fn('{"b": 2}', "b.pdf", "Beta")}])
-        ids_a = resolved_tok.encode(probe_a, add_special_tokens=False)
-        ids_b = resolved_tok.encode(probe_b, add_special_tokens=False)
-        lcp = min(len(ids_a), len(ids_b))
-        for k in range(lcp):
-            if ids_a[k] != ids_b[k]:
-                lcp = k
-                break
-        self.shared_sys_ids: list[int] = ids_a[:lcp]
+        self.shared_sys_ids: list[int] = compute_shared_prefix_ids(
+            lambda text: resolved_tok.encode(text, add_special_tokens=False),
+            lambda k_s, fn, txt: _fmt_chat([{"role": "user", "content": self._build_prompt_fn(k_s, fn, txt)}]),
+        )
 
     def get_kind_grammar(self, target_doc_kind: str) -> tuple[Any, list[int]]:
         helper = per_doc_grammar_v6(
@@ -2123,6 +2147,7 @@ __all__ = [
     "build_doc_kind_schema_v6",
     "check_gist_title_grounding_v6",
     "clean_html_and_cms_v6",
+    "compute_shared_prefix_ids",
     "derive_sidecar_v6",
     "detect_cover_or_sha_lock_v6",
     "infer_is_html_v6",

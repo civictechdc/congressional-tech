@@ -1342,6 +1342,7 @@ def test_sweep_and_teacher_recover_from_strict_v4_validation_failures(
         chunk_rows=8,
         b_slots=8,
         wire_format="v4",
+        grammar_router="none",
         use_ane_ring=False,
     )
     assert summary.docs_processed == 5
@@ -1388,6 +1389,7 @@ def test_sweep_and_teacher_recover_from_strict_v4_validation_failures(
         chunk_rows=4,
         b_slots=4,
         wire_format="v4",
+        grammar_router="none",
         use_ane_ring=False,
         repair_persona_roles=True,
         external_verifier=_BadRepairVerifier(),
@@ -1542,6 +1544,7 @@ def test_sweep_and_teacher_recover_from_strict_v4_validation_failures(
             chunk_rows=4,
             b_slots=4,
             wire_format="v4",
+            grammar_router="none",
             use_ane_ring=False,
         )
     assert not out_chk_pq.exists()

@@ -532,6 +532,7 @@ def test_two_phase_pass2_unloads_pass1_before_loading_gpt_oss_and_lazy_v4_prompt
         chunk_rows=4,
         b_slots=4,
         wire_format="compact",
+        grammar_router="none",
         use_ane_ring=False,
         escalate_gpt_oss=False,
     )
@@ -556,6 +557,7 @@ def test_two_phase_pass2_unloads_pass1_before_loading_gpt_oss_and_lazy_v4_prompt
         chunk_rows=2,
         b_slots=2,
         wire_format="v4",
+        grammar_router="none",
         use_ane_ring=False,
         external_verifier=_flag_row0,
         escalate_gpt_oss=True,
@@ -648,6 +650,7 @@ def test_ane_contention_coordination_and_pure_ane_fallback_guard(
         chunk_rows=2,
         b_slots=2,
         wire_format="v4",
+        grammar_router="none",
         use_ane_ring=True,
         external_verifier=_Stage1Verifier(),
     )
@@ -658,14 +661,25 @@ def test_cli_and_eval_blind_parser_defaults() -> None:
     cli_args = cli.build_parser().parse_args(["docmeta-sweep", "in.parquet", "out.parquet"])
     assert cli_args.kev_batch_docs == 8
     assert cli_args.two_phase_pass2 == "auto"
+    assert cli_args.grammar_router == "fast"
+    assert cli_args.atomic_verifier == "none"
+    assert cli_args.escalate_gpt_oss is False
+    assert cli_args.telemetry == "auto"
+    assert cli_args.no_extractconf is False
+    assert cli_args.bm25_multicrop is False
 
     eval_args = eval_blind.build_parser().parse_args(["--model-dir", "/tmp/m", "--out", "/tmp/o.json"])
-    assert eval_args.b_slots == 256
+    assert eval_args.b_slots is None
     assert eval_args.chunk_rows == 4096
     assert eval_args.refill_min == 32
     assert eval_args.kev_batch_docs == 8
     assert eval_args.embed_ane == "none"
-    assert eval_args.grammar_router == "none"
+    assert eval_args.grammar_router == "fast"
+    assert eval_args.atomic_verifier == "none"
+    assert eval_args.escalate_gpt_oss is False
+    assert eval_args.telemetry == "auto"
+    assert eval_args.no_extractconf is False
+    assert eval_args.bm25_multicrop is False
     assert eval_args.gpt_oss_model_dir is None
     assert eval_args.gpt_oss_batch_size == 8
     assert eval_args.gpt_oss_k == 1
@@ -821,3 +835,216 @@ def test_router_fusion_thresholds_and_async_stage1_with_ane_router(
         external_verifier=_SharedStage1Verifier(shared_laya),
     )
     assert stage1_threads == ["docmeta-laya-ane-stage1", "docmeta-laya-ane-stage1"]
+
+
+def test_host_ram_autosizing_24gb_vs_48gb_and_explicit_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Verify <=24 GiB Base M5 auto-sizing (19.2 GiB / 1.5 GiB / 128) vs >24 GiB (24.0 / 2.0 / 256) and explicit overrides."""
+    from congress_docmeta import resolve_default_docmeta_batch_size, resolve_default_mlx_limits
+
+    # 1. Pure helper matrix
+    assert resolve_default_mlx_limits(24) == (19.2, 1.5)
+    assert resolve_default_mlx_limits(16) == (12.8, 1.5)
+    assert resolve_default_mlx_limits(25) == (24.0, 2.0)
+    assert resolve_default_mlx_limits(48) == (24.0, 2.0)
+    assert resolve_default_mlx_limits(0) == (24.0, 2.0)
+    assert resolve_default_docmeta_batch_size(24) == 128
+    assert resolve_default_docmeta_batch_size(16) == 128
+    assert resolve_default_docmeta_batch_size(25) == 256
+    assert resolve_default_docmeta_batch_size(48) == 256
+    assert resolve_default_docmeta_batch_size(0) == 256
+
+    # 2. mlx_limits_scope auto-sizes when omitted and honors explicit overrides on 24 GiB hosts
+    class _RecMX:
+        def __init__(self) -> None:
+            self.mem = 0
+            self.cache = 0
+
+        def set_memory_limit(self, val: int) -> int:
+            prev, self.mem = self.mem, int(val)
+            return prev
+
+        def set_cache_limit(self, val: int) -> int:
+            prev, self.cache = self.cache, int(val)
+            return prev
+
+    monkeypatch.setattr(silicon_runtime_v6, "probe_host_memory_gb", lambda: 24)
+    fake_24 = _RecMX()
+    with silicon_runtime_v6.mlx_limits_scope(mx_module=fake_24) as applied_24:
+        assert applied_24["memory_limit_bytes"] == int(round(19.2 * (1024**3)))
+        assert applied_24["cache_limit_bytes"] == int(round(1.5 * (1024**3)))
+
+    with silicon_runtime_v6.mlx_limits_scope(memory_limit_gb=20.0, cache_limit_gb=2.0, mx_module=fake_24) as ov_24:
+        assert ov_24["memory_limit_bytes"] == int(round(20.0 * (1024**3)))
+        assert ov_24["cache_limit_bytes"] == int(round(2.0 * (1024**3)))
+
+    monkeypatch.setattr(silicon_runtime_v6, "probe_host_memory_gb", lambda: 48)
+    fake_48 = _RecMX()
+    with silicon_runtime_v6.mlx_limits_scope(mx_module=fake_48) as applied_48:
+        assert applied_48["memory_limit_bytes"] == 24 << 30
+        assert applied_48["cache_limit_bytes"] == 2 << 30
+
+    # 3. cli._cmd_docmeta_sweep + run_docmeta_parquet_sweep resolve 24 GiB vs 48 GiB and honor explicit CLI flags
+    recorded: list[dict[str, Any]] = []
+    fake_fg4 = types.ModuleType("fast_gemma4")
+    fake_fg4_eng = types.ModuleType("fast_gemma4.engine")
+
+    class _DummyEngine:
+        def __init__(self, **_kwargs: Any) -> None:
+            pass
+
+        def close(self) -> None:
+            pass
+
+    fake_fg4_eng.FastGemma4Engine = _DummyEngine  # type: ignore[attr-defined]
+    fake_fg4.engine = fake_fg4_eng  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "fast_gemma4", fake_fg4)
+    monkeypatch.setitem(sys.modules, "fast_gemma4.engine", fake_fg4_eng)
+
+    class _FakeSum:
+        docs_processed = 1
+        docs_skipped_resume = 0
+        llm_decoded_docs = 0
+        triage_short_circuited_docs = 1
+        strict_v4_valid_docs = 1
+        anomaly_flagged_docs = 0
+        extractconf_flagged_docs = 0
+        telemetry_wrapped_chunks = 0
+        pass2_escalated_docs = 0
+        pass2_accepted_docs = 0
+        ane_embedded_docs = 0
+        chunks_written = 1
+        prompt_tokens = 0
+        completion_tokens = 0
+        elapsed_sec = 0.01
+        docs_per_sec = 100.0
+        decode_tok_s = 0.0
+        output_path = tmp_path / "out.parquet"
+        parts_dir = tmp_path / "out.parts"
+
+    def _fake_sweep(_eng: Any, _in: Any, _out: Any, **kw: Any) -> _FakeSum:
+        recorded.append(dict(kw))
+        return _FakeSum()
+
+    scope_calls: list[tuple[Any, Any]] = []
+
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _fake_scope(**kw: Any):
+        scope_calls.append((kw.get("memory_limit_gb"), kw.get("cache_limit_gb")))
+        yield {"memory_limit_bytes": None, "cache_limit_bytes": None}
+
+    @contextmanager
+    def _noop_wired():
+        yield None
+
+    monkeypatch.setattr(parquet_runner_v6, "run_docmeta_parquet_sweep", _fake_sweep)
+    monkeypatch.setattr(silicon_runtime_v6, "mlx_limits_scope", _fake_scope)
+    monkeypatch.setattr(silicon_runtime_v6, "mlx_wired_limit_scope", _noop_wired)
+    monkeypatch.setattr(
+        silicon_runtime_v6,
+        "run_silicon_preflight",
+        lambda **_kw: {"mem_gb": 24, "missing_r8_deps": []},
+    )
+
+    assert cli.main(["docmeta-sweep", "in.parquet", "out.parquet"]) == 0
+    assert scope_calls[-1] == (19.2, 1.5)
+    assert recorded[-1]["b_slots"] == 128
+
+    # Explicit overrides win even on a 24 GiB host
+    assert (
+        cli.main(
+            [
+                "docmeta-sweep",
+                "in.parquet",
+                "out.parquet",
+                "--memory-limit-gb",
+                "20.0",
+                "--cache-limit-gb",
+                "1.75",
+                "--batch-size",
+                "256",
+            ]
+        )
+        == 0
+    )
+    assert scope_calls[-1] == (20.0, 1.75)
+    assert recorded[-1]["b_slots"] == 256
+
+    # 48 GiB host keeps 24.0 / 2.0 / 256
+    monkeypatch.setattr(
+        silicon_runtime_v6,
+        "run_silicon_preflight",
+        lambda **_kw: {"mem_gb": 48, "missing_r8_deps": []},
+    )
+    assert cli.main(["docmeta-sweep", "in.parquet", "out.parquet"]) == 0
+    assert scope_calls[-1] == (24.0, 2.0)
+    assert recorded[-1]["b_slots"] == 256
+
+    # run_docmeta_parquet_sweep directly resolves `resolved_b_slots` from host RAM when b_slots=None
+    monkeypatch.undo()
+    _fake_fg4_mod = types.ModuleType("fast_gemma4")
+    _fake_fg4_gram = types.ModuleType("fast_gemma4.grammar")
+    _fake_fg4_pdg = types.ModuleType("fast_gemma4.per_doc_grammar")
+    _fake_fg4_gram.GrammarHelper = lambda *_a, **_kw: None  # type: ignore[attr-defined]
+    _fake_fg4_pdg.compute_rolling_doc_order = lambda *_a, **_kw: []  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "fast_gemma4", _fake_fg4_mod)
+    monkeypatch.setitem(sys.modules, "fast_gemma4.grammar", _fake_fg4_gram)
+    monkeypatch.setitem(sys.modules, "fast_gemma4.per_doc_grammar", _fake_fg4_pdg)
+    monkeypatch.setattr(
+        parquet_runner_v6,
+        "run_silicon_preflight",
+        lambda **_kw: {"mem_gb": 24, "missing_r8_deps": []},
+    )
+    in_triage = tmp_path / "triage_in.parquet"
+    pq.write_table(
+        pa.Table.from_pylist([{"link_key_hex": "00000000000000aa", "list_row": 0, "filename": "empty.pdf", "p12_raw_text": "", "p12_clean_text": ""}]),
+        in_triage,
+    )
+
+    class _DummyTok:
+        def apply_chat_template(self, msgs: list[dict[str, str]], **_kw: Any) -> str:
+            return msgs[0]["content"]
+
+        def encode(self, text: str, **_kw: Any) -> list[int]:
+            return [ord(c) % 256 for c in text]
+
+        def decode(self, ids: list[int], **_kw: Any) -> str:
+            return bytes(i % 256 for i in ids).decode("utf-8", errors="replace")
+
+    dummy_eng = types.SimpleNamespace(tokenizer=_DummyTok())
+    sum_24 = run_docmeta_parquet_sweep(
+        dummy_eng,
+        in_triage,
+        tmp_path / "triage_out24.parquet",
+        grammar_router="none",
+        use_ane_ring=False,
+    )
+    assert sum_24.resolved_b_slots == 128
+
+    sum_24_ov = run_docmeta_parquet_sweep(
+        dummy_eng,
+        in_triage,
+        tmp_path / "triage_out24_ov.parquet",
+        b_slots=192,
+        grammar_router="none",
+        use_ane_ring=False,
+    )
+    assert sum_24_ov.resolved_b_slots == 192
+
+    monkeypatch.setattr(
+        parquet_runner_v6,
+        "run_silicon_preflight",
+        lambda **_kw: {"mem_gb": 48, "missing_r8_deps": []},
+    )
+    sum_48 = run_docmeta_parquet_sweep(
+        dummy_eng,
+        in_triage,
+        tmp_path / "triage_out48.parquet",
+        grammar_router="none",
+        use_ane_ring=False,
+    )
+    assert sum_48.resolved_b_slots == 256

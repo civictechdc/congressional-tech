@@ -517,7 +517,7 @@ def run_sweep_sets(
             use_ane_ring="auto" if args.ane_ring else False,
             wire_format=args.wire_format,
             embed_ane=getattr(args, "embed_ane", "none"),
-            grammar_router=getattr(args, "grammar_router", "none"),
+            grammar_router=getattr(args, "grammar_router", "fast"),
             atomic_verifier=args.atomic_verifier,
             kev_batch_docs=getattr(args, "kev_batch_docs", 8),
             repair_persona_roles=args.repair_persona_roles,
@@ -526,6 +526,9 @@ def run_sweep_sets(
             gpt_oss_batch_size=getattr(args, "gpt_oss_batch_size", 8),
             gpt_oss_k=getattr(args, "gpt_oss_k", 1),
             two_phase_pass2=two_phase_pass2,
+            bm25_multicrop=bool(getattr(args, "bm25_multicrop", False)),
+            use_telemetry=getattr(args, "telemetry", "auto"),
+            use_extractconf=not bool(getattr(args, "no_extractconf", False)),
         )
         out_rows = {str(r["link_key_hex"]): r for r in pq.read_table(out_p).to_pylist()}
 
@@ -561,6 +564,8 @@ def run_sweep_sets(
         "completion_tokens": summary.completion_tokens,
         "pass2_escalated": summary.pass2_escalated_docs,
         "pass2_accepted": summary.pass2_accepted_docs,
+        "extractconf_flagged": summary.extractconf_flagged_docs,
+        "telemetry_wrapped_chunks": summary.telemetry_wrapped_chunks,
         # None means the ring did not engage (off, or its bundle was missing or not fully on the ANE): a ring-on
         # run that fell back to GPU only would otherwise look like perfect parity.
         "ane_ring_bundle": f"{bundle.parent.name}/{bundle.name}" if (bundle := eng.ane_ring_bundle) else None,
@@ -612,16 +617,29 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--gold-jsonl", type=Path, default=DEFAULT_GOLD_JSONL)
     ap.add_argument("--max-tokens", type=int, default=768)
     ap.add_argument("--chunk-rows", type=int, default=4096)
-    ap.add_argument("--b-slots", type=int, default=256)
+    ap.add_argument(
+        "--b-slots",
+        "--batch-size",
+        dest="b_slots",
+        type=int,
+        default=None,
+        help="Rolling slot/batch size (default: auto: 128 on <=24 GiB Macs, 256 otherwise)",
+    )
     ap.add_argument("--refill-min", type=int, default=32)
     ap.add_argument("--max-chars", type=int, default=9000, help="head/tail char window applied to every doc text")
     ap.add_argument("--llm-only", action="store_true", help="disable deterministic pre/post rules")
     ap.add_argument("--embed-ane", choices=("none", "bge-small", "embeddinggemma-2"), default="none",
                     help="pure-ANE search embeddings for the *_sweep sets")
-    ap.add_argument("--grammar-router", choices=("none", "fast", "ane"), default="none",
-                    help="pre-decode calibrated grammar router for the *_sweep sets")
+    ap.add_argument("--grammar-router", choices=("none", "fast", "ane"), default="fast",
+                    help="pre-decode calibrated grammar router for the *_sweep sets ('fast' linear+CROQ default)")
     ap.add_argument("--atomic-verifier", choices=("none", "laya-ane", "kev-0.8b", "both"), default="none",
-                    help="post-LLM output validator for the *_sweep sets")
+                    help="optional post-LLM output validator for the *_sweep sets")
+    ap.add_argument("--telemetry", choices=("auto", "on", "off"), default="auto",
+                    help="capture pre-mask grammar telemetry for ExtractConf ('auto' default)")
+    ap.add_argument("--no-extractconf", action="store_true",
+                    help="disable ExtractConf calibrated risk scoring on *_sweep sets")
+    ap.add_argument("--bm25-multicrop", action="store_true",
+                    help="opt-in CPU BM25 multi-crop window packing for >3000-char Pass-1 prompts")
     ap.add_argument("--kev-batch-docs", type=int, default=8,
                     help="cross-document batch size for Stage-2 Kev-0.8B MLX validator (default: 8)")
     ap.add_argument("--repair-persona-roles", action="store_true", help="let the validator repair suspect roles")
@@ -634,10 +652,18 @@ def build_parser() -> argparse.ArgumentParser:
     ap.add_argument("--two-phase-pass2", choices=("auto", "true", "false"), default="auto",
                     help="unload Pass-1 Gemma-4 before loading GPT-OSS-20B Pass-2 ('auto' enables on <=48 GiB Macs)")
     ap.add_argument("--ane-variant", choices=("w8", "fp16"), default="fp16", help="bundle the ring runs")
-    ap.add_argument("--memory-limit-gb", type=float, default=24.0,
-                    help="MLX active memory cap in GiB (default: 24.0; <=0 disables)")
-    ap.add_argument("--cache-limit-gb", type=float, default=2.0,
-                    help="MLX free-buffer cache cap in GiB (default: 2.0; <0 disables, 0 turns caching off)")
+    ap.add_argument(
+        "--memory-limit-gb",
+        type=float,
+        default=None,
+        help="MLX active memory cap in GiB (default: auto: min(20.0, 0.8*RAM) on <=24 GiB Macs, 24.0 otherwise; <=0 disables)",
+    )
+    ap.add_argument(
+        "--cache-limit-gb",
+        type=float,
+        default=None,
+        help="MLX free-buffer cache cap in GiB (default: auto: 1.5 on <=24 GiB Macs, 2.0 otherwise; <0 disables, 0 turns caching off)",
+    )
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--rescore", type=Path, default=None,
                     help="re-score the saved predictions of an earlier report with this script's metrics; no model run")
@@ -658,6 +684,8 @@ def main(argv: list[str] | None = None) -> int:
         clear_mlx_wave_cache,
         mlx_limits_scope,
         mlx_wired_limit_scope,
+        resolve_default_docmeta_batch_size,
+        resolve_default_mlx_limits,
         run_silicon_preflight,
     )
 
@@ -666,6 +694,12 @@ def main(argv: list[str] | None = None) -> int:
         require_r8_deps=True,
         once=True,
     )
+    host_ram_gb = int(preflight.get("mem_gb") or 0)
+    def_mem_gb, def_cache_gb = resolve_default_mlx_limits(host_ram_gb)
+    def_b_slots = resolve_default_docmeta_batch_size(host_ram_gb)
+    mem_limit_gb = float(def_mem_gb if args.memory_limit_gb is None else args.memory_limit_gb)
+    cache_limit_gb = float(def_cache_gb if args.cache_limit_gb is None else args.cache_limit_gb)
+    eff_b_slots = int(def_b_slots if args.b_slots is None else args.b_slots)
 
     names = [s.strip() for s in args.sets.split(",") if s.strip()]
     sets = load_record_sets(names)
@@ -675,7 +709,7 @@ def main(argv: list[str] | None = None) -> int:
         k: v[1] for k, v in load_sweep_sets(names, args.gold_jsonl, extra_sets, augment_personas=True).items()
     }
     with (
-        mlx_limits_scope(memory_limit_gb=args.memory_limit_gb, cache_limit_gb=args.cache_limit_gb) as mlx_limits,
+        mlx_limits_scope(memory_limit_gb=mem_limit_gb, cache_limit_gb=cache_limit_gb) as mlx_limits,
         mlx_wired_limit_scope(),
     ):
         eng = FastGemma4Engine(
@@ -698,12 +732,15 @@ def main(argv: list[str] | None = None) -> int:
             "model_dir": str(args.model_dir),
             "wire_format": pe.wire_format,
             "llm_only": args.llm_only,
-            "b_slots": args.b_slots,
+            "b_slots": eff_b_slots,
             "chunk_rows": args.chunk_rows,
             "refill_min": args.refill_min,
             "embed_ane": args.embed_ane,
             "grammar_router": args.grammar_router,
             "atomic_verifier": args.atomic_verifier,
+            "telemetry": getattr(args, "telemetry", "auto"),
+            "extractconf": not bool(getattr(args, "no_extractconf", False)),
+            "bm25_multicrop": bool(getattr(args, "bm25_multicrop", False)),
             "kev_batch_docs": args.kev_batch_docs,
             "repair_persona_roles": args.repair_persona_roles,
             "escalate_gpt_oss": args.escalate_gpt_oss,
@@ -721,7 +758,7 @@ def main(argv: list[str] | None = None) -> int:
                 res = pe.run_records(
                     recs,
                     max_tokens=args.max_tokens,
-                    B_slots=args.b_slots,
+                    B_slots=eff_b_slots,
                     refill_min=args.refill_min,
                     **rule_flags,
                 )

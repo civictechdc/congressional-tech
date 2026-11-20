@@ -70,6 +70,7 @@ from .silicon_runtime_v6 import (
     format_chat_no_thinking,
     mlx_wired_limit_scope,
     probe_host_memory_gb,
+    resolve_default_docmeta_batch_size,
     run_silicon_preflight,
     unload_engine_memory,
 )
@@ -101,6 +102,9 @@ class DocMetaSweepSummary:
     decode_tok_s: float
     output_path: Path
     parts_dir: Path
+    extractconf_flagged_docs: int = 0
+    telemetry_wrapped_chunks: int = 0
+    resolved_b_slots: int = 256
 
 
 def _row_resume_key(row: Mapping[str, Any], fallback_idx: int) -> str:
@@ -748,6 +752,12 @@ def _cast_results_arrow_table(rows_out: list[dict[str, Any]]) -> Any:
             else:
                 col = col.cast(pa.list_(pa.string()))
             fields.append(pa.field(f.name, pa.list_(pa.string()), nullable=True))
+        elif f.name in ("croq_lock_spec", "croq_lock_type", "extractconf_risk_json", "external_verifier_json", "pass1_docmeta_json"):
+            if pa.types.is_null(f.type):
+                col = pa.nulls(len(col), type=pa.string())
+            else:
+                col = col.cast(pa.string())
+            fields.append(pa.field(f.name, pa.string(), nullable=True))
         else:
             fields.append(f)
         cols.append(col)
@@ -781,7 +791,7 @@ def run_docmeta_parquet_sweep(
     output_path: str | Path,
     *,
     chunk_rows: int = 4096,
-    b_slots: int = 256,
+    b_slots: int | None = None,
     refill_min: int = 32,
     max_tokens: int = 768,
     doc_cap_full: int = 2048,
@@ -791,7 +801,7 @@ def run_docmeta_parquet_sweep(
     resume: bool = False,
     wire_format: str = "auto",
     embed_ane: str = "none",
-    grammar_router: str = "none",
+    grammar_router: str = "fast",
     atomic_verifier: str = "none",
     kev_batch_docs: int = 8,
     repair_persona_roles: bool = False,
@@ -806,6 +816,13 @@ def run_docmeta_parquet_sweep(
     use_wired_limit: bool = True,
     post_workers: int | None = None,
     model_source_tag: str = "fast-gemma4-e2b-v6_2",
+    router_artifacts_dir: str | Path | None = None,
+    croq_alpha: float = 0.05,
+    croq_max_lock_k: int = 4,
+    bm25_multicrop: bool = False,
+    use_telemetry: bool | str = "auto",
+    use_extractconf: bool = True,
+    extractconf_calibration_path: str | Path | None = None,
     _after_chunk_hook: Callable[[int, Path], None] | None = None,
 ) -> DocMetaSweepSummary:
     """Stream `llm_queue_v6_2.parquet` in `chunk_rows` batches with atomic `link_key_hex` checkpointing."""
@@ -823,6 +840,13 @@ def run_docmeta_parquet_sweep(
         once=True,
     )
     host_ram_gb = int(preflight.get("mem_gb") or probe_host_memory_gb())
+    eff_b_slots_cap = (
+        resolve_default_docmeta_batch_size(host_ram_gb)
+        if b_slots is None
+        else int(b_slots)
+    )
+    if eff_b_slots_cap <= 0:
+        raise ValueError(f"b_slots must be >= 1, got {b_slots!r}")
 
     tp_raw = str(two_phase_pass2).strip().lower() if not isinstance(two_phase_pass2, bool) else (
         "true" if two_phase_pass2 else "false"
@@ -896,14 +920,12 @@ def run_docmeta_parquet_sweep(
     def _fmt_chat(user_content: str) -> str:
         return format_chat_no_thinking(tok, [{"role": "user", "content": user_content}])
 
-    probe_a = tok.encode(_fmt_chat(pass1_prompt_fn('{"a":1}', "a.pdf", "Alpha")), add_special_tokens=False)
-    probe_b = tok.encode(_fmt_chat(pass1_prompt_fn('{"b":2}', "b.pdf", "Beta")), add_special_tokens=False)
-    base_lcp = min(len(probe_a), len(probe_b))
-    for k_i in range(base_lcp):
-        if probe_a[k_i] != probe_b[k_i]:
-            base_lcp = k_i
-            break
-    shared_sys_ids = probe_a[:base_lcp]
+    from .pythonic_v6 import compute_shared_prefix_ids
+
+    shared_sys_ids = compute_shared_prefix_ids(
+        lambda s: tok.encode(s, add_special_tokens=False),
+        lambda k_s, fn, txt: _fmt_chat(pass1_prompt_fn(k_s, fn, txt)),
+    )
 
     usc_oracle = load_default_usc_oracle_v6()
     ane_embedder, ane_model_tag = _init_ane_embedder(embed_ane)
@@ -932,7 +954,28 @@ def run_docmeta_parquet_sweep(
         from .grammar_router_ane_v6 import PreDecodeGrammarRouterV6
 
         shared_laya = getattr(external_verifier, "laya_backend", None)
-        owned_grammar_router = PreDecodeGrammarRouterV6(mode=gr_mode, shared_laya_backend=shared_laya)  # type: ignore[arg-type]
+        owned_grammar_router = PreDecodeGrammarRouterV6(
+            mode=gr_mode,  # type: ignore[arg-type]
+            artifacts_dir=router_artifacts_dir,
+            shared_laya_backend=shared_laya,
+            croq_alpha=croq_alpha,
+            croq_max_lock_k=croq_max_lock_k,
+        )
+
+    tel_raw = (
+        ("on" if use_telemetry else "off")
+        if isinstance(use_telemetry, bool)
+        else str(use_telemetry or "auto").strip().lower()
+    )
+    if tel_raw not in ("auto", "on", "true", "off", "false"):
+        raise ValueError(f"Unsupported use_telemetry={use_telemetry!r}; expected 'auto', 'on', or 'off'.")
+    tel_mode = "on" if tel_raw in ("on", "true") else ("off" if tel_raw in ("off", "false") else "auto")
+
+    extractconf_calibrator: Any = None
+    if use_extractconf:
+        from .extractconf_v6 import load_bundled_extractconf_calibrator_v6
+
+        extractconf_calibrator = load_bundled_extractconf_calibrator_v6(extractconf_calibration_path)
 
     # Coordinate exclusive 16-core ANE ownership so `fg4-ane-ring-producer`, `docmeta-ane-b4`,
     # `docmeta-laya-ane-stage1`, and `shared_laya._exec_lock` never contend simultaneously.
@@ -966,6 +1009,8 @@ def run_docmeta_parquet_sweep(
     triage_short_circuited_docs = 0
     strict_v4_valid_docs = 0
     anomaly_flagged_docs = 0
+    extractconf_flagged_docs = 0
+    telemetry_wrapped_chunks = 0
     pass2_escalated_docs = 0
     pass2_accepted_docs = 0
     ane_embedded_docs = 0
@@ -1011,7 +1056,7 @@ def run_docmeta_parquet_sweep(
         ctx: dict[str, Any],
         precomputed_stage1: Mapping[str, Any] | None = None,
     ) -> None:
-        nonlocal strict_v4_valid_docs, anomaly_flagged_docs, pass2_escalated_docs, pass2_accepted_docs
+        nonlocal strict_v4_valid_docs, anomaly_flagged_docs, extractconf_flagged_docs, pass2_escalated_docs, pass2_accepted_docs
         nonlocal docs_processed, chunks_written, next_shard_idx
 
         c_chunk: list[dict[str, Any]] = ctx["chunk"]
@@ -1024,6 +1069,8 @@ def run_docmeta_parquet_sweep(
         c_clean_texts: list[str] = ctx["clean_texts"]
         c_anomalies: list[dict[str, Any]] = ctx["anomalies"]
         c_diffs_json: list[str] = ctx["diffs_json"]
+        c_route_decisions: list[dict[str, Any] | None] = ctx.get("route_decisions") or [None] * len(c_chunk)
+        c_telemetry: list[Any] = ctx.get("telemetry_summaries") or [None] * len(c_chunk)
         n_c = len(c_chunk)
 
         ext_verdicts_json: list[str | None] = [None] * n_c
@@ -1144,6 +1191,36 @@ def run_docmeta_parquet_sweep(
                     else model_source_tag
                 )
             )
+            row_pm = c_pmetas[i]
+            row_rd = c_route_decisions[i]
+            if row_pm.get("triage") is not None:
+                lock_spec_out: str | None = None
+                lock_type_out: str | None = None
+            elif isinstance(row_pm.get("tier1_target_kind"), str) and row_pm["tier1_target_kind"] in DOC_KINDS_SET:
+                lock_spec_out = str(row_pm["tier1_target_kind"])
+                lock_type_out = "det_locked"
+            elif isinstance(row_rd, Mapping):
+                lock_spec_out = str(row_rd["lock_spec"]) if row_rd.get("lock_spec") else None
+                lock_type_out = str(row_rd["lock_type"]) if row_rd.get("lock_type") else None
+            else:
+                lock_spec_out = None
+                lock_type_out = None
+
+            ec_risk_json: str | None = None
+            if extractconf_calibrator is not None and row_pm.get("triage") is None:
+                ec_dec = extractconf_calibrator.score_runtime_row(
+                    filename=str(row.get("filename") or ""),
+                    text_len=len(c_raw_txts[i]),
+                    pass1_pred=c_obj,
+                    pmeta=row_pm,
+                    anom=anom,
+                    router_decision=None if row_pm.get("tier1_target_kind") else row_rd,
+                    telemetry=c_telemetry[i],
+                )
+                anom["extractconf"] = ec_dec
+                if ec_dec.get("escalate_recommended"):
+                    extractconf_flagged_docs += 1
+                ec_risk_json = json.dumps(ec_dec, separators=(",", ":"), ensure_ascii=False)
 
             rec_out: dict[str, Any] = {
                 "list_row": int(row["list_row"]) if row.get("list_row") is not None else None,
@@ -1180,6 +1257,9 @@ def run_docmeta_parquet_sweep(
                 "needs_teacher_escalation": is_flagged,
                 "gist_grounding_score": float((anom.get("gist_grounding") or {}).get("grounding_score", 1.0)),
                 "external_verifier_json": ext_verdicts_json[i],
+                "croq_lock_spec": lock_spec_out,
+                "croq_lock_type": lock_type_out,
+                "extractconf_risk_json": ec_risk_json,
                 "pass2_escalated": was_p2_accepted,
                 "pass1_docmeta_json": pass1_backup_by_i.get(i),
             }
@@ -1400,6 +1480,7 @@ def run_docmeta_parquet_sweep(
 
                 n_chunk = len(chunk)
                 formatted_prompts = [_fmt_chat(u) for u in p1_u_contents]
+                route_decisions: list[dict[str, Any] | None] = [None] * n_chunk
 
                 if owned_grammar_router is not None and active_indices:
                     if (
@@ -1417,9 +1498,33 @@ def run_docmeta_parquet_sweep(
                     route_decisions = owned_grammar_router.route_chunk(chunk, pmetas)
                     for slot_idx, orig_idx in enumerate(active_indices):
                         if slot_idx not in doc_target_kinds:
-                            lspec = route_decisions[orig_idx].get("lock_spec")
+                            dec_row = route_decisions[orig_idx]
+                            lspec = dec_row.get("lock_spec") if isinstance(dec_row, Mapping) else None
                             if isinstance(lspec, str) and lspec:
                                 doc_target_kinds[slot_idx] = lspec
+
+                if bm25_multicrop and active_indices:
+                    from .lexical_multicrop_v6 import pack_bm25_multicrop_text_v6
+
+                    for slot_idx, orig_idx in enumerate(active_indices):
+                        raw_t = raw_txts[orig_idx]
+                        if len(raw_t) > 3000:
+                            dec_row = route_decisions[orig_idx]
+                            c_set = (
+                                tuple(dec_row.get("conformal_set") or ())
+                                if isinstance(dec_row, Mapping)
+                                else ()
+                            )
+                            fn_row = str(chunk[orig_idx].get("filename") or "")
+                            packed_t, _ = pack_bm25_multicrop_text_v6(
+                                raw_t,
+                                conformal_set=c_set,
+                                filename=fn_row,
+                                known_str=known_strs[orig_idx],
+                            )
+                            formatted_prompts[slot_idx] = _fmt_chat(
+                                pass1_prompt_fn(known_strs[orig_idx], fn_row, packed_t)
+                            )
 
                 # Start optional background ANE search embedding co-execution (`Proposal B4`) when ANE is uncontended.
                 ane_vectors: list[list[float] | None] = [None] * n_chunk
@@ -1445,6 +1550,7 @@ def run_docmeta_parquet_sweep(
 
                 raw_llm_texts: list[str] = [""] * n_chunk
                 out_tok_lens: list[int] = [0] * n_chunk
+                chunk_telemetry: list[Any] = [None] * n_chunk
                 n_act = len(active_indices)
 
                 if n_act > 0:
@@ -1464,13 +1570,13 @@ def run_docmeta_parquet_sweep(
 
                     std_up_ff = list(gh_std.upfront_ff)
                     suf_ids = [x[lcp:] + std_up_ff for x in prompts_ids]
-                    eff_b = min(b_slots, n_act)
+                    eff_b = min(eff_b_slots_cap, n_act)
                     doc_order = compute_rolling_doc_order(
                         suf_ids,
                         b_slots=eff_b,
                         sort_by_length=sort_by_length,
                     )
-                    gh_dispatch: Any = (
+                    gh_base: Any = (
                         per_doc_grammar_v6(
                             gh_std,
                             doc_order,
@@ -1485,25 +1591,42 @@ def run_docmeta_parquet_sweep(
                     # Pre-warm any new kind grammars before GPU timer starts
                     if doc_target_kinds:
                         for tk_warm in set(doc_target_kinds.values()):
-                            gh_dispatch.get_grammar_entry(tk_warm)
+                            gh_base.get_grammar_entry(tk_warm)
 
-                    res = engine.run_rolling(
-                        sys_ids=sys_ids,
-                        suf_ids_list=suf_ids,
-                        schema_str=pass1_schema_str,
-                        tok=tok,
-                        max_tokens=max_tokens,
-                        B_slots=eff_b,
-                        refill_min=min(refill_min, n_act),
-                        doc_cap_full=doc_cap_full,
-                        swa_ring_cap=swa_ring_cap,
-                        gh=gh_dispatch,
-                        sort_by_length=sort_by_length,
-                        use_ane_ring=effective_use_ane_ring,
-                    )
+                    tel_wrapper: Any = None
+                    if tel_mode != "off":
+                        from .telemetry_v6 import TelemetryPerDocWrapperV6, can_wrap_grammar_helper_for_telemetry
+
+                        if can_wrap_grammar_helper_for_telemetry(gh_base):
+                            tel_wrapper = TelemetryPerDocWrapperV6(gh_base, force_greedy=True)
+                            telemetry_wrapped_chunks += 1
+                        elif tel_mode == "on":
+                            raise TypeError(
+                                "use_telemetry='on' requested, but grammar helper lacks llguidance mask buffers."
+                            )
+
+                    gh_dispatch = tel_wrapper if tel_wrapper is not None else gh_base
+                    rolling_kwargs: dict[str, Any] = {
+                        "sys_ids": sys_ids,
+                        "suf_ids_list": suf_ids,
+                        "schema_str": pass1_schema_str,
+                        "tok": tok,
+                        "max_tokens": max_tokens,
+                        "B_slots": eff_b,
+                        "refill_min": min(refill_min, n_act),
+                        "doc_cap_full": doc_cap_full,
+                        "swa_ring_cap": swa_ring_cap,
+                        "gh": gh_dispatch,
+                        "sort_by_length": sort_by_length,
+                        "use_ane_ring": effective_use_ane_ring,
+                    }
+                    if tel_wrapper is not None:
+                        rolling_kwargs["temperature"] = 1e-4
+
+                    res = engine.run_rolling(**rolling_kwargs)
                     if doc_target_kinds:
-                        assert gh_dispatch._cursor == n_act
-                        assert set(gh_dispatch.dispatched_doc_indices) == set(range(n_act))
+                        assert gh_base._cursor == n_act
+                        assert set(gh_base.dispatched_doc_indices) == set(range(n_act))
 
                     for slot_i, gen_t in enumerate(res["gen_toks"]):
                         orig_idx = active_indices[slot_i]
@@ -1511,6 +1634,8 @@ def run_docmeta_parquet_sweep(
                         raw_llm_texts[orig_idx] = tok.decode(full_t, skip_special_tokens=True)
                         out_tok_lens[orig_idx] = len(full_t)
                         total_completion_tokens += len(full_t)
+                        if tel_wrapper is not None:
+                            chunk_telemetry[orig_idx] = tel_wrapper.summarize_doc(slot_i)
 
                     total_decode_sec += float(res.get("decode_sec", 0.0))
                     llm_decoded_docs += n_act
@@ -1554,6 +1679,8 @@ def run_docmeta_parquet_sweep(
                     "clean_texts": clean_texts,
                     "anomalies": anomalies,
                     "diffs_json": diffs_json,
+                    "route_decisions": route_decisions,
+                    "telemetry_summaries": chunk_telemetry,
                 }
 
                 if can_async_stage1:
@@ -1752,6 +1879,9 @@ def run_docmeta_parquet_sweep(
         decode_tok_s=total_completion_tokens / total_decode_sec if total_decode_sec > 0 else 0.0,
         output_path=out_target,
         parts_dir=parts_dir,
+        extractconf_flagged_docs=extractconf_flagged_docs,
+        telemetry_wrapped_chunks=telemetry_wrapped_chunks,
+        resolved_b_slots=eff_b_slots_cap,
     )
 
 
