@@ -245,7 +245,15 @@ def _build_precomputed_context_from_queue_row(
     known_str = json.dumps(known_d, separators=(",", ":"), ensure_ascii=False) if known_d else "<NONE>"
 
     is_h = infer_is_html_v6(fn, raw_txt, explicit_format=fmt or None)
-    locked_pk = row.get("locked_primary_kind")
+    from .cover_locks_v6 import reconcile_queue_lock_v6
+
+    locked_pk, eff_lock_src, eff_lock_id = reconcile_queue_lock_v6(
+        row.get("locked_primary_kind"),
+        row.get("grammar_lock_source"),
+        row.get("lock_id"),
+        filename=fn,
+        text=clean_txt,
+    )
     if locked_pk not in DOC_KINDS_SET:
         locked_pk = None
 
@@ -300,9 +308,9 @@ def _build_precomputed_context_from_queue_row(
         "is_html": is_h,
         "p12_lines": clean_txt,
         "clean_text_v6": clean_txt,
-        "tier1_signature_id": row.get("lock_id"),
+        "tier1_signature_id": eff_lock_id,
         "tier1_target_kind": locked_pk,
-        "grammar_lock_source": row.get("grammar_lock_source"),
+        "grammar_lock_source": eff_lock_src,
         "triage": triage_d,
         "zero_llm_docmeta": None,
         "provenance": prov_d,
@@ -975,7 +983,6 @@ def run_docmeta_parquet_sweep(
         and _after_chunk_hook is None
         and ane_embedder is None
         and not ring_will_engage
-        and not router_shares_laya
     )
     eff_post_workers = (
         max(1, int(post_workers))
@@ -1056,8 +1063,9 @@ def run_docmeta_parquet_sweep(
                     anom_r = c_anomalies[r_di]
                     if isinstance(vd_r, dict) and vd_r.get("flagged_fields") == ["personas"]:
                         p_defs = list(vd_r.get("persona_defect_scores") or ())
+                        min_pers_def = float(getattr(external_verifier, "role_repair_min_defect", 0.48))
                         unfixed_high = any(
-                            idx_p not in fixed_pis and float(sc_p) >= 0.48 for idx_p, sc_p in enumerate(p_defs)
+                            idx_p not in fixed_pis and float(sc_p) >= min_pers_def for idx_p, sc_p in enumerate(p_defs)
                         )
                         other_codes = [
                             c
@@ -1394,6 +1402,18 @@ def run_docmeta_parquet_sweep(
                 formatted_prompts = [_fmt_chat(u) for u in p1_u_contents]
 
                 if owned_grammar_router is not None and active_indices:
+                    if (
+                        router_shares_laya
+                        and pending_prev is not None
+                        and getattr(shared_laya, "_exec_lock", None) is None
+                    ):
+                        if prev_stage1_thread is not None:
+                            prev_stage1_thread.join()
+                            prev_stage1_thread = None
+                        if prev_stage1_err:
+                            raise prev_stage1_err[0]
+                        _finalize_and_write_chunk(pending_prev, prev_stage1_out[0] if prev_stage1_out else None)
+                        pending_prev = None
                     route_decisions = owned_grammar_router.route_chunk(chunk, pmetas)
                     for slot_idx, orig_idx in enumerate(active_indices):
                         if slot_idx not in doc_target_kinds:

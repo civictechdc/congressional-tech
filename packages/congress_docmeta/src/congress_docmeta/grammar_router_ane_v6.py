@@ -27,7 +27,12 @@ from pathlib import Path
 import re
 from typing import Any, Literal, Mapping, Sequence
 
-from .atomic_validator_v6 import ALL_KIND_DESC_V6, verify_validators_manifest
+from .atomic_validator_v6 import (
+    ALL_KIND_DESC_V6,
+    _supports_kwarg,
+    laya_encode_ignore_truncation,
+    verify_validators_manifest,
+)
 from .pythonic_v5 import DOC_KINDS_SET, SCHEMA_OBJ
 from .pythonic_v6 import clean_html_and_cms_v6, infer_is_html_v6
 
@@ -204,6 +209,40 @@ def _build_router_choice_query(
     return state, qdef
 
 
+def fuse_top6_router_probs(
+    probs: Any,
+    top6_order: Any,
+    ane_ois: Sequence[int],
+    ane_p_list: Sequence[Sequence[float]],
+    fusion_alpha: float,
+) -> Any:
+    """Blend linear Top-6 conditional posteriors with ANE `Choice(6)` probabilities, preserving tail mass."""
+    import numpy as np
+
+    out = np.array(probs, copy=True)
+    alpha = max(0.0, min(1.0, float(fusion_alpha)))
+    for oi, p6 in zip(ane_ois, ane_p_list):
+        top6 = top6_order[oi]
+        k = min(len(top6), len(p6))
+        if k == 0:
+            continue
+        cand_idx = top6[:k]
+        raw_lin = np.clip(out[oi, cand_idx].astype(np.float64), 1e-8, 1.0)
+        m_top = float(np.sum(out[oi, cand_idx]))
+        p_lin_cond = raw_lin / max(float(np.sum(raw_lin)), 1e-12)
+        raw_ane = np.clip(np.asarray(p6[:k], dtype=np.float64), 1e-8, 1.0)
+        p_ane_cond = raw_ane / max(float(np.sum(raw_ane)), 1e-12)
+        log_blend = alpha * np.log(p_lin_cond) + (1.0 - alpha) * np.log(p_ane_cond)
+        log_blend -= np.max(log_blend)
+        p_post = np.exp(log_blend)
+        p_post /= np.sum(p_post)
+        out[oi, cand_idx] = (m_top * p_post).astype(out.dtype)
+        row_sum = float(np.sum(out[oi]))
+        if row_sum > 0.0:
+            out[oi] = (out[oi] / row_sum).astype(out.dtype)
+    return out
+
+
 class PreDecodeGrammarRouterV6:
     """Calibrated Pre-Decode Grammar Router (`fast` linear CPU or `ane` Top-6 `Laya-Typed` ANE)."""
 
@@ -228,8 +267,6 @@ class PreDecodeGrammarRouterV6:
         self._np = np
         self.mode: RouterMode = mode
         self.allow_multi_kind_set = bool(allow_multi_kind_set)
-        from fast_decision_models import LayaAneBackend
-        from fast_decision_models.paths import ensure_laya_dylib
 
         from .atomic_validator_v6 import resolve_docmeta_pkg_root, resolve_docmeta_validators_dir
 
@@ -256,11 +293,16 @@ class PreDecodeGrammarRouterV6:
         self.fusion_alpha = float(cal.get("fusion_linear_alpha", 0.45))
         self.ane_choice_temp = float(cal.get("ane_choice_temperature", 1.0))
         if mode == "ane":
-            self.tau_top1 = float(tau_top1 if tau_top1 is not None else cal.get("ane_tau_top1", 0.85))
+            t1_def = cal.get("ane_tau_top1", 0.85)
+            t2_def = cal.get("ane_tau_top2", 0.90)
+            t3_def = cal.get("ane_tau_top3", 0.93)
         else:
-            self.tau_top1 = float(tau_top1 if tau_top1 is not None else cal.get("fast_linear_tau_top1", 0.90))
-        self.tau_top2 = float(tau_top2 if tau_top2 is not None else cal.get("ane_tau_top2", 0.90))
-        self.tau_top3 = float(tau_top3 if tau_top3 is not None else cal.get("ane_tau_top3", 0.93))
+            t1_def = cal.get("fast_linear_tau_top1", 0.90)
+            t2_def = cal.get("fast_linear_tau_top2", max(float(t1_def), 0.90))
+            t3_def = cal.get("fast_linear_tau_top3", max(float(t2_def), 0.93))
+        self.tau_top1 = float(tau_top1 if tau_top1 is not None else t1_def)
+        self.tau_top2 = max(self.tau_top1, float(tau_top2 if tau_top2 is not None else t2_def))
+        self.tau_top3 = max(self.tau_top2, float(tau_top3 if tau_top3 is not None else t3_def))
 
         self._owns_laya = False
         self.laya_backend: Any = None
@@ -268,6 +310,9 @@ class PreDecodeGrammarRouterV6:
             if shared_laya_backend is not None:
                 self.laya_backend = shared_laya_backend
             else:
+                from fast_decision_models import LayaAneBackend
+                from fast_decision_models.paths import ensure_laya_dylib
+
                 dylib_p = ensure_laya_dylib()
                 self.laya_backend = LayaAneBackend(
                     self.artifacts_dir / "laya_typed",
@@ -378,6 +423,11 @@ class PreDecodeGrammarRouterV6:
 
         if self.mode == "ane" and self.laya_backend is not None:
             # Skip ANE on open rows where Tier-0 linear router already has >=0.985 certainty!
+            laya_enc_kw = (
+                {"on_truncate": "ignore"}
+                if _supports_kwarg(self.laya_backend.encode_item, "on_truncate")
+                else {}
+            )
             ane_ois: list[int] = []
             ane_encs: list[dict[str, Any]] = []
             for oi in range(len(open_indices)):
@@ -386,19 +436,14 @@ class PreDecodeGrammarRouterV6:
                 fn, kn_s, _r_txt, c_txt = open_fields[oi]
                 cand6 = [self.classes[int(c_i)] for c_i in top6_order[oi]]
                 st_r, q_r = _build_router_choice_query(fn, kn_s, c_txt, cand6)
-                ane_encs.append(self.laya_backend.encode_item(st_r, q_r))
+                ane_encs.append(
+                    laya_encode_ignore_truncation(self.laya_backend, st_r, q_r, encode_kw=laya_enc_kw)
+                )
                 ane_ois.append(oi)
 
             if ane_encs:
                 ane_p_list = self.laya_backend.score_choice_batch(ane_encs, temperature_override=self.ane_choice_temp)
-                lin_logp = np.log(np.clip(probs, 1e-8, 1.0))
-                alpha = self.fusion_alpha
-                for oi, p6 in zip(ane_ois, ane_p_list):
-                    fused = lin_logp[oi].copy() - (1.0 - alpha) * 6.0
-                    for j, p_val in enumerate(p6[:6]):
-                        c_idx = int(top6_order[oi, j])
-                        fused[c_idx] = alpha * lin_logp[oi, c_idx] + (1.0 - alpha) * math.log(max(p_val, 1e-8))
-                    probs[oi] = self._softmax_rows(fused[None, :], 1.0)[0]
+                probs = fuse_top6_router_probs(probs, top6_order, ane_ois, ane_p_list, self.fusion_alpha)
 
         for oi, orig_i in enumerate(open_indices):
             p_row = probs[oi]
@@ -465,5 +510,6 @@ __all__ = [
     "RouterMode",
     "build_doc_kind_set_schema_v6",
     "extract_router_sparse_features_v6",
+    "fuse_top6_router_probs",
     "is_valid_kind_lock_spec_v6",
 ]

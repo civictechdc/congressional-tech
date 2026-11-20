@@ -373,3 +373,170 @@ def test_pass2_closed_loop_schema_exclusion_critique_and_reverification() -> Non
     assert "[Pass-1 Verifier Critique:" in seen_prompts[0]
     assert isinstance(seen_grammars[0], dict)
     assert "witness_statement" not in seen_grammars[0]["properties"]["primary_kind"]["enum"]
+
+
+def test_atomic_validator_correspondence_bump_persona_cascade_truncation_and_prefix_cache(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Verify correspondence_flow defect bump, persona-gray-zone cascade, on_truncate='ignore', and prefix_cache_mb."""
+    import sys
+    import types
+    import warnings
+    from congress_docmeta import atomic_validator_v6
+
+    (tmp_path / "laya_typed").mkdir(parents=True)
+    (tmp_path / "kev_08b").mkdir(parents=True)
+    (tmp_path / "validator_v63_calibration.json").write_text(
+        json.dumps(
+            {
+                "version": "v6_3",
+                "laya_raw_offset": 0.38,
+                "laya_raw_scale": 0.48,
+                "v0_laya_weights": [0.62, 0.38],
+                "v0_laya_kev_weights": [0.44, 0.20, 0.36],
+                "cascade_low": 0.22,
+                "cascade_high": 0.62,
+                "escalate_threshold": 0.45,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    seen_on_truncate: list[str] = []
+    seen_kev_kwargs: list[dict[str, Any]] = []
+    seen_kev_batches: list[list[tuple[Any, list[str]]]] = []
+
+    class _FakeLayaWithTrunc:
+        def __init__(self, *_a: Any, **_kw: Any) -> None:
+            pass
+
+        def encode_item(self, st: Any, q: dict[str, Any], *, on_truncate: str = "warn") -> dict[str, Any]:
+            seen_on_truncate.append(on_truncate)
+            if on_truncate != "ignore":
+                warnings.warn("unexpected truncation warning", UserWarning)
+            return {
+                "qid": str(q["id"]),
+                "cand": st.get("candidate_extraction", {}),
+                "actor": st.get("candidate_actor", {}),
+                "q": q,
+            }
+
+        def score_noul_batch(self, encs: list[dict[str, Any]]) -> list[float]:
+            out: list[float] = []
+            for e in encs:
+                qid = e["qid"]
+                if qid == "q4_correspondence_flow_valid":
+                    # Clean-looking primary_kind/committees/gist, but correspondence_flow fails strongly!
+                    cflow = str(e["cand"].get("correspondence_flow") or "")
+                    out.append(0.20 if cflow == "committee_to_agency" else 0.92)
+                elif qid.startswith("q_persona_"):
+                    actor_name = str(e["actor"].get("name") or "")
+                    # First persona borderline gray-zone (~0.45 defect via Laya prob=0.10 -> 0.45*0.90=0.405),
+                    # second cleanly valid (prob=0.95 -> defect=0.05)
+                    out.append(0.10 if "Ambiguous" in actor_name else 0.95)
+                else:
+                    out.append(0.95)
+            return out
+
+        def close(self) -> None:
+            pass
+
+    class _FakeKevWithPrefix:
+        def __init__(
+            self,
+            kev_dir: Path,
+            *,
+            quant_mode: str = "auto",
+            batch_docs: int = 8,
+            prefix_cache_mb: Any = None,
+        ) -> None:
+            seen_kev_kwargs.append(
+                {
+                    "quant_mode": quant_mode,
+                    "batch_docs": batch_docs,
+                    "prefix_cache_mb": prefix_cache_mb,
+                }
+            )
+
+        def score_multi_states_noul(self, batch_inputs: list[tuple[Any, list[dict[str, Any]]]]) -> list[list[tuple[float, None]]]:
+            seen_kev_batches.append([(st, [str(q["id"]) for q in qs]) for st, qs in batch_inputs])
+            return [[(0.08, None) for _q in qs] for _st, qs in batch_inputs]
+
+        def close(self) -> None:
+            pass
+
+    fdm_mod = types.ModuleType("fast_decision_models")
+    fdm_mod.LayaAneBackend = _FakeLayaWithTrunc  # type: ignore[attr-defined]
+    fdm_mod.Kev08bMlxBackend = _FakeKevWithPrefix  # type: ignore[attr-defined]
+    fdm_paths = types.ModuleType("fast_decision_models.paths")
+    fdm_paths.ensure_laya_dylib = lambda: tmp_path / "liblaya.dylib"  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "fast_decision_models", fdm_mod)
+    monkeypatch.setitem(sys.modules, "fast_decision_models.paths", fdm_paths)
+
+    letter_txt = (
+        "Committee on Oversight and Accountability\nJuly 10, 2024\n"
+        "Hon. Sarah Jenkins, Administrator\nWe write regarding grant oversight procedures.\n"
+        "Witness Jane Clean provided background analysis. Ambiguous Faker appears in caption."
+    )
+    doc_clean_p_gray = {
+        "status": "usable",
+        "text_quality": "native",
+        "chamber": "house",
+        "congress": 118,
+        "committees": ["Committee on Oversight and Accountability"],
+        "primary_kind": "oversight_letter",
+        "correspondence_flow": "agency_to_committee",
+        "personas": [
+            {"name": "Ambiguous Faker", "role": "witness", "entity_type": "non_gov_person"},
+            {"name": "Sarah Jenkins", "role": "recipient", "entity_type": "executive_official"},
+        ],
+        "composed_title": "Oversight Letter to Administrator Sarah Jenkins",
+        "gist": "Committee on Oversight and Accountability writes to Sarah Jenkins regarding grant oversight procedures.",
+        "topics": ["grant oversight"],
+    }
+    row_p_gray = {"filename": "oversight_letter_2024.pdf", "p12_clean_text": letter_txt}
+
+    doc_corr_fail = dict(
+        doc_clean_p_gray,
+        correspondence_flow="committee_to_agency",
+        personas=[{"name": "Sarah Jenkins", "role": "recipient", "entity_type": "executive_official"}],
+    )
+    row_corr_fail = {"filename": "letter_corr.pdf", "p12_clean_text": letter_txt}
+
+    with warnings.catch_warnings(record=True) as rec_warn:
+        warnings.simplefilter("always")
+        with AtomicOutputValidatorV6(mode="both", artifacts_dir=tmp_path) as val:
+            assert seen_kev_kwargs == [{"quant_mode": "auto", "batch_docs": 8, "prefix_cache_mb": "auto"}]
+            verdicts = val.score_batch([doc_clean_p_gray, doc_corr_fail], [row_p_gray, row_corr_fail])
+
+    assert all(m == "ignore" for m in seen_on_truncate) and seen_on_truncate
+    assert not any(issubclass(w.category, UserWarning) for w in rec_warn)
+
+    # Doc 0: Stage-1 doc fields cleanly pass (`< cascade_low`), yet Ambiguous Faker is gray-zone (~0.405),
+    # so Kev runs ONLY persona question for pi=0 without fake doc-level questions!
+    assert len(seen_kev_batches) == 1
+    assert len(seen_kev_batches[0]) == 1
+    assert all(qid.startswith("q_persona_") for qid in seen_kev_batches[0][0][1])
+    assert verdicts[0]["kev_score"] is None
+    assert "atomic_persona_suspect" in verdicts[0]["codes"]
+    assert verdicts[0]["persona_defect_scores"][0] > verdicts[0]["persona_defect_scores"][1]
+
+    # Doc 1: Stage-1 `q4_genre_valid` returns 0.20 (< 0.35) -> bumps `defect >= 0.56` and `escalate=True`!
+    assert verdicts[1]["defect_score"] >= 0.56
+    assert verdicts[1]["escalate"] is True
+    assert "correspondence_flow" in verdicts[1]["flagged_fields"]
+    assert "atomic_correspondence_flow_suspect" in verdicts[1]["codes"]
+
+    # Also verify graceful fallback when older Kev lacks `prefix_cache_mb`!
+    class _LegacyKevNoPrefix:
+        def __init__(self, kev_dir: Path, *, quant_mode: str = "auto", batch_docs: int = 8) -> None:
+            self.q = quant_mode
+            self.b = batch_docs
+
+        def close(self) -> None:
+            pass
+
+    fdm_mod.Kev08bMlxBackend = _LegacyKevNoPrefix  # type: ignore[attr-defined]
+    with AtomicOutputValidatorV6(mode="kev-0.8b", artifacts_dir=tmp_path) as val_legacy:
+        assert isinstance(val_legacy.kev_backend, _LegacyKevNoPrefix)

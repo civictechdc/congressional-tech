@@ -29,6 +29,7 @@ import ctypes
 import datetime
 from functools import partial
 import hashlib
+import inspect
 import json
 import math
 import os
@@ -752,6 +753,33 @@ def verify_validators_manifest(
     }
 
 
+def _supports_kwarg(fn: Any, kw: str) -> bool:
+    """Return True if `fn` accepts keyword argument `kw` or `**kwargs`."""
+    try:
+        sig = inspect.signature(fn)
+    except (TypeError, ValueError):
+        return False
+    return kw in sig.parameters or any(
+        p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+    )
+
+
+def laya_encode_ignore_truncation(
+    laya_backend: Any,
+    state: Any,
+    qdef: Mapping[str, Any],
+    *,
+    encode_kw: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Encode a question+state for Laya while silencing expected excerpt truncation warnings when supported."""
+    kw = (
+        encode_kw
+        if encode_kw is not None
+        else ({"on_truncate": "ignore"} if _supports_kwarg(laya_backend.encode_item, "on_truncate") else {})
+    )
+    return laya_backend.encode_item(state, qdef, **kw)
+
+
 class AtomicOutputValidatorV6:
     """Post-`Gemma-4` Atomic `Noul` Output Validator (`laya-ane` | `kev-0.8b` | `both`).
 
@@ -778,6 +806,7 @@ class AtomicOutputValidatorV6:
         score_personas: bool = True,
         kev_quant: Literal["auto", "w8", "bf16"] = "auto",
         kev_batch_docs: int = 8,
+        kev_prefix_cache_mb: int | Literal["auto"] | None = "auto",
         pipe_depth: int = 4,
         verify_manifest: bool | str = "if_present",
         max_kev_cache_mib: int = 256,
@@ -798,10 +827,10 @@ class AtomicOutputValidatorV6:
         cal_p = self.artifacts_dir / "validator_v63_calibration.json"
         cal: dict[str, Any] = json.loads(cal_p.read_text(encoding="utf-8")) if cal_p.is_file() else {}
         self.calibration_version: str = str(cal.get("version") or "v6_2")
-        self.laya_raw_offset = float(cal.get("laya_raw_offset", 0.24))
-        self.laya_raw_scale = float(cal.get("laya_raw_scale", 0.36))
-        vl_w = cal.get("v0_laya_weights") or [0.55, 0.45]
-        vlk_w = cal.get("v0_laya_kev_weights") or [0.44, 0.18, 0.38]
+        self.laya_raw_offset = float(cal.get("laya_raw_offset", 0.38))
+        self.laya_raw_scale = float(cal.get("laya_raw_scale", 0.48))
+        vl_w = cal.get("v0_laya_weights") or [0.62, 0.38]
+        vlk_w = cal.get("v0_laya_kev_weights") or [0.44, 0.20, 0.36]
         self.v0_laya_weights = (float(vl_w[0]), float(vl_w[1]))
         self.v0_laya_kev_weights = (float(vlk_w[0]), float(vlk_w[1]), float(vlk_w[2]))
         self.persona_role_choice_temp = float(cal.get("persona_role_choice16_temperature", 0.625))
@@ -838,10 +867,15 @@ class AtomicOutputValidatorV6:
             # Guard against legacy Kev08bMlxBackend leaking a 1 GiB global mx.set_cache_limit override!
             self._saved_mlx_cache_limit = get_and_cap_mlx_cache_limit(max_cache_mib=self._max_kev_cache_mib)
             try:
+                kev_kwargs: dict[str, Any] = {
+                    "quant_mode": kev_quant,
+                    "batch_docs": self.kev_batch_docs,
+                }
+                if kev_prefix_cache_mb is not None and _supports_kwarg(Kev08bMlxBackend.__init__, "prefix_cache_mb"):
+                    kev_kwargs["prefix_cache_mb"] = kev_prefix_cache_mb
                 self.kev_backend = Kev08bMlxBackend(
                     self.artifacts_dir / "kev_08b",
-                    quant_mode=kev_quant,
-                    batch_docs=self.kev_batch_docs,
+                    **kev_kwargs,
                 )
             finally:
                 # Re-apply bounded cache cap immediately if Kev08bMlxBackend bumped it during __init__.
@@ -897,6 +931,7 @@ class AtomicOutputValidatorV6:
         laya_pers_defects: dict[int, list[float]] = {}
 
         if self.laya_backend is not None and eval_doc_indices:
+            laya_enc_kw = {"on_truncate": "ignore"} if _supports_kwarg(self.laya_backend.encode_item, "on_truncate") else {}
             doc_encs: list[dict[str, Any]] = []
             doc_slots: list[tuple[int, str]] = []
 
@@ -952,7 +987,7 @@ class AtomicOutputValidatorV6:
                                 "candidate_extraction": cand_full,
                             }
                         st_use = st_ext
-                    doc_encs.append(self.laya_backend.encode_item(st_use, q))
+                    doc_encs.append(laya_encode_ignore_truncation(self.laya_backend, st_use, q, encode_kw=laya_enc_kw))
                     doc_slots.append((di, fld))
 
             if doc_encs:
@@ -978,7 +1013,9 @@ class AtomicOutputValidatorV6:
                     for pi, px in enumerate(personas):
                         if isinstance(px, Mapping):
                             pst, pq = build_atomic_persona_question_v6(obj, row, px)
-                            p_encs.append(self.laya_backend.encode_item(pst, pq))
+                            p_encs.append(
+                                laya_encode_ignore_truncation(self.laya_backend, pst, pq, encode_kw=laya_enc_kw)
+                            )
                             p_slots.append((di, pi))
                 if p_encs:
                     p_pers_true = self.laya_backend.score_noul_batch(p_encs)
@@ -1017,6 +1054,31 @@ class AtomicOutputValidatorV6:
             kev_q_meta: list[list[tuple[str, int]]] = []
 
             for di in eval_doc_indices:
+                obj = clean_objs[di]
+                row = chunk[di]
+                personas = obj.get("personas")
+                v0_p = list(v0_list[di]["persona_defect_scores"])
+                has_personas = self.score_personas and isinstance(personas, list) and bool(personas)
+                triv_single = bool(
+                    has_personas and self.skip_redundant and _is_trivially_verified_single_persona(obj, row, v0_p)
+                )
+
+                doc_in_gray_zone = True
+                gray_pis: list[int] = []
+                if (
+                    self.mode == "both"
+                    and has_personas
+                    and not triv_single
+                    and di in laya_pers_defects
+                    and len(laya_pers_defects[di]) == len(personas)
+                ):
+                    lp_di = list(laya_pers_defects[di])
+                    gray_pis = [
+                        pi
+                        for pi in range(len(personas))
+                        if 0.25 <= (0.55 * v0_p[pi] + 0.45 * lp_di[pi]) <= 0.75
+                    ][:2]
+
                 if self.mode == "both" and self.cascade and di in laya_field_probs:
                     v0_u = min(1.0, float(v0_list[di]["atomic_risk_score"]) / 1.50)
                     lfp = laya_field_probs[di]
@@ -1024,40 +1086,45 @@ class AtomicOutputValidatorV6:
                     l_cal = max(0.0, min(1.0, (l_raw - self.laya_raw_offset) / max(self.laya_raw_scale, 1e-4)))
                     w_v0, w_l = self.v0_laya_weights
                     stage1_def = w_v0 * v0_u + w_l * l_cal
-                    # Two-sided gray-zone cascade: skip GPU when Stage-1 is clearly clean OR clearly defective!
+                    # Two-sided gray-zone cascade: skip doc-level GPU when Stage-1 is clearly clean OR clearly defective,
+                    # EXCEPT when Stage-1 doc fields are clean (`< cascade_low`) while gray-zone personas need GPU refinement.
                     if stage1_def < self.cascade_low or stage1_def > self.cascade_high:
-                        continue
+                        doc_in_gray_zone = False
+                        if not (stage1_def < self.cascade_low and gray_pis):
+                            continue
 
-                obj = clean_objs[di]
-                row = chunk[di]
-                do_omit_k = self.include_omission_check and _should_check_omission(obj, v0_list[di])
+                do_omit_k = (
+                    doc_in_gray_zone
+                    and self.include_omission_check
+                    and _should_check_omission(obj, v0_list[di])
+                )
                 st, qs = build_atomic_doc_questions_v6(
                     obj,
                     row,
                     head_chars=1450,
                     tail_chars=500,
-                    include_genre_check=self.include_genre_check,
+                    include_genre_check=self.include_genre_check if doc_in_gray_zone else False,
                     include_omission_check=do_omit_k,
                 )
                 filtered_qs: list[dict[str, Any]] = []
                 q_meta_di: list[tuple[str, int]] = []
-                kev_field_probs[di] = {"primary_kind": 0.98, "committees": 0.92, "gist": 0.5}
-                for q in qs:
-                    fld = str(q.get("field") or q["id"])
-                    if self.skip_redundant:
-                        if fld == "primary_kind" and _is_grammar_locked_kind(obj, row):
-                            continue
-                        if fld == "committees" and _can_skip_empty_committees(obj, row, clean_texts[di]):
-                            continue
-                    filtered_qs.append(q)
-                    q_meta_di.append((fld, -1))
+                if doc_in_gray_zone:
+                    kev_field_probs[di] = {"primary_kind": 0.98, "committees": 0.92, "gist": 0.5}
+                    for q in qs:
+                        fld = str(q.get("field") or q["id"])
+                        if self.skip_redundant:
+                            if fld == "primary_kind" and _is_grammar_locked_kind(obj, row):
+                                continue
+                            if fld == "committees" and _can_skip_empty_committees(obj, row, clean_texts[di]):
+                                continue
+                        filtered_qs.append(q)
+                        q_meta_di.append((fld, -1))
 
-                # Attach persona checks onto the SAME cached state pass (`kev-0.8b` or top-2 gray-zone in `both`)!
-                personas = obj.get("personas")
-                v0_p = list(v0_list[di]["persona_defect_scores"])
-                if self.score_personas and isinstance(personas, list) and personas:
-                    if self.skip_redundant and _is_trivially_verified_single_persona(obj, row, v0_p):
-                        kev_pers_defects[di] = [0.06]
+                # Attach persona checks onto the SAME cached state pass (`kev-0.8b` or top-2 gray-zone in `both`).
+                if has_personas:
+                    if triv_single:
+                        if doc_in_gray_zone:
+                            kev_pers_defects[di] = [0.06]
                     elif self.mode == "kev-0.8b":
                         kev_pers_defects[di] = [0.5] * len(personas)
                         for pi, px in enumerate(personas):
@@ -1069,25 +1136,18 @@ class AtomicOutputValidatorV6:
                                 )
                                 filtered_qs.append(pq_inline)
                                 q_meta_di.append(("persona", pi))
-                    elif self.mode == "both" and di in laya_pers_defects and len(laya_pers_defects[di]) == len(personas):
-                        lp_di = list(laya_pers_defects[di])
-                        gray_pis = [
-                            pi
-                            for pi in range(len(personas))
-                            if 0.28 <= (0.55 * v0_p[pi] + 0.45 * lp_di[pi]) <= 0.68
-                        ][:2]
-                        if gray_pis:
-                            kev_pers_defects[di] = list(lp_di)
-                            for pi in gray_pis:
-                                px = personas[pi]
-                                if isinstance(px, Mapping):
-                                    pst, pq = build_atomic_persona_question_v6(obj, row, px)
-                                    pq_inline = dict(pq)
-                                    pq_inline["instructions"] = (
-                                        f"Actor context: {pst['mentions_of_actor']} | " + str(pq["instructions"])
-                                    )
-                                    filtered_qs.append(pq_inline)
-                                    q_meta_di.append(("persona", pi))
+                    elif self.mode == "both" and gray_pis:
+                        kev_pers_defects[di] = list(laya_pers_defects[di])
+                        for pi in gray_pis:
+                            px = personas[pi]
+                            if isinstance(px, Mapping):
+                                pst, pq = build_atomic_persona_question_v6(obj, row, px)
+                                pq_inline = dict(pq)
+                                pq_inline["instructions"] = (
+                                    f"Actor context: {pst['mentions_of_actor']} | " + str(pq["instructions"])
+                                )
+                                filtered_qs.append(pq_inline)
+                                q_meta_di.append(("persona", pi))
 
                 if filtered_qs:
                     kev_doc_targets.append(di)
@@ -1166,11 +1226,15 @@ class AtomicOutputValidatorV6:
                 defect = v0_unit
                 merged_fp = {"primary_kind": 1.0 - v0_unit, "committees": 1.0 - v0_unit, "gist": 1.0 - v0_unit}
 
-            # Incorporate high-confidence `action_summary` / `disclosure` defect into escalation score
+            # Incorporate high-confidence `action_summary` / `disclosure` / `correspondence_flow` defect into escalation
+            # Note: `correspondence_flow` structural lint stays in `v0_unit` + `flagged_fields`; hard `>=0.56`
+            # escalation requires Noul failure (`merged_fp < 0.35`), and `action_summary` requires Kev/V0 confirmation.
             disc_thresh = 0.35 if kfp is not None else 0.28
-            if merged_fp.get("action_summary", 1.0) < 0.28 or v0.get("action_summary_flags"):
+            if (kfp is not None and kfp.get("action_summary", 1.0) < 0.28) or v0.get("action_summary_flags"):
                 defect = max(defect, 0.58)
             if merged_fp.get("disclosure", 1.0) < disc_thresh or v0.get("disclosure_flags"):
+                defect = max(defect, 0.56)
+            if merged_fp.get("correspondence_flow", 1.0) < 0.35:
                 defect = max(defect, 0.56)
 
             # Combine per-persona defect scores (`V0` + `Laya-ANE` + `Kev-0.8B`)
@@ -1280,6 +1344,7 @@ class AtomicOutputValidatorV6:
         if not slots:
             return {}
 
+        laya_enc_kw = {"on_truncate": "ignore"} if _supports_kwarg(self.laya_backend.encode_item, "on_truncate") else {}
         encs: list[dict[str, Any]] = []
         valid_slots: list[tuple[int, int]] = []
         roles_list = list(ALL_ROLES_V6)
@@ -1303,7 +1368,7 @@ class AtomicOutputValidatorV6:
                 ),
                 "criteria": roles_list,
             }
-            encs.append(self.laya_backend.encode_item(pst, q_role))
+            encs.append(laya_encode_ignore_truncation(self.laya_backend, pst, q_role, encode_kw=laya_enc_kw))
             valid_slots.append((di, pi))
 
         if not encs:
