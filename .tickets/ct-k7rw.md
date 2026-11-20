@@ -1,6 +1,6 @@
 ---
 id: ct-k7rw
-status: open
+status: closed
 deps: [ct-medh]
 links: []
 created: 2026-11-17T18:51:21Z
@@ -43,3 +43,7 @@ Gate 5 and the pre-check together read each record at most once per run, and the
 **2026-11-17**
 
 Part one merged as pull request 195 (22db4500). Owner, 2026-11-17, on building the trust-the-pins design above: "Yes, after the night", meaning after the scheduled night of 2026-11-18 passes. Own pull request; first verify that the backfill and import jobs run the base check before they write a record.
+
+**2026-11-20T17:29:15Z**
+
+2026-11-20: Implemented trust-the-pins O(1) producer-record chain walk (base_problems(..., full=False)) for nightly pre-check and publish Gate 5 while retaining full_chain=True in verify_producer_chains and archive_maintenance (commits 0e554d3f, c6b2abbd). Measured before/after R2 reads on live production chains in .cache/archive-release/ct-k7rw-measurement-20261120.json; verified in test_producer_proof.py, test_daily_producer_records.py, test_archive_maintenance.py, and CI run 44776340037.

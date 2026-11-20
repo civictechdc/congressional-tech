@@ -1,6 +1,6 @@
 ---
 id: ct-hs34
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-17T11:28:14Z
@@ -78,3 +78,7 @@ Changed: 1 and 16 (Dependabot pull requests cannot be validated) no longer block
 Open: 4 (the capture cron fires 7 to 9 hours late and later each day: 10:42, 11:15, 11:47, 12:07 UTC on 11-14 to 11-17, and 11:57 on 11-18; owner to accept it or trigger from outside GitHub); 6 (split test_archive_selective.py before refreshing shard timings); 8 (Sunday's weekly refresh may trip the unattended rule's caps); 10; 14; 15.
 Not yet shown: a data job's own push to main under the new rule. commit-and-push.sh stamps its commit with the merge-gate status first, tested against a local stand-in only. I did not dispatch update-data.yml by hand on 2026-11-18: it is the whole weekly refresh (YouTube, GPO, committee metadata, pipeline data), and running it the evening before the first schedule-started night on the new code would likely stop that night. The first real proof is the scheduled run of Sunday 2026-11-22 00:00 UTC; if GitHub refuses the stamped push the job fails and ci-alerts opens an issue.
 Also from today: the publish re-run after a cause record rebuilt instead of resuming (ct-31qi); the first schedule-started night on the final code is 2026-11-19.
+
+**2026-11-20T17:29:15Z**
+
+2026-11-20: Split test_archive_selective.py into test_archive_selective.py + test_archive_selective_resume.py under the 1,050s shard budget, refreshed .github/scripts/test-shard-durations.json, added link_problems base.record pin validation in producer_records.py, and reconciled archive-jobs.yml survey items (commits 0e554d3f, c6b2abbd). Verified in test_offline_shards.py, test_archive_workflows.py, and all 6/6 offline shards + validate in CI run 44776340037.

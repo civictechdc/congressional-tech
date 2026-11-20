@@ -1,6 +1,6 @@
 ---
 id: ct-3kdg
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-18T20:27:36Z
@@ -17,3 +17,9 @@ Commit d0ff5fb0 on archive/2026-11-18/codex/ddk-congress-replacement-20261106 ad
 
 After the watchdog kills a job, it verifies no member of the process group survives and reports when it cannot.
 
+
+## Notes
+
+**2026-11-20T17:29:15Z**
+
+2026-11-20: Ported post-kill process-group survival verification (d0ff5fb0) onto scripts/archive_watchdog.py and scripts/measure/process_rss.py so lingering child processes in the owned process group are detected and reported (commit 0e554d3f). Verified in scripts/tests/test_archive_watchdog.py, scripts/tests/test_process_rss.py, and CI run 44776340037.

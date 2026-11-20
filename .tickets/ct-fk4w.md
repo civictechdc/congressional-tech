@@ -73,3 +73,7 @@ Implemented selected 80/20 scope via subagents. The current implementation updat
 **2026-11-18T19:13:34Z**
 
 2026-11-18: the three reviewed cover corrections are live in ca6e7adbfacf, read back from the public detail file: 0201014207ca witness-biography to testimony-disclosure; 00472521603f and 008bdb052fca witness-support to testimony-disclosure. Six documents changed kind in that release in total; the other three came from the night's new data.
+
+**2026-11-20T17:29:40Z**
+
+2026-11-20: Measured residual PDF contradictions on release 2ec7ae83 (298,013 PDF docs / 297,691 distinct PDF bodies), settled all 24 undecided non-slot official vs committee contradictions in model/registries/saved-name-decisions.json (84 -> 108 entries; 0 unmet, 0 unused), tightened Page-1 [:2048] pdf_cover_evidence.classify_selected_covers + body-signals.sql + page-signals.json with planted wrong-kind controls, generated model/jobs/inputs/pdf-cover-review-ct-fk4w-20261120.md and pdf-cover-evidence-ct-fk4w-20261120.{parquet,json} (1,379 rows, sha256 e64d547b1b19f913238b4f13f95456f729a062d5eef4b8387dba28861c8a1ef7, selection_sha256 bbeb4e1c94e195ac8ec5085578331543b2b2f709e77d2c83e523474e07bbe10b), and passed CI run 44776340037; awaiting archive-jobs.yml publish readback to close.

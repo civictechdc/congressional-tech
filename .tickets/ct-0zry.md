@@ -1,6 +1,6 @@
 ---
 id: ct-0zry
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-17T20:17:27Z
@@ -18,3 +18,9 @@ Two things adopted as they were in ct-ihe7. (1) scripts/build_v6_2_ssot_sidecar.
 
 A builder that takes a release and writes the three sidecar parts with current rules, tested on a bounded sample; a decision recorded on the sweep's resume layer.
 
+
+## Notes
+
+**2026-11-20T17:29:15Z**
+
+2026-11-20: Built release-parameterized DocMeta v6 sidecar builder (packages/congress_docmeta/src/congress_docmeta/sidecar_builder.py and scripts/build_docmeta_sidecar.py) applying current rules R4-R8, verified on bounded sample in test_docmeta_audit_remediation.py, and documented sweep resume design in packages/congress_docmeta/docs/architecture.md (commit 0e554d3f; CI run 44776340037).

@@ -1,6 +1,6 @@
 ---
 id: ct-s9l2
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-18T09:08:29Z
@@ -17,3 +17,9 @@ congress_docmeta.eval_blind (and fast-gemma4 main's scripts/eval_docmeta_blind.p
 
 eval_blind and the sweep command take a memory limit with a safe default; a run beside a second 10 GB job leaves the machine with free memory; predictions are unchanged by the cap.
 
+
+## Notes
+
+**2026-11-20T17:29:15Z**
+
+2026-11-20: Added mx.set_memory_limit and mx.set_cache_limit controls with safe defaults to congress_docmeta.silicon_runtime_v6, eval_blind, and cli (commit 0e554d3f). Verified in test_docmeta_audit_remediation.py and live Apple Silicon MLX hardware eval (.cache/archive-release/docmeta-move-20261117/eval_after_ct2cig_cts9l2_20261120.json).

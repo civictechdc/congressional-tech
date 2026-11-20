@@ -1,6 +1,6 @@
 ---
 id: ct-2cig
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-18T14:01:54Z
@@ -25,3 +25,9 @@ Each fix changes labels or scores, so each needs its own before/after eval and, 
 
 Each item is either fixed with a before/after eval on valid_sweep and the count of training-gold rows it changes, or closed with the measurement that shows the report was wrong. Scorer changes report old and new metrics side by side for the current production model.
 
+
+## Notes
+
+**2026-11-20T17:29:15Z**
+
+2026-11-20: Fixed and verified all 2026-11-18 DocMeta rule and scorer audit items — R4 Vice Chair & trailing comma handling, R7 start_year bound, govinfo_chrg_pkg_lock annual-report exclusion, reconcile_queue_lock_v6 in cover_locks_v6.py, and non-mutating gold matching in eval_blind.score (commit 0e554d3f). Verified via test_docmeta_audit_remediation.py, CI run 44776340037, and before/after live MLX hardware eval (.cache/archive-release/docmeta-move-20261117/eval_after_ct2cig_cts9l2_20261120.json).

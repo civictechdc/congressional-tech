@@ -1,6 +1,6 @@
 ---
 id: ct-pzaz
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-17T20:17:27Z
@@ -18,3 +18,9 @@ The moved rules (provenance_rules_v5.py HOUSE_CLERK_2LETTER_TO_CODE and DOMAIN_T
 
 Measure where the DocMeta tables and house_naming disagree on the release's filenames and committee codes; one owner per table; the no-model comparison in .cache/archive-release/docmeta-move-20261117 shows which outputs move.
 
+
+## Notes
+
+**2026-11-20T17:29:15Z**
+
+2026-11-20: Unified congress_docmeta committee-code and filename handling with house_naming and meeting_records.normalize_house_committee_code, and removed hardcoded local data-folder paths across congress_docmeta (commit 0e554d3f). Verified in test_docmeta_audit_remediation.py and CI run 44776340037.
