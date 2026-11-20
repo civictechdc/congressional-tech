@@ -1,6 +1,6 @@
 ---
 id: ct-kfsd
-status: in_progress
+status: closed
 deps: [ct-55qo, ct-m704]
 links: [ct-a73a, ct-n3ik, ct-hz8y, ct-0a35, ct-m704]
 created: 2026-11-13T17:46:15Z
@@ -77,3 +77,17 @@ Manual audit credits eight earlier corrected pairs, 18 additional v12 cleanup re
 **2026-11-17T10:28:52Z**
 
 Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved.
+
+**2026-11-20T23:30:12Z**
+
+Completed published cleanup readback against Explorer release 0e7084cde775d0064646c56b2200a14e1f13d8b512f1a61a6fe815d597faf4d3 and body-text v13 7aea7925da324273d16c04e7dd7d53b2a7d3a0ade895f9343063015458d88688, selection bbeb4e1c94e195ac8ec5085578331543b2b2f709e77d2c83e523474e07bbe10b. The R2 pointer binds the exact detail digest and body_text snapshot 8592324397432329908. The release contains one unhidden saved document for each of the 32 PDFs. All eight early corrections, six unchanged baseline controls and 18 later corrections match their qualified text in full, with the same UTF-8 page boundaries. The six controls are C005, C006, C007, C009, C014 and C015. C015 preserves the printed fields and the known handwriting omission. The restored pages for S055, S150, S138 and S017 (physical page 57) match their reviewed page files exactly. These four are the entire named ct-kfsd historical exception queue.
+
+All 8,505 composed WARC/ARC bodies have current Explorer associations and v13 text. Each published digest and page map matches its qualified composed output. Read full published text for the 24 source-reviewed archive samples as well as all 32 cleanup/control PDFs. All 8,537 selected parser/version keys, text digests, page maps, OCR page lists and build fields agree with the pinned native text snapshot. The published pointer reports zero truncated rows. The full 326,929-row object supplied only its metadata columns, plus text from the 37 row groups containing the 56 targeted SHAs. The 14 earlier diagnostic files total 8,308,326 bytes. Direct source review and planted-omission evidence remain pinned to the original qualifications.
+
+The ledger names all public link keys, saved SHAs, character and byte counts, selection sources, versions, review limits and recovery associations. The separate historical scope table names 298,684 other PDF bodies, of which 297,936 have v13 text. These bodies have no cleanup-fidelity certification from this reconciliation. The scope unites the frozen PDF screen and exception queue with current selected PDF readings and current saved PDFs. No OCR or publisher refetch ran.
+
+Evidence is under /Users/mikewolfd/Work/congressional-tech/.cache/archive-release/long-tail-20261120/pdf-source/ in ct-kfsd-reconciliation.json, ct-kfsd-summary.md, ct-kfsd-unassessed.parquet and v13-readback.json. The local runtime doctor passed. The production-offline targeted file passed 21 tests (one of 601 lane files). Tests reject a planted missing bullet, a lost substantive tail after a printing footer, an incorrect UTF-8 offset and wrong or repeated selected versions. Hosted search remains with ct-0a35.
+
+**2026-11-20T23:33:09Z**
+
+Final verification checks that each of all 8,537 bodies has exactly one unhidden document with the same saved SHA. The 298,684 unassessed hashes have zero overlap with the full assessed set. The final targeted production-offline run passed 23 tests, including rejection of a hidden record and a different saved-body SHA. Doctor passed.

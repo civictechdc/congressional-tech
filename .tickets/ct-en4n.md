@@ -1,8 +1,8 @@
 ---
 id: ct-en4n
-status: in_progress
+status: closed
 deps: [ct-fb7k]
-links: [ct-chc4, ct-z4w5, ct-f6hr, ct-0a35, ct-n3ik, ct-m704]
+links: [ct-chc4, ct-z4w5, ct-f6hr, ct-0a35, ct-n3ik, ct-m704, lps2-qmh5]
 created: 2026-11-13T17:46:16Z
 type: task
 priority: 1
@@ -131,3 +131,19 @@ Manual audit credits v12 source exclusions and shared detection. Own the missing
 **2026-11-17T10:28:52Z**
 
 Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved.
+
+**2026-11-20T23:29:16Z**
+
+November 20 source-role reconciliation completed against Explorer release 0e7084cde775d0064646c56b2200a14e1f13d8b512f1a61a6fe815d597faf4d3 and v13 body text 7aea7925da324273d16c04e7dd7d53b2a7d3a0ade895f9343063015458d88688 (selection bbeb4e1c94e195ac8ec5085578331543b2b2f709e77d2c83e523474e07bbe10b). The ledger preserves all 455 source identities from November 17 and the per-target recovery decisions from ct-z4w5 on November 20. It binds every case to the pinned captures and selected readings, Explorer source and address lookups, URL state, saved and recovery rows, and v13 membership. No requests were dispatched.
+
+All 188 historical URL gaps have original receipt provenance. For 187 saved House meeting HTML fallbacks, the receipt pointer's meeting ID matches the exact body's form action. The remaining SHA is a verified retained Senate Appropriations listing security response. The ledger distinguishes reconstructed source addresses from absent HTTP request observations. The 398 error responses include 197 missing recording playlists, 173 missing House meetings, 14 House file errors, four Natural Resources error bodies at five document targets, one Senate listing security response and nine other reviewed HTML error responses. The remaining inventory contains 56 damaged PDFs and one zero-byte response to an expected PDF. Two State Department archive wrappers share their failed payloads' receipts.
+
+The earlier 345 zero-page failures form a separate population. Fifty overlap the 455. The evidence establishes 154 PDFs shorter than their declared length, 140 failed PDF transfers, 44 capped PDF transfers, six unterminated PDF streams and one zero-filled PDF tail. All 345 lack v13 text. All 455 inventory originals also lack v13 text. Of the 27 selected public PDF error readings, 21 match historical zero-page failures, one is the damaged Walling source, and five lie outside the inventory. All eight reviewed landing cases now have a public target PDF with v13 text. The 94 positive controls cover the Atom feed, ordinary HTML/XML, statute viewers, a verified four-member ZIP, valid empty outputs and ordinary documents mentioning error phrases. Fourteen unassessed template siblings retain their review limits.
+
+The broader public-copy exclusion check failed. Explorer still has 28 invalid-source SHAs on 29 saved document rows. Twenty-two damaged PDFs and two State Department error pages have unhidden saved-copy links. Four Natural Resources HTML errors occupy five hidden recovery rows. All 398 reviewed error hashes have an explicit text-selection exclusion. All 197 playlist errors have HTTP failure receipts and zero saved-body associations. URL state contains one body_not_qualified entry, outside this inventory. A failed reading or an absent export row does not remove the Explorer download. The current operational inventory reports 26 closed and 429 open exact-original obligations. Qualification, revision limits and recovery eligibility remain per target.
+
+The full ledger and report are /Users/mikewolfd/Work/congressional-tech/.cache/archive-release/long-tail-20261120/pdf-source/ct-en4n-reconciliation.json and ct-en4n-summary.md in the same directory. The ledger's public_copy_control names every counterexample by Explorer link key and saved SHA. The good-fetch HTTP status rule is in model/sql/good-fetches.sql. Ticket ct-fb29 covers schema descriptions. No production or selection policy changed.
+
+**2026-11-20T23:33:09Z**
+
+Closed the requested inventory, provenance, controls and release-exposure reconciliation. The public-copy exclusion remains failed on the pinned release. The verifier writes the complete ledger and exits 1 with the 24 counterexamples. Linked open release defect lps2-qmh5 owns their correction and verification on a successor release. Qualification, acquisition and publishing were outside this read-only investigation.
