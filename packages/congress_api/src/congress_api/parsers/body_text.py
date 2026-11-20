@@ -477,10 +477,12 @@ def _decoded(payload, encoding, max_bytes):
     return None if max_bytes is not None and len(data) > max_bytes else data
 
 
-def derive(data, parser, *, strategy, page_deadline_seconds, sniff_format, max_bytes, evidence=None, checkpoint=None):
+def derive(data, parser, *, strategy, page_deadline_seconds, sniff_format, max_bytes, evidence=None, checkpoint=None,
+           select_publisher_content=False):
     """One body's reading under ``parser``. ``sniff_format(bytes)`` names a WARC payload's format."""
     if parser in MARKUP_RENDITIONS:
-        return markup_text(data, parser)
+        return markup_text(data, parser, select_publisher_content=(
+            select_publisher_content if parser == 'html_text' else False))
     if parser == 'pdf_text':
         return pdf_text(data, strategy=strategy, page_deadline_seconds=page_deadline_seconds, evidence=evidence,
                         checkpoint=checkpoint)
@@ -497,7 +499,8 @@ def derive(data, parser, *, strategy, page_deadline_seconds, sniff_format, max_b
     if evidence:
         evidence(dict(event='warc_payload', parser=inner, payload_sha256=hashlib.sha256(payload).hexdigest()))
     reading = derive(payload, inner, strategy=strategy, page_deadline_seconds=page_deadline_seconds,
-                     sniff_format=sniff_format, max_bytes=max_bytes, evidence=evidence, checkpoint=checkpoint)
+                     sniff_format=sniff_format, max_bytes=max_bytes, evidence=evidence, checkpoint=checkpoint,
+                     select_publisher_content=select_publisher_content)
     return Reading(reading.status, reading.error_type, reading.text, reading.page_offsets, reading.ocr_pages,
                    reading.macos_build, dict(reading.fields, **envelope, payload_format=kind,
                         payload_sha256=hashlib.sha256(payload).hexdigest()), reading.diagnostic)

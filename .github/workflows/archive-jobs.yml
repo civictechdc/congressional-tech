@@ -69,6 +69,8 @@ jobs:
           persist-credentials: false
           fetch-depth: 0  # gate 5 checks each producing commit is reachable from HEAD
       - uses: ./.github/actions/setup-python-project
+        with:
+          tesseract: true
       - name: Admit the model binding before runtime or storage access
         id: publisher_binding
         run: .venv/bin/python -I .github/scripts/run-archive-job.py publish --check-binding --github-output "$GITHUB_OUTPUT"
@@ -132,6 +134,23 @@ jobs:
             output/archive-release
             output/archive-model/result.json
             output/archive-model/evidence/recording_video_links.parquet
+      - name: Publish incremental body_text and derived/body_text/current.json
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: |
+          rm -rf output/archive-model output/archive-daily/receipts output/archive-daily/qualification-cache apps/site/dist apps/site/node_modules ~/.cache/ms-playwright
+          .venv/bin/python -I scripts/archive_watchdog.py \
+            --rss-gb 13 \
+            --min-disk-gb 5 \
+            --min-available-gb 0 \
+            --report "$RUNNER_TEMP/body-text-watchdog.json" \
+            --timeline \
+            -- .venv/bin/python -I -m viewer_publication.body_text_publish \
+              --work "$RUNNER_TEMP/body-text-publish" \
+              --release-dir output/archive-release \
+              --parser-workers 3
       - name: Retain run evidence (access follows repository)
         if: ${{ always() && steps.publisher_binding.outputs.publisher_work != '' }}
         uses: actions/upload-artifact@v7

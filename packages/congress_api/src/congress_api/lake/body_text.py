@@ -79,6 +79,7 @@ RECOVERY_STRATEGIES = frozenset({
     'congress_api.parsers.body_text:recovery_native_only',
     'congress_api.parsers.body_text:recovery_apple_vision',
 })
+PORTABLE_STRATEGY = 'congress_api.parsers.pdf_opt_in:portable_tesseract_200dpi'
 OPT_IN_PDF_STRATEGY_VERSIONS = {
     'congress_api.parsers.pdf_opt_in:native_inhibit_spaces_only': 'PDF_NATIVE_SPACING_SYMBOL_REPAIR_VERSION',
     'congress_api.parsers.pdf_opt_in:tesseract_300dpi': 'PDF_TESSERACT_300DPI_RECOVERY_VERSION',
@@ -91,6 +92,16 @@ def current_versions():
     return {parser: readings.current_version(parser) for parser in PARSERS}
 
 
+def portable_versions():
+    """Portable CPU execution versions across all body-text parsers (Tesseract 200 DPI + CMS HTML + XML)."""
+    from congress_api.lake import reading_versions
+    return {
+        'pdf_text': reading_versions.PDF_TESSERACT_SELECTIVE_RECOVERY_VERSION,
+        'html_text': reading_versions.HTML_CMS_CONTENT_SELECTION_VERSION,
+        'xml_text': readings.current_version('xml_text'),
+    }
+
+
 def _execution_versions(strategy, *, recovery=False):
     """Map supported staging strategies and execution modes to their allowed parser versions."""
     from congress_api.lake import reading_versions
@@ -100,6 +111,8 @@ def _execution_versions(strategy, *, recovery=False):
         return recovery_versions()
     if strategy in ORDINARY_STRATEGIES:
         return current_versions()
+    if strategy == PORTABLE_STRATEGY:
+        return portable_versions()
     if strategy in OPT_IN_PDF_STRATEGY_VERSIONS:
         return {'pdf_text': getattr(reading_versions, OPT_IN_PDF_STRATEGY_VERSIONS[strategy])}
     raise ValueError(f'Unsupported body-text staging strategy: {strategy}')
@@ -122,7 +135,7 @@ def _validate_stage_versions(planned, items, *, strategy, recovery, expected_ver
            for p, v in planned_versions.items()):
         if recovery:
             raise ValueError('Unlimited body reads require the explicit recovery reading versions')
-        if strategy in OPT_IN_PDF_STRATEGY_VERSIONS:
+        if strategy in OPT_IN_PDF_STRATEGY_VERSIONS or strategy == PORTABLE_STRATEGY:
             raise ValueError('Opt-in PDF staging requires its dedicated declared reading version')
         raise ValueError('Ordinary body-text staging requires the current declared reading versions')
     for item in items:
@@ -253,7 +266,8 @@ def copy_selection_steps(*, with_listing=False):
 
 
 def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, unreadable_files=(),
-         registry=None, filename_readings=None, body_listing=None, selection=None, existing_text=None):
+         registry=None, filename_readings=None, body_listing=None, selection=None, existing_text=None,
+         versions=None, sniff_readings=None):
     """Materialize the ordered work list in one native job, opening no body.
 
     Newest Congress first (plan §1), each body taking the highest Congress any of its captures'
@@ -267,7 +281,7 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
     instant(decided_at)
     work = Path(work).resolve()
     work.mkdir(parents=True, exist_ok=False)
-    versions = current_versions()
+    versions = dict(versions) if versions is not None else current_versions()
     accepted = body_text_selection.load(selection, versions)
     if accepted['overrides'] and (existing is None or existing_text is None):
         raise ValueError('Explicit selections require both retained readings and body_text')
@@ -306,21 +320,26 @@ def plan(*, captures, engine, work, decided_at, local_root=None, existing=None, 
         empty = json_input(work, 'existing_json', [], **readings._reading_fields())
         inputs.append(empty)
         steps.append(dict(name='existing', sql=f'SELECT {readings._LAKE_READING_COLUMNS} FROM existing_json'))
+    if sniff_readings is not None:
+        inputs.append(table_input('sniff_source', sniff_readings))
+        readings_source = 'sniff_source'
+    else:
+        readings_source = 'existing'
     steps += [
-        dict(name='readings', sql='SELECT * FROM existing'),
+        dict(name='readings', sql=f'SELECT * FROM {readings_source}'),
         *compatible_versions.selected_readings_steps(sniff_entries, parsers=('sniff',)),
         *[dict(name=name.replace('-', '_'), sql=(ROOT / 'model/sql' / (name + '.sql')).read_text())
           for name in ['pinned-readings', 'sniff-observations', 'sniff-conflicts', 'sniff-facts']],
         dict(name='active_unreadable', sql=f'SELECT u.* FROM unreadable u WHERE {active_unreadable_where()}'),
         dict(name='selected_body_readings', materialize=True,
-             sql=body_text_selection.selected_sql('readings', accepted,
+             sql=body_text_selection.selected_sql('existing', accepted,
                  columns=('body_sha', 'parser', 'parser_version', 'status'))),
         dict(name='selected_body_unreadable', materialize=True,
              sql=body_text_selection.selected_sql('active_unreadable', accepted, body="decode(r.body_sha256,'hex')")),
         # Extraction completion and publication acceptance are different. A new current
         # attempt awaiting qualification must not be extracted again on every resume.
         dict(name='current_body_attempts', materialize=True,
-             sql=f'SELECT body_sha,parser,parser_version FROM readings WHERE {body_text_selection.at_versions(versions)}'),
+             sql=f'SELECT body_sha,parser,parser_version FROM existing WHERE {body_text_selection.at_versions(versions)}'),
         dict(name='settled', materialize=True, sql='''SELECT body_sha,parser FROM selected_body_readings
             UNION ALL SELECT decode(body_sha256,'hex') AS body_sha,parser FROM selected_body_unreadable
             UNION ALL SELECT body_sha,parser FROM current_body_attempts'''),
@@ -629,10 +648,16 @@ def _parse_payload(payload):
                 directory = Path(request['diagnostics']).parent / (request['body_sha'] + '.markup-recovery.' + uuid4().hex)
                 reading = read_reviewed_markup(data, request['markup_recovery'], evidence_dir=directory)
             else:
+                from congress_api.lake.reading_versions import HTML_CMS_CONTENT_SELECTION_VERSION
+                select_cms = ('congressional-cms-main-content/001'
+                              if (request['parser'] == 'html_text'
+                                  and request.get('parser_version') == HTML_CMS_CONTENT_SELECTION_VERSION)
+                              else False)
                 reading = derivation.derive(data, request['parser'], strategy=_STRATEGIES[spec],
                     page_deadline_seconds=request['page_deadline_seconds'], sniff_format=_sniff_format,
                     max_bytes=None if request.get('unlimited_body_bytes') else MAX_DECODED_BYTES,
-                    evidence=evidence.emit if evidence.path else None, checkpoint=adapter(request.get('page_checkpoints')))
+                    evidence=evidence.emit if evidence.path else None, checkpoint=adapter(request.get('page_checkpoints')),
+                    select_publisher_content=select_cms)
         except RecoveryInputError as error:
             return dict(read_error='markup_recovery_input', error=str(error),
                         worker_lifetime_peak_rss_bytes=_worker_lifetime_peak_rss_bytes())
@@ -978,7 +1003,8 @@ def append(staged, *, engine, work, catalog_root, tables):
     result = {}
     for name, rows in (('body_text', 'body_text_rows'), ('readings', 'readings_rows')):
         result[name] = (lake_tables.append_rows(staged[name], engine=engine, work=work / name.replace('_', '-'),
-            catalog_root=catalog_root, table=tables[name], keys=PK, definition=name + ':body_text:' + definition)
+            catalog_root=catalog_root, table=tables[name], keys=PK, definition=name + ':body_text:' + definition,
+            **({'row_group_rows': 256} if name == 'body_text' else {}))
             if staged[rows] else None)
     return result
 
@@ -992,12 +1018,23 @@ def create_table(*, engine, work, catalog_root, table, location, create_namespac
             {'source-id': 3, 'field-id': 1001, 'name': 'parser_version', 'transform': 'identity'}]})
 
 
+def create_readings_table(*, engine, work, catalog_root, table, location, create_namespace=False):
+    """Create `body_text_readings` (`readings.schema.json`), partitioned by (parser, parser_version)."""
+    from congress_api.lake.tables import create_table as native_create
+    readings_schema = json.loads((ROOT / 'model/lake/readings.schema.json').read_text())
+    return native_create(engine=engine, work=work, catalog_root=catalog_root, table=table, location=location,
+        create_namespace=create_namespace, schema=readings_schema, partition_spec={'spec-id': 0, 'fields': [
+            {'source-id': 2, 'field-id': 1000, 'name': 'parser', 'transform': 'identity'},
+            {'source-id': 3, 'field-id': 1001, 'name': 'parser_version', 'transform': 'identity'}]})
+
+
 def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=None, origin=None, execute=False,
         unreadable_store=None, unreadable_files=(), max_cache_bytes=MAX_CACHE_BYTES, max_batch_items=MAX_BATCH_ITEMS,
         max_batches=None, worker_factory=ParserWorker, parser_workers=1,
         parser_memory_bytes=PARSER_MEMORY_BYTES, strategy=None,
         page_deadline_seconds=PAGE_DEADLINE_SECONDS, registry=None, filename_readings=None, body_listing=None,
-        retain_quality_evidence=False, selection=None, page_checkpoints=None):
+        retain_quality_evidence=False, selection=None, page_checkpoints=None,
+        sniff_table=None, sniff_readings=None):
     """Plan once against current `readings`, then stage and commit batches in work-list order.
 
     Bodies come from ``local_root`` or ``origin`` (exactly one); ``body_listing`` pins MD5-less
@@ -1010,6 +1047,8 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
         raise ValueError('Name exactly one body source: a local raw root or an origin')
     if body_listing is not None and local_root is not None:
         raise ValueError('body_listing applies to remote origin reads, not local_root')
+    if sniff_table is not None and sniff_readings is not None:
+        raise ValueError('Name at most one sniff readings source: sniff_table or sniff_readings')
     if set(tables) != {'readings', 'body_text'}:
         raise ValueError('Body text needs the readings and body_text table identifiers')
     if execute and unreadable_store is None:
@@ -1017,18 +1056,22 @@ def run(*, engine, work, captures, decided_at, catalog_root, tables, local_root=
     if max_batches is not None and (type(max_batches) is not int or max_batches <= 0):
         raise ValueError('max_batches must be a positive integer')
     work = Path(work).resolve()
-    current = resolve_tables(engine=engine, work=work / 'current', catalog_root=catalog_root,
-                             tables=tables if selection else {'readings': tables['readings']})
+    to_resolve = dict(tables if selection else {'readings': tables['readings']})
+    if sniff_table is not None:
+        to_resolve['sniff_readings'] = sniff_table
+    current = resolve_tables(engine=engine, work=work / 'current', catalog_root=catalog_root, tables=to_resolve)
     files = list(unreadable_files)
     if execute:
         from congress_api.retention.provenance_inventory import unreadable_inventory
         known = {r['key'] for r in files}
         files += [r for r in unreadable_inventory(unreadable_store, work=work / 'unreadable-inventory').files()
                   if r['key'] not in known]
+    run_versions = portable_versions() if strategy == PORTABLE_STRATEGY else None
     planned = plan(captures=captures, engine=engine, work=work / 'plan', decided_at=decided_at,
                    local_root=local_root, existing=current['readings'], unreadable_files=files, registry=registry,
                    filename_readings=filename_readings, body_listing=body_listing, selection=selection,
-                   existing_text=current.get('body_text'))
+                   existing_text=current.get('body_text'), versions=run_versions,
+                   sniff_readings=current.get('sniff_readings') if sniff_table is not None else sniff_readings)
     report = dict(status='planned', work_items=planned['work_items'], with_congress=planned['with_congress'],
                   by_parser=planned['by_parser'],
                   versions=planned['versions'], selection=planned['selection'],

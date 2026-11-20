@@ -6,6 +6,7 @@ not change historical rows or authorize execution with a historical parser versi
 Version 2 can also exclude reviewed source bodies from document-text publication,
 without changing the reading keys used by the planner or their completion status.
 """
+import gzip
 from hashlib import sha256
 import json
 from pathlib import Path
@@ -26,7 +27,8 @@ def load(path, versions):
     if path is None:
         return dict(versions=dict(versions), overrides=[], excluded_bodies=[], identity=None)
     path = Path(path).resolve()
-    raw = path.read_bytes()
+    raw_bytes = path.read_bytes()
+    raw = gzip.decompress(raw_bytes) if path.suffix == '.gz' else raw_bytes
     value = json.loads(raw)
     fields = {'version', 'baseline_versions', 'qualification', 'overrides'}
     if (not isinstance(value, dict) or not isinstance(value.get('version'), int)
@@ -103,18 +105,37 @@ def exception_versions(selection):
         (r['parser'], r['parser_version']) for r in selection['overrides']})) + ')'
 
 
-def selected_sql(table, selection, *, body='r.body_sha', columns=None):
-    """Partition pruning for baseline rows; exception keys build the narrow join."""
+def selected_sql(table, selection, *, body='r.body_sha', columns=None, incremental_versions=None,
+                 settled_table=None, settled_body=None):
+    """Partition pruning for baseline rows; exception keys build the narrow join.
+
+    When ``incremental_versions`` is supplied, newly extracted rows at those active versions are
+    admitted only for ``(body_sha, parser)`` keys absent from both ``baseline_versions`` and
+    ``overrides``, so historical accepted outcomes and refusals are never displaced without review.
+    """
     versions = selection['versions']
     projection = 'r.*' if columns is None else ','.join('r.' + c for c in columns)
     baseline = f'SELECT {projection} FROM {table} r WHERE {at_versions(versions, "r.")}'
-    if not selection['overrides']:
-        return baseline
-    match = f"decode(s.body_sha256,'hex')={body} AND s.parser=r.parser"
-    return f'''SELECT {projection} FROM body_text_choices s RIGHT ANTI JOIN ({baseline}) r ON {match}
-        UNION ALL SELECT {projection} FROM body_text_choices s JOIN
-            (SELECT * FROM {table} WHERE {exception_versions(selection)}) r
-        ON {match} AND s.parser_version=r.parser_version'''
+    if selection['overrides']:
+        match = f"decode(s.body_sha256,'hex')={body} AND s.parser=r.parser"
+        accepted = f'''SELECT {projection} FROM body_text_choices s RIGHT ANTI JOIN ({baseline}) r ON {match}
+            UNION ALL SELECT {projection} FROM body_text_choices s JOIN
+                (SELECT * FROM {table} WHERE {exception_versions(selection)}) r
+            ON {match} AND s.parser_version=r.parser_version'''
+    else:
+        accepted = baseline
+    extra = {p: v for p, v in (incremental_versions or {}).items() if p in versions and versions[p] != v}
+    if not extra:
+        return accepted
+    key_table = settled_table or table
+    key_body = settled_body or body
+    accepted_keys = f'SELECT {key_body} AS body_sha,r.parser FROM {key_table} r WHERE {at_versions(versions, "r.")}'
+    if selection['overrides']:
+        accepted_keys += " UNION ALL SELECT decode(s.body_sha256,'hex') AS body_sha,s.parser FROM body_text_choices s"
+    return f'''{accepted}
+        UNION ALL SELECT {projection} FROM ({accepted_keys}) k RIGHT ANTI JOIN
+            (SELECT * FROM {table} WHERE {at_versions(extra)}) r
+        ON k.body_sha={body} AND k.parser=r.parser'''
 
 
 def validation_queries(selection, *, text_table=None):

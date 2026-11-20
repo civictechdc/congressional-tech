@@ -24,6 +24,7 @@ from spicy_docs.extraction.pages import _PDFPage
 from congress_api.parsers.body_text import OCR_MIN_CHARS, PageRule, gpo_page, page_rule
 
 DEFAULT_TESSDATA_DIR = '/opt/homebrew/share/tessdata'
+PORTABLE_STRATEGY = 'congress_api.parsers.pdf_opt_in:portable_tesseract_200dpi'
 _open_default_reader = DefaultReader.open
 
 
@@ -32,6 +33,7 @@ class TesseractBackend(Tesseract):
 
     def __init__(self, *, language='eng', model='fast', tessdata_dir=None,
                  page_segmentation_mode=3, engine=None):
+        os.environ.setdefault('OMP_THREAD_LIMIT', '1')
         directory = tessdata_dir if tessdata_dir is not None else (os.environ.get('TESSDATA_PREFIX') or DEFAULT_TESSDATA_DIR)
         super().__init__(language=language, model=model, tessdata_dir=directory,
                          page_segmentation_mode=page_segmentation_mode, engine=engine)
@@ -164,6 +166,11 @@ def tesseract_bounded_200dpi() -> PageRule:
             native_inhibit_spaces=False,
         ),
     )
+
+
+def portable_tesseract_200dpi() -> PageRule:
+    """Portable incremental PDF rule pairing bounded 200 DPI Tesseract with multi-format body_text."""
+    return tesseract_bounded_200dpi()
 
 
 def native_inhibit_spaces_only() -> PageRule:
