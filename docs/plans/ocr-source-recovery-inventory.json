@@ -1,16 +1,16 @@
 {
   "version": 1,
-  "updated_at": "2026-11-20T14:00:00Z",
+  "updated_at": "2026-11-20T23:54:04Z",
   "archive_root": "<main checkout>/.cache/archive-release",
   "owner_tickets": [
     "ct-en4n",
     "ct-z4w5"
   ],
-  "scope": "Consolidated known invalid sources from named retained reviews, actual fetch receipts, and 2026-11-20 formal corpus_recovery/acceptance.py source-acceptance decisions.",
+  "scope": "Known invalid sources on the November 20 Explorer release. Each record preserves exact-original recovery decisions and records document-fetch eligibility for its targets.",
   "rows": 455,
   "recovery_open": 429,
   "needs_refetch": 6,
-  "refetch_requires_history_review": 398,
+  "refetch_requires_history_review": 0,
   "already_covered": 26,
   "zero_page_batch": {
     "invalid_sources": 49,
@@ -29,38 +29,61 @@
     "alternate_without_identity_review_closes_recovery": false,
     "scoped_search_coverage_closes_exact_original_recovery": false,
     "close_only_with": "Reviewed usable replacement or explicitly accepted scoped coverage, linked to the intended document/revision and exact body identity via corpus_recovery/acceptance.py.",
-    "retry_behavior": "Do not retry broken publisher copies unless Last-Modified or ETag changes; search alternative archives and use browser_session_capture for bot-screened LoC/GAO targets."
+    "retry_behavior": "Do not retry broken publisher copies unless Last-Modified or ETag changes; search alternative archives and use browser_session_capture for bot-screened LoC/GAO targets.",
+    "recovery_open": "Preserves the exact-original decision from ct-z4w5. Use document_fetch_eligibility and the per-target qualification before planning a request.",
+    "reconstructed_listings": "The 188 reconstructed targets identify House meeting listing members or a Senate hearings listing. The receipt records no HTTP request URL for these bodies. Preserve the source history and skip document acquisition.",
+    "undecided_refetch": "The remaining 210 null needs_refetch values refer to 197 recording playlists and 13 sources awaiting target qualification. Capture-history review is complete."
   },
   "inventory": {
-    "path": "ct-z4w5-acceptance-20261120/inventory/invalid-sources.jsonl",
-    "sha256": "20c06ad1f9edcb4f78fd0b3adc5d9c3e426be4ed8e22bf7602e724ed647418ec",
-    "bytes": 1288617
+    "path": "long-tail-20261120/pdf-source/invalid-sources.jsonl",
+    "sha256": "adeb3f4f2acbb82d299762e48669ff254162cbf16640465207e3e74c2108b7b1",
+    "bytes": 1827752
   },
   "review_view": {
-    "path": "ct-z4w5-acceptance-20261120/inventory/invalid-sources.csv",
-    "sha256": "bacec90d9b30fc1a6d2b347a0865ee004e97af1861680bbd92eb28e39a2024e0",
-    "bytes": 118406
+    "path": "long-tail-20261120/pdf-source/invalid-sources.csv",
+    "sha256": "e47f7a3e87bf1f3ca671dd91e653e7cb82ef0eb86c0123c1373055ceb919a876",
+    "bytes": 127440
   },
   "summary": {
-    "path": "ct-z4w5-acceptance-20261120/inventory/summary.json",
-    "sha256": "7aa8ace42036035aea39ab2c409c13838938ca5a329153a2cc6c58fccd1a9e72",
-    "bytes": 488
+    "path": "long-tail-20261120/pdf-source/inventory-summary.json",
+    "sha256": "c2edd0d57f018a35e90445c97771cf5d6b8e65b9604fd517559fb63830fb8555",
+    "bytes": 340
   },
   "instructions": {
-    "path": "ct-z4w5-acceptance-20261120/inventory/README.md",
-    "sha256": "4ca13eee497814de879801c29843d1d9d17638c7419e59352bbb90189e2d2161",
-    "bytes": 576
+    "path": "long-tail-20261120/pdf-source/ct-en4n-summary.md",
+    "sha256": "d363639db71f13ed119a76b83f4932c5ef1725bcadd15f054e909491df0e7d1f",
+    "bytes": 5528
   },
   "verification": {
-    "path": "ct-z4w5-acceptance-20261120/inventory/verification.json",
-    "sha256": "f37879c069593aa05ff3b0f91cffcf4aef7bcbc158023b0ed274249a37e964cc",
-    "bytes": 98
+    "path": "long-tail-20261120/pdf-source/ct-en4n-reconciliation.json",
+    "sha256": "f0c41e2abdaadfbaacb1fb6bdb59be402b68a6aa153045a6182a5f4d772f11d6",
+    "bytes": 8676871
   },
   "previous_manifest": {
-    "path": "ticket-fixes-20261117/inventory/post-capture-append/manifest.json",
-    "sha256": "33af1264b175251d5544e1d44f44c2df861633e4816b7a6545217dcf5af444e9",
-    "bytes": 4040
+    "path": "ct-z4w5-acceptance-20261120/inventory/manifest.json",
+    "sha256": "9df53da8b31257f380448451c5ce325deea622f02d128d675e91dfcd2c08ed50",
+    "bytes": 2835
   },
   "automatic_dispatch": false,
-  "native_catalog_and_selected_text_unchanged": false
+  "native_catalog_and_selected_text_unchanged": true,
+  "consumer_tickets": [
+    "ct-z4w5",
+    "ct-m704"
+  ],
+  "release": "0e7084cde775d0064646c56b2200a14e1f13d8b512f1a61a6fe815d597faf4d3",
+  "export": "7aea7925da324273d16c04e7dd7d53b2a7d3a0ade895f9343063015458d88688",
+  "selection": "bbeb4e1c94e195ac8ec5085578331543b2b2f709e77d2c83e523474e07bbe10b",
+  "document_fetch_eligibility": {
+    "no_document_target": 188,
+    "no_publisher_refetch": 51,
+    "pending_target_qualification": 13,
+    "recording_only": 197,
+    "review_target_before_fetch": 6
+  },
+  "public_copy_control": {
+    "passed": false,
+    "default_list_visible": 26,
+    "detail_downloads": 31,
+    "release_defect": "ct-qmh5"
+  }
 }

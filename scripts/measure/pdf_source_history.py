@@ -33,6 +33,7 @@ from pdf_source_evidence import (
     require,
     write,
 )
+from pdf_source_structure import zero_page_addresses
 
 METADATA = {
     "captures": "captures_df55_20261113/metadata/00016-01a1fa3e-a2d5-78e3-a679-e12a9847988c.gz.metadata.json",
@@ -137,7 +138,8 @@ def collect_history(root):
             )
         )
     inventory = list(lines(root / INVENTORY))
-    keys = {r["body_sha256"] for r in inventory + load(out / "zero-page-structure.json")}
+    zeros = load(out / "zero-page-structure.json")
+    keys = {r["body_sha256"] for r in inventory + zeros}
     keys.update(w for r in inventory for w in r.get("duplicate_wrapper_body_sha256", []))
     # The universal empty digest is meaningful only at the Cornwell URL.
     keys.discard(sha256(b"").hexdigest())
@@ -148,6 +150,7 @@ def collect_history(root):
     keys.update(r["source_body_sha256"] for r in landings)
     urls = sorted(
         {url for r in inventory for url in r["source_urls"]}
+        | {url for r in zeros for url in zero_page_addresses(r)}
         | {r["source_url"] for r in provenance.values()}
         | {r[k] for r in landings for k in ("source_url", "target_url")}
         | {r["target_url"].replace("&download=1", "?download=1") for r in landings}

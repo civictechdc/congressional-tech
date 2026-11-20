@@ -7,6 +7,7 @@ import re
 import zlib
 
 import pyarrow.parquet as pq
+from viewer_publication.lookup_aliases import lookup_form
 
 from pdf_source_evidence import BUCKET, OCR, OUT, TRIAGE, archive_arg, lines, load, remote, require, write
 
@@ -16,6 +17,15 @@ def zero_page_rows(root):
         r["body_sha256"]: r
         for r in lines(root / TRIAGE)
         if "ValueError: select at least one distinct page" in ((r.get("recovery") or {}).get("error") or "")
+    }
+
+
+def zero_page_addresses(row):
+    return {
+        url
+        for capture in row["captures"]
+        for url in (capture["requested_url"], capture["url"])
+        if url and lookup_form(url) is not None
     }
 
 

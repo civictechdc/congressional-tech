@@ -119,6 +119,66 @@ def test_false_error_label_on_reviewed_source_is_rejected(source_roles, role):
         source_roles.verify_control(sha, {"role": role}, state, {sha: {"source_role": "error_response"}})
 
 
+def test_public_valid_empty_control_requires_both_visible_document_and_empty_export(source_roles):
+    control = dict(
+        role="reviewed_valid_empty_reading",
+        expected_visible_documents=1,
+        expected_text_sha256=source_roles.EMPTY,
+    )
+    valid = dict(documents=[{"hidden": False}], export={"text_sha256": source_roles.EMPTY})
+    source_roles.verify_control("empty", control, valid, {})
+    for loss in [dict(documents=[], export=None), dict(valid, documents=[{"hidden": True}])]:
+        with pytest.raises(ValueError, match="control exposure"):
+            source_roles.verify_control("empty", control, loss, {})
+    with pytest.raises(ValueError, match="text digest"):
+        source_roles.verify_control("empty", control, dict(valid, export=None), {})
+
+
+def test_quoted_error_requires_reviewed_text_digest(source_roles):
+    digest = hashlib.sha256(b'The witness quoted "Access Denied" in testimony.').hexdigest()
+    control = dict(
+        role="ordinary_document_quoting_error_language",
+        expected_visible_documents=1,
+        expected_text_sha256=digest,
+    )
+    valid = dict(documents=[{"hidden": False}], export={"text_sha256": digest})
+    source_roles.verify_control("quote", control, valid, {})
+    for other in [source_roles.EMPTY, hashlib.sha256(b"different nonempty text").hexdigest()]:
+        with pytest.raises(ValueError, match="text digest"):
+            source_roles.verify_control("quote", control, dict(valid, export={"text_sha256": other}), {})
+    with pytest.raises(ValueError, match="control exposure"):
+        source_roles.verify_control("quote", control, dict(documents=[], export=None), {})
+
+
+@pytest.mark.parametrize(
+    ("kind", "role"),
+    [
+        ("embedded_house_meeting_fallback", "house_meeting_listing_member"),
+        ("retained_senate_listing_security_response", "senate_hearings_listing"),
+    ],
+)
+def test_listing_handoff_resolves_target_without_dispatching_a_document(source_roles, kind, role):
+    prior = dict(
+        source_urls=[],
+        targets=[],
+        recovery_open=True,
+        needs_refetch=None,
+        recovery_state="needs_capture_history_review",
+        capture_history={"status": "missing_url"},
+    )
+    fact = dict(
+        kind=kind, source_url="https://example.org/hearings", url_basis="receipt", http_requested_url=None
+    )
+    row = source_roles.recovery_record(prior, fact, "error_response", {fact["source_url"]: {"captures": []}})
+    assert row["recovery_state"] == "listing_identified_no_document_target"
+    assert row["source_role"] == role and row["needs_refetch"] is False
+    assert row["next_action"] == "retain_listing_evidence"
+    (target,) = row["targets"]
+    assert row["source_urls"] == [target["requested_target"]] == [fact["source_url"]]
+    assert target["http_requested_url"] is None and not target["dispatch_enabled"]
+    assert row["document_fetch_eligibility"] == target["document_fetch_eligibility"] == "no_document_target"
+
+
 def test_pdf_signature_in_html_or_zip_is_not_a_truncated_pdf(source_roles):
     from pdf_source_structure import truncated_header
 
@@ -140,17 +200,73 @@ def test_missed_error_and_public_copy_checks_are_independent(source_roles):
         body_sha256="html",
         bucket="publisher_html_error_at_pdf_target",
         capture_history=[{"http_status": 200}],
-        live={"export": None, "documents": [{"hidden": False, "doc_id": "public-link"}]},
+        live={
+            "export": None,
+            "documents": [{"hidden": False, "doc_id": "public-link", "saved_body": "html"}],
+        },
         exclusion={"source_role": "error_response"},
     )
     source_roles.check_missed_errors([hard, soft])
-    result = source_roles.public_copy_control([hard, soft])
+    result = source_roles.public_copy_control([hard, soft], {})
     assert not result["passed"]
-    assert [d["doc_id"] for d in result["unhidden_saved_copies"]] == ["public-link"]
+    assert result["default_list_visible"] == result["detail_downloads"] == 1
     with pytest.raises(ValueError, match="soft HTML error"):
         source_roles.check_missed_errors([hard, dict(soft, exclusion=None)])
     with pytest.raises(ValueError, match="HTTP failure"):
         source_roles.check_missed_errors([dict(hard, live=soft["live"]), soft])
+
+
+def test_public_copy_check_counts_wrappers_and_hidden_detail_downloads(source_roles):
+    def source(key, bucket, *docs, **fields):
+        return dict(
+            body_sha256=key,
+            bucket=bucket,
+            live={
+                "documents": [dict(doc_id=doc_id, hidden=hidden, saved_body=key) for doc_id, hidden in docs]
+            },
+            **fields,
+        )
+
+    rows = [source(str(i), "damaged_pdf", (str(i), False)) for i in range(22)]
+    wrappers = {}
+    for payload, wrapper in [
+        ("359e3b8b6b844d69", "6eea94ddc3e78724"),
+        ("82867326cf8750a2", "b6aaf0d8fdba71e2"),
+    ]:
+        rows.append(source(payload, "error_response", (payload, False)))
+        wrappers[wrapper] = source(
+            wrapper, "archive_wrapper_of_error_response", (wrapper, False), payload_sha256=payload
+        )
+    # Bakst and Mitchell have distinct document identities and the same error body.
+    for keys in [
+        ("85afe0532f6c8e0b",),
+        ("a3002f39e37a6384",),
+        ("90bd27046786ab4e",),
+        ("8b408d366abfb89d", "e8c6aced18461017"),
+    ]:
+        rows.append(source(keys[0], "publisher_html_error_at_pdf_target", *((key, True) for key in keys)))
+
+    check = source_roles.public_copy_control(rows, wrappers)
+    assert (check["default_list_visible"], check["detail_downloads"], check["passed"]) == (26, 31, False)
+    by_key = {d["doc_id"]: d for d in check["records"]}
+    assert {
+        k for k, d in by_key.items() if d["detail_download_available"] and not d["default_list_visible"]
+    } == {"85afe0532f6c8e0b", "a3002f39e37a6384", "90bd27046786ab4e", "8b408d366abfb89d", "e8c6aced18461017"}
+    for wrapper, r in wrappers.items():
+        assert by_key[wrapper]["default_list_visible"] and by_key[wrapper]["detail_download_available"]
+        assert by_key[wrapper]["recovery_payload_sha256"] == r["payload_sha256"]
+    assert len({d["recovery_payload_sha256"] for d in check["records"]}) == len(rows)
+    for row in [*rows, *wrappers.values()]:
+        for doc in row["live"]["documents"]:
+            doc["hidden"] = True
+    hidden = source_roles.public_copy_control(rows, wrappers)
+    assert (hidden["default_list_visible"], hidden["detail_downloads"], hidden["passed"]) == (0, 31, False)
+    assert hidden["default_list_passed"] and not hidden["detail_downloads_passed"]
+    for row in [*rows, *wrappers.values()]:
+        for doc in row["live"]["documents"]:
+            doc["saved_body"] = None
+    cleared = source_roles.public_copy_control(rows, wrappers)
+    assert cleared["passed"] and cleared["detail_downloads"] == 0
 
 
 @pytest.mark.parametrize(
