@@ -33,7 +33,7 @@
   },
   "inventory": {
     "path": "ct-z4w5-acceptance-20261120/inventory/invalid-sources.jsonl",
-    "sha256": "335fef2fd1c53618e0e56c0e35848e11a84d6464f2e5b980e4bd173cdd7241a1",
+    "sha256": "20c06ad1f9edcb4f78fd0b3adc5d9c3e426be4ed8e22bf7602e724ed647418ec",
     "bytes": 1288617
   },
   "review_view": {
