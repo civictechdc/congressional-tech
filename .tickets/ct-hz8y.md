@@ -1,6 +1,6 @@
 ---
 id: ct-hz8y
-status: in_progress
+status: closed
 deps: []
 links: [ct-kfsd, ct-n3ik, ct-a73a, ct-yy07, ct-55qo, ct-aitp, ct-m704]
 created: 2026-11-13T17:46:16Z
@@ -110,3 +110,13 @@ Manual audit credits v12 selective Tesseract improvements and prior named/region
 **2026-11-17T10:28:52Z**
 
 Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved.
+
+**2026-11-20T23:26:57Z**
+
+2026-11-20 closure. Verified Explorer 0e7084cde775 and v13 body_text 7aea7925da32. Exact released bytes preserve 22 reviewed substitutions in Q005, Q007, Q009, Q010, S167 and S188. Q009 page 37 is the later qualified Groq/Qwen composition and page 47 retains Vision provenance. Table values, chart associations, the Cherokee sidebar, handwriting and the missing VFW page 105 remain explicit limits. No new selection keys were qualified.
+
+All 1,208 report slices were compared by UTF-8 byte offsets and hashes. Pages 7, 302, 604, 801 and 906 changed. The other 1,203 are byte-identical to the pilot, including five comparison controls and 1,198 positions outside the staging comparison. Bounded source/intermediate/final review confirms substantive recovery on 7, a missing testing passage on 151, a heading and strike-through error on 740, and legitimate redaction on 772.
+
+The pinned SpicyDocs Tesseract backend already owned OCR. CT now delegates PDF rendering, both allocation guards and raster encoding to that same wheel, retaining the opt-in adaptive DPI and rotation settings. Sixteen prior/current source-backed raster pairs and both Tesseract strategy outputs matched. The planted omission triggered the existing selective review signal while clean and reflowed controls passed. Default native-first Apple Vision, reading IDs and the v13 selection are preserved. Doctor passed with zero drift warnings.
+
+Evidence: /Users/mikewolfd/Work/congressional-tech/.cache/archive-release/long-tail-20261120/pdf-ocr/ct-hz8y-251ea1a6-positions.json and ct-hz8y-reconciliation.json in the same directory. Tests and published outcomes are summarized in ct-a73a-summary.md. No corpus replay or remote mutation.

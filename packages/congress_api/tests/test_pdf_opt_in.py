@@ -312,3 +312,66 @@ def test_pdf_reading_versions_and_invalid_box_and_vision_band_edge_controls(monk
     blank_rgb = Raster(b"\xff" * (100 * 300 * 3), 100, 300, Box(), RAW_RGB)
     recognized = vis.recognize(blank_rgb)
     assert recognized.text == "edge observation"
+
+
+def test_selective_page_review_flags_a_dropped_block_with_surviving_furniture():
+    from hashlib import sha256
+    from congress_api.lake.text_quality import measure_quality
+
+    with pymupdf.open() as doc:
+        page = doc.new_page()
+        page.insert_text((60, 40), "Committee report")
+        page.insert_text((60, 110), "The committee requires the department to inspect each site before renewal.")
+        page.insert_text((60, 140), "The district must publish the inspection findings and provide a written response.")
+        page.insert_text((60, 720), "17")
+        source = doc.tobytes()
+    with OptInPdfReader().open(source, "application/pdf") as pdf:
+        observed = pdf.page(1).native().text
+
+    body_sha = sha256(source).hexdigest()
+    header, first, second, footer = observed.splitlines()
+    for output, omitted in (
+        (observed, False),
+        ("\n\n".join((header, first.replace("each site", "each\nsite"), second, footer)), False),
+        (f"{header}\n{footer}", True),
+    ):
+        digest = sha256(output.encode()).hexdigest()
+        identity = dict(body_sha256=body_sha, parser="pdf_text", parser_version="test",
+                        text_sha256=digest, output_sha256=digest, source_format="pdf",
+                        scope="page", page_number=1, source_page_count=1,
+                        intermediate_body_sha256=body_sha, intermediate_page_number=1,
+                        intermediate_scope="page", intermediate_kind="native")
+        review = measure_quality(identity, text=output, intermediate=observed)
+        assert ("substantial_intermediate_difference" in review["fts_triage"]["reasons"]) == omitted
+        assert ("possible_cleanup_loss" in review["signals"]) == omitted
+
+
+@pytest.mark.parametrize("angle", [90, 180, 270])
+@pytest.mark.parametrize("raw_rgb", [False, True])
+def test_adaptive_rotation_is_lossless_and_scoped_to_the_named_page(angle, raw_rgb):
+    import io
+    from PIL import Image
+    from spicy_docs.extraction import DefaultReader
+    from spicy_docs.extraction.model import RAW_RGB
+
+    with pymupdf.open() as pdf:
+        for width in (288, 72):
+            page = pdf.new_page(width=width, height=144)
+            page.draw_rect((9, 12, 37, 61), fill=(0.2, 0.7, 0.3))
+        source = pdf.tobytes()
+
+    options = dict(dpi=72, adaptive_max_pixels=True, max_pixels=21_000, raw_rgb=raw_rgb)
+    with OptInPdfReader(**options, rotate_ccw_pages={1: angle}).open(source, "application/pdf") as doc:
+        rotated = doc.page(1).render()
+        neighbor = doc.page(2).render()
+    # The first page fits at 50 DPI. Its neighbor fits at the requested 72 DPI.
+    with DefaultReader(dpi=50, raw_rgb=True).open(source, "application/pdf") as doc:
+        base = doc.page(1).render()
+    with DefaultReader(dpi=72, raw_rgb=raw_rgb).open(source, "application/pdf") as doc:
+        assert neighbor == doc.page(2).render()
+    original = Image.frombytes("RGB", (base.width, base.height), base.data)
+    expected = original.rotate(angle, expand=True)
+    assert (rotated.width, rotated.height) == expected.size
+    assert rotated.media_type == (RAW_RGB if raw_rgb else "image/png")
+    actual = rotated.data if raw_rgb else Image.open(io.BytesIO(rotated.data)).tobytes()
+    assert actual == expected.tobytes()

@@ -11,15 +11,15 @@ configurations for:
 from __future__ import annotations
 
 from contextlib import contextmanager
+from copy import copy
 from importlib.metadata import version
-import io
 import math
 import os
 
 from spicy_docs.extraction import DefaultReader, NativeOrOcr
-from spicy_docs.extraction.model import RAW_RGB, Box, ExtractionError, Raster
+from spicy_docs.extraction.model import Raster
 from spicy_docs.extraction.ocr import Tesseract
-from spicy_docs.extraction.pages import _PDFPage
+from spicy_docs.extraction.pages import _PDF, _PDFPage, _raster
 
 from congress_api.parsers.body_text import OCR_MIN_CHARS, PageRule, gpo_page, page_rule
 
@@ -43,49 +43,40 @@ class _OptInPDFPage(_PDFPage):
     """Extends ``_PDFPage`` with adaptive pixel ceiling and CCW rotation; ``native_inhibit_spaces`` delegates to ``_PDFPage.native``."""
 
     def render(self) -> Raster:
-        import pymupdf
         from PIL import Image
 
-        w_pt, h_pt = float(self.page.rect.width), float(self.page.rect.height)
-        eff_dpi = self.reader.dpi
-        if getattr(self.reader, 'adaptive_max_pixels', False) and w_pt > 0 and h_pt > 0:
-            est_px = math.ceil(w_pt * eff_dpi / 72.0) * math.ceil(h_pt * eff_dpi / 72.0)
-            if est_px > self.reader.max_pixels:
-                scale = math.sqrt((self.reader.max_pixels * 0.985) / (w_pt * h_pt / (72.0 * 72.0)))
-                eff_dpi = max(36, min(eff_dpi, int(math.floor(scale))))
-                while eff_dpi > 36 and math.ceil(w_pt * eff_dpi / 72.0) * math.ceil(h_pt * eff_dpi / 72.0) > self.reader.max_pixels:
-                    eff_dpi -= 1
-        # Refuse before PyMuPDF allocates the raster, including at the minimum
-        # adaptive DPI. The post-render check still guards unexpected dimensions.
-        self.reader.check_pixels(math.ceil(w_pt * eff_dpi / 72.0), math.ceil(h_pt * eff_dpi / 72.0))
-        pix = self.page.get_pixmap(dpi=eff_dpi, colorspace=pymupdf.csRGB, alpha=False)
-        self.reader.check_pixels(pix.width, pix.height)
-        rot_ccw = getattr(self.reader, 'rotate_ccw_pages', {}).get(self.number, 0)
-        if rot_ccw:
-            img = Image.frombytes('RGB', (pix.width, pix.height), pix.samples)
-            if rot_ccw == 90:
-                img = img.transpose(Image.Transpose.ROTATE_90)
-            elif rot_ccw == 180:
-                img = img.transpose(Image.Transpose.ROTATE_180)
-            elif rot_ccw == 270:
-                img = img.transpose(Image.Transpose.ROTATE_270)
-            else:
-                raise ValueError(f'Unsupported rotation angle: {rot_ccw}')
-            if self.reader.raw_rgb:
-                return Raster(img.tobytes(), img.width, img.height, Box(), RAW_RGB)
-            buf = io.BytesIO()
-            img.save(buf, format='PNG')
-            return Raster(buf.getvalue(), img.width, img.height, Box())
-        if self.reader.raw_rgb:
-            return Raster(bytes(pix.samples), pix.width, pix.height, Box(), RAW_RGB)
-        return Raster(pix.tobytes('png'), pix.width, pix.height, Box())
+        dpi = self.reader.dpi
+        rect = self.page.rect
+        if self.reader.adaptive_max_pixels and rect.width > 0 and rect.height > 0:
+            pixels = math.ceil(rect.width * dpi / 72) * math.ceil(rect.height * dpi / 72)
+            if pixels > self.reader.max_pixels:
+                scale = math.sqrt(self.reader.max_pixels * 0.985 / (rect.width * rect.height / 72**2))
+                dpi = max(36, min(dpi, math.floor(scale)))
+                while dpi > 36 and math.ceil(rect.width * dpi / 72) * math.ceil(rect.height * dpi / 72) > self.reader.max_pixels:
+                    dpi -= 1
+
+        rotation = self.reader.rotate_ccw_pages.get(self.number, 0)
+        if dpi == self.reader.dpi and not rotation:
+            return super().render()
+
+        # The shared renderer checks the ceiling both before and after allocation.
+        # Page-specific DPI and raw rotation input must not leak to sibling pages.
+        reader = copy(self.reader)
+        reader.dpi = dpi
+        if rotation:
+            reader.raw_rgb = True
+        raster = _PDFPage(self.page, self.number, reader, self.unmapped).render()
+        if not rotation:
+            return raster
+        transpose = {90: Image.Transpose.ROTATE_90, 180: Image.Transpose.ROTATE_180,
+                     270: Image.Transpose.ROTATE_270}
+        if rotation not in transpose:
+            raise ValueError(f'Unsupported rotation angle: {rotation}')
+        image = Image.frombytes('RGB', (raster.width, raster.height), raster.data)
+        return _raster(image.transpose(transpose[rotation]), self.reader.raw_rgb)
 
 
-class _OptInPDF:
-    def __init__(self, document, reader):
-        self.document, self.reader, self.page_count = document, reader, len(document)
-        self.unmapped: dict[int, frozenset[int] | None] = {}
-
+class _OptInPDF(_PDF):
     def page(self, number: int) -> _OptInPDFPage:
         return _OptInPDFPage(self.document[number - 1], number, self.reader, self.unmapped)
 

@@ -117,20 +117,33 @@ class Scripted:
         return Scripted.script.pop(0)
 
 
-def test_page_deadline_retries_once_then_decides_unreadable(tmp_path):
+@pytest.mark.parametrize('reason', ['page_deadline', 'memory_limit', 'timeout'])
+def test_resource_refusal_settles_one_pdf_and_continues_the_batch(tmp_path, reason):
+    class Measured(Scripted):
+        last_peak_rss_bytes = (2 << 30) + 4096
+        last_rss_samples = 2
+
     args, _ = lake(tmp_path, dict(a=(two_page_pdf(), 'pdf'), b=(scanned_pdf(), 'pdf')))
     planned = body_text.plan(captures=args['captures'], engine=args['engine'], work=tmp_path / 'plan',
                              decided_at=STAMP, local_root=args['local_root'])
     items = pq.read_table(planned['work_list']).to_pylist()
     retry = dict(status='completed', value=dict(retry='page_deadline'))
-    Scripted.script, Scripted.calls = [retry, retry, dict(status='completed', value=dict(pending='ocr_required'))], []
+    failures = [retry, retry] if reason == 'page_deadline' else [dict(status='unreadable', reason=reason)]
+    Scripted.script, Scripted.calls = [*failures, dict(status='completed', value=dict(pending='ocr_required'))], []
     staged = body_text.stage(planned, items, engine=args['engine'], work=tmp_path / 'stage',
-                             worker_factory=Scripted, unreadable_store=args['unreadable_store'])
-    assert len(Scripted.calls) == 3 and Scripted.calls[0] == Scripted.calls[1]
-    assert (staged['unreadable'], staged['ocr_pending'], staged['readings_rows']) == (1, 1, 0)
-    decisions = [json.loads(line) for line in (tmp_path / 'raw-provenance' / staged['unreadable_key']).read_text().splitlines()]
-    assert [(d['reason'], d['parser'], d['decided_by']) for d in decisions] == [('page_deadline', 'pdf_text', 'body_text')]
-    assert decisions[0]['body_sha256'] == Scripted.calls[0]['body_sha']
+                             worker_factory=Measured, unreadable_store=args['unreadable_store'])
+    assert len(Scripted.calls) == len(failures) + 1
+    if reason == 'page_deadline':
+        assert Scripted.calls[0] == Scripted.calls[1]
+    assert (staged['unreadable'], staged['ocr_pending'], staged['readings_rows'], staged['body_text_rows']) == (1, 1, 0, 0)
+    assert pq.ParquetFile(staged['body_text']).metadata.num_rows == 0
+    [decision] = [json.loads(line) for line in (tmp_path / 'raw-provenance' / staged['unreadable_key']).read_text().splitlines()]
+    assert (decision['reason'], decision['parser'], decision['decided_by']) == (reason, 'pdf_text', 'body_text')
+    assert decision['body_sha256'] == Scripted.calls[0]['body_sha']
+    [refusal] = [o for o in staged['body_outcomes'] if o['status'] == 'unreadable']
+    assert (refusal['body_sha256'], refusal['reason']) == (decision['body_sha256'], reason)
+    assert (refusal['peak_rss_scope'], refusal['peak_rss_bytes'], refusal['rss_samples']) == (
+        'request_sampled_worker_rss', Measured.last_peak_rss_bytes, Measured.last_rss_samples * len(failures))
 
 
 def test_stored_size_limit_settles_without_opening_the_body(tmp_path):
