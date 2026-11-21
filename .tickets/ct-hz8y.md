@@ -2,7 +2,7 @@
 id: ct-hz8y
 status: closed
 deps: []
-links: [ct-kfsd, ct-n3ik, ct-a73a, ct-yy07, ct-55qo, ct-aitp, ct-m704]
+links: [ct-kfsd, ct-n3ik, ct-a73a, ct-yy07, ct-55qo, ct-aitp, ct-m704, ct-c2g6]
 created: 2026-11-13T17:46:16Z
 type: bug
 priority: 1
@@ -128,3 +128,7 @@ Review follow-up. The original planted test exercised cleanup after native extra
 **2026-11-21T03:36:31Z**
 
 The page-level comparison now recognizes joined columns when two OCR readings preserve the same printed lines in a different order. On the retained Inspector General page 151, two intact layouts produced zero missing words. Removing a 34-word column or one of two copies sent the page to manual review. The delivered page still went to manual review and the comparison identified the real 25-word Endeavors omission. The two affected test files passed all 99 cases. The independent two-column Tesseract probe and its evidence are under <main checkout>/.cache/archive-release/long-tail-20261120/reviews/ and integration/.
+
+**2026-11-21T05:58:20Z**
+
+The page check merged on main. Two independent OCR layouts of intact page 151 each reported zero missing words. Removing a 34-word column or one copy of a repeated column triggered review. The actual public text still omits 25 words about hotel testing, and the check flags that page. The two affected test files passed all 99 cases. [Repair the published passage](ct-c2g6.md) · [Merged check](https://github.com/civictechdc/congressional-tech/pull/218) · [Main validation](https://github.com/civictechdc/congressional-tech/actions/runs/44867414484)

@@ -28,3 +28,7 @@ The owner's decision is recorded; the gate classifies each kind of meeting chang
 **2026-11-12T01:55:00Z**
 
 Blind multi-skill gate review APPROVED (SHIP, HIGH confidence) after resolving all Round-1 and Round-2 findings with planted Red/Green tests (404 passed across test_release_gate.py, test_release_comparison.py, test_meeting_detail_observations.py, test_archive_publish.py, and scripts/tests/test_nightly_publish_resume.py) and replaying both saved release pairs (630164505301 -> 619db5f9e08e and 619db5f9e08e -> 77673bfb8fcf). Rebased onto 6bbec5ff (c4e3d218): full 6-shard production-offline lane exit 0 (13,108 passed in 756.1 s, peak 1.64 GiB RSS; .cache/archive-release/investigations/ct-uywf-20261110/lanes-ct-rhqw-c4e3d218/) and full storage-loopback lane exit 0 (35 passed).
+
+**2026-11-21T05:58:20Z**
+
+When Congress.gov's video listing supplies evidence for a changed hearing, the release check reads the saved publisher response and verifies that it lists the claimed video. The two-release test for hearing 115538 opened the saved Congress.gov response by its content hash and accepted the matching video. Both wrong-video controls stopped publication in their test cases. The complete Explorer validation passed on the merged change. [Merged change](https://github.com/civictechdc/congressional-tech/pull/218) · [Main validation](https://github.com/civictechdc/congressional-tech/actions/runs/44867414484)

@@ -155,3 +155,7 @@ The full ledger and report are /Users/mikewolfd/Work/congressional-tech/.cache/a
 **2026-11-20T23:33:09Z**
 
 Closed the requested inventory, provenance, controls and release-exposure reconciliation. The public-copy exclusion remains failed on the pinned release. The verifier writes the complete ledger and exits 1 with the 24 counterexamples. Linked open release defect ct-qmh5 owns their correction and verification on a successor release. Qualification, acquisition and publishing were outside this read-only investigation.
+
+**2026-11-21T05:58:20Z**
+
+The public release pointer still named `0e7084cde775` on November 21. The inventory and source-history review is complete for all 455 records. The remaining acceptance check is whether a reader can still download a bad copy. The corrected ledger covers 31 distinct detail pages, including five hidden from the default list. The earlier count of 24 was the first pass. Keep this audit in progress until the [download fix](ct-qmh5.md) supplies per-page results from a successor public release.

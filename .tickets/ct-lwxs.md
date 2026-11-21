@@ -20,3 +20,9 @@ ct-w34j needs a verifiable RefSpec agency generation. The November 8 design refe
 ## Acceptance Criteria
 
 All four child phases closed with their gates met; witness text unchanged; every published org_id resolves in one hop (live or redirect) across consecutive releases; each release reports retired org IDs by cause.
+
+## Notes
+
+**2026-11-21T05:58:20Z**
+
+The organization plan and the review of sample witness appearances are complete. All four delivery tickets are open. Start by giving the same organization a stable ID across spelling variants while preserving the witness's original affiliation text. Then check federal agency names and Wikidata matches before exposing the links in Explorer and its API. [Stable organization IDs](ct-6him.md) · [Federal agencies](ct-w34j.md) · [Wikidata matches](ct-39u8.md) · [Public organization links](ct-lvdf.md)
