@@ -469,6 +469,41 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
         assert proposal["action"] == "keep"
 
 
+def test_moved_paragraph_across_repetitive_table_matches_in_under_50ms():
+    from hashlib import sha256
+    from timeit import repeat
+
+    from congress_api.lake.text_assessment import assess_text
+    from congress_api.lake.text_quality import _largest_unmatched_ocr_passage, assessment_facts, measure_quality
+
+    def table(prefix):
+        return "\n".join(f"current year approved amount {prefix}{row}" for row in range(160))
+
+    paragraph = " ".join(f"The committee reviewed funding for district {i}" for i in range(28))
+    reference = f"{table('old')}\n{paragraph}"
+    output = f"{paragraph}\n{table('new')}"
+    digest = sha256(output.encode()).hexdigest()
+    identity = dict(body_sha256="a"*64, parser="pdf_text", parser_version="test", text_sha256=digest,
+                    output_sha256=digest, source_format="pdf", source_state="retained",
+                    scope="page", page_number=1, source_page_count=1,
+                    intermediate_kind="independent_ocr", intermediate_body_sha256="a"*64,
+                    intermediate_scope="page", intermediate_page_number=1)
+
+    measured = measure_quality(identity, text=output, intermediate=reference)
+    recognition = measured["axes"]["recognition"]
+    comparison = recognition["independent_ocr_comparison"]
+    assert comparison["intermediate_tokens"] == comparison["output_tokens"] == 996
+    assert comparison["removed_content_tokens"] == comparison["inserted_tokens"] == 800
+    # Only the identifier in each row differs. Its neighbors still form an intact four-token span.
+    assert recognition["largest_unmatched_ocr_passage_tokens"] == 1
+    evidence = dict(stage="measurement", path="/measure.json", sha256="b"*64, locator="line 1")
+    assert assess_text(assessment_facts(measured, evidence))["action"] == "keep"
+
+    # Time span matching on the actual ordered diff, excluding the upstream alignment.
+    elapsed = min(repeat(lambda: _largest_unmatched_ocr_passage(comparison["changes"]), number=1, repeat=3))
+    assert elapsed < 0.05, f"span matching took {elapsed:.4f}s on the 996-token page"
+
+
 @pytest.mark.parametrize("angle", [90, 180, 270])
 @pytest.mark.parametrize("raw_rgb", [False, True])
 def test_adaptive_rotation_is_lossless_and_scoped_to_the_named_page(angle, raw_rgb):

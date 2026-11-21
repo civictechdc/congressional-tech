@@ -3,7 +3,6 @@
 Native/final differences preserve order, multiplicity and original character
 spans. They nominate review, including legitimate cleanup, never a defect verdict.
 """
-from difflib import SequenceMatcher
 from hashlib import sha256
 
 from spicy_docs.extraction.quality import (
@@ -115,30 +114,48 @@ def fts_triage(axes):
 
 
 def _largest_unmatched_ocr_passage(changes):
-    """Pair moved spans longest first, then count the longest remaining deletion."""
-    def content_tokens(field, boundary):
-        tokens = []
-        for change in changes:
-            tokens.extend(token for token, _, _ in _comparison_tokens(change[field])
-                          if any(char.isalnum() for char in token))
-            tokens.append(boundary)
-        return tokens
+    """Pair contiguous moves of four or more tokens and count the longest unpaired run."""
+    def content_tokens(text):
+        return tuple(token for token, _, _ in _comparison_tokens(text) if any(c.isalnum() for c in token))
 
-    # Distinct boundaries prevent a match from crossing a change or a previously paired span.
-    inserted_boundary = object()
-    deleted = content_tokens('intermediate_slice', None)
-    inserted = content_tokens('output_slice', inserted_boundary)
-    while True:
-        match = SequenceMatcher(None, deleted, inserted, autojunk=False).find_longest_match()
-        if match.size < 4:
-            break
-        deleted[match.a:match.a + match.size] = [None]
-        inserted[match.b:match.b + match.size] = [inserted_boundary]
+    inserted = [content_tokens(change['output_slice']) for change in changes]
+    used = [[False] * len(chunk) for chunk in inserted]
+    index: dict[tuple[str, str, str, str], list[tuple[int, int]]] = {}
+    # Reverse page order so pop() yields the earliest candidate and examines it only once.
+    for chunk_id in reversed(range(len(inserted))):
+        chunk = inserted[chunk_id]
+        for start in range(len(chunk) - 4, -1, -1):
+            index.setdefault(chunk[start:start + 4], []).append((chunk_id, start))
 
-    largest = run = 0
-    for token in deleted:
-        run = 0 if token is None else run + 1
-        largest = max(largest, run)
+    def consume_span(deleted, offset):
+        candidates = index.get(deleted[offset:offset + 4])
+        while candidates:
+            chunk_id, start = candidates.pop()
+            mask = used[chunk_id]
+            if any(mask[start:start + 4]):
+                continue
+            chunk = inserted[chunk_id]
+            limit = min(len(deleted) - offset, len(chunk) - start)
+            length = 4
+            while length < limit and not mask[start + length] and deleted[offset + length] == chunk[start + length]:
+                length += 1
+            mask[start:start + length] = [True] * length
+            return length
+        return 0
+
+    largest = 0
+    for change in changes:
+        deleted = content_tokens(change['intermediate_slice'])
+        offset = run = 0
+        while offset < len(deleted):
+            length = consume_span(deleted, offset)
+            if length:
+                offset += length
+                run = 0
+            else:
+                offset += 1
+                run += 1
+                largest = max(largest, run)
     return largest
 
 
