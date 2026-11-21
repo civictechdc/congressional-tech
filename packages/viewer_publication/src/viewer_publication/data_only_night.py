@@ -386,12 +386,13 @@ def _recording_match_replacements(base_dir, candidate_dir, base_rec, cand_rec, *
         r['event_id'] for r in cand_list
         if r.get('video_key') and r.get('event_id') is not None and r.get('decision') == 'linked' and r.get('status') in ('asserted', 'decided')
     }
-    official = _meeting_videos(candidate_dir, {r['event_id'] for r in removed if r['note'] == 'house_single_day_generic'
+    official = _meeting_videos(candidate_dir, {r['event_id'] for r in removed
+                                              if (r.get('note') or '').split(' [via ', 1)[0].split(':', 1)[0] == 'house_single_day_generic'
                                               and r['event_id'] is not None})
     publisher_links = {(r['event_id'], r['video_key']) for r in cand_list if r.get('video_key')
                        and r.get('basis') == 'publisher_link' and r.get('decision') == 'linked'
                        and r.get('status') == 'asserted' and r.get('source_ref') == 'meetings.videos'}
-    corroborated = {}
+    corroborated = defaultdict(set)
     cand_page_by_event = defaultdict(set)
     cand_page_by_video_event = {}
     for r in cand_list:
@@ -402,11 +403,10 @@ def _recording_match_replacements(base_dir, candidate_dir, base_rec, cand_rec, *
             if sref.startswith('committee_page:'):
                 cites.add(sref.removeprefix('committee_page:'))
             note = r.get('note') or ''
+            base_note = note.split(' [via ', 1)[0].split(':', 1)[0]
             if (r['video_key'] in official.get(r['event_id'], ()) and (r['event_id'], r['video_key']) in publisher_links
-                    and sref.startswith('committee_page:')
-                    and note.split(' [via ', 1)[0] == 'house_doc_link'
-                    and sref != base_rows.get(r['match_id'], {}).get('source_ref')):
-                corroborated.setdefault(r['event_id'], []).append((r['video_key'], sref.removeprefix('committee_page:')))
+                    and sref.startswith('committee_page:') and base_note != 'house_single_day_generic'):
+                corroborated[r['event_id']].add(r['video_key'])
             if '[via committee_page:' in note:
                 cites.add(note.split('[via committee_page:', 1)[1].split(']', 1)[0])
             cand_page_by_event[r['event_id']].update((r['video_key'], body) for body in cites if r.get('video_key'))
@@ -440,14 +440,14 @@ def _recording_match_replacements(base_dir, candidate_dir, base_rec, cand_rec, *
             proven.append(dict(match_id=row['match_id'], event_id=ev, video_key=vk, reason='recaptured_page',
                                live_page=live_page, candidate_page=cand_page, claims={ev: recaptured}))
             continue
-        if (row.get('note') == 'house_single_day_generic' and vk not in official.get(ev, ()) and row.get('decision') == 'linked'
+        if ((row.get('note') or '').split(' [via ', 1)[0].split(':', 1)[0] == 'house_single_day_generic'
+                and vk not in official.get(ev, ()) and row.get('decision') == 'linked'
                 and row.get('status') == 'asserted' and live_page and base_rec.get(vk) == {ev} and cand_rec.get(vk) == set()):
-            alternatives = [(video, page) for video, page in corroborated.get(ev, ())
-                            if video != vk and ev in cand_rec.get(video, ()) and page in new_html_bodies]
+            alternatives = sorted(video for video in corroborated.get(ev, ()) if video != vk and ev in cand_rec.get(video, ()))
             if len(alternatives) == 1:
-                video, page = alternatives[0]
+                video = alternatives[0]
                 proven.append(dict(match_id=row['match_id'], event_id=ev, video_key=vk, reason='publisher_corroborated',
-                                   replacement_video_key=video, candidate_page=page, claims={ev: [(video, page)]}))
+                                   replacement_video_key=video, candidate_page=None, claims={ev: [(video, None)]}))
                 continue
         if vk and vk in base_rec and vk in cand_rec:
             old_evs, new_evs = base_rec[vk], cand_rec[vk]
@@ -487,7 +487,9 @@ def _linked_additions(base_dir, candidate_dir, linked, pages):
     columns = ['event_id', 'video_key', 'basis', 'source_ref', 'decision', 'status']
     proven = defaultdict(dict)
     if path.is_file() and set(columns) <= set(pq.read_schema(path).names):
-        rows = pq.read_table(path, columns=columns, filters=[('video_key', 'in', sorted(linked))]).to_pylist()
+        names = set(pq.read_schema(path).names)
+        read_cols = [*columns, 'note'] if 'note' in names else columns
+        rows = pq.read_table(path, columns=read_cols, filters=[('video_key', 'in', sorted(linked))]).to_pylist()
         publisher_events = {r['event_id'] for r in rows if r['basis'] == 'publisher_link' and r['source_ref'] == 'meetings.videos'}
         listed = _meeting_videos(candidate_dir, publisher_events)
         held = _meeting_videos(base_dir, publisher_events)
@@ -495,14 +497,15 @@ def _linked_additions(base_dir, candidate_dir, linked, pages):
             event, video = row['event_id'], row['video_key']
             if event not in linked[video] or row['decision'] != 'linked' or row['status'] not in ('asserted', 'decided'):
                 continue
+            note = row.get('note') or ''
             for body, source in sorted(pages.get(video, {}).items()):
                 page_names_event = event in source.get('event_ids', ())
                 # A new listing and a new match can share the same faulty model output.
                 # Confirm the event independently on the page or in the held publisher listing.
                 publisher = (row['basis'] == 'publisher_link' and row['source_ref'] == 'meetings.videos'
                              and video in listed.get(event, ()) and (page_names_event or video in held.get(event, ())))
-                committee = (row['basis'] == 'committee_page' and row['source_ref'] == 'committee_page:' + body
-                             and page_names_event)
+                committee = (row['basis'] == 'committee_page' and page_names_event
+                             and (row['source_ref'] == 'committee_page:' + body or f'[via committee_page:{body}]' in note))
                 if publisher or committee:
                     proven[video][event] = dict(page_body=body, corroboration='committee_page' if page_names_event else 'held_publisher',
                                                **source)
@@ -540,17 +543,22 @@ def _prove_recording_changes(base_dir, candidate_dir, *, removed, expected, expe
         sources = []
         for event, choices in sorted(row.pop('claims').items()):
             proof = None
-            for video, body in sorted(choices):
-                source = pages.get(video, {}).get(body)
-                if not source:
-                    continue
-                named = source.get('event_ids', ())
-                if event in named or (row['reason'] == 'recaptured_page' and not named):
-                    proof = dict(event_id=event, video_key=video, page_body=body, **source)
+            for video, body in sorted(choices, key=lambda item: (item[0], item[1] or '')):
+                candidates = [(body, pages.get(video, {}).get(body))] if body else sorted(pages.get(video, {}).items())
+                for cand_body, source in candidates:
+                    if not source:
+                        continue
+                    named = source.get('event_ids', ())
+                    if event in named or (row['reason'] == 'recaptured_page' and not named):
+                        proof = dict(event_id=event, video_key=video, page_body=cand_body, **source)
+                        break
+                if proof:
                     break
             if not proof:
                 reasons.append(f'data-only night: removed keys match {row["match_id"]} lacks a corroborating new page receipt for event {event}')
                 break
+            if row.get('reason') == 'publisher_corroborated':
+                row['candidate_page'] = proof['page_body']
             sources.append(proof)
         row['page_receipts'] = sources
     if replacements and not reasons:

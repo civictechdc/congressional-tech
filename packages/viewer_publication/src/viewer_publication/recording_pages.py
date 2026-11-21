@@ -52,13 +52,16 @@ def captured_body(capture, read_object):
 def meeting_calendar(path):
     """Index all meetings, so an ambiguous committee/date cannot prove either event."""
     by_day = defaultdict(dict)
-    cols = ['event_id', 'committees', 'meeting_date', 'title', 'sittings']
-    if path and path.is_file() and set(cols) <= set(pq.read_schema(path).names):
-        for row in pq.read_table(path, columns=cols).to_pylist():
-            if row['meeting_date'] is None:
-                continue
-            for committee in row['committees'] or ():
-                by_day[committee['system_code'][:4], str(row['meeting_date'])][row['event_id']] = row
+    req = {'event_id', 'committees', 'meeting_date', 'title', 'sittings'}
+    if path and path.is_file():
+        names = set(pq.read_schema(path).names)
+        if req <= names:
+            cols = sorted(req | (names & {'meeting_type'}))
+            for row in pq.read_table(path, columns=cols).to_pylist():
+                if row['meeting_date'] is None:
+                    continue
+                for committee in row['committees'] or ():
+                    by_day[committee['system_code'][:4], str(row['meeting_date'])][row['event_id']] = row
     return by_day
 
 
@@ -100,22 +103,51 @@ def _displayed_dates(body):
     return {day.isoformat() for match in matches if (day := written_day(match))}
 
 
-def _calendar_event(tree, url, calendar, displayed_date):
+_ROUNDTABLE_KIND = re.compile(r'\bround[- ]?tables?\b', re.I)
+_MARKUP_KIND = re.compile(r'\b(?:markup|business\s+meeting)\b', re.I)
+_HEARING_KIND = re.compile(r'\bhearings?\b', re.I)
+_JOINT_SUFFIX = re.compile(r'\s*\([^()]*\bjoint\b[^()]*\)\s*$', re.I)
+
+
+def _proceeding_kind(title, meeting_type=None, *, markup_date=False):
+    text = title or ''
+    mtype = (meeting_type or '').strip()
+    if _ROUNDTABLE_KIND.search(text) or 'roundtable' in mtype.lower():
+        return 'roundtable'
+    if markup_date or mtype.upper() == 'HMKP' or 'markup' in mtype.lower() or _MARKUP_KIND.search(text):
+        return 'markup'
+    if mtype.upper() == 'HHRG' or 'hearing' in mtype.lower() or _HEARING_KIND.search(text):
+        return 'hearing'
+    return None
+
+
+def _calendar_event(tree, body, url, calendar, displayed_date):
     from viewer_publication.corpus_quality.provenance_validator import CONGRESSIONAL_HOST_TO_SYSTEM_CODE
     code = CONGRESSIONAL_HOST_TO_SYSTEM_CODE.get((urlsplit(url).hostname or '').removeprefix('www.'))
     if not code:
         return set()
     identity = event_identity(html.tostring(tree), url)
     require_title = False
+    has_markup_date = bool(tree.xpath(_MARKUP_DATE))
     if not identity:
         # Legacy detail templates also use four-digit post IDs on apparent archive routes.
         if not displayed_date or (listing_url(url) and not tree.xpath(_TEMPLATE_DATES)):
             return set()
-        require_title = not tree.xpath(_MARKUP_DATE)
+        require_title = not has_markup_date
         identity = dict(title=event_title(tree) or tree.xpath('string(//title)'), date=displayed_date)
     if displayed_date and identity['date'] != displayed_date:
         return set()
     events = calendar.get((code[:4], identity['date']), {})
+    if not events:
+        return set()
+    page_kind = _proceeding_kind(identity['title'], markup_date=has_markup_date)
+    if page_kind is not None:
+        same_kind = {ev: row for ev, row in events.items()
+                     if _proceeding_kind(row.get('title'), row.get('meeting_type')) == page_kind}
+        other_kind = {ev for ev, row in events.items()
+                      if (ek := _proceeding_kind(row.get('title'), row.get('meeting_type'))) is not None and ek != page_kind}
+        if same_kind and len(same_kind) + len(other_kind) == len(events):
+            events = same_kind
     if len(events) == 1 and not require_title:
         return set(events)
 
@@ -125,18 +157,40 @@ def _calendar_event(tree, url, calendar, displayed_date):
     heading = words(identity['title'])
     def title_matches(title):
         subject = words((title or '').split(':', 1)[0])
-        return bool(subject and (words(title) in heading or
-                                 (len(subject.split()) >= 3 and heading.startswith(subject + ' '))))
-    titled = {ev for ev, row in events.items() if title_matches(row['title'])}
+        if not subject:
+            return False
+        base = words(_JOINT_SUFFIX.sub('', title or ''))
+        return (words(title) in heading
+                or (len(heading.split()) >= 3 and bool(base) and base == heading)
+                or (len(subject.split()) >= 3 and heading.startswith(subject + ' ')))
+    titled = {ev for ev, row in events.items() if title_matches(row.get('title'))}
     # Page and calendar can show different scheduled start times. A single exact title
     # identifies the proceeding on that committee's day even after a time change.
-    if len(titled) == 1 or require_title:
-        return titled if len(titled) == 1 else set()
+    if len(titled) == 1:
+        return titled
+
+    body_words = substantive_words(_text(body)) - _RECORDING_STOPWORDS
+    strong = {}
+    for ev, row in events.items():
+        ek = _proceeding_kind(row.get('title'), row.get('meeting_type'))
+        if page_kind is not None and ek is not None and (page_kind == 'roundtable') != (ek == 'roundtable'):
+            continue
+        m_words = substantive_words(row.get('title')) - _RECORDING_STOPWORDS
+        shared = len(body_words & m_words)
+        if m_words and shared >= 3 and (shared >= 4 or shared * 2 >= len(m_words)):
+            strong[ev] = shared
+    if strong:
+        best = max(strong.values())
+        winners = {ev for ev, score in strong.items() if score == best}
+        if len(winners) == 1:
+            return winners
+    if require_title:
+        return set()
     fields = tree.xpath('//*[contains(@class,"hearing__time") or starts-with(@class,"time ")] | ' + _MARKUP_DATE)
     times = {datetime.strptime(t, '%I:%M %p').time() for node in fields
              for t in re.findall(r'\b(?:0?[1-9]|1[0-2]):[0-5]\d [AP]M\b', node.text_content().upper())}
     timed = {ev for ev, row in events.items() if any(s['start'] and
-             s['start'].astimezone(ZoneInfo('America/New_York')).time() in times for s in row['sittings'] or ())}
+             s['start'].astimezone(ZoneInfo('America/New_York')).time() in times for s in row.get('sittings') or ())}
     return timed if len(timed) == 1 else set()
 
 
@@ -272,7 +326,17 @@ _STATED_EVENT = re.compile(r'(?:\bevent\s*id\s*[=:#]\s*|\bdocs\.house\.gov/[^\s"
                            r'0*(1[0-9]{5})\b', re.I)
 
 
+def _subject_words(tree):
+    titles = (_COMMITTEE_SUFFIX.sub('', value or '').strip()
+              for value in (event_title(tree), tree.xpath('string(/html/head/title)')))
+    # A site-wide committee name supplies no subject. A named proceeding such as
+    # "Subcommittee on Economic Opportunity Legislative Hearing" supplies one.
+    subjects = [t for t in titles if not _COMMITTEE_NAME.match(t) or _PROCEEDING_KIND.search(t)]
+    return substantive_words(' '.join(subjects)) - _RECORDING_STOPWORDS
+
+
 def _detail_events(tree, body, url, calendar):
+    from viewer_publication.corpus_quality.provenance_validator import CONGRESSIONAL_HOST_TO_SYSTEM_CODE
     all_explicit = _event_ids(_targets(body, url))
     if not calendar:
         return all_explicit
@@ -280,31 +344,41 @@ def _detail_events(tree, body, url, calendar):
     if len(dates) > 1:
         return set()
     day = next(iter(dates), None)
-    proceeding = _calendar_event(tree, url, calendar, day)
+    proceeding = _calendar_event(tree, body, url, calendar, day)
     events = proceeding | all_explicit
     if not day or all_explicit <= proceeding:
         return events
 
+    code = CONGRESSIONAL_HOST_TO_SYSTEM_CODE.get((urlsplit(url).hostname or '').removeprefix('www.'))
     on_day = {}
     other_titles = defaultdict(set)
-    for (_, calendar_day), rows in calendar.items():
+    other_committees = defaultdict(set)
+    for (cal_code, calendar_day), rows in calendar.items():
         if calendar_day == day:
             on_day.update((ev, rows[ev].get('title')) for ev in events.intersection(rows))
         else:
             for ev in all_explicit.intersection(rows):
                 other_titles[ev].add(rows[ev].get('title'))
+                other_committees[ev].add(cal_code)
     stale = other_titles.keys() - on_day.keys()
     if not stale:
         return events
+    title_words = _subject_words(tree)
+    if not proceeding and not on_day and len(all_explicit) == 1 and code:
+        explicit_ev, = all_explicit
+        if code[:4] in other_committees.get(explicit_ev, ()):
+            day_rows = calendar.get((code[:4], day), {})
+            day_max = max((len(title_words & (substantive_words(r.get('title')) - _RECORDING_STOPWORDS))
+                           for r in day_rows.values()), default=0)
+            exp_titles = other_titles.get(explicit_ev, ())
+            if exp_titles and all(
+                title and (ov := len(title_words & (substantive_words(title) - _RECORDING_STOPWORDS))) >= 2 and ov > day_max
+                for title in exp_titles
+            ):
+                return set(all_explicit)
     if len(proceeding) != 1:
         return set()
     candidate, = proceeding
-    titles = (_COMMITTEE_SUFFIX.sub('', value or '').strip()
-              for value in (event_title(tree), tree.xpath('string(/html/head/title)')))
-    # A site-wide committee name supplies no subject. A named proceeding such as
-    # "Subcommittee on Economic Opportunity Legislative Hearing" supplies one.
-    subjects = [t for t in titles if not _COMMITTEE_NAME.match(t) or _PROCEEDING_KIND.search(t)]
-    title_words = substantive_words(' '.join(subjects)) - _RECORDING_STOPWORDS
     overlap = len(title_words & substantive_words(on_day.get(candidate)))
     if not overlap or any(not title or overlap <= len(title_words & substantive_words(title))
                           for ev in stale for title in other_titles[ev]):
@@ -313,6 +387,7 @@ def _detail_events(tree, body, url, calendar):
 
 
 def _proceeding_links(tree, url, calendar):
+    from viewer_publication.corpus_quality.provenance_validator import CONGRESSIONAL_HOST_TO_SYSTEM_CODE
     body = _proceeding_body(tree)
     if body is None:
         return {}
@@ -334,12 +409,23 @@ def _proceeding_links(tree, url, calendar):
     official = host in ('csce.gov', 'house.gov', 'senate.gov') or host.endswith(('.house.gov', '.senate.gov'))
     detail = len(videos) == 1 and (not items or (len(items) == 1 and root not in videos))
     detail_events = _detail_events(tree, body, url, calendar) if official and detail else set()
+    code = CONGRESSIONAL_HOST_TO_SYSTEM_CODE.get(host)
+    dates = _displayed_dates(body) if detail and len(detail_events) > 1 else set()
+    day = next(iter(dates), None) if len(dates) == 1 else None
     found = defaultdict(set)
     for scope, keys in videos.items():
         if scope is root and items:
             continue  # Links between items do not belong to any proceeding.
-        events = detail_events if detail else (_event_ids(targets[scope]) if official else set())
-        if len(events) == 1:
+        events = set(detail_events) if detail else (_event_ids(targets[scope]) if official else set())
+        if len(events) > 1:
+            day_rows = calendar.get((code[:4], day), {}) if (detail and code and day) else {}
+            scope_explicit = _event_ids(targets[scope])
+            scope_words = substantive_words(_text(scope)) - _RECORDING_STOPWORDS
+            if not (detail and day_rows and events == scope_explicit and events <= day_rows.keys()
+                    and all(len(scope_words & (substantive_words(day_rows[ev].get('title')) - _RECORDING_STOPWORDS)) >= 2
+                            for ev in events)):
+                events = set()
+        if events:
             # A printed citation identifies the proceeding directly. Only an outbound
             # template link can be set aside on the strength of calendar and title.
             title = tree.xpath('string(/html/head/title)') if detail else ''
@@ -350,7 +436,7 @@ def _proceeding_links(tree, url, calendar):
             if stated - events:
                 events = set()
         for key in keys:
-            found[key].update(events if len(events) == 1 else ())
+            found[key].update(events)
     return found
 
 

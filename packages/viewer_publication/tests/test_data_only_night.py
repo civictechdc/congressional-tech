@@ -1105,3 +1105,173 @@ def test_new_publisher_match_must_name_the_event_on_the_page_or_in_the_held_list
     pq.write_table(listing, base / 'meetings.parquet')
     entries, reasons = prove([])
     assert not reasons and entries[video][event]['corroboration'] == 'held_publisher'
+
+
+def test_publisher_replacement_accepts_unchanged_source_ref_and_non_detail_house_page(recording_sweep, tmp_path):
+    decide, path, traces, raw, _, candidate = recording_sweep
+    base_dir = candidate.parent / 'base'
+    publisher_video, event = 'youtube:Fyr9cXKd6NU', 116718
+    held_via = '70b1b481cd641a3d523f83fb823cbb24d8d42c9b846e2c50259238c34ced0556'
+    new_page = traces[0]['sha']
+
+    cand_rows = pq.read_table(candidate / 'recording_matches.parquet').to_pylist()
+    for r in cand_rows:
+        if r.get('basis') == 'committee_page' and r.get('video_key') == publisher_video and r.get('event_id') == event:
+            r['source_ref'] = 'committee_page:' + held_via
+            r['note'] = 'house_doc_link'
+    pq.write_table(pa.Table.from_pylist(cand_rows), candidate / 'recording_matches.parquet')
+
+    # Keep held_via as base source_ref so candidate source_ref does not change, and omit new_page from detail.parquet.
+    base_rows = pq.read_table(base_dir / 'recording_matches.parquet').to_pylist()
+    for r in base_rows:
+        if r.get('basis') == 'committee_page' and r.get('video_key') == publisher_video and r.get('event_id') == event:
+            r['source_ref'] = 'committee_page:' + held_via
+    pq.write_table(pa.Table.from_pylist(base_rows), base_dir / 'recording_matches.parquet')
+    det_rows = [dict(saved_body=bytes.fromhex(held_via), saved_media_type='text/html')]
+    pq.write_table(pa.Table.from_pylist(det_rows), base_dir / 'detail.parquet')
+    pq.write_table(pa.Table.from_pylist(det_rows), candidate / 'detail.parquet')
+
+    entries, reasons, facts = decide()
+    assert not reasons and len(entries) == 7
+    r, = facts['replaced_recording_matches']
+    assert (r['event_id'], r['reason'], r['candidate_page']) == (event, 'publisher_corroborated', new_page)
+
+    # A held page cannot corroborate the replacement even when candidate source_ref is unchanged.
+    traces[0]['receipt_key'] = LIVE_KEYS[0]
+    entries, reasons, _ = decide()
+    assert not entries
+    assert any('removed keys' in reason for reason in reasons)
+
+
+def test_linked_addition_accepts_via_committee_page_citation(tmp_path):
+    from viewer_publication.data_only_night import _linked_additions
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    base.mkdir()
+    candidate.mkdir()
+    video, event = 'youtube:Fyr9cXKd6NU', 116718
+    min_body, via_body = '0' * 64, 'f' * 64
+    pq.write_table(pa.Table.from_pylist([dict(
+        event_id=event, video_key=video, basis='committee_page',
+        source_ref='committee_page:' + min_body,
+        note=f'house_doc_link [via committee_page:{via_body}]',
+        decision='linked', status='asserted',
+    )]), candidate / 'recording_matches.parquet')
+
+    pages = {video: {via_body: dict(receipt_key='admitted-page', receipt_line=1, event_ids=[event])}}
+    proven, reasons = _linked_additions(base, candidate, {video: {event}}, pages)
+    assert not reasons and proven[video][event]['corroboration'] == 'committee_page'
+
+    wrong_pages = {video: {'a' * 64: dict(receipt_key='admitted-page', receipt_line=1, event_ids=[event])}}
+    proven, reasons = _linked_additions(base, candidate, {video: {event}}, wrong_pages)
+    assert not proven[video] and len(reasons) == 1
+
+
+def test_proceeding_kind_narrows_same_day_markup_from_hearing():
+    from viewer_publication.recording_pages import recording_page_events
+    video = 'youtube:1OZov_getuU'
+    markup = b'''<main><article class="single-post">
+        <span class="date">Markup Date: July 25, 2014 9:00 am</span>
+        <h1>Full Committee Business Meeting - July 25, 2014</h1>
+        <iframe src="https://www.youtube.com/embed/1OZov_getuU"></iframe>
+        <p>Resolution of the Committee on Oversight and Government Reform</p>
+    </article></main>'''
+    url = 'https://oversight.house.gov/markup/full-committee-business-meeting-july-25-2014/'
+    calendar = {('hsgo', '2014-07-25'): {
+        102581: dict(title='White House Office of Political Affairs hearing', meeting_type='HHRG', sittings=[]),
+        102586: dict(title='a motion or resolution concerning David Simas', meeting_type='HMKP', sittings=[]),
+    }}
+    assert recording_page_events(markup, url, calendar, {video}, set()) == {video: [102586]}
+
+    ambiguous = {('hsgo', '2014-07-25'): {
+        102586: dict(title='First generic resolution', meeting_type='HMKP', sittings=[]),
+        102587: dict(title='Second generic resolution', meeting_type='HMKP', sittings=[]),
+    }}
+    assert recording_page_events(markup, url, ambiguous, {video}, set()) == {video: []}
+
+
+def test_strong_body_title_corroboration_and_joint_parenthetical_matching():
+    from viewer_publication.recording_pages import recording_page_events
+    video = 'youtube:bIDsOl6HeOI'
+    url = 'https://waysandmeans.house.gov/event/ways-means-hold-meeting/'
+    markup = b'''<main><h1>Ways and Means to Hold Meeting</h1>
+        <span class="date-bar">February 14, 2017</span>
+        <p>Adoption of Ways and Means Committee Authorization and Oversight Plan for the 115th Congress
+        and Views and Estimates on the Fiscal Year 2018 Federal Budget and ratification of Subcommittee assignments.</p>
+        <iframe src="https://www.youtube.com/embed/bIDsOl6HeOI"></iframe></main>'''
+    calendar = {('hswm', '2017-02-14'): {
+        105586: dict(title='Ways and Means Committee Authorization and Oversight Plan and Views and Estimates on the Fiscal Year 2018 Federal Budget',
+                     meeting_type='HMKP', sittings=[]),
+    }}
+    assert recording_page_events(markup, url, calendar, {video}, set()) == {video: [105586]}
+
+    # Weak body overlap with generic heading remains rejected when require_title is True.
+    weak = b'''<main><h1>Ways and Means to Hold Meeting</h1>
+        <span class="date-bar">February 14, 2017</span>
+        <p>Committee oversight remarks only.</p>
+        <iframe src="https://www.youtube.com/embed/bIDsOl6HeOI"></iframe></main>'''
+    assert recording_page_events(weak, url, calendar, {video}, set()) == {video: []}
+
+    # Joint hearing parenthetical suffix does not block exact title match against another hearing on the same day.
+    rail_video = 'youtube:t2bXsHlAD-4'
+    rail_markup = b'''<html><head><script type="application/ld+json">
+        {"@type":"Event","name":"Rail Service Challenges and the Impact on Agriculture","startDate":"2022-09-15"}</script></head>
+        <body><main><h1>Rail Service Challenges and the Impact on Agriculture</h1>
+        <p>Hearing Date: September 15, 2022</p>
+        <iframe src="https://www.youtube.com/embed/t2bXsHlAD-4"></iframe></main></body></html>'''
+    rail_cal = {('hspw', '2022-09-15'): {
+        115100: dict(title='Rail Service Challenges and the Impact on Agriculture (Joint Hearing with Agriculture)', meeting_type='HHRG', sittings=[]),
+        115108: dict(title='FEMA Recovery Efforts in Puerto Rico', meeting_type='Hearing', sittings=[]),
+    }}
+    assert recording_page_events(rail_markup, 'https://transportation.house.gov/hearings/rail', rail_cal, {rail_video}, set()) == {rail_video: [115100]}
+
+
+def test_postponed_page_keeps_corroborated_explicit_event_when_other_day_has_meetings():
+    from viewer_publication.recording_pages import recording_page_events
+    video = 'youtube:wz9NwXz-qOg'
+    url = 'https://foreignaffairs.house.gov/committee-activity/hearings/postponed-foreign-policy'
+    markup = b'''<main><article>
+        <h1>POSTPONED: Foreign Policy, Interrupted: How Fraud, Waste, and Abuse Blunt America's Impact Abroad</h1>
+        <div class="evo-hearing__field-evo-meeting-date"><time>Thu, 09/19/2024 - 1:17 PM</time></div>
+        <a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=117696">Repository</a>
+        <iframe src="https://www.youtube.com/embed/wz9NwXz-qOg"></iframe></article></main>'''
+    calendar = {
+        ('hsfa', '2024-09-19'): {
+            117655: dict(title='Israel and the Middle East', meeting_type='Hearing', sittings=[]),
+            117666: dict(title='State Department Grant Awards', meeting_type='Hearing', sittings=[]),
+        },
+        ('hsfa', '2024-09-26'): {117696: dict(title="Foreign Policy, Interrupted: How Fraud, Waste, and Abuse Blunt America's Impact Abroad", meeting_type='Hearing', sittings=[])},
+    }
+    assert recording_page_events(markup, url, calendar, {video}, set()) == {video: [117696]}
+
+    wrong_comm = {
+        ('hsfa', '2024-09-19'): calendar['hsfa', '2024-09-19'],
+        ('hsvr', '2024-09-26'): {117696: dict(title="Foreign Policy, Interrupted: How Fraud, Waste, and Abuse Blunt America's Impact Abroad", meeting_type='Hearing', sittings=[])},
+    }
+    assert recording_page_events(markup, url, wrong_comm, {video}, set()) == {video: []}
+
+
+def test_combined_sitting_page_keeps_multiple_corroborated_explicit_events():
+    from viewer_publication.recording_pages import recording_page_events
+    video = 'youtube:6KsIx80B3ik'
+    url = 'https://democrats-veterans.house.gov/events/hearings/combined'
+    markup = b'''<main><div class="hearing article">
+        <h1>Full Committee Business Meeting and Oversight Hearing</h1>
+        <p>Hearing Date: March 23, 2023</p>
+        <p>Full Committee Business Meeting to Authorize the Women Veterans Task Force
+        followed by U.S. Department of Veterans Affairs Budget Request for Fiscal Years 2024 and 2025.</p>
+        <a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=115499">Markup</a>
+        <a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=115491">Hearing</a>
+        <iframe src="https://www.youtube.com/embed/6KsIx80B3ik"></iframe></div></main>'''
+    calendar = {('hsvr', '2023-03-23'): {
+        115491: dict(title='U.S. Department of Veterans Affairs Budget Request for Fiscal Years 2024 and 2025', sittings=[]),
+        115499: dict(title='Business Meeting to Authorize the Women Veteran Task Force', sittings=[]),
+    }}
+    assert recording_page_events(markup, url, calendar, {video}, set()) == {video: [115491, 115499]}
+
+    uncorroborated = b'''<main><div class="hearing article">
+        <h1>Full Committee Hearing</h1>
+        <p>Hearing Date: March 23, 2023</p>
+        <a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=115499">One</a>
+        <a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=115491">Two</a>
+        <iframe src="https://www.youtube.com/embed/6KsIx80B3ik"></iframe></div></main>'''
+    assert recording_page_events(uncorroborated, url, calendar, {video}, set()) == {video: []}
