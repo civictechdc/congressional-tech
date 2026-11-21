@@ -2,7 +2,7 @@
 id: ct-2cig
 status: closed
 deps: []
-links: []
+links: [ct-u3eh, ct-jmwq, ct-2uc9, ct-flq8]
 created: 2026-11-18T14:01:54Z
 type: bug
 priority: 2
