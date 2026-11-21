@@ -1,6 +1,6 @@
 ---
 id: ct-en4n
-status: in_progress
+status: closed
 deps: [ct-fb7k, ct-qmh5]
 links: [ct-chc4, ct-z4w5, ct-f6hr, ct-0a35, ct-n3ik, ct-m704, ct-qmh5]
 created: 2026-11-13T17:46:16Z
@@ -159,3 +159,7 @@ Closed the requested inventory, provenance, controls and release-exposure reconc
 **2026-11-21T05:58:20Z**
 
 The public release pointer still named `0e7084cde775` on November 21. The inventory and source-history review is complete for all 455 records. The remaining acceptance check is whether a reader can still download a bad copy. The corrected ledger covers 31 distinct detail pages, including five hidden from the default list. The earlier count of 24 was the first pass. Keep this audit in progress until the [download fix](ct-qmh5.md) supplies per-page results from a successor public release.
+
+**2026-11-21T09:03:15Z**
+
+Public release 1fad38cc75ba selected at 08:59 UTC on November 21 clears the last source-audit acceptance check. All 31 target pages kept their identities and visibility. All 30 reviewed bad files are absent from primary, alternate and recovery downloads. The Vargas testimony remains available with its verified hash, and all 117 control documents passed. The full per-target table links each original source and gives its outstanding recovery status. The inventory's other original-recovery obligations remain tracked separately. [Per-target results](ct-qmh5.md) · [Release record](https://github.com/civictechdc/congressional-tech/pull/223)

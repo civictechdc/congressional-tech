@@ -1,6 +1,6 @@
 ---
 id: ct-wmtr
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-21T06:43:44Z
@@ -23,3 +23,7 @@ Keep the unattended release stopped for every unproven withdrawal. A reviewed re
 **2026-11-21T06:46:36Z**
 
 Both planted checks failed on the old publisher. With the fix, an absent receipt proves zero recaptures and a cause record must name each affected key and the reviewed prior file. The release, cause-record and data-only checks passed all 498 cases.
+
+**2026-11-21T09:03:16Z**
+
+The hosted publisher stopped release 1fad38cc75ba before switching the public pointer. A reviewed cause matched 97 findings across 32 document links, 35 lookup keys and 26 source addresses, each to an exact prior hash and an empty primary. The ordinary publisher then selected the release, and the public check confirmed all 31 document pages still open. [Release safeguard](https://github.com/civictechdc/congressional-tech/pull/221) · [Applied release record](https://github.com/civictechdc/congressional-tech/pull/223)
