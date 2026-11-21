@@ -1,6 +1,6 @@
 ---
 id: ct-k7j4
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-18T14:39:04Z
@@ -21,3 +21,15 @@ First measure: in the live release's sources and url_state, count Senate committ
 
 The count is recorded here; if not zero, the Senate rules count pages and a test covers a mirrored address.
 
+
+## Notes
+
+**2026-11-20T23:23:14Z**
+
+Measured release `0e7084cde775d0064646c56b2200a14e1f13d8b512f1a61a6fe815d597faf4d3` on 2026-11-20. The union of sources and URL state contains 47,290 committee addresses, including 35,378 held addresses. The production page key applies `url_resolve(url, NULL)` before comparing the path and query. Across all formats, 26 groups each contain two held addresses. Of these, 24 pairs have PDF source rows, one pair has only URL-state evidence, and one pair identifies the Banking HTML witness directory. Another 180 groups have multiple known addresses and fewer than two held copies.
+
+Banking is the only pair with published Senate witness rows. The two addresses for `/hearings/witness-list?PageNum_rs=2` differ by a trailing ampersand. Each has seven witness rows on its own page occasion. Neither has an assigned event. The published rows show no lost hearing link.
+
+The full ledger is `<main checkout>/.cache/archive-release/long-tail-20261120/senate-id/ct-k7j4-measurement.json`. Run the adjacent `measure_senate.py` with the worktree Python and its local `DOCSPEC_JOB_CONFIG` to replay the measurement against manifest-verified tables. Two runs produced identical bytes with SHA-256 `758dabcfa19cc7d6b1deed0e757e8d60dc59a374c213c0a477a5daf96a2422ad`.
+
+Commit 1b53167570f71ac34f1eb4c2b69d83e834099e1e updates model/sql/senate-page-candidates.sql and senate-page-meeting-links.sql. Both the date fallback and the tied-event rule compare page keys. Senate records are selected once in senate-page-records.sql. The Banking directory cannot supply a hearing date. In packages/viewer_publication/tests/test_meeting_semantics.py the generic-hearing mirror dropped both links under the old SQL. The repaired rule retains both record-to-event links and the original witness key. Different substantive queries remain distinct.
