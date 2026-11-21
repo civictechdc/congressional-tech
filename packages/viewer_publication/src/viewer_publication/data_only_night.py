@@ -287,8 +287,11 @@ def recaptured_pages(rule, base_dir, candidate_dir, *, new_receipts, trace, read
     for kind, prefix, what in LINK_FINDINGS:
         for answer in rule[prefix + 'changed_answers']:
             shown = [answer['candidate_body']] if kind == 'link_key' else answer['candidate_bodies']
-            if shown == [moved.get(answer['live_body'])]:
+            if answer['live_body'] in moved and shown == [moved[answer['live_body']]]:
                 proven.append(dict(kind=kind, key=answer['key'], live_body=answer['live_body'], candidate_body=shown[0]))
+            elif shown == [None]:
+                reasons.append(f"data-only night: live {what} {answer['key']} would lose its primary download; "
+                               'it needs a named withdrawal')
             else:
                 reasons.append(f"data-only night: live {what} {answer['key']} would open another file, and it is not a page captured "
                                'again at its own address under its own unchanged title; it needs a named correction')

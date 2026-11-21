@@ -51,6 +51,9 @@ gh run download <run id> -D /tmp/night
 Add `--correction "why each live link may open its new file"` if it asks. Read the record it
 wrote under `model/jobs/release-causes/`; if you edit it, run `… cause_record pin`. Open a pull
 request with the record, its evidence file and `model/jobs/publish.json` and merge it once green.
+When a document keeps its address and loses its primary download, name the reason for the
+withdrawal. The record lists each affected key or address and its prior file hash. An empty
+primary requires a matching entry in `model/registries/unusable-downloads.json`.
 Production only runs a commit main has validated, so wait for main's own validation of the merge
 (about 20 minutes), then `gh workflow run archive-jobs.yml -f operation=publish --ref main`.
 

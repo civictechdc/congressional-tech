@@ -320,6 +320,18 @@ PAGE = 'https://committee.house.gov/calendar/eventsingle.aspx?EventID=1'
 RECEIPT = 'receipts/house/pages/2026-11-17/run-1.jsonl.gz'
 
 
+def test_a_withdrawn_primary_cannot_be_proven_by_an_absent_recapture(tmp_path):
+    changes = dict(changed=1, changed_answers=[dict(key='1a56', live_body=BODY, candidate_body=None)],
+                   lookup_changed=1, lookup_changed_answers=[dict(key='8b19', live_body=BODY, candidate_bodies=[None])],
+                   address_changed=1, address_changed_answers=[dict(key=PAGE, live_body=BODY,
+                       candidate_rows=[2], candidate_bodies=[None])])
+    proven, reasons, facts = recaptured_pages(link_rule(False, **changes), tmp_path, tmp_path,
+        new_receipts=set(), trace=lambda keys: pytest.fail('no candidate file to trace'),
+        read_receipt=lambda key: pytest.fail('no candidate file to read'))
+    assert proven == [] and facts['recaptures'] == []
+    assert len(reasons) == 3
+
+
 def recapture(tmp_path, *, title='Hearing on Shipbuilding', status=200, url=PAGE, stores=NEWER, receipt=RECEIPT,
               title_source='page_title', media='text/html', **found):
     """One page captured again: its address, link key and lookup key all move from BODY to NEWER."""

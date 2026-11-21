@@ -64,6 +64,8 @@ def draft(report, *, cause, tickets, correction=None, root=ROOT):
         raise ValueError('The release gate did not stop this run, so it needs no record')
     named = corrections(report['link_rule'], correction, tickets)
     if named and not correction:
+        if any(entry['candidate_body'] is None for entry in named):
+            raise ValueError('Live links would lose their primary download; explain each withdrawal with --correction')
         raise ValueError(f'{len(named)} live links would open another file; say why with --correction')
     groups = [dict(id=group_id(g), count=g['count'], disposition='explained', cause=cause, tickets=tickets) for g in report['failing']]
     record = dict(version=1, base_release_id=report['base_release'], candidate_release_id=report['candidate_release'],

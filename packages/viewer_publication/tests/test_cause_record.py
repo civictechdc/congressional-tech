@@ -81,6 +81,31 @@ def test_a_night_the_gate_would_still_refuse_cannot_be_recorded_away(checkout, f
     assert not (checkout / 'model/jobs/release-causes').exists()
 
 
+def test_a_withdrawal_requires_each_address_and_a_reviewed_unusable_file(checkout, monkeypatch):
+    from viewer_publication import release_gate
+
+    monkeypatch.setattr(release_gate, 'ROOT', checkout)
+    registry = checkout / 'model/registries/unusable-downloads.json'
+    registry.parent.mkdir()
+    registry.write_text(json.dumps([dict(body_sha=BODY, reason='Truncated file', evidence='source byte comparison')]))
+    found = rule(changed=1, changed_answers=[dict(key='1a56' * 4, live_body=BODY, candidate_body=None)],
+        lookup_changed=1, lookup_changed_answers=[dict(key='8b19' * 4, live_body=BODY, candidate_bodies=[None])],
+        address_changed=1, address_changed_answers=[dict(key='https://example.test/a', live_body=BODY, candidate_bodies=[None])])
+    report = dict(base_release='1' * 64, candidate_release='2' * 64, link_rule=found, failing=[], reasons=['link rule: stopped'])
+    options = dict(cause='Withdraw the damaged primary.', tickets=['ct-qmh5'], root=checkout)
+    with pytest.raises(ValueError, match='--correction'):
+        cause_record.draft(report, **options)
+    path = cause_record.draft(report, correction='Source review confirmed the prior download was truncated.', **options)
+    record = json.loads((checkout / path).read_text())
+    assert [item['candidate_body'] for item in record['corrections']] == [None, None, None]
+    assert release_gate.verdict(report, record)[0] == []
+    assert release_gate.verdict(report, dict(record, corrections=record['corrections'][:-1]))[0]
+    assert release_gate.named_corrections(rule(), record['corrections'])[3]
+    registry.write_text('[]')
+    with pytest.raises(ValueError, match='reviewed unusable download'):
+        release_gate.validate_cause_record(record)
+
+
 def test_the_command_reads_one_report_from_a_downloaded_folder_and_says_what_stopped(checkout, tmp_path, capsys, monkeypatch):
     night = tmp_path / 'night/archive-publish-evidence-1-1/output/archive-publish/candidate-x'
     night.mkdir(parents=True)
