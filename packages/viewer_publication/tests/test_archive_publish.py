@@ -423,12 +423,21 @@ def test_release_manifest_is_visible_only_after_complete_atomic_write(tmp_path,m
     assert observed and not target.exists()
 
 
+def native_outputs(root, manifest):
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    path = root / 'evidence/recording_video_links.parquet'
+    path.parent.mkdir()
+    pq.write_table(pa.table({'extracted_key': pa.array([], pa.string()), 'page_body': pa.array([], pa.string())}), path)
+    return [*(f for f in manifest['files'] if f['name'].endswith('.parquet')), dict(name=path.name, **pin(path))]
+
+
 def real_release(root,documents,retired=None):
     """A real release through the publisher's own candidate checks."""
     from test_release_gate import release_dir
     manifest=release_dir(root/'release',documents,retired)
     result=root/'result.json'
-    result.write_bytes(encoded(dict(outputs=[f for f in manifest['files'] if f['name'].endswith('.parquet')],
+    result.write_bytes(encoded(dict(outputs=native_outputs(root,manifest),
         queries=[dict(name=name,data=[dict(violation=0)]) for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']])))
     return dict(release=root/'release',manifest_pin=pin(root/'release/manifest.json'),result_pin=pin(result)),manifest
 
@@ -554,7 +563,7 @@ def test_a_capture_night_that_changes_existing_rows_publishes_only_under_the_liv
     def release(root,documents,titles):
         manifest=release_dir(root/'release',documents,list=pa.table({'filename':[f'{keys}.pdf' for keys in documents],'title':titles}))
         result=root/'result.json'
-        result.write_bytes(encoded(dict(outputs=[f for f in manifest['files'] if f['name'].endswith('.parquet')],
+        result.write_bytes(encoded(dict(outputs=native_outputs(root,manifest),
             queries=[dict(name=name,data=[dict(violation=0)]) for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']])))
         return dict(release=root/'release',manifest_pin=pin(root/'release/manifest.json'),result_pin=pin(result)),manifest
     _,manifest=release(tmp_path/'live',['A','B'],['first','second']);live=manifest['release_id'];store=Store()
@@ -627,7 +636,7 @@ def test_a_recaptured_page_publishes_through_the_real_gate_and_a_replaced_file_d
         manifest=release_dir(root/'release',documents,saved=saved,detail=detail,
             list=pa.table({'filename':[f'{keys}.html' for keys in documents],'title':titles}),**addresses([keys.lower() for keys in documents]))
         result=root/'result.json'
-        result.write_bytes(encoded(dict(outputs=[f for f in manifest['files'] if f['name'].endswith('.parquet')],
+        result.write_bytes(encoded(dict(outputs=native_outputs(root,manifest),
             queries=[dict(name=name,data=[dict(violation=0)]) for name in ['invariants','model_invariants','url_state_invariants','profile_completeness']])))
         return dict(release=root/'release',manifest_pin=pin(root/'release/manifest.json'),result_pin=pin(result)),manifest
     _,manifest=release(tmp_path/'live',['A','B'],'AB',['Hearing','Markup']);live=manifest['release_id'];store=Store()

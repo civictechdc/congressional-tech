@@ -191,7 +191,6 @@ def _stage_receipts_fixture(work_root, engine, receipt_specs):
     raw = work_root / 'raw'
     raw.mkdir(parents=True)
     receipt_inputs = []
-    blobs = {}
     all_specs = []
     for rel_key, specs in receipt_specs.items():
         all_specs.extend(specs)
@@ -222,7 +221,6 @@ def _stage_receipts_fixture(work_root, engine, receipt_specs):
                     stored_md5=__import__('hashlib').md5(stored).hexdigest(),
                     context_url=spec.get('context_url'))]))
         encoded = gzip.compress((''.join(json.dumps(r) + '\n' for r in rows)).encode(), mtime=0)
-        blobs[rel_key] = encoded
         rpath = raw / rel_key
         rpath.parent.mkdir(parents=True, exist_ok=True)
         rpath.write_bytes(encoded)
@@ -256,7 +254,7 @@ def _stage_receipts_fixture(work_root, engine, receipt_specs):
                                      'video_records': {'youtube_cache': 'pv', 'youtube_api': 'pa'},
                                      'committee_records': {'house_xml': 'pc'}},
                     catalog_version=names['catalog_version']),
-        blobs=blobs, captures=captures)
+        raw=raw, captures=captures)
 
 
 def test_end_to_end_build_release_congress_gov_meeting_update_passes_unattended(tmp_path):
@@ -265,6 +263,7 @@ def test_end_to_end_build_release_congress_gov_meeting_update_passes_unattended(
     the same filename so `list_row` permutes, renaming a witness, adding a witness and publisher video)
     and states a new meeting for the first time; verify `require_release_gates` passes unattended."""
     from archive_job_fixture import spicy_input
+    from congress_api.retention.body_keys import physical_body_object_key
     from viewer_publication.archive_model import build_release
     from viewer_publication.release_gate import automatic_causes, prior_links, require_release_gates
 
@@ -382,12 +381,19 @@ def test_end_to_end_build_release_congress_gov_meeting_update_passes_unattended(
     assert cand_dates == ['2023-05-12', '2023-05-17']
     assert sorted(pq.read_table(cand_dir / 'bills.parquet', columns=['bill_id'])['bill_id'].to_pylist()) == ['118-hr-100', '118-s-200']
 
+    objects_read = set()
+
+    def read_object(key):
+        objects_read.add(key)
+        return (cand_env['raw'] / key).read_bytes()
+
     def automatic(report):
         return automatic_causes(
             report, base_dir, cand_dir, engine=engine,
             captures=dict(kind='parquet', path=str(cand_env['captures'])),
-            live_receipt_keys={live_key}, read_receipt=cand_env['blobs'].__getitem__,
+            live_receipt_keys={live_key}, read_receipt=read_object, read_object=read_object,
             work=tmp_path / 'auto', candidate_receipt_keys={live_key, new_key})
 
     report = require_release_gates(base_dir, cand_dir, None, report_path=tmp_path / 'gate-report.json', automatic=automatic)
     assert report['reasons'] == [] and report.get('automatic_reasons', []) == []
+    assert physical_body_object_key(sha256(m1_v2).hexdigest(), stored_suffix='.gz') in objects_read

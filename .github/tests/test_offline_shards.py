@@ -132,8 +132,8 @@ def test_offline_and_publish_jobs_alone_build_the_declared_tesseract():
 
 def test_required_validate_fails_if_any_offline_job_failed_or_was_cancelled():
     validate = workflow('validate-explorer.yml')['jobs']['validate']
-    assert validate['needs'] == 'offline'
-    assert validate['if'] == 'always()'
+    assert validate['needs'] == ['changes', 'offline']
+    assert validate['if'] == "always() && needs.changes.outputs.cause_record_only != 'true'"
     # The verdict comes last and always runs, so this job's own lanes report even when a shard is red.
     gate = validate['steps'][-1]
     assert gate['if'] == 'always()' and gate['env']['OFFLINE_RESULT'] == '${{ needs.offline.result }}'

@@ -16,6 +16,7 @@ from congress_api.lake.meeting_records import _HOUSE_SELECT_CODES, normalize_hou
 from house_naming import load_guide
 
 from congress_docmeta import (
+    DEFAULT_DOCMETA_BATCH_SIZE,
     DEFAULT_MLX_CACHE_LIMIT_GB,
     DEFAULT_MLX_MEMORY_LIMIT_GB,
     HOUSE_CLERK_2LETTER_TO_CODE,
@@ -29,19 +30,39 @@ from congress_docmeta import (
     provenance_rules_v5 as pr5,
     pythonic_v6 as pv6,
     relational_rules_v6 as rv6,
+    resolve_default_docmeta_batch_size,
+    resolve_default_mlx_limits,
     strict_validate_v4,
 )
 
 
 def test_mlx_limits_scope_and_cli_defaults():
-    """`ct-s9l2`: eval_blind and docmeta-sweep default to 24 GiB memory / 2 GiB cache and restore prior limits."""
+    """`ct-s9l2` + 24 GiB Base M5 auto-sizing: omitted flags auto-size at runtime; explicit overrides win."""
     ev_args = eb.build_parser().parse_args(["--out", "/tmp/unused.json"])
-    assert ev_args.memory_limit_gb == DEFAULT_MLX_MEMORY_LIMIT_GB == 24.0
-    assert ev_args.cache_limit_gb == DEFAULT_MLX_CACHE_LIMIT_GB == 2.0
+    assert ev_args.memory_limit_gb is None
+    assert ev_args.cache_limit_gb is None
+    assert ev_args.b_slots is None
 
     sw_args = docmeta_cli.build_parser().parse_args(["docmeta-sweep", "in.parquet", "out.parquet"])
-    assert sw_args.memory_limit_gb == 24.0
-    assert sw_args.cache_limit_gb == 2.0
+    assert sw_args.memory_limit_gb is None
+    assert sw_args.cache_limit_gb is None
+    assert sw_args.b_slots is None
+
+    # Explicit overrides win unconditionally (and `--batch-size` aliases `--b-slots`).
+    sw_over = docmeta_cli.build_parser().parse_args(
+        ["docmeta-sweep", "in.parquet", "out.parquet", "--memory-limit-gb", "20.0", "--cache-limit-gb", "1.5", "--batch-size", "128"]
+    )
+    assert sw_over.memory_limit_gb == 20.0
+    assert sw_over.cache_limit_gb == 1.5
+    assert sw_over.b_slots == 128
+
+    assert resolve_default_mlx_limits(24) == (19.2, 1.5)
+    assert resolve_default_mlx_limits(16) == (12.8, 1.5)
+    assert resolve_default_mlx_limits(48) == (DEFAULT_MLX_MEMORY_LIMIT_GB, DEFAULT_MLX_CACHE_LIMIT_GB) == (24.0, 2.0)
+    assert resolve_default_mlx_limits(0) == (DEFAULT_MLX_MEMORY_LIMIT_GB, DEFAULT_MLX_CACHE_LIMIT_GB) == (24.0, 2.0)
+    assert resolve_default_docmeta_batch_size(24) == 128
+    assert resolve_default_docmeta_batch_size(48) == DEFAULT_DOCMETA_BATCH_SIZE == 256
+    assert resolve_default_docmeta_batch_size(0) == DEFAULT_DOCMETA_BATCH_SIZE == 256
 
     class FakeMX:
         def __init__(self) -> None:

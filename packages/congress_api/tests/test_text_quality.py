@@ -5,7 +5,8 @@ import pytest
 
 from congress_api.lake.text_assessment import assess_text
 from congress_api.lake.text_quality import (
-    FEATURE_VERSION, assessment_facts, compare_intermediate, measure_quality, text_corruption_measures,
+    FEATURE_VERSION, _largest_unmatched_ocr_passage, assessment_facts, compare_intermediate, measure_quality,
+    text_corruption_measures,
 )
 
 
@@ -183,7 +184,7 @@ def test_house_response_cli_keeps_extraction_status_separate_from_review(kind, t
     cases.write_text(json.dumps(case)+'\n')
     measure_cases(cases, tmp_path/'result')
     measured = json.loads((tmp_path/'result/measurements.jsonl').read_text())
-    assert measured['policy_version'] == 'ct-text-quality-measures-v2'
+    assert measured['policy_version'] == 'ct-text-quality-measures-v3'
     assert measured['axes']['role']['reason'] == f'house_{kind}_not_found'
     assert measured['axes']['role']['policy_version'] == 'ct-response-roles-v2'
     assert measured['fts_triage']['band'] == 'review_first'
@@ -244,6 +245,205 @@ def test_unstated_availability_and_unbound_intermediate_remain_unknown():
     assert facts['selected'] is None
     assert assess_text(facts)['facts']['selected'] is None
     assert measured['intermediate_identity']['sha256'] == sha256(b'native final').hexdigest()
+
+
+@pytest.mark.parametrize('updates', [
+    {'intermediate_body_sha256': 'b'*64}, {'intermediate_page_number': 2},
+    {'scope': 'reading', 'intermediate_scope': 'reading'}, {'source_format': 'html'},
+])
+def test_independent_ocr_requires_the_same_pdf_page(updates):
+    ident = identity('final')
+    ident.update(scope='page', page_number=1, source_page_count=2, intermediate_kind='independent_ocr',
+                 intermediate_scope='page', intermediate_page_number=1, intermediate_body_sha256=ident['body_sha256'])
+    ident.update(updates)
+    with pytest.raises(ValueError, match='same PDF body and page'):
+        measure_quality(ident, text='final', intermediate='reference')
+
+
+@pytest.mark.parametrize(('moved_copies', 'expected_missing'), [(2, 0), (1, 20), (0, 20)])
+def test_independent_ocr_counts_each_moved_copy_once_across_deleted_spans(moved_copies, expected_missing):
+    passage = ' '.join(['Café!'] * 20)
+    first = ' '.join(f'first{i}' for i in range(50))
+    second = ' '.join(f'second{i}' for i in range(50))
+    reference = ' '.join([passage, first, passage, second])
+    # Both deletions compete for the same inserted occurrences, normalized as in the alignment.
+    output = ' '.join([first, second, *(['CAFE\u0301!'] * (20 * moved_copies))])
+    ident = identity(output)
+    ident.update(scope='page', page_number=1, source_page_count=1, intermediate_kind='independent_ocr',
+                 intermediate_scope='page', intermediate_page_number=1, intermediate_body_sha256=ident['body_sha256'])
+    review = measure_quality(ident, text=output, intermediate=reference)
+    recognition = review['axes']['recognition']
+    assert recognition['independent_ocr_comparison']['removed_content_tokens'] == 40
+    assert recognition['largest_unmatched_ocr_passage_tokens'] == expected_missing
+    assert review['signals'] == (['possible_missing_content'] if expected_missing else [])
+
+
+@pytest.mark.parametrize(('length', 'missing'), [(4, 24), (11, 31), (12, 10)])
+def test_partial_ocr_move_requires_twelve_tokens(length, missing):
+    phrase = ' '.join(f'word{i}' for i in range(length))
+    omitted = ' '.join(['lost'] * 10)
+    deleted = f'{omitted} {phrase} {omitted}'
+    assert _largest_unmatched_ocr_passage(deleted, f'new {phrase} text') == missing
+    assert _largest_unmatched_ocr_passage(deleted, phrase) == missing
+
+
+@pytest.mark.parametrize(('reference', 'output', 'missing'), [
+    ('---', 'new', 0), ('first last', 'FIRST! LAST', 0),
+    ('first last', '---', 2), ('first lost words last', 'first last', 2),
+])
+def test_short_ocr_pages_measure_alphanumeric_gaps(reference, output, missing):
+    assert _largest_unmatched_ocr_passage(reference, output) == missing
+
+
+def test_moved_whole_lines_on_a_short_page_use_each_copy_once():
+    title = 'Report of the Inspector General'
+    other = 'What the committee found'
+    output = f'{other}\n{title}'
+    assert _largest_unmatched_ocr_passage(f'{title}\n{other}', output) == 0
+    assert _largest_unmatched_ocr_passage(f'{title}\n{title}\n{other}', output) == 5
+
+
+@pytest.mark.parametrize(('copies', 'retained', 'move_heading'), [
+    (0, 0, False), (1, 1, True), (1, 0, False), (1, 0, True), (2, 1, True),
+])
+def test_joined_ocr_columns_preserve_each_printed_line_once(copies, retained, move_heading):
+    from itertools import zip_longest
+
+    # Excerpts from the two columns of the Inspector General report on page 151.
+    left = [
+        'We evaluated U.S.', 'Immigration and Customs', "Enforcement's (ICE) plans to",
+        'house migrant families in', 'hotels and how ICE selected a', 'contractor to implement these',
+        'plans. From April 2021 to', 'September 2021, we',
+    ]
+    right = [
+        'at six hotels that went largely unused between April and',
+        "June 2021. ICE's sole source contract with Endeavors",
+        'resulted in millions of dollars being spent on unused',
+        'hotel space. In addition, Endeavors did not meet new',
+        'healthcare protocols or ensure proper COVID-19 testing',
+        'for families. For example, families were not tested by',
+        'ICE for COVID-19 prior to being transported to hotels',
+    ]
+    passage = ['and were not always tested by Endeavors staff upon',
+               'arrival at or departure from hotels, putting migrant',
+               'families and the outside population at risk of']
+    tail = 'contracting COVID-19. Further, Endeavors did not'
+    heading = 'Report of the Inspector General'
+    reference = '\n'.join([heading, *left, *right, *passage * copies, tail])
+    # Each output row follows the ink across both columns. A missing cell
+    # leaves the text printed beside it in place, including on the last row.
+    cells = [*right, *passage * retained, *[''] * (len(passage) * (copies - retained)), tail]
+    rows = [' '.join(cell for cell in row if cell) for row in zip_longest(left, cells, fillvalue='')]
+    output = '\n'.join([*rows, heading] if move_heading else [heading, *rows])
+
+    ident = identity(output, source_state='retained', intermediate_kind='independent_ocr',
+                     intermediate_body_sha256='a'*64, intermediate_scope='page', intermediate_page_number=151)
+    ident.update(scope='page', page_number=151, source_page_count=151)
+    measured = measure_quality(ident, text=output, intermediate=reference)
+    missing = 25 * (copies - retained)
+    assert measured['axes']['recognition']['largest_unmatched_ocr_passage_tokens'] == missing
+    evidence = dict(stage='measurement', path='/measure.json', sha256='b'*64, locator='line 1')
+    assert assess_text(assessment_facts(measured, evidence))['action'] == ('manual_review' if missing else 'keep')
+
+
+@pytest.mark.parametrize(('last_word', 'missing', 'action'), [('promptly.', 19, 'keep'),
+                                                             ('very promptly.', 20, 'manual_review')])
+def test_independent_ocr_credits_a_bare_page_number(last_word, missing, action):
+    opening = ('Agency officials confirmed that one recommendation was resolved after the committee '
+               'published its formal notice.')
+    passage = ('The committee requires the department to inspect each site before renewal. '
+               'The district must publish the inspection findings ' + last_word)
+    output = f'{opening}\n151'
+    reference = f'{opening}\n{passage}\n151'
+    ident = identity(output, source_state='retained', intermediate_kind='independent_ocr',
+                     intermediate_body_sha256='a'*64, intermediate_scope='page', intermediate_page_number=1)
+    ident.update(scope='page', page_number=1, source_page_count=1)
+    measured = measure_quality(ident, text=output, intermediate=reference)
+    assert measured['axes']['recognition']['largest_unmatched_ocr_passage_tokens'] == missing
+    evidence = dict(stage='measurement', path='/measure.json', sha256='b'*64, locator='line 1')
+    assert assess_text(assessment_facts(measured, evidence))['action'] == action
+
+
+@pytest.mark.parametrize('extra_words', [True, False])
+def test_longer_ocr_move_wins_over_an_eligible_twelve_token_overlap(extra_words):
+    words = [f'word{i}' for i in range(18)]
+    overlap = ' '.join(words[:12])
+    sentence = ' '.join(words)
+    lost = f'opening {overlap} conclusion'
+    # The omitted opening could take twelve words that belong to the moved sentence.
+    retained = ' '.join(f'retained{i}' for i in range(24))
+    ref = f'{lost} {retained} {sentence}'
+    out = f'{sentence} {retained}'
+    if extra_words:
+        ref = f'{lost} {retained} old {sentence}'
+        out = f'{sentence} new {retained}'
+    assert _largest_unmatched_ocr_passage(ref, out) == 14
+
+
+def test_trimmed_exact_move_competes_again_at_its_remaining_length():
+    kept = ' '.join(f'kept{i}' for i in range(40))
+    shared = ' '.join(f'shared{i}' for i in range(8))
+    phrase = ' '.join(f'word{i}' for i in range(12))
+    # The longest move takes "shared". The 13-word copy ending in "closing"
+    # then outranks the 12 words left from the original 20-word candidate.
+    ref = f'{kept} {shared} {phrase} omitted {phrase} closing'
+    out = f'{shared} {phrase} closing {kept} {shared}'
+    assert _largest_unmatched_ocr_passage(ref, out) == 13
+
+
+@pytest.mark.parametrize(('tail_size', 'missing'), [(5, 12), (6, 1)])
+def test_trimmed_edited_chain_needs_twelve_free_matches(tail_size, missing):
+    kept = ' '.join(f'kept{i}' for i in range(40))
+    shared = ' '.join(f'shared{i}' for i in range(8))
+    left = ' '.join(f'left{i}' for i in range(6))
+    right = ' '.join(f'right{i}' for i in range(tail_size))
+    ref = f'{kept} {shared} {left} old {right}'
+    out = f'{shared} {left} new {right} {kept} {shared}'
+    assert _largest_unmatched_ocr_passage(ref, out) == missing
+
+
+@pytest.mark.parametrize(('left', 'right', 'missing'), [
+    ((3, 1), (1, 3), 3),
+    ((4, 1), (1, 3), 7), ((3, 4), (1, 3), 6),
+    ((3, 1), (4, 3), 9), ((3, 1), (1, 4), 6),
+])
+def test_short_match_in_a_slot_requires_small_edits_on_both_sides(left, right, missing):
+    def words(label, count):
+        return ' '.join(f'{label}{i}' for i in range(count))
+
+    first, last = words('first', 12), words('last', 12)
+    ref = f'{first} {words("old", left[0])} of the {words("removed", right[0])} {last}'
+    out = f'{first} {words("new", left[1])} of the {words("added", right[1])} {last}'
+    assert _largest_unmatched_ocr_passage(ref, out) == missing
+
+
+def test_edited_rows_require_matching_context():
+    def fields(label, prefix):
+        return ' '.join(f'{label} {prefix if i > 2 else "same"}{i}' for i in range(20))
+
+    # Three unchanged rows give the span matcher a long exact reservation.
+    label = 'current year approved amount'
+    assert _largest_unmatched_ocr_passage(fields(label, 'old'), fields(label, 'new')) == 1
+    # The seven identical opening words have page-edge evidence. Isolated words inside do not.
+    ref, out = fields('the', 'old'), fields('the', 'new')
+    assert _largest_unmatched_ocr_passage(ref, out) == 33
+    assert _largest_unmatched_ocr_passage(ref, 'extra ' + out) == 40
+
+
+@pytest.mark.parametrize(('ref_gap', 'out_gap', 'missing'), [
+    ('old1 old2 same old4', 'new1 new2 same new4', 2),
+    ('', 'e', 1),  # Insertion repeats the first word of the next anchor.
+    ('', 'new1 new2 new3 new4', 1),
+    ('old1 old2 old3 old4', '', 4),
+    ('old1 old2 old3 old4 old5', 'new', 18),
+    ('old', 'new1 new2 new3 new4 new5', 14),
+])
+def test_four_word_anchors_need_twelve_matches_with_gaps_of_at_most_four(ref_gap, out_gap, missing):
+    # The table and the retained paragraph exchange places on the page.
+    tail = ' '.join(f'tail{i}' for i in range(20))
+    ref = f'a b c d {ref_gap} e f g h old i j k l {tail}'
+    out = f'{tail} a b c d {out_gap} e f g h new i j k l'
+    assert _largest_unmatched_ocr_passage(ref, out) == missing
 
 
 def test_cli_measure_bounds_hash_and_actual_proposal(tmp_path):

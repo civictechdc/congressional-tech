@@ -15,25 +15,32 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
 
     from .parquet_runner_v6 import run_docmeta_parquet_sweep
     from .silicon_runtime_v6 import (
-        DEFAULT_MLX_CACHE_LIMIT_GB,
-        DEFAULT_MLX_MEMORY_LIMIT_GB,
         mlx_limits_scope,
         mlx_wired_limit_scope,
+        resolve_default_docmeta_batch_size,
+        resolve_default_mlx_limits,
         run_silicon_preflight,
     )
 
-    run_silicon_preflight(
+    preflight = run_silicon_preflight(
         escalate_gpt_oss=bool(getattr(args, "escalate_gpt_oss", False)),
         require_r8_deps=True,
         once=True,
     )
+    host_ram_gb = int(preflight.get("mem_gb") or 0)
+    def_mem_gb, def_cache_gb = resolve_default_mlx_limits(host_ram_gb)
+    def_b_slots = resolve_default_docmeta_batch_size(host_ram_gb)
 
     ring_raw = str(getattr(args, "use_ane_ring", "auto")).strip().lower()
     use_ane_ring: bool | str = True if ring_raw == "true" else (False if ring_raw == "false" else "auto")
     tp_raw = str(getattr(args, "two_phase_pass2", "auto")).strip().lower()
     two_phase_pass2: bool | str = True if tp_raw == "true" else (False if tp_raw == "false" else "auto")
-    mem_limit_gb = float(getattr(args, "memory_limit_gb", DEFAULT_MLX_MEMORY_LIMIT_GB))
-    cache_limit_gb = float(getattr(args, "cache_limit_gb", DEFAULT_MLX_CACHE_LIMIT_GB))
+    raw_mem = getattr(args, "memory_limit_gb", None)
+    raw_cache = getattr(args, "cache_limit_gb", None)
+    raw_b_slots = getattr(args, "b_slots", None)
+    mem_limit_gb = float(def_mem_gb if raw_mem is None else raw_mem)
+    cache_limit_gb = float(def_cache_gb if raw_cache is None else raw_cache)
+    eff_b_slots = int(def_b_slots if raw_b_slots is None else raw_b_slots)
 
     with (
         mlx_limits_scope(memory_limit_gb=mem_limit_gb, cache_limit_gb=cache_limit_gb) as mlx_limits,
@@ -57,7 +64,7 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
                 args.input,
                 args.output,
                 chunk_rows=args.chunk_rows,
-                b_slots=args.b_slots,
+                b_slots=eff_b_slots,
                 refill_min=args.refill_min,
                 max_tokens=args.max_tokens,
                 use_ane_ring=use_ane_ring,
@@ -73,6 +80,9 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
                 gpt_oss_batch_size=args.gpt_oss_batch_size,
                 gpt_oss_k=args.gpt_oss_k,
                 two_phase_pass2=two_phase_pass2,
+                bm25_multicrop=bool(getattr(args, "bm25_multicrop", False)),
+                use_telemetry=getattr(args, "telemetry", "auto"),
+                use_extractconf=not bool(getattr(args, "no_extractconf", False)),
             )
             print(
                 json.dumps(
@@ -83,6 +93,8 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
                         "triage_short_circuited_docs": summary.triage_short_circuited_docs,
                         "strict_v4_valid_docs": summary.strict_v4_valid_docs,
                         "anomaly_flagged_docs": summary.anomaly_flagged_docs,
+                        "extractconf_flagged_docs": summary.extractconf_flagged_docs,
+                        "telemetry_wrapped_chunks": summary.telemetry_wrapped_chunks,
                         "pass2_escalated_docs": summary.pass2_escalated_docs,
                         "pass2_accepted_docs": summary.pass2_accepted_docs,
                         "ane_embedded_docs": summary.ane_embedded_docs,
@@ -94,6 +106,7 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
                         "decode_tok_s": round(summary.decode_tok_s, 1),
                         "output_path": str(summary.output_path),
                         "parts_dir": str(summary.parts_dir),
+                        "b_slots": eff_b_slots,
                         "mlx_limits": mlx_limits,
                     },
                     indent=2,
@@ -124,7 +137,14 @@ def build_parser() -> argparse.ArgumentParser:
     dm_p.add_argument("input", help="Input llm_queue_v6_2.parquet path, directory, or glob")
     dm_p.add_argument("output", help="Output .parquet file or shard directory")
     dm_p.add_argument("--chunk-rows", type=int, default=4096)
-    dm_p.add_argument("--b-slots", type=int, default=256)
+    dm_p.add_argument(
+        "--b-slots",
+        "--batch-size",
+        dest="b_slots",
+        type=int,
+        default=None,
+        help="Rolling slot/batch size (default: auto: 128 on <=24 GiB Macs, 256 otherwise)",
+    )
     dm_p.add_argument("--refill-min", type=int, default=32)
     dm_p.add_argument("--max-tokens", type=int, default=768)
     dm_p.add_argument("--mode", choices=("auto", "gpu", "hetero"), default="auto")
@@ -145,14 +165,30 @@ def build_parser() -> argparse.ArgumentParser:
     dm_p.add_argument(
         "--grammar-router",
         choices=("none", "fast", "ane"),
-        default="none",
-        help="Pre-decode calibrated grammar router on open-kind rows ('fast' linear CPU or 'ane' Laya-Typed ANE)",
+        default="fast",
+        help="Pre-decode calibrated grammar router on open-kind rows ('fast' linear CPU + CROQ a=0.05, 'ane', or 'none')",
     )
     dm_p.add_argument(
         "--atomic-verifier",
         choices=("none", "laya-ane", "kev-0.8b", "both"),
         default="none",
-        help="Post-LLM atomic Noul output verifier ('laya-ane', 'kev-0.8b', or 'both')",
+        help="Optional post-LLM atomic Noul output verifier ('none' default, 'laya-ane', 'kev-0.8b', or 'both')",
+    )
+    dm_p.add_argument(
+        "--telemetry",
+        choices=("auto", "on", "off"),
+        default="auto",
+        help="Capture pre-mask grammar uncertainty telemetry for ExtractConf ('auto' enables when supported)",
+    )
+    dm_p.add_argument(
+        "--no-extractconf",
+        action="store_true",
+        help="Disable calibrated ExtractConf per-field defect risk scoring sidecar/column",
+    )
+    dm_p.add_argument(
+        "--bm25-multicrop",
+        action="store_true",
+        help="Opt-in CPU BM25 multi-crop window packing for >3000-char Pass-1 prompts (default: full uncut text)",
     )
     dm_p.add_argument(
         "--kev-batch-docs",
@@ -180,14 +216,14 @@ def build_parser() -> argparse.ArgumentParser:
     dm_p.add_argument(
         "--memory-limit-gb",
         type=float,
-        default=24.0,
-        help="MLX active memory cap in GiB (default: 24.0; <=0 disables)",
+        default=None,
+        help="MLX active memory cap in GiB (default: auto: min(20.0, 0.8*RAM) on <=24 GiB Macs, 24.0 otherwise; <=0 disables)",
     )
     dm_p.add_argument(
         "--cache-limit-gb",
         type=float,
-        default=2.0,
-        help="MLX free-buffer cache cap in GiB (default: 2.0; <0 disables, 0 turns caching off)",
+        default=None,
+        help="MLX free-buffer cache cap in GiB (default: auto: 1.5 on <=24 GiB Macs, 2.0 otherwise; <0 disables, 0 turns caching off)",
     )
     dm_p.set_defaults(func=_cmd_docmeta_sweep)
 

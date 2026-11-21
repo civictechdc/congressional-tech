@@ -312,3 +312,264 @@ def test_pdf_reading_versions_and_invalid_box_and_vision_band_edge_controls(monk
     blank_rgb = Raster(b"\xff" * (100 * 300 * 3), 100, 300, Box(), RAW_RGB)
     recognized = vis.recognize(blank_rgb)
     assert recognized.text == "edge observation"
+
+
+def test_cleanup_review_flags_a_dropped_native_block_with_surviving_furniture():
+    from hashlib import sha256
+    from congress_api.lake.text_quality import measure_quality
+
+    with pymupdf.open() as doc:
+        page = doc.new_page()
+        page.insert_text((60, 40), "Committee report")
+        page.insert_text((60, 110), "The committee requires the department to inspect each site before renewal.")
+        page.insert_text((60, 140), "The district must publish the inspection findings and provide a written response.")
+        page.insert_text((60, 720), "17")
+        source = doc.tobytes()
+    with OptInPdfReader().open(source, "application/pdf") as pdf:
+        observed = pdf.page(1).native().text
+
+    body_sha = sha256(source).hexdigest()
+    header, first, second, footer = observed.splitlines()
+    for output, omitted in (
+        (observed, False),
+        ("\n\n".join((header, first.replace("each site", "each\nsite"), second, footer)), False),
+        (f"{header}\n{footer}", True),
+    ):
+        digest = sha256(output.encode()).hexdigest()
+        identity = dict(body_sha256=body_sha, parser="pdf_text", parser_version="test",
+                        text_sha256=digest, output_sha256=digest, source_format="pdf",
+                        scope="page", page_number=1, source_page_count=1,
+                        intermediate_body_sha256=body_sha, intermediate_page_number=1,
+                        intermediate_scope="page", intermediate_kind="native")
+        review = measure_quality(identity, text=output, intermediate=observed)
+        assert review["fts_triage"]["band"] == ("review_later" if omitted else "no_obvious_failure_detected")
+        assert ("substantial_intermediate_difference" in review["fts_triage"]["reasons"]) == omitted
+        assert ("possible_cleanup_loss" in review["signals"]) == omitted
+
+
+@pytest.mark.parametrize(("case", "missing_tokens"), [
+    ("complete", 0), ("two_typos", 1), ("reflow", 0), ("omitted", 23), ("short_page", 0),
+    ("moved", 0), ("lost_duplicate", 34), ("inspection_omitted", 23), ("moved_and_omitted", 23),
+    ("heading_moved", 0), ("heading_moved_inspection_omitted", 23),
+    ("lost_duplicate_with_moved_sentence", 34), ("lost_duplicate_with_short_findings", 34),
+])
+def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens, tmp_path):
+    from contextlib import closing
+    from hashlib import sha256
+    import json
+    from pathlib import Path
+    from unittest.mock import Mock
+
+    from spicy_docs.extraction.model import Recognition
+    from congress_api.cli.text_quality import measure_cases
+
+    header, footer = "Committee report", "Page 17"
+    passage = [
+        "The committee requires the department to inspect each site",
+        "before renewal. The district must publish the inspection",
+        "findings and provide a written response.",
+    ]
+    lines = [header, *passage, footer] if case != "short_page" else [header, footer]
+    # Plant changes at the primary image backend. The independent OCR reads
+    # the source ink, including both copies in the lost-duplicate control.
+    observed = "\n".join(lines)
+    if case == "omitted":
+        observed = f"{header}\n{footer}"
+    elif case == "two_typos":
+        observed = observed.replace("before", "bef0re").replace("must", "rnust")
+    elif case == "reflow":
+        observed = observed.replace("\n", " ").replace("each site", "each\nsite")
+    elif case in {"moved", "lost_duplicate", "inspection_omitted", "moved_and_omitted",
+                  "heading_moved", "heading_moved_inspection_omitted",
+                  "lost_duplicate_with_moved_sentence", "lost_duplicate_with_short_findings"}:
+        # Excerpts from report page 151. The inspection and response share individual words.
+        inspection = [
+            "conducted remote inspections of the ICE hotel facilities to",
+            "assess compliance by the contractor, Endeavors, with ICE",
+            "detention standards and COVID-19 requirements.",
+        ]
+        findings = [
+            "at six hotels that went largely unused between April and",
+            "June 2021. ICE's sole source contract with Endeavors",
+            "resulted in millions of dollars being spent on unused",
+            "hotel space. In addition, Endeavors did not meet new",
+            "healthcare protocols or ensure proper COVID-19 testing",
+            "for families.",
+        ]
+        response = [
+            "ICE Response",
+            "ICE concurred with one recommendation and did not",
+            "concur with three recommendations. One",
+            "recommendation was resolved and closed, and three",
+            "recommendations were administratively closed. See",
+            "Appendix B for ICE's full response.",
+        ]
+        if case in {"heading_moved", "heading_moved_inspection_omitted"}:
+            title = "Report of the Inspector General"
+            body = ["What We Recommend", *findings, *response]
+            lines = [header, *inspection, *body, title, footer]
+            retained = inspection if case == "heading_moved" else []
+            observed = "\n".join([header, *retained, title, *body, footer])
+        elif case in {"lost_duplicate_with_moved_sentence", "lost_duplicate_with_short_findings"}:
+            if case == "lost_duplicate_with_short_findings":
+                findings = [*findings[:3], "hotel space."]
+            sentence = ["Agency officials confirmed that one recommendation",
+                        "was resolved after the committee published its formal notice."]
+            lines = [*response, *response, *sentence, *findings]
+            observed = "\n".join([*findings, *sentence, *response])
+        else:
+            copies = 2 if case == "lost_duplicate" else 1
+            heading = "What We Recommend"
+            lines = [header, *inspection, heading, *findings, *(response * copies), footer]
+            retained_inspection = [] if case in {"inspection_omitted", "moved_and_omitted"} else inspection
+            sections = [*findings, *response] if case == "inspection_omitted" else [*response, *findings]
+            observed = "\n".join([header, *retained_inspection, heading, *sections, footer])
+    source = _make_scanned_pdf(lines)
+    reader = OptInPdfReader(dpi=150)
+    with reader.open(source, "application/pdf") as pdf:
+        page = pdf.page(1)
+        assert not page.native().text.strip()
+        raster = page.render()
+    with closing(TesseractBackend()) as secondary:
+        reference = secondary.recognize(raster).text
+    assert " ".join(reference.split()) == " ".join(lines)
+
+    primary = Mock()
+    primary.recognize.return_value = Recognition(observed, {}, None)
+    events = []
+    reading = body_text.pdf_text(source, strategy=body_text.page_rule(primary, reader),
+                                 page_deadline_seconds=30, evidence=events.append)
+    primary.recognize.assert_called_once_with(raster)
+    assert reading.status == "completed" and reading.ocr_pages == (1,)
+    [extracted] = [event for event in events if event["event"] == "page_extracted"]
+    assert extracted["pre_cleanup_text"] == observed
+    assert reading.text.split() == observed.split()
+
+    body_sha = sha256(source).hexdigest()
+    output = tmp_path / "page.txt"
+    output.write_text(reading.text, encoding="utf-8")
+    reference_file = tmp_path / "secondary-ocr.txt"
+    reference_file.write_text(reference, encoding="utf-8")
+    digest = sha256(output.read_bytes()).hexdigest()
+    manifest = tmp_path / "cases.jsonl"
+    manifest.write_text(json.dumps(dict(
+        case_id=case, body_sha256=body_sha, parser="pdf_text", parser_version="test",
+        source_format="pdf", source_state="retained", scope="page", page_number=1, source_page_count=1,
+        text_sha256=digest, output_sha256=digest, output_path=str(output),
+        intermediate_kind="independent_ocr", intermediate_path=str(reference_file),
+        intermediate_sha256=sha256(reference_file.read_bytes()).hexdigest(),
+        intermediate_body_sha256=body_sha, intermediate_scope="page", intermediate_page_number=1,
+    )))
+    result = measure_cases(manifest, tmp_path / "review")
+    review = json.loads(Path(result["measurements"]).read_text())
+    proposal = json.loads(Path(result["proposals"]).read_text())["proposal"]
+    comparison = review["axes"]["recognition"]["independent_ocr_comparison"]
+    assert comparison["status"] == "measured"
+    assert review["axes"]["recognition"]["largest_unmatched_ocr_passage_tokens"] == missing_tokens
+    if case == "omitted":
+        assert any(" ".join(change["intermediate_slice"].split()) == " ".join(passage)
+                   for change in comparison["changes"])
+    elif case == "two_typos":
+        assert [(change["intermediate_slice"], change["output_slice"]) for change in comparison["changes"]] == [
+            ("before", "bef0re"), ("must", "rnust"),
+        ]
+    elif case in {"moved", "lost_duplicate"}:
+        assert [change["operation"] for change in comparison["changes"]] == ["insert", "delete"]
+        assert comparison["removed_content_tokens"] == copies * 34
+    elif case == "lost_duplicate_with_moved_sentence":
+        deleted, inserted = comparison["changes"]
+        assert deleted["intermediate_slice"].split() == " ".join(response * 2 + sentence).split()
+        assert inserted["output_slice"].split() == " ".join(sentence + response).split()
+    elif case == "lost_duplicate_with_short_findings":
+        # None of the ordered deletions contains the full missing response.
+        assert comparison["changes"]
+        assert all(" ".join(response) not in " ".join(change["intermediate_slice"].split())
+                   for change in comparison["changes"])
+    elif case in {"inspection_omitted", "moved_and_omitted"}:
+        assert any(" ".join(change["intermediate_slice"].split()) == " ".join(inspection)
+                   for change in comparison["changes"])
+        assert comparison["removed_content_tokens"] == (57 if case == "moved_and_omitted" else 23)
+    elif case in {"heading_moved", "heading_moved_inspection_omitted"}:
+        assert comparison["changes"]
+    else:
+        assert comparison["changes"] == []
+    if missing_tokens >= 20:
+        assert review["signals"] == ["possible_missing_content"]
+        assert review["fts_triage"]["reasons"] == ["possible_missing_content"]
+        assert review["fts_triage"]["band"] == "review_later"
+        assert proposal["action"] == "manual_review"
+    else:
+        assert review["signals"] == review["fts_triage"]["reasons"] == []
+        assert review["fts_triage"]["band"] == "no_obvious_failure_detected"
+        assert proposal["action"] == "keep"
+
+
+@pytest.mark.parametrize("reused_ids", [{}, {159: "old0"}, {80: "old0", 81: "old1"},
+                                        {155: "old153", 156: "old154"}],
+                         ids=["all-new", "reused-last", "reused-adjacent", "reused-near-end"])
+def test_moved_paragraph_across_repetitive_table_matches_in_under_50ms(reused_ids):
+    from hashlib import sha256
+    from timeit import repeat
+
+    from congress_api.lake.text_assessment import assess_text
+    from congress_api.lake.text_quality import _largest_unmatched_ocr_passage, assessment_facts, measure_quality
+
+    def table(identifiers):
+        return "\n".join(f"current year approved amount {identifier}" for identifier in identifiers)
+
+    paragraph = " ".join(f"The committee reviewed funding for district {i}" for i in range(28))
+    reference_table = table(f"old{row}" for row in range(160))
+    output_table = table(reused_ids.get(row, f"new{row}") for row in range(160))
+    reference = f"{reference_table}\n{paragraph}"
+    output = f"{paragraph}\n{output_table}"
+    digest = sha256(output.encode()).hexdigest()
+    identity = dict(body_sha256="a"*64, parser="pdf_text", parser_version="test", text_sha256=digest,
+                    output_sha256=digest, source_format="pdf", source_state="retained",
+                    scope="page", page_number=1, source_page_count=1,
+                    intermediate_kind="independent_ocr", intermediate_body_sha256="a"*64,
+                    intermediate_scope="page", intermediate_page_number=1)
+
+    measured = measure_quality(identity, text=output, intermediate=reference)
+    recognition = measured["axes"]["recognition"]
+    comparison = recognition["independent_ocr_comparison"]
+    assert comparison["intermediate_tokens"] == comparison["output_tokens"] == 996
+    assert comparison["removed_content_tokens"] == comparison["inserted_tokens"] == 800
+    # Only the identifier in each row differs. Its neighbors still form an intact four-token span.
+    assert recognition["largest_unmatched_ocr_passage_tokens"] == 1
+    evidence = dict(stage="measurement", path="/measure.json", sha256="b"*64, locator="line 1")
+    assert assess_text(assessment_facts(measured, evidence))["action"] == "keep"
+
+    # Include full-page tokenization and all matching phases.
+    elapsed = min(repeat(lambda: _largest_unmatched_ocr_passage(reference, output), number=1, repeat=3))
+    assert elapsed < 0.05, f"span matching took {elapsed:.4f}s on the 996-token page"
+
+
+@pytest.mark.parametrize("angle", [90, 180, 270])
+@pytest.mark.parametrize("raw_rgb", [False, True])
+def test_adaptive_rotation_is_lossless_and_scoped_to_the_named_page(angle, raw_rgb):
+    import io
+    from PIL import Image
+    from spicy_docs.extraction import DefaultReader
+    from spicy_docs.extraction.model import RAW_RGB
+
+    with pymupdf.open() as pdf:
+        for width in (288, 72):
+            page = pdf.new_page(width=width, height=144)
+            page.draw_rect((9, 12, 37, 61), fill=(0.2, 0.7, 0.3))
+        source = pdf.tobytes()
+
+    options = dict(dpi=72, adaptive_max_pixels=True, max_pixels=21_000, raw_rgb=raw_rgb)
+    with OptInPdfReader(**options, rotate_ccw_pages={1: angle}).open(source, "application/pdf") as doc:
+        rotated = doc.page(1).render()
+        neighbor = doc.page(2).render()
+    # The first page fits at 50 DPI. Its neighbor fits at the requested 72 DPI.
+    with DefaultReader(dpi=50, raw_rgb=True).open(source, "application/pdf") as doc:
+        base = doc.page(1).render()
+    with DefaultReader(dpi=72, raw_rgb=raw_rgb).open(source, "application/pdf") as doc:
+        assert neighbor == doc.page(2).render()
+    original = Image.frombytes("RGB", (base.width, base.height), base.data)
+    expected = original.rotate(angle, expand=True)
+    assert (rotated.width, rotated.height) == expected.size
+    assert rotated.media_type == (RAW_RGB if raw_rgb else "image/png")
+    actual = rotated.data if raw_rgb else Image.open(io.BytesIO(rotated.data)).tobytes()
+    assert actual == expected.tobytes()
