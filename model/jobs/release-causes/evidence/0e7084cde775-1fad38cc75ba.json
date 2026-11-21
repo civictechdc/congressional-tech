@@ -1,0 +1,1382 @@
+{
+ "version": 1,
+ "base_release_id": "0e7084cde775d0064646c56b2200a14e1f13d8b512f1a61a6fe815d597faf4d3",
+ "candidate_release_id": "1fad38cc75ba023aca4af5b2184564869eff9831414c00678310d38370f89eae",
+ "stopped_for": [
+  "data-only night: the link rule failed (live keys would open another file, and they were not examined)",
+  "data-only night: the candidate differs from the live release in profile.file_hashes.model/registries/release-schema.json",
+  "data-only night: the candidate read no receipt the live release did not, so nothing explains a difference",
+  "data-only night: recoveries.parquet|removed keys|unexplained (-6) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: schema.json|changed file without a comparison|unexplained (0) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: detail.parquet moves 130 rows across its groups, more than the 50 this night may (the lesser of 6% of the file and 15 for each of its 0 new receipts)",
+  "automatic causes: 8 differences are not additions the traced proof reads, so it ran no check"
+ ],
+ "failing_groups": [
+  {
+   "id": "detail.parquet|changed rec_len|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed saved_body|value differs on matched key",
+   "count": 31,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed saved_bytes|value differs on matched key",
+   "count": 31,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed saved_media_type|value differs on matched key",
+   "count": 31,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed saved_suffix|value differs on matched key",
+   "count": 31,
+   "status": "unverified"
+  },
+  {
+   "id": "recoveries.parquet|removed keys|unexplained",
+   "count": -6,
+   "status": "unexplained"
+  },
+  {
+   "id": "schema.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "status": "unexplained"
+  },
+  {
+   "id": "sources.parquet|changed is_saved|value differs on matched key",
+   "count": 25,
+   "status": "unverified"
+  }
+ ],
+ "link_rule": {
+  "missing": 0,
+  "dangling": 0,
+  "published_and_retired": 0,
+  "changed": 32,
+  "changed_answers": [
+   {
+    "key": "05fc38c285f3af95",
+    "live_row": 14743,
+    "live_file": "20090519Reuter.pdf",
+    "live_body": "05fc38c285f3af951f46a477743c95d92721544a6d7ca215ffae339e9555bcb0",
+    "candidate_row": 14743,
+    "candidate_file": "20090519Reuter.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "08ca05e57e8d6dd9",
+    "live_row": 12158,
+    "live_file": "12-7-11_Medicaid_Fraud_Richard_West_Testimony.pdf",
+    "live_body": "08ca05e57e8d6dd91a3f8a4e6d593712bf4079af802f05fc0ccd1bc62a7bdd32",
+    "candidate_row": 12158,
+    "candidate_file": "12-7-11_Medicaid_Fraud_Richard_West_Testimony.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "0cbdd25415da2660",
+    "live_row": 139134,
+    "live_file": "HHRG-114-AS29-Bio-WeatheringtonD-20150325.pdf",
+    "live_body": "0cbdd25415da26601674299579e37c5f96858ab8a31540af9c7370aae7a1557c",
+    "candidate_row": 139134,
+    "candidate_file": "HHRG-114-AS29-Bio-WeatheringtonD-20150325.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "1bf7f4055319d6fd",
+    "live_row": 14944,
+    "live_file": "20090709Vargas.pdf",
+    "live_body": "1bf7f4055319d6fd657a4a8b3092e0fd2f995f3340fd3ebda21bc4e05f5b58ae",
+    "candidate_row": 14944,
+    "candidate_file": "20090709Vargas.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "20568d1abba1b309",
+    "live_row": 281269,
+    "live_file": "Walling Statement 3-15 Flint Water II.pdf",
+    "live_body": "ed0298387f8c87d6c6bc70241e4510e490fe8e2b4668e2595cbc7f0220d156b8",
+    "candidate_row": 281269,
+    "candidate_file": "Walling Statement 3-15 Flint Water II.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "359e3b8b6b844d69",
+    "live_row": 309624,
+    "live_file": "index.htm",
+    "live_body": "359e3b8b6b844d69fa29bd39c40f970af1586af0500dcda1f98a302721eafe1d",
+    "candidate_row": 309624,
+    "candidate_file": "index.htm",
+    "candidate_body": null
+   },
+   {
+    "key": "393a5e8418852b43",
+    "live_row": 12156,
+    "live_file": "12-7-11_Medicaid_Fraud_Cantrell_Testimony_FINAL.pdf",
+    "live_body": "393a5e8418852b436a706417f3df51dc705e026a297d1b8a816c03091d025c06",
+    "candidate_row": 12156,
+    "candidate_file": "12-7-11_Medicaid_Fraud_Cantrell_Testimony_FINAL.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "42978b9c1d539c24",
+    "live_row": 309479,
+    "live_file": "index.cfm",
+    "live_body": "42978b9c1d539c245f97ef6d0c353f293f603ec548b2be4d2fda3db4b602e8dd",
+    "candidate_row": 309479,
+    "candidate_file": "index.cfm",
+    "candidate_body": null
+   },
+   {
+    "key": "4c53c6108c99bae5",
+    "live_row": 9553,
+    "live_file": "11-2-11_RegAffairs_Montgomery_Testimony.pdf",
+    "live_body": "4c53c6108c99bae5c65cd025df50d083f3d48c38f0ae5825d965773e274a0533",
+    "candidate_row": 9553,
+    "candidate_file": "11-2-11_RegAffairs_Montgomery_Testimony.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "4c90083757ecf4ef",
+    "live_row": 14869,
+    "live_file": "20090624Dicken.pdf",
+    "live_body": "4c90083757ecf4ef6ec56d23c326d236acdc31720c8b43d200079ff39de4fcdc",
+    "candidate_row": 14869,
+    "candidate_file": "20090624Dicken.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "65b640217635a378",
+    "live_row": 28668,
+    "live_file": "9-13-2011_BousheyTestimony.pdf",
+    "live_body": "65b640217635a3781ea353b1cbd5a93f5f2705a0304b2da10e860ee1bfb819ca",
+    "candidate_row": 28668,
+    "candidate_file": "9-13-2011_BousheyTestimony.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "6eea94ddc3e78724",
+    "live_row": 11960,
+    "live_file": "119037.htm",
+    "live_body": "6eea94ddc3e78724e11329a9c246a2986dd3d73c104097243b3a789b93b88f6d",
+    "candidate_row": 11960,
+    "candidate_file": "119037.htm",
+    "candidate_body": null
+   },
+   {
+    "key": "7451a1761b7038e9",
+    "live_row": 5958,
+    "live_file": "07-26-23__us-economic-security-addressing-economic-coercion-and-increasing-competitiveness",
+    "live_body": "7451a1761b7038e9fe98499abb35b6d0a12b4002bc02759746e35bbfd06dd4c7",
+    "candidate_row": 5958,
+    "candidate_file": "07-26-23__us-economic-security-addressing-economic-coercion-and-increasing-competitiveness",
+    "candidate_body": null
+   },
+   {
+    "key": "7b2002ff1a8592d3",
+    "live_row": 23439,
+    "live_file": "4-20-11_Simpson_Syracuse_Testimony.pdf",
+    "live_body": "7b2002ff1a8592d3f2ebe5c3c4d311efb6b66bc2e27583adba7c936bb599a42f",
+    "candidate_row": 23439,
+    "candidate_file": "4-20-11_Simpson_Syracuse_Testimony.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "82867326cf8750a2",
+    "live_row": 11962,
+    "live_file": "119153.htm",
+    "live_body": "82867326cf8750a2cb2de9b3cd5f25b447269fcd870440390f7512f8e08d1d5e",
+    "candidate_row": 11962,
+    "candidate_file": "119153.htm",
+    "candidate_body": null
+   },
+   {
+    "key": "82fd78b27f862a10",
+    "live_row": 9481,
+    "live_file": "11-15-11_Melvin_FedWkfc_Testimony.pdf",
+    "live_body": "82fd78b27f862a103dc6f250996d94f0e8168cd337aa3dfe0dfe4c4ad95c0752",
+    "candidate_row": 9481,
+    "candidate_file": "11-15-11_Melvin_FedWkfc_Testimony.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "85afe0532f6c8e0b",
+    "live_row": 262906,
+    "live_file": "HR_5283_Westerman_ANS.pdf",
+    "live_body": "0df2d0da7fa60a361a37827992a10f60f317eaedaf070528f4328eb5589f1efb",
+    "candidate_row": 262906,
+    "candidate_file": "HR_5283_Westerman_ANS.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "8a4e17b459216f01",
+    "live_row": 209176,
+    "live_file": "HHRG-117-VR00-TTF-BarlettT-20220428-U1.pdf",
+    "live_body": "8a4e17b459216f01828836a52be81621e9d3f42cf186fa2fa744aec7043d19d1",
+    "candidate_row": 209176,
+    "candidate_file": "HHRG-117-VR00-TTF-BarlettT-20220428-U1.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "8b408d366abfb89d",
+    "live_row": 279172,
+    "live_file": "Testimony_Bakst.pdf",
+    "live_body": "5d1f51c93c7f94d606ea8fc859a271b4e3466adf9bef75d4dc43debbd3ef1476",
+    "candidate_row": 279172,
+    "candidate_file": "Testimony_Bakst.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "90bd27046786ab4e",
+    "live_row": 272503,
+    "live_file": "Resume_Nau.pdf",
+    "live_body": "34c58155d0edda4ff0e8c56ece278c1b133f9e19fc99915013970daa1b2d256b",
+    "candidate_row": 272503,
+    "candidate_file": "Resume_Nau.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "9c50cb2fe0da5c37",
+    "live_row": 12086,
+    "live_file": "12-14-11_Minority_Hearing_Powell_Testimony.pdf",
+    "live_body": "9c50cb2fe0da5c37e7cee66bdf3e6df603dd027db3e67fa7ac13668c9c2421f4",
+    "candidate_row": 12086,
+    "candidate_file": "12-14-11_Minority_Hearing_Powell_Testimony.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "9edf73c620331e8b",
+    "live_row": 12090,
+    "live_file": "12-14-11_NRC_Ostendorff_Testimony.pdf",
+    "live_body": "9edf73c620331e8bc0f96c048ec93662d6dd98a4e8a38bbb024c90fb563fe396",
+    "candidate_row": 12090,
+    "candidate_file": "12-14-11_NRC_Ostendorff_Testimony.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "a3002f39e37a6384",
+    "live_row": 279994,
+    "live_file": "Testimony_Whipps_Jr..pdf",
+    "live_body": "3192a4c231ded42fa10f880ca90e5868d6a71f1501581ebb97320908ba15e8cb",
+    "candidate_row": 279994,
+    "candidate_file": "Testimony_Whipps_Jr..pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "a38be43af4d9a72f",
+    "live_row": 188691,
+    "live_file": "HHRG-116-VR03-Transcript-20191030.pdf",
+    "live_body": "a38be43af4d9a72fe700e280e1fc65d1c80ea5eea607f38198ffc3cae72039ed",
+    "candidate_row": 188691,
+    "candidate_file": "HHRG-116-VR03-Transcript-20191030.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "aa4b1c25d0dba16e",
+    "live_row": 122462,
+    "live_file": "Foerter_Testimony_ICAC.pdf",
+    "live_body": "aa4b1c25d0dba16e3ac1a0213c7bd715767a3a9e7c94e106e56c2bc60aad8460",
+    "candidate_row": 122462,
+    "candidate_file": "Foerter_Testimony_ICAC.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "b6aaf0d8fdba71e2",
+    "live_row": 11961,
+    "live_file": "119153.htm",
+    "live_body": "b6aaf0d8fdba71e2609621633b4f7c4e46ab737230214730cfb7d9f4bf7081b3",
+    "candidate_row": 11961,
+    "candidate_file": "119153.htm",
+    "candidate_body": null
+   },
+   {
+    "key": "c137e0aee5aee263",
+    "live_row": 14944,
+    "live_file": "20090709Vargas.pdf",
+    "live_body": "1bf7f4055319d6fd657a4a8b3092e0fd2f995f3340fd3ebda21bc4e05f5b58ae",
+    "candidate_row": 14944,
+    "candidate_file": "20090709Vargas.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "d01597f14710e929",
+    "live_row": 195098,
+    "live_file": "HHRG-117-GO00-TTF-CrabtreeN-20211028.pdf",
+    "live_body": "d01597f14710e929691534f10b9cd598f2fae55d5bf4ab960bdfe170c44b71ab",
+    "candidate_row": 195098,
+    "candidate_file": "HHRG-117-GO00-TTF-CrabtreeN-20211028.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "d2ba37b370d011c1",
+    "live_row": 14600,
+    "live_file": "20090423Ruckelshaus.pdf",
+    "live_body": "d2ba37b370d011c118c25d4593901ade60d755188b4627c19c54c9d9fc5b8089",
+    "candidate_row": 14600,
+    "candidate_file": "20090423Ruckelshaus.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "dfdd2b8e943c1ef8",
+    "live_row": 229341,
+    "live_file": "HHRG-118-VR11-Transcript-20241212.pdf",
+    "live_body": "dfdd2b8e943c1ef811956f3aee64a25a8d093f938e44a20a93be091f3ae5ab57",
+    "candidate_row": 229341,
+    "candidate_file": "HHRG-118-VR11-Transcript-20241212.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "e75db22795c2294a",
+    "live_row": 123350,
+    "live_file": "Gordon_Testimony_3-16-11.pdf",
+    "live_body": "e75db22795c2294ac62e3af151a6a08cc460ccc895e7d5c4a0f64d6bb3c497cc",
+    "candidate_row": 123350,
+    "candidate_file": "Gordon_Testimony_3-16-11.pdf",
+    "candidate_body": null
+   },
+   {
+    "key": "e8c6aced18461017",
+    "live_row": 280028,
+    "live_file": "Testimony___Mitchell.pdf",
+    "live_body": "5d1f51c93c7f94d606ea8fc859a271b4e3466adf9bef75d4dc43debbd3ef1476",
+    "candidate_row": 280028,
+    "candidate_file": "Testimony___Mitchell.pdf",
+    "candidate_body": null
+   }
+  ],
+  "lookup_changed": 35,
+  "lookup_changed_answers": [
+   {
+    "key": "0f45528dba7e9b17",
+    "live_row": 12090,
+    "live_file": "12-14-11_NRC_Ostendorff_Testimony.pdf",
+    "live_body": "9edf73c620331e8bc0f96c048ec93662d6dd98a4e8a38bbb024c90fb563fe396",
+    "candidate_rows": [
+     12090
+    ],
+    "candidate_files": [
+     "12-14-11_NRC_Ostendorff_Testimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "1003a0f77575333a",
+    "live_row": 12156,
+    "live_file": "12-7-11_Medicaid_Fraud_Cantrell_Testimony_FINAL.pdf",
+    "live_body": "393a5e8418852b436a706417f3df51dc705e026a297d1b8a816c03091d025c06",
+    "candidate_rows": [
+     12156
+    ],
+    "candidate_files": [
+     "12-7-11_Medicaid_Fraud_Cantrell_Testimony_FINAL.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "27328945e2d71396",
+    "live_row": 5958,
+    "live_file": "07-26-23__us-economic-security-addressing-economic-coercion-and-increasing-competitiveness",
+    "live_body": "7451a1761b7038e9fe98499abb35b6d0a12b4002bc02759746e35bbfd06dd4c7",
+    "candidate_rows": [
+     5958
+    ],
+    "candidate_files": [
+     "07-26-23__us-economic-security-addressing-economic-coercion-and-increasing-competitiveness"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "2a06c2160242ec57",
+    "live_row": 229341,
+    "live_file": "HHRG-118-VR11-Transcript-20241212.pdf",
+    "live_body": "dfdd2b8e943c1ef811956f3aee64a25a8d093f938e44a20a93be091f3ae5ab57",
+    "candidate_rows": [
+     229341
+    ],
+    "candidate_files": [
+     "HHRG-118-VR11-Transcript-20241212.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "31e06c112999c560",
+    "live_row": 14600,
+    "live_file": "20090423Ruckelshaus.pdf",
+    "live_body": "d2ba37b370d011c118c25d4593901ade60d755188b4627c19c54c9d9fc5b8089",
+    "candidate_rows": [
+     14600
+    ],
+    "candidate_files": [
+     "20090423Ruckelshaus.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "32c560c4a1adbcd0",
+    "live_row": 209176,
+    "live_file": "HHRG-117-VR00-TTF-BarlettT-20220428-U1.pdf",
+    "live_body": "8a4e17b459216f01828836a52be81621e9d3f42cf186fa2fa744aec7043d19d1",
+    "candidate_rows": [
+     209176
+    ],
+    "candidate_files": [
+     "HHRG-117-VR00-TTF-BarlettT-20220428-U1.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "36f8e6c465ef4c03",
+    "live_row": 309479,
+    "live_file": "index.cfm",
+    "live_body": "42978b9c1d539c245f97ef6d0c353f293f603ec548b2be4d2fda3db4b602e8dd",
+    "candidate_rows": [
+     309479
+    ],
+    "candidate_files": [
+     "index.cfm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "3acb855f5f371461",
+    "live_row": 12158,
+    "live_file": "12-7-11_Medicaid_Fraud_Richard_West_Testimony.pdf",
+    "live_body": "08ca05e57e8d6dd91a3f8a4e6d593712bf4079af802f05fc0ccd1bc62a7bdd32",
+    "candidate_rows": [
+     12158
+    ],
+    "candidate_files": [
+     "12-7-11_Medicaid_Fraud_Richard_West_Testimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "3b4892e20d666282",
+    "live_row": 309624,
+    "live_file": "index.htm",
+    "live_body": "359e3b8b6b844d69fa29bd39c40f970af1586af0500dcda1f98a302721eafe1d",
+    "candidate_rows": [
+     309624
+    ],
+    "candidate_files": [
+     "index.htm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "43905cc500dbc8d8",
+    "live_row": 281269,
+    "live_file": "Walling Statement 3-15 Flint Water II.pdf",
+    "live_body": "ed0298387f8c87d6c6bc70241e4510e490fe8e2b4668e2595cbc7f0220d156b8",
+    "candidate_rows": [
+     281269
+    ],
+    "candidate_files": [
+     "Walling Statement 3-15 Flint Water II.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "498aaf5bf8d6e9c6",
+    "live_row": 12086,
+    "live_file": "12-14-11_Minority_Hearing_Powell_Testimony.pdf",
+    "live_body": "9c50cb2fe0da5c37e7cee66bdf3e6df603dd027db3e67fa7ac13668c9c2421f4",
+    "candidate_rows": [
+     12086
+    ],
+    "candidate_files": [
+     "12-14-11_Minority_Hearing_Powell_Testimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "4ddaeb39de768e80",
+    "live_row": 5958,
+    "live_file": "07-26-23__us-economic-security-addressing-economic-coercion-and-increasing-competitiveness",
+    "live_body": "7451a1761b7038e9fe98499abb35b6d0a12b4002bc02759746e35bbfd06dd4c7",
+    "candidate_rows": [
+     5958
+    ],
+    "candidate_files": [
+     "07-26-23__us-economic-security-addressing-economic-coercion-and-increasing-competitiveness"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "4e5e30b94496ec7a",
+    "live_row": 279994,
+    "live_file": "Testimony_Whipps_Jr..pdf",
+    "live_body": "3192a4c231ded42fa10f880ca90e5868d6a71f1501581ebb97320908ba15e8cb",
+    "candidate_rows": [
+     279994
+    ],
+    "candidate_files": [
+     "Testimony_Whipps_Jr..pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "578a47e330f2c804",
+    "live_row": 280028,
+    "live_file": "Testimony___Mitchell.pdf",
+    "live_body": "5d1f51c93c7f94d606ea8fc859a271b4e3466adf9bef75d4dc43debbd3ef1476",
+    "candidate_rows": [
+     280028
+    ],
+    "candidate_files": [
+     "Testimony___Mitchell.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "593efef5b41ba09f",
+    "live_row": 11960,
+    "live_file": "119037.htm",
+    "live_body": "6eea94ddc3e78724e11329a9c246a2986dd3d73c104097243b3a789b93b88f6d",
+    "candidate_rows": [
+     11960,
+     309624
+    ],
+    "candidate_files": [
+     "119037.htm",
+     "index.htm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "593efef5b41ba09f",
+    "live_row": 309624,
+    "live_file": "index.htm",
+    "live_body": "359e3b8b6b844d69fa29bd39c40f970af1586af0500dcda1f98a302721eafe1d",
+    "candidate_rows": [
+     11960,
+     309624
+    ],
+    "candidate_files": [
+     "119037.htm",
+     "index.htm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "6b62e3ab2a3f39c6",
+    "live_row": 195098,
+    "live_file": "HHRG-117-GO00-TTF-CrabtreeN-20211028.pdf",
+    "live_body": "d01597f14710e929691534f10b9cd598f2fae55d5bf4ab960bdfe170c44b71ab",
+    "candidate_rows": [
+     195098
+    ],
+    "candidate_files": [
+     "HHRG-117-GO00-TTF-CrabtreeN-20211028.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "71f4295ea6c1b264",
+    "live_row": 9481,
+    "live_file": "11-15-11_Melvin_FedWkfc_Testimony.pdf",
+    "live_body": "82fd78b27f862a103dc6f250996d94f0e8168cd337aa3dfe0dfe4c4ad95c0752",
+    "candidate_rows": [
+     9481
+    ],
+    "candidate_files": [
+     "11-15-11_Melvin_FedWkfc_Testimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "74aea46a271514d9",
+    "live_row": 123350,
+    "live_file": "Gordon_Testimony_3-16-11.pdf",
+    "live_body": "e75db22795c2294ac62e3af151a6a08cc460ccc895e7d5c4a0f64d6bb3c497cc",
+    "candidate_rows": [
+     123350
+    ],
+    "candidate_files": [
+     "Gordon_Testimony_3-16-11.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "8d35fce87c6a3d5e",
+    "live_row": 209176,
+    "live_file": "HHRG-117-VR00-TTF-BarlettT-20220428-U1.pdf",
+    "live_body": "8a4e17b459216f01828836a52be81621e9d3f42cf186fa2fa744aec7043d19d1",
+    "candidate_rows": [
+     209176
+    ],
+    "candidate_files": [
+     "HHRG-117-VR00-TTF-BarlettT-20220428-U1.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "8da43e077afc1d68",
+    "live_row": 281269,
+    "live_file": "Walling Statement 3-15 Flint Water II.pdf",
+    "live_body": "ed0298387f8c87d6c6bc70241e4510e490fe8e2b4668e2595cbc7f0220d156b8",
+    "candidate_rows": [
+     281269
+    ],
+    "candidate_files": [
+     "Walling Statement 3-15 Flint Water II.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "919a35c3444c9e1d",
+    "live_row": 309479,
+    "live_file": "index.cfm",
+    "live_body": "42978b9c1d539c245f97ef6d0c353f293f603ec548b2be4d2fda3db4b602e8dd",
+    "candidate_rows": [
+     309479
+    ],
+    "candidate_files": [
+     "index.cfm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "a14c46e42e823984",
+    "live_row": 188691,
+    "live_file": "HHRG-116-VR03-Transcript-20191030.pdf",
+    "live_body": "a38be43af4d9a72fe700e280e1fc65d1c80ea5eea607f38198ffc3cae72039ed",
+    "candidate_rows": [
+     188691
+    ],
+    "candidate_files": [
+     "HHRG-116-VR03-Transcript-20191030.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "aa4c6c4cc809db52",
+    "live_row": 5958,
+    "live_file": "07-26-23__us-economic-security-addressing-economic-coercion-and-increasing-competitiveness",
+    "live_body": "7451a1761b7038e9fe98499abb35b6d0a12b4002bc02759746e35bbfd06dd4c7",
+    "candidate_rows": [
+     5958
+    ],
+    "candidate_files": [
+     "07-26-23__us-economic-security-addressing-economic-coercion-and-increasing-competitiveness"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "ac01048aeec75593",
+    "live_row": 9553,
+    "live_file": "11-2-11_RegAffairs_Montgomery_Testimony.pdf",
+    "live_body": "4c53c6108c99bae5c65cd025df50d083f3d48c38f0ae5825d965773e274a0533",
+    "candidate_rows": [
+     9553
+    ],
+    "candidate_files": [
+     "11-2-11_RegAffairs_Montgomery_Testimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "af7a5e6f91eba855",
+    "live_row": 14743,
+    "live_file": "20090519Reuter.pdf",
+    "live_body": "05fc38c285f3af951f46a477743c95d92721544a6d7ca215ffae339e9555bcb0",
+    "candidate_rows": [
+     14743
+    ],
+    "candidate_files": [
+     "20090519Reuter.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "af7f8264497da788",
+    "live_row": 262906,
+    "live_file": "HR_5283_Westerman_ANS.pdf",
+    "live_body": "0df2d0da7fa60a361a37827992a10f60f317eaedaf070528f4328eb5589f1efb",
+    "candidate_rows": [
+     262906
+    ],
+    "candidate_files": [
+     "HR_5283_Westerman_ANS.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "b54e63b07aa71051",
+    "live_row": 14944,
+    "live_file": "20090709Vargas.pdf",
+    "live_body": "1bf7f4055319d6fd657a4a8b3092e0fd2f995f3340fd3ebda21bc4e05f5b58ae",
+    "candidate_rows": [
+     14944
+    ],
+    "candidate_files": [
+     "20090709Vargas.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "b8c91da6ea3656f3",
+    "live_row": 23439,
+    "live_file": "4-20-11_Simpson_Syracuse_Testimony.pdf",
+    "live_body": "7b2002ff1a8592d3f2ebe5c3c4d311efb6b66bc2e27583adba7c936bb599a42f",
+    "candidate_rows": [
+     23439
+    ],
+    "candidate_files": [
+     "4-20-11_Simpson_Syracuse_Testimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "c624be6b010f8c0c",
+    "live_row": 11961,
+    "live_file": "119153.htm",
+    "live_body": "b6aaf0d8fdba71e2609621633b4f7c4e46ab737230214730cfb7d9f4bf7081b3",
+    "candidate_rows": [
+     11961,
+     11962
+    ],
+    "candidate_files": [
+     "119153.htm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "c624be6b010f8c0c",
+    "live_row": 11962,
+    "live_file": "119153.htm",
+    "live_body": "82867326cf8750a2cb2de9b3cd5f25b447269fcd870440390f7512f8e08d1d5e",
+    "candidate_rows": [
+     11961,
+     11962
+    ],
+    "candidate_files": [
+     "119153.htm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "cdc7c0e96f751fcc",
+    "live_row": 122462,
+    "live_file": "Foerter_Testimony_ICAC.pdf",
+    "live_body": "aa4b1c25d0dba16e3ac1a0213c7bd715767a3a9e7c94e106e56c2bc60aad8460",
+    "candidate_rows": [
+     122462
+    ],
+    "candidate_files": [
+     "Foerter_Testimony_ICAC.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "e30ad3079834afb9",
+    "live_row": 139134,
+    "live_file": "HHRG-114-AS29-Bio-WeatheringtonD-20150325.pdf",
+    "live_body": "0cbdd25415da26601674299579e37c5f96858ab8a31540af9c7370aae7a1557c",
+    "candidate_rows": [
+     139134
+    ],
+    "candidate_files": [
+     "HHRG-114-AS29-Bio-WeatheringtonD-20150325.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "f05c51e94ce74575",
+    "live_row": 279172,
+    "live_file": "Testimony_Bakst.pdf",
+    "live_body": "5d1f51c93c7f94d606ea8fc859a271b4e3466adf9bef75d4dc43debbd3ef1476",
+    "candidate_rows": [
+     279172
+    ],
+    "candidate_files": [
+     "Testimony_Bakst.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "f58f30e5d27a9cd3",
+    "live_row": 28668,
+    "live_file": "9-13-2011_BousheyTestimony.pdf",
+    "live_body": "65b640217635a3781ea353b1cbd5a93f5f2705a0304b2da10e860ee1bfb819ca",
+    "candidate_rows": [
+     28668
+    ],
+    "candidate_files": [
+     "9-13-2011_BousheyTestimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "f807091e1bc27228",
+    "live_row": 272503,
+    "live_file": "Resume_Nau.pdf",
+    "live_body": "34c58155d0edda4ff0e8c56ece278c1b133f9e19fc99915013970daa1b2d256b",
+    "candidate_rows": [
+     272503
+    ],
+    "candidate_files": [
+     "Resume_Nau.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "f910ce544e0e4603",
+    "live_row": 14869,
+    "live_file": "20090624Dicken.pdf",
+    "live_body": "4c90083757ecf4ef6ec56d23c326d236acdc31720c8b43d200079ff39de4fcdc",
+    "candidate_rows": [
+     14869
+    ],
+    "candidate_files": [
+     "20090624Dicken.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   }
+  ],
+  "address_changed": 26,
+  "address_changed_answers": [
+   {
+    "key": "http://docs.house.gov/meetings/AS/AS29/20150325/103106/HHRG-114-AS29-Bio-WeatheringtonD-20150325.pdf",
+    "live_row": 139134,
+    "live_file": "HHRG-114-AS29-Bio-WeatheringtonD-20150325.pdf",
+    "live_body": "0cbdd25415da26601674299579e37c5f96858ab8a31540af9c7370aae7a1557c",
+    "candidate_rows": [
+     139134
+    ],
+    "candidate_files": [
+     "HHRG-114-AS29-Bio-WeatheringtonD-20150325.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://2009-2017.state.gov/j/drl/rls/hrrpt/2009//index.htm",
+    "live_row": 309624,
+    "live_file": "index.htm",
+    "live_body": "359e3b8b6b844d69fa29bd39c40f970af1586af0500dcda1f98a302721eafe1d",
+    "candidate_rows": [
+     309624
+    ],
+    "candidate_files": [
+     "index.htm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://docs.house.gov/meetings/AS/AS29/20150325/103106/HHRG-114-AS29-Bio-WeatheringtonD-20150325.pdf",
+    "live_row": 139134,
+    "live_file": "HHRG-114-AS29-Bio-WeatheringtonD-20150325.pdf",
+    "live_body": "0cbdd25415da26601674299579e37c5f96858ab8a31540af9c7370aae7a1557c",
+    "candidate_rows": [
+     139134
+    ],
+    "candidate_files": [
+     "HHRG-114-AS29-Bio-WeatheringtonD-20150325.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://docs.house.gov/meetings/VR/VR00/20220428/114671/HHRG-117-VR00-TTF-BarlettT-20220428-U1.pdf",
+    "live_row": 209176,
+    "live_file": "HHRG-117-VR00-TTF-BarlettT-20220428-U1.pdf",
+    "live_body": "8a4e17b459216f01828836a52be81621e9d3f42cf186fa2fa744aec7043d19d1",
+    "candidate_rows": [
+     209176
+    ],
+    "candidate_files": [
+     "HHRG-117-VR00-TTF-BarlettT-20220428-U1.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/11-15-11_Melvin_FedWkfc_Testimony.pdf",
+    "live_row": 9481,
+    "live_file": "11-15-11_Melvin_FedWkfc_Testimony.pdf",
+    "live_body": "82fd78b27f862a103dc6f250996d94f0e8168cd337aa3dfe0dfe4c4ad95c0752",
+    "candidate_rows": [
+     9481
+    ],
+    "candidate_files": [
+     "11-15-11_Melvin_FedWkfc_Testimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/11-2-11_RegAffairs_Montgomery_Testimony.pdf",
+    "live_row": 9553,
+    "live_file": "11-2-11_RegAffairs_Montgomery_Testimony.pdf",
+    "live_body": "4c53c6108c99bae5c65cd025df50d083f3d48c38f0ae5825d965773e274a0533",
+    "candidate_rows": [
+     9553
+    ],
+    "candidate_files": [
+     "11-2-11_RegAffairs_Montgomery_Testimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/12-14-11_Minority_Hearing_Powell_Testimony.pdf",
+    "live_row": 12086,
+    "live_file": "12-14-11_Minority_Hearing_Powell_Testimony.pdf",
+    "live_body": "9c50cb2fe0da5c37e7cee66bdf3e6df603dd027db3e67fa7ac13668c9c2421f4",
+    "candidate_rows": [
+     12086
+    ],
+    "candidate_files": [
+     "12-14-11_Minority_Hearing_Powell_Testimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/12-14-11_NRC_Ostendorff_Testimony.pdf",
+    "live_row": 12090,
+    "live_file": "12-14-11_NRC_Ostendorff_Testimony.pdf",
+    "live_body": "9edf73c620331e8bc0f96c048ec93662d6dd98a4e8a38bbb024c90fb563fe396",
+    "candidate_rows": [
+     12090
+    ],
+    "candidate_files": [
+     "12-14-11_NRC_Ostendorff_Testimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/12-7-11_Medicaid_Fraud_Cantrell_Testimony_FINAL.pdf",
+    "live_row": 12156,
+    "live_file": "12-7-11_Medicaid_Fraud_Cantrell_Testimony_FINAL.pdf",
+    "live_body": "393a5e8418852b436a706417f3df51dc705e026a297d1b8a816c03091d025c06",
+    "candidate_rows": [
+     12156
+    ],
+    "candidate_files": [
+     "12-7-11_Medicaid_Fraud_Cantrell_Testimony_FINAL.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/12-7-11_Medicaid_Fraud_Richard_West_Testimony.pdf",
+    "live_row": 12158,
+    "live_file": "12-7-11_Medicaid_Fraud_Richard_West_Testimony.pdf",
+    "live_body": "08ca05e57e8d6dd91a3f8a4e6d593712bf4079af802f05fc0ccd1bc62a7bdd32",
+    "candidate_rows": [
+     12158
+    ],
+    "candidate_files": [
+     "12-7-11_Medicaid_Fraud_Richard_West_Testimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/20090423Ruckelshaus.pdf",
+    "live_row": 14600,
+    "live_file": "20090423Ruckelshaus.pdf",
+    "live_body": "d2ba37b370d011c118c25d4593901ade60d755188b4627c19c54c9d9fc5b8089",
+    "candidate_rows": [
+     14600
+    ],
+    "candidate_files": [
+     "20090423Ruckelshaus.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/20090519Reuter.pdf",
+    "live_row": 14743,
+    "live_file": "20090519Reuter.pdf",
+    "live_body": "05fc38c285f3af951f46a477743c95d92721544a6d7ca215ffae339e9555bcb0",
+    "candidate_rows": [
+     14743
+    ],
+    "candidate_files": [
+     "20090519Reuter.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/20090624Dicken.pdf",
+    "live_row": 14869,
+    "live_file": "20090624Dicken.pdf",
+    "live_body": "4c90083757ecf4ef6ec56d23c326d236acdc31720c8b43d200079ff39de4fcdc",
+    "candidate_rows": [
+     14869
+    ],
+    "candidate_files": [
+     "20090624Dicken.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/20090709Vargas.pdf",
+    "live_row": 14944,
+    "live_file": "20090709Vargas.pdf",
+    "live_body": "1bf7f4055319d6fd657a4a8b3092e0fd2f995f3340fd3ebda21bc4e05f5b58ae",
+    "candidate_rows": [
+     14944
+    ],
+    "candidate_files": [
+     "20090709Vargas.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/4-20-11_Simpson_Syracuse_Testimony.pdf",
+    "live_row": 23439,
+    "live_file": "4-20-11_Simpson_Syracuse_Testimony.pdf",
+    "live_body": "7b2002ff1a8592d3f2ebe5c3c4d311efb6b66bc2e27583adba7c936bb599a42f",
+    "candidate_rows": [
+     23439
+    ],
+    "candidate_files": [
+     "4-20-11_Simpson_Syracuse_Testimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/9-13-2011_BousheyTestimony.pdf",
+    "live_row": 28668,
+    "live_file": "9-13-2011_BousheyTestimony.pdf",
+    "live_body": "65b640217635a3781ea353b1cbd5a93f5f2705a0304b2da10e860ee1bfb819ca",
+    "candidate_rows": [
+     28668
+    ],
+    "candidate_files": [
+     "9-13-2011_BousheyTestimony.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/Foerter_Testimony_ICAC.pdf",
+    "live_row": 122462,
+    "live_file": "Foerter_Testimony_ICAC.pdf",
+    "live_body": "aa4b1c25d0dba16e3ac1a0213c7bd715767a3a9e7c94e106e56c2bc60aad8460",
+    "candidate_rows": [
+     122462
+    ],
+    "candidate_files": [
+     "Foerter_Testimony_ICAC.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://oversight.house.gov/wp-content/uploads/2012/01/Gordon_Testimony_3-16-11.pdf",
+    "live_row": 123350,
+    "live_file": "Gordon_Testimony_3-16-11.pdf",
+    "live_body": "e75db22795c2294ac62e3af151a6a08cc460ccc895e7d5c4a0f64d6bb3c497cc",
+    "candidate_rows": [
+     123350
+    ],
+    "candidate_files": [
+     "Gordon_Testimony_3-16-11.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://www.congress.gov/116/meeting/house/110128/documents/HHRG-116-VR03-Transcript-20191030.pdf",
+    "live_row": 188691,
+    "live_file": "HHRG-116-VR03-Transcript-20191030.pdf",
+    "live_body": "a38be43af4d9a72fe700e280e1fc65d1c80ea5eea607f38198ffc3cae72039ed",
+    "candidate_rows": [
+     188691
+    ],
+    "candidate_files": [
+     "HHRG-116-VR03-Transcript-20191030.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://www.congress.gov/117/meeting/house/114185/witnesses/HHRG-117-GO00-TTF-CrabtreeN-20211028.pdf",
+    "live_row": 195098,
+    "live_file": "HHRG-117-GO00-TTF-CrabtreeN-20211028.pdf",
+    "live_body": "d01597f14710e929691534f10b9cd598f2fae55d5bf4ab960bdfe170c44b71ab",
+    "candidate_rows": [
+     195098
+    ],
+    "candidate_files": [
+     "HHRG-117-GO00-TTF-CrabtreeN-20211028.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://www.congress.gov/117/meeting/house/114671/witnesses/HHRG-117-VR00-TTF-BarlettT-20220428-U1.pdf",
+    "live_row": 209176,
+    "live_file": "HHRG-117-VR00-TTF-BarlettT-20220428-U1.pdf",
+    "live_body": "8a4e17b459216f01828836a52be81621e9d3f42cf186fa2fa744aec7043d19d1",
+    "candidate_rows": [
+     209176
+    ],
+    "candidate_files": [
+     "HHRG-117-VR00-TTF-BarlettT-20220428-U1.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://www.congress.gov/118/meeting/house/117751/documents/HHRG-118-VR11-Transcript-20241212.pdf",
+    "live_row": 229341,
+    "live_file": "HHRG-118-VR11-Transcript-20241212.pdf",
+    "live_body": "dfdd2b8e943c1ef811956f3aee64a25a8d093f938e44a20a93be091f3ae5ab57",
+    "candidate_rows": [
+     229341
+    ],
+    "candidate_files": [
+     "HHRG-118-VR11-Transcript-20241212.pdf"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://www.foreign.senate.gov/download/07-26-23__us-economic-security-addressing-economic-coercion-and-increasing-competitiveness",
+    "live_row": 5958,
+    "live_file": "07-26-23__us-economic-security-addressing-economic-coercion-and-increasing-competitiveness",
+    "live_body": "7451a1761b7038e9fe98499abb35b6d0a12b4002bc02759746e35bbfd06dd4c7",
+    "candidate_rows": [
+     5958
+    ],
+    "candidate_files": [
+     "07-26-23__us-economic-security-addressing-economic-coercion-and-increasing-competitiveness"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://www.jec.senate.gov/public/index.cfm?a=Files.Serve&File_id=8DCDE177-FED6-4D41-89ED-9D92E0BCC827",
+    "live_row": 309479,
+    "live_file": "index.cfm",
+    "live_body": "42978b9c1d539c245f97ef6d0c353f293f603ec548b2be4d2fda3db4b602e8dd",
+    "candidate_rows": [
+     309479
+    ],
+    "candidate_files": [
+     "index.cfm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://www.state.gov/g/drl/rls/hrrpt/2008/eap/119037.htm",
+    "live_row": 11960,
+    "live_file": "119037.htm",
+    "live_body": "6eea94ddc3e78724e11329a9c246a2986dd3d73c104097243b3a789b93b88f6d",
+    "candidate_rows": [
+     11960,
+     309624
+    ],
+    "candidate_files": [
+     "119037.htm",
+     "index.htm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://www.state.gov/g/drl/rls/hrrpt/2008/eap/119037.htm",
+    "live_row": 309624,
+    "live_file": "index.htm",
+    "live_body": "359e3b8b6b844d69fa29bd39c40f970af1586af0500dcda1f98a302721eafe1d",
+    "candidate_rows": [
+     11960,
+     309624
+    ],
+    "candidate_files": [
+     "119037.htm",
+     "index.htm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://www.state.gov/g/drl/rls/hrrpt/2008/wha/119153.htm",
+    "live_row": 11961,
+    "live_file": "119153.htm",
+    "live_body": "b6aaf0d8fdba71e2609621633b4f7c4e46ab737230214730cfb7d9f4bf7081b3",
+    "candidate_rows": [
+     11961,
+     11962
+    ],
+    "candidate_files": [
+     "119153.htm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   },
+   {
+    "key": "https://www.state.gov/g/drl/rls/hrrpt/2008/wha/119153.htm",
+    "live_row": 11962,
+    "live_file": "119153.htm",
+    "live_body": "82867326cf8750a2cb2de9b3cd5f25b447269fcd870440390f7512f8e08d1d5e",
+    "candidate_rows": [
+     11961,
+     11962
+    ],
+    "candidate_files": [
+     "119153.htm"
+    ],
+    "candidate_bodies": [
+     null
+    ]
+   }
+  ],
+  "demoted": 0,
+  "demoted_answers": [],
+  "ok": false
+ },
+ "withdrawal_review": {
+  "candidate": "1fad38cc75ba023aca4af5b2184564869eff9831414c00678310d38370f89eae",
+  "prior": "0e7084cde775d0064646c56b2200a14e1f13d8b512f1a61a6fe815d597faf4d3",
+  "changed_artifacts": [
+   "detail.parquet",
+   "recoveries.parquet",
+   "schema.json",
+   "sources.parquet"
+  ],
+  "unchanged_artifacts": 30,
+  "affected_records": 31,
+  "reviewed_bad_bodies": 30,
+  "matched_answers": {
+   "link": {
+    "distinct": 32,
+    "findings": 32
+   },
+   "lookup_": {
+    "distinct": 35,
+    "findings": 37
+   },
+   "address_": {
+    "distinct": 26,
+    "findings": 28
+   }
+  },
+  "removed_recoveries": 6,
+  "reclassified_source_rows": 25,
+  "exact_schema_reproduction": true,
+  "unmatched_changes": [],
+  "source_inventory_sha256": "c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae",
+  "registry": "model/registries/unusable-downloads.json",
+  "public_baseline": "0e7084cde775d0064646c56b2200a14e1f13d8b512f1a61a6fe815d597faf4d3"
+ }
+}
