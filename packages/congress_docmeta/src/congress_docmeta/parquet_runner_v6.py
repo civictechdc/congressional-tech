@@ -1568,18 +1568,11 @@ def run_docmeta_parquet_sweep(
                         sys_ids = shared_sys_ids if prompts_ids[0][:lcp] == shared_sys_ids else []
                         lcp = len(sys_ids)
 
-                    std_up_ff = list(gh_std.upfront_ff)
-                    suf_ids = [x[lcp:] + std_up_ff for x in prompts_ids]
                     eff_b = min(eff_b_slots_cap, n_act)
-                    doc_order = compute_rolling_doc_order(
-                        suf_ids,
-                        b_slots=eff_b,
-                        sort_by_length=sort_by_length,
-                    )
                     gh_base: Any = (
                         per_doc_grammar_v6(
                             gh_std,
-                            doc_order,
+                            (),
                             wire_format=pass1_wire,
                             doc_target_kinds=doc_target_kinds,
                             grammar_cache=kind_grammar_cache,
@@ -1592,6 +1585,31 @@ def run_docmeta_parquet_sweep(
                     if doc_target_kinds:
                         for tk_warm in set(doc_target_kinds.values()):
                             gh_base.get_grammar_entry(tk_warm)
+
+                    up_fn = getattr(gh_base, "upfront_ff_for_doc", None)
+                    std_up_ff = list(gh_std.upfront_ff)
+                    upfront_by_slot: list[list[int]] = [
+                        list(up_fn(doc_idx)) if callable(up_fn) else list(std_up_ff)
+                        for doc_idx in range(n_act)
+                    ]
+                    suf_ids = [x[lcp:] + upfront_by_slot[doc_idx] for doc_idx, x in enumerate(prompts_ids)]
+                    doc_order = compute_rolling_doc_order(
+                        suf_ids,
+                        b_slots=eff_b,
+                        sort_by_length=sort_by_length,
+                    )
+                    if doc_target_kinds:
+                        if hasattr(gh_base, "_doc_order"):
+                            gh_base._doc_order = list(doc_order)
+                        else:
+                            gh_base = per_doc_grammar_v6(
+                                gh_std,
+                                doc_order,
+                                wire_format=pass1_wire,
+                                doc_target_kinds=doc_target_kinds,
+                                grammar_cache=kind_grammar_cache,
+                                sync_ff_with_std=True,
+                            )
 
                     tel_wrapper: Any = None
                     if tel_mode != "off":
@@ -1630,7 +1648,7 @@ def run_docmeta_parquet_sweep(
 
                     for slot_i, gen_t in enumerate(res["gen_toks"]):
                         orig_idx = active_indices[slot_i]
-                        full_t = std_up_ff + list(gen_t)
+                        full_t = upfront_by_slot[slot_i] + list(gen_t)
                         raw_llm_texts[orig_idx] = tok.decode(full_t, skip_special_tokens=True)
                         out_tok_lens[orig_idx] = len(full_t)
                         total_completion_tokens += len(full_t)

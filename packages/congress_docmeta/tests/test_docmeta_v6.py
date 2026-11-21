@@ -1560,3 +1560,222 @@ def test_sweep_and_teacher_recover_from_strict_v4_validation_failures(
             current_texts=[json.dumps(valid_doc, separators=(",", ":"))],
             current_anomalies=[dict(pass1_anoms[2])],
         )
+
+
+def test_per_doc_upfront_ff_used_in_pythonic_and_parquet_runner_v6(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Both `PythonicEngineV6.run_records` and `run_docmeta_parquet_sweep` query `upfront_ff_for_doc(doc_idx)`."""
+    import sys
+    import types
+
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    from congress_docmeta import PythonicEngineV6, parquet_runner_v6
+
+    class _ByteTokenizer:
+        def apply_chat_template(self, msgs: list[dict[str, str]], **_: Any) -> str:
+            return "\n".join(f"<{m['role']}>{m['content']}" for m in msgs) + "\n<assistant>"
+
+        def encode(self, text: str, add_special_tokens: bool = False) -> list[int]:
+            return list(text.encode("utf-8"))
+
+        def decode(self, ids: list[int], skip_special_tokens: bool = True) -> str:
+            return bytes(int(i) & 0xFF for i in ids).decode("utf-8", errors="replace")
+
+    tok = _ByteTokenizer()
+    std_prefix = '{"status":'
+    locked_prefix = '{"primary_kind":"truth_in_testimony_disclosure","status":'
+    std_up_ff = tok.encode(std_prefix)
+    locked_up_ff = tok.encode(locked_prefix)
+
+    class _StubGrammarHelper:
+        def __init__(self, _tok: Any, _schema: Any, _new_to_old: Any = None, **_: Any) -> None:
+            self.upfront_ff = list(std_up_ff)
+
+    class _PerDocStubHelper:
+        def __init__(
+            self,
+            gh_std: Any,
+            doc_order: Any = (),
+            *,
+            doc_schema_keys: dict[int, str] | None = None,
+            schema_for_key: Any = None,
+            grammar_cache: dict[str, Any] | None = None,
+            sync_ff_with_std: bool = False,
+        ) -> None:
+            self._gh_std = gh_std
+            self.upfront_ff = list(gh_std.upfront_ff)
+            self._doc_order = list(doc_order)
+            self._doc_schema_keys = dict(doc_schema_keys or {})
+            self._cache = grammar_cache if grammar_cache is not None else {}
+            self._cursor = 0
+            self.dispatched_doc_indices: list[int] = []
+            self.queried_doc_indices: list[int] = []
+
+        def get_grammar_entry(self, key: str) -> tuple[str, list[int]]:
+            entry = self._cache.get(key)
+            if entry is None:
+                entry = (key, list(locked_up_ff))
+                self._cache[key] = entry
+            return entry
+
+        def upfront_ff_for_doc(self, doc_idx: int) -> list[int]:
+            self.queried_doc_indices.append(int(doc_idx))
+            if int(doc_idx) in self._doc_schema_keys:
+                return list(locked_up_ff)
+            return list(self.upfront_ff)
+
+        def new_matcher_for_doc(self, doc_idx: int) -> object:
+            self._cursor += 1
+            self.dispatched_doc_indices.append(int(doc_idx))
+            return object()
+
+    def _compute_order(suf_ids: list[list[int]], *, b_slots: int = 256, sort_by_length: bool = True) -> list[int]:
+        n = len(suf_ids)
+        eff_b = max(1, min(int(b_slots), n))
+        if sort_by_length and n > eff_b:
+            return sorted(range(n), key=lambda d: -len(suf_ids[d]))
+        return list(range(n))
+
+    fg4_pkg = types.ModuleType("fast_gemma4")
+    fg4_gram = types.ModuleType("fast_gemma4.grammar")
+    fg4_gram.GrammarHelper = _StubGrammarHelper  # type: ignore[attr-defined]
+    fg4_pdg = types.ModuleType("fast_gemma4.per_doc_grammar")
+    fg4_pdg.PerDocGrammarHelper = _PerDocStubHelper  # type: ignore[attr-defined]
+    fg4_pdg.compute_rolling_doc_order = _compute_order  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "fast_gemma4", fg4_pkg)
+    monkeypatch.setitem(sys.modules, "fast_gemma4.grammar", fg4_gram)
+    monkeypatch.setitem(sys.modules, "fast_gemma4.per_doc_grammar", fg4_pdg)
+
+    ttf_tail = (
+        '"usable","text_quality":"native","chamber":"house","congress":118,'
+        '"committees":["Committee on Science, Space, and Technology"],"doc_date":"2024-05-15",'
+        '"date_spans":["2024-05-15"],"composed_title":"Truth in Testimony Disclosure of Jane Doe",'
+        '"gist":"Jane Doe submitted a Truth in Testimony disclosure form.","topics":["oversight"]}'
+    )
+    open_tail = (
+        '"usable","text_quality":"native","chamber":"house","congress":118,'
+        '"committees":["Committee on Science, Space, and Technology"],"doc_date":"2024-05-15",'
+        '"date_spans":["2024-05-15"],"primary_kind":"witness_statement",'
+        '"composed_title":"Testimony of Jane Doe","gist":"Jane Doe testified on electric grid reliability.",'
+        '"topics":["energy"]}'
+    )
+
+    class _CapturingEngine:
+        def __init__(self, tails: list[str]) -> None:
+            self.tokenizer = tok
+            self.new_to_old = list(range(256))
+            self._tails = tails
+            self.last_kwargs: dict[str, Any] = {}
+
+        def run_rolling(self, **kwargs: Any) -> dict[str, Any]:
+            self.last_kwargs = kwargs
+            gh = kwargs["gh"]
+            n = len(kwargs["suf_ids_list"])
+            if hasattr(gh, "new_matcher_for_doc"):
+                for di in range(n):
+                    gh.new_matcher_for_doc(di)
+            return {
+                "gen_toks": [tok.encode(t) for t in self._tails],
+                "prefill_sec": 0.01,
+                "decode_sec": 0.01,
+                "mask_fallbacks": 0,
+                "llm_steps": n,
+                "ff_early14_steps": 0,
+            }
+
+    ttf_text = "Truth in Testimony Disclosure Form\n1. Your Name: Jane Doe\n2. Federal Grants Received: None."
+    open_text = "Statement of Jane Doe before the House Committee on Science, Space, and Technology on electric grid reliability."
+
+    # 1. PythonicEngineV6.run_records queries upfront_ff_for_doc per doc for both suf_ids and text reconstruction.
+    eng_py = _CapturingEngine([ttf_tail, open_tail])
+    py_v6 = PythonicEngineV6(eng_py, wire_format="v4")
+    rec_out = py_v6.run_records(
+        [
+            {"filename": "HHRG-118-SY00-TTF-DoeJ-20240515.pdf", "text": ttf_text, "known": "{}"},
+            {"filename": "HHRG-118-SY00-Wstate-DoeJ-20240515.pdf", "text": open_text, "known": "{}"},
+        ],
+        B_slots=1,
+        sort_by_length=True,
+        use_zero_llm_bypass=False,
+        short_circuit_triage=False,
+    )
+    gh_used_py = eng_py.last_kwargs["gh"]
+    assert isinstance(gh_used_py, _PerDocStubHelper)
+    assert gh_used_py.queried_doc_indices == [0, 1]
+    assert eng_py.last_kwargs["suf_ids_list"][0][-len(locked_up_ff) :] == locked_up_ff
+    assert eng_py.last_kwargs["suf_ids_list"][1][-len(std_up_ff) :] == std_up_ff
+    assert gh_used_py._doc_order == _compute_order(eng_py.last_kwargs["suf_ids_list"], b_slots=1, sort_by_length=True)
+    assert json.loads(rec_out["raw_llm_texts"][0])["primary_kind"] == "truth_in_testimony_disclosure"
+    assert json.loads(rec_out["raw_llm_texts"][1])["primary_kind"] == "witness_statement"
+
+    # 2. run_docmeta_parquet_sweep queries upfront_ff_for_doc per doc for both suf_ids and raw_llm_texts.
+    queue_rows = [
+        {
+            "list_row": 0,
+            "link_key_hex": f"{1:016x}",
+            "saved_body_hex": f"{1:064x}",
+            "disposition": "llm_queue",
+            "v6_route": "deterministic_enriched_locked_kind",
+            "filename": "HHRG-118-SY00-TTF-DoeJ-20240515.pdf",
+            "effective_format": "pdf",
+            "p12_raw_text": ttf_text,
+            "p12_clean_text": ttf_text,
+            "known_json": "{}",
+            "locked_primary_kind": "truth_in_testimony_disclosure",
+            "grammar_lock_source": "tier1_text",
+        },
+        {
+            "list_row": 1,
+            "link_key_hex": f"{2:016x}",
+            "saved_body_hex": f"{2:064x}",
+            "disposition": "llm_queue",
+            "v6_route": "deterministic_enriched_open_kind",
+            "filename": "HHRG-118-SY00-Wstate-DoeJ-20240515.pdf",
+            "effective_format": "pdf",
+            "p12_raw_text": open_text,
+            "p12_clean_text": open_text,
+            "known_json": "{}",
+            "locked_primary_kind": None,
+            "grammar_lock_source": None,
+        },
+    ]
+    in_pq = tmp_path / "upfront_in.parquet"
+    out_pq = tmp_path / "upfront_out.parquet"
+    pq.write_table(pa.Table.from_pylist(queue_rows), in_pq)
+
+    eng_pq = _CapturingEngine([ttf_tail, open_tail])
+    parquet_runner_v6.run_docmeta_parquet_sweep(
+        eng_pq,
+        in_pq,
+        out_pq,
+        chunk_rows=4,
+        b_slots=1,
+        sort_by_length=True,
+        wire_format="v4",
+        grammar_router="none",
+        use_ane_ring=False,
+    )
+    gh_used_pq = eng_pq.last_kwargs["gh"]
+    assert isinstance(gh_used_pq, _PerDocStubHelper)
+    assert gh_used_pq.queried_doc_indices == [0, 1]
+    assert eng_pq.last_kwargs["suf_ids_list"][0][-len(locked_up_ff) :] == locked_up_ff
+    assert eng_pq.last_kwargs["suf_ids_list"][1][-len(std_up_ff) :] == std_up_ff
+    assert gh_used_pq._doc_order == _compute_order(eng_pq.last_kwargs["suf_ids_list"], b_slots=1, sort_by_length=True)
+    out_rows = pq.read_table(out_pq).to_pylist()
+    assert out_rows[0]["primary_kind"] == "truth_in_testimony_disclosure"
+    assert out_rows[1]["primary_kind"] == "witness_statement"
+
+    # 3. Fallback to list(gh_std.upfront_ff) when gh_base lacks upfront_ff_for_doc.
+    eng_fallback = _CapturingEngine([open_tail])
+    py_fb = PythonicEngineV6(eng_fallback, wire_format="v4")
+    assert not hasattr(py_fb.gh_std, "upfront_ff_for_doc")
+    fb_out = py_fb.run_records(
+        [{"filename": "HHRG-118-SY00-Wstate-DoeJ-20240515.pdf", "text": open_text, "known": "{}"}],
+        use_zero_llm_bypass=False,
+        short_circuit_triage=False,
+    )
+    assert eng_fallback.last_kwargs["suf_ids_list"][0][-len(std_up_ff) :] == std_up_ff
+    assert json.loads(fb_out["raw_llm_texts"][0])["primary_kind"] == "witness_statement"

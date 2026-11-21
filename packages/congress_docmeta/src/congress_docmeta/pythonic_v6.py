@@ -1941,20 +1941,11 @@ class PythonicEngineV6:
             for k in set(doc_target_kinds.values()):
                 self.get_kind_grammar(k)
 
-            std_up_ff = list(self.gh_std.upfront_ff)
-            upfront_by_slot: list[list[int]] = [std_up_ff for _ in range(N_act)]
-            suf_ids: list[list[int]] = [x[lcp:] + std_up_ff for x in prompts_ids]
-
             eff_b_slots = min(B_slots, N_act)
-            doc_order = compute_rolling_doc_order(
-                suf_ids,
-                b_slots=eff_b_slots,
-                sort_by_length=sort_by_length,
-            )
             gh_dispatch: Any = (
                 per_doc_grammar_v6(
                     self.gh_std,
-                    doc_order,
+                    (),
                     wire_format=self.wire_format,
                     doc_target_kinds=doc_target_kinds,
                     grammar_cache=self._kind_grammar_cache,
@@ -1963,6 +1954,31 @@ class PythonicEngineV6:
                 if doc_target_kinds
                 else self.gh_std
             )
+            up_fn = getattr(gh_dispatch, "upfront_ff_for_doc", None)
+            std_up_ff = list(self.gh_std.upfront_ff)
+            upfront_by_slot: list[list[int]] = [
+                list(up_fn(doc_idx)) if callable(up_fn) else list(std_up_ff)
+                for doc_idx in range(N_act)
+            ]
+            suf_ids: list[list[int]] = [x[lcp:] + upfront_by_slot[doc_idx] for doc_idx, x in enumerate(prompts_ids)]
+
+            doc_order = compute_rolling_doc_order(
+                suf_ids,
+                b_slots=eff_b_slots,
+                sort_by_length=sort_by_length,
+            )
+            if doc_target_kinds:
+                if hasattr(gh_dispatch, "_doc_order"):
+                    gh_dispatch._doc_order = list(doc_order)
+                else:
+                    gh_dispatch = per_doc_grammar_v6(
+                        self.gh_std,
+                        doc_order,
+                        wire_format=self.wire_format,
+                        doc_target_kinds=doc_target_kinds,
+                        grammar_cache=self._kind_grammar_cache,
+                        sync_ff_with_std=True,
+                    )
             pre_sec = time.perf_counter() - t_pre0
 
             res = self.eng.run_rolling(
@@ -1985,7 +2001,7 @@ class PythonicEngineV6:
 
             for slot_i, g in enumerate(res["gen_toks"]):
                 orig_idx = active_indices[slot_i]
-                full_toks = upfront_by_slot[slot_i] + g
+                full_toks = upfront_by_slot[slot_i] + list(g)
                 raw_llm_texts[orig_idx] = self.tok.decode(full_toks, skip_special_tokens=True)
                 out_tok_lens[orig_idx] = len(full_toks)
 
