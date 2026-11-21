@@ -24,6 +24,7 @@ from congress_api.retention.provenance import json_input, parquet_output, run_jo
 from docspec_client.client import NativeDatasets
 from viewer_publication import body_text_export, body_text_publish
 from viewer_publication.body_text_ssot import BodyTextSSOT
+from viewer_publication.reviewed_body_text import apply_reviewed_rows
 
 
 def _scan_pdf(label: str) -> bytes:
@@ -77,10 +78,9 @@ def test_committed_selection_manifests_keep_previous_decisions_and_repair_page_1
     assert revised[changed[0]]['text_sha256'] == '6973f8979138aa4c9776850ca74d799d1cfbb5d1769a4615da9b8eeb67a1e28d'
 
 
-@pytest.mark.parametrize('text_already_stored', [False, True])
-def test_hosted_pdf_repair_finishes_and_retries_without_duplicate_rows(tmp_path, text_already_stored):
+@pytest.fixture
+def hosted_pdf_repair(tmp_path):
     from shutil import copyfile
-    from viewer_publication.reviewed_body_text import apply_reviewed_rows
 
     folder = body_text_publish.DEFAULT_SELECTION.parent
     review = json.loads((folder / 'reviewed-rows.json').read_text())
@@ -111,21 +111,52 @@ def test_hosted_pdf_repair_finishes_and_retries_without_duplicate_rows(tmp_path,
             pq.write_table(pa.Table.from_pylist([row], schema=revised.schema), stage[name])
             stage[name + '_rows'] = 1
         body_text.append(stage, engine=engine, work=tmp_path / 'base', catalog_root=catalog, tables=tables)
-        if text_already_stored:
-            lake_tables.append_rows(tmp_path / 'body_text.parquet', engine=engine, work=tmp_path / 'partial',
-                catalog_root=catalog, table=tables['body_text'], keys=readings.PK, definition='partial-test')
-        args = dict(selection_path=tmp_path / 'selection.json.gz', accepted=accepted, engine=engine,
-                    catalog_root=catalog, tables=tables)
+        yield dict(selection_path=tmp_path / 'selection.json.gz', accepted=accepted, engine=engine,
+                   catalog_root=catalog, tables=tables)
+
+
+@pytest.mark.parametrize('text_already_stored', [False, True])
+def test_hosted_pdf_repair_finishes_and_retries_without_duplicate_rows(tmp_path, hosted_pdf_repair, text_already_stored):
+    args = hosted_pdf_repair
+    if text_already_stored:
+        lake_tables.append_rows(tmp_path / 'body_text.parquet', engine=args['engine'], work=tmp_path / 'partial',
+            catalog_root=args['catalog_root'], table=args['tables']['body_text'], keys=readings.PK, definition='partial-test')
+    apply_reviewed_rows(**args, work=tmp_path / 'first')
+    applied = json.loads((tmp_path / 'first/applied.json').read_text())
+    assert applied['readings'] is not None
+    assert (applied['body_text'] is None) == text_already_stored
+    apply_reviewed_rows(**args, work=tmp_path / 'retry')
+    assert not (tmp_path / 'retry/append').exists()
+    manifest = tmp_path / 'reviewed-rows.json'
+    review = json.loads(manifest.read_text())
+    review['prior_text_sha256'] = 'f' * 64
+    manifest.write_text(json.dumps(review))
+    with pytest.raises(ValueError, match='differs from the reviewed PDF'):
+        apply_reviewed_rows(**args, work=tmp_path / 'wrong-base')
+
+
+@pytest.mark.parametrize(('field', 'companion_exists'), [('page_offsets', False), ('ocr_pages', True)])
+def test_hosted_pdf_repair_rejects_wrong_retained_pages(tmp_path, hosted_pdf_repair, field, companion_exists):
+    args = hosted_pdf_repair
+    original = pq.read_table(tmp_path / 'body_text.parquet')
+    row = original.to_pylist()[0]
+    # Preserve the words, page counts and ordering while moving a boundary or an OCR page.
+    if field == 'page_offsets':
+        start = row[field][150]
+        row[field][150] = row['text'].encode().index(b'\n', start) + 1
+    else:
+        pages = row[field]
+        index = next(i for i, page in enumerate(pages[:-1]) if page + 1 < pages[i + 1])
+        pages[index] += 1
+    corrupted = tmp_path / 'wrong-pages.parquet'
+    pq.write_table(pa.Table.from_pylist([row], schema=original.schema), corrupted)
+    stage = dict(versions={'pdf_text': row['parser_version']}, body_text=corrupted, body_text_rows=1,
+                 readings=tmp_path / 'readings.parquet', readings_rows=int(companion_exists))
+    body_text.append(stage, engine=args['engine'], catalog_root=args['catalog_root'],
+                     tables=args['tables'], work=tmp_path / 'retained')
+    with pytest.raises(ValueError, match='page metadata'):
         apply_reviewed_rows(**args, work=tmp_path / 'first')
-        applied = json.loads((tmp_path / 'first/applied.json').read_text())
-        assert applied['readings'] is not None
-        assert (applied['body_text'] is None) == text_already_stored
-        apply_reviewed_rows(**args, work=tmp_path / 'retry')
-        assert not (tmp_path / 'retry/append').exists()
-        review['prior_text_sha256'] = 'f' * 64
-        manifest.write_text(json.dumps(review))
-        with pytest.raises(ValueError, match='differs from the reviewed PDF'):
-            apply_reviewed_rows(**args, work=tmp_path / 'wrong-base')
+    assert not (tmp_path / 'first/append').exists()
 
 
 def test_portable_incremental_pipeline_separates_sniff_table_and_exports_mixed_iceberg_versions(tmp_path):
