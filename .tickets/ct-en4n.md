@@ -1,8 +1,8 @@
 ---
 id: ct-en4n
 status: in_progress
-deps: [ct-fb7k]
-links: [ct-chc4, ct-z4w5, ct-f6hr, ct-0a35, ct-n3ik, ct-m704]
+deps: [ct-fb7k, ct-qmh5]
+links: [ct-chc4, ct-z4w5, ct-f6hr, ct-0a35, ct-n3ik, ct-m704, ct-qmh5]
 created: 2026-11-13T17:46:16Z
 type: task
 priority: 1
@@ -15,7 +15,7 @@ tags: [body_text, quality, captures, html, xml]
 
 The successor inventory preserves all prior records, adds the four Natural Resources error bodies (five document targets), and links the two archive wrappers without duplicate recovery requests. It contains 455 known-source records and 454 open exact-original obligations. Existing capture/detail history resolves targets for 267 records; 188 historical error hashes still lack a requested URL. Three directly reviewed selected alternatives provide scoped search coverage while preserving revision limits.
 
-Current manifest: `<main checkout>/.cache/archive-release/ticket-fixes-20261117/inventory/post-capture-append/manifest.json`, SHA `33af1264b175251d5544e1d44f44c2df861633e4816b7a6545217dcf5af444e9`. Every predecessor field remains preserved; two records gain native receipt-integration facts. The final text handoff pins this generation.
+November 17 manifest: `<main checkout>/.cache/archive-release/ticket-fixes-20261117/inventory/post-capture-append/manifest.json`, SHA `33af1264b175251d5544e1d44f44c2df861633e4816b7a6545217dcf5af444e9`. Every predecessor field remains preserved; two records gain native receipt-integration facts. The final text handoff pins this generation.
 
 Remaining: resolve the named historical URL/role gaps where evidence becomes available, preserve per-target eligibility and distinguish unsupported/unassociated sources from failed document extraction. Actual requests, source replacement and native recovery remain ct-z4w5.
 
@@ -35,6 +35,14 @@ Own source-role qualification, capture-history reconciliation and the canonical 
 2. Finish requested-URL/history review for the existing 394 error-response records and remaining landing-source obligations, reusing resolved viewer/PDF associations. Distinguish recordings/playlists, documents, metadata, valid empties and unresolved source roles; a successful transfer alone does not resolve source quality.
 3. Preserve source/version identity, refusal history, review limits and explicit unresolved reasons. Check false-positive/missed-error controls using legitimate documents quoting error phrases, short/empty documents, feeds/manifests and accepted alternative coverage.
 4. Apply the reviewed roles through existing exact-body selection/exclusion policy and verify intended-release exposure. Deliver a deduplicated inventory and per-source capture eligibility to ct-z4w5 and ct-m704. Classification alone does not start a fetch; already qualified targets do not wait for unrelated history reviews.
+
+## Current disposition — 20 November 2026, after independent review
+
+Inventory classification, capture-history resolution, the consumer handoff and the 94 legitimate-source controls are complete. The canonical manifest at `docs/plans/ocr-source-recovery-inventory.json` pins all 455 per-source decisions for ct-z4w5 and ct-m704. It preserves the 26 closed and 429 open exact-original recovery decisions. All 188 reconstructed records now give their listing address, receipt basis, role, refetch decision and document-fetch eligibility. None identifies a missing document. Each of the 455 rows binds its current associations to the pinned release and identifies earlier associations by release ID. The two State archive wrappers share their payloads' recovery records.
+
+The native query covered all 382 zero-page addresses. For CHRG-118shrg53785 the ledger links the October 5 capped transfer, the October 6 successful capture and Explorer PDF `1e68f460bf1cd70f`. All 57 public valid-empty readings retain their visible associations and empty text. The 15 published quotation controls retain their reviewed text digests.
+
+Criterion 4 remains open on Explorer release `0e7084cde775`. All 398 inventory error bodies and both linked State archive wrappers have explicit text exclusions. Explorer lists 26 affected records by default and offers unqualified downloads on 31 detail pages, including five hidden Natural Resources records. The guard checks primary, alternate and recovery links and counts each detail page once. Walling (`20568d1abba1b309`) already counts among the damaged PDF pages. With invalid primaries cleared, Walling and all five Natural Resources pages still offer invalid recovery downloads. The reconciler records the link keys and body hashes before returning exit 1. Release defect ct-qmh5 owns suppression and verification on a successor release and blocks closure of this ticket. The counts and closure recorded in the earlier notes below describe the first pass.
 
 ## Audit evidence
 
@@ -131,3 +139,19 @@ Manual audit credits v12 source exclusions and shared detection. Own the missing
 **2026-11-17T10:28:52Z**
 
 Implemented selected 80/20 scope via subagents. The current implementation update above records completed work, exact evidence and remaining acceptance. Full evidence is under <main checkout>/.cache/archive-release/ticket-fixes-20261117/. Historical notes are preserved.
+
+**2026-11-20T23:29:16Z**
+
+November 20 source-role reconciliation completed against Explorer release 0e7084cde775d0064646c56b2200a14e1f13d8b512f1a61a6fe815d597faf4d3 and v13 body text 7aea7925da324273d16c04e7dd7d53b2a7d3a0ade895f9343063015458d88688 (selection bbeb4e1c94e195ac8ec5085578331543b2b2f709e77d2c83e523474e07bbe10b). The ledger preserves all 455 source identities from November 17 and the per-target recovery decisions from ct-z4w5 on November 20. It binds every case to the pinned captures and selected readings, Explorer source and address lookups, URL state, saved and recovery rows, and v13 membership. No requests were dispatched.
+
+All 188 historical URL gaps have original receipt provenance. For 187 saved House meeting HTML fallbacks, the receipt pointer's meeting ID matches the exact body's form action. The remaining SHA is a verified retained Senate Appropriations listing security response. The ledger distinguishes reconstructed source addresses from absent HTTP request observations. The 398 error responses include 197 missing recording playlists, 173 missing House meetings, 14 House file errors, four Natural Resources error bodies at five document targets, one Senate listing security response and nine other reviewed HTML error responses. The remaining inventory contains 56 damaged PDFs and one zero-byte response to an expected PDF. Two State Department archive wrappers share their failed payloads' receipts.
+
+The earlier 345 zero-page failures form a separate population. Fifty overlap the 455. The evidence establishes 154 PDFs shorter than their declared length, 140 failed PDF transfers, 44 capped PDF transfers, six unterminated PDF streams and one zero-filled PDF tail. All 345 lack v13 text. All 455 inventory originals also lack v13 text. Of the 27 selected public PDF error readings, 21 match historical zero-page failures, one is the damaged Walling source, and five lie outside the inventory. All eight reviewed landing cases now have a public target PDF with v13 text. The 94 positive controls cover the Atom feed, ordinary HTML/XML, statute viewers, a verified four-member ZIP, valid empty outputs and ordinary documents mentioning error phrases. Fourteen unassessed template siblings retain their review limits.
+
+The broader public-copy exclusion check failed. Explorer still has 28 invalid-source SHAs on 29 saved document rows. Twenty-two damaged PDFs and two State Department error pages have unhidden saved-copy links. Four Natural Resources HTML errors occupy five hidden recovery rows. All 398 reviewed error hashes have an explicit text-selection exclusion. All 197 playlist errors have HTTP failure receipts and zero saved-body associations. URL state contains one body_not_qualified entry, outside this inventory. A failed reading or an absent export row does not remove the Explorer download. The current operational inventory reports 26 closed and 429 open exact-original obligations. Qualification, revision limits and recovery eligibility remain per target.
+
+The full ledger and report are /Users/mikewolfd/Work/congressional-tech/.cache/archive-release/long-tail-20261120/pdf-source/ct-en4n-reconciliation.json and ct-en4n-summary.md in the same directory. The ledger's public_copy_control names every counterexample by Explorer link key and saved SHA. The good-fetch HTTP status rule is in model/sql/good-fetches.sql. Ticket ct-fb29 covers schema descriptions. No production or selection policy changed.
+
+**2026-11-20T23:33:09Z**
+
+Closed the requested inventory, provenance, controls and release-exposure reconciliation. The public-copy exclusion remains failed on the pinned release. The verifier writes the complete ledger and exits 1 with the 24 counterexamples. Linked open release defect ct-qmh5 owns their correction and verification on a successor release. Qualification, acquisition and publishing were outside this read-only investigation.
