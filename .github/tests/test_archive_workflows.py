@@ -739,8 +739,9 @@ def test_historical_evidence_cannot_be_changed_repinned_or_deleted(tmp_path, cau
     evidence.parent.mkdir(parents=True)
     evidence.write_bytes(b'reviewed')
     record = tmp_path / 'model/jobs/release-causes/night.json'
-    # Both absolute (in this checkout) and relative pins participate in the diff.
-    name = str(evidence if directory == 'docs/measurements' else evidence.relative_to(tmp_path))
+    name = evidence.relative_to(tmp_path).as_posix()
+    if directory == 'docs/measurements':
+        name = '/Users/other/checkout/' + name
     write_cause(record, dict(path=name, **file_pin(evidence)))
     base = cause_history()
     assert verify_causes(tmp_path).returncode == 0
@@ -761,6 +762,45 @@ def test_historical_evidence_cannot_be_changed_repinned_or_deleted(tmp_path, cau
     record.unlink()
     result = verify_causes(tmp_path, base, cause_history())
     assert result.returncode != 0 and 'changed historical evidence' in result.stderr
+
+
+@pytest.mark.parametrize('directory', ['docs/measurements', 'model/jobs/release-causes/evidence'])
+def test_new_and_edited_records_require_portable_immutable_evidence(tmp_path, cause_history, directory):
+    from congress_api.retention.provenance import file_pin
+    evidence = tmp_path / directory / 'night.json'
+    evidence.parent.mkdir(parents=True)
+    evidence.write_bytes(b'reviewed')
+    base = cause_history()
+    record = tmp_path / 'model/jobs/release-causes/night.json'
+    relative = evidence.relative_to(tmp_path).as_posix()
+    pin = dict(path=relative, **file_pin(evidence))
+    write_cause(record, dict(pin, path='/home/runner/work/checkout/' + relative))
+    added = cause_history()
+    write_cause(record, pin)
+    portable = cause_history()
+    assert verify_causes(tmp_path, base, portable).returncode == 0
+    write_cause(record, dict(pin, path=str(evidence)))
+    modified = cause_history()
+    for revisions in ((base, added), (portable, modified)):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode != 0 and 'repository-relative path' in result.stderr
+
+
+@pytest.mark.parametrize('wrong', [dict(sha256='f' * 64), dict(size=0)])
+def test_foreign_historical_measurement_pin_checks_the_tracked_bytes(tmp_path, cause_history, wrong):
+    from congress_api.retention.provenance import file_pin
+    evidence = tmp_path / 'docs/measurements/night.json'
+    evidence.parent.mkdir(parents=True)
+    evidence.write_bytes(b'reviewed')
+    record = tmp_path / 'model/jobs/release-causes/night.json'
+    pin = dict(path='/home/runner/work/other/checkout/docs/measurements/night.json', **file_pin(evidence))
+    write_cause(record, dict(pin, **wrong))
+    base = cause_history()
+    (tmp_path / 'other').write_text('later commit')
+    head = cause_history()
+    for revisions in ((base, head), ()):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode != 0 and 'size or SHA-256: docs/measurements/night.json' in result.stderr
 
 
 def test_historical_source_pins_apply_when_a_record_or_its_publish_binding_changes(tmp_path, cause_history):

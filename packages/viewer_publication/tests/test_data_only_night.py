@@ -755,6 +755,34 @@ def test_nightly_recordings_refuse_unproven_changes(recording_sweep, fault):
                 else 'added recordings') in reason for reason in reasons)
 
 
+def test_only_the_proceeding_video_can_corroborate_a_linked_addition(tmp_path):
+    import gzip
+    from hashlib import sha256
+    from congress_shared.custody import verify_local_file
+    from viewer_publication.release_gate import new_recording_pages
+
+    markup = b'''<main><a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=116718">Meeting</a>
+        <iframe src="https://youtube.com/embed/Fyr9cXKd6NU"></iframe>
+        <aside><a href="https://youtu.be/Sidebar0001">Related hearing</a></aside>
+        <div class="region-sidebar"><a href="https://youtu.be/Sidebar0002">Related hearing</a></div>
+        <nav><a href="https://youtu.be/Sidebar0003">Video archive</a></nav></main>
+        <div><a href="https://youtu.be/Outside0001">Elsewhere</a></div>
+        <footer><a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=999999">Calendar</a></footer>'''
+    digest = sha256(markup).hexdigest()
+    recordings = {f'youtube:{video}': {116718} for video in ('Fyr9cXKd6NU', 'Sidebar0001', 'Sidebar0002', 'Outside0001')}
+    recordings['youtube:Sidebar0003'] = set()
+    path = tmp_path / 'recording_video_links.parquet'
+    pq.write_table(pa.Table.from_pylist([dict(extracted_key=k, page_body=digest) for k in recordings]), path)
+    raw = gzip.compress(json.dumps(dict(url='https://transportation.house.gov/event', mode='fetch', outcome='stored',
+        http_status=200, captures=[dict(sha256=digest, complete=True, sniffed_format='html')])).encode())
+    pages = new_recording_pages(recordings, {'new'}, export=verify_local_file(path),
+        trace=lambda keys: [dict(sha=digest, receipt_key='new', receipt_line=1)],
+        read_receipt={'new': raw}.__getitem__, read_object=lambda key: markup)
+    assert pages == {
+        'youtube:Fyr9cXKd6NU': {digest: dict(receipt_key='new', receipt_line=1, event_ids=[116718])},
+        'youtube:Sidebar0003': {digest: dict(receipt_key='new', receipt_line=1, event_ids=[])}}
+
+
 def test_new_publisher_match_must_name_the_event_on_the_page_or_in_the_held_listing(tmp_path):
     from viewer_publication.data_only_night import _linked_additions
     base, candidate = tmp_path / 'base', tmp_path / 'candidate'

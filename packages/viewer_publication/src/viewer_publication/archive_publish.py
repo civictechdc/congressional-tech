@@ -560,7 +560,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             # ct-ud0b: unattended nightly publication. The live receipt set comes from the live
             # release's own input records; raw lines are read from the raw bucket, never the model.
             from viewer_publication.receipt_pins import kept_input_records
-            from viewer_publication.release_gate import automatic_causes
+            from viewer_publication.release_gate import automatic_causes, cause_evidence_pin
             entries,_=kept_input_records(store,[live])
             held={key for entry in entries for key in entry['receipt_keys']}
             def read_object(key):
@@ -593,8 +593,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                 report['link_rule']['proven_corrections']=[*report['link_rule'].get('proven_corrections',[]),*facts['proven_corrections']]
                 evidence=Path(work)/'data-only-night.json'
                 write_atomic_bytes(evidence,(json.dumps(facts,indent=1)+'\n').encode())
-                from congress_api.retention.provenance import file_pin
-                report['data_only_night']=dict(path=str(evidence),**file_pin(evidence))
+                report['data_only_night']=cause_evidence_pin(evidence)
                 return [dict(entry,evidence=[report['data_only_night']]) for entry in found],[]
         # A cause record whose candidate is already live is spent: it names no later comparison,
         # and left pinned it would refuse every unattended night after a gated release (ct-pz32).

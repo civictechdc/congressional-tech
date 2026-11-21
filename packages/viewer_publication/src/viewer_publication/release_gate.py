@@ -21,7 +21,8 @@ import gzip
 from io import BytesIO
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
+import posixpath
 import re
 import sys
 from urllib.request import Request, urlopen
@@ -349,10 +350,34 @@ def _corrections(record, tracked):
         seen.add((kind, key, entry['live_body']))
 
 
-def repository_evidence(pins, tracked, *, check_sources):
+def cause_evidence_pin(path, *, root=ROOT):
+    """Write checkout files relative to the repository that owns the record."""
+    from congress_api.retention.provenance import file_pin
+    path = Path(os.path.abspath(path))
+    root = Path(os.path.abspath(root))
+    name = path.relative_to(root) if path.is_relative_to(root) else path
+    return dict(path=name.as_posix(), **file_pin(path))
+
+
+def repository_evidence_path(name, *, require_relative=False):
+    """Recover immutable Git paths from pins written with an older checkout's prefix."""
+    path = Path(name)
+    if not path.is_absolute() and PureWindowsPath(name).is_absolute():
+        path = PureWindowsPath(name)
+    if path.is_absolute():
+        suffix = re.search(r'/(model/jobs/release-causes/evidence/.+|docs/measurements/.+)$',
+                           posixpath.normpath(path.as_posix()), re.DOTALL)
+        if suffix:
+            if require_relative:
+                raise ValueError(f'Cause evidence requires a repository-relative path: {name}')
+            return suffix[1]
+    return Path(os.path.relpath(name)).as_posix()
+
+
+def repository_evidence(pins, tracked, *, check_sources, require_relative=False):
     """Select evidence a Git checkout can verify. Historical source pins describe the original release."""
     for name, digest, size in pins:
-        path = os.path.relpath(name)
+        path = repository_evidence_path(name, require_relative=require_relative)
         if path.startswith(IMMUTABLE_EVIDENCE):
             if path not in tracked:
                 raise ValueError(f'Missing tracked cause evidence: {path}')
@@ -371,8 +396,8 @@ def load_causes(pin, *, tracked=None):
     evidence = validate_cause_record(record, tracked=tracked)
     if tracked is not None:
         evidence = repository_evidence(evidence, tracked, check_sources=True)
-    for path, digest, size in evidence:
-        verify_local_file(path, digest, size)
+    for name, digest, size in evidence:
+        verify_local_file(repository_evidence_path(name), digest, size)
     return record
 
 
@@ -521,7 +546,7 @@ def _recording_page_bodies(recordings, export):
 
 def _prove_recording_pages(recordings, links, lines, new_receipts, read_receipt, read_object, meetings=None):
     from collections import defaultdict
-    from viewer_publication.recording_pages import captured_body, meeting_calendar, page_links
+    from viewer_publication.recording_pages import captured_body, meeting_calendar, recording_page_events
     old = {row['sha'] for row in lines if row['receipt_key'] not in new_receipts}
     by_receipt = defaultdict(lambda: defaultdict(set))
     for row in lines:
@@ -551,10 +576,9 @@ def _prove_recording_pages(recordings, links, lines, new_receipts, read_receipt,
                     if body in wanted[number] and capture.get('complete') is True and capture.get('sniffed_format') == 'html':
                         url = record.get('url') or record.get('requested_url') or ''
                         if (body, url) not in parsed:
-                            parsed[body, url] = page_links(captured_body(capture, read_object), url,
-                                calendar if links[body] & event_keys else {})
-                        videos, events = parsed[body, url]
-                        for video in links[body] & videos:
+                            parsed[body, url] = recording_page_events(captured_body(capture, read_object), url,
+                                calendar, links[body] & event_keys, links[body] - event_keys)
+                        for video, events in parsed[body, url].items():
                             proven[video].setdefault(body, dict(receipt_key=key, receipt_line=number, event_ids=events))
     return proven
 
@@ -575,8 +599,33 @@ _HOUSE_XML_EVENT_PATTERNS = (
 _YOUTUBE_CACHE_PATH = re.compile(r'/(youtube/youtube_[0-9]+[.]json)$')
 
 
+def _publisher_recording_reasons(base_dir, candidate_dir, lines, new_receipts, read_object):
+    """Check each newly linked recording against the captured Congress.gov meeting that lists it."""
+    from viewer_publication.recording_pages import captured_body, publisher_video_keys
+    from viewer_publication.release_comparison import Diff
+    d = Diff(Path(base_dir), Path(candidate_dir))
+    claims = d.rows("""WITH added AS (
+        SELECT video_key, unnest(event_ids) AS event_id FROM candidate_recordings
+        ANTI JOIN base_recordings USING(video_key))
+        SELECT a.event_id, list(DISTINCT a.video_key ORDER BY a.video_key), m.congress_gov_detail_observation.successful_read
+        FROM added a LEFT JOIN candidate_meetings m USING(event_id) GROUP BY ALL ORDER BY a.event_id""")
+    reasons = []
+    for event, videos, read in claims:
+        listed = set()
+        line = lines.get((read['receipt_key'], read['receipt_line'], read['capture_index'])) if read else None
+        endpoint = rf'https://api\.congress\.gov/v3/committee-meeting/[0-9]+/(house|senate|joint)/{event}/?(?:\?[^#]*)?'
+        if (line and line['receipt_key'] in new_receipts and line['successful_fetch'] and read_object is not None
+                and line['sha'] == read['body_sha256'] and re.fullmatch(endpoint, line['source_url'] or '', re.I)):
+            body = captured_body(dict(sha256=line['sha'], stored_suffix=line['stored_suffix']), read_object)
+            listed = publisher_video_keys(body, event)
+        missing = sorted(set(videos) - listed)
+        if missing:
+            reasons.append(f'automatic causes: added recordings lack a captured Congress.gov listing for event {event}: {missing}')
+    return reasons
+
+
 def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work, updated_events=(),
-                        candidate_receipt_keys=None):
+                        candidate_receipt_keys=None, check_added_recordings=False, read_object=None):
     """Reasons a re-fetch-only change cannot pass without a person (ct-syp1, ct-uywf, ct-rhqw); empty when it can.
 
     The comparison shows only that the candidate is consistent with itself. Here every body the
@@ -598,8 +647,8 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
     receipt delivered a new House meeting XML body for an updated meeting (a null-status,
     unchanged-stamp House XML leaves no trace in `meetings.parquet`, yet leads title, date and
     videos). One engine job; the evidence file lists each hash's receipts and each read's line.
-    Cannot see: whether the body holds the published values, or the raw receipt line (the capture
-    mapping is trusted for hash, family and address; documents are checked against raw).
+    For recording additions attributed to that read, verify the listed video and event in the
+    captured Congress.gov body. Other meeting values rely on the comparison and capture trace.
     """
     from congress_api.lake.tables import table_input
     from congress_api.retention.provenance import run_job
@@ -621,10 +670,17 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
               dict(name='cited_files', kind='parquet', path=str(work / 'cited-files.parquet')),
               dict(name='cited_reads', kind='parquet', path=str(work / 'cited-reads.parquet'))]
     steps = []
+    recording_fields = ''
+    if check_added_recordings:
+        has_suffix = captures.get('kind') != 'parquet' or 'stored_suffix' in pq.read_schema(captures['path']).names
+        suffix = 'c.stored_suffix' if has_suffix else "'.gz'"
+        recording_fields = (f", {suffix} AS stored_suffix, coalesce(c.url,c.requested_url) AS source_url, "
+                            "c.mode='fetch' AND c.complete AND c.http_status=200 "
+                            "AND c.outcome IN ('stored','unchanged') AS successful_fetch")
     queries = [dict(name='files', sql="""SELECT DISTINCT k.sha,c.receipt_key FROM cited_files k
             JOIN captures c ON c.sha256=k.sha_bin ORDER BY 1,2"""),
-               dict(name='reads', sql="""SELECT k.receipt_key,k.receipt_line,k.capture_index,lower(encode(c.sha256,'hex')) AS sha,
-            c.requested_url,arrow_cast(c.retrieved_at,'Int64') AS t FROM cited_reads k JOIN captures c ON c.receipt_key=k.receipt_key AND c.receipt_line=k.receipt_line
+               dict(name='reads', sql=f"""SELECT k.receipt_key,k.receipt_line,k.capture_index,lower(encode(c.sha256,'hex')) AS sha,
+            c.requested_url,arrow_cast(c.retrieved_at,'Int64') AS t {recording_fields} FROM cited_reads k JOIN captures c ON c.receipt_key=k.receipt_key AND c.receipt_line=k.receipt_line
             AND c.capture_index=k.capture_index ORDER BY 1,2,3""")]
     video_check_hex = sorted({s for s in (*video_shas, *(o for o, _ in channel_pairs), *(n for _, n in channel_pairs))
                               if re.fullmatch('[0-9a-f]{64}', s)})
@@ -722,6 +778,8 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
             if (ids_in_url & updated_set) or (not ids_in_url and non_senate_update):
                 reasons.append(
                     f"automatic causes: new House XML body {row['sha'][:16]} ({row['receipt_key']}) accompanies an updated meeting")
+    if check_added_recordings and not reasons:
+        reasons += _publisher_recording_reasons(base_dir, candidate_dir, lines, set(candidate_receipt_keys or ()) - held, read_object)
     (work / 'citation-trace.json').write_text(json.dumps(dict(live_receipts=len(held), files=receipts, reads=found['reads']),
                                                           indent=1, default=str) + '\n')
     return reasons
@@ -1434,9 +1492,12 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
         return [], ['automatic causes: the live release has no receipt set to compare with']
     updated_events = report['files'].get('meetings.parquet', {}).get('congress_gov_updates') or []
     if len(every) > len(differences):
+        publisher_adds = any(g.get('refetch_only') and g['group'] == 'added keys'
+                             for g in report['files'].get('recordings.parquet', {}).get('groups', ()))
         reasons = cited_files_are_new(base_dir, candidate_dir, engine=engine, captures=captures, held=held,
                                       work=Path(work) / 'cited', updated_events=updated_events,
-                                      candidate_receipt_keys=candidate_receipt_keys)
+                                      candidate_receipt_keys=candidate_receipt_keys,
+                                      check_added_recordings=publisher_adds, read_object=read_object)
         if reasons or not differences:
             return [], reasons
     d = Diff(Path(base_dir), Path(candidate_dir))
@@ -1576,8 +1637,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
                                         recording_pages=recording_pages,
                                         url_state=dict(groups=summary, lines=len(url_lines), queued_link_pages=sorted(pages))),
                                    indent=1, default=str) + '\n')
-    from congress_api.retention.provenance import file_pin
-    pin = dict(path=str(evidence), **file_pin(evidence))
+    pin = cause_evidence_pin(evidence)
     bookkeeping = {group_id(g) for g in url_state}
     recording_ids = {group_id(g) for g in recording_adds}
     edition_ids = {group_id(g) for g in [*version_key_adds, *shared_addr_adds]}

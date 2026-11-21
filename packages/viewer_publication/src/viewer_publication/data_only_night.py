@@ -523,12 +523,12 @@ def _prove_recording_changes(base_dir, candidate_dir, *, removed, expected, expe
                     f'found {len(added)} ({len(empty)} unlinked) in the recording tables']
     replacements = (_recording_match_replacements(base_dir, candidate_dir, base, candidate, expected_removed=removed,
                     recaptures=recaptures, new_receipts=new) if removed else [])
-    # Only linked additions need the page's event identity. A replacement names its pages separately.
-    wanted = dict(added)
+    # A replacement also claims a proceeding video, so its receipt must verify that scoped link.
+    wanted = {video: events.copy() for video, events in added.items()}
     for row in replacements or ():
-        for choices in row['claims'].values():
+        for event, choices in row['claims'].items():
             for video, _ in choices:
-                wanted.setdefault(video, set())
+                wanted.setdefault(video, set()).add(event)
     supplied = page_proof(wanted, new) if wanted and page_proof else {}
     pages = {video: {body: src for body, src in sources.items() if src.get('receipt_key') in new}
              for video, sources in supplied.items()}

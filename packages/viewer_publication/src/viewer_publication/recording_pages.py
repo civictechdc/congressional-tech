@@ -14,6 +14,7 @@ from lxml import html
 import pyarrow.parquet as pq
 
 from congress_api.parsers.committee_pages import event_identity, event_title
+from congress_api.parsers.main_content import _is_cms_chrome
 from congress_api.retention.body_keys import physical_body_object_key
 from congress_shared.custody import verify_local_file
 
@@ -57,14 +58,14 @@ def meeting_calendar(path):
     return by_day
 
 
-def _calendar_event(tree, body, url, calendar):
+def _calendar_event(tree, url, calendar):
     if not calendar:
         return set()
     from viewer_publication.corpus_quality.provenance_validator import CONGRESSIONAL_HOST_TO_SYSTEM_CODE
     code = CONGRESSIONAL_HOST_TO_SYSTEM_CODE.get((urlsplit(url).hostname or '').removeprefix('www.'))
     if not code:
         return set()
-    identity = event_identity(body, url)
+    identity = event_identity(html.tostring(tree), url)
     require_title = False
     if not identity:
         # Some committee templates label the markup date or place it in the event's date bar.
@@ -107,11 +108,52 @@ def _calendar_event(tree, body, url, calendar):
     return timed if len(timed) == 1 else set()
 
 
-def page_links(body, url, calendar):
-    tree = html.fromstring(body, parser=html.HTMLParser(no_network=True))
-    targets = {urljoin(url, ref) for ref in tree.xpath('//@href | //@src | //object/@data')}
-    videos = {key.replace('$1', match[1]) for target in targets for pattern, key in _video_rules()
-              if (match := pattern.search(target))}
+def video_keys(targets):
+    return {key.replace('$1', match[1]) for target in targets for pattern, key in _video_rules()
+            if (match := pattern.search(target))}
+
+
+def publisher_video_keys(body, event):
+    """Read only the video URLs listed on the publisher record for this event."""
+    try:
+        payload = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return set()
+    meeting = payload.get('committeeMeeting') if isinstance(payload, dict) else None
+    if not isinstance(meeting, dict) or str(meeting.get('eventId')) != str(event):
+        return set()
+    videos = meeting.get('videos')
+    if not isinstance(videos, list):
+        return set()
+    return video_keys(v['url'] for v in videos if isinstance(v, dict) and isinstance(v.get('url'), str))
+
+
+def _document(body):
+    return html.document_fromstring(body, parser=html.HTMLParser(no_network=True), ensure_head_body=True)
+
+
+def _targets(node, url):
+    return {urljoin(url, ref) for ref in node.xpath('.//@href | .//@src | .//object/@data')}
+
+
+def _proceeding_links(tree, url, calendar):
+    body = tree.body
+    for node in body.xpath('.//aside | .//nav | .//footer | .//header | .//*[@role or @class or @id]'):
+        if (_is_cms_chrome(node) or node.tag in ('aside', 'footer') or node.get('role') == 'complementary'
+                or (node.tag == 'header' and not node.xpath('ancestor::article'))
+                or node.get('id') == 'sidebar' or {'sidebar', 'second-level-nav'}.intersection(node.classes)):
+            node.drop_tree()
+    # Keep the document head for the publisher's event metadata. A legacy page
+    # may have only an article or an unmarked body instead of a main landmark.
+    roots = body.xpath('.//main | .//*[@role="main"]') or body.xpath('.//article[not(ancestor::article)]')
+    if roots:
+        outer = [root for root in roots if not any(parent in roots for parent in root.iterancestors())]
+        if len(outer) != 1:
+            return set(), []
+        body.clear()
+        body.append(outer[0])
+    targets = _targets(body, url)
+    videos = video_keys(targets)
     # A third-party page can link the video and House calendar without speaking for the committee.
     host = (urlsplit(url).hostname or '').removeprefix('www.')
     if host not in ('csce.gov', 'house.gov', 'senate.gov') and not host.endswith(('.house.gov', '.senate.gov')):
@@ -127,5 +169,20 @@ def page_links(body, url, calendar):
                 events.update(int(v) for v in parse_qs(address.query).get('EventID', []) if re.fullmatch(r'[0-9]{1,10}', v))
     # The displayed proceeding can link background documents from other meetings.
     # Its committee calendar identifies the proceeding independently of those links.
-    proceeding = _calendar_event(tree, body, url, calendar)
+    proceeding = _calendar_event(tree, url, calendar)
     return videos, sorted(proceeding or (events if len(events) == 1 else set()))
+
+
+def page_links(body, url, calendar):
+    """Video keys and the event identified within a single proceeding."""
+    return _proceeding_links(_document(body), url, calendar)
+
+
+def recording_page_events(body, url, calendar, linked, unlinked):
+    tree = _document(body)
+    # An unlinked addition claims only that a new page contains its URL.
+    found = {video: [] for video in unlinked & video_keys(_targets(tree, url))} if unlinked else {}
+    if linked:
+        videos, events = _proceeding_links(tree, url, calendar)
+        found.update((video, events) for video in linked & videos)
+    return found

@@ -20,7 +20,7 @@ from pathlib import Path
 import sys
 
 from congress_api.retention.provenance import file_pin
-from viewer_publication.release_gate import CORRECTED, group_id, load_causes, verdict
+from viewer_publication.release_gate import CORRECTED, cause_evidence_pin, group_id, load_causes, verdict
 
 ROOT = Path(__file__).resolve().parents[4]
 SPEC = 'model/jobs/publish.json'
@@ -81,8 +81,9 @@ def draft(report, *, cause, tickets, correction=None, root=ROOT):
         failing_groups=[dict(id=group_id(g), count=g['count'], status=g['status']) for g in report['failing']],
         link_rule={key: value for key, value in report['link_rule'].items() if key.endswith('answers') or isinstance(value, (bool, int))},
     ), indent=1) + '\n')
+    pin = cause_evidence_pin(root / evidence, root=root)
     for group in groups:
-        group['evidence'] = [dict(path=str(evidence), **file_pin(root / evidence))]
+        group['evidence'] = [pin]
     path = Path('model/jobs/release-causes') / f'{pair}.json'
     (root / path).write_text(json.dumps(record, indent=1) + '\n')
     return pin_record(root, path)

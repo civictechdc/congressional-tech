@@ -115,13 +115,14 @@ def verify_records(tracked, records, read, changed):
         if path == active:
             check_bytes(path, data, binding['sha256'], binding['size'])
         pins = evidence_pins(data, path, tracked)
-        evidence.update(repository_evidence(pins, tracked, check_sources=path in check_sources))
+        evidence.update(repository_evidence(pins, tracked, check_sources=path in check_sources,
+                                            require_relative=changed is not None and path in changed))
     for path, digest, size in sorted(evidence):
         check_bytes(path, read(path), digest, size)
 
 
 def verify_changed(base, head):
-    from viewer_publication.release_gate import IMMUTABLE_EVIDENCE
+    from viewer_publication.release_gate import IMMUTABLE_EVIDENCE, repository_evidence_path
 
     diff = changes(base, head) if base else {}
     # Read the old records before accepting new pins. Removing a record or
@@ -131,7 +132,7 @@ def verify_changed(base, head):
         previous = tree_paths(base)
         for path in sorted(record_paths(previous)):
             for name, _, _ in evidence_pins(git('show', f'{base}:{path}'), path, previous):
-                if os.path.relpath(name) in rewritten:
+                if repository_evidence_path(name) in rewritten:
                     raise ValueError(f'{path} pins changed historical evidence: {name}')
 
     tracked = tree_paths(head)
