@@ -183,23 +183,29 @@ def _core(steps, output,*,lookup_extra=None):
             cast(row_number() OVER(ORDER BY o.list_row,s.is_saved DESC,s.first_seen NULLS LAST,s.url,s.member_path NULLS LAST)-1 AS INT) AS source_index
             FROM (SELECT doc_key,list_row FROM ordered) o JOIN source_input s ON s.doc_key=o.doc_key""", materialize=True),
         _step('source_ranges', 'SELECT doc_key,min(source_index) AS src_start,cast(count(*) AS INT) AS src_len FROM source_rows GROUP BY doc_key'),
-        _step('recovery_rows', """SELECT o.list_row,r.*,cast(row_number() OVER(PARTITION BY o.list_row ORDER BY r.recovery_key)-1 AS INT) AS ordinal,
-            cast(row_number() OVER(ORDER BY o.list_row,r.recovery_key)-1 AS INT) AS recovery_index
-            FROM (SELECT doc_key,list_row FROM ordered) o JOIN recovery_input r ON r.doc_key=o.doc_key""", materialize=True),
+        # Keep the document addresses even when the only recovered bytes are unusable.
+        _step('recovery_documents', """SELECT o.list_row,r.* FROM (SELECT doc_key,list_row FROM ordered) o
+            JOIN recovery_input r ON r.doc_key=o.doc_key""", materialize=True),
+        _step('recovery_rows', """SELECT *,cast(row_number() OVER(PARTITION BY list_row ORDER BY recovery_key)-1 AS INT) AS ordinal,
+            cast(row_number() OVER(ORDER BY list_row,recovery_key)-1 AS INT) AS recovery_index
+            FROM recovery_documents WHERE can_download""", materialize=True),
         _step('recovery_ranges', 'SELECT doc_key,min(recovery_index) AS rec_start,cast(count(*) AS INT) AS rec_len FROM recovery_rows GROUP BY doc_key'),
         # A recovery-only row is found by its link, unless it is an edition moved off its link (ct-u9y4), which
         # carries its body as its one link body and is found by that.
         _step('details', f"""SELECT {detail_inputs},CASE WHEN saved_kind='recovery' AND coalesce(cardinality(o.link_bodies),0)=0 THEN {_hash_key('o.source_url', 'url:')}
             ELSE {_binary('substr(body_hex,1,16)', 8)} END AS link_key,
-            {_binary('body_hex', 32)} AS saved_body,CASE WHEN body_hex IS NOT NULL THEN suffix END AS saved_suffix,CASE WHEN body_hex IS NOT NULL THEN media_type END AS saved_media_type,bytes AS saved_bytes,
+            {_binary('CASE WHEN can_download THEN body_hex END', 32)} AS saved_body,
+            CASE WHEN can_download AND body_hex IS NOT NULL THEN suffix END AS saved_suffix,
+            CASE WHEN can_download AND body_hex IS NOT NULL THEN media_type END AS saved_media_type,
+            CASE WHEN can_download THEN bytes END AS saved_bytes,
             coalesce(s.src_start,cast(0 AS INT)) AS src_start,coalesce(s.src_len,cast(0 AS INT)) AS src_len,
             coalesce(r.rec_start,cast(0 AS INT)) AS rec_start,coalesce(r.rec_len,cast(0 AS INT)) AS rec_len
             FROM recovery_ranges r RIGHT JOIN (source_ranges s RIGHT JOIN ordered o ON o.doc_key=s.doc_key) ON o.doc_key=r.doc_key""", materialize=True),
         _step('body_links', "SELECT list_row,unnest(link_bodies) AS body_hex FROM ordered"),
         _step('all_links', f"""SELECT {_binary('substr(body_hex,1,16)', 8)} AS link_key,list_row,'body:' || body_hex AS origin FROM body_links
-            UNION ALL SELECT {_hash_key('original_url', 'url:')},list_row,'url:' || original_url FROM recovery_rows WHERE keyed"""),
+            UNION ALL SELECT {_hash_key('original_url', 'url:')},list_row,'url:' || original_url FROM recovery_documents WHERE keyed"""),
         _step('links', 'SELECT link_key,min(list_row) AS list_row FROM all_links GROUP BY link_key'),
-        _step('lookup_sources', "SELECT DISTINCT list_row,url FROM source_rows UNION SELECT DISTINCT list_row,original_url AS url FROM recovery_rows"+((' UNION '+lookup_extra) if lookup_extra else '')),
+        _step('lookup_sources', "SELECT DISTINCT list_row,url FROM source_rows UNION SELECT DISTINCT list_row,original_url AS url FROM recovery_documents"+((' UNION '+lookup_extra) if lookup_extra else '')),
     ]
     steps += _lookup_steps('lookup_sources')
     specs = [
@@ -232,7 +238,7 @@ def _release_schema(available=None, entity_digests=None):
     return build_schema(available, entity_digests=entity_digests)
 
 
-NORMAL_DEFAULTS = dict(body_expected='true', title='cast(NULL AS VARCHAR)', print_number='cast(NULL AS VARCHAR)', title_source='cast(NULL AS VARCHAR)', document_kind=EMPTY_STRINGS,
+NORMAL_DEFAULTS = dict(body_expected='true', can_download='true', title='cast(NULL AS VARCHAR)', print_number='cast(NULL AS VARCHAR)', title_source='cast(NULL AS VARCHAR)', document_kind=EMPTY_STRINGS,
     document_family=EMPTY_STRINGS, committee_keys=EMPTY_STRINGS, chambers=EMPTY_STRINGS,
     congress='cast(NULL AS SMALLINT)', format="'other'", document_date='cast(NULL AS DATE)',
     first_captured='cast(NULL AS DATE)', date_kind="'unknown'", saved_kind="'original'", hidden='false',

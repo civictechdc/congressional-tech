@@ -1,4 +1,4 @@
-SELECT q.doc_key,q.body_expected,q.filename,q.own_title,q.own_title_source,q.link_title,q.mods_title,q.component,
+SELECT q.doc_key,q.body_expected,q.can_download,q.filename,q.own_title,q.own_title_source,q.link_title,q.mods_title,q.component,
  q.document_kind,q.document_family,q.committee_keys,q.chambers,q.congress,q.format,
  coalesce(
   CASE WHEN q.a_date IS NOT NULL
@@ -19,7 +19,7 @@ SELECT q.doc_key,q.body_expected,q.filename,q.own_title,q.own_title_source,q.lin
  END AS document_date_source,
  q.in_archive_since,q.removed_on,q.review_note,q.review_decided_at,q.alternates,q.package_id,q.facts,q.link_bodies
 FROM (
-SELECT d.document_id AS doc_key,false AS body_expected,n.filename,
+SELECT d.document_id AS doc_key,false AS body_expected,r.can_download,n.filename,
  t.title AS own_title,t.source AS own_title_source,a.listing_title AS link_title,pmf.mods_title,d.component,
  a.document_kind,a.document_family,
  array_sort(array_distinct(array_concat(array_concat(a.committee_keys,coalesce(ml.committee_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))),coalesce(pmf.committee_keys,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)'))))) AS committee_keys,

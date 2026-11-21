@@ -79,10 +79,10 @@ Coverage: Date bounds span accepted document dates only and Congress bounds skip
 | Field | Published type | Nullable | Meaning |
 | --- | --- | --- | --- |
 | `link_key` | `fixed[8]` | no | Stable public body or original-link key |
-| `saved_body` | `fixed[32]` | no | SHA-256 of original bytes |
-| `saved_suffix` | `dict` | no | Recorded physical object suffix |
-| `saved_media_type` | `dict` | no | Media type of the saved file |
-| `saved_bytes` | `int64` | no | Size of original bytes before storage compression |
+| `saved_body` | `fixed[32]` | yes | SHA-256 of the usable primary copy. Null when the retained copy was reviewed and withheld. |
+| `saved_suffix` | `dict` | yes | Physical object suffix of the usable primary copy, when available. |
+| `saved_media_type` | `dict` | yes | Media type of the usable primary copy, when available. |
+| `saved_bytes` | `int64` | yes | Size before storage compression of the usable primary copy, when available. |
 | `document_date_source` | `dict` | yes | Filename, content or meeting date basis |
 | `title_source` | `dict` | yes | Which candidate gave the title: correction, page_title, page_heading (including a dead source page the document showed), link_text, other_format_page_title, other_format_page_heading, copy_link_text, recovered_copy, mods_title, or label_witness (a label with the witness name); null when untitled |
 | `in_archive_since` | `date32` | yes | Earliest known archive import date |

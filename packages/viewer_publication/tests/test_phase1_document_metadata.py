@@ -25,7 +25,7 @@ def test_source_listing_selects_one_earliest_address_compatible_tuple(tmp_path):
            link('member','container','Container','files.test/package.zip',day=21),
            link('redirect','redirect','Redirect','requested.test/old.pdf')]
     inputs=[json_input(tmp_path,'document_addresses',addresses,component='Utf8',source_id='Utf8',url='Utf8',member_path='Utf8',first_fetched='Utf8'),
-        json_input(tmp_path,'saved_files',[dict(component=c,source_id=s,saved_rank=1) for c,s in [('top','source-a'),('member','member'),('redirect','redirect')]],component='Utf8',source_id='Utf8',saved_rank='Int64'),
+        json_input(tmp_path,'saved_files',[dict(component=c,source_id=s,saved_rank=1,can_download=True) for c,s in [('top','source-a'),('member','member'),('redirect','redirect')]],component='Utf8',source_id='Utf8',saved_rank='Int64',can_download='Boolean'),
         json_input(tmp_path,'document_identities',[dict(component=c,document_id='id:'+c) for c in ['top','member','redirect']],component='Utf8',document_id='Utf8'),
         json_input(tmp_path,'publisher_links',links,source_id='Utf8',context_url='Utf8',context='Utf8',page_body='Utf8',first_good_at='Utf8',link_index='Int64',split_position='Int64',text='Utf8',doc_type='Utf8',add_date='Utf8',url_key='Utf8',target_member_path='Utf8'),
         json_input(tmp_path,'model_url_keys',[dict(url=url,url_key=url.removeprefix('https://'),error=None) for url in sorted({row['url'] for row in addresses})],url='Utf8',url_key='Utf8',error='Utf8')]
@@ -262,9 +262,11 @@ def test_document_removals_use_each_pages_latest_timestamp_and_require_all_remov
         ('removed', '2026-01-02'), ('tied', '2026-02-01'), (None, '2026-02-03')}
 
 
-def _saved_file_steps():
+def _saved_file_steps(*, unusable_body=None):
     """Fixture members as document_members, then the name standing and the saved-file order as the model runs them."""
-    return [dict(name='document_members',sql="SELECT * EXCLUDE(first_fetched),cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM members"),
+    reviews = "SELECT cast(NULL AS VARCHAR) AS body_sha WHERE false" if unusable_body is None else f"SELECT '{unusable_body}' AS body_sha"
+    return [dict(name='unusable_downloads', sql=reviews),
+            dict(name='document_members',sql="SELECT * EXCLUDE(first_fetched),cast(first_fetched AS TIMESTAMP WITH TIME ZONE) AS first_fetched FROM members"),
             dict(name='saved_name_standing',sql=(ROOT/'model/sql/saved-name-standing.sql').read_text(),materialize=True),
             dict(name='saved_files',sql=(ROOT/'model/sql/saved-files.sql').read_text(),materialize=True)]
 
@@ -328,6 +330,11 @@ def test_saved_file_order_picks_the_body_then_a_named_source_of_it(tmp_path):
         steps=_saved_file_steps(),outputs=[],
         queries=[dict(name='o',sql="SELECT source_id FROM saved_files WHERE component='pdf' ORDER BY saved_rank")])['o']
     assert [row['source_id'] for row in order]==['later','third','fourth','earlier']
+    held = run_job(tmp_path/'held', NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs,
+        steps=_saved_file_steps(unusable_body='c'*64), outputs=[], queries=[dict(name='copies',
+        sql="SELECT source_id,can_download FROM saved_files WHERE component='pdf' ORDER BY saved_rank")])['copies']
+    assert held[0]['source_id']=='third' and held[0]['can_download']
+    assert held[-1]==dict(source_id='later',can_download=False)
 
 
 def test_a_later_capture_of_held_bytes_never_names_the_saved_body(tmp_path):
@@ -668,13 +675,13 @@ def test_recovery_only_document_reads_the_recovered_page_title_and_the_original_
     """068f2a40 hard-coded NULL; DM 7.5 gives a recovery-only row the title evidence of any other (titles.sql chooses)."""
     from congress_api.retention.provenance import list_of, struct
     strings = list_of('Utf8')
-    recoveries = [dict(component=c, saved_rank=1, id=c, body_sha=b, original_url=f'https://x.test/{c}.pdf', bytes=10,
+    recoveries = [dict(component=c, saved_rank=1, can_download=True, id=c, body_sha=b, original_url=f'https://x.test/{c}.pdf', bytes=10,
                        imported_at='2026-10-01T00:00:00Z') for c, b in [('read', 'a' * 64), ('label', 'b' * 64)]]
     annotation = dict(document_kind=[], document_family=[], committee_keys=[], chambers=[], congress=None, filename_date=None,
                       meeting_keys=[], measure_keys=[], bioguide_ids=[], package_id=None, facts=[])
     from viewer_publication.archive_model import registry_inputs
     inputs = registry_inputs(tmp_path / 'registries') + [json_input(tmp_path, 'saved_recoveries', recoveries, component='Utf8', saved_rank='Int64', id='Utf8', body_sha='Utf8',
-                         original_url='Utf8', bytes='Int64', imported_at='Utf8', role='Utf8', page_shown='Utf8')] + [
+                         original_url='Utf8', bytes='Int64', imported_at='Utf8', role='Utf8', page_shown='Utf8', can_download='Boolean')] + [
         json_input(tmp_path, 'document_identities', [dict(component=c, document_id='doc:' + c, has_real=False) for c in ('read', 'label')],
                    component='Utf8', document_id='Utf8', has_real='Boolean'),
         json_input(tmp_path, 'effective_filenames', [dict(input_id='recovery:' + c, filename=c + '.pdf') for c in ('read', 'label')],

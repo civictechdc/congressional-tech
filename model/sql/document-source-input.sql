@@ -2,7 +2,7 @@
 -- saved file, so its addresses (a dead page that is its file's source, ct-u9y4) are none of them saved.
 WITH addresses AS (
  SELECT a.component,d.document_id AS doc_key,min(a.source_id) AS source_key,a.url,a.member_path,
- coalesce(bool_or(a.source_id=s.source_id),false) AS is_saved,
+ coalesce(bool_or(a.source_id=s.source_id AND s.can_download),false) AS is_saved,
  cast(min(cast(a.first_fetched AS TIMESTAMP WITH TIME ZONE)) AS DATE) AS first_seen
  FROM saved_files s RIGHT JOIN (
   document_identities d JOIN document_addresses a USING(component)

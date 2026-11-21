@@ -230,6 +230,7 @@
     "recovery_copy_components": 527469,
     "recovery_decisions": 24168,
     "recovery_diagnostics": 12432,
+    "recovery_documents": 12587,
     "recovery_input": 12587,
     "recovery_kinds": 19,
     "recovery_original_components": 12751,
@@ -310,6 +311,7 @@
     "title_overrides": 0,
     "title_rules": 9,
     "unreadable_records": 164,
+    "unusable_downloads": 30,
     "url_inputs": 1704221,
     "url_literals": 1704221,
     "url_normalized": 1704221,
@@ -377,6 +379,7 @@
     "person_decisions",
     "recovered_file_roles",
     "title_overrides",
-    "title_rules"
+    "title_rules",
+    "unusable_downloads"
   ]
 }

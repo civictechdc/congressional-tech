@@ -18,7 +18,8 @@ def test_native_recovery_export_preserves_saved_recovery_preference(tmp_path):
             ('y','recovered_document','c','2026-10-26T12:00:00Z')])]
     fields={name:'Utf8' for name in ['component','id','receipt_key','original_url','kind','body_sha','imported_at','recovered_url','identity_note','role']}
     fields.update(receipt_line='Int32',capture_index='Int32',bytes='Int64')
-    inputs=[json_input(tmp_path,'final_recovery_attachments',rows,**fields),
+    inputs=[json_input(tmp_path,'unusable_downloads',[],body_sha='Utf8'),
+        json_input(tmp_path,'final_recovery_attachments',rows,**fields),
         json_input(tmp_path,'document_identities',[dict(component='component',document_id='d'*64)],component='Utf8',document_id='Utf8'),
         json_input(tmp_path,'body_evidence',[dict(body_sha=c*64,suffix='.gz') for c in ['a','b','c']],body_sha='Utf8',suffix='Utf8')]
     from viewer_publication.archive_provenance import saved_recoveries_step

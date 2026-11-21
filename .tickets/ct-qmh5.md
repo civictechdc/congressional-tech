@@ -1,6 +1,6 @@
 ---
 id: ct-qmh5
-status: open
+status: in_progress
 deps: []
 links: [ct-en4n]
 created: 2026-11-20T23:32:58Z
@@ -44,3 +44,7 @@ The figure of 24 above counted unhidden inventory originals in the first pass. T
 **2026-11-21T05:58:20Z**
 
 The public release pointer still named `0e7084cde775` on November 21. The verified baseline for that release is 26 affected records in the default list and 31 distinct detail pages offering a bad copy. Fix the download choices, keep each usable replacement, and check all 31 pages on the next release containing the fix. Include the six pages where clearing the primary copy alone leaves a bad recovery download. Return the per-page results to [the source audit](ct-en4n.md).
+
+**2026-11-21T06:38:58Z**
+
+The model now withholds 30 reviewed bad files from primary, alternate and recovery downloads. A release rebuilt from test receipts kept the document addresses and the usable recovery. The prior public release still offers bad files on 31 detail pages. The public check also protects the verified Vargas testimony and 117 previously working document links. Close after running that check against the successor.

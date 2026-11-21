@@ -1,4 +1,4 @@
-SELECT d.document_id AS doc_key,r.saved_rank AS recovery_key,
+SELECT d.document_id AS doc_key,r.saved_rank AS recovery_key,r.can_download,
  r.original_url,r.kind,arrow_cast(decode(r.body_sha,'hex'),'FixedSizeBinary(32)') AS body,b.suffix,
  r.bytes,cast(r.imported_at AS DATE) AS imported_at,r.recovered_url,r.identity_note,
  -- An edition moved off its link (ct-u9y4) is found by its body, so its link's URL key stays with the link's file.
