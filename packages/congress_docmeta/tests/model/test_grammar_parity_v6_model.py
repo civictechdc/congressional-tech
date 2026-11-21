@@ -3,15 +3,11 @@
 from __future__ import annotations
 
 import json
-import os
 from typing import Any
 
 import pytest
 
-pytestmark = pytest.mark.skipif(
-    os.environ.get("DOCMETA_RUN_MODEL_TESTS") != "1",
-    reason="needs the fast-gemma4 engine; run scripts/dev.py test docmeta-model",
-)
+pytest.importorskip("fast_gemma4", reason="needs the fast-gemma4 engine; run scripts/dev.py test docmeta-model")
 
 
 def test_per_doc_grammar_v6_leading_whitespace_and_separators() -> None:
