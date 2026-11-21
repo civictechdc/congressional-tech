@@ -4,10 +4,11 @@
 Runs the production `PythonicEngineV6.run_records` path (pre-pass, grammar-locked decode, post-pass)
 on three held-out sets and scores the final `DocMetaV4Causal` objects against gold:
 
-  val48        eval_val48_v4_gold.json (48 stratified blind docs), via `PythonicEngineV6.run_records`
-  docs8        eval_docs8_v4_gold.json (8 stress-test docs), via `run_records`
-  valid_sweep  the split `gold.select_val_indices` holds out of the V6.4 gold, via `run_docmeta_parquet_sweep`
-  val48_sweep  the val48 docs present in the sweep queue, via `run_docmeta_parquet_sweep`
+  val48             eval_val48_v4_gold.json (48 stratified blind docs), via `PythonicEngineV6.run_records`
+  docs8             eval_docs8_v4_gold.json (8 stress-test docs), via `run_records`
+  valid_sweep       the heldout_v6_4 split `gold.select_val_indices` holds out of gold, via `run_docmeta_parquet_sweep`
+  test_gapfill_sweep the sealed `test_gapfill` rare-type/unseen-cluster split, via `run_docmeta_parquet_sweep`
+  val48_sweep       the val48 docs present in the sweep queue, via `run_docmeta_parquet_sweep`
 
 The `*_sweep` sets feed the model the queue rows the production sweep will feed it, through the sweep's own
 code path. `--llm-only` turns the deterministic pre/post rules off for the `run_records` sets.
@@ -490,6 +491,15 @@ def load_sweep_sets(
         val_idx, _ = select_val_indices(parsed)
         rows = [parsed[i] for i in sorted(val_idx) if parsed[i]["queue_row"] is not None]
         out["valid_sweep"] = ([r["queue_row"] for r in rows], [r["gold_v4"] for r in rows])
+    if "test_gapfill_sweep" in names:
+        parsed_gf, _ = parse_gold_rows(
+            gold_jsonl,
+            (DEFAULT_VAL48_JSON, DEFAULT_DOCS8_JSON),
+            augment_personas=augment_personas,
+            allowed_splits=frozenset({"test_gapfill"}),
+        )
+        rows_gf = [r for r in parsed_gf if r["queue_row"] is not None]
+        out["test_gapfill_sweep"] = ([r["queue_row"] for r in rows_gf], [r["gold_v4"] for r in rows_gf])
     if "val48_sweep" in names:
         v48 = json.loads(DEFAULT_VAL48_JSON.read_text(encoding="utf-8"))
         by_sha = load_queue_rows(DEFAULT_QUEUE_PARQUET, {str(r["body_sha"]) for r in v48}, "saved_body_hex")

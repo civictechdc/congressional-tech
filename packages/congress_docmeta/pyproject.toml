@@ -25,4 +25,12 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-congress_docmeta = ["*.json"]
+congress_docmeta = [
+    "*.json",
+    "gold_v65/*.json",
+    "gold_v65/*.jsonl",
+    "gold_v65/viewer/*.html",
+    "gold_v65/viewer/*.js",
+    "gold_v65/viewer/*.css",
+    "gold_v65/viewer/*.md",
+]

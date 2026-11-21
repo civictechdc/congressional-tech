@@ -15,10 +15,12 @@ template (`~/.venv-vllm-metal/bin/python`, with this package on `PYTHONPATH`).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
 from .gold import DEFAULT_DOCS8_JSON, DEFAULT_GOLD_JSONL, DEFAULT_VAL48_JSON, load_and_prepare_v64_splits
+from .gold_v65.gold_contract import CONTRACT_VERSION
 from .schema_v4 import MAX_PERSONAS
 
 WIRE_CONFIG = {
@@ -54,6 +56,12 @@ def main(argv: list[str] | None = None) -> int:
         args.gold_jsonl, DEFAULT_VAL48_JSON, DEFAULT_DOCS8_JSON, tok, val_size=args.val_size, max_seq_len=args.max_seq_len,
         train_docs=args.train_docs, class_cap=args.class_cap, extra_train_jsonl=args.extra_train_jsonl,
     )
+    stats = {
+        **stats,
+        "gold_jsonl": str(args.gold_jsonl),
+        "gold_sha256": hashlib.sha256(args.gold_jsonl.read_bytes()).hexdigest(),
+        "gold_contract_version": CONTRACT_VERSION,
+    }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps({"stats": stats, "train": train, "valid": valid}, separators=(",", ":")), encoding="utf-8")
     wire_p = args.out.parent / "docmeta_wire_config.json"

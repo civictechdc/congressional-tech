@@ -1,0 +1,1746 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "docmeta_gold_conventions.schema.json",
+ "title": "DocMeta gold conventions overlay (V6.5 House Conventions)",
+ "description": "Overlay on docmeta_v4_causal.schema.json: conventions decidable from the label alone. A label must pass the base schema (validate_docmeta_v4) AND this overlay. Each $defs entry is one rule: its key is the rule id, `x-severity` is error (trainer and scorer refuse the dataset) or warn, `$comment` names the rubric sentence. gold_contract.py maps each validation error to its rule through allOf[i].",
+ "x-contract-version": "docmeta-gold-contract/2",
+ "$defs": {
+  "L10_nonusable_no_kind": {
+   "x-severity": "error",
+   "$comment": "Rubric: `primary_kind` (required when status == \"usable\"); non-usable statuses carry triage or masthead fields only.",
+   "description": "A status other than usable carries no primary_kind and no secondary_kinds.",
+   "if": {
+    "required": [
+     "status"
+    ],
+    "properties": {
+     "status": {
+      "not": {
+       "const": "usable"
+      }
+     }
+    }
+   },
+   "then": {
+    "properties": {
+     "primary_kind": false,
+     "secondary_kinds": false
+    }
+   },
+   "x-blind": "Whether the status itself is right."
+  },
+  "L11_usable_has_kind_and_tail": {
+   "x-severity": "error",
+   "$comment": "Rubric: `primary_kind` (required when status == \"usable\"); Required Synthesis Tail on Every `usable` Document: composed_title, gist, topics.",
+   "description": "A usable label has primary_kind, composed_title, gist and topics.",
+   "if": {
+    "required": [
+     "status"
+    ],
+    "properties": {
+     "status": {
+      "const": "usable"
+     }
+    }
+   },
+   "then": {
+    "required": [
+     "primary_kind",
+     "composed_title",
+     "gist",
+     "topics"
+    ]
+   },
+   "x-blind": "Whether the kind, title, gist and topics are right."
+  },
+  "L12_error_status_triage_only": {
+   "x-severity": "error",
+   "$comment": "Rubric: Hard-Error / Unusable Triage Statuses (`error_reason` REQUIRED; omit ALL other fields!).",
+   "description": "error_or_block, stub_or_blank and ocr_unreadable carry exactly status, text_quality and error_reason.",
+   "if": {
+    "required": [
+     "status"
+    ],
+    "properties": {
+     "status": {
+      "enum": [
+       "error_or_block",
+       "stub_or_blank",
+       "ocr_unreadable"
+      ]
+     }
+    }
+   },
+   "then": {
+    "required": [
+     "error_reason"
+    ],
+    "propertyNames": {
+     "enum": [
+      "status",
+      "text_quality",
+      "error_reason"
+     ]
+    }
+   },
+   "x-blind": "Whether the triage status is right."
+  },
+  "L13_error_reason_only_on_error_status": {
+   "x-severity": "error",
+   "$comment": "Rubric: Structural Wrapper / Listing Non-Usable Statuses (NO `error_reason`); schema: error_reason populated ONLY when status is error_or_block, stub_or_blank, or ocr_unreadable.",
+   "description": "error_reason appears only with the three triage statuses.",
+   "if": {
+    "required": [
+     "status"
+    ],
+    "properties": {
+     "status": {
+      "not": {
+       "enum": [
+        "error_or_block",
+        "stub_or_blank",
+        "ocr_unreadable"
+       ]
+      }
+     }
+    }
+   },
+   "then": {
+    "properties": {
+     "error_reason": false
+    }
+   },
+   "x-blind": "Whether the status is right."
+  },
+  "L14_secondary_not_primary": {
+   "x-severity": "error",
+   "$comment": "Rubric: Where a document is two things, the first is `primary_kind` and the second goes in `secondary_kinds`.",
+   "description": "secondary_kinds has no repeats and never repeats primary_kind.",
+   "properties": {
+    "secondary_kinds": {
+     "uniqueItems": true
+    }
+   },
+   "allOf": [
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "hearing_transcript"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "hearing_transcript"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "witness_statement"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "witness_statement"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "member_opening_statement"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "member_opening_statement"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "member_or_floor_statement"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "member_or_floor_statement"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "truth_in_testimony_disclosure"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "truth_in_testimony_disclosure"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "witness_biography"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "witness_biography"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "witness_list"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "witness_list"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "member_roster"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "member_roster"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "attendance_quorum_sheet"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "attendance_quorum_sheet"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "qfr_request"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "qfr_request"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "qfr_response"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "qfr_response"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "nominee_questionnaire_apq"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "nominee_questionnaire_apq"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "hearing_notice"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "hearing_notice"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "markup_notice"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "markup_notice"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "hearing_memo_or_charter"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "hearing_memo_or_charter"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "meeting_results"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "meeting_results"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "committee_vote"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "committee_vote"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "bill_or_draft"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "bill_or_draft"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "committee_amendment"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "committee_amendment"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "comparative_print"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "comparative_print"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "section_by_section"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "section_by_section"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "committee_report"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "committee_report"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "explanatory_statement"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "explanatory_statement"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "committee_resolution"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "committee_resolution"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "committee_rules"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "committee_rules"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "oversight_plan"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "oversight_plan"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "budget_views_and_estimates"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "budget_views_and_estimates"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "revenue_or_cost_estimate"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "revenue_or_cost_estimate"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "treaty_document"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "treaty_document"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "agency_or_gao_crs_report"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "agency_or_gao_crs_report"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "external_report_or_whitepaper"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "external_report_or_whitepaper"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "oversight_letter"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "oversight_letter"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "witness_invitation"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "witness_invitation"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "nomination_or_support_letter"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "nomination_or_support_letter"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "external_submission_letter"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "external_submission_letter"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "public_comment_or_submission"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "public_comment_or_submission"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "investigative_exhibit"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "investigative_exhibit"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "legal_or_investigative_filing"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "legal_or_investigative_filing"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "news_clip_or_article"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "news_clip_or_article"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "press_release_or_fact_sheet"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "press_release_or_fact_sheet"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "legislative_schedule_or_calendar"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "legislative_schedule_or_calendar"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "gsa_prospectus_or_property"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "gsa_prospectus_or_property"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "slides_or_visual"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "slides_or_visual"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "event_web_page"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "event_web_page"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "multi_doc_packet"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "multi_doc_packet"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "error_or_non_document"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "error_or_non_document"
+         }
+        }
+       }
+      }
+     }
+    },
+    {
+     "if": {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "other"
+        ]
+       }
+      }
+     },
+     "then": {
+      "properties": {
+       "secondary_kinds": {
+        "not": {
+         "contains": {
+          "const": "other"
+         }
+        }
+       }
+      }
+     }
+    }
+   ],
+   "x-blind": "Whether a secondary kind is right."
+  },
+  "L20_grid_kinds_no_chair_or_ranking": {
+   "x-severity": "error",
+   "$comment": "Rubric V6.5: Roll-call and attendance grids are never a source of people. On `committee_vote` and `attendance_quorum_sheet`, do not list the chair, the ranking member or anyone else read off the grid.",
+   "description": "committee_vote and attendance_quorum_sheet list no person with role chair or ranking_member.",
+   "if": {
+    "required": [
+     "primary_kind"
+    ],
+    "properties": {
+     "primary_kind": {
+      "enum": [
+       "committee_vote",
+       "attendance_quorum_sheet"
+      ]
+     }
+    }
+   },
+   "then": {
+    "properties": {
+     "personas": {
+      "items": {
+       "properties": {
+        "role": {
+         "not": {
+          "enum": [
+           "chair",
+           "ranking_member"
+          ]
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "x-blind": "Grid people under other roles (L21); a chair named outside the grid as offeror or sponsor is allowed under that role only."
+  },
+  "L21_grid_kinds_only_offeror_or_sponsor": {
+   "x-severity": "warn",
+   "$comment": "Rubric V6.5: List an amendment's offeror or a bill's sponsor when the text names them outside the grid.",
+   "description": "On committee_vote and attendance_quorum_sheet every listed person is an amendment_offeror, sponsor or cosponsor.",
+   "if": {
+    "required": [
+     "primary_kind"
+    ],
+    "properties": {
+     "primary_kind": {
+      "enum": [
+       "committee_vote",
+       "attendance_quorum_sheet"
+      ]
+     }
+    }
+   },
+   "then": {
+    "properties": {
+     "personas": {
+      "items": {
+       "properties": {
+        "role": {
+         "enum": [
+          "amendment_offeror",
+          "sponsor",
+          "cosponsor"
+         ]
+        }
+       }
+      }
+     }
+    }
+   },
+   "x-blind": "Whether a listed offeror or sponsor was read off the grid."
+  },
+  "L22_letters_functional_roles": {
+   "x-severity": "error",
+   "$comment": "Rubric V6.5: Letters: the role is the function, not the office. Lead signer `sender`, co-signers `signatory`, addressees and cc `recipient`. A chair who signs a letter is `sender`, not `chair`.",
+   "description": "On the five kinds that are letters by form (oversight, external submission, nomination or support, witness invitation, QFR request) no person has an office role (chair, ranking_member, presiding). qfr_response and public_comment_or_submission may (coordinator decision 2026-11-18).",
+   "if": {
+    "required": [
+     "primary_kind"
+    ],
+    "properties": {
+     "primary_kind": {
+      "enum": [
+       "oversight_letter",
+       "external_submission_letter",
+       "nomination_or_support_letter",
+       "witness_invitation",
+       "qfr_request"
+      ]
+     }
+    }
+   },
+   "then": {
+    "properties": {
+     "personas": {
+      "items": {
+       "properties": {
+        "role": {
+         "not": {
+          "enum": [
+           "chair",
+           "ranking_member",
+           "presiding"
+          ]
+         }
+        }
+       }
+      }
+     }
+    }
+   },
+   "x-blind": "Whether sender, signatory and recipient are assigned right; letters labeled with a non-letter kind; office roles on qfr_response and public_comment_or_submission (allowed by decision)."
+  },
+  "L23_correspondence_flow_letters_only": {
+   "x-severity": "error",
+   "$comment": "Rubric V6.5: `correspondence_flow` only on the letter kinds (oversight_letter, external_submission_letter, nomination_or_support_letter, witness_invitation, qfr_request, qfr_response, public_comment_or_submission). Never on statements, memos, notices or exhibits.",
+   "description": "correspondence_flow appears only when primary_kind is one of the seven letter kinds.",
+   "if": {
+    "required": [
+     "correspondence_flow"
+    ]
+   },
+   "then": {
+    "required": [
+     "primary_kind"
+    ],
+    "properties": {
+     "primary_kind": {
+      "enum": [
+       "oversight_letter",
+       "external_submission_letter",
+       "nomination_or_support_letter",
+       "witness_invitation",
+       "qfr_request",
+       "qfr_response",
+       "public_comment_or_submission"
+      ]
+     }
+    }
+   },
+   "x-blind": "Whether the flow value is right; read strictly on primary_kind, so packets and filings whose secondary kind is a letter fail."
+  },
+  "L25_date_formats": {
+   "x-severity": "error",
+   "$comment": "Rubric: dates: `doc_date` (`YYYY-MM-DD` or `YYYY-MM`), `event_date` (`YYYY-MM-DD`), `due_date` (`YYYY-MM-DD`). Year-only doc_date is L25b (warn).",
+   "description": "doc_date is YYYY-MM-DD, YYYY-MM or YYYY (YYYY reported by L25b); event_date and due_date are YYYY-MM-DD (valid month and day numbers).",
+   "properties": {
+    "doc_date": {
+     "pattern": "^[0-9]{4}(-(0[1-9]|1[0-2])(-(0[1-9]|[12][0-9]|3[01]))?)?$"
+    },
+    "event_date": {
+     "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+    },
+    "due_date": {
+     "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+    }
+   },
+   "x-blind": "Whether the date is the right one."
+  },
+  "L25b_year_only_doc_date": {
+   "x-severity": "warn",
+   "$comment": "Coordinator decision 2026-11-18: a year-only doc_date is allowed when the text gives only a year (the rubric's formats are YYYY-MM-DD or YYYY-MM).",
+   "description": "doc_date is not year-only (warn: allowed when the text gives only a year).",
+   "properties": {
+    "doc_date": {
+     "not": {
+      "pattern": "^[0-9]{4}$"
+     }
+    }
+   },
+   "x-blind": "Whether the text gives more than a year."
+  },
+  "L26_ref_prefixes": {
+   "x-severity": "error",
+   "$comment": "Rubric: Canonical Citation Prefixes (`refs`): use exact schema-blessed prefixes (bill, amdt, law, usc, cfr, fr, eo, rule, docket, nom, treaty, rept, hrg, sudoc, cbo, jct, crs, gao, olc, gsa, grant, advisory, exhibit, gpo, id).",
+   "description": "Every ref starts with one of the rubric's prefixes followed by a non-empty value.",
+   "properties": {
+    "refs": {
+     "items": {
+      "pattern": "^(bill|amdt|law|usc|cfr|fr|eo|rule|docket|nom|treaty|rept|hrg|sudoc|cbo|jct|crs|gao|olc|gsa|grant|advisory|exhibit|gpo|id):\\S"
+     }
+    }
+   },
+   "x-blind": "Whether the ref value is right or shown (T03 checks its numbers against the text)."
+  },
+  "L27_subcommittee_roster_spelling": {
+   "x-severity": "error",
+   "$comment": "Rubric V6.5: Subcommittee names: the roster spelling (\"and\", not \"&\"; no leading \"the\").",
+   "description": "No subcommittee name contains '&' or starts with 'the '.",
+   "properties": {
+    "subcommittees": {
+     "items": {
+      "not": {
+       "pattern": "&|^[Tt][Hh][Ee]\\s"
+      }
+     }
+    }
+   },
+   "x-blind": "Oxford-comma and other spelling variants (D13); whether the name is the roster name."
+  },
+  "L28_committee_names_not_codes": {
+   "x-severity": "error",
+   "$comment": "Rubric: COMMITTEES & SUBCOMMITTEES (Canonical English Strings, NEVER `hsxx00` Codes!).",
+   "description": "No committee or subcommittee is a bare system code such as hsif14.",
+   "properties": {
+    "committees": {
+     "items": {
+      "not": {
+       "pattern": "^\\s*[hsjc][a-z]{3}[0-9]{2}\\s*$"
+      }
+     }
+    },
+    "subcommittees": {
+     "items": {
+      "not": {
+       "pattern": "^\\s*[hsjc][a-z]{3}[0-9]{2}\\s*$"
+      }
+     }
+    }
+   },
+   "x-blind": "Codes of other shapes."
+  },
+  "L29_person_name_no_honorific": {
+   "x-severity": "error",
+   "$comment": "Rubric: no honorifics (`Rep.`, `Sen.`, `Hon.`, `Dr.`) in `personas[].name`; V6.5: If the text gives only a surname (\"Chairman Roe\", \"Mr. CRAMER\"), the name is the surname.",
+   "description": "No person name starts with an honorific or office title.",
+   "properties": {
+    "personas": {
+     "items": {
+      "properties": {
+       "name": {
+        "not": {
+         "pattern": "^([Rr][Ee][Pp]|[Ss][Ee][Nn]|[Hh][Oo][Nn]|[Dd][Rr]|[Mm][Rr]|[Mm][Rr][Ss]|[Mm][Ss]|[Cc][Hh][Aa][Ii][Rr][Mm][Aa][Nn]|[Cc][Hh][Aa][Ii][Rr][Ww][Oo][Mm][Aa][Nn]|[Cc][Hh][Aa][Ii][Rr]|[Ss][Ee][Nn][Aa][Tt][Oo][Rr]|[Rr][Ee][Pp][Rr][Ee][Ss][Ee][Nn][Tt][Aa][Tt][Ii][Vv][Ee]|[Cc][Oo][Nn][Gg][Rr][Ee][Ss][Ss][Mm][Aa][Nn]|[Cc][Oo][Nn][Gg][Rr][Ee][Ss][Ss][Ww][Oo][Mm][Aa][Nn]|[Tt][Hh][Ee]\\s[Hh][Oo][Nn][Oo][Rr][Aa][Bb][Ll][Ee])\\.?\\s"
+        }
+       }
+      }
+     }
+    }
+   },
+   "x-blind": "Honorifics or titles after the first word."
+  },
+  "L30_disclosure_only_on_disclosures": {
+   "x-severity": "warn",
+   "$comment": "Rubric: `disclosure` (ONLY on `truth_in_testimony_disclosure` or conflict/financial disclosure forms).",
+   "description": "disclosure appears only on truth_in_testimony_disclosure (warn: the rubric also allows other disclosure forms).",
+   "if": {
+    "required": [
+     "disclosure"
+    ]
+   },
+   "then": {
+    "anyOf": [
+     {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "truth_in_testimony_disclosure"
+        ]
+       }
+      }
+     },
+     {
+      "required": [
+       "secondary_kinds"
+      ],
+      "properties": {
+       "secondary_kinds": {
+        "contains": {
+         "const": "truth_in_testimony_disclosure"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "x-blind": "Other disclosure forms the rubric allows, hence warn."
+  },
+  "L31_jct_description_fields": {
+   "x-severity": "error",
+   "$comment": "Rubric V6.5: JCT \"Description of H.R. ...\" pamphlets: `section_by_section`; `chamber` is the chamber of the committee the text says is marking up (House for Ways and Means, Senate for Finance); `issuer_org` is the Joint Committee on Taxation. When the text names no marking-up committee, list none (owner decision 2026-11-18: committees are only those the text names, checked by P03).",
+   "description": "A section_by_section label issued by or filed under JCT has issuer_org Joint Committee on Taxation; when it lists Ways and Means the chamber is house, when it lists Finance the chamber is senate.",
+   "if": {
+    "allOf": [
+     {
+      "required": [
+       "primary_kind"
+      ],
+      "properties": {
+       "primary_kind": {
+        "enum": [
+         "section_by_section"
+        ]
+       }
+      }
+     },
+     {
+      "anyOf": [
+       {
+        "required": [
+         "issuer_org"
+        ],
+        "properties": {
+         "issuer_org": {
+          "pattern": "[Jj][Oo][Ii][Nn][Tt]\\s[Cc][Oo][Mm][Mm][Ii][Tt][Tt][Ee][Ee]\\s[Oo][Nn]\\s[Tt][Aa][Xx][Aa][Tt][Ii][Oo][Nn]"
+         }
+        }
+       },
+       {
+        "required": [
+         "committees"
+        ],
+        "properties": {
+         "committees": {
+          "contains": {
+           "const": "Joint Committee on Taxation"
+          }
+         }
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "then": {
+    "required": [
+     "issuer_org"
+    ],
+    "properties": {
+     "issuer_org": {
+      "const": "Joint Committee on Taxation"
+     }
+    },
+    "allOf": [
+     {
+      "if": {
+       "required": [
+        "committees"
+       ],
+       "properties": {
+        "committees": {
+         "contains": {
+          "const": "House Committee on Ways and Means"
+         }
+        }
+       }
+      },
+      "then": {
+       "required": [
+        "chamber"
+       ],
+       "properties": {
+        "chamber": {
+         "const": "house"
+        }
+       }
+      }
+     },
+     {
+      "if": {
+       "required": [
+        "committees"
+       ],
+       "properties": {
+        "committees": {
+         "contains": {
+          "const": "Senate Committee on Finance"
+         }
+        }
+       }
+      },
+      "then": {
+       "required": [
+        "chamber"
+       ],
+       "properties": {
+        "chamber": {
+         "const": "senate"
+        }
+       }
+      }
+     }
+    ]
+   },
+   "x-blind": "JCT descriptions labeled with another kind (T10 reports those); a marking-up committee written another way (Committee on Ways and Means without the chamber); whether the committee is the one marking up."
+  }
+ },
+ "allOf": [
+  {
+   "$ref": "#/$defs/L10_nonusable_no_kind"
+  },
+  {
+   "$ref": "#/$defs/L11_usable_has_kind_and_tail"
+  },
+  {
+   "$ref": "#/$defs/L12_error_status_triage_only"
+  },
+  {
+   "$ref": "#/$defs/L13_error_reason_only_on_error_status"
+  },
+  {
+   "$ref": "#/$defs/L14_secondary_not_primary"
+  },
+  {
+   "$ref": "#/$defs/L20_grid_kinds_no_chair_or_ranking"
+  },
+  {
+   "$ref": "#/$defs/L21_grid_kinds_only_offeror_or_sponsor"
+  },
+  {
+   "$ref": "#/$defs/L22_letters_functional_roles"
+  },
+  {
+   "$ref": "#/$defs/L23_correspondence_flow_letters_only"
+  },
+  {
+   "$ref": "#/$defs/L25_date_formats"
+  },
+  {
+   "$ref": "#/$defs/L25b_year_only_doc_date"
+  },
+  {
+   "$ref": "#/$defs/L26_ref_prefixes"
+  },
+  {
+   "$ref": "#/$defs/L27_subcommittee_roster_spelling"
+  },
+  {
+   "$ref": "#/$defs/L28_committee_names_not_codes"
+  },
+  {
+   "$ref": "#/$defs/L29_person_name_no_honorific"
+  },
+  {
+   "$ref": "#/$defs/L30_disclosure_only_on_disclosures"
+  },
+  {
+   "$ref": "#/$defs/L31_jct_description_fields"
+  }
+ ]
+}

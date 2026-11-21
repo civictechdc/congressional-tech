@@ -7,25 +7,50 @@ Moved from fast-gemma4 `scripts/train_lora_v64.py` (11dcf14, then 8edf64b's labe
 from __future__ import annotations
 
 from collections import Counter, defaultdict
+import hashlib
 import json
+import os
 from pathlib import Path
 import random
 import re
 from typing import Any
 
 from .compact_wire_v6 import SYS_DOCMETA_V6_COMPACT, build_prompt_v6_compact, encode_v4_to_compact_v6
+from .gold_v65.paths import resolve_docmeta_v65_dir, resolve_package_fallback
 from .relational_rules_v6 import resolve_docmeta_v6_data_dir
 
 DEFAULT_ARCHIVE_DIR = resolve_docmeta_v6_data_dir()
-DEFAULT_GOLD_JSONL = DEFAULT_ARCHIVE_DIR / "lookups_and_gold" / "train_v6_4_complete_ssot_gold.jsonl"
+DEFAULT_V65_DIR = resolve_docmeta_v65_dir()
+DEFAULT_V65_SSOT_JSONL = DEFAULT_V65_DIR / "ssot" / "docmeta_gold_v6_5.jsonl"
+DEFAULT_V65_MANIFEST_JSON = resolve_package_fallback(DEFAULT_V65_DIR / "ssot" / "MANIFEST.json", "MANIFEST.json")
+DEFAULT_V64_GOLD_JSONL = DEFAULT_ARCHIVE_DIR / "lookups_and_gold" / "train_v6_4_complete_ssot_gold.jsonl"
+DEFAULT_GOLD_JSONL = DEFAULT_V65_SSOT_JSONL if DEFAULT_V65_SSOT_JSONL.is_file() else DEFAULT_V64_GOLD_JSONL
 DEFAULT_VAL48_JSON = DEFAULT_ARCHIVE_DIR / "lookups_and_gold" / "eval_val48_v4_gold.json"
 DEFAULT_DOCS8_JSON = DEFAULT_ARCHIVE_DIR / "lookups_and_gold" / "eval_docs8_v4_gold.json"
 DEFAULT_QUEUE_PARQUET = DEFAULT_ARCHIVE_DIR / "parquets_v6_2" / "llm_queue_v6_2.parquet"
-# The 183 held-out docs, by link key. The seeded draw below depends on every row's class, so one repaired label
-# would swap held-out docs for docs earlier checkpoints trained on; membership is read from this file instead.
-DEFAULT_HELDOUT_KEYS_JSON = (
-    DEFAULT_ARCHIVE_DIR.parent / "docmeta-v65-raretypes-20261118" / "lookups_and_gold" / "heldout_v6_4_183_link_keys.json"
+# The 183 held-out docs, by link key (180 in heldout_v6_4 after 3 V6.5 exclusions). Kept so V6.4 inputs and
+# legacy splits resolve identically without depending on class stratification.
+DEFAULT_HELDOUT_KEYS_JSON = resolve_package_fallback(
+    DEFAULT_V65_DIR / "lookups_and_gold" / "heldout_v6_4_183_link_keys.json",
+    "heldout_v6_4_183_link_keys.json",
 )
+
+
+def verify_v65_ssot_sha256(gold_jsonl: Path, manifest_json: Path | None = None) -> dict[str, Any]:
+    """Verify a sealed V6.5 SSOT file against its MANIFEST.json checksum and contract check status."""
+    m_path = manifest_json if manifest_json is not None else DEFAULT_V65_MANIFEST_JSON
+    if not m_path.is_file():
+        raise RuntimeError(f"Missing V6.5 SSOT manifest at {m_path}")
+    manifest = json.loads(m_path.read_text(encoding="utf-8"))
+    if (manifest.get("check") or {}).get("status") != "pass":
+        raise RuntimeError(f"Refusing unsealed or failing V6.5 SSOT manifest at {m_path}")
+    expected_sha = str((manifest.get("ssot") or {}).get("sha256") or "")
+    actual_sha = hashlib.sha256(gold_jsonl.read_bytes()).hexdigest()
+    if not expected_sha or actual_sha != expected_sha:
+        raise RuntimeError(
+            f"V6.5 SSOT sha256 mismatch for {gold_jsonl}: got {actual_sha}, expected {expected_sha}"
+        )
+    return manifest
 
 _PROMPT_PARSE_RE = re.compile(
     r"Advisory known metadata:\s*(?P<known>[^\n]*)\nFilename:\s*(?P<filename>[^\n]*)\nText:\n(?P<text>.*)\Z",
@@ -84,19 +109,31 @@ def parse_gold_rows(
     queue_parquet: Path | None = None,
     *,
     augment_personas: bool = True,
+    allowed_splits: set[str] | frozenset[str] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
     """Gold rows as the sweep presents them: queue `known`/`filename`/`text` when the doc is in the queue.
 
     Personas named in a fixed form are restored by rules R4-R6 (see the comment at the call).
     The reviewer's own text window is kept as `alt_text` (a second view of the same labels). Rows that share a
-    body hash, filename, or 200-char head with a blind eval doc are dropped.
+    body hash, filename, or 200-char head with a blind eval doc are dropped, and sealed V6.5 SSOT inputs default
+    to `{"train", "heldout_v6_4"}` splits unless `allowed_splits` specifies otherwise.
     """
     from .parquet_runner_v6 import _build_precomputed_context_from_queue_row
     from .pythonic_v5 import SCHEMA_OBJ
     from .relational_rules_v6 import add_text_grounded_personas_v6
 
+    if os.environ.get("DOCMETA_SKIP_SSOT_SHA_CHECK") != "1":
+        if DEFAULT_V65_SSOT_JSONL.is_file() and gold_jsonl.resolve() == DEFAULT_V65_SSOT_JSONL.resolve():
+            verify_v65_ssot_sha256(gold_jsonl)
+
     blind = load_blind_keys(blind_jsons)
-    raw_rows = [json.loads(line) for line in gold_jsonl.open("r", encoding="utf-8") if line.strip()]
+    keep_splits = allowed_splits if allowed_splits is not None else frozenset({"train", "heldout_v6_4"})
+    raw_rows_all = [json.loads(line) for line in gold_jsonl.open("r", encoding="utf-8") if line.strip()]
+    raw_rows = [
+        r
+        for r in raw_rows_all
+        if (r.get("split") is None and allowed_splits is None) or r.get("split") in keep_splits
+    ]
     queue = load_queue_rows(
         queue_parquet if queue_parquet is not None else DEFAULT_QUEUE_PARQUET,
         {str(r.get("link_key_hex") or "") for r in raw_rows} - {""},
@@ -156,6 +193,7 @@ def parse_gold_rows(
                     encode_v4_to_compact_v6(gold_v4), separators=(",", ":"), ensure_ascii=False
                 ),
                 "link_key_hex": str(raw.get("link_key_hex") or ""),
+                "split": raw.get("split"),
                 "queue_row": q_row,
             }
         )
@@ -171,10 +209,15 @@ def select_val_indices(
 ) -> tuple[set[int], random.Random]:
     """Held-out split; returns the indices and the RNG (reused for augmentation draws).
 
-    Membership comes from `heldout_keys_json` when that file exists (rows are matched by link key, so label
-    repairs and dropped rows cannot move a doc across the split). Without it, a class-stratified seeded draw.
+    For sealed V6.5 SSOT rows (`split in {"train", "heldout_v6_4"}`), membership comes directly from `split`.
+    Otherwise membership comes from `heldout_keys_json` when present (so repairs never swap docs), else a seeded draw.
     """
     rng = random.Random(seed)
+    if any(r.get("split") in ("train", "heldout_v6_4") for r in parsed_rows):
+        heldout_split = {i for i, r in enumerate(parsed_rows) if r.get("split") == "heldout_v6_4"}
+        if not heldout_split:
+            raise RuntimeError("V6.5 split rows contain no heldout_v6_4 rows")
+        return heldout_split, rng
     by_cls: dict[str, list[int]] = defaultdict(list)
     for i, r in enumerate(parsed_rows):
         by_cls[r["cls_key"]].append(i)
