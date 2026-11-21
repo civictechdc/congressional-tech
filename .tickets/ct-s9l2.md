@@ -17,3 +17,9 @@ congress_docmeta.eval_blind (and fast-gemma4 main's scripts/eval_docmeta_blind.p
 
 eval_blind and the sweep command take a memory limit with a safe default; a run beside a second 10 GB job leaves the machine with free memory; predictions are unchanged by the cap.
 
+
+## Notes
+
+**2026-11-18T22:05:32Z**
+
+Evidence from the ANE ring side session: 13 evals of valid_sweep,val48_sweep (212 docs, gemma4_e2b_v64_c2c4_w8) run through fast-gemma4 artifacts/logs/rd_capped_run.py (mx.set_memory_limit 24 GB, mx.set_cache_limit 6 GB, watchdog exit above 28 GB) on 2026-11-17 and 11-18 peaked at 9.62 GB MLX memory with the ring and 8.45 GB GPU only. Repeats of the same code under the cap gave identical predictions on all 212 docs, so a 6 GB cache cap is a tested starting default. The wrapper sits outside Git (artifacts/ is ignored); copy its three lines, do not depend on the file.
