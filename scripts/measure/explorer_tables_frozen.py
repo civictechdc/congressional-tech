@@ -44,7 +44,7 @@ def scoped_captures(spec, work):
 
 
 def mods_page_facts(spec, work):
-    """Select current or qualified readings before testing their MODS root or Senate body."""
+    """Keep detected page readings for MODS and Senate appearances."""
     path = work / 'page-facts.parquet'
     versions = spec['parser_versions']
     entries = compatible_versions.load_registry(current={**versions, 'readings': readings_bundle_version(versions)})
@@ -53,14 +53,29 @@ def mods_page_facts(spec, work):
         db.read_parquet(spec['captures']['path']).create_view('captures')
         db.read_parquet(spec['appearance_records']['path']).create_view('appearances')
         db.execute('CREATE TEMP TABLE parser_versions(parser VARCHAR, version VARCHAR)')
-        parsers = ('html', 'xml')
-        db.executemany('INSERT INTO parser_versions VALUES (?, ?)', [(p, versions[p]) for p in parsers])
-        for step in compatible_versions.selected_readings_steps(entries, parsers=parsers):
+        pins = {p: versions[p] for p in compatible_versions.LEAF_PARSERS}
+        db.executemany('INSERT INTO parser_versions VALUES (?, ?)', list(pins.items()))
+        db.execute('CREATE TEMP TABLE accepted_versions(parser VARCHAR, version VARCHAR)')
+        accepted = compatible_versions.accepted_version_rows(entries, pins=pins)
+        db.executemany('INSERT INTO accepted_versions VALUES (?, ?)', [(r['parser'], r['version']) for r in accepted])
+        for step in compatible_versions.selected_readings_steps(entries):
             kind = 'TABLE' if step.get('materialize') else 'VIEW'
             db.execute(f"CREATE TEMP {kind} {step['name']} AS {step['sql']}")
-        db.execute("""COPY (SELECT body_sha,status,title,heading,text_head,content_date,named_meetings FROM selected_readings
+        db.execute('CREATE TEMP VIEW pinned_readings AS ' + sql('pinned-readings'))
+        # Bound the format conflict check to bodies the frozen tables could use.
+        db.execute("""CREATE TEMP TABLE page_bodies AS
+            SELECT record_sha AS body_sha FROM appearances WHERE source='senate_page'
+            UNION SELECT body_sha FROM pinned_readings WHERE parser='xml' AND xml_root='mods'""")
+        db.execute(f'''CREATE TEMP TABLE sniff_observations AS
+            SELECT o.* FROM ({sql('sniff-observations')}) o SEMI JOIN page_bodies USING (body_sha)''')
+        db.execute('CREATE TEMP VIEW sniff_conflicts AS ' + sql('sniff-conflicts'))
+        # DuckDB spells the production RIGHT ANTI JOIN with the observations first.
+        db.execute('''CREATE TEMP VIEW sniff_facts AS SELECT body_sha,max(format) AS format
+            FROM sniff_observations ANTI JOIN sniff_conflicts USING (body_sha) GROUP BY body_sha''')
+        db.execute(f"""COPY (SELECT body_sha,status,title,heading,text_head,content_date,named_meetings
+            FROM ({sql('page-facts')})
             WHERE (parser='xml' AND xml_root='mods')
-               OR (parser='html' AND body_sha IN (SELECT record_sha FROM appearances WHERE source='senate_page')))
+               OR body_sha IN (SELECT record_sha FROM appearances WHERE source='senate_page'))
             TO ? (FORMAT PARQUET)""", [str(path)])
     return path
 

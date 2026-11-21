@@ -8,13 +8,12 @@ WITH stopwords AS (
   'session','examine','examining','review','oversight','part','http','https','www','gov','html','htm','imo','media','doc','pdf','download','watch','live'
  ) AS sw
 ), capture_urls AS (
- SELECT sc.record_sha_hex,
-  coalesce(c.url,c.requested_url,c.context_url) AS source_url
+ SELECT DISTINCT sc.record_sha_hex,
+  coalesce(c.url,c.requested_url,c.context_url) AS source_url,c.requested_url
  FROM senate_page_records sc
  JOIN captures c ON c.sha256=sc.sha256
  WHERE c.mode='fetch' AND c.complete AND c.outcome IN ('stored','unchanged')
   AND c.http_status BETWEEN 200 AND 299 AND c.sha256 IS NOT NULL
- GROUP BY sc.record_sha_hex,coalesce(c.url,c.requested_url,c.context_url)
 ), pf_matched AS (
  SELECT sc.record_sha_hex,pf.heading,pf.title,pf.content_date,pf.text_head
  FROM senate_page_records sc
@@ -53,16 +52,21 @@ WITH stopwords AS (
  UNION SELECT 'veterans','ssva00'
  UNION SELECT 'jec','jjec00'
 ), page_addresses AS (
- SELECT sc.record_sha_hex,coalesce(cu.source_url,sc.context_url) AS source_url,
-  url_resolve(coalesce(cu.source_url,sc.context_url),cast(NULL AS VARCHAR)) AS parsed_url
- FROM capture_urls cu RIGHT JOIN senate_page_records sc ON cu.record_sha_hex=sc.record_sha_hex
+ SELECT DISTINCT record_sha_hex,address AS source_url,address=primary_url AS primary_address,
+  url_resolve(address,cast(NULL AS VARCHAR)) AS parsed_url
+ FROM (
+  SELECT sc.record_sha_hex,coalesce(cu.source_url,sc.context_url) AS primary_url,
+   unnest(make_array(coalesce(cu.source_url,sc.context_url),cu.requested_url)) AS address
+  FROM capture_urls cu RIGHT JOIN senate_page_records sc ON cu.record_sha_hex=sc.record_sha_hex
+ )
+ WHERE address IS NOT NULL
 ), senate_pages_raw AS (
  SELECT
   a.record_sha_hex,
   -- The page key keeps nondefault ports; the hearing classifier uses only the path.
   regexp_replace(split_part(a.parsed_url,'#',1),'^https?://[^/:?#]+','') AS address_tail,
   (regexp_match(a.parsed_url,'^https?://[^/?#]+([^?#]*)'))[1] AS path,
-  a.source_url,sh.host,sh.parent_committee,
+  a.source_url,a.primary_address,sh.host,sh.parent_committee,
   coalesce(pf.heading,'')||' '||coalesce(pf.title,'')||' '||
    regexp_replace(a.source_url,'^https?://[^/]+/','') AS page_text,
   try_cast(pf.content_date AS DATE) AS pf_date,
@@ -92,9 +96,12 @@ WITH stopwords AS (
     THEN regexp_match(text_head,'(?i)\bDate:\s*(?:(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s*)?(January|February|March|April|May|June|July|August|September|October|November|December)\s+([0-9]{1,2}),\s*([0-9]{4})\s+Time:')
    END AS labeled_mdy
   FROM (
-   SELECT *,CASE WHEN host='banking' AND path ILIKE '/hearings/%' THEN source_url END AS banking_hearing_url
+   SELECT *,CASE WHEN host='banking' AND path ILIKE '/hearings/%' THEN source_url END AS banking_hearing_url,
+    host='banking' AND rtrim(path,'/') IN ('/hearings/witness-list','/witness-list') AS banking_directory
    FROM senate_pages_raw
   )
+  -- A redirect's request can identify a directory. Only the primary address supplies meeting evidence.
+  WHERE primary_address OR banking_directory
  ) r
 ), senate_pages_grouped AS (
  SELECT
@@ -120,7 +127,7 @@ WITH stopwords AS (
  GROUP BY r.record_sha_hex,r.parent_committee
  -- A directory lists people across hearings. Any directory capture disqualifies
  -- the body for this committee, including captures at otherwise unrecognized aliases.
- HAVING NOT bool_or(r.host='banking' AND rtrim(r.path,'/') IN ('/hearings/witness-list','/witness-list'))
+ HAVING NOT bool_or(r.banking_directory)
 ), senate_pages AS (
  SELECT
   g.record_sha_hex,

@@ -50,23 +50,22 @@ WITH meeting_known_people AS (
  FROM sha_ranked
  WHERE best_body_score IS NULL OR (sha_rn=1 AND (next_sha_score IS NULL OR next_sha_score<body_score))
 ), event_ranked AS (
- SELECT *,first_value(page_score) OVER (PARTITION BY event_id ORDER BY page_score DESC) AS best_score
+ SELECT *,first_value(page_score) OVER top_page_asc AS best_score,
+  first_value(page_key) OVER top_page_asc=first_value(page_key) OVER top_page_desc AS sole_page,
+  first_value(shared_surnames) OVER (PARTITION BY event_id
+   ORDER BY page_score DESC,body_score DESC NULLS LAST,shared_surnames DESC) AS top_surnames
  FROM page_scores
  WHERE page_score IS NOT NULL
-), top_pages AS (
- SELECT *,
-  first_value(page_key) OVER (PARTITION BY event_id ORDER BY page_key ASC,record_sha_hex)=
-   first_value(page_key) OVER (PARTITION BY event_id ORDER BY page_key DESC,record_sha_hex) AS sole_page,
-  first_value(shared_surnames) OVER (PARTITION BY event_id
-   ORDER BY body_score DESC NULLS LAST,shared_surnames DESC) AS top_surnames
+ WINDOW top_page_asc AS (PARTITION BY event_id ORDER BY page_score DESC,page_key ASC,record_sha_hex),
+  top_page_desc AS (PARTITION BY event_id ORDER BY page_score DESC,page_key DESC,record_sha_hex)
+), scored_links AS (
+ -- A sole winning page extends its link to weaker copies. Tied pages need surname corroboration.
+ SELECT record_sha_hex,event_id,banking_hearing_url,
+  page_score=best_score AND (sole_page OR (body_score=best_score AND top_surnames>0)) AS wins
  FROM event_ranked
- WHERE page_score=best_score
 )
-SELECT record_sha_hex,min(event_id) AS event_id,min(banking_hearing_url) AS banking_hearing_url
-FROM top_pages
--- Only a sole winning page extends its link to weaker copies. For a tie between
--- distinct pages, retain the existing exception for surname-corroborated top scores.
-WHERE sole_page OR (body_score=best_score AND top_surnames>0)
--- A copy with no corroboration can inherit at most one meeting.
+SELECT record_sha_hex,min(event_id) AS event_id,min(banking_hearing_url) FILTER (WHERE wins) AS banking_hearing_url
+FROM scored_links
 GROUP BY record_sha_hex
-HAVING min(event_id)=max(event_id)
+-- A losing page still counts when deciding how many events a generic body could inherit.
+HAVING min(event_id)=max(event_id) AND bool_or(wins)

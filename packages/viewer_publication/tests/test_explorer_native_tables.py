@@ -1173,7 +1173,11 @@ def frozen_runner():
     return mod
 
 
-def test_frozen_page_facts_select_readings_before_filtering(tmp_path, frozen_runner):
+XML_HEARING_SHA = bytes.fromhex('ab' * 32)
+
+
+@pytest.fixture
+def frozen_reading_spec(tmp_path):
     import pyarrow as pa
     import pyarrow.parquet as pq
     from congress_api.lake import compatible_versions
@@ -1182,10 +1186,11 @@ def test_frozen_page_facts_select_readings_before_filtering(tmp_path, frozen_run
     previous = {e['parser']: e['version'] for e in compatible_versions.load_registry()}
     rows = []
 
-    def add(body, parser, version, date, root=None, fingerprint=b'ok'):
+    def add(body, parser, version, date, root=None, fingerprint=b'ok', detected=None):
         rows.append(dict(body_sha=body, parser=parser, parser_version=version, status='completed',
                          content_date=date, xml_root=root, heading='', title='', text_head='',
-                         named_meetings=[9001], fingerprint=fingerprint, links=[dict(href='/hearing')]))
+                         named_meetings=[9001], fingerprint=fingerprint, links=[dict(href='/hearing')],
+                         format=detected, intact=True, error_type=None))
 
     day = '2020-02-14'
     add(b'updated', 'html', previous['html'], '2020-02-03')
@@ -1199,19 +1204,85 @@ def test_frozen_page_facts_select_readings_before_filtering(tmp_path, frozen_run
     add(b'unqualified', 'xml', 'unqualified-version', day, root='mods')
     add(b'other-site', 'html', versions['html'], day)
 
+    add(XML_HEARING_SHA, 'xml', versions['xml'], '2020-02-12', root='hearing')
+    add(XML_HEARING_SHA, 'html', versions['html'], '2020-02-03')
+    add(XML_HEARING_SHA, 'sniff', previous['sniff'], None, detected='xml')
+    # The other bodies have capture evidence for their format. A sniff conflict
+    # disqualifies even a current page reading.
+    add(b'conflict', 'html', versions['html'], day)
+    add(b'conflict', 'sniff', versions['sniff'], None, detected='xml')
+    captures = [dict(sha256=body, sniffed_format=parser, sniff_version=previous['sniff'], intact=True,
+                     mode='fetch', complete=True, outcome='stored', http_status=200,
+                     url='https://example.org/page', requested_url='https://example.org/page', context_url=None,
+                     bytes=compatible_versions.page_parse_max_bytes() + 1 if body == b'oversize' else 100)
+                for body, parser in sorted({(r['body_sha'], r['parser']) for r in rows
+                                            if r['body_sha'] != XML_HEARING_SHA and r['parser'] != 'sniff'})]
     spec = dict(parser_versions=versions)
     for name, data in [
         ('readings', rows),
         ('appearance_records', [dict(source='senate_page', record_sha=body)
-                                for body in (b'updated', b'compatible', b'needs-reparse')]),
-        ('captures', [dict(sha256=b'oversize', bytes=compatible_versions.page_parse_max_bytes() + 1)]),
+                                for body in (b'updated', b'compatible', b'needs-reparse', b'conflict', XML_HEARING_SHA)]),
+        ('captures', captures),
     ]:
         path = tmp_path / (name + '.parquet')
         pq.write_table(pa.Table.from_pylist(data), path)
         spec[name] = dict(path=str(path))
-    facts = pq.read_table(frozen_runner.mods_page_facts(spec, tmp_path)).to_pylist()
+    return spec
+
+
+def test_frozen_page_facts_select_readings_before_filtering(tmp_path, frozen_runner, frozen_reading_spec):
+    import pyarrow.parquet as pq
+
+    facts = pq.read_table(frozen_runner.mods_page_facts(frozen_reading_spec, tmp_path)).to_pylist()
     assert sorted((r['body_sha'], r['content_date']) for r in facts) == [
-        (b'compatible', day), (b'print', day), (b'updated', '2020-02-12')]
+        (b'compatible', '2020-02-14'), (b'print', '2020-02-14'), (b'updated', '2020-02-12'),
+        (XML_HEARING_SHA, '2020-02-12')]
+
+
+def test_frozen_xml_hearing_has_production_page_facts_and_candidate_date(tmp_path, frozen_runner, frozen_reading_spec):
+    from congress_api.lake import compatible_versions
+
+    spec = frozen_reading_spec
+    sha = XML_HEARING_SHA.hex()
+    pins = {p: spec['parser_versions'][p] for p in compatible_versions.LEAF_PARSERS}
+    entries = compatible_versions.load_registry()
+    inputs = [dict(name=name, kind='parquet', path=spec[name]['path']) for name in ('captures', 'readings')]
+    inputs += [compatible_versions.accepted_versions_input(tmp_path, entries, pins=pins),
+               json_input(tmp_path, 'parser_versions', [dict(parser=p, version=v) for p, v in pins.items()],
+                          parser='Utf8', version='Utf8')]
+    production = compatible_versions.selected_readings_steps(entries)
+    production.extend(dict(name=name.replace('-', '_'), sql=sql(name), materialize=True) for name in
+                      ('pinned-readings', 'sniff-observations', 'sniff-conflicts', 'sniff-facts', 'page-facts'))
+    frozen = frozen_runner.mods_page_facts(spec, tmp_path)
+    page_columns = 'status,title,heading,text_head,content_date,named_meetings'
+    # Same undated URL and meetings for each plan. The other reading dates the body February 3.
+    candidate_steps = [
+        dict(name='senate_page_records', sql=f"""SELECT '{sha}' AS record_sha_hex,decode('{sha}','hex') AS sha256,
+             'https://ag.senate.gov/hearings/session' AS context_url"""),
+        dict(name='appearance_people', sql=f"""SELECT '{sha}' AS record_sha_hex,'senate_page' AS source,
+             'Doe' AS family,false AS statement"""),
+        dict(name='spicy_committees', sql="""SELECT 'ssaf00' AS system_code,cast(NULL AS VARCHAR) AS parent_system_code,
+             'https://ag.senate.gov' AS website_url"""),
+        dict(name='meetings_resolved', sql="""SELECT event_id,meeting_date,'Hearing' AS title,'senate' AS chamber,
+             false AS not_held,'ssaf00' AS committee_key,make_array(named_struct('system_code','ssaf00')) AS committees
+             FROM (VALUES (9001, DATE '2020-02-12'),(9002, DATE '2020-02-03')) AS m(event_id,meeting_date)"""),
+        dict(name='senate_page_candidates', sql=sql('senate-page-candidates'), materialize=True),
+    ]
+    frozen_inputs = [dict(name='captures', kind='parquet', path=spec['captures']['path']),
+                     dict(name='page_facts', kind='parquet', path=str(frozen))]
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        results = {}
+        for plan, run_inputs, steps in [('production', inputs, production), ('frozen', frozen_inputs, [])]:
+            results[plan] = run_job(tmp_path / plan, engine, inputs=run_inputs,
+                steps=[*steps, *candidate_steps],
+                outputs=[], queries=[
+                    dict(name='facts', sql=f"SELECT {page_columns} FROM page_facts WHERE body_sha=decode('{sha}','hex')"),
+                    dict(name='candidates', sql="""SELECT c.event_id,cast(m.meeting_date AS VARCHAR) AS day
+                         FROM senate_page_candidates c JOIN meetings_resolved m ON c.event_id=m.event_id""")])
+    assert results['frozen'] == results['production']
+    assert results['production']['facts'] == [dict(status='completed', title='', heading='', text_head='',
+                                                   content_date='2020-02-12', named_meetings=[9001])]
+    assert results['production']['candidates'] == [dict(event_id=9001, day='2020-02-12')]
 
 
 def test_explorer_tables_frozen_job_dag_resolves_all_relations(tmp_path, frozen_runner):
