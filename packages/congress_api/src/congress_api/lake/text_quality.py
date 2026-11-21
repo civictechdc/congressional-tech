@@ -4,10 +4,10 @@ Native/final differences preserve order, multiplicity and original character
 spans. They nominate review, including legitimate cleanup, never a defect verdict.
 """
 from collections import defaultdict, deque
+from dataclasses import dataclass
 from difflib import SequenceMatcher
 from hashlib import sha256
-from itertools import islice, pairwise, product
-import re
+from itertools import chain, pairwise
 
 from spicy_docs.extraction.quality import (
     MAX_COMPARE_CHARS as MAX_COMPARE_CHARS,
@@ -123,164 +123,196 @@ _MIN_INTERIOR_MOVE = 12
 _MAX_ANCHOR_PROBES = 16
 
 
-def _moved_spans(deleted, inserted, width):
-    """Yield contiguous runs found by the bounded anchor search."""
-    index = defaultdict(deque)
-    page_order = []
-    for i, chunk in enumerate(inserted):
-        for pos in range(len(chunk) - width + 1):
-            positions = index[chunk[pos:pos + width]]
-            positions.append((i, pos))
-            page_order.append(positions)
-        page_order.extend([None] * min(width - 1, len(chunk)))
-
-    inserted_offsets = iter(page_order)
-    for d, chunk in enumerate(deleted):
-        # (inserted chunk, offset difference) identifies a contiguous alignment.
-        active = {}
-        for offset in range(len(chunk)):
-            end = offset + width
-            following = {}
-            extension_probes = 0
-            positions = index.get(chunk[offset:end])
-            if positions:
-                probes = len(positions)
-                if probes > _MAX_ANCHOR_PROBES:
-                    probes = max(1, _MAX_ANCHOR_PROBES - len(active))
-                    extension_probes = _MAX_ANCHOR_PROBES - probes
-                for i, pos in islice(positions, probes):
-                    alignment = (i, pos - offset)
-                    following[alignment] = active.pop(alignment, offset)
-            for probe, ((i, delta), start) in enumerate(active.items()):
-                if (probe < extension_probes and end + delta <= len(inserted[i])
-                        and chunk[end - 1] == inserted[i][end + delta - 1]):
-                    following[i, delta] = start
-                else:
-                    yield end - 1 - start, d, start, i, start + delta
-            active = following
-            # Advance crowded anchors in page order so later copies can pair
-            # with later positions, even when the first 16 are already taken.
-            passed = next(inserted_offsets, None)
-            if passed and len(passed) > _MAX_ANCHOR_PROBES:
-                passed.rotate(-1)
+def _anchor_pairs(ref, out, width):
+    """Center bounded probes on the corresponding occurrence of a repeated phrase."""
+    positions = defaultdict(list)
+    for b in range(len(out) - width + 1):
+        positions[out[b:b + width]].append(b)
+    occurrences = defaultdict(int)
+    for a in range(len(ref) - width + 1):
+        phrase = ref[a:a + width]
+        starts = positions.get(phrase, ())
+        if len(starts) > _MAX_ANCHOR_PROBES:
+            first = max(0, occurrences[phrase] - _MAX_ANCHOR_PROBES // 2)
+            first = min(first, len(starts) - _MAX_ANCHOR_PROBES)
+            starts = starts[first:first + _MAX_ANCHOR_PROBES]
+            occurrences[phrase] += 1
+        for b in starts:
+            yield a, b
 
 
-def _reserve_exact_spans(ref, out, ref_mask, out_mask):
-    buckets = [[] for _ in range(min(len(ref), len(out)) + 1)]
-    for length, _, a, _, b in _moved_spans([ref], [out], width=_MIN_INTERIOR_MOVE):
-        buckets[length].append((a, b))
-
-    reserved = []
-    for length in range(len(buckets) - 1, _MIN_INTERIOR_MOVE - 1, -1):
-        for a, b in buckets[length]:
-            # A reservation at least this long can cover only a prefix, suffix,
-            # or the entire candidate. Reconsider the remainder at its own length.
-            left, right = 0, length
-            while left < right and (ref_mask[a + left] or out_mask[b + left]):
-                left += 1
-            while right > left and (ref_mask[a + right - 1] or out_mask[b + right - 1]):
-                right -= 1
-            remaining = right - left
-            if remaining == length:
-                ref_mask[a:a + length] = out_mask[b:b + length] = b'\x01' * length
-                reserved.append((a, b, length))
-            elif remaining >= _MIN_INTERIOR_MOVE:
-                buckets[remaining].append((a + left, b + left))
-    return reserved
+def _exact_spans(ref, out):
+    # A rare twelve-word phrase can locate an exact span even when its
+    # four-word anchors are crowded. Extend once per run on each diagonal.
+    ends = {}
+    for a, b in _anchor_pairs(ref, out, _MIN_INTERIOR_MOVE):
+        delta = b - a
+        end = a + _MIN_INTERIOR_MOVE
+        if end <= ends.get(delta, 0):
+            continue
+        while a and b and ref[a - 1] == out[b - 1]:
+            a -= 1
+            b -= 1
+        while end < len(ref) and end + delta < len(out) and ref[end] == out[end + delta]:
+            end += 1
+        ends[delta] = end
+        yield end - a, [(a, b, end - a)]
 
 
-# Prefer nearby continuations when several four-word anchors fit the edit gap.
 _MAX_EDIT_GAP = 4
-_EDIT_GAPS = sorted(product(range(_MAX_EDIT_GAP + 1), repeat=2), key=lambda gaps: (max(gaps), sum(gaps)))
 
 
-def _anchor_chain(ref, out, a, b, ref_end, out_end, out_mask):
-    """Follow exact runs forward while both sides have at most four intervening words."""
+@dataclass(slots=True)
+class _Anchor:
+    a: int
+    b: int
+    matched: int = _MIN_MOVE_ANCHOR
+    following: '_Anchor | None' = None
+    head: bool = True
+
+
+def _edited_chains(ref, out):
+    """Score each four-word anchor once, from the end of the page backwards."""
     width = _MIN_MOVE_ANCHOR
-    blocks = []
-    start_a, start_b = a, b
-    a, b = a + width, b + width
-    while True:
-        used = out_mask.find(1, b, min(out_end, b + _MAX_EDIT_GAP + width))
-        if used >= 0:
-            out_end = used
-        for gap_ref, gap_out in _EDIT_GAPS:
-            p, q = a + gap_ref, b + gap_out
-            if (p + width <= ref_end and q + width <= out_end
-                    and ref[p:p + width] == out[q:q + width]):
-                # Extend only up to the next anchor. An inserted copy of its
-                # first word could otherwise consume part of that four-word run.
-                while a < p and b < q and ref[a] == out[b]:
-                    a += 1
-                    b += 1
-                blocks.append((start_a, start_b, a - start_a))
-                start_a, start_b = p, q
-                a, b = p + width, q + width
-                break
-        else:
-            if a == ref_end or b == out_end or ref[a] != out[b]:
-                blocks.append((start_a, start_b, a - start_a))
-                return blocks
-            a += 1
-            b += 1
+    rows = [{} for _ in range(len(ref) + width + _MAX_EDIT_GAP + 1)]
+    for a, b in _anchor_pairs(ref, out, width):
+        rows[a][b] = _Anchor(a, b)
 
-
-def _unused_anchor_starts(starts, out_mask, width):
-    """Visit each candidate at most once per search and discard occupied anchors permanently."""
-    for _ in range(len(starts)):
-        candidate = starts.popleft()
-        b = candidate[0]
-        if out_mask.find(1, b, b + width) < 0:
-            starts.append(candidate)
-            yield candidate
-
-
-def _reserve_edited_spans(ref, out, ref_mask, out_mask):
-    """Reserve each chain once, including equal words at corresponding offsets in its gaps."""
-    width = _MIN_MOVE_ANCHOR
-    positions = defaultdict(deque)
-    for run in re.finditer(b'\x00+', out_mask):
-        for b in range(run.start(), run.end() - _MIN_INTERIOR_MOVE + 1):
-            positions[out[b:b + width]].append((b, run.end()))
-
-    reserved = []
-    for run in re.finditer(b'\x00+', ref_mask):
-        a = run.start()
-        while a + _MIN_INTERIOR_MOVE <= run.end():
-            starts = positions.get(ref[a:a + width], ())
-            for b, end in islice(_unused_anchor_starts(starts, out_mask, width), _MAX_ANCHOR_PROBES):
-                blocks = _anchor_chain(ref, out, a, b, run.end(), end, out_mask)
-                if sum(length for _, _, length in blocks) < _MIN_INTERIOR_MOVE:
+    for a in reversed(range(len(ref))):
+        for b, anchor in rows[a].items():
+            # Overlapping anchors on one diagonal add one exact word. A jump
+            # to a disjoint anchor can also preserve aligned words in the gap.
+            extension = rows[a + 1].get(b + 1)
+            if extension:
+                anchor.matched = 1 + extension.matched
+                anchor.following = extension
+            for p in range(a + width, a + width + _MAX_EDIT_GAP + 1):
+                if not rows[p]:
                     continue
-                for p, q, length in blocks:
-                    for i, j in zip(range(a, p), range(b, q)):
-                        if ref[i] == out[j]:
-                            ref_mask[i] = out_mask[j] = 1
-                            reserved.append((i, j, 1))
-                    a, b = p + length, q + length
-                    ref_mask[p:a] = out_mask[q:b] = b'\x01' * length
-                    reserved.append((p, q, length))
-                break
-            else:
-                a += 1
+                for q in range(b + width, b + width + _MAX_EDIT_GAP + 1):
+                    following = rows[p].get(q)
+                    if following is None:
+                        continue
+                    score = width + following.matched
+                    for i, j in zip(range(a + width, p), range(b + width, q)):
+                        score += ref[i] == out[j]
+                    if score > anchor.matched:
+                        anchor.matched = score
+                        anchor.following = following
+            if anchor.following:
+                anchor.following.head = False
+
+    # A suffix shares all its matches with its longer chain. If a reservation
+    # cuts the chain, the free pieces re-enter the ranking at their own size.
+    for row in rows:
+        for anchor in row.values():
+            if anchor.head and anchor.matched >= _MIN_INTERIOR_MOVE:
+                yield anchor.matched, _chain_blocks(anchor, ref, out)
+
+
+def _chain_blocks(anchor, ref, out):
+    blocks = []
+    while anchor:
+        a, b = anchor.a, anchor.b
+        following = anchor.following
+        while following and following.a == anchor.a + 1:
+            anchor = following
+            following = anchor.following
+        end = anchor.a + _MIN_MOVE_ANCHOR
+        blocks.append((a, b, end - a))
+        if following:
+            for i, j in zip(range(end, following.a), range(anchor.b + _MIN_MOVE_ANCHOR, following.b)):
+                if ref[i] == out[j]:
+                    blocks.append((i, j, 1))
+        anchor = following
+    return blocks
+
+
+def _unused_pieces(blocks, ref_mask, out_mask):
+    """Split at occupied words on either side, including words in edit gaps."""
+    piece = []
+    end_a, end_b = blocks[0][:2]
+    for a, b, size in blocks:
+        if piece and (ref_mask.find(1, end_a, a) >= 0 or out_mask.find(1, end_b, b) >= 0):
+            yield piece
+            piece = []
+        end_a, end_b = a + size, b + size
+        if ref_mask.find(1, a, end_a) < 0 and out_mask.find(1, b, end_b) < 0:
+            piece.append((a, b, size))
+            continue
+        start = 0
+        for i in range(size):
+            if ref_mask[a + i] or out_mask[b + i]:
+                if i > start:
+                    piece.append((a + start, b + start, i - start))
+                if piece:
+                    yield piece
+                    piece = []
+                start = i + 1
+        if start < size:
+            piece.append((a + start, b + start, size - start))
+    if piece:
+        yield piece
+
+
+def _reserve_spans(ref, out, ref_mask, out_mask):
+    """Reserve the most matched words first and rank clipped pieces again."""
+    buckets = [[] for _ in range(min(len(ref), len(out)) + 1)]
+    for matched, blocks in chain(_exact_spans(ref, out), _edited_chains(ref, out)):
+        buckets[matched].append(blocks)
+    reserved = []
+    for size in range(len(buckets) - 1, _MIN_INTERIOR_MOVE - 1, -1):
+        for blocks in buckets[size]:
+            for piece in _unused_pieces(blocks, ref_mask, out_mask):
+                remaining = sum(n for _, _, n in piece)
+                if remaining == size:
+                    for a, b, n in piece:
+                        ref_mask[a:a + n] = out_mask[b:b + n] = b'\x01' * n
+                    reserved.extend(piece)
+                elif remaining >= _MIN_INTERIOR_MOVE:
+                    buckets[remaining].append(piece)
     return reserved
+
+
+def _page_words(text):
+    words, lines = [], []
+    for line in text.split('\n'):
+        start = len(words)
+        words.extend(token for token, _, _ in _comparison_tokens(line) if any(c.isalnum() for c in token))
+        size = len(words) - start
+        if size >= _MIN_MOVE_ANCHOR:
+            lines.append((line, start, size))
+    return tuple(words), lines
+
+
+def _reserve_lines(ref_lines, out_lines, ref_mask, out_mask, reserved):
+    starts = defaultdict(deque)
+    for line, b, size in out_lines:
+        if out_mask.find(1, b, b + size) < 0:
+            starts[line].append(b)
+    for line, a, size in ref_lines:
+        if starts.get(line) and ref_mask.find(1, a, a + size) < 0:
+            b = starts[line].popleft()
+            ref_mask[a:a + size] = out_mask[b:b + size] = b'\x01' * size
+            reserved.append((a, b, size))
 
 
 _MAX_SLOT_TOKENS = 128
 
 
 def _slot_matches(ref, out):
-    def length_matched_replace(opcode):
-        tag, a, end_a, b, end_b = opcode
-        return tag == 'replace' and end_a - a == end_b - b
+    def small_edit(opcode):
+        _, a, end_a, b, end_b = opcode
+        return end_a - a <= 3 and end_b - b <= 3
 
     ops = SequenceMatcher(None, ref, out, autojunk=False).get_opcodes()
     for i, (tag, a, end_a, b, _) in enumerate(ops):
         if tag != 'equal':
             continue
         length = end_a - a
-        if length >= 2 or (0 < i < len(ops) - 1 and length_matched_replace(ops[i - 1])
-                           and length_matched_replace(ops[i + 1])):
+        at_edge = i == 0 or i == len(ops) - 1
+        if (length >= _MIN_INTERIOR_MOVE or (at_edge and length >= 2)
+                or (not at_edge and small_edit(ops[i - 1]) and small_edit(ops[i + 1]))):
             yield a, b, length
 
 
@@ -326,23 +358,26 @@ def _reserve_inorder_slots(ref, out, ref_mask, out_mask, reserved):
 
 def _largest_unmatched_ocr_passage(intermediate, text):
     """Measure the longest unaccounted stretch of the independent OCR page."""
-    def words(s):
-        return tuple(token for token, _, _ in _comparison_tokens(s)
-                     if any(c.isalnum() for c in token))
-
-    ref, out = words(intermediate), words(text)
+    ref, ref_lines = _page_words(intermediate)
+    out, out_lines = _page_words(text)
     if not ref or ref == out:
         return 0
     if not out:
         return len(ref)
-    if len(ref) < _MIN_MISSING_PASSAGE:
-        changes = SequenceMatcher(None, ref, out, autojunk=False).get_opcodes()
-        return max((b - a for tag, a, b, _, _ in changes if tag != 'equal'), default=0)
-
     ref_mask, out_mask = bytearray(len(ref)), bytearray(len(out))
-    reserved = _reserve_exact_spans(ref, out, ref_mask, out_mask)
-    reserved.extend(_reserve_edited_spans(ref, out, ref_mask, out_mask))
-    _reserve_inorder_slots(ref, out, ref_mask, out_mask, reserved)
+    reserved = _reserve_spans(ref, out, ref_mask, out_mask)
+    _reserve_lines(ref_lines, out_lines, ref_mask, out_mask, reserved)
+    if not reserved and len(ref) < _MIN_MISSING_PASSAGE:
+        for a, b, n in SequenceMatcher(None, ref, out, autojunk=False).get_matching_blocks():
+            ref_mask[a:a + n] = out_mask[b:b + n] = b'\x01' * n
+    else:
+        _reserve_inorder_slots(ref, out, ref_mask, out_mask, reserved)
+    limit = min(len(ref), len(out))
+    for edge in (range(limit), range(-1, -limit - 1, -1)):
+        for i in edge:
+            if ref_mask[i] or out_mask[i] or ref[i] != out[i]:
+                break
+            ref_mask[i] = out_mask[i] = 1
     return max(map(len, ref_mask.split(b'\x01')))
 
 

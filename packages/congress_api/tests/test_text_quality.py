@@ -295,6 +295,32 @@ def test_short_ocr_pages_measure_alphanumeric_gaps(reference, output, missing):
     assert _largest_unmatched_ocr_passage(reference, output) == missing
 
 
+def test_moved_whole_lines_on_a_short_page_use_each_copy_once():
+    title = 'Report of the Inspector General'
+    other = 'What the committee found'
+    output = f'{other}\n{title}'
+    assert _largest_unmatched_ocr_passage(f'{title}\n{other}', output) == 0
+    assert _largest_unmatched_ocr_passage(f'{title}\n{title}\n{other}', output) == 5
+
+
+@pytest.mark.parametrize(('last_word', 'missing', 'action'), [('promptly.', 19, 'keep'),
+                                                             ('very promptly.', 20, 'manual_review')])
+def test_independent_ocr_credits_a_bare_page_number(last_word, missing, action):
+    opening = ('Agency officials confirmed that one recommendation was resolved after the committee '
+               'published its formal notice.')
+    passage = ('The committee requires the department to inspect each site before renewal. '
+               'The district must publish the inspection findings ' + last_word)
+    output = f'{opening}\n151'
+    reference = f'{opening}\n{passage}\n151'
+    ident = identity(output, source_state='retained', intermediate_kind='independent_ocr',
+                     intermediate_body_sha256='a'*64, intermediate_scope='page', intermediate_page_number=1)
+    ident.update(scope='page', page_number=1, source_page_count=1)
+    measured = measure_quality(ident, text=output, intermediate=reference)
+    assert measured['axes']['recognition']['largest_unmatched_ocr_passage_tokens'] == missing
+    evidence = dict(stage='measurement', path='/measure.json', sha256='b'*64, locator='line 1')
+    assert assess_text(assessment_facts(measured, evidence))['action'] == action
+
+
 @pytest.mark.parametrize('extra_words', [True, False])
 def test_longer_ocr_move_wins_over_an_eligible_twelve_token_overlap(extra_words):
     words = [f'word{i}' for i in range(18)]
@@ -311,6 +337,43 @@ def test_longer_ocr_move_wins_over_an_eligible_twelve_token_overlap(extra_words)
     assert _largest_unmatched_ocr_passage(ref, out) == 14
 
 
+def test_trimmed_exact_move_competes_again_at_its_remaining_length():
+    kept = ' '.join(f'kept{i}' for i in range(40))
+    shared = ' '.join(f'shared{i}' for i in range(8))
+    phrase = ' '.join(f'word{i}' for i in range(12))
+    # The longest move takes "shared". The 13-word copy ending in "closing"
+    # then outranks the 12 words left from the original 20-word candidate.
+    ref = f'{kept} {shared} {phrase} omitted {phrase} closing'
+    out = f'{shared} {phrase} closing {kept} {shared}'
+    assert _largest_unmatched_ocr_passage(ref, out) == 13
+
+
+@pytest.mark.parametrize(('tail_size', 'missing'), [(5, 12), (6, 1)])
+def test_trimmed_edited_chain_needs_twelve_free_matches(tail_size, missing):
+    kept = ' '.join(f'kept{i}' for i in range(40))
+    shared = ' '.join(f'shared{i}' for i in range(8))
+    left = ' '.join(f'left{i}' for i in range(6))
+    right = ' '.join(f'right{i}' for i in range(tail_size))
+    ref = f'{kept} {shared} {left} old {right}'
+    out = f'{shared} {left} new {right} {kept} {shared}'
+    assert _largest_unmatched_ocr_passage(ref, out) == missing
+
+
+@pytest.mark.parametrize(('left', 'right', 'missing'), [
+    ((3, 1), (1, 3), 3),
+    ((4, 1), (1, 3), 7), ((3, 4), (1, 3), 6),
+    ((3, 1), (4, 3), 9), ((3, 1), (1, 4), 6),
+])
+def test_short_match_in_a_slot_requires_small_edits_on_both_sides(left, right, missing):
+    def words(label, count):
+        return ' '.join(f'{label}{i}' for i in range(count))
+
+    first, last = words('first', 12), words('last', 12)
+    ref = f'{first} {words("old", left[0])} of the {words("removed", right[0])} {last}'
+    out = f'{first} {words("new", left[1])} of the {words("added", right[1])} {last}'
+    assert _largest_unmatched_ocr_passage(ref, out) == missing
+
+
 def test_edited_rows_require_matching_context():
     def fields(label, prefix):
         return ' '.join(f'{label} {prefix if i > 2 else "same"}{i}' for i in range(20))
@@ -318,8 +381,10 @@ def test_edited_rows_require_matching_context():
     # Three unchanged rows give the span matcher a long exact reservation.
     label = 'current year approved amount'
     assert _largest_unmatched_ocr_passage(fields(label, 'old'), fields(label, 'new')) == 1
-    # Isolated common words alone do not establish a corresponding block.
-    assert _largest_unmatched_ocr_passage(fields('the', 'old'), fields('the', 'new')) == 40
+    # The seven identical opening words have page-edge evidence. Isolated words inside do not.
+    ref, out = fields('the', 'old'), fields('the', 'new')
+    assert _largest_unmatched_ocr_passage(ref, out) == 33
+    assert _largest_unmatched_ocr_passage(ref, 'extra ' + out) == 40
 
 
 @pytest.mark.parametrize(('ref_gap', 'out_gap', 'missing'), [

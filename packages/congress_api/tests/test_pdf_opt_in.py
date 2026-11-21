@@ -350,6 +350,7 @@ def test_cleanup_review_flags_a_dropped_native_block_with_surviving_furniture():
 @pytest.mark.parametrize(("case", "missing_tokens"), [
     ("complete", 0), ("two_typos", 1), ("reflow", 0), ("omitted", 23), ("short_page", 0),
     ("moved", 0), ("lost_duplicate", 34), ("inspection_omitted", 23), ("moved_and_omitted", 23),
+    ("heading_moved", 0), ("heading_moved_inspection_omitted", 23),
     ("lost_duplicate_with_moved_sentence", 34), ("lost_duplicate_with_short_findings", 34),
 ])
 def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens, tmp_path):
@@ -379,6 +380,7 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
     elif case == "reflow":
         observed = observed.replace("\n", " ").replace("each site", "each\nsite")
     elif case in {"moved", "lost_duplicate", "inspection_omitted", "moved_and_omitted",
+                  "heading_moved", "heading_moved_inspection_omitted",
                   "lost_duplicate_with_moved_sentence", "lost_duplicate_with_short_findings"}:
         # Excerpts from report page 151. The inspection and response share individual words.
         inspection = [
@@ -402,7 +404,13 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
             "recommendations were administratively closed. See",
             "Appendix B for ICE's full response.",
         ]
-        if case in {"lost_duplicate_with_moved_sentence", "lost_duplicate_with_short_findings"}:
+        if case in {"heading_moved", "heading_moved_inspection_omitted"}:
+            title = "Report of the Inspector General"
+            body = ["What We Recommend", *findings, *response]
+            lines = [header, *inspection, *body, title, footer]
+            retained = inspection if case == "heading_moved" else []
+            observed = "\n".join([header, *retained, title, *body, footer])
+        elif case in {"lost_duplicate_with_moved_sentence", "lost_duplicate_with_short_findings"}:
             if case == "lost_duplicate_with_short_findings":
                 findings = [*findings[:3], "hotel space."]
             sentence = ["Agency officials confirmed that one recommendation",
@@ -481,6 +489,8 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
         assert any(" ".join(change["intermediate_slice"].split()) == " ".join(inspection)
                    for change in comparison["changes"])
         assert comparison["removed_content_tokens"] == (57 if case == "moved_and_omitted" else 23)
+    elif case in {"heading_moved", "heading_moved_inspection_omitted"}:
+        assert comparison["changes"]
     else:
         assert comparison["changes"] == []
     if missing_tokens >= 20:
@@ -494,8 +504,9 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
         assert proposal["action"] == "keep"
 
 
-@pytest.mark.parametrize("reused_ids", [{}, {159: "old0"}, {80: "old0", 81: "old1"}],
-                         ids=["all-new", "reused-last", "reused-adjacent"])
+@pytest.mark.parametrize("reused_ids", [{}, {159: "old0"}, {80: "old0", 81: "old1"},
+                                        {155: "old153", 156: "old154"}],
+                         ids=["all-new", "reused-last", "reused-adjacent", "reused-near-end"])
 def test_moved_paragraph_across_repetitive_table_matches_in_under_50ms(reused_ids):
     from hashlib import sha256
     from timeit import repeat
