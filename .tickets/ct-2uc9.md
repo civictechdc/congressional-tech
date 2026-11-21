@@ -1,6 +1,6 @@
 ---
 id: ct-2uc9
-status: open
+status: closed
 deps: []
 links: [ct-u3eh, ct-2cig, ct-jmwq, ct-flq8]
 created: 2026-11-18T22:04:50Z
@@ -16,4 +16,12 @@ Filed 2026-11-18 from the training session handoff: /Users/mikewolfd/Work/congre
 ## Acceptance Criteria
 
 1. The clean-up script, checker, contract, schema, adjudications, manifest builder, viewer and rubric conventions are in packages/congress_docmeta on main, with tests that run in production-offline. 2. Re-running clean-up then check from the repository reproduces the sealed file sha256, or the difference is explained. 3. training_pairs and eval_blind read the sealed V6.5 file and its splits; the held-out documents are unchanged. 4. No hard-coded path into another worktree remains.
+
+## Resolution (2026-11-21)
+
+- Landed `packages/congress_docmeta/src/congress_docmeta/gold_v65/` (`paths.py`, `gold_contract.py`, `normalize_gold_v6_5.py`, `gold_gate_v6_2.py`, `split_v65.py`, `viewer/{serve.py,build_bundle.py,index.html,app.js,style.css,README.md}`, packaged `docmeta_gold_conventions.schema.json`, `adjudications.jsonl`, `coordinator_adjudications.jsonl`, `heldout_v6_4_183_link_keys.json`, `split_v6_5_manifest.json`, and `MANIFEST.json`), `packages/congress_docmeta/docs/{GOLD_CONTRACT,ANNOTATION_RUBRIC}.md`, and `packages/congress_docmeta/tests/test_gold_v65_tooling.py` (11 offline tests).
+- Verified pre-Stage-3 `--no-c2` reproduction byte-for-bit against pre-Stage-3 hashes (`81ed2585...`, `e9761472...`, `436b12fc...`, `ed384baf...`, `faaf4557...`).
+- Re-sealed after Filtered Stage 3 (`ct-flq8`) with `0` blocking contract errors (`ssot/docmeta_gold_v6_5.jsonl`: `3,733` rows — `train=3268`, `heldout_v6_4=180`, `test_gapfill=179`, `blind_val48=48`, `blind_docs8=8`, `excluded=50`; SHA-256 `43b351d0ec9cbeca76244511e1f64ce22b12cccba355e683544961b296b08195`; pre-Stage-3 SSOT backed up at `_sealed_backup_ssot_20261118_33f97821/`).
+- Wired `gold.py`, `training_pairs.py`, and `eval_blind.py` (`test_gapfill_sweep`) to the sealed V6.5 SSOT with SHA-256 verification and zero hardcoded worktree paths.
+
 

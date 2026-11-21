@@ -17,3 +17,13 @@ Filed 2026-11-18 from /Users/mikewolfd/Work/congressional-tech/.cache/archive-re
 
 1. Stage 3 result recorded: counts applied, held by checker rule, not applied, rejected; the sealed file either re-sealed with its new sha256 or confirmed unchanged. 2. Every held and not-applied ruling has an owner verdict in viewer/review_notes.jsonl and is applied or dropped. 3. The owner states in writing that the training and test data are signed off, or lists what still blocks that.
 
+## Stage 3 Result (2026-11-21)
+
+- `second_opinion_rulings.jsonl` (`523` lines) processed via filtered Stage 3 with checker-disputed holds (`lookups_and_gold/second_opinion_held.jsonl`: `90` rulings): `256 applied`, `109 already_true`, `90 held_for_owner`, `24 not_applied`, `44 rejected_by_ruling` (`200` rows touched / `259` values changed).
+- Held breakdown by checker rule: `P03_committees_stated=25`, `P05_doc_date_stated=13`, `P02_chamber_stated=12`, `P04_subcommittees_stated=11`, `P06_event_date_stated=8`, `D16_stated_date_not_lost=8`, `T03_ref_numbers_in_text=5`, `T01_name_tokens_in_text=5`, `T08_party_state_basis=2`, `P07_due_date_stated=1`.
+- `gold_contract check`: `status=pass`, `blocking_errors=0`, `D15_removed_values_in_signal: 0 failures`.
+- Pre-Stage-3 SSOT (`33f978210cbeb8f25960fb66c96090b8139d2e4f2321e64dd7f8e53b56ce9b3f`) preserved at `_sealed_backup_ssot_20261118_33f97821/` alongside `_sealed_backup_20261118_1522/`. New sealed SSOT SHA-256: `43b351d0ec9cbeca76244511e1f64ce22b12cccba355e683544961b296b08195` (`verify-manifest --exports` exits `0`).
+- Viewer bundle rebuilt (`3,733` docs, `has_open_findings=1012`, `needs_owner`: `425` docs / `637` findings, surfacing all `90` `C2_held` and `24` `C2_not_applied`) and served on `http://127.0.0.1:8765`.
+- Remaining open items before closing `ct-flq8` / lifting training hold (`ct-u3eh`): owner hand-review verdicts in `viewer/review_notes.jsonl` for the `90` held + `24` not_applied rulings (and other open `needs_owner` findings), plus the noted open items (`56` blind-set docs uncleaned, `>10`-person test coverage, `dd85ac39a196cbaa` source page check).
+
+
