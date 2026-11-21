@@ -219,6 +219,7 @@ def build_release_sidecar(
         pythonic_v5 as pv5,
         pythonic_v6 as pv6,
         relational_rules_v6 as rv6,
+        schema_v4 as s4,
     )
 
     t0 = time.perf_counter()
@@ -261,7 +262,7 @@ def build_release_sidecar(
                 if sp is not None
             ]
             if ps:
-                working["personas"] = ps[:10]
+                working["personas"] = ps[: s4.MAX_PERSONAS]
             else:
                 working.pop("personas", None)
         if "subcommittees" in working and isinstance(working["subcommittees"], Sequence) and not isinstance(working["subcommittees"], str):
@@ -673,7 +674,7 @@ def build_release_sidecar(
         seed_list = w_personas or wl_ps or gpo_ps or gpo_p3_ps
         if seed_list:
             seed_list = rv6.disambiguate_persona_roles_v6(
-                seed_list[:10], primary_kind=locked_pk, text=clean_txt, congress=rel_cong, lookup=rosters_lookup
+                seed_list[: s4.MAX_PERSONAS], primary_kind=locked_pk, text=clean_txt, congress=rel_cong, lookup=rosters_lookup
             )
             seed_clean = [
                 sp
@@ -681,7 +682,9 @@ def build_release_sidecar(
                 for sp in [_sanitize_persona_dict(item, valid_roles, valid_etypes, key_order)]
                 if sp is not None
             ]
-            personas_seed_json = json.dumps(seed_clean[:10], separators=(",", ":"), ensure_ascii=False) if seed_clean else None
+            personas_seed_json = (
+                json.dumps(seed_clean[: s4.MAX_PERSONAS], separators=(",", ":"), ensure_ascii=False) if seed_clean else None
+            )
         else:
             personas_seed_json = None
 

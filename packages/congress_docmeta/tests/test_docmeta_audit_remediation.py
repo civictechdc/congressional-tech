@@ -301,6 +301,14 @@ def test_release_parameterized_sidecar_builder_and_stdlib_import(tmp_path: Path)
     sb_ttf = b"\x01" * 32
     sb_open = b"\x02" * 32
     sb_excl = b"\x03" * 32
+    sb_wlist = b"\x04" * 32
+    sb_open_seed = b"\x05" * 32
+
+    witness_surnames = [
+        "Adamson", "Benson", "Carlson", "Dalton", "Erickson", "Ferguson", "Garrison",
+        "Halvorsen", "Iverson", "Jorgensen", "Keller", "Larson", "Morrison", "Nelson",
+    ]
+    fourteen_wkeys = [f"w-batch-{i:02d}" for i in range(14)]
 
     detail_rows = [
         {
@@ -391,6 +399,50 @@ def test_release_parameterized_sidecar_builder_and_stdlib_import(tmp_path: Path)
             "bioguide_ids": [],
             "witness_keys": [],
         },
+        {
+            "link_key": b"\x00" * 7 + b"\x05",
+            "saved_body": sb_wlist,
+            "saved_suffix": ".pdf",
+            "saved_media_type": "application/pdf",
+            "package_id": None,
+            "description": None,
+            "main_content": None,
+            "selected_text": None,
+            "filename": "HHRG-118-JU00-Wlist-20230510.pdf",
+            "title": "Witness List - Oversight of Artificial Intelligence",
+            "document_kind": ["witness-list"],
+            "committee_keys": ["hsju00"],
+            "chambers": ["house"],
+            "congress": 118,
+            "format": "pdf",
+            "document_date": datetime.date(2023, 5, 10),
+            "meeting_keys": ["118-house-1001"],
+            "measure_keys": [],
+            "bioguide_ids": [],
+            "witness_keys": fourteen_wkeys,
+        },
+        {
+            "link_key": b"\x00" * 7 + b"\x06",
+            "saved_body": sb_open_seed,
+            "saved_suffix": ".pdf",
+            "saved_media_type": "application/pdf",
+            "package_id": None,
+            "description": None,
+            "main_content": None,
+            "selected_text": None,
+            "filename": "custom-hearing-briefing-notes.pdf",
+            "title": "Hearing Briefing Notes with Witness Panel",
+            "document_kind": [],
+            "committee_keys": ["hsju00"],
+            "chambers": ["house"],
+            "congress": 118,
+            "format": "pdf",
+            "document_date": datetime.date(2023, 5, 10),
+            "meeting_keys": ["118-house-1001"],
+            "measure_keys": [],
+            "bioguide_ids": [],
+            "witness_keys": fourteen_wkeys,
+        },
     ]
     pq.write_table(pa.Table.from_pylist(detail_rows), rel_dir / "detail.parquet")
     pq.write_table(
@@ -429,7 +481,26 @@ def test_release_parameterized_sidecar_builder_and_stdlib_import(tmp_path: Path)
                     "bioguide_id": None,
                     "matched_bioguide_id": None,
                     "person_key": None,
-                }
+                },
+                *[
+                    {
+                        "witness_key": f"w-batch-{i:02d}",
+                        "name": f"Ms. Jordan {sur}",
+                        "rank": None,
+                        "credentials": None,
+                        "position": "Fellow",
+                        "organization": f"Institute {i:02d}",
+                        "on_behalf_of": None,
+                        "location": None,
+                        "panel": 1 if i < 7 else 2,
+                        "panel_order": (i % 7) + 1,
+                        "witness_type": "Non-Government",
+                        "bioguide_id": None,
+                        "matched_bioguide_id": None,
+                        "person_key": None,
+                    }
+                    for i, sur in enumerate(witness_surnames)
+                ],
             ]
         ),
         rel_dir / "witnesses.parquet",
@@ -462,11 +533,24 @@ def test_release_parameterized_sidecar_builder_and_stdlib_import(tmp_path: Path)
         "REPRINTED FROM THE 2007 ANNUAL REPORT OF THE CONGRESSIONAL-EXECUTIVE COMMISSION ON CHINA\n"
         "ONE HUNDRED TENTH CONGRESS"
     )
+    wlist_text = (
+        "Committee on the Judiciary\nU.S. House of Representatives\nWitness List (14 Witnesses)\n"
+        "Oversight of Artificial Intelligence\nMay 10, 2023\nPanel I\n"
+        + "\n".join(f"Dr. Jordan {sur}, Fellow, Institute {i:02d}" for i, sur in enumerate(witness_surnames[:7]))
+        + "\nPanel II\n"
+        + "\n".join(f"Dr. Jordan {sur}, Fellow, Institute {i:02d}" for i, sur in enumerate(witness_surnames[7:], start=7))
+    )
+    open_seed_text = (
+        "Briefing Notes for the Committee on the Judiciary on Oversight of Artificial Intelligence.\n"
+        + " ".join(f"Jordan {sur}" for sur in witness_surnames)
+    )
     pq.write_table(
         pa.Table.from_pylist(
             [
                 {"saved_body": sb_ttf, "text": ttf_text, "page_offsets": [0]},
                 {"saved_body": sb_open, "text": reprint_text, "page_offsets": [0]},
+                {"saved_body": sb_wlist, "text": wlist_text, "page_offsets": [0]},
+                {"saved_body": sb_open_seed, "text": open_seed_text, "page_offsets": [0]},
             ],
             schema=pa.schema([("saved_body", pa.binary(32)), ("text", pa.string()), ("page_offsets", pa.list_(pa.int32()))]),
         ),
@@ -485,22 +569,27 @@ def test_release_parameterized_sidecar_builder_and_stdlib_import(tmp_path: Path)
     out_dir = tmp_path / "sidecar_out"
     manifest = build_release_sidecar(rel_dir, out_dir, body_text_export_dir=bt_dir, selection_path=sel_gz)
     assert manifest["counts"] == {
-        "total_rows": 4,
-        "completed_no_llm": 2,
-        "llm_queue": 1,
+        "total_rows": 6,
+        "completed_no_llm": 3,
+        "llm_queue": 2,
         "sha_dup_alias": 1,
     }
 
     comp = pq.read_table(out_dir / "completed_no_llm.parquet").to_pylist()
-    assert len(comp) == 2
+    assert len(comp) == 3
     for row in comp:
         ok, errs = strict_validate_v4(row["docmeta_json"])
         assert ok is True and not errs
+    comp_by_lk = {row["link_key_hex"]: json.loads(row["docmeta_json"]) for row in comp}
+    assert len(comp_by_lk[(b"\x00" * 7 + b"\x05").hex()]["personas"]) == 14
 
     queue = pq.read_table(out_dir / "llm_queue.parquet").to_pylist()
-    assert len(queue) == 1
-    assert queue[0]["locked_primary_kind"] == "committee_report"
-    assert queue[0]["grammar_lock_source"] == "govinfo_chrg_reprint_report_v6"
+    assert len(queue) == 2
+    q_by_lk = {row["link_key_hex"]: row for row in queue}
+    assert q_by_lk[(b"\x00" * 7 + b"\x02").hex()]["locked_primary_kind"] == "committee_report"
+    assert q_by_lk[(b"\x00" * 7 + b"\x02").hex()]["grammar_lock_source"] == "govinfo_chrg_reprint_report_v6"
+    seeded_ps = json.loads(q_by_lk[(b"\x00" * 7 + b"\x06").hex()]["personas_seed_json"])
+    assert len(seeded_ps) == 14
 
     alias = pq.read_table(out_dir / "sha_dup_alias.parquet").to_pylist()
     assert len(alias) == 1

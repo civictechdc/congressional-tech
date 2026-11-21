@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import copy
+import inspect
 import json
 from typing import Any
 
 import jsonschema
 import pytest
 
+from congress_docmeta import cli as docmeta_cli
+from congress_docmeta import eval_blind
 from congress_docmeta.anomaly_router_v6 import (
     ROSTER_LEAK_MEMBER_LIMIT_V6,
     roster_shaped_members_v6,
@@ -23,11 +26,15 @@ from congress_docmeta.compact_wire_v6 import (
 )
 from congress_docmeta.eval_blind import score
 from congress_docmeta.grammar_router_ane_v6 import build_doc_kind_set_schema_v6
-from congress_docmeta.parquet_runner_v6 import build_excluded_kind_schema_v6
+from congress_docmeta.parquet_runner_v6 import (
+    build_excluded_kind_schema_v6,
+    escalate_anomalies_gpt_oss,
+    run_docmeta_parquet_sweep,
+)
 from congress_docmeta.prompt_v4 import SYS_DOCMETA_V4, validate_v4
 from congress_docmeta.pythonic_v5 import canonicalize_docmeta_v4, validate_docmeta_v4
-from congress_docmeta.pythonic_v6 import build_doc_kind_schema_v6
-from congress_docmeta.schema_v4 import MAX_PERSONAS, SCHEMA_OBJ
+from congress_docmeta.pythonic_v6 import PythonicEngineV6, build_doc_kind_schema_v6
+from congress_docmeta.schema_v4 import MAX_OUTPUT_TOKENS, MAX_PERSONAS, SCHEMA_OBJ
 from congress_docmeta.training_pairs import WIRE_CONFIG
 
 _CTX = {"filename": "CHRG-118hhrg54321.pdf", "text": "HEARING BEFORE THE COMMITTEE ON OVERSIGHT. WITNESSES"}
@@ -215,3 +222,12 @@ def test_a_ten_person_label_from_before_the_change_is_unchanged() -> None:
     wire = json.dumps(encode_v4_to_compact_v6(label), separators=(",", ":"), ensure_ascii=False)
     assert wire == _OLD_TEN_PERSON_WIRE
     assert expand_compact_json_str_to_v4(wire)[0] == label
+
+
+def test_max_output_tokens_is_1536_across_cli_runner_and_engine() -> None:
+    assert MAX_OUTPUT_TOKENS == 1536
+    assert docmeta_cli.build_parser().parse_args(["docmeta-sweep", "in.parquet", "out.parquet"]).max_tokens == 1536
+    assert eval_blind.build_parser().parse_args(["--out", "out.json"]).max_tokens == 1536
+    assert inspect.signature(run_docmeta_parquet_sweep).parameters["max_tokens"].default == 1536
+    assert inspect.signature(escalate_anomalies_gpt_oss).parameters["max_tokens"].default == 1536
+    assert inspect.signature(PythonicEngineV6.run_records).parameters["max_tokens"].default == 1536

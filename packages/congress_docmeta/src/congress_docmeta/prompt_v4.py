@@ -193,7 +193,7 @@ def canonicalize_v4(raw_obj: dict) -> dict:
                     if 1900 <= yr <= 2100:
                         fys.append(yr)
             if fys:
-                out[k] = fys[:12]
+                out[k] = fys[: max_caps["fiscal_years"]]
 
         elif k == "congress":
             if not isinstance(val, bool) and isinstance(val, int) and 1 <= val <= 130:

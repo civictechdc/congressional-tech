@@ -35,7 +35,7 @@ from .gold import (
     select_val_indices,
 )
 from .anomaly_router_v6 import ROSTER_LEAK_MEMBER_LIMIT_V6, roster_shaped_members_v6
-from .schema_v4 import MAX_OUTPUT_TOKENS
+from .schema_v4 import MAX_OUTPUT_TOKENS, MAX_PERSONAS
 
 KIND_FAMILIES = {
     "qfr_request": "qfr",
@@ -264,11 +264,12 @@ def _personas(obj: dict[str, Any]) -> list[dict[str, Any]]:
     return [p for p in (raw if isinstance(raw, list) else []) if isinstance(p, dict) and str(p.get("name") or "").strip()]
 
 
-def _is_roster_spam(personas: list[dict[str, Any]], gold_primary_kind: str) -> bool:
-    """Flag a roster dump the way the anomaly router does (Members outside list roles, or >4 on votes)."""
+def _is_roster_spam(personas: list[dict[str, Any]], gold_primary_kind: str | None) -> bool:
+    """Flag a roster dump the way the anomaly router does (>cap, Members outside list roles, or >4 on vote/quorum/roster)."""
     return (
-        len(roster_shaped_members_v6(personas)) > ROSTER_LEAK_MEMBER_LIMIT_V6
-        or (gold_primary_kind == "committee_vote" and len(personas) > 4)
+        len(personas) > MAX_PERSONAS
+        or len(roster_shaped_members_v6(personas)) > ROSTER_LEAK_MEMBER_LIMIT_V6
+        or (gold_primary_kind in ("committee_vote", "attendance_quorum_sheet", "member_roster") and len(personas) > 4)
     )
 
 

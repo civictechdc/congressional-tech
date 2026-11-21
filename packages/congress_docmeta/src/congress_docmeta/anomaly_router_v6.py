@@ -1223,7 +1223,7 @@ def score_docmeta_anomalies_v6(
             severity="high",
             weight=1.25,
             detail=(
-                f"{len(roster_members)} Members of Congress outside a witness, cosponsor, signatory or recipient role "
+                f"{len(roster_members)} Members of Congress outside a witness, nominee, cosponsor, signatory or recipient role "
                 f"(> {ROSTER_LEAK_MEMBER_LIMIT_V6}): a standing roster."
             ),
         )
