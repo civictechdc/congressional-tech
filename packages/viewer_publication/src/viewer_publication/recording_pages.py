@@ -75,7 +75,7 @@ def _text(node):
 
 def _displayed_dates(body):
     """Read every visible date source before deciding whether the proceeding has one day."""
-    fields = set(body.xpath('.//time | .//h1 | .//h2 | .//h3 | .//h4 | .//h5 | .//h6 | '
+    fields = set(body.xpath('.//time[not(ancestor::p)] | .//h1 | .//h2 | .//h3 | .//h4 | .//h5 | .//h6 | '
                             './/*[@itemprop="startDate" or contains(concat(" ",normalize-space(@class)," ")," date ") or '
                             'contains(concat(" ",normalize-space(@class)," ")," date-bar ") or contains(@class,"hearing__date") or '
                             'contains(@class,"field-evo-meeting-date") or contains(@class,"event-item__date") or '
@@ -89,18 +89,12 @@ def _displayed_dates(body):
     lines = '\n'.join(' '.join(part.split()) for part in body.itertext() if part.strip())
     text = lines.replace('\n', ' ')
     matches.extend(match for label in _DATE_IN_TEXT.finditer(lines) if (match := DATE.match(text, label.end())))
-    days = {day.isoformat() for match in matches if (day := written_day(match))}
-    has_date_field = bool(days)
+    # An unlabelled paragraph can be the date field itself. A date mentioned
+    # in filing instructions or other prose does not date the proceeding.
     for paragraph in body.iter('p'):
-        value = _text(paragraph)
-        for match in DATE.finditer(value):
-            if day := written_day(match):
-                days.add(day.isoformat())
-                # A paragraph can display just the date. Dates mentioned in prose can
-                # expose a conflict but cannot establish the hearing date by themselves.
-                if match[0] == value:
-                    has_date_field = True
-    return days, has_date_field
+        if match := DATE.fullmatch(_text(paragraph)):
+            matches.append(match)
+    return {day.isoformat() for match in matches if (day := written_day(match))}
 
 
 def _calendar_event(tree, url, calendar, displayed_date):
@@ -267,13 +261,19 @@ _COMMITTEE_SUFFIX = re.compile(r'\s*\|\s*[^|]*\bcommittee\b[^|]*$|'
                                r'\s*[-–—]\s*(?:(?:hearings?|markups?|events?|press releases?)\s*[-–—]\s*)?'
                                r'(?:u\.?s\.?\s+)?(?:the\s+)?(?:house\s+)?committee\b.*$', re.I)
 
+_COMMITTEE_NAME = re.compile(r'^(?:the\s+)?(?:(?:u\.?s\.?|united states)\s+)?'
+                             r'(?:(?:house|senate)\s+)?(?:sub)?committee\s+on\b', re.I)
+_STATED_EVENT = re.compile(r'(?:\bevent\s*id\s*[=:#]\s*|\bdocs\.house\.gov/[^\s"\'<>]*[?&]eventid=|'
+                           r'\bcongress\.gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/)'
+                           r'0*(1[0-9]{5})\b', re.I)
+
 
 def _detail_events(tree, body, url, calendar):
     all_explicit = _event_ids(_targets(body, url))
     if not calendar:
         return all_explicit
-    dates, has_date_field = _displayed_dates(body)
-    if len(dates) > 1 or (dates and not has_date_field):
+    dates = _displayed_dates(body)
+    if len(dates) > 1:
         return set()
     day = next(iter(dates), None)
     proceeding = _calendar_event(tree, url, calendar, day)
@@ -295,8 +295,9 @@ def _detail_events(tree, body, url, calendar):
     if len(proceeding) != 1:
         return set()
     candidate, = proceeding
-    title = _COMMITTEE_SUFFIX.sub('', tree.xpath('string(/html/head/title)'))
-    title_words = substantive_words(f'{event_title(tree)} {title}') - _RECORDING_STOPWORDS
+    titles = (_COMMITTEE_SUFFIX.sub('', value or '').strip()
+              for value in (event_title(tree), tree.xpath('string(/html/head/title)')))
+    title_words = substantive_words(' '.join(t for t in titles if not _COMMITTEE_NAME.match(t))) - _RECORDING_STOPWORDS
     overlap = len(title_words & substantive_words(on_day.get(candidate)))
     if not overlap or any(not title or overlap <= len(title_words & substantive_words(title))
                           for ev in stale for title in other_titles[ev]):
@@ -331,6 +332,16 @@ def _proceeding_links(tree, url, calendar):
         if scope is root and items:
             continue  # Links between items do not belong to any proceeding.
         events = detail_events if detail else (_event_ids(targets[scope]) if official else set())
+        if len(events) == 1:
+            # A printed citation identifies the proceeding directly. Only an outbound
+            # template link can be set aside on the strength of calendar and title.
+            title = tree.xpath('string(/html/head/title)') if detail else ''
+            text = f'{title} {_text(body if detail else scope)}'
+            stated = {int(value) for value in _STATED_EVENT.findall(text)}
+            if detail:
+                stated.update(_event_ids((url,)))
+            if stated - events:
+                events = set()
         for key in keys:
             found[key].update(events if len(events) == 1 else ())
     return found

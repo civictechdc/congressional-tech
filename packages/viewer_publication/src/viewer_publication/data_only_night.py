@@ -353,7 +353,7 @@ def _recording_match_replacements(base_dir, candidate_dir, base_rec, cand_rec, *
          set (never dropping the video to `[]`), and every added `event_id` on `video_key` is backed by a
          candidate `committee_page` match citing a newly added HTML body absent from `base` `detail.parquet`.
       3. `publisher_corroborated`: a generic single-day match lost its event to a video the
-         publisher lists for the same meeting. Return the newly cited page for receipt verification.
+         publisher lists for the same meeting and a newly captured page confirms for that event.
     Return None when any removed row lacks a replacement.
     """
     import pyarrow.parquet as pq
@@ -539,7 +539,10 @@ def _prove_recording_changes(base_dir, candidate_dir, *, removed, expected, expe
             proof = None
             for video, body in sorted(choices):
                 source = pages.get(video, {}).get(body)
-                if source and (row['reason'] != 'event_ids_replaced' or event in source.get('event_ids', ())):
+                if not source:
+                    continue
+                named = source.get('event_ids', ())
+                if event in named or (row['reason'] == 'recaptured_page' and not named):
                     proof = dict(event_id=event, video_key=video, page_body=body, **source)
                     break
             if not proof:

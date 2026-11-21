@@ -571,7 +571,7 @@ def test_replaced_committee_page_recording_match_passes_when_traced_and_stops_wh
 
 
 @pytest.fixture
-def recording_sweep(tmp_path):
+def recording_sweep(tmp_path, request):
     """Run 44737429192's actual report groups and meeting 116718, with synthetic bulk page links."""
     import gzip
     from hashlib import sha256
@@ -603,13 +603,13 @@ def recording_sweep(tmp_path):
     current['youtube:Hu6j7gNk_qM'] = [115606, 115610]
     keys = [f'receipts/house/pages/2026-11-20/{n}.jsonl.gz' for n in range(1981)]
     links, traces, raw, objects, added_matches = [], [], {}, {}, []
-    def page(videos):
+    def page(videos, events=added):
         refs = []
         for video in videos:
             provider, identifier = video.split(':')
             url = ('https://youtu.be/' if provider == 'youtube' else 'https://senate.gov/isvp/?filename=') + identifier
             refs.append(f'<a href="{url}">Recording</a>')
-            for event in added.get(video, ()):
+            for event in events.get(video, ()):
                 refs.append(f'<a href="https://docs.house.gov/meetings/VR/VR00/20261120/{event}/">Meeting</a>')
         data = ''.join(refs).encode()
         body = sha256(data).hexdigest()
@@ -626,7 +626,7 @@ def recording_sweep(tmp_path):
                                           source_ref='committee_page:' + body))
         return body
 
-    new_page = page([publisher_video])
+    new_page = page([publisher_video], {publisher_video: getattr(request, 'param', [116718])})
     empty = [v for v in added if not added[v]]
     for i in range(0, len(empty), 4):
         page(empty[i:i + 4])
@@ -680,7 +680,15 @@ def test_nightly_recordings_pass_only_with_page_and_receipt_evidence(recording_s
     assert (r['event_id'], r['reason'], r['replacement_video_key']) == (116718, 'publisher_corroborated', 'youtube:Fyr9cXKd6NU')
     source, = r['page_receipts']
     assert source['receipt_key'].endswith('/0.jsonl.gz') and source['page_body'] == r['candidate_page']
+    assert source['event_ids'] == [116718]
 
+
+@pytest.mark.parametrize('recording_sweep', [[116719], []], indirect=True)
+def test_publisher_replacement_requires_the_new_page_to_confirm_the_same_event(recording_sweep):
+    decide, *_ = recording_sweep
+    entries, reasons, _ = decide()
+    assert not entries
+    assert any('lacks a corroborating new page receipt for event 116718' in reason for reason in reasons)
 
 
 @pytest.mark.parametrize('fault', ['phantom', 'no evidence', 'held body', 'wrong line', 'prefix collision', 'wrong raw',
@@ -924,13 +932,14 @@ def test_wrong_date_repository_link_cannot_claim_a_house_hearing_video():
 
 def bridge_hearing_events(*, dates='<p>Hearing Date: September 14, 2023</p>', metadata_day=None,
                           current='Bridge repair funding', stale='Legislative hearing', sibling='',
-                          heading='Bridge repair funding', metadata_title='Bridge repair funding', root='article', title=''):
+                          heading='Bridge repair funding', metadata_title='Bridge repair funding', root='article', title='',
+                          repository_event=116202):
     from viewer_publication.recording_pages import recording_page_events
 
     metadata = json.dumps({'@type': 'Event', 'name': metadata_title, 'startDate': metadata_day})
     head = f'<script type="application/ld+json">{metadata}</script>' if metadata_day else ''
     markup = f'''<html><head><title>{title}</title>{head}</head><body><{root}><h1>{heading}</h1>{dates}
-        <a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=116202">Repository</a>
+        <a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID={repository_event}">Repository</a>
         <iframe src="https://youtube.com/embed/b_jnl2BXNfs"></iframe></{root}>{sibling}</body></html>'''.encode()
     calendar = {('hspw', '2023-09-14'): {116317: dict(title=current, sittings=[])},
                 ('hspw', '2023-07-19'): {116202: dict(title=stale, sittings=[])}}
@@ -946,6 +955,29 @@ def test_wrong_date_json_ld_cannot_restore_the_stale_explicit_event(root):
 
 def test_incidental_date_in_prose_cannot_override_an_explicit_link():
     assert bridge_hearing_events(dates='<p>Last update: September 14, 2023</p>', metadata_day='2023-09-14') == []
+
+
+@pytest.mark.parametrize('statement,expected', [
+    ('<p>Event ID: 0116202</p>', []),
+    ('<p><strong>Event ID:</strong> 119999</p>', []),
+    ('<p>Event ID: 116317</p>', [116317]),
+    ('<p hidden>Event ID: 116202</p>', [116317]),
+    ('<p>https://congress.gov/event/118th-congress/house-event/119999</p>', []),
+])
+def test_visible_event_statement_must_agree_with_the_recording(statement, expected):
+    assert bridge_hearing_events(sibling=statement) == expected
+
+
+@pytest.mark.parametrize('deadline', ['September 21, 2023', '<time>September 21, 2023</time>'])
+def test_filing_deadline_in_prose_does_not_conflict_with_hearing_date(deadline):
+    assert bridge_hearing_events(repository_event=116317,
+                                 sibling=f'<p>Written testimony is due {deadline}.</p>') == [116317]
+
+
+def test_sitewide_committee_title_is_not_evidence_for_the_hearing_subject():
+    assert bridge_hearing_events(heading='National cemetery maintenance funding',
+                                 title="The House Committee on Veterans' Affairs",
+                                 current='Putting Veterans First', stale='Reviewing the Digital G.I. Bill Program') == []
 
 
 @pytest.mark.parametrize('current,stale,expected', [
