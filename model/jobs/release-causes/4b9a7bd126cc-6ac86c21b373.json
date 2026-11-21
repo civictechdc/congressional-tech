@@ -54,7 +54,7 @@
      "size": 13552
     },
     {
-     "path": "model/jobs/publish-model.json",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/publish-model.json",
      "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
      "size": 6109
     }
@@ -81,7 +81,7 @@
      "size": 4802
     },
     {
-     "path": "model/sql/body-signals.sql",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/body-signals.sql",
      "sha256": "7abb738ae53cb9a3302c0475bbf01b4bb00d298e71f50093c4cf2bd25f1de8ee",
      "size": 6313
     }
@@ -174,7 +174,7 @@
      "size": 32062
     },
     {
-     "path": "model/jobs/publish-model.json",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/publish-model.json",
      "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
      "size": 6109
     }
@@ -279,17 +279,17 @@
      "size": 32062
     },
     {
-     "path": "model/sql/body-signals.sql",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/body-signals.sql",
      "sha256": "7abb738ae53cb9a3302c0475bbf01b4bb00d298e71f50093c4cf2bd25f1de8ee",
      "size": 6313
     },
     {
-     "path": "model/sql/body-cover-kinds.sql",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/body-cover-kinds.sql",
      "sha256": "ddedae9ff8f2f5f7819031ee3dbbdbafe3ae420e91f415010f8996d3fb0150e5",
      "size": 1356
     },
     {
-     "path": "model/registries/page-signals.json",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/page-signals.json",
      "sha256": "6c4ded007afacf78912bea5c3018ae14f199989424758753bcb7413c47e88fcb",
      "size": 17461
     }
@@ -311,17 +311,17 @@
      "size": 32062
     },
     {
-     "path": "model/sql/body-signals.sql",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/body-signals.sql",
      "sha256": "7abb738ae53cb9a3302c0475bbf01b4bb00d298e71f50093c4cf2bd25f1de8ee",
      "size": 6313
     },
     {
-     "path": "model/sql/body-cover-kinds.sql",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/body-cover-kinds.sql",
      "sha256": "ddedae9ff8f2f5f7819031ee3dbbdbafe3ae420e91f415010f8996d3fb0150e5",
      "size": 1356
     },
     {
-     "path": "model/registries/page-signals.json",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/page-signals.json",
      "sha256": "6c4ded007afacf78912bea5c3018ae14f199989424758753bcb7413c47e88fcb",
      "size": 17461
     }
@@ -343,7 +343,7 @@
      "size": 32062
     },
     {
-     "path": "model/jobs/publish-model.json",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/publish-model.json",
      "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
      "size": 6109
     }
@@ -438,7 +438,7 @@
      "size": 5148
     },
     {
-     "path": "model/jobs/publish-model.json",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/publish-model.json",
      "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
      "size": 6109
     }
@@ -460,7 +460,7 @@
      "size": 32062
     },
     {
-     "path": "model/jobs/publish-model.json",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/publish-model.json",
      "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
      "size": 6109
     }
@@ -643,7 +643,7 @@
      "size": 4802
     },
     {
-     "path": "model/sql/body-signals.sql",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/body-signals.sql",
      "sha256": "7abb738ae53cb9a3302c0475bbf01b4bb00d298e71f50093c4cf2bd25f1de8ee",
      "size": 6313
     }
@@ -736,7 +736,7 @@
      "size": 32062
     },
     {
-     "path": "model/jobs/publish-model.json",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/publish-model.json",
      "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
      "size": 6109
     }
@@ -819,17 +819,17 @@
      "size": 32062
     },
     {
-     "path": "model/sql/body-signals.sql",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/body-signals.sql",
      "sha256": "7abb738ae53cb9a3302c0475bbf01b4bb00d298e71f50093c4cf2bd25f1de8ee",
      "size": 6313
     },
     {
-     "path": "model/sql/body-cover-kinds.sql",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/body-cover-kinds.sql",
      "sha256": "ddedae9ff8f2f5f7819031ee3dbbdbafe3ae420e91f415010f8996d3fb0150e5",
      "size": 1356
     },
     {
-     "path": "model/registries/page-signals.json",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/page-signals.json",
      "sha256": "6c4ded007afacf78912bea5c3018ae14f199989424758753bcb7413c47e88fcb",
      "size": 17461
     }
@@ -851,17 +851,17 @@
      "size": 32062
     },
     {
-     "path": "model/sql/body-signals.sql",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/body-signals.sql",
      "sha256": "7abb738ae53cb9a3302c0475bbf01b4bb00d298e71f50093c4cf2bd25f1de8ee",
      "size": 6313
     },
     {
-     "path": "model/sql/body-cover-kinds.sql",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/body-cover-kinds.sql",
      "sha256": "ddedae9ff8f2f5f7819031ee3dbbdbafe3ae420e91f415010f8996d3fb0150e5",
      "size": 1356
     },
     {
-     "path": "model/registries/page-signals.json",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/page-signals.json",
      "sha256": "6c4ded007afacf78912bea5c3018ae14f199989424758753bcb7413c47e88fcb",
      "size": 17461
     }
@@ -917,7 +917,7 @@
      "size": 32062
     },
     {
-     "path": "model/jobs/publish-model.json",
+     "path": "model/jobs/release-causes/evidence/4b9a7bd126cc-6ac86c21b373/publish-model.json",
      "sha256": "cddfa09b615516e3c74ffb98573f23af0a6c94ca012f6943c4bf66f1cd07e497",
      "size": 6109
     }

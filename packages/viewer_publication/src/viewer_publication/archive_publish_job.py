@@ -19,6 +19,7 @@ from viewer_publication.archive_model_job import (
     load_spec as load_model_spec,validate_spec as validate_model_spec,_local,_pin,
     TABLES,OPTIONAL_TABLES,ENTITY_TABLES,EXPLORER_TABLES,PROVENANCE,provenance_record_kind,provenance_etag_md5,
 )
+from viewer_publication.recording_pages import EXPORT as RECORDING_LINKS_EXPORT, verified_export
 from viewer_publication.receipt_pins import receipt_list
 from viewer_publication.archive_comparison_acceptance import ComparisonAcceptance,require_comparison
 
@@ -245,7 +246,7 @@ def nightly_spec(spec,root):
 # Actions cache: what a resumed publish reads besides the run's own fresh inputs. Of the model's
 # evidence (1.4 GB on 2026-11-12) the gates read only these files (release_gate.automatic_causes);
 # an evidence file missing on a resume can only refuse a gate, never pass one.
-KEPT_EVIDENCE=('recording_video_links.parquet',)
+KEPT_EVIDENCE=(RECORDING_LINKS_EXPORT,)
 
 
 def kept_candidate_paths(work,model):
@@ -274,11 +275,11 @@ def _kept_candidate_damage(work,model,engine):
         output,scratch=Path(stage['output']),Path(stage['scratch'])
         held=[(output/'manifest.json',checkpoint['manifest_pin']),(scratch/'result.json',checkpoint['result_pin'])]
         if any(Path(pin['path'])!=path for path,pin in held):return 'the checkpoint pins files outside its stage'
-        outputs={item['name']:item for item in json.loads((scratch/'result.json').read_text())['outputs']}
+        result=json.loads((scratch/'result.json').read_text())
         held+=[(output/item['name'],item) for item in json.loads((output/'manifest.json').read_text())['files']]
-        held+=[(scratch/'evidence'/name,outputs[name]) for name in KEPT_EVIDENCE if name in outputs]
         for path,item in held:
             if file_pin(path)!={key:item[key] for key in ('sha256','size')}:return 'kept file differs from its build: '+path.name
+        verified_export(result,scratch)
     except (ValueError,OSError,KeyError,TypeError) as error:
         return str(error) or type(error).__name__
     return None

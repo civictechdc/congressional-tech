@@ -1,4 +1,4 @@
-"""Pushes to main are validated unless they change only tickets, docs or Markdown."""
+"""The Explorer and MCP workflows cover code pushes and their respective documentation inputs."""
 from pathlib import Path
 import re
 
@@ -10,7 +10,7 @@ VALIDATIONS = ['validate-explorer.yml', 'validate-congress-mcp.yml']
 CODE = ['model/sql/meetings.sql', 'model/jobs/publish.json', 'packages/congress_api/src/a.py',
         'packages/not_yet_written/src/a.py', '.github/workflows/archive-jobs.yml', '.github/archive-jobs.json',
         'scripts/dev.py', 'scripts/new_tool/a.py', 'tests/test_a.py', 'pyproject.toml', 'uv.lock']
-QUIET = [['.tickets/ct-abcd.md'], ['docs/plans/a.md'], ['docs/data/a.json'], ['README.md'],
+DOCUMENTATION = [['.tickets/ct-abcd.md'], ['docs/plans/a.md'], ['docs/data/a.json'], ['README.md'],
          ['packages/congress_api/README.md'], ['.tickets/ct-abcd.md', 'docs/reviews/a.json', 'apps/site/README.md']]
 
 
@@ -48,14 +48,15 @@ def test_matcher_agrees_with_githubs_documented_examples():
 
 
 @pytest.mark.parametrize('name', VALIDATIONS)
-def test_push_to_main_validates_code_but_not_tickets_docs_or_markdown(name):
+def test_push_to_main_validates_code_and_the_workflows_documentation_inputs(name):
     value = workflow(name)
     push = value['on']['push']
     assert push['branches'] == ['main']
     for path in CODE:
         assert triggers(push['paths'], [path]), path
-    for changed in QUIET:
-        assert not triggers(push['paths'], changed), changed
+    for changed in DOCUMENTATION:
+        expected = name == 'validate-explorer.yml' and any(not matches('.tickets/*.md', p) for p in changed)
+        assert triggers(push['paths'], changed) == expected, changed
     # Every non-Markdown input that validates a PR also validates a push.
     for pattern in value['on']['pull_request']['paths']:
         sample = pattern.replace('**', 'a/b.py')

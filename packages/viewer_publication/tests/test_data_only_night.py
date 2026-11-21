@@ -293,7 +293,7 @@ def test_the_real_capture_night_passes_every_group_check_and_the_real_wipe_stops
     assert _group_reasons(night, 1173) == []
     # The historical report kept counts only. It cannot attest to these 44 recording keys.
     entries, reasons, _ = decide(night)
-    assert entries == [] and len(reasons) == 1 and 'expected 44 added recordings' in reasons[0]
+    assert entries == [] and len(reasons) == 1 and 'the recording tables cannot identify the added recordings' in reasons[0]
     wipe = json.loads((REAL / 'html-metadata-wipe-20261116-08c465599d7b.json').read_text())
     entries, reasons, _ = decide(wipe)
     assert entries == [] and len(reasons) >= 18
@@ -342,7 +342,7 @@ def recapture(tmp_path, *, title='Hearing on Shipbuilding', status=200, url=PAGE
     def read_receipt(key):
         read.append(key)
         return raw[key]
-    proven, reasons, facts = recaptured_pages(link_rule(False, **answers), tmp_path / 'live', tmp_path / 'candidate', held=set(LIVE_KEYS),
+    proven, reasons, facts = recaptured_pages(link_rule(False, **answers), tmp_path / 'live', tmp_path / 'candidate', new_receipts={RECEIPT},
         trace=lambda keys: [dict(prefix=NEWER[:16], receipt_key=receipt, receipt_line=2, sha=NEWER)] if keys == {NEWER[:16]} else [],
         read_receipt=read_receipt)
     return proven, reasons, facts, read
@@ -369,7 +369,7 @@ def test_a_page_captured_again_at_its_own_address_under_its_title_is_proven_from
     dict(title='404 Not Found'), dict(title=None), dict(status=500), dict(url='https://committee.house.gov/other'),
     dict(media='application/pdf'), dict(title_source='link_text'), dict(title_source=None),   # a replaced file keeps its listing's title
     dict(address_changed_answers=[dict(key=PAGE, live_row=1, live_body=BODY, candidate_rows=[2], candidate_bodies=[None])]),
-    dict(stores=OTHER), dict(receipt=LIVE_KEYS[0]),
+    dict(stores=OTHER), dict(receipt=LIVE_KEYS[0]), dict(receipt='unadmitted'),
     dict(changed_answers=[dict(key='1a56', live_row=1, live_body=BODY, candidate_row=2, candidate_body=OTHER)]),
     dict(address_changed_answers=[dict(key=PAGE, live_row=1, live_body=BODY, candidate_rows=[2, 2], candidate_bodies=[NEWER, OTHER])]),
     dict(address_changed=2),
@@ -384,18 +384,18 @@ def test_anything_but_that_page_under_that_title_from_a_new_receipt_is_left_to_a
 def test_the_link_rule_on_a_data_night_stops_hard_findings_and_takes_proven_recaptures(decide, tmp_path):
     value = report(group('list.parquet', 'changed title', 3))
     for hard in (dict(missing=2), dict(dangling=1), dict(published_and_retired=1), dict(demoted=1), dict(unchecked=['links.parquet absent'])):
-        stopped = decide(dict(value, link_rule=link_rule(False, **hard)), link_proof=lambda rule: pytest.fail('a hard finding has no proof'))[1]
+        stopped = decide(dict(value, link_rule=link_rule(False, **hard)), link_proof=lambda rule, new: pytest.fail('a hard finding has no proof'))[1]
         assert len(stopped) == 1 and stopped[0].startswith('data-only night: the link rule failed (')
     moved = link_rule(False, address_changed=1, address_changed_answers=[dict(key=PAGE, live_row=1, live_body=BODY, candidate_rows=[2], candidate_bodies=[NEWER])])
     assert 'they were not examined' in decide(dict(value, link_rule=moved))[1][0]
     # The proof scans the capture table, so a night something else already stopped does not run it.
     over = report(group('list.parquet', 'changed title', 9000), rule=moved)
-    stopped = decide(over, link_proof=lambda rule: pytest.fail('the proof must not run on a night already stopped'))[1]
+    stopped = decide(over, link_proof=lambda rule, new: pytest.fail('the proof must not run on a night already stopped'))[1]
     assert len(stopped) == 2 and 'they were not examined' in stopped[0] and 'changed title' in stopped[1]
     proof = [dict(kind='address', key=PAGE, live_body=BODY, candidate_body=NEWER)]
-    entries, reasons, facts = decide(dict(value, link_rule=moved), link_proof=lambda rule: (proof, [], dict(recaptures=[dict(address=PAGE)])))
+    entries, reasons, facts = decide(dict(value, link_rule=moved), link_proof=lambda rule, new: (proof, [], dict(recaptures=[dict(address=PAGE)])))
     assert reasons == [] and len(entries) == 1 and facts['proven_corrections'] == proof and facts['recaptures'] == [dict(address=PAGE)]
-    assert decide(dict(value, link_rule=moved), link_proof=lambda rule: ([], ['data-only night: live address would open another file'], {}))[1] == [
+    assert decide(dict(value, link_rule=moved), link_proof=lambda rule, new: ([], ['data-only night: live address would open another file'], {}))[1] == [
         'data-only night: live address would open another file']
     assert RECAPTURED_PAGES == 100
 
@@ -517,14 +517,21 @@ def test_replaced_committee_page_recording_match_passes_when_traced_and_stops_wh
             ]),
         },
     )
-    entries, reasons, facts = data_only_causes(
-        rep, candidate_record=INPUTS, live_records=[live()], candidate_receipt_keys=[*LIVE_KEYS, *NIGHT],
-        base_dir=base_d, candidate_dir=cand_d,
-    )
+    def decide(proof=None, **options):
+        return data_only_causes(rep, candidate_record=INPUTS, live_records=[live()], candidate_receipt_keys=[*LIVE_KEYS, *NIGHT],
+                                base_dir=base_d, candidate_dir=cand_d, recording_page_proof=proof, **options)
+
+    def pages(key):
+        return lambda videos, new: {'youtube:vidA': {new_page.hex(): dict(receipt_key=key, receipt_line=1)}}
+
+    for proof in (None, pages(LIVE_KEYS[0]), pages('outside')):
+        assert decide(proof)[1]
+    entries, reasons, facts = decide(pages(NIGHT[0]))
     assert reasons == [] and len(entries) == 2
-    assert facts['replaced_recording_matches'] == [
-        dict(match_id='m_old', event_id=100, video_key='youtube:vidA', reason='event_ids_replaced', new_event_ids=[200])
-    ]
+    replacement, = facts['replaced_recording_matches']
+    assert replacement['reason'] == 'event_ids_replaced' and replacement['new_event_ids'] == [200]
+    assert replacement['page_receipts'] == [dict(video_key='youtube:vidA', event_id=200, page_body=new_page.hex(),
+                                                 receipt_key=NIGHT[0], receipt_line=1)]
     assert next(e for e in entries if 'removed keys' in e['id'])['tickets'] == ['ct-618r', 'ct-pz32']
 
     # Planted loss (`ct-mwod` shape: video drops to event_ids=[]): must STOP.
@@ -537,6 +544,26 @@ def test_replaced_committee_page_recording_match_passes_when_traced_and_stops_wh
         base_dir=base_d, candidate_dir=cand_d,
     )
     assert entries_bad == [] and any('recording_matches.parquet|removed keys|no evidence given (-1)' in r for r in reasons_bad)
+
+
+    # The recapture route needs both the admitted address recapture and the new page's video.
+    matches = pq.read_table(cand_d / 'recording_matches.parquet').to_pylist()
+    matches[0]['source_ref'] = 'committee_page:' + new_page.hex()
+    pq.write_table(pa.Table.from_pylist(matches, schema=rm_schema), cand_d / 'recording_matches.parquet')
+    rep['link_rule'] = link_rule(False, address_changed=1)
+    def recapture(receipt):
+        def prove(rule, new):
+            assert new == set(NIGHT)
+            return [], [], dict(recaptures=[dict(live_body=old_page.hex(), candidate_body=new_page.hex(), receipt=receipt)])
+        return prove
+    def page(receipt):
+        return lambda videos, new: {'youtube:vidKeep': {new_page.hex(): dict(receipt_key=receipt, receipt_line=1)}}
+    for key in (LIVE_KEYS[0], 'unadmitted'):
+        assert decide(page(NIGHT[0]), link_proof=recapture(key))[1]
+        assert decide(page(key), link_proof=recapture(NIGHT[0]))[1]
+    assert decide(None, link_proof=recapture(NIGHT[0]))[1]
+    entries, reasons, facts = decide(page(NIGHT[0]), link_proof=recapture(NIGHT[0]))
+    assert not reasons and facts['replaced_recording_matches'][0]['reason'] == 'recaptured_page'
 
 
 
@@ -571,26 +598,50 @@ def recording_sweep(tmp_path):
     current = dict(known, **added)
     current[old_video] = []
     current['youtube:Hu6j7gNk_qM'] = [115606, 115610]
+    keys = [f'receipts/house/pages/2026-11-20/{n}.jsonl.gz' for n in range(1981)]
+    links, traces, raw, objects, added_matches = [], [], {}, {}, []
+    def page(videos):
+        refs = []
+        for video in videos:
+            provider, identifier = video.split(':')
+            url = ('https://youtu.be/' if provider == 'youtube' else 'https://senate.gov/isvp/?filename=') + identifier
+            refs.append(f'<a href="{url}">Recording</a>')
+            for event in added.get(video, ()):
+                refs.append(f'<a href="https://docs.house.gov/meetings/VR/VR00/20261120/{event}/">Meeting</a>')
+        data = ''.join(refs).encode()
+        body = sha256(data).hexdigest()
+        key = keys[len(traces)]
+        traces.append(dict(sha=body, prefix=body[:16], receipt_key=key, receipt_line=1))
+        raw[key] = gzip.compress(json.dumps(dict(mode='fetch', outcome='stored', http_status=200,
+            url='https://veterans.house.gov/hearings/fixture',
+            captures=[dict(sha256=body, complete=True, sniffed_format='html', stored_suffix='')])).encode())
+        objects[f'bodies/sha256/{body[:2]}/{body}'] = data
+        for video in videos:
+            links.append(dict(extracted_key=video, page_body=body))
+            for event in added.get(video, ()):
+                added_matches.append(dict(committee, match_id=video, event_id=event, video_key=video,
+                                          source_ref='committee_page:' + body))
+        return body
+
+    new_page = page([publisher_video])
+    empty = [v for v in added if not added[v]]
+    for i in range(0, len(empty), 4):
+        page(empty[i:i + 4])
+    for video in added:
+        if added[video]:
+            page([video])
     for directory, matches, recordings, bodies in [
         (base, [generic, committee, publisher], known, [old_page, via]),
         (candidate, [dict(committee, source_ref='committee_page:' + new_page,
-                          note=f'house_doc_link [via committee_page:{via}]'), publisher], current, [old_page, via, new_page]),
+                          note=f'house_doc_link [via committee_page:{via}]'), publisher, *added_matches], current, [old_page, via, new_page]),
     ]:
         pq.write_table(pa.Table.from_pylist(matches), directory / 'recording_matches.parquet')
         pq.write_table(pa.table({'video_key': list(recordings), 'event_ids': list(recordings.values())}),
                        directory / 'recordings.parquet')
         pq.write_table(pa.table({'saved_body': [bytes.fromhex(x) for x in bodies], 'saved_media_type': ['text/html'] * len(bodies)}),
                        directory / 'detail.parquet')
-
-    keys = [f'receipts/house/pages/2026-11-20/{n}.jsonl.gz' for n in range(1981)]
-    links = [(publisher_video, new_page)] + [(k, sha256(str(i // 2).encode()).hexdigest()) for i, k in enumerate(added)]
     path = tmp_path / 'recording_video_links.parquet'
-    pq.write_table(pa.Table.from_pylist([dict(extracted_key=k, page_body=p) for k, p in links]), path)
-    traces, raw = [], {}
-    for key, body in zip(keys, dict.fromkeys(p for _, p in links)):
-        traces.append(dict(sha=body, prefix=body[:16], receipt_key=key, receipt_line=1))
-        record = dict(mode='fetch', outcome='stored', http_status=200, captures=[dict(sha256=body, complete=True, sniffed_format='html')])
-        raw[key] = gzip.compress(json.dumps(record).encode())
+    pq.write_table(pa.Table.from_pylist(links), path)
     groups = [
         group('recording_matches.parquet', 'removed keys', -1, 'no evidence given'),
         group('recording_matches.parquet', 'added keys', 71, 'no evidence given'),
@@ -605,10 +656,14 @@ def recording_sweep(tmp_path):
         for file, n, m in [('recording_matches.parquet', 42827, 42897), ('recordings.parquet', 16512, 17240)]})
 
     def decide():
+        from congress_shared.custody import verify_local_file
+        def proof(videos, new):
+            return new_recording_pages(videos, new, export=verify_local_file(path),
+                trace=lambda prefixes: [r for r in traces if r['prefix'] in prefixes],
+                read_receipt=raw.__getitem__, read_object=objects.__getitem__) if path.exists() else {}
         return data_only_causes(value, candidate_record=INPUTS, candidate_receipt_keys=[*LIVE_KEYS, *keys],
                                 live_records=[live()], base_dir=base, candidate_dir=candidate,
-                                recording_page_proof=lambda videos, new: new_recording_pages(videos, new, evidence_dir=tmp_path,
-                                    trace=lambda prefixes: [r for r in traces if r['prefix'] in prefixes], read_receipt=raw.__getitem__))
+                                recording_page_proof=proof)
     return decide, path, traces, raw, value, candidate
 
 
@@ -617,20 +672,49 @@ def test_nightly_recordings_pass_only_with_page_and_receipt_evidence(recording_s
     entries, reasons, facts = decide()
     assert reasons == [] and len(entries) == 7
     assert facts['new_receipts'] == 1981 and len(facts['added_recording_pages']) == 673
-    assert facts['replaced_recording_matches'] == [dict(
-        match_id='cb35933e6a0e06e0badea192a6eb00491beed358f6a48090ffeed9b0a62fb9ed', event_id=116718,
-        video_key='youtube:I-xxDkL4cdI', reason='publisher_corroborated', replacement_video_key='youtube:Fyr9cXKd6NU',
-        candidate_page='63236de163cfa91880d2302494cc60ad5038ae8b40700566aed83af706350434',
-        receipt_key='receipts/house/pages/2026-11-20/0.jsonl.gz', receipt_line=1)]
+    assert len(facts['added_recording_events']) == 55
+    r, = facts['replaced_recording_matches']
+    assert (r['event_id'], r['reason'], r['replacement_video_key']) == (116718, 'publisher_corroborated', 'youtube:Fyr9cXKd6NU')
+    source, = r['page_receipts']
+    assert source['receipt_key'].endswith('/0.jsonl.gz') and source['page_body'] == r['candidate_page']
+
 
 
 @pytest.mark.parametrize('fault', ['phantom', 'no evidence', 'held body', 'wrong line', 'prefix collision', 'wrong raw',
                                    'no replacement receipt', 'lost publisher link', 'too many removals', 'wrong count',
-                                   'small phantom', 'not stored', 'unlisted video'])
+                                   'small phantom', 'not stored', 'unlisted video', 'wrong HTML pairing', 'fabricated event',
+                                   'unofficial event page', 'verified flip', 'concentrated', 'held replacement'])
 def test_nightly_recordings_refuse_unproven_changes(recording_sweep, fault):
     import gzip
     decide, path, traces, raw, value, candidate = recording_sweep
-    if fault == 'phantom':
+    if fault == 'wrong HTML pairing':
+        rows = pq.read_table(path).to_pylist()
+        rows[1]['page_body'] = rows[-1]['page_body']
+        pq.write_table(pa.Table.from_pylist(rows), path)
+    elif fault == 'verified flip':
+        value['files']['recordings.parquet']['groups'][1].update(status='verified', cause='empty event_ids; capture newly real')
+        value['failing'] = [g for g in value['failing'] if g['status'] != 'verified']
+        traces.pop(1)
+    elif fault == 'fabricated event':
+        video = 'youtube:B0000000001'
+        for file, field, fake in [('recordings.parquet', 'event_ids', [9999]), ('recording_matches.parquet', 'event_id', 9999)]:
+            rows = pq.read_table(candidate / file).to_pylist()
+            next(r for r in rows if r['video_key'] == video)[field] = fake
+            pq.write_table(pa.Table.from_pylist(rows), candidate / file)
+    elif fault == 'unofficial event page':
+        key = traces[-1]['receipt_key']
+        line = json.loads(gzip.decompress(raw[key]))
+        raw[key] = gzip.compress(json.dumps(dict(line, url='https://example.org/event')).encode())
+    elif fault == 'held replacement':
+        traces[0]['receipt_key'] = LIVE_KEYS[0]
+    elif fault == 'concentrated':
+        common = traces[1]['receipt_key']
+        lines = []
+        for i, trace in enumerate(traces[1:7], 1):
+            lines.append(gzip.decompress(raw[trace['receipt_key']]))
+            trace.update(receipt_key=common, receipt_line=i)
+        raw[common] = gzip.compress(b'\n'.join(lines))
+    elif fault == 'phantom':
         rows = pq.read_table(path).to_pylist()
         pq.write_table(pa.Table.from_pylist(rows[:-56]), path)  # remove the last unlinked key as well as all 55 linked keys
     elif fault == 'no evidence':
@@ -667,5 +751,106 @@ def test_nightly_recordings_refuse_unproven_changes(recording_sweep, fault):
         value['failing'][5]['count'] = 672
     entries, reasons, _ = decide()
     assert not entries
-    assert any(('removed keys' if fault in ('no replacement receipt', 'lost publisher link', 'too many removals', 'unlisted video')
+    assert any(('removed keys' if fault in ('no replacement receipt', 'lost publisher link', 'too many removals', 'unlisted video', 'held replacement')
                 else 'added recordings') in reason for reason in reasons)
+
+
+def test_new_publisher_match_must_name_the_event_on_the_page_or_in_the_held_listing(tmp_path):
+    from viewer_publication.data_only_night import _linked_additions
+    base, candidate = tmp_path / 'base', tmp_path / 'candidate'
+    base.mkdir()
+    candidate.mkdir()
+    video, event, body = 'youtube:Fyr9cXKd6NU', 116718, 'c' * 64
+    listing = pa.Table.from_pylist([dict(event_id=event, videos=[dict(video_key=video)])])
+    pq.write_table(listing, candidate / 'meetings.parquet')
+    pq.write_table(pa.Table.from_pylist([dict(event_id=event, video_key=video, basis='publisher_link',
+        source_ref='meetings.videos', decision='linked', status='asserted')]), candidate / 'recording_matches.parquet')
+    def prove(events):
+        pages = {video: {body: dict(receipt_key='admitted-page', event_ids=events)}}
+        return _linked_additions(base, candidate, {video: {event}}, pages)
+    # The candidate agrees with itself about the wrong event. Its linking page names another one.
+    assert prove([116719])[1]
+    entries, reasons = prove([event])
+    assert not reasons and entries[video][event]['corroboration'] == 'committee_page'
+    pq.write_table(listing, base / 'meetings.parquet')
+    entries, reasons = prove([])
+    assert not reasons and entries[video][event]['corroboration'] == 'held_publisher'
+
+
+def test_failed_candidate_replay_requires_the_original_publisher_and_committee_receipts():
+    import gzip
+    from hashlib import sha256
+    import runpy
+    replay = runpy.run_path(str(Path(__file__).resolve().parents[3] / 'docs/experiments/track1-20261120/replay.py'))
+    publisher, page = replay['PUBLISHER'], replay['PAGE']
+    bodies = {publisher: json.dumps(dict(committeeMeeting=dict(eventId='116718', videos=[
+        dict(url='https://www.youtube.com/watch?v=Fyr9cXKd6NU')]))).encode(),
+        page: (b'<a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=116718"></a>'
+               b'<iframe src="https://youtube.com/embed/Fyr9cXKd6NU"></iframe>')}
+
+    def run(admitted, new, pins=None):
+        objects = {}
+        for key, body in bodies.items():
+            sha = sha256(body).hexdigest()
+            objects[f'bodies/sha256/{sha[:2]}/{sha}'] = body
+            url = ('https://api.congress.gov/v3/committee-meeting/118/house/116718?format=json'
+                   if key == publisher else 'https://transportation.house.gov/event')
+            row = dict(mode='fetch', outcome='stored', http_status=200, family='congress/meetings' if key == publisher else 'house/pages',
+                       url=url, requested_url=url, captures=[dict(complete=True, sha256=sha, stored_suffix='',
+                                                                 sniffed_format='json' if key == publisher else 'html')])
+            objects[key] = gzip.compress(json.dumps(row).encode())
+        receipt_hashes = pins or {key: sha256(objects[key]).hexdigest() for key in (publisher, page)}
+        return replay['replacement'](admitted, new, objects.__getitem__, receipt_hashes)
+
+    assert run({publisher, page}, {page})['video_key'] == 'youtube:Fyr9cXKd6NU'
+    with pytest.raises(ValueError, match='admitted'):
+        run({page}, {page})
+    with pytest.raises(ValueError, match='admitted'):
+        run({publisher, page}, set())
+    with pytest.raises(ValueError, match='receipt digest'):
+        run({publisher, page}, {page}, replay['RECEIPT_HASHES'])
+    for key, old, wrong in [(publisher, b'116718', b'116719'), (publisher, b'Fyr9cXKd6NU', b'I-xxDkL4cdI'),
+                            (page, b'116718', b'116719'), (page, b'Fyr9cXKd6NU', b'I-xxDkL4cdI')]:
+        original = bodies[key]
+        bodies[key] = original.replace(old, wrong)
+        with pytest.raises(ValueError, match='Congress.gov|Committee page'):
+            run({publisher, page}, {page})
+        bodies[key] = original
+
+
+def test_failed_candidate_replay_compares_authenticated_manifests_and_all_four_tables(tmp_path, monkeypatch):
+    from hashlib import sha256
+    import runpy
+    from viewer_publication.archive_format import release_identity
+    replay = runpy.run_path(str(Path(__file__).resolve().parents[3] / 'docs/experiments/track1-20261120/replay.py'))
+    compare = replay['compare_manifests']
+    def manifest(files):
+        return dict(schema_version=1, files=files, release_id=release_identity(1, files))
+    def pin(name, body):
+        return dict(name=name, sha256=sha256(body).hexdigest(), size=len(body), rows=1)
+    originals, available = [], []
+    for name in (*replay['RECORDINGS'], *replay['OTHER']):
+        original = name.encode()
+        other = original if name in replay['RECORDINGS'] else original + b' changed'
+        (tmp_path / name).write_bytes(other)
+        originals.append(pin(name, original))
+        available.append(pin(name, other))
+    source, successor = manifest(originals), manifest(available)
+    monkeypatch.setitem(compare.__globals__, 'FAILED', source['release_id'])
+    monkeypatch.setitem(compare.__globals__, 'AVAILABLE', successor['release_id'])
+    pairs = compare(source, successor, tmp_path)
+    assert {name for name, pair in pairs.items() if pair['identical']} == set(replay['RECORDINGS'])
+
+    for n, file in enumerate(originals):
+        changed = originals.copy()
+        changed[n] = (pin(file['name'], b'changed recording') if file['name'] in replay['RECORDINGS'] else available[n])
+        wrong = manifest(changed)
+        with pytest.raises(ValueError, match='Invalid manifest identity'):
+            compare(dict(wrong, release_id=source['release_id']), successor, tmp_path)
+        monkeypatch.setitem(compare.__globals__, 'FAILED', wrong['release_id'])
+        with pytest.raises(ValueError, match=file['name']):
+            compare(wrong, successor, tmp_path)
+        monkeypatch.setitem(compare.__globals__, 'FAILED', source['release_id'])
+    (tmp_path / 'meetings.parquet').write_bytes(b'stale')
+    with pytest.raises(ValueError):
+        compare(source, successor, tmp_path)

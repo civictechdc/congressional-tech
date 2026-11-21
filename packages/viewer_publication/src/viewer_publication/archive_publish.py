@@ -474,7 +474,7 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
         from viewer_publication.archive_text_index import validate_attachment
         validate_attachment(manifest,release,index_policy.get('definition') if index_policy else None)
     if listed==0:raise ValueError('An empty document list cannot be published')
-    return manifest,raw,release_id,{}
+    return manifest,raw,release_id,result
 
 
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
@@ -512,12 +512,14 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             profile=input_record['profile'],entity_digests=input_record['entity_digests'],
             extra_pins=extra_pins_for_snapshots(input_record.get('snapshots')))
         if input_record.get('input_digest')!=digest:raise ValueError('Input record semantic identity differs')
-        manifest,raw,release_id,admission=_candidate(Path(release),manifest_pin,result_pin,
+        manifest,raw,release_id,native_result=_candidate(Path(release),manifest_pin,result_pin,
             input_record=input_record,receipt_keys=receipt_keys)
         if measured_release_id is not None:
             if _sha(measured_release_id)!=release_id:
                 raise ValueError('Measured site targets identify a different release')
-        status.update(admission)
+        if automatic_captures is not None:
+            from viewer_publication.recording_pages import verified_export
+            recording_export=verified_export(native_result,Path(result_pin['path']).parent)
         status.update(release_id=release_id,rows={item['name']:item['rows'] for item in manifest['files']},
             bytes=sum(item['size'] for item in manifest['files']))
         if release_id==live:
@@ -561,7 +563,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             from viewer_publication.release_gate import automatic_causes
             entries,_=kept_input_records(store,[live])
             held={key for entry in entries for key in entry['receipt_keys']}
-            def read_receipt(key):
+            def read_object(key):
                 body=(receipt_client or client).get_object(Bucket=bucket,Key=key)['Body']
                 try:return body.read()
                 finally:body.close()
@@ -570,19 +572,21 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                 # rows goes to the data-only rule (ct-pz32). See data_only_night.unattended_causes.
                 from viewer_publication.data_only_night import data_only_causes,recaptured_pages,unattended_causes
                 from viewer_publication.release_gate import capture_job,new_recording_pages
+                def recording_pages(videos,new):
+                    return new_recording_pages(videos,new,export=recording_export,read_receipt=read_object,read_object=read_object,
+                        meetings=Path(release)/'meetings.parquet',
+                        trace=lambda keys:capture_job(Path(work)/'recording-pages',engine,automatic_captures,keys=keys)['trace'])
                 found,stopped,facts=unattended_causes(report,
                     traced=lambda value:automatic_causes(value,base_release,Path(release),engine=engine,
-                        captures=automatic_captures,live_receipt_keys=held,read_receipt=read_receipt,work=Path(work)/'automatic',
-                        candidate_receipt_keys=receipt_keys,evidence_dir=Path(result_pin['path']).parent/'evidence',
+                        captures=automatic_captures,live_receipt_keys=held,read_receipt=read_object,work=Path(work)/'automatic',
+                        candidate_receipt_keys=receipt_keys,recording_export=recording_export,read_object=read_object,
                         qualification_files=automatic_qualifications),
                     data_only=lambda value:data_only_causes(value,candidate_record=input_record,live_records=entries,
                         candidate_receipt_keys=receipt_keys,base_dir=base_release,candidate_dir=Path(release),
                         qualification_files=automatic_qualifications,
-                        recording_page_proof=lambda videos,new:new_recording_pages(videos,new,
-                            evidence_dir=Path(result_pin['path']).parent/'evidence',read_receipt=read_receipt,
-                            trace=lambda keys:capture_job(Path(work)/'recording-pages',engine,automatic_captures,keys=keys)['trace']),
+                        recording_page_proof=recording_pages,
                         # A page captured again at its own address is proven from the raw receipt that stored it.
-                        link_proof=lambda rule:recaptured_pages(rule,base_release,Path(release),held=held,read_receipt=read_receipt,
+                        link_proof=lambda rule,new:recaptured_pages(rule,base_release,Path(release),new_receipts=new,read_receipt=read_object,
                             trace=lambda keys:capture_job(Path(work)/'recaptures',engine,automatic_captures,keys=keys)['trace'])))
                 if facts is None:return found,stopped
                 # The gate's own verdict reads these as it reads the model's published corrections.

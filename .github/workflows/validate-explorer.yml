@@ -38,18 +38,14 @@ on:
       - "conftest.py"
       - "test-suites.toml"
       - "scripts/dev.py"
-      - "docs/experiments/**"
+      - "docs/**"
       - ".github/actions/**"
-  # Every push to main runs unless it changes only tickets, docs or Markdown.
-  # Experiment tests and fixtures under docs/experiments are lane inputs.
+  # Production can advance over changes confined to top-level ticket Markdown.
   push:
     branches: [main]
     paths:
       - "**"
-      - "!.tickets/**"
-      - "!docs/**"
-      - "docs/experiments/**"
-      - "!**/*.md"
+      - "!.tickets/*.md"
   workflow_dispatch: {}
 
 permissions:
@@ -83,34 +79,33 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           fast=false
-          check=false
           if [[ -n "$BASE" ]] && git rev-parse --verify --quiet "$BASE^{commit}" >/dev/null; then
             fast=$(python3 .github/scripts/cause-record-changes.py "$BASE" HEAD)
-            if ! git diff --quiet "$BASE" HEAD -- model/jobs/release-causes model/jobs/publish.json; then check=true; fi
             # Production selects a successful main push. A cause-only push following a
             # failed or cancelled code change must still test that code.
             if [[ "$fast" == true && "$GITHUB_EVENT_NAME" == push ]]; then
               validated=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/validate-explorer.yml/runs?branch=main&event=push&status=success&per_page=1" --jq '.workflow_runs[0].head_sha' || true)
-              if [[ -n "$validated" ]] && git merge-base --is-ancestor "$validated" "$BASE"; then
+              if [[ -n "$validated" ]] && git merge-base --is-ancestor "$validated" "$BASE" && git merge-base --is-ancestor "$validated" HEAD; then
                 BASE=$validated
                 fast=$(python3 .github/scripts/cause-record-changes.py "$BASE" HEAD)
               else
                 fast=false
               fi
             fi
+          else
+            BASE=
           fi
           echo "cause_record_only=$fast" >> "$GITHUB_OUTPUT"
-          echo "check=$check" >> "$GITHUB_OUTPUT"
           echo "base=$BASE" >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/setup-python-project
-        if: steps.scope.outputs.check == 'true'
-      - name: Verify the publish binding and changed cause records
-        if: steps.scope.outputs.check == 'true'
+      - name: Verify the publish binding and cause records
         env:
           BASE: ${{ steps.scope.outputs.base }}
         run: |
           .venv/bin/python -I .github/scripts/run-archive-job.py publish --check-binding
-          .venv/bin/python -I .github/scripts/cause-record-changes.py --verify "$BASE" HEAD
+          range=()
+          if [[ -n "$BASE" ]]; then range=("$BASE" HEAD); fi
+          .venv/bin/python -I .github/scripts/cause-record-changes.py --verify "${range[@]}"
 
   offline:
     needs: changes

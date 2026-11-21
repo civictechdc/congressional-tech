@@ -2820,22 +2820,38 @@ def test_added_link_key_and_address_caps_refuse_before_any_engine_job(tmp_path, 
     assert any(expected in r for r in reasons), reasons
 
 
-def test_new_no_meeting_recordings_from_new_page_receipts_pass_unattended(tmp_path):
+def recording_receipt_reader(receipt, url, raw_digest):
+    import gzip
+    def read(key):
+        if key == receipt:
+            rows = [dict(mode='fetch', http_status=200, outcome='stored', requested_url=url, url=url,
+                         captures=[dict(sha256=raw_digest, complete=True, sniffed_format='html')])]
+        else:
+            rows = [dict(record=dict(mode='fetch', requested_url=REQUEST, outcome='stored',
+                                     http_status=200, retrieved_at=FETCHED.isoformat()),
+                         captures=[dict(sha256=(K('N') + sha256(b'N').digest()[:24]).hex())]),
+                    dict(record=dict(mode='fetch', requested_url=REQUEST), captures=[])]
+        return gzip.compress(('\n'.join(json.dumps(row) for row in rows) + '\n').encode(), mtime=0)
+    return read
+
+
+def test_new_no_meeting_recordings_from_new_page_receipts_pass_unattended(tmp_path, monkeypatch):
     """ct-zdj8: unattended night passes when added no-meeting recordings trace via recording_video_links.parquet to new receipts."""
-    page_body = sha256(b'committee-event-page').digest()
+    html = b'<a href="https://youtu.be/Anchor00001"></a><iframe src="https://youtube.com/embed/Embed000001"></iframe>'
+    page_body = sha256(html).digest()
     page_receipt = 'receipts/house/pages/2026-11-12/new-page.jsonl.gz'
     base_rec = pa.Table.from_pylist([dict(video_key='youtube:old', event_ids=[], tracks=[])], schema=RECORDINGS)
     cand_rec = pa.Table.from_pylist([
         dict(video_key='youtube:old', event_ids=[], tracks=[]),
-        dict(video_key='youtube:anchor1', event_ids=[], tracks=[]),
-        dict(video_key='youtube:embed1', event_ids=[], tracks=[]),
+        dict(video_key='youtube:Anchor00001', event_ids=[], tracks=[]),
+        dict(video_key='youtube:Embed000001', event_ids=[], tracks=[]),
     ], schema=RECORDINGS)
     ev_dir = tmp_path / 'evidence'
     ev_dir.mkdir()
     pq.write_table(
         pa.Table.from_pylist([
-            dict(page_body=page_body.hex(), extracted_key='youtube:anchor1'),
-            dict(page_body=page_body.hex(), extracted_key='youtube:embed1'),
+            dict(page_body=page_body.hex(), extracted_key='youtube:Anchor00001'),
+            dict(page_body=page_body.hex(), extracted_key='youtube:Embed000001'),
         ], schema=pa.schema([('page_body', pa.string()), ('extracted_key', pa.string())])),
         ev_dir / 'recording_video_links.parquet',
     )
@@ -2849,9 +2865,17 @@ def test_new_no_meeting_recordings_from_new_page_receipts_pass_unattended(tmp_pa
         capture_lines=[dict(receipt_key=page_receipt, sha256=page_body, requested_url='https://agriculture.house.gov/event/1')],
     )
     from docspec_client.client import NativeDatasets
+    from viewer_publication import release_gate
     from viewer_publication.release_gate import automatic_causes
-    import gzip, os
-    # Wrap automatic_causes with evidence_dir pointing to kept evidence.
+    import os
+    from congress_shared.custody import verify_local_file
+    scans = []
+    capture_job = release_gate.capture_job
+    def trace(*args, **kwargs):
+        scans.append(set(kwargs['keys']))
+        return capture_job(*args, **kwargs)
+    monkeypatch.setattr(release_gate, 'capture_job', trace)
+    # Exercise the additions-only gate with the same pinned export and raw page as the publisher.
     report_out = require_release_gates(
         base, candidate, None, report_path=tmp_path / 'r.json',
         automatic=lambda rep: automatic_causes(
@@ -2859,25 +2883,19 @@ def test_new_no_meeting_recordings_from_new_page_receipts_pass_unattended(tmp_pa
             engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
             captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
             live_receipt_keys=LIVE_RECEIPTS,
-            read_receipt=lambda k: (
-                gzip.compress((json.dumps(dict(record=dict(mode='fetch', requested_url='https://agriculture.house.gov/event/1', outcome='stored'),
-                                               captures=[dict(sha256=page_body.hex())])) + '\n').encode(), mtime=0)
-                if k == page_receipt else
-                gzip.compress((json.dumps(dict(record=dict(mode='fetch', requested_url=REQUEST, outcome='stored',
-                                                           http_status=200, retrieved_at=FETCHED.isoformat()),
-                                               captures=[dict(sha256=(K('N') + sha256(b'N').digest()[:24]).hex())])) + '\n' +
-                               json.dumps(dict(record=dict(mode='fetch', requested_url=REQUEST), captures=[])) + '\n').encode(), mtime=0)
-            ),
+            read_receipt=recording_receipt_reader(page_receipt, 'https://agriculture.house.gov/event/1', page_body.hex()),
             work=tmp_path / 'auto2',
             candidate_receipt_keys={*LIVE_RECEIPTS, NEW_RECEIPT, page_receipt},
-            evidence_dir=ev_dir,
+            recording_export=verify_local_file(ev_dir / 'recording_video_links.parquet'), read_object=lambda key: html,
         ),
     )
     assert report_out['reasons'] == []
+    assert len(scans) == 1 and page_body.hex()[:16] in scans[0]
     by_file = {e['id'].split('|')[0]: e['tickets'] for e in report_out['automatic_causes']}
     assert by_file['recordings.parquet'] == ['ct-zdj8']
     trace = json.loads((tmp_path / 'auto2/automatic-trace.json').read_text())
-    assert trace['recording_pages'] == [page_body.hex()[:16]]
+    assert {r['page_body'] for r in trace['recording_pages'].values()} == {page_body.hex()}
+    assert trace['new_receipts'] == 2
 
     # P2-4 (ct-zdj8): when evidence_base and evidence_candidate are passed (as in nightly_publish.py),
     # compare classifies the group as 'empty event_ids; capture newly real'; automatic_causes must accept it too.
@@ -2916,35 +2934,37 @@ def test_new_no_meeting_recordings_from_new_page_receipts_pass_unattended(tmp_pa
             engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
             captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
             live_receipt_keys=LIVE_RECEIPTS,
-            read_receipt=lambda k: (
-                gzip.compress((json.dumps(dict(record=dict(mode='fetch', requested_url='https://agriculture.house.gov/event/1', outcome='stored'),
-                                               captures=[dict(sha256=page_body.hex())])) + '\n').encode(), mtime=0)
-                if k == page_receipt else
-                gzip.compress((json.dumps(dict(record=dict(mode='fetch', requested_url=REQUEST, outcome='stored',
-                                                           http_status=200, retrieved_at=FETCHED.isoformat()),
-                                               captures=[dict(sha256=(K('N') + sha256(b'N').digest()[:24]).hex())])) + '\n' +
-                               json.dumps(dict(record=dict(mode='fetch', requested_url=REQUEST), captures=[])) + '\n').encode(), mtime=0)
-            ),
+            read_receipt=recording_receipt_reader(page_receipt, 'https://agriculture.house.gov/event/1', page_body.hex()),
             work=tmp_path / 'auto-ev',
             candidate_receipt_keys={*LIVE_RECEIPTS, NEW_RECEIPT, page_receipt},
-            evidence_dir=ev_dir,
+            recording_export=verify_local_file(ev_dir / 'recording_video_links.parquet'), read_object=lambda key: html,
         ),
     )
     assert report_with_ev['reasons'] == []
     rec_groups = report_with_ev['files']['recordings.parquet']['groups']
     assert any(g['group'] == 'added keys' and g['cause'] == 'empty event_ids; capture newly real' for g in rec_groups)
     trace_ev = json.loads((tmp_path / 'auto-ev/automatic-trace.json').read_text())
-    assert trace_ev['recording_pages'] == [page_body.hex()[:16]]
+    assert trace_ev['recording_pages'] == trace['recording_pages']
+
+    # For the standalone comparison, isolate the verified capture flip as the only change.
+    before, after = tmp_path / 'standalone-before', tmp_path / 'standalone-after'
+    release_dir(before, ['A'], recordings=base_rec)
+    release_dir(after, ['A'], recordings=cand_rec)
+    with pytest.raises(ValueError, match='added recordings require page and receipt verification'):
+        require_release_gates(before, after, None, report_path=tmp_path / 'standalone.json',
+                              evidence_base=ev_base / 'capture_evidence.parquet',
+                              evidence_candidate=ev_dir / 'capture_evidence.parquet')
 
 
 @pytest.mark.parametrize('mode,expected_reason', [
-    ('unlinked', 'have no linking page in kept evidence'),
-    ('live_receipt', 'is already in the live release'),
-    ('missing_raw_body', 'does not name body'),
+    ('unlinked', 'lack a linking page from a new receipt'),
+    ('live_receipt', 'lack a linking page from a new receipt'),
+    ('missing_raw_body', 'lack a linking page from a new receipt'),
 ])
 def test_new_no_meeting_recordings_refuse_when_unlinked_or_not_from_new_raw_receipt(tmp_path, mode, expected_reason):
     """ct-zdj8: untraced or live-receipt or raw-mismatched no-meeting recordings refuse unattended."""
-    import gzip, os
+    import os
+    from congress_shared.custody import verify_local_file
     from docspec_client.client import NativeDatasets
     from viewer_publication.release_gate import automatic_causes
 
@@ -2981,18 +3001,11 @@ def test_new_no_meeting_recordings_refuse_when_unlinked_or_not_from_new_raw_rece
                 engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']),
                 captures=dict(kind='parquet', path=str(tmp_path / 'captures.parquet')),
                 live_receipt_keys=LIVE_RECEIPTS,
-                read_receipt=lambda k: (
-                    gzip.compress((json.dumps(dict(record=dict(mode='fetch', requested_url='https://agriculture.house.gov/event/2', outcome='stored'),
-                                                   captures=[dict(sha256=raw_sha)])) + '\n').encode(), mtime=0)
-                    if k == page_receipt else
-                    gzip.compress((json.dumps(dict(record=dict(mode='fetch', requested_url=REQUEST, outcome='stored',
-                                                               http_status=200, retrieved_at=FETCHED.isoformat()),
-                                                   captures=[dict(sha256=(K('N') + sha256(b'N').digest()[:24]).hex())])) + '\n' +
-                                   json.dumps(dict(record=dict(mode='fetch', requested_url=REQUEST), captures=[])) + '\n').encode(), mtime=0)
-                ),
+                read_receipt=recording_receipt_reader(page_receipt, 'https://agriculture.house.gov/event/2', raw_sha),
                 work=tmp_path / 'auto-bad',
                 candidate_receipt_keys={*LIVE_RECEIPTS, NEW_RECEIPT, page_receipt},
-                evidence_dir=ev_dir,
+                recording_export=verify_local_file(ev_dir / 'recording_video_links.parquet'),
+                read_object=lambda key: b'committee-event-page-bad',
             ),
         )
     report = json.loads((tmp_path / 'r.json').read_text())
