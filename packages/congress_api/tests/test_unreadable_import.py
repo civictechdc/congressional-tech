@@ -156,3 +156,56 @@ def test_noncanonical_identity_and_duplicate_ids_refuse_before_create(tmp_path,r
         def put(self,*args,**kwargs):raise AssertionError('invalid decisions reached storage')
     path=tmp_path/'bad.jsonl';path.write_text(''.join(json.dumps(row)+'\n' for row in rows))
     with pytest.raises(ValueError):provenance.import_unreadable(Never(),path,decided_at=STAMP)
+
+
+def test_duplicate_r2_unreadable_import_after_503_does_not_report_stored(tmp_path, monkeypatch):
+    import time
+    from botocore.exceptions import ClientError
+    from congress_api.retention.body_store import R2Adapter
+
+    source = tmp_path / 'decisions.jsonl'
+    payload = (json.dumps(decision()) + '\n').encode()
+    source.write_bytes(payload)
+    waits, puts, heads, stored = [], [], [], {}
+
+    def service_error(code, status, operation='PutObject'):
+        return ClientError({'Error': {'Code': code, 'Message': 'Reduce your concurrent request rate for the same object'},
+                            'ResponseMetadata': {'HTTPStatusCode': status}}, operation)
+
+    class Client:
+        def head_object(self, *, Bucket, Key):
+            heads.append(Key)
+            if Key in stored:
+                data = stored[Key]
+                return {'ContentLength': len(data), 'ETag': '"' + hashlib.md5(data).hexdigest() + '"'}
+            raise service_error('404', 404, 'HeadObject')
+
+        def put_object(self, **args):
+            data = args['Body'].read()
+            puts.append(args['Key'])
+            if len(puts) == 1:
+                stored[args['Key']] = data
+                return {'ETag': '"' + hashlib.md5(data).hexdigest() + '"'}
+            if len(puts) == 2:
+                raise service_error('ServiceUnavailable', 503)
+            raise service_error('PreconditionFailed', 412)
+
+    monkeypatch.setattr(time, 'sleep', waits.append)
+    client = Client()
+    first = provenance.import_unreadable(BodyStore(R2Adapter(client, 'raw')), source,
+                                         decided_at=STAMP, cache=tmp_path / 'cache-1')
+    assert first['records'] == 1
+
+    duplicate_store = BodyStore(R2Adapter(client, 'raw'))
+    with pytest.raises(ClientError, match='Reduce your concurrent request rate'):
+        provenance.import_unreadable(duplicate_store, source, decided_at=STAMP, cache=tmp_path / 'cache-2')
+    assert len(puts) == 2
+    assert heads == []
+    assert waits == []
+    assert first['key'] not in duplicate_store._provenance_cache
+
+    with pytest.raises(RawNameCollision):
+        provenance.import_unreadable(duplicate_store, source, decided_at=STAMP, cache=tmp_path / 'cache-3')
+    assert len(puts) == 3
+    assert heads == []
+    assert waits == []

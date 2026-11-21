@@ -364,3 +364,195 @@ def test_a_local_path_is_refused_before_any_body_is_stored(tmp_path):
         writer.write(FetchResult(attempt(tmp_path)), family='documents', mode='retained_import',
                      recovery_evidence=evidence)
     assert not root.exists() or not any(p.is_file() for p in root.rglob('*'))
+
+
+def test_receipt_writer_reconciles_ambiguous_r2_body_and_receipt_creates(tmp_path, monkeypatch):
+    """Capture 44395592746: an unacknowledged gzipped body PUT returns 503 while settling;
+    confirming via HEAD emits a valid receipt with one PUT per object and no double wait."""
+    import io
+    import time
+    from botocore.exceptions import ClientError
+    from congress_api.models.raw_fetch import BodyFile, FetchAttempt, FetchResult
+    from congress_api.retention.body_store import BodyStore, R2Adapter
+    from congress_api.retention.receipt_writer import ReceiptWriter
+
+    html = b'<html><body>hearing transcript</body></html>'
+    buffer = io.BytesIO()
+    with gzip.GzipFile(filename='', fileobj=buffer, mode='wb', compresslevel=6, mtime=0) as zipped:
+        zipped.write(html)
+    compressed = buffer.getvalue()
+    sha = hashlib.sha256(html).hexdigest()
+    body_key = f'bodies/sha256/{sha[:2]}/{sha}'
+    body_path = tmp_path / 'page.html'
+    body_path.write_bytes(html)
+    fetched = FetchAttempt('https://docs.house.gov/page.html', 'https://docs.house.gov/page.html',
+                           '2026-11-18T11:20:00Z', 'direct', 200, None, {'content-type': 'text/html'},
+                           (), True, BodyFile(body_path, sha, len(html), 'text/html', 'html', 'v1', True))
+
+    waits, puts, looks, stored = [], [], {}, {}
+
+    def error(code, status):
+        return ClientError({'Error': {'Code': code, 'Message': 'Reduce your concurrent request rate for the same object'},
+                            'ResponseMetadata': {'HTTPStatusCode': status}}, 'PutObject')
+
+    class Client:
+        def head_object(self, *, Bucket, Key):
+            if Key in stored:
+                looks[Key] = looks.get(Key, 0) + 1
+                if looks[Key] == 1:
+                    raise error('404', 404)
+                payload = stored[Key]
+                return {'ContentLength': len(payload), 'ETag': '"' + hashlib.md5(payload).hexdigest() + '"'}
+            raise error('404', 404)
+
+        def put_object(self, **args):
+            payload = args['Body'].read()
+            puts.append((args['Key'], args.get('ContentEncoding'), len(payload)))
+            stored[args['Key']] = payload
+            raise error('ServiceUnavailable', 503)
+
+    monkeypatch.setattr(time, 'sleep', waits.append)
+    writer = ReceiptWriter(BodyStore(R2Adapter(Client(), 'raw')), identity=WRITER, run_id='run',
+                           write_date='2026-11-18', archive_limits=None)
+    receipt_key, line = writer.write(FetchResult(fetched), family='documents',
+                                     operation_id='op1', freeze_dir=tmp_path / 'frozen')
+    assert [item[:2] for item in puts] == [(body_key, 'gzip'), (receipt_key, None)]
+    assert waits == [0, 2, 0, 2]
+    assert gzip.decompress(stored[body_key]) == html
+    assert json.loads(gzip.decompress(stored[receipt_key])) == line
+    assert line['outcome'] == 'stored'
+    assert line['captures'][0]['bytes'] == len(html)
+    assert line['captures'][0]['stored_bytes'] == len(compressed)
+    assert line['captures'][0]['stored_md5'] == hashlib.md5(compressed).hexdigest()
+
+
+def test_ordinary_unfrozen_receipt_503_with_matching_object_does_not_report_stored(tmp_path, monkeypatch):
+    import time
+    from botocore.exceptions import ClientError
+    from congress_api.models.raw_fetch import FetchResult
+    from congress_api.retention.body_store import BodyStore, R2Adapter, RawNameCollision
+    from congress_api.retention.receipt_writer import ReceiptWriter
+
+    waits, receipt_puts, receipt_heads, stored = [], [], [], {}
+
+    def error(code, status, operation='PutObject'):
+        return ClientError({'Error': {'Code': code, 'Message': 'Reduce your concurrent request rate for the same object'},
+                            'ResponseMetadata': {'HTTPStatusCode': status}}, operation)
+
+    class Client:
+        def head_object(self, *, Bucket, Key):
+            if Key.startswith('receipts/'):
+                receipt_heads.append(Key)
+            if Key in stored:
+                payload = stored[Key]
+                return {'ContentLength': len(payload), 'ETag': '"' + hashlib.md5(payload).hexdigest() + '"'}
+            raise error('404', 404, 'HeadObject')
+
+        def put_object(self, **args):
+            payload = args['Body'].read()
+            key = args['Key']
+            if key.startswith('bodies/'):
+                stored[key] = payload
+                return {'ETag': '"' + hashlib.md5(payload).hexdigest() + '"'}
+            receipt_puts.append(key)
+            # Simulate an already-existing identical receipt object from another writer.
+            stored[key] = payload
+            if len(receipt_puts) == 1:
+                raise error('ServiceUnavailable', 503)
+            raise error('PreconditionFailed', 412)
+
+    monkeypatch.setattr(time, 'sleep', waits.append)
+    store = BodyStore(R2Adapter(Client(), 'raw'))
+    writer = ReceiptWriter(store, identity=WRITER, run_id='run', write_date='2026-11-18', archive_limits=None)
+    with pytest.raises(ClientError, match='Reduce your concurrent request rate'):
+        writer.write(FetchResult(attempt(tmp_path)), family='documents')
+    assert len(receipt_puts) == 1
+    assert receipt_heads == []
+    assert waits == []
+
+    duplicate_source = tmp_path / 'duplicate-receipt.jsonl.gz'
+    duplicate_source.write_bytes(stored[receipt_puts[0]])
+    with pytest.raises(RawNameCollision):
+        store.put(receipt_puts[0], duplicate_source, 'application/x-ndjson')
+    assert len(receipt_puts) == 2
+    assert receipt_heads == []
+    assert waits == []
+
+
+def test_frozen_receipt_head_failures_and_shared_writer_budget(tmp_path, monkeypatch):
+    import time
+    from botocore.exceptions import ClientError
+    from congress_api.models.raw_fetch import BodyFile, FetchAttempt, FetchResult
+    from congress_api.retention.body_store import BodyStore, R2Adapter
+    from congress_api.retention.receipt_writer import ReceiptWriter
+
+    def service_error(code, status, operation, message):
+        return ClientError({'Error': {'Code': code, 'Message': message},
+                            'ResponseMetadata': {'HTTPStatusCode': status}}, operation)
+
+    # 1. Persistent HEAD failure on a frozen receipt raises the original PUT error without replaying.
+    waits, receipt_puts = [], []
+
+    class FailingHeadClient:
+        def head_object(self, *, Bucket, Key):
+            if Key.startswith('bodies/'):
+                raise service_error('404', 404, 'HeadObject', 'Not Found')
+            raise service_error('ServiceUnavailable', 503, 'HeadObject', 'Receipt HEAD 503')
+
+        def put_object(self, **args):
+            payload = args['Body'].read()
+            if args['Key'].startswith('bodies/'):
+                return {'ETag': '"' + hashlib.md5(payload).hexdigest() + '"'}
+            receipt_puts.append(args['Key'])
+            raise service_error('ServiceUnavailable', 503, 'PutObject', 'Original receipt PutObject 503')
+
+    monkeypatch.setattr(time, 'sleep', waits.append)
+    writer = ReceiptWriter(BodyStore(R2Adapter(FailingHeadClient(), 'raw')), identity=WRITER,
+                           run_id='run', write_date='2026-11-18', archive_limits=None)
+    with pytest.raises(ClientError, match='Original receipt PutObject 503'):
+        writer.write(FetchResult(attempt(tmp_path)), family='documents',
+                     operation_id='op-head-fail', freeze_dir=tmp_path / 'frozen-a')
+    assert len(receipt_puts) == 1
+    assert waits == [0, 2, 5, 15]
+
+    # 2. Body and frozen-receipt reconciliations share one 66s per-writer budget.
+    waits.clear()
+    puts, stored = {}, {}
+
+    class AmbiguousClient:
+        def head_object(self, *, Bucket, Key):
+            if Key in stored:
+                payload = stored[Key]
+                return {'ContentLength': len(payload), 'ETag': '"' + hashlib.md5(payload).hexdigest() + '"'}
+            raise service_error('404', 404, 'HeadObject', 'Not Found')
+
+        def put_object(self, **args):
+            payload = args['Body'].read()
+            key = args['Key']
+            puts[key] = puts.get(key, 0) + 1
+            if puts[key] == 1:
+                raise service_error('ServiceUnavailable', 503, 'PutObject', 'Ambiguous R2 write')
+            stored[key] = payload
+            return {'ETag': '"' + hashlib.md5(payload).hexdigest() + '"'}
+
+    def make_attempt(index):
+        pdf = b'%PDF-1.7\n' + f'item-{index}\n'.encode() + b'%%EOF'
+        path = tmp_path / f'item-{index}.pdf'
+        path.write_bytes(pdf)
+        body = BodyFile(path, hashlib.sha256(pdf).hexdigest(), len(pdf), 'application/pdf', 'pdf', 'v1', True)
+        return FetchAttempt(f'https://docs.house.gov/{index}.pdf', f'https://docs.house.gov/{index}.pdf',
+                            '2026-11-18T11:20:00Z', 'direct', 200, None, {}, (), True, body)
+
+    shared_writer = ReceiptWriter(BodyStore(R2Adapter(AmbiguousClient(), 'raw')), identity=WRITER,
+                                  run_id='run', write_date='2026-11-18', archive_limits=None)
+    first_key, first_line = shared_writer.write(FetchResult(make_attempt(1)), family='documents',
+                                                operation_id='op1', freeze_dir=tmp_path / 'frozen-b')
+    assert first_line['outcome'] == 'stored' and first_key in stored
+    assert waits == [0, 2, 5, 15, 0, 2, 5, 15] and sum(waits) == 44
+
+    with pytest.raises(ClientError, match='Ambiguous R2 write'):
+        shared_writer.write(FetchResult(make_attempt(2)), family='documents',
+                            operation_id='op2', freeze_dir=tmp_path / 'frozen-b')
+    second_receipt_key = 'receipts/documents/2026-11-18/run-op2.jsonl.gz'
+    assert puts[second_receipt_key] == 1 and second_receipt_key not in stored
+    assert waits == [0, 2, 5, 15] * 3 and sum(waits) == 66

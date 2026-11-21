@@ -15,7 +15,10 @@ from congress_api.lake.receipt_metadata import document_status, empty_body, whol
 from congress_api.models.raw_fetch import FetchResult
 from congress_api.parsers.source_family import family as source_family
 from congress_api.retention.archive_expander import expand_archive
-from congress_api.retention.body_store import validate_record
+from congress_api.retention.body_store import (
+    R2Adapter, RECONCILE_BUDGET_SECONDS, RawNameCollision, ReconcileBudget, SETTLE_SECONDS,
+    _coerce_reconcile_budget, _transient_r2_error, confirm_stored, reconcile_create, validate_record,
+)
 from congress_api.retention.receipt_privacy import public_receipt, refuse_local_paths
 from congress_api.retention.sniff import read_sniff_file, SniffResourceError
 
@@ -76,13 +79,26 @@ def _inspect_stored(body):
 
 
 class ReceiptWriter:
-    def __init__(self, store, *, identity, run_id, write_date, archive_limits):
+    def __init__(self, store, *, identity, run_id, write_date, archive_limits, reconcile_budget=None):
         self.identity = _identity(identity)
         if not _part(run_id) or date.fromisoformat(write_date).isoformat() != write_date:
             raise ValueError('Receipt needs a fresh run ID and UTC write date')
         self.store, self.run_id, self.write_date = store,run_id,write_date
         self.archive_limits, self.sequence = archive_limits,0
         self._lock, self._archive_lock = threading.Lock(), threading.Lock()
+        store_budget = getattr(store, 'reconcile_budget', None)
+        if reconcile_budget is not None:
+            budget = _coerce_reconcile_budget(reconcile_budget)
+            if isinstance(store_budget, ReconcileBudget):
+                store.reconcile_budget = budget
+                adapter = getattr(store, 'adapter', None)
+                if isinstance(getattr(adapter, 'reconcile_budget', None), ReconcileBudget):
+                    adapter.reconcile_budget = budget
+        elif isinstance(store_budget, ReconcileBudget):
+            budget = store_budget
+        else:
+            budget = ReconcileBudget()
+        self.reconcile_budget = budget
 
     def write(self, result: FetchResult, *, family=None, observations=(), mode='fetch', recovery_evidence=None, fidelity=None,
               operation_id=None, freeze_dir=None):
@@ -240,34 +256,42 @@ class ReceiptWriter:
                     or body_identity!=frozen_identity):
                 raise ValueError('Stable receipt operation was reused for another attempt')
         refuse_local_paths(line)
+        expected=dict(md5=hashlib.md5(raw).hexdigest(),size=len(raw))
+        is_r2=isinstance(self.store.adapter,R2Adapter)
         try:
             self.store.put(metadata['key'],path,'application/x-ndjson')
-        except Exception:
-            if not self._settled(metadata['key'],path,raw):
+        except RawNameCollision:
+            if not confirm_stored(self.store.adapter.head(metadata['key']),metadata['key'],**expected):
+                raise
+        except Exception as error:
+            recoverable=_transient_r2_error(error) if is_r2 else not isinstance(error,ValueError)
+            if not recoverable or not self._settled(metadata['key'],path,raw):
                 raise
         return metadata['key'],line
 
-    # Seconds to wait before each look at the store after a create that was not acknowledged.
-    SETTLE_SECONDS=(0,2,5,15)
+    # Per-object backoff (22s max) and per-writer cumulative sleep budget (66s max).
+    SETTLE_SECONDS=SETTLE_SECONDS
+    RECONCILE_BUDGET_SECONDS=RECONCILE_BUDGET_SECONDS
 
     def _settled(self, key, path, raw):
-        """Whether this create-only receipt is in the store after a write that raised.
-
-        A lost response is not a failed write, and R2 answers 503 "Reduce your concurrent request
-        rate for the same object" while an earlier attempt at the same key is still settling:
-        capture 44132068232 looked once, at once, and stopped 22 minutes in. The receipt's key,
-        size and MD5 are known, so look again as it settles, then try the create once more.
-        """
-        expected=(len(raw),hashlib.md5(raw).hexdigest())
-        def stored():
-            existing=self.store.adapter.head(key)
-            return existing is not None and (existing.get('size'),existing.get('etag','').strip('"'))==expected
-        for wait in self.SETTLE_SECONDS:
-            time.sleep(wait)
-            if stored():return True
-        try:self.store.put(key,path,'application/x-ndjson')
-        except Exception:return stored()
-        return True
+        """Confirm or replay an explicitly frozen receipt within 22s per object (SETTLE_SECONDS)
+        and 66s total per writer (RECONCILE_BUDGET_SECONDS)."""
+        is_r2=isinstance(self.store.adapter,R2Adapter)
+        return reconcile_create(
+            self.store.adapter.head,
+            lambda:self.store.put(key,path,'application/x-ndjson'),
+            key,
+            md5=hashlib.md5(raw).hexdigest(),
+            size=len(raw),
+            replay_recoverable=(
+                (lambda exc:isinstance(exc,RawNameCollision) or _transient_r2_error(exc))
+                if is_r2 else (lambda exc:not isinstance(exc,ValueError))
+            ),
+            head_recoverable=_transient_r2_error if is_r2 else (lambda exc:isinstance(exc,OSError)),
+            waits=self.SETTLE_SECONDS,
+            sleep=time.sleep,
+            budget=self.reconcile_budget,
+        )
 
     @staticmethod
     def _capture(body,attempt,index,stored,member_path,entry_index,fidelity):
