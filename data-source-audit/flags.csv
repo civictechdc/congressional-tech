@@ -1,0 +1,29 @@
+id,source,link,run_by,flag
+2,Congressional District Shapefiles,https://www.census.gov/geographies/mapping-files/2023/geo/tiger-line-file.html,Census Bureau,Stale: points to 118th Congress files; its own note says look on data.gov for the 119th
+4,EveryCRSReport.com,https://www.everycrsreport.com,Civil Society,"Active (page updated 2026-11-18), but run by a civil-society group, not Congress (catalog links americalabs.org)"
+5,United States Project,https://github.com/unitedstates,Civil Society,"Volunteer-maintained, but active: congress-legislators last updated 2026-11-15, congress scrapers 2026-10-03"
+8,CRS.gov,https://crs.gov,Congressional Research Service,Not public: congressional staff only
+12,USAspending.gov,https://www.usaspending.gov/,Department of Treasury,"Catalog download link points to oversight.gov, not USAspending"
+13,Congressional Justifications (CBJs),https://www.usaspending.gov/agency,Federal Agencies,Catalog download link points to treasury.gov
+25,Congressionally Mandated Reports Submission Portal,https://www.gpo.gov/how-to-work-with-us/agency/congressionally-mandated-reports,Government Publishing Office,"Submission portal, not a data source for the public"
+31,GovInfo Bill Status GitHub Repository,https://github.com/usgpo/bill-status,Government Publishing Office,Quiet: repository last updated 2024-09-18
+36,GovInfo RSS Feeds,https://www.govinfo.gov/feeds,Government Publishing Office,Only the 100 most recent entries per feed
+54,Congress.gov,https://congress.gov,Library of Congress,Use the API (#55) instead of scraping
+60,DomeWatch,https://domewatch.us,Member of Congress,"Run by one party's caucus, not a neutral office"
+66,U.S. Capitol Visitor Center,https://visitthecapitol.gov,U.S. Capitol Visitor Center,Catalog error: download link points to aoc.gov
+69,Congressional district maps,https://kml.house.gov,U.S. House of Representatives,"Catalog error: described as shapefiles, but the files are KML"
+75,House Committee Activity Reports (CHA),https://cha.house.gov/committee-reports,U.S. House of Representatives,Broken link: catalog URL returns 404; the reports are now at https://cha.house.gov/member-services/monthly-reports (PDF)
+86,House Statement of Disbursements,https://www.house.gov/the-house-explained/open-government/statement-of-disbursements,U.S. House of Representatives,Web page goes back only to 2009; I.3 needs ~1980 onward
+88,House XML Resources,https://xml.house.gov,U.S. House of Representatives,Page last modified 2024-08-05; may no longer be maintained
+90,HouseCal,https://calendar.house.gov,U.S. House of Representatives,Not reachable from the public internet: the name does not resolve; catalog note calls it an internal feed
+91,HouseNet,https://housenet.house.gov,U.S. House of Representatives,Not public: House staff only (name does not resolve on the public internet)
+92,LegiDex,https://legidex.house.gov,U.S. House of Representatives,Not reachable from the public internet: the name does not resolve
+93,MemRec,https://memrec.house.gov,U.S. House of Representatives,"Not a data source (a flash-card game), and not reachable from the public internet"
+94,Office of Congressional Compliance,https://conduct.house.gov/,U.S. House of Representatives,Catalog name may be out of date; check the office's current name
+97,Civilian Pending in Committee,https://www.senate.gov/legislative/LIS/nominations/NomCivilianPendingCommittee.xml,U.S. Senate,"Catalog error: same URL as #102, and its description describes a different, discontinued collection (presidential documents 2009–2016)"
+104,Report of the Secretary of the Senate,https://www.senate.gov/legislative/common/generic/report_secsen.htm,U.S. Senate,PDF only; online since 2011
+105,Senate annual Calendar,https://www.senate.gov/legislative/2025_schedule.xml,U.S. Senate,Stale link: points to the 2025 calendar (no 2026 dates in it); a 2026 file exists at https://www.senate.gov/legislative/2026_schedule.xml
+109,Senate Floor Video,https://www.senate.gov/legislative/floor_activity_pail.htm,U.S. Senate,No archive
+110,Senate Hearings XML,https://www.senate.gov/general/committee_schedules/hearings.xml,U.S. Senate,Upcoming only; no history
+111,Senate Lobbying Disclosure,https://lda.senate.gov/system/public/,U.S. Senate,"Listed address returns 503 (Service Unavailable); the same system answers at https://lda.gov, so it has likely moved"
+117,Webster,https://webster.senate.gov,U.S. Senate,Not public: Senate staff only (not reachable from the public internet)
