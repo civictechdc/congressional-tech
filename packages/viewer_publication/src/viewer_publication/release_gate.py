@@ -307,7 +307,7 @@ def _tickets(entry, name, *, needed_by=None, tracked=None):
 
 def _wanted_bodies(entry):
     value = entry['candidate_body']
-    return [value] if isinstance(value, str) else value
+    return value if isinstance(value, list) else [value]
 
 
 def _corrections(record, tracked):
@@ -316,14 +316,16 @@ def _corrections(record, tracked):
     An entry is {kind, key, live_body, candidate_body, decision, tickets} and nothing else: kind is
     one of CORRECTED, key is printed as the report prints it (16 hex for a link or lookup key, the
     address otherwise), live_body is a SHA-256, candidate_body is a SHA-256 (or, for a lookup_key
-    or address reaching multiple candidate files, a sorted list of at least two distinct SHA-256s),
-    the decision says what was corrected and by which permanent record, and every ticket is a file
+    or address reaching multiple candidate files, a sorted list of at least two distinct SHA-256s).
+    A null candidate identifies a withdrawn primary and requires the reviewed unusable body.
+    The decision says what was corrected and by which permanent record, and every ticket is a file
     in this checkout's .tickets. One entry per (kind, key, live body).
     """
     corrections = record.get('corrections', [])
     if not isinstance(corrections, list):
         raise ValueError('Cause record corrections must be a list')
     seen = set()
+    reviewed_unusable = None
     for entry in corrections:
         if not isinstance(entry, dict) or set(entry) != CORRECTION_FIELDS:
             raise ValueError(f'A correction has exactly the fields {", ".join(sorted(CORRECTION_FIELDS))}: {entry}')
@@ -335,7 +337,14 @@ def _corrections(record, tracked):
             raise ValueError(f'Correction key must be printed as the report prints it: {name}')
         _sha(entry['live_body'], f'Correction live_body of {name}')
         cand = entry['candidate_body']
-        if kind != 'link_key' and isinstance(cand, list):
+        if cand is None:
+            if reviewed_unusable is None:
+                registry = ROOT / 'model/registries/unusable-downloads.json'
+                reviewed_unusable = {r['body_sha'] for r in json.loads(registry.read_text())
+                    if r.get('reason') and r.get('evidence')} if registry.is_file() else set()
+            if entry['live_body'] not in reviewed_unusable:
+                raise ValueError(f'Withdrawal requires a reviewed unusable download for {name}')
+        elif kind != 'link_key' and isinstance(cand, list):
             for item in cand:
                 _sha(item, f'Correction candidate_body of {name}')
             if len(cand) < 2 or cand != sorted(set(cand)):
@@ -1700,7 +1709,7 @@ def named_corrections(rule, corrections):
             refused[kind].append(f'link rule: {beyond} live {what} that answer another file are beyond the '
                                  f"report's sample, so no correction can name them")
     # Whole bodies: a correction one character off must be told apart from the report's.
-    stale = [f'cause record: correction {kind} {key} from {live} to {", ".join(named[kind, key, live])} matches no finding of the link rule'
+    stale = [f'cause record: correction {kind} {key} from {live} to {", ".join(b or "no usable primary" for b in named[kind, key, live])} matches no finding of the link rule'
              for kind, key, live in sorted(set(named) - used)]
     return waived, proven_keys_by_kind, refused, stale
 
@@ -1831,11 +1840,14 @@ def render_notes(causes, base_dir, candidate_dir):
                   f'{p["decided_at"]} |' for p in proven_list]
         lines.append('')
     if corrections:
-        lines += [f'{len(corrections)} corrections (keys and addresses that now answer another file on purpose), '
-                  'each named in the reviewed cause record with both files (ct-4nax):', '',
+        description = (f'{len(corrections)} reviewed download corrections. Withdrawn primary copies are marked below.'
+                       if any(c['candidate_body'] is None for c in corrections) else
+                       f'{len(corrections)} corrections (keys and addresses that now answer another file on purpose), '
+                       'each named in the reviewed cause record with both files (ct-4nax):')
+        lines += [description, '',
                   '| Kind | Key | Live file | Now | Decision | Tickets |', '| --- | --- | --- | --- | --- | --- |']
         lines += [f'| {c["kind"]} | `{c["key"]}` | `{c["live_body"][:12]}` | '
-                  f'{", ".join(f"`{b[:12]}`" for b in _wanted_bodies(c))} | {c["decision"]} | '
+                  f'{", ".join(f"`{b[:12]}`" if b else "No usable primary" for b in _wanted_bodies(c))} | {c["decision"]} | '
                   f'{", ".join(c["tickets"])} |' for c in corrections]
         lines.append('')
     lines += ['## Row changes', '', '| File | Group | Cause | Count | Disposition | Tickets |', '| --- | --- | --- | --- | --- | --- |']
