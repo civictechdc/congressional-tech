@@ -5,7 +5,8 @@ import pytest
 
 from congress_api.lake.text_assessment import assess_text
 from congress_api.lake.text_quality import (
-    FEATURE_VERSION, assessment_facts, compare_intermediate, measure_quality, text_corruption_measures,
+    FEATURE_VERSION, _largest_unmatched_ocr_passage, assessment_facts, compare_intermediate, measure_quality,
+    text_corruption_measures,
 )
 
 
@@ -275,6 +276,48 @@ def test_independent_ocr_counts_each_moved_copy_once_across_deleted_spans(moved_
     assert recognition['independent_ocr_comparison']['removed_content_tokens'] == 40
     assert recognition['largest_unmatched_ocr_passage_tokens'] == expected_missing
     assert review['signals'] == (['possible_missing_content'] if expected_missing else [])
+
+
+@pytest.mark.parametrize(('length', 'missing'), [(4, 24), (11, 31), (12, 10)])
+def test_partial_ocr_move_requires_twelve_tokens(length, missing):
+    phrase = ' '.join(f'word{i}' for i in range(length))
+    omitted = ' '.join(['lost'] * 10)
+    deleted = f'{omitted} {phrase} {omitted}'
+    assert _largest_unmatched_ocr_passage([
+        dict(intermediate_slice=deleted, output_slice=f'new {phrase} text'),
+    ]) == missing
+    # The same short phrase qualifies when it accounts for the entire insertion.
+    assert _largest_unmatched_ocr_passage([dict(intermediate_slice=deleted, output_slice=phrase)]) == 10
+
+
+@pytest.mark.parametrize('whole_chunk', [True, False])
+def test_complete_or_longer_ocr_move_wins_over_an_eligible_twelve_token_overlap(whole_chunk):
+    words = [f'word{i}' for i in range(18)]
+    overlap = ' '.join(words[:12])
+    sentence = ' '.join(words)
+    lost = f'opening {overlap} conclusion'
+    # The first deletion could take twelve words that belong to the second.
+    changes = [
+        dict(intermediate_slice=lost, output_slice=''),
+        dict(intermediate_slice=sentence if whole_chunk else f'old {sentence}', output_slice=''),
+        dict(intermediate_slice='', output_slice=sentence if whole_chunk else f'{sentence} new'),
+    ]
+    assert _largest_unmatched_ocr_passage(changes) == 14
+
+
+def test_whole_block_alignment_preserves_changed_fields_and_requires_matching_context():
+    def fields(label, prefix):
+        return ' '.join(f'{label} {prefix if i > 2 else "same"}{i}' for i in range(20))
+
+    # Three unchanged rows give the span matcher a long exact reservation.
+    label = 'current year approved amount'
+    assert _largest_unmatched_ocr_passage([
+        dict(intermediate_slice=fields(label, 'old'), output_slice=fields(label, 'new')),
+    ]) == 1
+    # Isolated common words alone do not establish a corresponding block.
+    assert _largest_unmatched_ocr_passage([
+        dict(intermediate_slice=fields('the', 'old'), output_slice=fields('the', 'new')),
+    ]) == 40
 
 
 def test_cli_measure_bounds_hash_and_actual_proposal(tmp_path):

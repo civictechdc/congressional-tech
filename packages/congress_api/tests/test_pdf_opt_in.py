@@ -350,6 +350,7 @@ def test_cleanup_review_flags_a_dropped_native_block_with_surviving_furniture():
 @pytest.mark.parametrize(("case", "missing_tokens"), [
     ("complete", 0), ("reflow", 0), ("omitted", 23), ("short_page", 0),
     ("moved", 0), ("lost_duplicate", 34), ("inspection_omitted", 23), ("moved_and_omitted", 23),
+    ("lost_duplicate_with_moved_sentence", 34),
 ])
 def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens, tmp_path):
     from contextlib import closing
@@ -375,7 +376,8 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
         observed = f"{header}\n{footer}"
     elif case == "reflow":
         observed = observed.replace("\n", " ").replace("each site", "each\nsite")
-    elif case in {"moved", "lost_duplicate", "inspection_omitted", "moved_and_omitted"}:
+    elif case in {"moved", "lost_duplicate", "inspection_omitted", "moved_and_omitted",
+                  "lost_duplicate_with_moved_sentence"}:
         # Excerpts from report page 151. The inspection and response share individual words.
         inspection = [
             "conducted remote inspections of the ICE hotel facilities to",
@@ -398,12 +400,18 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
             "recommendations were administratively closed. See",
             "Appendix B for ICE's full response.",
         ]
-        copies = 2 if case == "lost_duplicate" else 1
-        heading = "What We Recommend"
-        lines = [header, *inspection, heading, *findings, *(response * copies), footer]
-        retained_inspection = [] if case in {"inspection_omitted", "moved_and_omitted"} else inspection
-        sections = [*findings, *response] if case == "inspection_omitted" else [*response, *findings]
-        observed = "\n".join([header, *retained_inspection, heading, *sections, footer])
+        if case == "lost_duplicate_with_moved_sentence":
+            sentence = ["Agency officials confirmed that one recommendation",
+                        "was resolved after the committee published its formal notice."]
+            lines = [*response, *response, *sentence, *findings]
+            observed = "\n".join([*findings, *sentence, *response])
+        else:
+            copies = 2 if case == "lost_duplicate" else 1
+            heading = "What We Recommend"
+            lines = [header, *inspection, heading, *findings, *(response * copies), footer]
+            retained_inspection = [] if case in {"inspection_omitted", "moved_and_omitted"} else inspection
+            sections = [*findings, *response] if case == "inspection_omitted" else [*response, *findings]
+            observed = "\n".join([header, *retained_inspection, heading, *sections, footer])
     source = _make_scanned_pdf(lines)
     reader = OptInPdfReader(dpi=150)
     with reader.open(source, "application/pdf") as pdf:
@@ -452,6 +460,10 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
     elif case in {"moved", "lost_duplicate"}:
         assert [change["operation"] for change in comparison["changes"]] == ["insert", "delete"]
         assert comparison["removed_content_tokens"] == copies * 34
+    elif case == "lost_duplicate_with_moved_sentence":
+        deleted, inserted = comparison["changes"]
+        assert deleted["intermediate_slice"].split() == " ".join(response * 2 + sentence).split()
+        assert inserted["output_slice"].split() == " ".join(sentence + response).split()
     elif case in {"inspection_omitted", "moved_and_omitted"}:
         assert any(" ".join(change["intermediate_slice"].split()) == " ".join(inspection)
                    for change in comparison["changes"])

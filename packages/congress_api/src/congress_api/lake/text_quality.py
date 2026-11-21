@@ -3,7 +3,9 @@
 Native/final differences preserve order, multiplicity and original character
 spans. They nominate review, including legitimate cleanup, never a defect verdict.
 """
+from collections import Counter, defaultdict, deque
 from hashlib import sha256
+from itertools import islice
 
 from spicy_docs.extraction.quality import (
     MAX_COMPARE_CHARS as MAX_COMPARE_CHARS,
@@ -113,50 +115,124 @@ def fts_triage(axes):
             'meaning': 'likely_searchable_under_measured_checks_not_source_certified'}
 
 
+_MIN_MOVE_ANCHOR = 4
+_MIN_INTERIOR_MOVE = 12
+_MAX_ANCHOR_PROBES = 16
+
+
+def _moved_spans(deleted, inserted, width):
+    """Yield contiguous runs found by the bounded anchor search."""
+    index = defaultdict(deque)
+    page_order = []
+    for i, chunk in enumerate(inserted):
+        for pos in range(len(chunk) - width + 1):
+            positions = index[chunk[pos:pos + width]]
+            positions.append((i, pos))
+            page_order.append(positions)
+        page_order.extend([None] * min(width - 1, len(chunk)))
+
+    inserted_offsets = iter(page_order)
+    for d, chunk in enumerate(deleted):
+        # (inserted chunk, offset difference) identifies a contiguous alignment.
+        active = {}
+        for offset in range(len(chunk)):
+            end = offset + width
+            following = {}
+            extension_probes = 0
+            positions = index.get(chunk[offset:end])
+            if positions:
+                probes = len(positions)
+                if probes > _MAX_ANCHOR_PROBES:
+                    probes = max(1, _MAX_ANCHOR_PROBES - len(active))
+                    extension_probes = _MAX_ANCHOR_PROBES - probes
+                for i, pos in islice(positions, probes):
+                    alignment = (i, pos - offset)
+                    following[alignment] = active.pop(alignment, offset)
+            for probe, ((i, delta), start) in enumerate(active.items()):
+                if (probe < extension_probes and end + delta <= len(inserted[i])
+                        and chunk[end - 1] == inserted[i][end + delta - 1]):
+                    following[i, delta] = start
+                else:
+                    yield end - 1 - start, d, start, i, start + delta
+            active = following
+            # Advance crowded anchors in page order so later copies can pair
+            # with later positions, even when the first 16 are already taken.
+            passed = next(inserted_offsets, None)
+            if passed and len(passed) > _MAX_ANCHOR_PROBES:
+                passed.rotate(-1)
+
+
+def _match_edited_chunks(deleted, inserted, deleted_masks, inserted_masks):
+    """Mark aligned words in whole blocks that differ only by isolated substitutions."""
+    shared = {word for chunk in deleted for word in chunk}.intersection(
+        word for chunk in inserted for word in chunk)
+
+    def pattern(chunk):
+        # A field absent from the other side cannot have moved elsewhere.
+        key = tuple(word if word in shared else None for word in chunk)
+        edits = [i for i, word in enumerate(key) if word is None]
+        if (edits and len(key) - len(edits) >= _MIN_INTERIOR_MOVE
+                and all(b - a > _MIN_MOVE_ANCHOR for a, b in zip(edits, edits[1:]))):
+            return key
+
+    # Earlier reservations must agree at every position before the remaining
+    # fields can be paired in order. Count each matching block only once.
+    counts = Counter((pattern(chunk), bytes(mask)) for chunk, mask in zip(inserted, inserted_masks))
+    for chunk, mask in zip(deleted, deleted_masks):
+        key = pattern(chunk)
+        pair = key, bytes(mask)
+        if key is not None and counts[pair]:
+            counts[pair] -= 1
+            mask[:] = bytes(word is not None for word in key)
+
+
 def _largest_unmatched_ocr_passage(changes):
-    """Pair contiguous moves of four or more tokens and count the longest unpaired run."""
-    def content_tokens(text):
-        return tuple(token for token, _, _ in _comparison_tokens(text) if any(c.isalnum() for c in token))
+    """Reserve complete moves, then longest spans, and measure the remaining gaps."""
+    def chunks(field):
+        counts = Counter()
+        for change in changes:
+            tokens = tuple(token for token, _, _ in _comparison_tokens(change[field])
+                           if any(c.isalnum() for c in token))
+            if tokens:
+                counts[tokens] += 1
+        return counts
 
-    inserted = [content_tokens(change['output_slice']) for change in changes]
-    used = [[False] * len(chunk) for chunk in inserted]
-    index: dict[tuple[str, str, str, str], list[tuple[int, int]]] = {}
-    # Reverse page order so pop() yields the earliest candidate and examines it only once.
-    for chunk_id in reversed(range(len(inserted))):
-        chunk = inserted[chunk_id]
-        for start in range(len(chunk) - 4, -1, -1):
-            index.setdefault(chunk[start:start + 4], []).append((chunk_id, start))
+    before, after = chunks('intermediate_slice'), chunks('output_slice')
+    deleted = list((before - after).elements())
+    inserted = list((after - before).elements())
+    longest = max(map(len, deleted), default=0)
+    if not inserted or longest < _MIN_MOVE_ANCHOR:
+        return longest
 
-    def consume_span(deleted, offset):
-        candidates = index.get(deleted[offset:offset + 4])
-        while candidates:
-            chunk_id, start = candidates.pop()
-            mask = used[chunk_id]
-            if any(mask[start:start + 4]):
-                continue
-            chunk = inserted[chunk_id]
-            limit = min(len(deleted) - offset, len(chunk) - start)
-            length = 4
-            while length < limit and not mask[start + length] and deleted[offset + length] == chunk[start + length]:
-                length += 1
-            mask[start:start + length] = [True] * length
-            return length
-        return 0
+    deleted_masks = [bytearray(len(chunk)) for chunk in deleted]
+    inserted_masks = [bytearray(len(chunk)) for chunk in inserted]
+    # Only a whole chunk can qualify below 12 tokens, so shorter anchors are
+    # necessary only when such a chunk is present.
+    width = min(_MIN_INTERIOR_MOVE, *(len(c) for c in deleted + inserted if len(c) >= _MIN_MOVE_ANCHOR))
+    buckets = [[] for _ in range(longest + 1)]
+    for length, d, a, i, b in _moved_spans(deleted, inserted, width):
+        if length >= _MIN_INTERIOR_MOVE or length in (len(deleted[d]), len(inserted[i])):
+            buckets[length].append((d, a, i, b))
 
-    largest = 0
-    for change in changes:
-        deleted = content_tokens(change['intermediate_slice'])
-        offset = run = 0
-        while offset < len(deleted):
-            length = consume_span(deleted, offset)
-            if length:
-                offset += length
-                run = 0
-            else:
-                offset += 1
-                run += 1
-                largest = max(largest, run)
-    return largest
+    for length in range(longest, width - 1, -1):
+        for d, a, i, b in buckets[length]:
+            # Every reserved interval is at least this long. Any overlap must
+            # cover an endpoint; put its unused remainder back at its true length.
+            left, right = 0, length
+            source, output = deleted_masks[d], inserted_masks[i]
+            while left < right and (source[a + left] or output[b + left]):
+                left += 1
+            while right > left and (source[a + right - 1] or output[b + right - 1]):
+                right -= 1
+            remaining = right - left
+            if remaining == length:
+                source[a:a + length] = output[b:b + length] = b'\x01' * length
+            elif remaining >= _MIN_INTERIOR_MOVE:
+                buckets[remaining].append((d, a + left, i, b + left))
+
+    # A moved table may have only short exact runs between changed row identifiers.
+    _match_edited_chunks(deleted, inserted, deleted_masks, inserted_masks)
+    return max(len(run) for mask in deleted_masks for run in mask.split(b'\x01'))
 
 
 def measure_quality(identity, *, text=None, intermediate=None, feature=None, raw_markup=None):
