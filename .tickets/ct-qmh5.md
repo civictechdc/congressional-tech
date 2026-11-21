@@ -40,3 +40,7 @@ The November 20 public-copy verification returned exit 1 with 24 counterexamples
 **2026-11-20T23:54:56Z**
 
 The figure of 24 above counted unhidden inventory originals in the first pass. The corrected guard includes the two State wrappers and measures detail downloads on hidden rows. The current baseline is 26 visible records and 31 detail downloads.
+
+**2026-11-21T05:58:20Z**
+
+The public release pointer still named `0e7084cde775` on November 21. The verified baseline for that release is 26 affected records in the default list and 31 distinct detail pages offering a bad copy. Fix the download choices, keep each usable replacement, and check all 31 pages on the next release containing the fix. Include the six pages where clearing the primary copy alone leaves a bad recovery download. Return the per-page results to [the source audit](ct-en4n.md).

@@ -34,3 +34,7 @@ Closed:
 - **Hosted CI (`validate-explorer.yml`):** Run `43250539064` — **7/7 GREEN** (all 6 offline shards + Explorer bundle validation)
 - **Blind Multi-Skill Review:** Round 3 **SHIP** (`0 P0, 0 P1, 0 P2`)
 - **End-to-End 4-Hop Horizontal Verification:** Candidate release `a1a07698ef50066bf41f621751b0c83c5912e9a71e45bb7b40077d0658e44003` (`0` violations across all 36 invariants) + Playwright Chromium UI & live `ede659a056c0` comparison documented in `wave4_horizontal_e2e_trace.md`.
+
+**2026-11-21T05:58:20Z**
+
+The publisher can now accept newly added videos linked to a hearing when the saved source evidence supports that link. It also checks the source for new videos that have no hearing assigned. The offline replay of run 44737429192 accepted 673 additions without a hearing, 55 with a hearing and one replacement across 46 groups. The replay used the original recording tables and receipts, a rebuilt video-link table and substitute meeting and detail tables. The earlier blanket manual-review rule for linked additions has been superseded. [Merged change](https://github.com/civictechdc/congressional-tech/pull/218) · [Main validation](https://github.com/civictechdc/congressional-tech/actions/runs/44867414484)

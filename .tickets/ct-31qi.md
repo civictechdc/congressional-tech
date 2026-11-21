@@ -48,3 +48,7 @@ Held on purpose: archive_controller.py is in the model definition hash, so mergi
 **2026-11-20T11:15:03Z**
 
 Production stop-then-resume proven on 2026-11-20: publish run 44639166724 built candidate ab0192939dfd and stopped at Gate 1 (26m14s), cause record 7a9a752e merged, and re-run 44649252120 restored the cached candidate, logged 'Resuming the kept candidate if its inputs are this run's' with no rebuild, and published ab0192939dfd in 14m11s (~4m publisher step).
+
+**2026-11-21T05:58:20Z**
+
+A release operator can now submit a change that only explains a held release without rerunning the full Explorer test suite. The workflow first verifies the publication configuration and the recorded release evidence. On main it also checks for code changes since the last successful validation. The historical cause-only commit `fff9e04d` qualified in replay. The mixed code change ran the full checks on main. The live stop-and-resume result above remains the production evidence for reusing a saved build. [Merged change](https://github.com/civictechdc/congressional-tech/pull/218) · [Main validation](https://github.com/civictechdc/congressional-tech/actions/runs/44867414484)
