@@ -540,3 +540,31 @@ def test_atomic_validator_correspondence_bump_persona_cascade_truncation_and_pre
     fdm_mod.Kev08bMlxBackend = _LegacyKevNoPrefix  # type: ignore[attr-defined]
     with AtomicOutputValidatorV6(mode="kev-0.8b", artifacts_dir=tmp_path) as val_legacy:
         assert isinstance(val_legacy.kev_backend, _LegacyKevNoPrefix)
+
+
+def test_resolve_docmeta_validators_dir_worktree_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`resolve_docmeta_validators_dir()` discovers `.cache/archive-release/...` even inside git worktrees."""
+    from congress_docmeta.atomic_validator_v6 import resolve_docmeta_validators_dir
+    from congress_docmeta.relational_rules_v6 import resolve_docmeta_v6_data_dir
+
+    monkeypatch.delenv("DOCMETA_VALIDATORS_DIR", raising=False)
+    monkeypatch.delenv("DOCMETA_V6_DATA_DIR", raising=False)
+    expected = resolve_docmeta_v6_data_dir() / "atomic_validators"
+    resolved = resolve_docmeta_validators_dir()
+    assert resolved == expected
+
+
+def test_hw_lock_reentrant_when_lock_held_env_set(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """`_hw_lock` honors `M4_GPU_LOCK_HELD=1` and sets/restores it cleanly without deadlocking."""
+    import docmeta_test_support
+
+    lock_file = tmp_path / "test_hw.lock"
+    monkeypatch.setattr(docmeta_test_support, "HW_LOCK_PATH", lock_file)
+    monkeypatch.delenv("M4_GPU_LOCK_HELD", raising=False)
+
+    with docmeta_test_support._hw_lock("outer"):
+        assert docmeta_test_support.os.environ.get("M4_GPU_LOCK_HELD") == "1"
+        with docmeta_test_support._hw_lock("nested"):
+            assert docmeta_test_support.os.environ.get("M4_GPU_LOCK_HELD") == "1"
+
+    assert "M4_GPU_LOCK_HELD" not in docmeta_test_support.os.environ

@@ -548,10 +548,13 @@ def resolve_docmeta_validators_dir(
     env_data = os.environ.get("DOCMETA_V6_DATA_DIR")
     if env_data:
         return Path(env_data).expanduser().resolve() / "atomic_validators"
+    from .relational_rules_v6 import resolve_docmeta_v6_data_dir
+
     pkg_root = Path(__file__).resolve().parents[2]
     ct_root = pkg_root.parents[1]
     candidates = [
         ct_root / ".cache" / "archive-release" / "docmeta-v6-20261116" / "atomic_validators",
+        resolve_docmeta_v6_data_dir() / "atomic_validators",
         pkg_root / "artifacts" / "atomic_validators",
     ]
     for cand in candidates:
