@@ -264,6 +264,14 @@ def _personas(obj: dict[str, Any]) -> list[dict[str, Any]]:
     return [p for p in (raw if isinstance(raw, list) else []) if isinstance(p, dict) and str(p.get("name") or "").strip()]
 
 
+def _is_roster_spam(personas: list[dict[str, Any]], gold_primary_kind: str) -> bool:
+    """Flag a roster dump the way the anomaly router does (Members outside list roles, or >4 on votes)."""
+    return (
+        len(roster_shaped_members_v6(personas)) > ROSTER_LEAK_MEMBER_LIMIT_V6
+        or (gold_primary_kind == "committee_vote" and len(personas) > 4)
+    )
+
+
 def score_legacy(objs: list[dict[str, Any] | None], golds: list[dict[str, Any]], valid_flags: list[bool]) -> dict[str, Any]:
     """Pre-`ct-2cig` scorer kept so reports emit old and new metrics side by side."""
     n = len(golds)
@@ -302,10 +310,7 @@ def score_legacy(objs: list[dict[str, Any] | None], golds: list[dict[str, Any]],
         p_pers, g_pers = _personas(obj), _personas(gold)
         # A roster dump, judged as the router judges it: by Members outside a list role, not by how many people a
         # record lists (a correct answer for a long witness list holds up to 26).
-        roster_spam += int(
-            len(roster_shaped_members_v6(p_pers)) > ROSTER_LEAK_MEMBER_LIMIT_V6
-            or (pk_g == "committee_vote" and len(p_pers) > 4)
-        )
+        roster_spam += int(_is_roster_spam(p_pers, pk_g))
         f1["personas_name"].add({surname_of(p["name"]) for p in p_pers}, {surname_of(str(p["name"])) for p in g_pers})
         f1["personas_name_role"].add(
             {(surname_of(p["name"]), str(p.get("role"))) for p in p_pers},
@@ -393,7 +398,7 @@ def score(objs: list[dict[str, Any] | None], golds: list[dict[str, Any]], valid_
             )
 
         p_pers, g_pers = _personas(obj), _personas(gold)
-        roster_spam += int(len(p_pers) > 10 or (pk_g == "committee_vote" and len(p_pers) > 4))
+        roster_spam += int(_is_roster_spam(p_pers, pk_g))
         pairs = _match_persona_pairs(p_pers, g_pers)
         f1["personas_name"].add_counts(len(pairs), len(p_pers), len(g_pers))
         role_tp = sum(1 for pi, gi in pairs if str(p_pers[pi].get("role")) == str(g_pers[gi].get("role")))
