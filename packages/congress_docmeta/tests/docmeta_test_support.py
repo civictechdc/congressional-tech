@@ -25,13 +25,24 @@ HW_LOCK_PATH = Path("/tmp/m4_gpu_validation.lock")
 
 @contextmanager
 def _hw_lock(label: str) -> Iterator[None]:
+    if os.environ.get("M4_GPU_LOCK_HELD") == "1":
+        yield
+        return
     HW_LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(HW_LOCK_PATH), os.O_CREAT | os.O_RDWR, 0o666)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX)
         os.ftruncate(fd, 0)
         os.write(fd, f"{os.getpid()} {label} {time.time():.3f}\n".encode("utf-8"))
-        yield
+        prev_held = os.environ.get("M4_GPU_LOCK_HELD")
+        os.environ["M4_GPU_LOCK_HELD"] = "1"
+        try:
+            yield
+        finally:
+            if prev_held is None:
+                os.environ.pop("M4_GPU_LOCK_HELD", None)
+            else:
+                os.environ["M4_GPU_LOCK_HELD"] = prev_held
     finally:
         try:
             fcntl.flock(fd, fcntl.LOCK_UN)
