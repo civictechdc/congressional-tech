@@ -10,6 +10,7 @@ from viewer_publication.archive_format import NULL_LAKE_MEETING_DOCUMENT_REFEREN
 
 ROOT=Path(__file__).parents[4]
 REGISTRIES={
+    'unusable_downloads':dict(body_sha='Utf8',reason='Utf8',evidence='Utf8'),
     'file_shapes':dict(id='Utf8',pattern='Utf8'),
     'page_signals':dict(id='Utf8',kind='Utf8',pattern='Utf8',number='Int64'),
     'title_rules':dict(id='Utf8',kind='Utf8',pattern='Utf8'),
@@ -593,7 +594,12 @@ def _validate_person_decisions(rows):
         seen.add(did)
 
 
-REVIEWED_REGISTRIES={'bill_package_evidence':_validate_bill_evidence,'saved_name_decisions':_validate_saved_name_decisions,
+def _validate_unusable_downloads(rows):
+    _refuse_ambiguous_reviews(rows,'download decision','body_sha','body_sha',lambda row: not row.get('reason'))
+
+
+REVIEWED_REGISTRIES={'unusable_downloads':_validate_unusable_downloads,
+    'bill_package_evidence':_validate_bill_evidence,'saved_name_decisions':_validate_saved_name_decisions,
     'recovered_file_roles':_validate_recovered_file_roles,'title_overrides':_validate_title_overrides,
     'historical_witness_keys':_validate_historical_witness_keys,'person_decisions':_validate_person_decisions}
 
@@ -788,7 +794,7 @@ MERGED_RECOVERY_SQL="""WITH merged AS (
  SELECT source_id,count(*) FILTER (WHERE NOT moved) AS unmoved FROM (
   SELECT g.source_id,c.original_url,c.body_sha,bool_or(r.list_row IS NOT NULL OR coalesce(v.role IN ('source_page','edition'),false)) AS moved
   FROM merged g JOIN current_recoveries c ON c.original_url=g.source_url
-  LEFT JOIN recovery_rows r ON r.list_row=g.list_row AND r.original_url=c.original_url AND encode(r.body,'hex')=c.body_sha
+  LEFT JOIN recovery_documents r ON r.list_row=g.list_row AND r.original_url=c.original_url AND encode(r.body,'hex')=c.body_sha
   -- ct-u9y4: the dead page's own capture is accounted by its address (addressed), an edition by its own row.
   LEFT JOIN recovered_file_roles v ON v.original_url=c.original_url AND v.body_sha=c.body_sha
   GROUP BY g.source_id,c.original_url,c.body_sha) GROUP BY source_id

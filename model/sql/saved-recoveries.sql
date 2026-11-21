@@ -3,13 +3,13 @@
 -- showed (page_shown: its body), whose title the document keeps on the file (owner, 2026-11-11), then left out.
 -- Running windows only; a few thousand rows.
 WITH ranked AS (
- SELECT r.*,row_number() OVER w AS link_rank,
+ SELECT r.*,u.body_sha IS NULL AS can_download,row_number() OVER w AS link_rank,
   CASE WHEN first_value(r.role) OVER w='source_page' THEN first_value(r.body_sha) OVER w END AS page_shown
- FROM final_recovery_attachments r
+ FROM unusable_downloads u RIGHT JOIN final_recovery_attachments r ON u.body_sha=r.body_sha
  -- A ZIP with good contents is a source record, whichever way it entered, and its members are documents rather than recoveries.
  -- Shared with provenance-recovered-copy-links.sql via archive_provenance (ct-jcnd).
  WHERE {{NON_ARCHIVE_RECOVERY_FILTER}}
  WINDOW w AS (PARTITION BY component ORDER BY {{RECOVERY_ORDER}})
 )
-SELECT * EXCLUDE(link_rank),row_number() OVER(PARTITION BY component ORDER BY link_rank) AS saved_rank
+SELECT * EXCLUDE(link_rank),row_number() OVER(PARTITION BY component ORDER BY can_download DESC,link_rank) AS saved_rank
 FROM ranked WHERE role IS DISTINCT FROM 'source_page'

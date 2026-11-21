@@ -13,10 +13,13 @@
 -- the newest still leads. The body cannot change, only these rows' places.
 -- Running windows only, so the plan streams (no whole-partition WindowAggExec).
 WITH ranked AS (
- SELECT m.*,row_number() OVER w AS base_rank,first_value(m.body_sha) OVER w AS saved_body
- FROM formats p RIGHT JOIN (SELECT * FROM document_members WHERE is_real_file) m
-  ON p.kind='preference' AND p.value=m.format
- WINDOW w AS (PARTITION BY m.component ORDER BY coalesce(p.rank,2147483647),
+ SELECT m.*,u.body_sha IS NULL AS can_download,row_number() OVER w AS base_rank,first_value(m.body_sha) OVER w AS saved_body
+ FROM unusable_downloads u RIGHT JOIN (
+  formats p RIGHT JOIN (SELECT * FROM document_members WHERE is_real_file) m
+   ON p.kind='preference' AND p.value=m.format
+ ) ON u.body_sha=m.body_sha
+ -- A reviewed bad copy still identifies its document when it is the only copy.
+ WINDOW w AS (PARTITION BY m.component ORDER BY u.body_sha IS NOT NULL,coalesce(p.rank,2147483647),
  CASE WHEN p.rank IS NULL THEN m.format ELSE '' END,coalesce(m.exact_bytes,false) DESC,
  m.first_fetched DESC NULLS LAST,m.body_sha,m.source_id)
 )

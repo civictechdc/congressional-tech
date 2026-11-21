@@ -30,10 +30,11 @@ from congress_api.retention.r2 import configure_read_retries
 from viewer_publication import body_text_export
 from viewer_publication.archive_publish_job import publication_configuration
 from viewer_publication.body_text_ssot import verify_ssot_export
+from viewer_publication.reviewed_body_text import apply_reviewed_rows
 
 ROOT = Path(__file__).resolve().parents[4]
-DEFAULT_SELECTION = ROOT / 'model/jobs/inputs/body-text-selection-v13/selection.json.gz'
-DEFAULT_LIMITS_DOC = ROOT / 'model/jobs/inputs/body-text-selection-v13/LIMITS.md'
+DEFAULT_SELECTION = ROOT / 'model/jobs/inputs/body-text-selection-v14/selection.json.gz'
+DEFAULT_LIMITS_DOC = ROOT / 'model/jobs/inputs/body-text-selection-v14/LIMITS.md'
 DEFAULT_DAILY_SPEC = ROOT / 'model/jobs/publish-daily.json'
 DEFAULT_PUBLISH_SPEC = ROOT / 'model/jobs/publish.json'
 RELEASE_POINTER_KEY = 'viewer-publications/manifest.json'
@@ -223,6 +224,8 @@ def sync_and_publish(
         ))
         raw_store = BodyStore(R2Adapter(write_client, bucket))
 
+        apply_reviewed_rows(selection_path=selection_path, accepted=accepted, engine=engine,
+                            work=work / 'reviewed-rows', tables=body_text_tables)
         source_heads = resolve_tables(
             engine=engine,
             work=work / 'source-heads',

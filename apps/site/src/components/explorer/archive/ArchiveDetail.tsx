@@ -273,7 +273,7 @@ export function ArchiveDetail({
           {primaryDetail?.saved_media_type&&<div><dt>Media type</dt><dd><code>{primaryDetail.saved_media_type}</code></dd></div>}
           {detail?.link_key&&<div><dt>Archive key</dt><dd><code>{keyHex(detail.link_key)}</code></dd></div>}
         </dl>
-      </details></>:<p>No original saved copy is recorded.</p>}</section>
+      </details></>:<p>No usable primary copy is available.</p>}</section>
     {recoveries.length>0&&<section><h3>Recovered and related files</h3><ul>{recoveries.map((recovery:any,i:number)=>{
       const note=cleanIdentityNote(recovery.identity_note);
       const sameAsPrimary=Boolean(detail.saved_body&&recovery.body&&keyHex(recovery.body)===keyHex(detail.saved_body));

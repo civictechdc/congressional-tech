@@ -196,26 +196,26 @@
         {
           "name": "saved_body",
           "type": "fixed[32]",
-          "meaning": "SHA-256 of original bytes",
-          "nullable": false
+          "meaning": "SHA-256 of the usable primary copy. Null when the retained copy was reviewed and withheld.",
+          "nullable": true
         },
         {
           "name": "saved_suffix",
           "type": "dict",
-          "meaning": "Recorded physical object suffix",
-          "nullable": false
+          "meaning": "Physical object suffix of the usable primary copy, when available.",
+          "nullable": true
         },
         {
           "name": "saved_media_type",
           "type": "dict",
-          "meaning": "Media type of the saved file",
-          "nullable": false
+          "meaning": "Media type of the usable primary copy, when available.",
+          "nullable": true
         },
         {
           "name": "saved_bytes",
           "type": "int64",
-          "meaning": "Size of original bytes before storage compression",
-          "nullable": false
+          "meaning": "Size before storage compression of the usable primary copy, when available.",
+          "nullable": true
         },
         {
           "name": "document_date_source",

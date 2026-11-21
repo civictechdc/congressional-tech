@@ -40,7 +40,7 @@ def _scan_pdf(label: str) -> bytes:
     return raw
 
 
-def test_committed_v12_and_v13_selection_manifests_load_and_match_pinned_digests():
+def test_committed_selection_manifests_keep_previous_decisions_and_repair_page_151():
     parsers = {p: readings.current_version(p) for p in ('pdf_text', 'html_text', 'xml_text', 'warc')}
     v12_path = body_text_publish.ROOT / 'model/jobs/inputs/body-text-selection-v12/selection.json.gz'
     assert v12_path.is_file()
@@ -49,11 +49,8 @@ def test_committed_v12_and_v13_selection_manifests_load_and_match_pinned_digests
     assert loaded_v12['identity']['overrides'] == 22_921
     assert loaded_v12['identity']['excluded_bodies'] == 416
 
-    sel_path = body_text_publish.DEFAULT_SELECTION
-    assert sel_path.is_file()
-    assert sel_path.parent.name == 'body-text-selection-v13'
-    assert body_text_publish.DEFAULT_LIMITS_DOC.is_file()
-    loaded_v13 = body_text_selection.load(sel_path, parsers)
+    v13_path = v12_path.parent.parent / 'body-text-selection-v13/selection.json.gz'
+    loaded_v13 = body_text_selection.load(v13_path, parsers)
     assert loaded_v13['identity']['sha256'] == 'bbeb4e1c94e195ac8ec5085578331543b2b2f709e77d2c83e523474e07bbe10b'
     assert loaded_v13['identity']['overrides'] == 22_918
     assert loaded_v13['identity']['excluded_bodies'] == 416
@@ -64,6 +61,71 @@ def test_committed_v12_and_v13_selection_manifests_load_and_match_pinned_digests
         '9d3094e1f7f54a147d4f9da1b3adbc5b1663b7618f0f4d6d4b5a898450e346a7',
     ):
         assert reverted not in v13_override_shas
+
+    current = body_text_publish.DEFAULT_SELECTION
+    assert current.parent.name == 'body-text-selection-v14'
+    assert body_text_publish.DEFAULT_LIMITS_DOC == current.parent / 'LIMITS.md'
+    v14 = body_text_selection.load(current, parsers)
+    assert v14['identity']['sha256'] == '902bb004f8051e37e703ee10ecbc848dbbf8f5ab42c84d1c3344d313e9e3886a'
+    assert v14['versions'] == loaded_v13['versions']
+    assert v14['excluded_bodies'] == loaded_v13['excluded_bodies']
+    previous = {(r['body_sha256'], r['parser']): r for r in loaded_v13['overrides']}
+    revised = {(r['body_sha256'], r['parser']): r for r in v14['overrides']}
+    assert previous.keys() == revised.keys()
+    changed = [key for key in previous if previous[key] != revised[key]]
+    assert changed == [('251ea1a6d6819b6f01e471cf4d22e924beea8e831c38ae1a4313c6bdd79b01cf', 'pdf_text')]
+    assert revised[changed[0]]['text_sha256'] == '6973f8979138aa4c9776850ca74d799d1cfbb5d1769a4615da9b8eeb67a1e28d'
+
+
+@pytest.mark.parametrize('text_already_stored', [False, True])
+def test_hosted_pdf_repair_finishes_and_retries_without_duplicate_rows(tmp_path, text_already_stored):
+    from shutil import copyfile
+    from viewer_publication.reviewed_body_text import apply_reviewed_rows
+
+    folder = body_text_publish.DEFAULT_SELECTION.parent
+    review = json.loads((folder / 'reviewed-rows.json').read_text())
+    accepted = body_text_selection.load(body_text_publish.DEFAULT_SELECTION,
+        {parser: readings.current_version(parser) for parser in body_text_export.load_definition()['parsers']})
+    base_text = b'Previously published text'
+    review.update(prior_text_sha256=sha256(base_text).hexdigest(), prior_text_bytes=len(base_text))
+    manifest = tmp_path / 'reviewed-rows.json'
+    manifest.write_text(json.dumps(review))
+    tables = {name: dict(namespace=['fixture'], name=name) for name in ('body_text', 'readings')}
+    catalog = tmp_path / 'catalog'
+    with NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']) as engine:
+        stage = {'versions': {'pdf_text': review['prior_version']}}
+        for name, create in [('body_text', body_text.create_table), ('readings', body_text.create_readings_table)]:
+            create(engine=engine, work=tmp_path / ('create-' + name), catalog_root=catalog,
+                   table=tables[name], location=catalog / name, create_namespace=(name == 'body_text'))
+            revised_file = tmp_path / (name + '.parquet')
+            copyfile(folder / revised_file.name, revised_file)
+            revised = pq.read_table(revised_file)
+            row = revised.to_pylist()[0]
+            row['parser_version'] = review['prior_version']
+            if name == 'body_text':
+                row.update(text=base_text.decode(), text_sha256=sha256(base_text).digest(),
+                           page_offsets=[0], ocr_pages=[])
+            else:
+                row.update(text_bytes=len(base_text), text_head=base_text.decode())
+            stage[name] = tmp_path / ('prior-' + name + '.parquet')
+            pq.write_table(pa.Table.from_pylist([row], schema=revised.schema), stage[name])
+            stage[name + '_rows'] = 1
+        body_text.append(stage, engine=engine, work=tmp_path / 'base', catalog_root=catalog, tables=tables)
+        if text_already_stored:
+            lake_tables.append_rows(tmp_path / 'body_text.parquet', engine=engine, work=tmp_path / 'partial',
+                catalog_root=catalog, table=tables['body_text'], keys=readings.PK, definition='partial-test')
+        args = dict(selection_path=tmp_path / 'selection.json.gz', accepted=accepted, engine=engine,
+                    catalog_root=catalog, tables=tables)
+        apply_reviewed_rows(**args, work=tmp_path / 'first')
+        applied = json.loads((tmp_path / 'first/applied.json').read_text())
+        assert applied['readings'] is not None
+        assert (applied['body_text'] is None) == text_already_stored
+        apply_reviewed_rows(**args, work=tmp_path / 'retry')
+        assert not (tmp_path / 'retry/append').exists()
+        review['prior_text_sha256'] = 'f' * 64
+        manifest.write_text(json.dumps(review))
+        with pytest.raises(ValueError, match='differs from the reviewed PDF'):
+            apply_reviewed_rows(**args, work=tmp_path / 'wrong-base')
 
 
 def test_portable_incremental_pipeline_separates_sniff_table_and_exports_mixed_iceberg_versions(tmp_path):

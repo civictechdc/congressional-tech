@@ -158,6 +158,50 @@ def _url_key(url):
     return hashlib.sha256(('url:' + url).encode()).digest()[:8]
 
 
+def test_withholding_a_file_preserves_document_addresses_and_usable_recoveries(tmp_path):
+    raw = tmp_path / 'raw'
+    bad = b'%PDF-1.7\nUnusable witness file\n'
+    good = b'%PDF-1.7\nComplete witness testimony\n%%EOF\n'
+    bad_sha = hashlib.sha256(bad).digest()
+    good_sha = hashlib.sha256(good).digest()
+    # The two dead addresses have different recovery decisions. One points to
+    # the unusable file and the other to a complete document.
+    decisions = [(DEAD_A, bad, 'recovered_document', COPY_A),
+                 (DEAD_B1, good, 'recovered_document', COPY_B)]
+    lines = [_fetch(raw, DOCS_PAGE, _page('Committee Repository', [(COPY_A, 'Witness testimony')])),
+             _fetch(raw, COPY_A, bad, 'pdf'), _fetch(raw, COPY_B, good, 'pdf'),
+             *(_fetch(raw, url, status=410) for url in (DEAD_A, DEAD_B1)),
+             *(_recovered(raw, *decision) for decision in decisions)]
+    staged = _stage(tmp_path, lines, decisions)
+    before, _ = _release_from(tmp_path, staged)
+    root = _root(tmp_path, 'reviewed', [])
+    (root / 'model/registries/unusable-downloads.json').write_text(json.dumps([
+        dict(body_sha=bad_sha.hex(), reason='Incomplete file', evidence='fixture source comparison')]))
+    after, _ = _release_from(tmp_path, staged, root, 'qualified', 'qualified-model')
+
+    for url, digest in [(DEAD_A, bad_sha), (DEAD_B1, good_sha)]:
+        lookup_address = url.removeprefix('https://').replace('/?', '?')
+        lookup = hashlib.sha256(('lookup:' + lookup_address).encode()).digest()[:8]
+        def detail(release):
+            links = {row['link_key']: row['list_row'] for row in release['links']}
+            index = links[_url_key(url)]
+            assert index == links[digest[:8]]
+            assert any(row['lookup_key'] == lookup and row['list_row'] == index
+                       for row in release['urls'])
+            return release['detail'][index]
+        original, current = detail(before), detail(after)
+        assert original['saved_body'] == digest
+        assert current['link_key'] == original['link_key']
+        saved_fields = ('saved_body', 'saved_suffix', 'saved_media_type', 'saved_bytes')
+        if digest == bad_sha:
+            assert all(current[field] is None for field in saved_fields)
+        else:
+            assert all(current[field] == original[field] for field in saved_fields)
+    assert {r['body'] for r in before['recoveries']} == {bad_sha, good_sha}
+    assert {r['body'] for r in after['recoveries']} == {good_sha}
+    assert all(item['body'] != bad_sha for row in after['detail'] for item in row['alternates'] or [])
+
+
 def test_a_recovered_copy_is_another_address_of_the_published_document(tmp_path):
     files, result, (pdf_a, pdf_b) = _release(tmp_path)
     details = files['detail']
@@ -294,6 +338,7 @@ def test_a_link_moves_through_its_shown_copy_or_one_with_the_same_text(tmp_path)
         json_input(tmp_path, 'body_evidence', [dict(body_sha=r['body_sha'], original_size=10) for r in recoveries], body_sha='Utf8', original_size='Int64'),
         json_input(tmp_path, 'body_fingerprints', [dict(body_sha=body(name), fingerprint=mark) for rows, _ in cases.values()
             for name, _kind, _at, _published, mark in rows if mark], body_sha='Utf8', fingerprint='Utf8'),
+        json_input(tmp_path, 'unusable_downloads', [], body_sha='Utf8'),
         json_input(tmp_path, 'recovered_file_roles', [], original_url='Utf8', body_sha='Utf8', equivalent_body_sha='Utf8')]
     steps = [
         dict(name='archive_bodies', sql=f"SELECT arrow_cast(decode('{body('z1')}','hex'),'Binary') AS sha256"),
@@ -398,11 +443,11 @@ def test_the_merge_audit_names_each_signal_a_merged_link_would_lose(tmp_path, ad
         json_input(tmp_path, 'source_rows', [dict(list_row=0, url=COPY_A), dict(list_row=0, url=kept)], list_row='Int32', url='Utf8'),
         json_input(tmp_path, 'lookup_sources', [dict(list_row=0, url=kept)], list_row='Int32', url='Utf8'),
         json_input(tmp_path, 'current_recoveries', [dict(original_url=u, body_sha='b' * 64) for u in (kept, lost)], original_url='Utf8', body_sha='Utf8'),
-        json_input(tmp_path, 'recovery_rows', [dict(list_row=0, original_url=kept, body_hex='b' * 64)], list_row='Int32', original_url='Utf8', body_hex='Utf8'),
+        json_input(tmp_path, 'recovery_evidence', [dict(list_row=0, original_url=kept, body_hex='b' * 64)], list_row='Int32', original_url='Utf8', body_hex='Utf8'),
         json_input(tmp_path, 'recovered_file_roles', [], original_url='Utf8', body_sha='Utf8', role='Utf8')]
     steps = [dict(name='links', sql=f"SELECT decode(substr(encode(sha256('url:{kept}'),'hex'),1,16),'hex') AS link_key,cast(0 AS INT) AS list_row"),
-             dict(name='recovery_rows_typed', sql="SELECT list_row,original_url,decode(body_hex,'hex') AS body FROM recovery_rows")]
-    sql = MERGED_RECOVERY_SQL.replace('recovery_rows r ON', 'recovery_rows_typed r ON')
+             dict(name='recovery_documents', sql="SELECT list_row,original_url,decode(body_hex,'hex') AS body FROM recovery_evidence")]
+    sql = MERGED_RECOVERY_SQL
     result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps, outputs=[],
         queries=[dict(name='a', sql=f"SELECT source_id,{','.join('lost_' + f for f in LOST_FLAGS)} FROM ({sql}) g ORDER BY source_id")])
     rows = {row.pop('source_id'): {k for k, v in row.items() if v} for row in result['a']}

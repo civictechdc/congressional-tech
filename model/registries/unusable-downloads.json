@@ -1,0 +1,152 @@
+[
+  {
+    "body_sha": "05fc38c285f3af951f46a477743c95d92721544a6d7ca215ffae339e9555bcb0",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 05fc38c285f3af95"
+  },
+  {
+    "body_sha": "08ca05e57e8d6dd91a3f8a4e6d593712bf4079af802f05fc0ccd1bc62a7bdd32",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 08ca05e57e8d6dd9"
+  },
+  {
+    "body_sha": "0cbdd25415da26601674299579e37c5f96858ab8a31540af9c7370aae7a1557c",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 0cbdd25415da2660"
+  },
+  {
+    "body_sha": "0df2d0da7fa60a361a37827992a10f60f317eaedaf070528f4328eb5589f1efb",
+    "reason": "Publisher returned an HTML error page at the PDF address.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 85afe0532f6c8e0b"
+  },
+  {
+    "body_sha": "1bf7f4055319d6fd657a4a8b3092e0fd2f995f3340fd3ebda21bc4e05f5b58ae",
+    "reason": "PDF has a zero-filled tail.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 1bf7f4055319d6fd"
+  },
+  {
+    "body_sha": "3192a4c231ded42fa10f880ca90e5868d6a71f1501581ebb97320908ba15e8cb",
+    "reason": "Publisher returned an HTML error page at the PDF address.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys a3002f39e37a6384"
+  },
+  {
+    "body_sha": "34c58155d0edda4ff0e8c56ece278c1b133f9e19fc99915013970daa1b2d256b",
+    "reason": "Publisher returned an HTML error page at the PDF address.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 90bd27046786ab4e"
+  },
+  {
+    "body_sha": "359e3b8b6b844d69fa29bd39c40f970af1586af0500dcda1f98a302721eafe1d",
+    "reason": "The saved HTML is the State Department error response.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 359e3b8b6b844d69"
+  },
+  {
+    "body_sha": "393a5e8418852b436a706417f3df51dc705e026a297d1b8a816c03091d025c06",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 393a5e8418852b43"
+  },
+  {
+    "body_sha": "42978b9c1d539c245f97ef6d0c353f293f603ec548b2be4d2fda3db4b602e8dd",
+    "reason": "PDF ends inside a stream and lacks its trailer.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 42978b9c1d539c24"
+  },
+  {
+    "body_sha": "4c53c6108c99bae5c65cd025df50d083f3d48c38f0ae5825d965773e274a0533",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 4c53c6108c99bae5"
+  },
+  {
+    "body_sha": "4c90083757ecf4ef6ec56d23c326d236acdc31720c8b43d200079ff39de4fcdc",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 4c90083757ecf4ef"
+  },
+  {
+    "body_sha": "5d1f51c93c7f94d606ea8fc859a271b4e3466adf9bef75d4dc43debbd3ef1476",
+    "reason": "Publisher returned an HTML error page at the PDF address.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 8b408d366abfb89d,e8c6aced18461017"
+  },
+  {
+    "body_sha": "65b640217635a3781ea353b1cbd5a93f5f2705a0304b2da10e860ee1bfb819ca",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 65b640217635a378"
+  },
+  {
+    "body_sha": "6eea94ddc3e78724e11329a9c246a2986dd3d73c104097243b3a789b93b88f6d",
+    "reason": "The archive wrapper contains the State Department error response.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 6eea94ddc3e78724"
+  },
+  {
+    "body_sha": "7451a1761b7038e9fe98499abb35b6d0a12b4002bc02759746e35bbfd06dd4c7",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 7451a1761b7038e9"
+  },
+  {
+    "body_sha": "7b2002ff1a8592d3f2ebe5c3c4d311efb6b66bc2e27583adba7c936bb599a42f",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 7b2002ff1a8592d3"
+  },
+  {
+    "body_sha": "82867326cf8750a2cb2de9b3cd5f25b447269fcd870440390f7512f8e08d1d5e",
+    "reason": "The saved HTML is the State Department error response.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 82867326cf8750a2"
+  },
+  {
+    "body_sha": "82fd78b27f862a103dc6f250996d94f0e8168cd337aa3dfe0dfe4c4ad95c0752",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 82fd78b27f862a10"
+  },
+  {
+    "body_sha": "8a4e17b459216f01828836a52be81621e9d3f42cf186fa2fa744aec7043d19d1",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 8a4e17b459216f01"
+  },
+  {
+    "body_sha": "9c50cb2fe0da5c37e7cee66bdf3e6df603dd027db3e67fa7ac13668c9c2421f4",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 9c50cb2fe0da5c37"
+  },
+  {
+    "body_sha": "9edf73c620331e8bc0f96c048ec93662d6dd98a4e8a38bbb024c90fb563fe396",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 9edf73c620331e8b"
+  },
+  {
+    "body_sha": "a38be43af4d9a72fe700e280e1fc65d1c80ea5eea607f38198ffc3cae72039ed",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys a38be43af4d9a72f"
+  },
+  {
+    "body_sha": "aa4b1c25d0dba16e3ac1a0213c7bd715767a3a9e7c94e106e56c2bc60aad8460",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys aa4b1c25d0dba16e"
+  },
+  {
+    "body_sha": "b6aaf0d8fdba71e2609621633b4f7c4e46ab737230214730cfb7d9f4bf7081b3",
+    "reason": "The archive wrapper contains the State Department error response.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys b6aaf0d8fdba71e2"
+  },
+  {
+    "body_sha": "d01597f14710e929691534f10b9cd598f2fae55d5bf4ab960bdfe170c44b71ab",
+    "reason": "PDF ends inside a stream and lacks its trailer.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys d01597f14710e929"
+  },
+  {
+    "body_sha": "d2ba37b370d011c118c25d4593901ade60d755188b4627c19c54c9d9fc5b8089",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys d2ba37b370d011c1"
+  },
+  {
+    "body_sha": "dfdd2b8e943c1ef811956f3aee64a25a8d093f938e44a20a93be091f3ae5ab57",
+    "reason": "PDF ends inside a stream and lacks its trailer.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys dfdd2b8e943c1ef8"
+  },
+  {
+    "body_sha": "e75db22795c2294ac62e3af151a6a08cc460ccc895e7d5c4a0f64d6bb3c497cc",
+    "reason": "PDF ends before its declared length.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys e75db22795c2294a"
+  },
+  {
+    "body_sha": "ed0298387f8c87d6c6bc70241e4510e490fe8e2b4668e2595cbc7f0220d156b8",
+    "reason": "Retained recovery is an incomplete PDF.",
+    "evidence": "ct-qmh5, source audit c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae, document keys 20568d1abba1b309"
+  }
+]

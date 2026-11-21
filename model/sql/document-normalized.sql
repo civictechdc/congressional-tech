@@ -4,7 +4,7 @@
 -- plausible filename dates lead, while suspect filename dates yield to valid content/meeting/MODS dates (cat2-8ai9).
 -- The engine builds each hash join on its left input, so every outer join names its small relation
 -- first and the document row streams past it; an outer join built on that row exhausted the pool (ct-n5ec).
-SELECT q.doc_key,q.body_expected,q.filename,q.own_title,q.own_title_source,q.link_title,q.mods_title,q.component,
+SELECT q.doc_key,q.body_expected,q.can_download,q.filename,q.own_title,q.own_title_source,q.link_title,q.mods_title,q.component,
  q.document_kind,q.document_family,q.committee_keys,q.chambers,q.congress,q.format,
  coalesce(
   CASE WHEN q.fc_date IS NOT NULL
@@ -38,7 +38,7 @@ SELECT q.doc_key,q.body_expected,q.filename,q.own_title,q.own_title_source,q.lin
  END AS document_date_source,
  q.in_archive_since,q.removed_on,q.review_note,q.review_decided_at,q.alternates,q.package_id,q.facts,q.link_bodies
 FROM (
-SELECT d.document_id AS doc_key,true AS body_expected,
+SELECT d.document_id AS doc_key,true AS body_expected,s.can_download,
  CASE WHEN coalesce(s.filename,'')='' THEN coalesce(x.filename,s.filename) ELSE s.filename END AS filename,
  -- Title evidence; titles.sql chooses the title.
  a.reading_title AS own_title,a.reading_source AS own_title_source,a.listing_title AS link_title,pmf.mods_title,d.component,

@@ -1,0 +1,20 @@
+{
+  "body_sha256": "251ea1a6d6819b6f01e471cf4d22e924beea8e831c38ae1a4313c6bdd79b01cf",
+  "files": {
+    "body_text": {
+      "sha256": "b4f185da981f4d50b34bd7a9f1f0338ca592d96566fdbe605bec18f2b9ccda40",
+      "size": 742253
+    },
+    "readings": {
+      "sha256": "3051c057c76df7cec54fbcbf5d742e303a05cf55f1c559bc0a05a5863bfb6154",
+      "size": 24960
+    }
+  },
+  "parser": "pdf_text",
+  "parser_version": "76fbfa836395f5db6a8a7334cf2f60d2aea789d78b2e4b427338ed500b909e76",
+  "prior_text_bytes": 2200571,
+  "prior_text_sha256": "371f6d62f5fe62cefc1f530214801d9928106ba90b1c91e35c95735816d3528d",
+  "prior_version": "5d84e2bca02998e7b509ec12d2b5c17ef12d9da8a76c3e4b8e1f487b6f7c8f82",
+  "text_bytes": 2200810,
+  "text_sha256": "6973f8979138aa4c9776850ca74d799d1cfbb5d1769a4615da9b8eeb67a1e28d"
+}

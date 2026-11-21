@@ -1,6 +1,6 @@
 WITH ranked AS (
  SELECT s.*,row_number() OVER(PARTITION BY component,format ORDER BY saved_rank) AS format_rank
- FROM saved_files s
+ FROM saved_files s WHERE can_download
 )
 SELECT a.component,array_agg(named_struct('format',a.format,'body',arrow_cast(decode(a.body_sha,'hex'),'FixedSizeBinary(32)'),
  'suffix',b.suffix,'size',b.original_size) ORDER BY a.saved_rank) AS alternates
