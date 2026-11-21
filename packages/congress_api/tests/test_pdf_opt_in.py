@@ -348,7 +348,7 @@ def test_cleanup_review_flags_a_dropped_native_block_with_surviving_furniture():
 
 
 @pytest.mark.parametrize(("case", "missing_tokens"), [
-    ("complete", 0), ("reflow", 0), ("omitted", 23), ("short_page", 0),
+    ("complete", 0), ("two_typos", 1), ("reflow", 0), ("omitted", 23), ("short_page", 0),
     ("moved", 0), ("lost_duplicate", 34), ("inspection_omitted", 23), ("moved_and_omitted", 23),
     ("lost_duplicate_with_moved_sentence", 34), ("lost_duplicate_with_short_findings", 34),
 ])
@@ -374,6 +374,8 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
     observed = "\n".join(lines)
     if case == "omitted":
         observed = f"{header}\n{footer}"
+    elif case == "two_typos":
+        observed = observed.replace("before", "bef0re").replace("must", "rnust")
     elif case == "reflow":
         observed = observed.replace("\n", " ").replace("each site", "each\nsite")
     elif case in {"moved", "lost_duplicate", "inspection_omitted", "moved_and_omitted",
@@ -459,6 +461,10 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
     if case == "omitted":
         assert any(" ".join(change["intermediate_slice"].split()) == " ".join(passage)
                    for change in comparison["changes"])
+    elif case == "two_typos":
+        assert [(change["intermediate_slice"], change["output_slice"]) for change in comparison["changes"]] == [
+            ("before", "bef0re"), ("must", "rnust"),
+        ]
     elif case in {"moved", "lost_duplicate"}:
         assert [change["operation"] for change in comparison["changes"]] == ["insert", "delete"]
         assert comparison["removed_content_tokens"] == copies * 34
@@ -477,7 +483,7 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
         assert comparison["removed_content_tokens"] == (57 if case == "moved_and_omitted" else 23)
     else:
         assert comparison["changes"] == []
-    if missing_tokens:
+    if missing_tokens >= 20:
         assert review["signals"] == ["possible_missing_content"]
         assert review["fts_triage"]["reasons"] == ["possible_missing_content"]
         assert review["fts_triage"]["band"] == "review_later"
@@ -488,20 +494,23 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
         assert proposal["action"] == "keep"
 
 
-@pytest.mark.parametrize("last_id", ["new159", "old0"])
-def test_moved_paragraph_across_repetitive_table_matches_in_under_50ms(last_id):
+@pytest.mark.parametrize("reused_ids", [{}, {159: "old0"}, {80: "old0", 81: "old1"}],
+                         ids=["all-new", "reused-last", "reused-adjacent"])
+def test_moved_paragraph_across_repetitive_table_matches_in_under_50ms(reused_ids):
     from hashlib import sha256
     from timeit import repeat
 
     from congress_api.lake.text_assessment import assess_text
     from congress_api.lake.text_quality import _largest_unmatched_ocr_passage, assessment_facts, measure_quality
 
-    def table(prefix):
-        return "\n".join(f"current year approved amount {prefix}{row}" for row in range(160))
+    def table(identifiers):
+        return "\n".join(f"current year approved amount {identifier}" for identifier in identifiers)
 
     paragraph = " ".join(f"The committee reviewed funding for district {i}" for i in range(28))
-    reference = f"{table('old')}\n{paragraph}"
-    output = f"{paragraph}\n{table('new')}".replace("new159", last_id)
+    reference_table = table(f"old{row}" for row in range(160))
+    output_table = table(reused_ids.get(row, f"new{row}") for row in range(160))
+    reference = f"{reference_table}\n{paragraph}"
+    output = f"{paragraph}\n{output_table}"
     digest = sha256(output.encode()).hexdigest()
     identity = dict(body_sha256="a"*64, parser="pdf_text", parser_version="test", text_sha256=digest,
                     output_sha256=digest, source_format="pdf", source_state="retained",
@@ -519,7 +528,7 @@ def test_moved_paragraph_across_repetitive_table_matches_in_under_50ms(last_id):
     evidence = dict(stage="measurement", path="/measure.json", sha256="b"*64, locator="line 1")
     assert assess_text(assessment_facts(measured, evidence))["action"] == "keep"
 
-    # Include full-page tokenization and both matching phases.
+    # Include full-page tokenization and all matching phases.
     elapsed = min(repeat(lambda: _largest_unmatched_ocr_passage(reference, output), number=1, repeat=3))
     assert elapsed < 0.05, f"span matching took {elapsed:.4f}s on the 996-token page"
 

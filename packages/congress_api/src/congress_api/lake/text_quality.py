@@ -6,7 +6,7 @@ spans. They nominate review, including legitimate cleanup, never a defect verdic
 from collections import defaultdict, deque
 from difflib import SequenceMatcher
 from hashlib import sha256
-from itertools import islice, product
+from itertools import islice, pairwise, product
 import re
 
 from spicy_docs.extraction.quality import (
@@ -170,6 +170,7 @@ def _reserve_exact_spans(ref, out, ref_mask, out_mask):
     for length, _, a, _, b in _moved_spans([ref], [out], width=_MIN_INTERIOR_MOVE):
         buckets[length].append((a, b))
 
+    reserved = []
     for length in range(len(buckets) - 1, _MIN_INTERIOR_MOVE - 1, -1):
         for a, b in buckets[length]:
             # A reservation at least this long can cover only a prefix, suffix,
@@ -182,8 +183,10 @@ def _reserve_exact_spans(ref, out, ref_mask, out_mask):
             remaining = right - left
             if remaining == length:
                 ref_mask[a:a + length] = out_mask[b:b + length] = b'\x01' * length
+                reserved.append((a, b, length))
             elif remaining >= _MIN_INTERIOR_MOVE:
                 buckets[remaining].append((a + left, b + left))
+    return reserved
 
 
 # Prefer nearby continuations when several four-word anchors fit the edit gap.
@@ -222,6 +225,16 @@ def _anchor_chain(ref, out, a, b, ref_end, out_end, out_mask):
             b += 1
 
 
+def _unused_anchor_starts(starts, out_mask, width):
+    """Visit each candidate at most once per search and discard occupied anchors permanently."""
+    for _ in range(len(starts)):
+        candidate = starts.popleft()
+        b = candidate[0]
+        if out_mask.find(1, b, b + width) < 0:
+            starts.append(candidate)
+            yield candidate
+
+
 def _reserve_edited_spans(ref, out, ref_mask, out_mask):
     """Reserve each chain once, including equal words at corresponding offsets in its gaps."""
     width = _MIN_MOVE_ANCHOR
@@ -230,13 +243,12 @@ def _reserve_edited_spans(ref, out, ref_mask, out_mask):
         for b in range(run.start(), run.end() - _MIN_INTERIOR_MOVE + 1):
             positions[out[b:b + width]].append((b, run.end()))
 
+    reserved = []
     for run in re.finditer(b'\x00+', ref_mask):
         a = run.start()
         while a + _MIN_INTERIOR_MOVE <= run.end():
             starts = positions.get(ref[a:a + width], ())
-            for b, end in islice(starts, _MAX_ANCHOR_PROBES):
-                if out_mask.find(1, b, b + width) >= 0:
-                    continue
+            for b, end in islice(_unused_anchor_starts(starts, out_mask, width), _MAX_ANCHOR_PROBES):
                 blocks = _anchor_chain(ref, out, a, b, run.end(), end, out_mask)
                 if sum(length for _, _, length in blocks) < _MIN_INTERIOR_MOVE:
                     continue
@@ -244,32 +256,72 @@ def _reserve_edited_spans(ref, out, ref_mask, out_mask):
                     for i, j in zip(range(a, p), range(b, q)):
                         if ref[i] == out[j]:
                             ref_mask[i] = out_mask[j] = 1
+                            reserved.append((i, j, 1))
                     a, b = p + length, q + length
                     ref_mask[p:a] = out_mask[q:b] = b'\x01' * length
+                    reserved.append((p, q, length))
                 break
             else:
                 a += 1
-            if len(starts) > _MAX_ANCHOR_PROBES:
-                starts.rotate(-1)
+    return reserved
 
 
-def _reserve_page_edges(ref, out, ref_mask, out_mask):
-    """Credit short headings and footers when one omission or insertion explains an edge."""
-    def edges(mask):
-        first = mask.find(1)
-        if first < 0:
-            return [(0, len(mask))]
-        return [(0, first), (mask.rfind(1) + 1, len(mask))]
+_MAX_SLOT_TOKENS = 128
 
-    for (a, end_a), (b, end_b) in zip(edges(ref_mask), edges(out_mask)):
-        shorter = min(end_a - a, end_b - b)
-        prefix = 0
-        while prefix < shorter and ref[a + prefix] == out[b + prefix]:
-            prefix += 1
-        suffix = shorter - prefix
-        if ref[end_a - suffix:end_a] == out[end_b - suffix:end_b]:
-            ref_mask[a:a + prefix] = out_mask[b:b + prefix] = b'\x01' * prefix
-            ref_mask[end_a - suffix:end_a] = out_mask[end_b - suffix:end_b] = b'\x01' * suffix
+
+def _slot_matches(ref, out):
+    def length_matched_replace(opcode):
+        tag, a, end_a, b, end_b = opcode
+        return tag == 'replace' and end_a - a == end_b - b
+
+    ops = SequenceMatcher(None, ref, out, autojunk=False).get_opcodes()
+    for i, (tag, a, end_a, b, _) in enumerate(ops):
+        if tag != 'equal':
+            continue
+        length = end_a - a
+        if length >= 2 or (0 < i < len(ops) - 1 and length_matched_replace(ops[i - 1])
+                           and length_matched_replace(ops[i + 1])):
+            yield a, b, length
+
+
+def _reserve_inorder_slots(ref, out, ref_mask, out_mask, reserved):
+    """Align short free gaps between blocks that are neighbors on both pages."""
+    def align(a, end_a, b, end_b, *, crossed_edge=False):
+        ref_size, out_size = end_a - a, end_b - b
+        if not (2 <= ref_size <= _MAX_SLOT_TOKENS and 2 <= out_size <= _MAX_SLOT_TOKENS):
+            return
+        if out_mask.find(1, b, end_b) >= 0:
+            return
+        runs = list(_slot_matches(ref[a:end_a], out[b:end_b]))
+        # Without anchors on either page, keep the minimum evidence for an
+        # interior match. Isolated common words supply no such evidence.
+        if crossed_edge or (not reserved and sum(n for _, _, n in runs if n >= 2) < _MIN_INTERIOR_MOVE):
+            # Headings/footers must touch the same page boundary and account
+            # for the entire shorter side before they can establish a match.
+            runs = [(p, q, n) for p, q, n in runs
+                    if p == q == 0 or (p + n == ref_size and q + n == out_size)]
+            if sum(n for _, _, n in runs) != min(ref_size, out_size):
+                return
+            if not any((a + p == b + q == 0) or (a + p + n == len(ref) and b + q + n == len(out))
+                       for p, q, n in runs):
+                return
+        for p, q, n in runs:
+            ref_mask[a + p:a + p + n] = out_mask[b + q:b + q + n] = b'\x01' * n
+
+    if not reserved:
+        align(0, len(ref), 0, len(out))
+        return
+    reserved.sort()
+    first_a, first_b, _ = reserved[0]
+    first_out = out_mask.find(1)
+    last_a, last_b, length = reserved[-1]
+    last_out = out_mask.rfind(1) + 1
+    # Page boundaries pair with the first/last block only when that block is
+    # also first/last in the output. A move leaves only the two outer edges.
+    align(0, first_a, 0, first_out, crossed_edge=first_b != first_out)
+    for (a, b, n), (next_a, next_b, _) in pairwise(reserved):
+        align(a + n, next_a, b + n, next_b)
+    align(last_a + length, len(ref), last_out, len(out), crossed_edge=last_b + length != last_out)
 
 
 def _largest_unmatched_ocr_passage(intermediate, text):
@@ -288,9 +340,9 @@ def _largest_unmatched_ocr_passage(intermediate, text):
         return max((b - a for tag, a, b, _, _ in changes if tag != 'equal'), default=0)
 
     ref_mask, out_mask = bytearray(len(ref)), bytearray(len(out))
-    _reserve_exact_spans(ref, out, ref_mask, out_mask)
-    _reserve_edited_spans(ref, out, ref_mask, out_mask)
-    _reserve_page_edges(ref, out, ref_mask, out_mask)
+    reserved = _reserve_exact_spans(ref, out, ref_mask, out_mask)
+    reserved.extend(_reserve_edited_spans(ref, out, ref_mask, out_mask))
+    _reserve_inorder_slots(ref, out, ref_mask, out_mask, reserved)
     return max(map(len, ref_mask.split(b'\x01')))
 
 
