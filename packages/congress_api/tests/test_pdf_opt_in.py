@@ -347,8 +347,11 @@ def test_cleanup_review_flags_a_dropped_native_block_with_surviving_furniture():
         assert ("possible_cleanup_loss" in review["signals"]) == omitted
 
 
-@pytest.mark.parametrize("case", ["complete", "reflow", "omitted", "short_page"])
-def test_selective_review_of_recognition_on_a_scanned_page(case, tmp_path):
+@pytest.mark.parametrize(("case", "missing_tokens"), [
+    ("complete", 0), ("reflow", 0), ("omitted", 23), ("short_page", 0),
+    ("moved", 0), ("lost_duplicate", 34),
+])
+def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens, tmp_path):
     from contextlib import closing
     from hashlib import sha256
     import json
@@ -365,6 +368,34 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, tmp_path):
         "findings and provide a written response.",
     ]
     lines = [header, *passage, footer] if case != "short_page" else [header, footer]
+    # Plant changes at the primary image backend. The independent OCR reads
+    # the source ink, including both copies in the lost-duplicate control.
+    observed = "\n".join(lines)
+    if case == "omitted":
+        observed = f"{header}\n{footer}"
+    elif case == "reflow":
+        observed = observed.replace("\n", " ").replace("each site", "each\nsite")
+    elif case in {"moved", "lost_duplicate"}:
+        # Excerpts from report page 151. Move the response across the findings.
+        findings = [
+            "at six hotels that went largely unused between April and",
+            "June 2021. ICE's sole source contract with Endeavors",
+            "resulted in millions of dollars being spent on unused",
+            "hotel space. In addition, Endeavors did not meet new",
+            "healthcare protocols or ensure proper COVID-19 testing",
+            "for families.",
+        ]
+        response = [
+            "ICE Response",
+            "ICE concurred with one recommendation and did not",
+            "concur with three recommendations. One",
+            "recommendation was resolved and closed, and three",
+            "recommendations were administratively closed. See",
+            "Appendix B for ICE's full response.",
+        ]
+        copies = 2 if case == "lost_duplicate" else 1
+        lines = [header, *findings, *(response * copies), footer]
+        observed = "\n".join([header, *response, *findings, footer])
     source = _make_scanned_pdf(lines)
     reader = OptInPdfReader(dpi=150)
     with reader.open(source, "application/pdf") as pdf:
@@ -375,13 +406,6 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, tmp_path):
         reference = secondary.recognize(raster).text
     assert " ".join(reference.split()) == " ".join(lines)
 
-    # Plant the loss at the image backend. The short-page control has exactly
-    # the same primary output as the damaged reading, on different source ink.
-    observed = "\n".join(lines)
-    if case == "omitted":
-        observed = f"{header}\n{footer}"
-    elif case == "reflow":
-        observed = observed.replace("\n", " ").replace("each site", "each\nsite")
     primary = Mock()
     primary.recognize.return_value = Recognition(observed, {}, None)
     events = []
@@ -413,15 +437,21 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, tmp_path):
     proposal = json.loads(Path(result["proposals"]).read_text())["proposal"]
     comparison = review["axes"]["recognition"]["independent_ocr_comparison"]
     assert comparison["status"] == "measured"
+    assert review["axes"]["recognition"]["largest_unmatched_ocr_passage_tokens"] == missing_tokens
     if case == "omitted":
         assert any(" ".join(change["intermediate_slice"].split()) == " ".join(passage)
                    for change in comparison["changes"])
+    elif case in {"moved", "lost_duplicate"}:
+        assert [change["operation"] for change in comparison["changes"]] == ["insert", "delete"]
+        assert comparison["removed_content_tokens"] == copies * 34
+    else:
+        assert comparison["changes"] == []
+    if missing_tokens:
         assert review["signals"] == ["possible_missing_content"]
         assert review["fts_triage"]["reasons"] == ["possible_missing_content"]
         assert review["fts_triage"]["band"] == "review_later"
         assert proposal["action"] == "manual_review"
     else:
-        assert comparison["changes"] == []
         assert review["signals"] == review["fts_triage"]["reasons"] == []
         assert review["fts_triage"]["band"] == "no_obvious_failure_detected"
         assert proposal["action"] == "keep"

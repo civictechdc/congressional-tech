@@ -259,6 +259,24 @@ def test_independent_ocr_requires_the_same_pdf_page(updates):
         measure_quality(ident, text='final', intermediate='reference')
 
 
+@pytest.mark.parametrize(('moved_copies', 'expected_missing'), [(2, 0), (1, 20), (0, 20)])
+def test_independent_ocr_counts_each_moved_copy_once_across_deleted_spans(moved_copies, expected_missing):
+    passage = ' '.join(['Café!'] * 20)
+    first = ' '.join(f'first{i}' for i in range(50))
+    second = ' '.join(f'second{i}' for i in range(50))
+    reference = ' '.join([passage, first, passage, second])
+    # Both deletions compete for the same inserted occurrences, normalized as in the alignment.
+    output = ' '.join([first, second, *(['CAFE\u0301!'] * (20 * moved_copies))])
+    ident = identity(output)
+    ident.update(scope='page', page_number=1, source_page_count=1, intermediate_kind='independent_ocr',
+                 intermediate_scope='page', intermediate_page_number=1, intermediate_body_sha256=ident['body_sha256'])
+    review = measure_quality(ident, text=output, intermediate=reference)
+    recognition = review['axes']['recognition']
+    assert recognition['independent_ocr_comparison']['removed_content_tokens'] == 40
+    assert recognition['largest_unmatched_ocr_passage_tokens'] == expected_missing
+    assert review['signals'] == (['possible_missing_content'] if expected_missing else [])
+
+
 def test_cli_measure_bounds_hash_and_actual_proposal(tmp_path):
     import json
     from congress_api.cli.text_quality import measure_cases

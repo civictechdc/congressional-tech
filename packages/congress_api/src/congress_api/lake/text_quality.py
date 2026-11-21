@@ -3,12 +3,14 @@
 Native/final differences preserve order, multiplicity and original character
 spans. They nominate review, including legitimate cleanup, never a defect verdict.
 """
+from collections import Counter
 from hashlib import sha256
 
 from spicy_docs.extraction.quality import (
     MAX_COMPARE_CHARS as MAX_COMPARE_CHARS,
     MAX_COMPARE_TOKENS as MAX_COMPARE_TOKENS,
     MAX_TOKEN_PRODUCT as MAX_TOKEN_PRODUCT,
+    _tokens as _comparison_tokens,
     compare_intermediate as compare_intermediate,
     text_corruption_measures as text_corruption_measures,
 )
@@ -112,6 +114,23 @@ def fts_triage(axes):
             'meaning': 'likely_searchable_under_measured_checks_not_source_certified'}
 
 
+def _largest_unmatched_ocr_passage(changes):
+    """Credit each inserted content token once across all removed passages on the page."""
+    inserted = Counter(
+        token for change in changes for token, _, _ in _comparison_tokens(change['output_slice'])
+        if any(char.isalnum() for char in token)
+    )
+    largest = 0
+    for change in changes:
+        missing = change['removed_content_tokens']
+        for token, _, _ in _comparison_tokens(change['intermediate_slice']):
+            if inserted[token]:
+                inserted[token] -= 1
+                missing -= 1
+        largest = max(largest, missing)
+    return largest
+
+
 def measure_quality(identity, *, text=None, intermediate=None, feature=None, raw_markup=None):
     """Measure an exact output scope. Labels and source-review judgments are not inputs."""
     if text is not None:
@@ -142,8 +161,7 @@ def measure_quality(identity, *, text=None, intermediate=None, feature=None, raw
             comparison = compare_intermediate(intermediate, text)
             recognition['independent_ocr_comparison'] = comparison
             if comparison['status'] == 'measured':
-                recognition['largest_unmatched_ocr_passage_tokens'] = max(
-                    (change['removed_content_tokens'] for change in comparison['changes']), default=0)
+                recognition['largest_unmatched_ocr_passage_tokens'] = _largest_unmatched_ocr_passage(comparison['changes'])
         cleanup = {'status': 'missing_intermediate', 'changes': []}
     elif intermediate is not None and not related_intermediate:
         cleanup = {'status': 'unassessed_intermediate_scope', 'changes': []}
