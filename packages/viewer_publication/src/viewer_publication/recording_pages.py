@@ -65,8 +65,11 @@ def meeting_calendar(path):
 _MARKUP_DATE = '//span[@class="date" and starts-with(normalize-space(.),"Markup Date:")]'
 _TEMPLATE_DATES = '//main//span[@class="date-bar"] | //article//span[@class="date-bar"] | ' + _MARKUP_DATE
 _DATE_TERM = re.compile(r'(?:(?:hearing|meeting|event|markup) date|date|when)\s*:?', re.I)
-_DATE_IN_TEXT = re.compile(r'(?:\b(?:hearing|meeting|event|markup)\s+date|^(?:date|when))\s*:\s*'
-                           r'(?:(?:mon|tues|wednes|thurs|fri|satur|sun)day,?\s+)?', re.I | re.M)
+_DATE_IN_TEXT = re.compile(
+    r'(?:(?:\b(?:hearing|meeting|event|markup)\s+date|^(?:date|when))\s*:\s*|'
+    r'\b(?:hearing|meeting|event|markup)\s+(?:(?:is|was|has|been|will|be|now)\s+)*'
+    r'(?:rescheduled|postponed|moved|scheduled|held|take place|convene)\s+(?:to|for|on)\s+)'
+    r'(?:(?:mon|tues|wednes|thurs|fri|satur|sun)day,?\s+)?', re.I | re.M)
 
 
 def _text(node):
@@ -263,6 +266,7 @@ _COMMITTEE_SUFFIX = re.compile(r'\s*\|\s*[^|]*\bcommittee\b[^|]*$|'
 
 _COMMITTEE_NAME = re.compile(r'^(?:the\s+)?(?:(?:u\.?s\.?|united states)\s+)?'
                              r'(?:(?:house|senate)\s+)?(?:sub)?committee\s+on\b', re.I)
+_PROCEEDING_KIND = re.compile(r'\b(?:hearing|meeting|markup|roundtable|session)\b', re.I)
 _STATED_EVENT = re.compile(r'(?:\bevent\s*id\s*[=:#]\s*|\bdocs\.house\.gov/[^\s"\'<>]*[?&]eventid=|'
                            r'\bcongress\.gov/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/house-event/)'
                            r'0*(1[0-9]{5})\b', re.I)
@@ -297,7 +301,10 @@ def _detail_events(tree, body, url, calendar):
     candidate, = proceeding
     titles = (_COMMITTEE_SUFFIX.sub('', value or '').strip()
               for value in (event_title(tree), tree.xpath('string(/html/head/title)')))
-    title_words = substantive_words(' '.join(t for t in titles if not _COMMITTEE_NAME.match(t))) - _RECORDING_STOPWORDS
+    # A site-wide committee name supplies no subject. A named proceeding such as
+    # "Subcommittee on Economic Opportunity Legislative Hearing" supplies one.
+    subjects = [t for t in titles if not _COMMITTEE_NAME.match(t) or _PROCEEDING_KIND.search(t)]
+    title_words = substantive_words(' '.join(subjects)) - _RECORDING_STOPWORDS
     overlap = len(title_words & substantive_words(on_day.get(candidate)))
     if not overlap or any(not title or overlap <= len(title_words & substantive_words(title))
                           for ev in stale for title in other_titles[ev]):

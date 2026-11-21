@@ -980,6 +980,13 @@ def test_sitewide_committee_title_is_not_evidence_for_the_hearing_subject():
                                  current='Putting Veterans First', stale='Reviewing the Digital G.I. Bill Program') == []
 
 
+def test_subcommittee_hearing_heading_identifies_a_named_proceeding():
+    assert bridge_hearing_events(heading='Subcommittee on Economic Opportunity Legislative Hearing',
+                                 title="The House Committee on Veterans' Affairs",
+                                 current='Economic Opportunity hearing',
+                                 stale='Reviewing the Digital G.I. Bill Program') == [116317]
+
+
 @pytest.mark.parametrize('current,stale,expected', [
     ('Road resurfacing', 'Bridge repair funding', []),
     ('Bridge repair', 'Repair funding', []),
@@ -1011,6 +1018,8 @@ def test_calendar_corroboration_uses_the_page_title_without_the_committee_suffix
     '<h2>Hearing on July 19, 2023</h2>',
     '<p>Hearing Date: July 19, 2023</p>',
     '<section><strong>Hearing Date:</strong> July 19, 2023</section>',
+    '<p>This hearing has been rescheduled for July 19, 2023.</p>',
+    '<p>The meeting will now take place on Wednesday, July 19, 2023.</p>',
 ])
 def test_date_sources_cannot_hide_a_second_visible_proceeding_day(second_date):
     assert bridge_hearing_events(dates='<p>Hearing Date: September 14, 2023</p>' + second_date,
