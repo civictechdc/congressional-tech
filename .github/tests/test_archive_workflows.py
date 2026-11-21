@@ -579,8 +579,16 @@ def classified(base, head, repo=ROOT):
     return result.stdout.strip() == 'true'
 
 
+def verify_causes(repo, *revisions):
+    return subprocess.run([sys.executable, '-I', str(CAUSE_CLASSIFIER), '--verify', *revisions],
+                          cwd=repo, capture_output=True, text=True)
+
+
 def test_real_tier_one_cause_commit_uses_the_fast_path():
-    assert classified('fff9e04d~1', 'fff9e04d')
+    revisions = ('fff9e04d~1', 'fff9e04d')
+    assert classified(*revisions)
+    result = verify_causes(ROOT, *revisions)
+    assert result.returncode == 0, result.stderr
 
 
 def test_cause_diff_classifier_uses_committed_trees_and_only_the_release_pin(tmp_path):
@@ -670,12 +678,15 @@ def test_checked_binding_refuses_wrong_cause_schema_record_hash_and_evidence_has
     cause = tmp_path / 'night.json'
     evidence = tmp_path / 'evidence.json'
     evidence.write_text('{}')
+    subprocess.run(['git', 'init', '-q'], cwd=tmp_path, check=True)
+    subprocess.run(['git', 'add', evidence.name], cwd=tmp_path, check=True)
 
     def pin(path):
         data = path.read_bytes()
         return dict(path=path.name, sha256=sha256(data).hexdigest(), size=len(data))
 
-    group = dict(id='f|group|detail', count=2, disposition='explained', cause='Measured', evidence=[pin(evidence)])
+    run_output = dict(pin(evidence), path='output/offline-run.json')
+    group = dict(id='f|group|detail', count=2, disposition='explained', cause='Measured', evidence=[pin(evidence), run_output])
     def bind(record):
         cause.write_text(json.dumps(record))
         spec.write_text(json.dumps(dict(json.loads(spec.read_bytes()), release_causes=pin(cause))))
@@ -698,52 +709,109 @@ def test_checked_binding_refuses_wrong_cause_schema_record_hash_and_evidence_has
     assert check() != 0
 
 
-@pytest.mark.parametrize('absolute', [False, True])
-def test_cause_validation_checks_an_unbound_record_and_every_changed_evidence_pin(tmp_path, absolute):
-    import shutil
+@pytest.fixture
+def cause_history(tmp_path):
+    """Commit fixture files so range checks read the named trees."""
     def git(*args):
-        return subprocess.run(['git', *args], cwd=tmp_path, check=True, capture_output=True)
+        return subprocess.check_output(['git', *args], cwd=tmp_path, text=True).strip()
     git('init', '-q')
     git('config', 'user.name', 'Fixture')
     git('config', 'user.email', 'fixture@example.org')
-    history = Path('model/jobs/release-causes')
-    # This cause has portable evidence and existing tickets. Use its real, checked bytes.
-    record = history / 'ab0192939dfd-0e7084cde775.json'
-    evidence = history / 'evidence' / record.name
-    (tmp_path / evidence.parent).mkdir(parents=True)
-    for path in (record, evidence):
-        shutil.copyfile(ROOT / path, tmp_path / path)
-    git('add', '.')
-    git('commit', '-qm', 'base')
-    def verify():
+
+    def commit():
         git('add', '-A')
-        git('commit', '-qm', 'changed records')
-        return subprocess.run([sys.executable, '-I', str(CAUSE_CLASSIFIER), '--verify', 'HEAD~1', 'HEAD'],
-                              cwd=tmp_path, capture_output=True, text=True)
-    outside = Path('docs/measurements') / evidence.name
-    (tmp_path / outside).parent.mkdir(parents=True)
-    (tmp_path / evidence).rename(tmp_path / outside)
-    path = tmp_path / record
-    # Both relative and absolute pins into this checkout name files in the Git diff.
-    path.write_text(path.read_text().replace(str(evidence), str(tmp_path / outside if absolute else outside)))
-    assert verify().returncode == 0
-    evidence = outside
-    (tmp_path / evidence).write_text('{}')
-    assert verify().returncode != 0
-    bad = tmp_path / history / 'unbound.json'
-    bad.write_text('{"groups":[]}')
-    assert verify().returncode != 0
-    bad.unlink()
-    shutil.copyfile(ROOT / history / 'evidence' / record.name, tmp_path / evidence)
-    assert verify().returncode == 0
-    def full():
-        return subprocess.run([sys.executable, '-I', str(CAUSE_CLASSIFIER), '--verify'], cwd=tmp_path, capture_output=True)
-    assert full().returncode == 0
-    (tmp_path / evidence).write_text('[]')
-    assert full().returncode != 0
-    shutil.copyfile(ROOT / history / 'evidence' / record.name, tmp_path / evidence)
-    bad.write_text('{"groups":[],"version":1,"version":1}')
-    assert full().returncode != 0
+        git('commit', '-qm', 'cause verification fixture')
+        return git('rev-parse', 'HEAD')
+    return commit
+
+
+def write_cause(path, *pins):
+    group = dict(id='table|group|detail', count=1, disposition='explained', cause='Measured', evidence=pins)
+    record = dict(version=1, base_release_id='a' * 64, candidate_release_id='b' * 64, groups=[group])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(record))
+
+
+@pytest.mark.parametrize('directory', ['docs/measurements', 'model/jobs/release-causes/evidence'])
+def test_historical_evidence_cannot_be_changed_repinned_or_deleted(tmp_path, cause_history, directory):
+    from congress_api.retention.provenance import file_pin
+    evidence = tmp_path / directory / 'original'
+    evidence.parent.mkdir(parents=True)
+    evidence.write_bytes(b'reviewed')
+    record = tmp_path / 'model/jobs/release-causes/night.json'
+    # Both absolute (in this checkout) and relative pins participate in the diff.
+    name = str(evidence if directory == 'docs/measurements' else evidence.relative_to(tmp_path))
+    write_cause(record, dict(path=name, **file_pin(evidence)))
+    base = cause_history()
+    assert verify_causes(tmp_path).returncode == 0
+    evidence.write_bytes(b'modified')
+    tampered = cause_history()
+    for revisions in ((base, tampered), ()):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode != 0 and str(evidence.relative_to(tmp_path)) in result.stderr
+    write_cause(record, dict(path=name, **file_pin(evidence)))
+    repinned = cause_history()
+    result = verify_causes(tmp_path, base, repinned)
+    assert result.returncode != 0 and 'changed historical evidence' in result.stderr
+    evidence.unlink()
+    deleted = cause_history()
+    for revisions in ((base, deleted), ()):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode != 0 and evidence.name in result.stderr
+    record.unlink()
+    result = verify_causes(tmp_path, base, cause_history())
+    assert result.returncode != 0 and 'changed historical evidence' in result.stderr
+
+
+def test_historical_source_pins_apply_when_a_record_or_its_publish_binding_changes(tmp_path, cause_history):
+    from congress_api.retention.provenance import file_pin
+    source = tmp_path / 'model/sql/query.sql'
+    source.parent.mkdir(parents=True)
+    source.write_text('select 1')
+    tracked = dict(path='model/sql/query.sql', **file_pin(source))
+    record = tmp_path / 'model/jobs/release-causes/night.json'
+    offline = [dict(tracked, path=p) for p in ('output/run.json', '.cache/run.json', '/home/runner/run.json')]
+    write_cause(record, tracked, *offline)
+    base = cause_history()
+    source.write_text('select 2')
+    changed_source = cause_history()
+    for revisions in ((base, changed_source), ()):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode == 0, result.stderr
+
+    def bind():
+        pin = dict(path='release-causes/' + record.name, **file_pin(record))
+        (record.parent.parent / 'publish.json').write_text(json.dumps(dict(release_causes=pin)))
+    record.write_text(record.read_text().replace('Measured', 'Reviewed'))
+    changed = cause_history()
+    bind()
+    bound = cause_history()
+    for revisions in ((changed_source, changed), (changed, bound), ()):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode != 0 and tracked['path'] in result.stderr
+    write_cause(record, dict(path=tracked['path'], **file_pin(source)), *offline)
+    bind()
+    fixed = cause_history()
+    for revisions in ((bound, fixed), ()):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode == 0, result.stderr
+
+
+def test_unbound_record_and_unavailable_evidence_require_valid_json_and_pin_fields(tmp_path, cause_history):
+    record = tmp_path / 'model/jobs/release-causes/unbound.json'
+    pin = dict(path='output/missing.json', size=0, sha256='a' * 64)
+    write_cause(record, pin)
+    base = cause_history()
+    for change in (dict(sha256='bad'), dict(size=-1), dict(size=True)):
+        write_cause(record, dict(pin, **change))
+        head = cause_history()
+        for revisions in ((base, head), ()):
+            result = verify_causes(tmp_path, *revisions)
+            assert result.returncode != 0 and 'Cause evidence' in result.stderr
+    for data, message in [('{"groups":[]}', 'requires version'), ('{"groups":[],"groups":[]}', 'duplicate JSON key')]:
+        record.write_text(data)
+        result = verify_causes(tmp_path, base, cause_history())
+        assert result.returncode != 0 and message in result.stderr
 
 
 def test_cause_only_ci_runs_doctor_and_binding_and_preserves_the_merge_gate():

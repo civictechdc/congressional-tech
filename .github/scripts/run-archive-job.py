@@ -117,7 +117,7 @@ def retire_for_backfill(spec_path, archive_dir, *, backfill_spec_path=None):
 
 
 def check_publisher_plan(command, output):
-    result = subprocess.run([*command[:-1], '--plan'], cwd=ROOT, capture_output=True, text=True)
+    result = subprocess.run([*command[:-1], '--check-binding'], cwd=ROOT, capture_output=True, text=True)
     if result.returncode:
         print(result.stderr or 'Archive job refused: owner publish plan refused', file=sys.stderr)
         return result.returncode

@@ -20,6 +20,7 @@ from datetime import date, datetime, timedelta, timezone
 import gzip
 from io import BytesIO
 import json
+import os
 from pathlib import Path
 import re
 import sys
@@ -35,6 +36,7 @@ EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 TICKET = re.compile('(ct|cef|ss)-[a-z0-9]{4}')
 ROOT = Path(__file__).resolve().parents[4]  # the checkout running the gate
 TICKETS = ROOT / '.tickets'
+IMMUTABLE_EVIDENCE = ('model/jobs/release-causes/', 'docs/measurements/')
 # ct-4nax: what a cause record's correction may name, as {kind: (field prefix in link_rule, plural)}.
 CORRECTED = {'link_key': ('', 'link keys'), 'lookup_key': ('lookup_', 'lookup keys'), 'address': ('address_', 'addresses')}
 CORRECTION_FIELDS = {'kind', 'key', 'live_body', 'candidate_body', 'decision', 'tickets'}
@@ -286,14 +288,17 @@ def fetch_base(read_release, release_id, work, link_history=(), *, previous_rele
     return base, prior, retired, history
 
 
-def _tickets(entry, name, *, needed_by=None):
+def _tickets(entry, name, *, needed_by=None, tracked=None):
     """An entry's ticket ids; `needed_by` names the kind of entry that must have at least one."""
     tickets = entry.get('tickets', [])
     if not isinstance(tickets, list) or any(not isinstance(t, str) or TICKET.fullmatch(t) is None for t in tickets):
         raise ValueError(f'Cause entry tickets must be ticket ids: {name}')
     if needed_by and not tickets:
         raise ValueError(f'{needed_by} needs a ticket: {name}')
-    missing = [t for t in tickets if not (TICKETS / f'{t}.md').is_file()]
+    if tracked is None:
+        missing = [t for t in tickets if not (TICKETS / f'{t}.md').is_file()]
+    else:
+        missing = [t for t in tickets if f'.tickets/{t}.md' not in tracked]
     if missing:
         raise ValueError(f'Tickets have no file in {TICKETS}: {", ".join(missing)} ({name})')
     return tickets
@@ -304,7 +309,7 @@ def _wanted_bodies(entry):
     return [value] if isinstance(value, str) else value
 
 
-def _corrections(record):
+def _corrections(record, tracked):
     """Validate the record's `corrections` (ct-4nax): each names one link-rule finding exactly.
 
     An entry is {kind, key, live_body, candidate_body, decision, tickets} and nothing else: kind is
@@ -338,32 +343,47 @@ def _corrections(record):
             _sha(cand, f'Correction candidate_body of {name}')
         if not isinstance(entry['decision'], str) or not entry['decision'].strip():
             raise ValueError(f'A correction needs its decision: {name}')
-        _tickets(entry, name, needed_by='A correction')
+        _tickets(entry, name, needed_by='A correction', tracked=tracked)
         if (kind, key, entry['live_body']) in seen:
             raise ValueError(f'Duplicate correction: {name} from {entry["live_body"]}')
         seen.add((kind, key, entry['live_body']))
 
 
-def load_causes(pin):
-    """Read a pinned cause record and custody-check every evidence pin it names."""
+def repository_evidence(pins, tracked, *, check_sources):
+    """Select evidence a Git checkout can verify. Historical source pins describe the original release."""
+    for name, digest, size in pins:
+        path = os.path.relpath(name)
+        if path.startswith(IMMUTABLE_EVIDENCE):
+            if path not in tracked:
+                raise ValueError(f'Missing tracked cause evidence: {path}')
+        elif not (check_sources and path in tracked):
+            continue
+        yield path, digest, size
+
+
+def load_causes(pin, *, tracked=None):
+    """Check the record and its evidence. A Git binding check can read only repository evidence."""
     from congress_shared.custody import verify_local_file
     path = Path(pin['path'])
     verified = verify_local_file(path, pin['sha256'], pin['size'])
     record = json.loads(path.read_bytes())
     verified.require(path)
-    for path, digest, size in validate_cause_record(record):
+    evidence = validate_cause_record(record, tracked=tracked)
+    if tracked is not None:
+        evidence = repository_evidence(evidence, tracked, check_sources=True)
+    for path, digest, size in evidence:
         verify_local_file(path, digest, size)
     return record
 
 
-def validate_cause_record(record):
+def validate_cause_record(record, *, tracked=None):
     """Check the schema of a historical or active record, including its evidence descriptors."""
     if (not isinstance(record, dict) or type(record.get('version')) is not int or record['version'] != 1
             or not isinstance(record.get('groups'), list)):
         raise ValueError('Cause record requires version 1 and a groups list')
     for side in ('base_release_id', 'candidate_release_id'):
         _sha(record.get(side), f'Cause record {side}')
-    _corrections(record)
+    _corrections(record, tracked)
     evidence_files = set()
     seen = set()
     for entry in record['groups']:
@@ -378,7 +398,8 @@ def validate_cause_record(record):
             raise ValueError(f'Cause entry disposition must be explained or accepted_defect: {entry["id"]}')
         if not isinstance(entry.get('cause'), str) or not entry['cause'].strip():
             raise ValueError(f'Cause entry requires a stated cause: {entry["id"]}')
-        _tickets(entry, entry['id'], needed_by='An accepted defect' if entry['disposition'] == 'accepted_defect' else None)
+        _tickets(entry, entry['id'], tracked=tracked,
+                 needed_by='An accepted defect' if entry['disposition'] == 'accepted_defect' else None)
         if entry['disposition'] == 'explained' and not entry.get('evidence'):
             # An explanation names what was read (raw lines, a query result) by pinned file.
             raise ValueError(f'An explained cause needs pinned evidence: {entry["id"]}')

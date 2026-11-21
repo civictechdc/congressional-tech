@@ -695,6 +695,7 @@ def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--spec',type=Path,required=True)
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--plan',action='store_true');mode.add_argument('--execute',action='store_true')
+    mode.add_argument('--check-binding', action='store_true', help='Plan with the cause evidence available in this Git checkout')
     parser.add_argument('--nightly-work',type=Path,help='Use the scheduled Mac candidate directory')
     parser.add_argument('--keep-candidate',action='store_true',
         help='Resume a candidate an earlier hosted run left in the work directories when it is this run\'s; otherwise delete it and build fresh')
@@ -709,7 +710,12 @@ def main(argv=None):
         if spec.get('status')=='blocked':print(json.dumps(spec,sort_keys=True));return 2
         if not args.execute and 'release_causes' in spec:
             from viewer_publication.release_gate import load_causes
-            load_causes(spec['release_causes'])
+            # The binding runner plans from the checkout root. Standalone plans and
+            # publication with the original run artifacts still check every file.
+            tracked = None
+            if args.check_binding and Path('.git').exists():
+                tracked = set(os.fsdecode(subprocess.check_output(['git', 'ls-files', '-z'])).split('\0'))
+            load_causes(spec['release_causes'], tracked=tracked)
         if args.nightly_work is not None:spec=nightly_spec(spec,args.nightly_work)
         if args.keep_candidate:
             if spec.get('resume'):raise ValueError('A declared resume and a kept candidate are separate paths')
