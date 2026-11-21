@@ -800,6 +800,10 @@ def test_only_the_proceeding_video_can_corroborate_a_linked_addition(tmp_path):
 
 @pytest.mark.parametrize('attribute', [
     'role="navigation"', 'role="complementary"', 'role="banner"', 'role="contentinfo"',
+    'role="tree"', 'role="treeitem"', 'role="listitem"', 'role="grid"', 'role="feed"',
+    'role="region unknown-role"', 'role="listbox"', 'role="option"',
+    'hidden', 'aria-hidden="TRUE"', 'style="color: red; DISPLAY : none !important"',
+    'style="visibility: HIDDEN"',
     'id="sidebar"', 'class="side-nav"', 'class="sidebar-nav"', 'class="related"', 'id="recent"',
     'class="more-hearings"', 'class="nav"', 'id="menu"', 'class="breadcrumb"', 'id="pager"', 'class="pagination"',
 ])
@@ -818,18 +822,36 @@ def test_proceeding_ignores_both_event_and_video_links_in_chrome(attribute):
 @pytest.mark.parametrize('tag,role', [
     ('menu', ''), ('dialog', ''),
     *(('div', role) for role in ('menu', 'menubar', 'menuitem', 'toolbar', 'tablist',
-                                 'dialog', 'alertdialog', 'search', 'status')),
+                                 'dialog', 'alertdialog', 'search', 'status', 'tree')),
 ])
 def test_widget_video_cannot_inherit_the_hearing_event(tag, role):
     from viewer_publication.recording_pages import recording_page_events
 
     attribute = f' role="{role}"' if role else ''
+    link_role = ' role="treeitem"' if role == 'tree' else ''
     markup = f'''<main><a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=200">Hearing</a>
         <iframe src="https://youtube.com/embed/Fyr9cXKd6NU"></iframe>
-        <{tag}{attribute}><a href="https://youtu.be/Sidebar0001">Other video</a></{tag}></main>'''.encode()
+        <{tag}{attribute}><a{link_role} href="https://youtu.be/Sidebar0001">Other video</a></{tag}></main>'''.encode()
     found = recording_page_events(markup, 'https://transportation.house.gov/hearing', {},
                                   {'youtube:Fyr9cXKd6NU', 'youtube:Sidebar0001'}, set())
     assert found == {'youtube:Fyr9cXKd6NU': [200]}
+
+
+@pytest.mark.parametrize('role', ['main', 'article', 'region', 'document', 'presentation', 'none', 'REGION document', ''])
+def test_document_roles_keep_the_proceeding(role):
+    from viewer_publication.recording_pages import recording_page_events
+
+    markup = f'''<main><div role="{role}"><a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=200">Meeting</a>
+        <iframe src="https://youtube.com/embed/Fyr9cXKd6NU"></iframe></div></main>'''.encode()
+    video = 'youtube:Fyr9cXKd6NU'
+    assert recording_page_events(markup, 'https://transportation.house.gov/hearing', {}, {video}, set()) == {video: [200]}
+
+
+def test_hidden_video_cannot_prove_even_an_unlinked_addition():
+    from viewer_publication.recording_pages import recording_page_events
+
+    markup = b'<main hidden><iframe src="https://youtube.com/embed/Fyr9cXKd6NU"></iframe></main>'
+    assert recording_page_events(markup, 'https://transportation.house.gov/hearing', {}, set(), {'youtube:Fyr9cXKd6NU'}) == {}
 
 
 @pytest.mark.parametrize('root', ['main', 'body'])
@@ -900,7 +922,83 @@ def test_wrong_date_repository_link_cannot_claim_a_house_hearing_video():
     assert recording_page_events(markup, url, calendar, {video}, set()) == {video: [116317]}
 
 
-@pytest.mark.parametrize('tag,attributes', [('article', ''), ('li', ''), ('div', 'role="listitem"'),
+def bridge_hearing_events(*, dates='<p>Hearing Date: September 14, 2023</p>', metadata_day=None,
+                          current='Bridge repair funding', stale='Legislative hearing', sibling='',
+                          heading='Bridge repair funding', metadata_title='Bridge repair funding', root='article', title=''):
+    from viewer_publication.recording_pages import recording_page_events
+
+    metadata = json.dumps({'@type': 'Event', 'name': metadata_title, 'startDate': metadata_day})
+    head = f'<script type="application/ld+json">{metadata}</script>' if metadata_day else ''
+    markup = f'''<html><head><title>{title}</title>{head}</head><body><{root}><h1>{heading}</h1>{dates}
+        <a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=116202">Repository</a>
+        <iframe src="https://youtube.com/embed/b_jnl2BXNfs"></iframe></{root}>{sibling}</body></html>'''.encode()
+    calendar = {('hspw', '2023-09-14'): {116317: dict(title=current, sittings=[])},
+                ('hspw', '2023-07-19'): {116202: dict(title=stale, sittings=[])}}
+    video = 'youtube:b_jnl2BXNfs'
+    return recording_page_events(markup, 'https://transportation.house.gov/hearings/bridge', calendar, {video}, set())[video]
+
+
+@pytest.mark.parametrize('root', ['article', 'main'])
+def test_wrong_date_json_ld_cannot_restore_the_stale_explicit_event(root):
+    date = '<header><p>Hearing Date: September 14, 2023</p></header>'
+    assert bridge_hearing_events(dates=date, metadata_day='2023-07-19', root=root) == []
+
+
+def test_incidental_date_in_prose_cannot_override_an_explicit_link():
+    assert bridge_hearing_events(dates='<p>Last update: September 14, 2023</p>', metadata_day='2023-09-14') == []
+
+
+@pytest.mark.parametrize('current,stale,expected', [
+    ('Road resurfacing', 'Bridge repair funding', []),
+    ('Bridge repair', 'Repair funding', []),
+    ('Bridge repair', 'Bridge repair funding', []),
+    ('Bridge safety', 'Road resurfacing', [116317]),
+    ('Bridge repair', 'Bridge safety', [116317]),
+])
+def test_discarding_a_wrong_date_link_requires_strictly_better_visible_title(current, stale, expected):
+    assert bridge_hearing_events(current=current, stale=stale, metadata_day='2023-09-14',
+                                 metadata_title=current) == expected
+
+
+def test_generic_calendar_title_words_cannot_discard_an_explicit_event():
+    assert bridge_hearing_events(heading='Open legislative hearing', current='Open legislative hearing',
+                                 stale='Road resurfacing') == []
+
+
+def test_calendar_corroboration_uses_the_page_title_without_the_committee_suffix():
+    assert bridge_hearing_events(heading='Hearing', title='Road resurfacing | House Committee on Bridge Repair',
+                                 current='Bridge repair funding', stale='Road safety', metadata_day='2023-09-14') == []
+    assert bridge_hearing_events(heading='Hearing', title='Bridge safety | House Committee on Road Resurfacing',
+                                 current='Bridge repair funding', stale='Road resurfacing', metadata_day='2023-09-14') == [116317]
+
+
+@pytest.mark.parametrize('second_date', [
+    '<dl><dt>Hearing Date:</dt><dd>July 19, 2023</dd></dl>',
+    '<time>July 19, 2023</time>',
+    '<span class="published date">July 19, 2023</span>',
+    '<h2>Hearing on July 19, 2023</h2>',
+    '<p>Hearing Date: July 19, 2023</p>',
+    '<section><strong>Hearing Date:</strong> July 19, 2023</section>',
+])
+def test_date_sources_cannot_hide_a_second_visible_proceeding_day(second_date):
+    assert bridge_hearing_events(dates='<p>Hearing Date: September 14, 2023</p>' + second_date,
+                                 metadata_day='2023-09-14') == []
+
+
+def test_css_hidden_date_cannot_break_a_two_link_conflict():
+    assert bridge_hearing_events(dates='<div style="display:none"><p>Hearing Date: September 14, 2023</p></div>',
+                                 sibling='<section><a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=116317">Meeting</a></section>',
+                                 metadata_day='2023-09-14') == []
+
+
+@pytest.mark.parametrize('tag', ['section', 'div', 'p'])
+@pytest.mark.parametrize('root', ['article', 'main'])
+def test_unknown_sibling_event_vetoes_a_detail_page_match(tag, root):
+    sibling = f'<{tag}><a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=119999">Other meeting</a></{tag}>'
+    assert bridge_hearing_events(sibling=sibling, root=root) == []
+
+
+@pytest.mark.parametrize('tag,attributes', [('article', ''), ('li', ''),
                                             ('div', 'class="hearing-card"'), ('section', 'class="hearing"')])
 def test_listing_binds_each_video_to_its_own_event(tag, attributes):
     from viewer_publication.recording_pages import page_links, recording_page_events

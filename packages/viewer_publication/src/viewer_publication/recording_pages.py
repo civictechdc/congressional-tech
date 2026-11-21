@@ -13,9 +13,10 @@ from zoneinfo import ZoneInfo
 from lxml import html
 import pyarrow.parquet as pq
 
-from congress_api.parsers.committee_pages import event_identity, event_title
+from congress_api.parsers.committee_pages import event_identity, event_title, listing_url
 from congress_api.parsers.main_content import _is_cms_chrome
 from congress_api.parsers.senate_page import DATE, written_day
+from congress_api.parsers.text import words as substantive_words
 from congress_api.retention.body_keys import physical_body_object_key
 from congress_shared.custody import verify_local_file
 
@@ -61,29 +62,48 @@ def meeting_calendar(path):
     return by_day
 
 
-_TEMPLATE_DATES = ('//main//span[@class="date-bar"] | //article//span[@class="date-bar"] | '
-                   '//span[@class="date" and starts-with(normalize-space(.),"Markup Date:")]')
-_DATE_LABEL = re.compile(r'^(?:(?:hearing|meeting|event|markup) date|date|when)\s*:', re.I)
+_MARKUP_DATE = '//span[@class="date" and starts-with(normalize-space(.),"Markup Date:")]'
+_TEMPLATE_DATES = '//main//span[@class="date-bar"] | //article//span[@class="date-bar"] | ' + _MARKUP_DATE
+_DATE_TERM = re.compile(r'(?:(?:hearing|meeting|event|markup) date|date|when)\s*:?', re.I)
+_DATE_IN_TEXT = re.compile(r'(?:\b(?:hearing|meeting|event|markup)\s+date|^(?:date|when))\s*:\s*'
+                           r'(?:(?:mon|tues|wednes|thurs|fri|satur|sun)day,?\s+)?', re.I | re.M)
 
 
-def _displayed_proceeding_day(tree):
-    """Only a date shown in a proceeding field can disprove an outbound link."""
-    fields = set(tree.xpath(_TEMPLATE_DATES + ' | //body//*[@itemprop="startDate" or '
-                            'contains(@class,"hearing__date") or contains(@class,"field-evo-meeting-date") or '
-                            'contains(@class,"event-item__date") or contains(@class,"event-item__meta") or '
-                            'contains(@id,"_EventDate")]'))
-    days = set()
-    for node in fields.union(tree.body.xpath('.//p | .//div | .//td | .//span | .//time')):
-        visible = node.xpath('.//text()[not(ancestor::*[@hidden or @aria-hidden="true" or self::script or self::style])]')
-        value = ' '.join(' '.join(visible).split())
-        if node in fields or (len(value) < 180 and _DATE_LABEL.match(value)):
-            days.update(day.isoformat() for match in DATE.finditer(value) if (day := written_day(match)))
-    return next(iter(days)) if len(days) == 1 else None
+def _text(node):
+    return ' '.join(' '.join(node.itertext()).split())
 
 
-def _calendar_event(tree, url, calendar):
-    if not calendar:
-        return set()
+def _displayed_dates(body):
+    """Read every visible date source before deciding whether the proceeding has one day."""
+    fields = set(body.xpath('.//time | .//h1 | .//h2 | .//h3 | .//h4 | .//h5 | .//h6 | '
+                            './/*[@itemprop="startDate" or contains(concat(" ",normalize-space(@class)," ")," date ") or '
+                            'contains(concat(" ",normalize-space(@class)," ")," date-bar ") or contains(@class,"hearing__date") or '
+                            'contains(@class,"field-evo-meeting-date") or contains(@class,"event-item__date") or '
+                            'contains(@class,"event-item__meta") or contains(@id,"_EventDate")]'))
+    for definition in body.iter('dd'):
+        term = next(definition.itersiblings('dt', preceding=True), None)
+        if term is not None and _DATE_TERM.fullmatch(_text(term)):
+            fields.add(definition)
+    matches = [match for node in fields for match in DATE.finditer(_text(node))]
+    # Labels may span inline elements or sit directly in an otherwise unmarked container.
+    lines = '\n'.join(' '.join(part.split()) for part in body.itertext() if part.strip())
+    text = lines.replace('\n', ' ')
+    matches.extend(match for label in _DATE_IN_TEXT.finditer(lines) if (match := DATE.match(text, label.end())))
+    days = {day.isoformat() for match in matches if (day := written_day(match))}
+    has_date_field = bool(days)
+    for paragraph in body.iter('p'):
+        value = _text(paragraph)
+        for match in DATE.finditer(value):
+            if day := written_day(match):
+                days.add(day.isoformat())
+                # A paragraph can display just the date. Dates mentioned in prose can
+                # expose a conflict but cannot establish the hearing date by themselves.
+                if match[0] == value:
+                    has_date_field = True
+    return days, has_date_field
+
+
+def _calendar_event(tree, url, calendar, displayed_date):
     from viewer_publication.corpus_quality.provenance_validator import CONGRESSIONAL_HOST_TO_SYSTEM_CODE
     code = CONGRESSIONAL_HOST_TO_SYSTEM_CODE.get((urlsplit(url).hostname or '').removeprefix('www.'))
     if not code:
@@ -91,19 +111,13 @@ def _calendar_event(tree, url, calendar):
     identity = event_identity(html.tostring(tree), url)
     require_title = False
     if not identity:
-        # Some committee templates label the markup date or place it in the event's date bar.
-        dates = tree.xpath(_TEMPLATE_DATES)
-        if len(dates) != 1:
+        # Legacy detail templates also use four-digit post IDs on apparent archive routes.
+        if not displayed_date or (listing_url(url) and not tree.xpath(_TEMPLATE_DATES)):
             return set()
-        match = re.search(r'\b[A-Za-z]+ \d{1,2}, \d{4}\b', dates[0].text_content())
-        if not match:
-            return set()
-        try:
-            day = datetime.strptime(match[0], '%B %d, %Y').date()
-        except ValueError:
-            return set()
-        require_title = dates[0].get('class') == 'date-bar'
-        identity = dict(title=event_title(tree) or tree.xpath('string(//title)'), date=str(day))
+        require_title = not tree.xpath(_MARKUP_DATE)
+        identity = dict(title=event_title(tree) or tree.xpath('string(//title)'), date=displayed_date)
+    if displayed_date and identity['date'] != displayed_date:
+        return set()
     events = calendar.get((code[:4], identity['date']), {})
     if len(events) == 1 and not require_title:
         return set(events)
@@ -121,8 +135,7 @@ def _calendar_event(tree, url, calendar):
     # identifies the proceeding on that committee's day even after a time change.
     if len(titled) == 1 or require_title:
         return titled if len(titled) == 1 else set()
-    fields = tree.xpath('//*[contains(@class,"hearing__time") or starts-with(@class,"time ")] | '
-                        '//span[@class="date" and starts-with(normalize-space(.),"Markup Date:")]')
+    fields = tree.xpath('//*[contains(@class,"hearing__time") or starts-with(@class,"time ")] | ' + _MARKUP_DATE)
     times = {datetime.strptime(t, '%I:%M %p').time() for node in fields
              for t in re.findall(r'\b(?:0?[1-9]|1[0-2]):[0-5]\d [AP]M\b', node.text_content().upper())}
     timed = {ev for ev, row in events.items() if any(s['start'] and
@@ -151,12 +164,21 @@ def publisher_video_keys(body, event):
 
 
 def _document(body):
-    return html.document_fromstring(body, parser=html.HTMLParser(no_network=True), ensure_head_body=True)
+    tree = html.document_fromstring(body, parser=html.HTMLParser(no_network=True), ensure_head_body=True)
+    # Both linked and unlinked evidence must come from visible elements.
+    for node in tree.xpath('//style | //noscript | //*[@hidden or @aria-hidden or @style]'):
+        if (node.tag in ('style', 'noscript') or 'hidden' in node.attrib or node.get('aria-hidden', '').strip().lower() == 'true'
+                or _HIDDEN_STYLE.search(node.get('style', ''))):
+            if node is tree or node.tag in ('head', 'body'):
+                node.clear()
+            else:
+                node.drop_tree()
+    return tree
 
 
 _URL_ATTRIBUTES = './/@href | .//@src | .//object/@data'
-_CHROME_ROLES = {'navigation', 'complementary', 'banner', 'contentinfo', 'menu', 'menubar', 'menuitem',
-                 'toolbar', 'tablist', 'dialog', 'alertdialog', 'search', 'status'}
+_DOCUMENT_ROLES = {'main', 'article', 'region', 'document', 'presentation', 'none'}
+_HIDDEN_STYLE = re.compile(r'(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*hidden)\b', re.I)
 _CHROME_TOKEN = re.compile(r'(?:^|[\s_-])(?:sidebar|nav|related|recent|more-hearings|menu|breadcrumb|pager|pagination)(?:$|[\s_-])', re.I)
 _ITEM_TOKEN = re.compile(r'(?:^|[\s_-])(?:card|item)(?:$|\s)|(?:^|\s)(?:hearing|event|meeting)(?:$|\s)', re.I)
 
@@ -184,12 +206,20 @@ def _event_ids(targets):
     return events
 
 
+def _is_landmark(node, *names):
+    return node.tag in names or any(role in names for role in node.get('role', '').lower().split())
+
+
+def _landmarks(root, name):
+    return [node for node in root.xpath(f'.//{name} | .//*[@role]') if _is_landmark(node, name)]
+
+
 def _item_scopes(root, url):
     """Articles own their links. Repeated list items and cards can also hold separate proceedings."""
-    scopes = set(root.xpath('.//article | .//*[@role="article"]'))
+    scopes = set(_landmarks(root, 'article'))
     siblings = defaultdict(list)
-    for node in root.xpath('.//li | .//*[@role="listitem"] | .//div[@class] | .//section[@class]'):
-        if node.tag == 'li' or node.get('role') == 'listitem' or _ITEM_TOKEN.search(node.get('class', '')):
+    for node in root.xpath('.//li | .//div[@class] | .//section[@class]'):
+        if node.tag == 'li' or _ITEM_TOKEN.search(node.get('class', '')):
             siblings[node.getparent()].append(node)
     for items in siblings.values():
         if len(items) > 1 and any(video_keys(_targets(item, url)) for item in items):
@@ -198,35 +228,92 @@ def _item_scopes(root, url):
 
 
 def _proceeding_body(tree):
-    body = tree.body
-    for node in body.xpath('.//aside | .//nav | .//footer | .//header | .//template | .//menu | .//dialog | .//*[@role or @class or @id]'):
+    for node in tree.xpath('//aside | //nav | //footer | //header | //template | //menu | //dialog | //*[@role or @class or @id]'):
         if (_is_cms_chrome(node) or node.tag in ('aside', 'footer', 'template', 'menu', 'dialog')
-                or (node.tag == 'header' and not node.xpath('ancestor::article'))
-                or _CHROME_ROLES.intersection(node.get('role', '').lower().split())
+                or (node.tag == 'header' and not any(_is_landmark(p, 'article', 'main') for p in node.iterancestors()))
+                or not _DOCUMENT_ROLES.issuperset(node.get('role', '').lower().split())
                 or _CHROME_TOKEN.search(f"{node.get('class', '')} {node.get('id', '')}")):
-            node.drop_tree()
-    # Keep head metadata for the committee calendar. Some legacy templates mark only the article.
-    mains = body.xpath('.//main | .//*[@role="main"]')
+            if node is tree or node.tag == 'body':
+                return None
+            if node.tag == 'head':
+                node.clear()
+            else:
+                node.drop_tree()
+    # Preserve structured event metadata for event_identity, outside visible headings and dates.
+    for script in tree.xpath('//body//script'):
+        script.drop_tree()
+        if script.get('type') == 'application/ld+json' or script.get('id') == '__NEXT_DATA__':
+            script.tail = None
+            tree.head.append(script)
+    return tree.body
+
+
+def _recording_scope(body):
+    mains = _landmarks(body, 'main')
     outer = [node for node in mains if not any(parent in mains for parent in node.iterancestors())]
     if len(outer) > 1:
         return None
-    if not outer:
-        outer = body.xpath('.//article | .//*[@role="article"]')
-    if len(outer) == 1:
-        # A legacy article can have an explicit event link in a sibling section.
-        roots = outer if mains else outer[0].xpath('. | ../section')
-        body.clear()
-        body.extend(roots)
-    return body
+    if outer:
+        return outer[0]
+    articles = _landmarks(body, 'article')
+    return articles[0] if len(articles) == 1 else body
+
+
+# The recording matcher also excludes these generic words from the parser's title tokens.
+_RECORDING_STOPWORDS = set('united states congress washington open closed public session http https www gov html htm '
+                           'aspx events event calendar eventsingle eventid democrats republicans markups business '
+                           'entitled legislative office'.split())
+_COMMITTEE_SUFFIX = re.compile(r'\s*\|\s*[^|]*\bcommittee\b[^|]*$|'
+                               r'\s*[-–—]\s*(?:(?:hearings?|markups?|events?|press releases?)\s*[-–—]\s*)?'
+                               r'(?:u\.?s\.?\s+)?(?:the\s+)?(?:house\s+)?committee\b.*$', re.I)
+
+
+def _detail_events(tree, body, url, calendar):
+    all_explicit = _event_ids(_targets(body, url))
+    if not calendar:
+        return all_explicit
+    dates, has_date_field = _displayed_dates(body)
+    if len(dates) > 1 or (dates and not has_date_field):
+        return set()
+    day = next(iter(dates), None)
+    proceeding = _calendar_event(tree, url, calendar, day)
+    events = proceeding | all_explicit
+    if not day or all_explicit <= proceeding:
+        return events
+
+    on_day = {}
+    other_titles = defaultdict(set)
+    for (_, calendar_day), rows in calendar.items():
+        if calendar_day == day:
+            on_day.update((ev, rows[ev].get('title')) for ev in events.intersection(rows))
+        else:
+            for ev in all_explicit.intersection(rows):
+                other_titles[ev].add(rows[ev].get('title'))
+    stale = other_titles.keys() - on_day.keys()
+    if not stale:
+        return events
+    if len(proceeding) != 1:
+        return set()
+    candidate, = proceeding
+    title = _COMMITTEE_SUFFIX.sub('', tree.xpath('string(/html/head/title)'))
+    title_words = substantive_words(f'{event_title(tree)} {title}') - _RECORDING_STOPWORDS
+    overlap = len(title_words & substantive_words(on_day.get(candidate)))
+    if not overlap or any(not title or overlap <= len(title_words & substantive_words(title))
+                          for ev in stale for title in other_titles[ev]):
+        return events  # The candidate and the explicit evidence still conflict.
+    return events - stale
 
 
 def _proceeding_links(tree, url, calendar):
     body = _proceeding_body(tree)
     if body is None:
         return {}
-    items = _item_scopes(body, url)
-    targets = {scope: set() for scope in (body, *items)}
-    for ref in body.xpath(_URL_ATTRIBUTES):
+    root = _recording_scope(body)
+    if root is None:
+        return {}
+    items = _item_scopes(root, url)
+    targets = {scope: set() for scope in (root, *items)}
+    for ref in root.xpath(_URL_ATTRIBUTES):
         owner = ref.getparent()
         while owner not in targets:
             owner = owner.getparent()
@@ -237,22 +324,11 @@ def _proceeding_links(tree, url, calendar):
     # needs an explicit event link in the same item as the recording, even for its first item.
     host = (urlsplit(url).hostname or '').removeprefix('www.')
     official = host in ('csce.gov', 'house.gov', 'senate.gov') or host.endswith(('.house.gov', '.senate.gov'))
-    detail = len(videos) == 1 and (not items or (len(items) == 1 and body not in videos))
-    detail_events = set()
-    if official and detail:
-        explicit = _event_ids(set().union(*targets.values()))
-        if explicit and calendar and (day := _displayed_proceeding_day(tree)):
-            # A copied repository link may name an earlier hearing. Keep unknown IDs and
-            # any ID listed on this day, even when another calendar row has a different date.
-            linked_days = defaultdict(set)
-            for (_, meeting_day), events in calendar.items():
-                for event in explicit.intersection(events):
-                    linked_days[event].add(meeting_day)
-            explicit.difference_update(event for event, days in linked_days.items() if day not in days)
-        detail_events = _calendar_event(tree, url, calendar) | explicit
+    detail = len(videos) == 1 and (not items or (len(items) == 1 and root not in videos))
+    detail_events = _detail_events(tree, body, url, calendar) if official and detail else set()
     found = defaultdict(set)
     for scope, keys in videos.items():
-        if scope is body and items:
+        if scope is root and items:
             continue  # Links between items do not belong to any proceeding.
         events = detail_events if detail else (_event_ids(targets[scope]) if official else set())
         for key in keys:
