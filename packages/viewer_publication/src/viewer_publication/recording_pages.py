@@ -15,6 +15,7 @@ import pyarrow.parquet as pq
 
 from congress_api.parsers.committee_pages import event_identity, event_title
 from congress_api.parsers.main_content import _is_cms_chrome
+from congress_api.parsers.senate_page import DATE, written_day
 from congress_api.retention.body_keys import physical_body_object_key
 from congress_shared.custody import verify_local_file
 
@@ -53,9 +54,31 @@ def meeting_calendar(path):
     cols = ['event_id', 'committees', 'meeting_date', 'title', 'sittings']
     if path and path.is_file() and set(cols) <= set(pq.read_schema(path).names):
         for row in pq.read_table(path, columns=cols).to_pylist():
+            if row['meeting_date'] is None:
+                continue
             for committee in row['committees'] or ():
                 by_day[committee['system_code'][:4], str(row['meeting_date'])][row['event_id']] = row
     return by_day
+
+
+_TEMPLATE_DATES = ('//main//span[@class="date-bar"] | //article//span[@class="date-bar"] | '
+                   '//span[@class="date" and starts-with(normalize-space(.),"Markup Date:")]')
+_DATE_LABEL = re.compile(r'^(?:(?:hearing|meeting|event|markup) date|date|when)\s*:', re.I)
+
+
+def _displayed_proceeding_day(tree):
+    """Only a date shown in a proceeding field can disprove an outbound link."""
+    fields = set(tree.xpath(_TEMPLATE_DATES + ' | //body//*[@itemprop="startDate" or '
+                            'contains(@class,"hearing__date") or contains(@class,"field-evo-meeting-date") or '
+                            'contains(@class,"event-item__date") or contains(@class,"event-item__meta") or '
+                            'contains(@id,"_EventDate")]'))
+    days = set()
+    for node in fields.union(tree.body.xpath('.//p | .//div | .//td | .//span | .//time')):
+        visible = node.xpath('.//text()[not(ancestor::*[@hidden or @aria-hidden="true" or self::script or self::style])]')
+        value = ' '.join(' '.join(visible).split())
+        if node in fields or (len(value) < 180 and _DATE_LABEL.match(value)):
+            days.update(day.isoformat() for match in DATE.finditer(value) if (day := written_day(match)))
+    return next(iter(days)) if len(days) == 1 else None
 
 
 def _calendar_event(tree, url, calendar):
@@ -69,8 +92,7 @@ def _calendar_event(tree, url, calendar):
     require_title = False
     if not identity:
         # Some committee templates label the markup date or place it in the event's date bar.
-        dates = tree.xpath('//main//span[@class="date-bar"] | //article//span[@class="date-bar"] | '
-                           '//span[@class="date" and starts-with(normalize-space(.),"Markup Date:")]')
+        dates = tree.xpath(_TEMPLATE_DATES)
         if len(dates) != 1:
             return set()
         match = re.search(r'\b[A-Za-z]+ \d{1,2}, \d{4}\b', dates[0].text_content())
@@ -218,7 +240,16 @@ def _proceeding_links(tree, url, calendar):
     detail = len(videos) == 1 and (not items or (len(items) == 1 and body not in videos))
     detail_events = set()
     if official and detail:
-        detail_events = _calendar_event(tree, url, calendar) | _event_ids(set().union(*targets.values()))
+        explicit = _event_ids(set().union(*targets.values()))
+        if explicit and calendar and (day := _displayed_proceeding_day(tree)):
+            # A copied repository link may name an earlier hearing. Keep unknown IDs and
+            # any ID listed on this day, even when another calendar row has a different date.
+            linked_days = defaultdict(set)
+            for (_, meeting_day), events in calendar.items():
+                for event in explicit.intersection(events):
+                    linked_days[event].add(meeting_day)
+            explicit.difference_update(event for event, days in linked_days.items() if day not in days)
+        detail_events = _calendar_event(tree, url, calendar) | explicit
     found = defaultdict(set)
     for scope, keys in videos.items():
         if scope is body and items:

@@ -855,6 +855,51 @@ def test_detail_page_requires_calendar_and_explicit_event_links_to_agree(root, s
                                  {video}, set()) == {video: expected}
 
 
+@pytest.mark.parametrize('date_field,other_day', [
+    ('<p>Hearing Date: September 14, 2023</p>', '2023-09-14'),
+    ('<p>Hearing Date: September 14, 2023</p>', None),
+    ('', '2023-07-19'),
+    ('<p hidden>Hearing Date: September 14, 2023</p>', '2023-07-19'),
+    ('<p>Hearing Date: September 14, 2023</p><p>Hearing Date: October 2, 2023</p>', '2023-07-19'),
+])
+def test_detail_page_keeps_conflicting_links_without_a_proven_date_mismatch(date_field, other_day):
+    from viewer_publication.recording_pages import recording_page_events
+
+    # The metadata still identifies 200 when the displayed date is missing or ambiguous.
+    video = 'youtube:b_jnl2BXNfs'
+    markup = f'''<html><head><script type="application/ld+json">
+        {{"@type":"Event","name":"Bridge hearing","startDate":"2023-09-14"}}</script></head><body>
+        <section><a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=200">Meeting</a></section>
+        <article><h1>Bridge hearing</h1>{date_field}
+        <a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=300">Repository</a>
+        <iframe src="https://youtube.com/embed/b_jnl2BXNfs"></iframe></article></body></html>'''.encode()
+    calendar = {('hspw', '2023-09-14'): {200: dict(title='Bridge hearing')}}
+    if other_day:
+        calendar.setdefault(('hspw', other_day), {})[300] = dict(title='Road hearing')
+    assert recording_page_events(markup, 'https://transportation.house.gov/hearings/bridge', calendar,
+                                 {video}, set()) == {video: []}
+
+
+def test_wrong_date_repository_link_cannot_claim_a_house_hearing_video():
+    from viewer_publication.recording_pages import recording_page_events
+
+    video = 'youtube:b_jnl2BXNfs'
+    markup = b'''<main><h1>VA Electronic Health Record Modernization: Get Well Soon?</h1>
+        <p class="hearing__date"><date>09.14.23</date></p>
+        <a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=116202">Committee Repository here</a>
+        <iframe src="https://www.youtube.com/embed/b_jnl2BXNfs"></iframe></main>'''
+    url = 'https://veterans.house.gov/hearings/electronic-health-record-modernization'
+    calendar = {('hsvr', '2023-07-19'): {116202: dict(title='Legislative hearing')}}
+    assert recording_page_events(markup, url, calendar, {video}, set()) == {video: []}
+
+    # Two hearings on the displayed day require a title match to identify the recording.
+    calendar['hsvr', '2023-09-14'] = {
+        116317: dict(title='VA Electronic Health Record Modernization: Get Well Soon?'),
+        300: dict(title='Veteran housing assistance'),
+    }
+    assert recording_page_events(markup, url, calendar, {video}, set()) == {video: [116317]}
+
+
 @pytest.mark.parametrize('tag,attributes', [('article', ''), ('li', ''), ('div', 'role="listitem"'),
                                             ('div', 'class="hearing-card"'), ('section', 'class="hearing"')])
 def test_listing_binds_each_video_to_its_own_event(tag, attributes):
