@@ -29,12 +29,21 @@ def apply_reviewed_rows(*, selection_path, accepted, engine, work, tables, catal
     where = (f"body_sha=decode('{choice['body_sha256']}','hex') AND parser='pdf_text' "
              f"AND parser_version IN ('{prior}','{revised}')")
 
+    def reviewed_file(name):
+        path = directory / (name + '.parquet')
+        if file_pin(path) != review['files'][name] or pq.read_metadata(path).num_rows != 1:
+            raise ValueError(f'Reviewed {name} file differs from the qualified single row')
+        return path
+
+    text_file = reviewed_file('body_text')
+    reviewed_pages = pq.read_table(text_file, columns=['page_offsets', 'ocr_pages']).to_pylist()[0]
+
     def stored_versions(phase):
         pins = resolve_tables(engine=engine, work=work / phase / 'pins', catalog_root=catalog_root, tables=tables)
         rows = run_job(work / phase / 'read', engine, inputs=[table_input(name, pin) for name, pin in pins.items()],
             steps=[], outputs=[], queries=[
                 dict(name='body_text', sql=f"SELECT parser_version,encode(text_sha256,'hex') AS declared,"
-                     f"encode(sha256(text),'hex') AS actual FROM body_text WHERE {where}"),
+                     f"encode(sha256(text),'hex') AS actual,page_offsets,ocr_pages FROM body_text WHERE {where}"),
                 dict(name='readings', sql=f"SELECT parser_version,status,text_bytes FROM readings WHERE {where}")])
         versions = {}
         for name, records in rows.items():
@@ -44,6 +53,10 @@ def apply_reviewed_rows(*, selection_path, accepted, engine, work, tables, catal
             for row in records:
                 digest, size = expected[row['parser_version']]
                 if name == 'body_text':
+                    if row['parser_version'] == revised and any(
+                        row[key] != value for key, value in reviewed_pages.items()
+                    ):
+                        raise ValueError('Retained PDF page metadata differs from the reviewed PDF reading')
                     valid = row['declared'] == row['actual'] == digest
                 else:
                     valid = row['status'] == 'completed' and row['text_bytes'] == size
@@ -56,10 +69,7 @@ def apply_reviewed_rows(*, selection_path, accepted, engine, work, tables, catal
     if not missing:
         return
     staged = {'versions': {'pdf_text': revised}}
-    for name in ('body_text', 'readings'):
-        path = directory / (name + '.parquet')
-        if file_pin(path) != review['files'][name] or pq.read_metadata(path).num_rows != 1:
-            raise ValueError(f'Reviewed {name} file differs from the qualified single row')
+    for name, path in (('body_text', text_file), ('readings', reviewed_file('readings'))):
         row = pq.read_table(path).to_pylist()[0]
         if (row['body_sha'].hex(), row['parser'], row['parser_version']) != (choice['body_sha256'], 'pdf_text', revised):
             raise ValueError(f'Reviewed {name} key differs from the selected PDF')
