@@ -140,6 +140,35 @@ def test_a_kept_candidate_that_is_not_this_runs_is_deleted_and_rebuilt_never_pub
     assert (rebuilt['profile']['profile']['file_hashes']!=built['profile']['profile']['file_hashes'])==(change=='definitions')
 
 
+@pytest.mark.parametrize('damage', ['missing pin', 'duplicate pin', 'size', 'digest'])
+def test_fresh_kept_candidate_requires_one_valid_recording_export(gated, monkeypatch, damage):
+    from viewer_publication import archive_controller
+    from viewer_publication.recording_pages import EXPORT
+    build = archive_controller.build_prepared_release
+
+    def change_output(prepared, **kwargs):
+        manifest = build(prepared, **kwargs)
+        result = Path(prepared['scratch']) / 'result.json'
+        value = json.loads(result.read_bytes())
+        pin, = [x for x in value['outputs'] if x['name'] == EXPORT]
+        if damage == 'missing pin':
+            value['outputs'].remove(pin)
+        elif damage == 'duplicate pin':
+            value['outputs'].append(pin)
+        elif damage == 'digest':
+            pin['sha256'] = '0' * 64
+        else:
+            pin['size'] += 1
+        result.write_text(json.dumps(value))
+        return manifest
+
+    monkeypatch.setattr(archive_controller, 'build_prepared_release', change_output)
+    old = gated['store'].objects[POINTER]
+    with pytest.raises(ValueError, match=EXPORT):
+        publish(gated)
+    assert gated['store'].objects[POINTER] == old
+
+
 def test_keep_candidate_is_an_execute_option_apart_from_the_mac_nightly(tmp_path,capsys):
     from viewer_publication.archive_publish_job import main
     for args in (['--plan','--keep-candidate'],['--execute','--keep-candidate','--nightly-work',str(tmp_path)]):

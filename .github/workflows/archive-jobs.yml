@@ -44,6 +44,7 @@ jobs:
     timeout-minutes: 180
     environment: archive-publish
     steps:
+      # Cause-record changes qualify through validate-explorer's binding check.
       # Production runs the newest commit of main that passed validation, never an untested tip
       # (run 44087092120's first attempt ran a commit whose validation had failed). A capture and
       # the publish after it both take this commit, so a producing commit is an ancestor of the
@@ -52,15 +53,33 @@ jobs:
         id: validated
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
+        run: &select_validated_main |
           api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
           get() { curl -fsS --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$1"; }
           sha=$(get "$api/actions/workflows/validate-explorer.yml/runs?branch=main&event=push&status=success&per_page=1" | jq -er '.workflow_runs[0].head_sha')
-          # A push that touches only tickets, docs or Markdown runs no validation. When nothing else
-          # has landed since the validated commit, main's tip is the same code: take it, so a
-          # producer record written at that tip is still an ancestor of this checkout (gate 5).
-          tip=$(get "$api/compare/$sha...main" | jq -er 'if (.files | length) < 300 and all(.files[]; .filename | test("^\\.tickets/|\\.md$") or (test("^docs/") and (test("^docs/experiments/") | not))) then (.commits[-1].sha // .base_commit.sha) else empty end' || true)
-          sha=${tip:-$sha}
+          # Only ticket Markdown may advance without running validation. GitHub truncates
+          # comparisons at 300 files. Reject incomplete lists, rewrites and renames.
+          comparison=$(get "$api/compare/$sha...main" || true)
+          tip=$(jq -er '
+            if .status == "ahead" and .behind_by == 0 and (.files | length) > 0 and (.files | length) < 300
+              and all(.files[]; (.status == "added" or .status == "modified")
+                and all(.filename, (.previous_filename // .filename); test("^\\.tickets/[^/]+\\.md\\z")))
+            then .commits[-1].sha else empty end' <<< "$comparison" || true)
+          # The compare response omits modes. Read both ticket trees before treating a
+          # ticket as ordinary Markdown, including when its content did not change.
+          ticket_modes() {
+            local tree tickets
+            tree=$(jq -er "$1" <<< "$comparison") || return 1
+            tickets=$(get "$api/git/trees/$tree" | jq -er 'select(.truncated == false) | .tree[] |
+              select(.path == ".tickets" and .type == "tree") | .sha') || return 1
+            get "$api/git/trees/$tickets" | jq -e --argjson paths "$2" '
+              select(.truncated == false) | [.tree[] | select(.mode == "100644") | ".tickets/" + .path] as $regular |
+              ($paths - $regular) == []' >/dev/null
+          }
+          if [[ -n "$tip" ]] && ticket_modes '.base_commit.commit.tree.sha' "$(jq -c '[.files[] | select(.status == "modified") | .filename]' <<< "$comparison")" &&
+              ticket_modes '.commits[-1].commit.tree.sha' "$(jq -c '[.files[].filename]' <<< "$comparison")"; then
+            sha=$tip
+          fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "Validated commit: $sha" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/checkout@v7
@@ -204,17 +223,7 @@ jobs:
         id: validated
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
-          get() { curl -fsS --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$1"; }
-          sha=$(get "$api/actions/workflows/validate-explorer.yml/runs?branch=main&event=push&status=success&per_page=1" | jq -er '.workflow_runs[0].head_sha')
-          # A push that touches only tickets, docs or Markdown runs no validation. When nothing else
-          # has landed since the validated commit, main's tip is the same code: take it, so a
-          # producer record written at that tip is still an ancestor of this checkout (gate 5).
-          tip=$(get "$api/compare/$sha...main" | jq -er 'if (.files | length) < 300 and all(.files[]; .filename | test("^\\.tickets/|\\.md$") or (test("^docs/") and (test("^docs/experiments/") | not))) then (.commits[-1].sha // .base_commit.sha) else empty end' || true)
-          sha=${tip:-$sha}
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "Validated commit: $sha" >> "$GITHUB_STEP_SUMMARY"
+        run: *select_validated_main
       - uses: actions/checkout@v7
         with:
           ref: ${{ steps.validated.outputs.sha }}
@@ -265,17 +274,7 @@ jobs:
         id: validated
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          api="$GITHUB_API_URL/repos/$GITHUB_REPOSITORY"
-          get() { curl -fsS --retry 3 -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" "$1"; }
-          sha=$(get "$api/actions/workflows/validate-explorer.yml/runs?branch=main&event=push&status=success&per_page=1" | jq -er '.workflow_runs[0].head_sha')
-          # A push that touches only tickets, docs or Markdown runs no validation. When nothing else
-          # has landed since the validated commit, main's tip is the same code: take it, so a
-          # producer record written at that tip is still an ancestor of this checkout (gate 5).
-          tip=$(get "$api/compare/$sha...main" | jq -er 'if (.files | length) < 300 and all(.files[]; .filename | test("^\\.tickets/|\\.md$") or (test("^docs/") and (test("^docs/experiments/") | not))) then (.commits[-1].sha // .base_commit.sha) else empty end' || true)
-          sha=${tip:-$sha}
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-          echo "Validated commit: $sha" >> "$GITHUB_STEP_SUMMARY"
+        run: *select_validated_main
       - uses: actions/checkout@v7
         with:
           ref: ${{ steps.validated.outputs.sha }}

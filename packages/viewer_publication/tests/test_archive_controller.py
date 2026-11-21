@@ -326,7 +326,7 @@ finally:
     else:assert (result_path.read_bytes(),result_path.stat().st_mtime_ns)==before
 
 
-@pytest.mark.parametrize('damage',['checkpoint_json','checkpoint_fields','manifest','result','input'])
+@pytest.mark.parametrize('damage',['checkpoint_json','checkpoint_fields','manifest','result','input','recording_export'])
 def test_completed_checkpoint_refuses_corruption_and_changed_inputs(tmp_path,damage):
     from viewer_publication.archive_controller import run_publish
     from viewer_publication.archive_model_job import load_spec
@@ -345,8 +345,12 @@ def test_completed_checkpoint_refuses_corruption_and_changed_inputs(tmp_path,dam
         elif damage=='checkpoint_fields':checkpoint.write_text(json.dumps({'version':1}))
         else:
             target={'manifest':Path(spec['output'])/'manifest.json','result':Path(spec['scratch'])/'result.json',
-                    'input':Path(spec['captures']['path'])}[damage]
-            with target.open('ab') as out:out.write(b'changed')
+                    'input':Path(spec['captures']['path']),
+                    'recording_export':Path(spec['scratch'])/'evidence/recording_video_links.parquet'}[damage]
+            if damage=='recording_export':
+                data=target.read_bytes();target.write_bytes(bytes([data[0]^1])+data[1:])
+            else:
+                with target.open('ab') as out:out.write(b'changed')
         before=dict(store.objects)
         with pytest.raises(ValueError):
             run_publish(load_spec(path),work=tmp_path/'publish',canary=passed,resume=True,**kwargs)

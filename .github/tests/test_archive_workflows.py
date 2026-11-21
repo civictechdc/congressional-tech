@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 
+import pytest
 import yaml
 
 ROOT = Path(__file__).parents[2]
@@ -206,14 +207,16 @@ def test_deploy_and_validation_add_local_archive_contract_before_upload():
 def test_active_workflow_binding_requires_explicit_execute_before_preflight(tmp_path):
     cases=[(None,2),([],2),(['--plan'],2),('--execute',2),(['--execute'],0)]
     for index,(argv,expected) in enumerate(cases):
-        root=tmp_path/str(index);scripts=root/'.github/scripts';scripts.mkdir(parents=True)
-        script=scripts/'run-archive-job.py';script.write_bytes((ROOT/'.github/scripts/run-archive-job.py').read_bytes())
-        spec=root/'owner-job.json';spec.write_text(json.dumps({'version':1}))
-        binding=dict(module='viewer_publication.archive_publish',spec='owner-job.json',rss_gb=8)
-        if argv is not None:binding['argv']=argv
-        (root/'.github/archive-jobs.json').write_text(json.dumps({'publish':binding}))
+        root=tmp_path/str(index)
+        root.mkdir()
+        script=active_publisher_fixture(root)
+        bindings=root/'.github/archive-jobs.json'
+        value=json.loads(bindings.read_bytes())
+        if argv is None:del value['publish']['argv']
+        else:value['publish']['argv']=argv
+        bindings.write_text(json.dumps(value))
         result=subprocess.run([sys.executable,'-I',str(script),'publish','--check-binding'],
-            cwd=tmp_path,capture_output=True,text=True,timeout=10,env={'PATH':'/usr/bin:/bin'})
+            cwd=root,capture_output=True,text=True,timeout=10,env={'PATH':os.environ['PATH']})
         assert result.returncode==expected,result.stderr
         if expected:assert 'explicit --execute' in result.stderr
 
@@ -508,17 +511,49 @@ def test_production_jobs_run_the_newest_validated_commit_of_main_and_never_the_t
     assert result.returncode != 0
     # Main's tip stands in for the validated commit only when everything since it is a path validation
     # skips. The filter is validate-explorer's own push filter, restated once: keep the two together.
-    assert workflow('validate-explorer.yml')['on']['push']['paths'] == ['**', '!.tickets/**', '!docs/**', 'docs/experiments/**', '!**/*.md']
-    script = run[run.index("jq -er 'if "):].split("' || true")[0][len("jq -er '"):]
-    def tip(files, commits=({'sha': 'tip'},)):
-        payload = json.dumps(dict(files=[dict(filename=name) for name in files], commits=list(commits), base_commit=dict(sha='validated')))
-        return subprocess.run(['jq', '-er', script], input=payload, capture_output=True, text=True).stdout.strip()
-    assert tip(['.tickets/ct-pz32.md', 'docs/releases/README.md', 'AGENTS.md', 'packages/x/README.md']) == 'tip'
-    assert tip([], commits=()) == 'validated'
-    for covered in ('packages/viewer_publication/src/viewer_publication/release_gate.py', 'model/jobs/publish.json',
-                    'docs/experiments/a/test_a.py', '.github/workflows/archive-jobs.yml', 'docs.py', 'uv.lock'):
-        assert tip(['.tickets/ct-pz32.md', covered]) == '', covered
-    assert tip([f'.tickets/{n}.md' for n in range(300)]) == ''   # the API lists at most 300 files: unknown is not skipped
+    assert workflow('validate-explorer.yml')['on']['push']['paths'] == ['**', '!.tickets/*.md']
+    script = run.split("tip=$(jq -er '", 1)[1].split("' <<<", 1)[0]
+    def tip(files, status='ahead', behind=0):
+        files = [dict(filename=f, status='modified') if isinstance(f, str) else f for f in files]
+        data = dict(files=files, commits=[dict(sha='tip')], status=status, behind_by=behind)
+        return subprocess.run(['jq', '-er', script], input=json.dumps(data), capture_output=True, text=True).stdout.strip()
+    tickets = ['.tickets/ct-pz32.md']
+    assert tip(tickets) == 'tip'
+    for status, behind in [('diverged', 1), ('behind', 1), ('ahead', 1), ('identical', 0)]:
+        assert not tip(tickets, status, behind)
+    assert not tip([]) and not tip([f'.tickets/{n}.md' for n in range(300)])
+    for covered in ('src/tool.py', 'docs/notes.md', 'AGENTS.md', 'docs/data/file.json', '.tickets/a/b.md',
+                    'model/jobs/publish.json', 'model/jobs/release-causes/cause.json', '.tickets/file.md\n'):
+        assert not tip([*tickets, covered])
+        assert not tip([dict(filename=tickets[0], status='modified', previous_filename=covered)])
+    for status in ('renamed', 'removed'):
+        assert not tip([dict(filename=tickets[0], status=status, previous_filename=tickets[0])])
+
+
+@pytest.mark.parametrize('old_mode,new_mode,expected', [('100644', '100644', 'new'), ('100755', '100644', 'old'),
+                                                        ('100644', '120000', 'old'), ('100644', '100755', 'old')])
+def test_selector_checks_ticket_modes_on_both_commits(tmp_path, old_mode, new_mode, expected):
+    run = next(s['run'] for s in workflow('archive-jobs.yml')['jobs']['publish']['steps'] if s.get('id') == 'validated')
+    responses = {
+        'runs': {'workflow_runs': [{'head_sha': 'old'}]},
+        'old...main': dict(status='ahead', behind_by=0, files=[dict(status='modified', filename='.tickets/a.md')],
+                           base_commit=dict(commit=dict(tree=dict(sha='r1'))),
+                           commits=[dict(sha='new', commit=dict(tree=dict(sha='r2')))]),
+    }
+    for tree, mode in [('r1', old_mode), ('r2', new_mode)]:
+        responses[tree] = dict(truncated=False, tree=[dict(path='.tickets', type='tree', sha=tree + '-tickets')])
+        responses[tree + '-tickets'] = dict(truncated=False, tree=[dict(path='a.md', mode=mode)])
+    for name, response in responses.items():
+        (tmp_path / name).write_text(json.dumps(response))
+    curl = tmp_path / 'curl'
+    curl.write_text('#!/bin/bash\nurl=${!#}\np=${url%%\\?*}\ncat "${p##*/}"\n')
+    curl.chmod(0o755)
+    output = tmp_path / 'output'
+    env = dict(os.environ, PATH=str(tmp_path) + os.pathsep + os.environ['PATH'], GH_TOKEN='fixture',
+               GITHUB_REPOSITORY='f/r', GITHUB_API_URL='https://fixture', GITHUB_OUTPUT=str(output),
+               GITHUB_STEP_SUMMARY=str(tmp_path / 'summary'))
+    subprocess.run(['/bin/bash', '-eo', 'pipefail', '-c', run], cwd=tmp_path, env=env, check=True)
+    assert output.read_text().strip() == 'sha=' + expected
 
 
 def test_publish_checks_out_full_history_for_producer_commits():
@@ -533,3 +568,355 @@ def test_daily_publish_spec_explains_new_receipt_additions_unattended():
     binding = json.loads((ROOT / '.github/archive-jobs.json').read_text())['publish']
     spec = json.loads((ROOT / binding['spec']).read_text())
     assert 'daily' in spec and spec['automatic_causes'] is True
+
+
+CAUSE_CLASSIFIER = ROOT / '.github/scripts/cause-record-changes.py'
+
+
+def classified(base, head, repo=ROOT):
+    result = subprocess.run([sys.executable, '-I', str(CAUSE_CLASSIFIER), base, head], cwd=repo,
+                            check=True, capture_output=True, text=True)
+    return result.stdout.strip() == 'true'
+
+
+def verify_causes(repo, *revisions):
+    return subprocess.run([sys.executable, '-I', str(CAUSE_CLASSIFIER), '--verify', *revisions],
+                          cwd=repo, capture_output=True, text=True)
+
+
+def test_real_tier_one_cause_commit_uses_the_fast_path():
+    revisions = ('fff9e04d~1', 'fff9e04d')
+    assert classified(*revisions)
+    result = verify_causes(ROOT, *revisions)
+    assert result.returncode == 0, result.stderr
+
+
+def test_cause_diff_classifier_uses_committed_trees_and_only_the_release_pin(tmp_path):
+    def git(*args):
+        return subprocess.check_output(['git', *args], cwd=tmp_path, text=True).strip()
+
+    git('init', '-q')
+    git('config', 'user.name', 'Fixture')
+    git('config', 'user.email', 'fixture@example.org')
+    spec = tmp_path / 'model/jobs/publish.json'
+    record = spec.parent / 'release-causes/night.json'
+    record.parent.mkdir(parents=True)
+    record.write_text('{}')
+    original = dict(version=1, model_spec=dict(path='model.json', sha256='a' * 64), daily=dict(size=5))
+    spec.write_text(json.dumps(original))
+    git('add', '.')
+    git('commit', '-qm', 'base')
+    base = git('rev-parse', 'HEAD')
+    # Each diff starts at the same base. Write an actual tree without changing the checkout's branch.
+    def check(expected):
+        git('add', '-A')
+        tree = git('write-tree')
+        assert classified(base, tree, tmp_path) is expected
+
+    pin = dict(path='release-causes/night.json', sha256='b' * 64, size=3)
+    updated = dict(original, release_causes=pin)
+    spec.write_text(json.dumps(updated))
+    record.write_text('{"night": true}')
+    check(True)
+    note = tmp_path / '.tickets/note.md'
+    note.parent.mkdir()
+    note.write_text('Reviewed the night.')
+    check(True)
+    for protected in ('docs/notes.md', 'docs/youtube-coverage/research/scripts/tool.py', 'docs/data/map.json',
+                      'docs/experiments/study.md', 'docs/measurements/pin.json', '.tickets/a.json', '.tickets/sub/a.md'):
+        extra = tmp_path / protected
+        extra.parent.mkdir(exist_ok=True, parents=True)
+        extra.write_text('{}')
+        check(False)
+        extra.unlink()
+    note.chmod(0o755)
+    check(False)
+    note.chmod(0o644)
+    for path in ('model/jobs/release-causes/evidence/night.json',):
+        extra = tmp_path / path
+        extra.parent.mkdir(parents=True, exist_ok=True)
+        extra.write_text('{}')
+    check(True)
+    for other in (dict(model_spec=dict(path='other')), dict(daily=dict(size=6)), dict(version=True), dict(extra=None)):
+        spec.write_text(json.dumps(dict(updated, **other)))
+        check(False)
+    spec.write_text('{"version":2,"version":1}')
+    check(False)
+    spec.write_text(json.dumps(original))  # A record + ticket without a pin edit also qualifies.
+    check(True)
+    record.write_text('{"truncated"')
+    check(False)
+    record.unlink()
+    check(False)
+    record.write_text('{}')
+    sql = tmp_path / 'model/sql/list.sql'
+    sql.parent.mkdir()
+    sql.write_text('select 1')
+    check(False)
+    sql.unlink()
+    active = tmp_path / 'docs/experiments/test_input.py'
+    active.parent.mkdir(exist_ok=True)
+    active.write_text('assert False')
+    check(False)
+    active.unlink()
+    (tmp_path / 'model/jobs/release-causes/evidence/night.json').unlink()
+    check(False)  # Only docs and a ticket differ from base.
+    git('commit', '-qm', 'ticket')
+    base = git('rev-parse', 'HEAD')
+    record.write_text('{"updated": true}')
+    note.rename(note.with_name('renamed.md'))
+    check(False)
+    note.with_name('renamed.md').unlink()
+    check(False)
+    assert not classified('missing-base', 'HEAD', tmp_path)
+
+
+def test_checked_binding_refuses_wrong_cause_schema_record_hash_and_evidence_hash(tmp_path):
+    from hashlib import sha256
+    runner = active_publisher_fixture(tmp_path)
+    spec = tmp_path / 'publish.json'
+    cause = tmp_path / 'night.json'
+    evidence = tmp_path / 'evidence.json'
+    evidence.write_text('{}')
+    subprocess.run(['git', 'init', '-q'], cwd=tmp_path, check=True)
+    subprocess.run(['git', 'add', evidence.name], cwd=tmp_path, check=True)
+
+    def pin(path):
+        data = path.read_bytes()
+        return dict(path=path.name, sha256=sha256(data).hexdigest(), size=len(data))
+
+    run_output = dict(pin(evidence), path='output/offline-run.json')
+    group = dict(id='f|group|detail', count=2, disposition='explained', cause='Measured', evidence=[pin(evidence), run_output])
+    def bind(record):
+        cause.write_text(json.dumps(record))
+        spec.write_text(json.dumps(dict(json.loads(spec.read_bytes()), release_causes=pin(cause))))
+
+    def check():
+        return subprocess.run([sys.executable, '-I', str(runner), 'publish', '--check-binding'],
+                              cwd=tmp_path, capture_output=True, text=True, timeout=10).returncode
+
+    record = dict(version=1, base_release_id='a' * 64, candidate_release_id='b' * 64, groups=[group])
+    bind(record)
+    assert check() == 0
+    cause.write_text(json.dumps(dict(record, version=2)))  # Same size, different bytes.
+    assert check() != 0
+    for invalid in (dict(record, groups=[dict(group, count=True)]), dict(record, version=True),
+                    dict(record, groups=[dict(group, evidence=[dict(pin(evidence), sha256=None)])])):
+        bind(invalid)
+        assert check() != 0
+    bind(record)
+    evidence.write_text('[]')
+    assert check() != 0
+
+
+@pytest.fixture
+def cause_history(tmp_path):
+    """Commit fixture files so range checks read the named trees."""
+    def git(*args):
+        return subprocess.check_output(['git', *args], cwd=tmp_path, text=True).strip()
+    git('init', '-q')
+    git('config', 'user.name', 'Fixture')
+    git('config', 'user.email', 'fixture@example.org')
+
+    def commit():
+        git('add', '-A')
+        git('commit', '-qm', 'cause verification fixture')
+        return git('rev-parse', 'HEAD')
+    return commit
+
+
+def write_cause(path, *pins):
+    group = dict(id='table|group|detail', count=1, disposition='explained', cause='Measured', evidence=pins)
+    record = dict(version=1, base_release_id='a' * 64, candidate_release_id='b' * 64, groups=[group])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(record))
+
+
+@pytest.mark.parametrize('directory', ['docs/measurements', 'model/jobs/release-causes/evidence'])
+def test_historical_evidence_cannot_be_changed_repinned_or_deleted(tmp_path, cause_history, directory):
+    from congress_api.retention.provenance import file_pin
+    evidence = tmp_path / directory / 'original'
+    evidence.parent.mkdir(parents=True)
+    evidence.write_bytes(b'reviewed')
+    record = tmp_path / 'model/jobs/release-causes/night.json'
+    name = evidence.relative_to(tmp_path).as_posix()
+    if directory == 'docs/measurements':
+        name = '/Users/other/checkout/' + name
+    write_cause(record, dict(path=name, **file_pin(evidence)))
+    base = cause_history()
+    assert verify_causes(tmp_path).returncode == 0
+    evidence.write_bytes(b'modified')
+    tampered = cause_history()
+    for revisions in ((base, tampered), ()):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode != 0 and str(evidence.relative_to(tmp_path)) in result.stderr
+    write_cause(record, dict(path=name, **file_pin(evidence)))
+    repinned = cause_history()
+    result = verify_causes(tmp_path, base, repinned)
+    assert result.returncode != 0 and 'changed historical evidence' in result.stderr
+    evidence.unlink()
+    deleted = cause_history()
+    for revisions in ((base, deleted), ()):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode != 0 and evidence.name in result.stderr
+    record.unlink()
+    result = verify_causes(tmp_path, base, cause_history())
+    assert result.returncode != 0 and 'changed historical evidence' in result.stderr
+
+
+@pytest.mark.parametrize('directory', ['docs/measurements', 'model/jobs/release-causes/evidence'])
+def test_new_and_edited_records_require_portable_immutable_evidence(tmp_path, cause_history, directory):
+    from congress_api.retention.provenance import file_pin
+    evidence = tmp_path / directory / 'night.json'
+    evidence.parent.mkdir(parents=True)
+    evidence.write_bytes(b'reviewed')
+    base = cause_history()
+    record = tmp_path / 'model/jobs/release-causes/night.json'
+    relative = evidence.relative_to(tmp_path).as_posix()
+    pin = dict(path=relative, **file_pin(evidence))
+    write_cause(record, dict(pin, path='/home/runner/work/checkout/' + relative))
+    added = cause_history()
+    write_cause(record, pin)
+    portable = cause_history()
+    assert verify_causes(tmp_path, base, portable).returncode == 0
+    write_cause(record, dict(pin, path=str(evidence)))
+    modified = cause_history()
+    for revisions in ((base, added), (portable, modified)):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode != 0 and 'repository-relative path' in result.stderr
+
+
+@pytest.mark.parametrize('wrong', [dict(sha256='f' * 64), dict(size=0)])
+def test_foreign_historical_measurement_pin_checks_the_tracked_bytes(tmp_path, cause_history, wrong):
+    from congress_api.retention.provenance import file_pin
+    evidence = tmp_path / 'docs/measurements/night.json'
+    evidence.parent.mkdir(parents=True)
+    evidence.write_bytes(b'reviewed')
+    record = tmp_path / 'model/jobs/release-causes/night.json'
+    pin = dict(path='/home/runner/work/other/checkout/docs/measurements/night.json', **file_pin(evidence))
+    write_cause(record, dict(pin, **wrong))
+    base = cause_history()
+    (tmp_path / 'other').write_text('later commit')
+    head = cause_history()
+    for revisions in ((base, head), ()):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode != 0 and 'size or SHA-256: docs/measurements/night.json' in result.stderr
+
+
+def test_historical_source_pins_apply_when_a_record_or_its_publish_binding_changes(tmp_path, cause_history):
+    from congress_api.retention.provenance import file_pin
+    source = tmp_path / 'model/sql/query.sql'
+    source.parent.mkdir(parents=True)
+    source.write_text('select 1')
+    tracked = dict(path='model/sql/query.sql', **file_pin(source))
+    record = tmp_path / 'model/jobs/release-causes/night.json'
+    offline = [dict(tracked, path=p) for p in ('output/run.json', '.cache/run.json', '/home/runner/run.json')]
+    write_cause(record, tracked, *offline)
+    base = cause_history()
+    source.write_text('select 2')
+    changed_source = cause_history()
+    for revisions in ((base, changed_source), ()):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode == 0, result.stderr
+
+    def bind():
+        pin = dict(path='release-causes/' + record.name, **file_pin(record))
+        (record.parent.parent / 'publish.json').write_text(json.dumps(dict(release_causes=pin)))
+    record.write_text(record.read_text().replace('Measured', 'Reviewed'))
+    changed = cause_history()
+    bind()
+    bound = cause_history()
+    for revisions in ((changed_source, changed), (changed, bound), ()):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode != 0 and tracked['path'] in result.stderr
+    write_cause(record, dict(path=tracked['path'], **file_pin(source)), *offline)
+    bind()
+    fixed = cause_history()
+    for revisions in ((bound, fixed), ()):
+        result = verify_causes(tmp_path, *revisions)
+        assert result.returncode == 0, result.stderr
+
+
+def test_unbound_record_and_unavailable_evidence_require_valid_json_and_pin_fields(tmp_path, cause_history):
+    record = tmp_path / 'model/jobs/release-causes/unbound.json'
+    pin = dict(path='output/missing.json', size=0, sha256='a' * 64)
+    write_cause(record, pin)
+    base = cause_history()
+    for change in (dict(sha256='bad'), dict(size=-1), dict(size=True)):
+        write_cause(record, dict(pin, **change))
+        head = cause_history()
+        for revisions in ((base, head), ()):
+            result = verify_causes(tmp_path, *revisions)
+            assert result.returncode != 0 and 'Cause evidence' in result.stderr
+    for data, message in [('{"groups":[]}', 'requires version'), ('{"groups":[],"groups":[]}', 'duplicate JSON key')]:
+        record.write_text(data)
+        result = verify_causes(tmp_path, base, cause_history())
+        assert result.returncode != 0 and message in result.stderr
+
+
+def test_cause_only_ci_runs_doctor_and_binding_and_preserves_the_merge_gate():
+    jobs = workflow('validate-explorer.yml')['jobs']
+    changes = jobs['changes']
+    steps = changes['steps']
+    classifier = next(s for s in steps if s.get('id') == 'scope')
+    assert classifier['env']['BASE'] == '${{ github.event.pull_request.base.sha || github.event.before }}'
+    assert 'git merge-base --is-ancestor "$validated" "$BASE"' in classifier['run']
+    assert changes['outputs']['cause_record_only'] == '${{ steps.scope.outputs.cause_record_only }}'
+    check = next(s for s in steps if 'publish --check-binding' in s.get('run', ''))
+    setup = next(s for s in steps if s.get('uses') == './.github/actions/setup-python-project')
+    assert 'if' not in setup and 'if' not in check
+    assert steps.index(classifier) < steps.index(setup) < steps.index(check)
+    assert 'cause-record-changes.py --verify "${range[@]}"' in check['run']
+    assert 'continue-on-error' not in check and 'continue-on-error' not in changes
+    assert jobs['offline']['needs'] == 'changes' and jobs['validate']['needs'] == ['changes', 'offline']
+    for name in ('offline', 'validate'):
+        assert "needs.changes.outputs.cause_record_only != 'true'" in jobs[name]['if']
+    gate = workflow('merge-gate.yml')
+    assert gate['on'] == {'pull_request': ''} and 'if' not in gate['jobs']['merge-gate']
+
+
+def test_push_scope_inherits_only_code_that_already_passed(tmp_path):
+    import shutil
+    def git(*args):
+        return subprocess.check_output(['git', *args], cwd=tmp_path, text=True).strip()
+    git('init', '-q')
+    git('config', 'user.name', 'Fixture')
+    git('config', 'user.email', 'fixture@example.org')
+    helper = tmp_path / '.github/scripts' / CAUSE_CLASSIFIER.name
+    helper.parent.mkdir(parents=True)
+    shutil.copyfile(CAUSE_CLASSIFIER, helper)
+    def commit(message):
+        git('add', '.')
+        git('commit', '-qm', message)
+        return git('rev-parse', 'HEAD')
+    older = commit('validated code')
+    (tmp_path / 'code.py').write_text('print(1)')
+    before = commit('intervening code')
+    record = tmp_path / 'model/jobs/release-causes/night.json'
+    record.parent.mkdir(parents=True)
+    record.write_text('{}')
+    commit('cause only')
+    # Execute the Actions step with a local stand-in for the read-only run lookup.
+    gh = tmp_path / 'gh'
+    gh.write_text('#!/bin/sh\necho "$VALIDATED"\n')
+    gh.chmod(0o755)
+    job = workflow('validate-explorer.yml')['jobs']['changes']
+    shell = next(s['run'] for s in job['steps'] if s.get('id') == 'scope')
+    branch = git('branch', '--show-current')
+    # Same tree as HEAD, but a separate root that lost the validated commit's history.
+    rewritten = git('commit-tree', 'HEAD^{tree}', '-m', 'rewritten root')
+    for base, validated, event, fast, head in (
+            (before, before, 'push', 'true', branch), (before, older, 'push', 'false', branch),
+            (before, '', 'push', 'false', branch), (before, older, 'pull_request', 'true', branch),
+            (before, before, 'push', 'false', rewritten), ('0' * 40, before, 'push', 'false', branch),
+            ('f' * 40, before, 'push', 'false', branch)):
+        git('checkout', '-q', head)
+        output = tmp_path / 'job-output'
+        output.write_text('')
+        env = dict(os.environ, PATH=str(tmp_path) + os.pathsep + os.environ['PATH'], VALIDATED=validated,
+                   BASE=base, GITHUB_EVENT_NAME=event, GITHUB_REPOSITORY='fixture/repo', GITHUB_OUTPUT=str(output))
+        subprocess.run(['/bin/bash', '-eo', 'pipefail', '-c', shell], cwd=tmp_path, check=True, env=env)
+        values = dict(line.split('=', 1) for line in output.read_text().splitlines())
+        assert values['cause_record_only'] == fast
+        if base in ('0' * 40, 'f' * 40):
+            assert values['base'] == ''

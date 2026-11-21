@@ -218,7 +218,7 @@ def test_native_daily_inputs_feed_the_same_guarded_publisher(tmp_path,monkeypatc
 def test_interrupted_capture_recovers_missing_qualification_via_daily_publish_and_discovery(tmp_path):
     """Review 7b acceptance check: interrupt capture right after R2 receipt storage, discard runner
     scratch, and drive real produce_daily_inputs -> run_publish -> run_recovery_campaign -> 304 recheck -> release_gate."""
-    from datetime import timedelta
+    from datetime import date, timedelta
     from hashlib import md5, sha256
     from io import BytesIO
     import shutil
@@ -437,7 +437,7 @@ def test_interrupted_capture_recovers_missing_qualification_via_daily_publish_an
         assert [k for k in r2.objects if k.startswith('provenance/qualifications/')] == []
 
         # 2. Fresh Runner 2 drives real produce_daily_inputs + run_publish -> recovers qualification!
-        # Review 7d: also plant a budget-deferred receipt (2026-10-29, deferred by max_work_items=1) and
+        # Review 7d: also plant a later receipt (deferred by max_work_items=1) and
         # an out-of-family receipt in R2, proving daily reconciliation qualifies ONLY admitted receipts!
         from congress_api.models.raw_fetch import BodyFile, FetchAttempt, FetchResult
         from congress_api.retention.qualification_facts import load_qualification_facts
@@ -450,12 +450,14 @@ def test_interrupted_capture_recovers_missing_qualification_via_daily_publish_an
         out_fam_file = tmp_path / 'out-fam.pdf'
         out_fam_file.write_bytes(out_fam_pdf)
         plant_store = BodyStore(R2Adapter(r2, 'derived-fixture'))
-        w_def = ReceiptWriter(plant_store, identity=identity, run_id='def000000001', write_date='2026-11-20', archive_limits=None)
+        capture_day = date.fromisoformat(crashed_receipts[0].split('/')[-2])
+        deferred_day = (capture_day + timedelta(days=1)).isoformat()
+        w_def = ReceiptWriter(plant_store, identity=identity, run_id='def000000001', write_date=deferred_day, archive_limits=None)
         deferred_key, _ = w_def.write(
             FetchResult(final=FetchAttempt(
                 requested_url='https://docs.house.gov/meetings/FA/FA00/20261001/119777/deferred.pdf',
                 url='https://docs.house.gov/meetings/FA/FA00/20261001/119777/deferred.pdf',
-                retrieved_at='2026-11-20T06:00:00Z', transport='direct', http_status=200,
+                retrieved_at=f'{deferred_day}T06:00:00Z', transport='direct', http_status=200,
                 provider_status=None, headers={'content-type': 'application/pdf'}, redirects=(), complete=True,
                 body=BodyFile(path=deferred_file, sha256=sha256(deferred_pdf).hexdigest(), size=len(deferred_pdf),
                               media_type='application/pdf', sniffed_format=None, sniff_version=None, intact=None),
@@ -602,7 +604,6 @@ def test_interrupted_capture_recovers_missing_qualification_via_daily_publish_an
                     read_receipt=lambda k: r2.objects[k],
                     work=tmp_path / 'forged-auto',
                     candidate_receipt_keys=set(res_daily2['receipt_keys']),
-                    evidence_dir=tmp_path / 'runner5-model/evidence',
                     qualification_files=res_daily2['model']['qualification_files'],
                 ),
             )

@@ -19,6 +19,7 @@ from viewer_publication.archive_model_job import (
     load_spec as load_model_spec,validate_spec as validate_model_spec,_local,_pin,
     TABLES,OPTIONAL_TABLES,ENTITY_TABLES,EXPLORER_TABLES,PROVENANCE,provenance_record_kind,provenance_etag_md5,
 )
+from viewer_publication.recording_pages import EXPORT as RECORDING_LINKS_EXPORT, verified_export
 from viewer_publication.receipt_pins import receipt_list
 from viewer_publication.archive_comparison_acceptance import ComparisonAcceptance,require_comparison
 
@@ -245,7 +246,7 @@ def nightly_spec(spec,root):
 # Actions cache: what a resumed publish reads besides the run's own fresh inputs. Of the model's
 # evidence (1.4 GB on 2026-11-12) the gates read only these files (release_gate.automatic_causes);
 # an evidence file missing on a resume can only refuse a gate, never pass one.
-KEPT_EVIDENCE=('recording_video_links.parquet',)
+KEPT_EVIDENCE=(RECORDING_LINKS_EXPORT,)
 
 
 def kept_candidate_paths(work,model):
@@ -274,11 +275,11 @@ def _kept_candidate_damage(work,model,engine):
         output,scratch=Path(stage['output']),Path(stage['scratch'])
         held=[(output/'manifest.json',checkpoint['manifest_pin']),(scratch/'result.json',checkpoint['result_pin'])]
         if any(Path(pin['path'])!=path for path,pin in held):return 'the checkpoint pins files outside its stage'
-        outputs={item['name']:item for item in json.loads((scratch/'result.json').read_text())['outputs']}
+        result=json.loads((scratch/'result.json').read_text())
         held+=[(output/item['name'],item) for item in json.loads((output/'manifest.json').read_text())['files']]
-        held+=[(scratch/'evidence'/name,outputs[name]) for name in KEPT_EVIDENCE if name in outputs]
         for path,item in held:
             if file_pin(path)!={key:item[key] for key in ('sha256','size')}:return 'kept file differs from its build: '+path.name
+        verified_export(result,scratch)
     except (ValueError,OSError,KeyError,TypeError) as error:
         return str(error) or type(error).__name__
     return None
@@ -694,6 +695,7 @@ def main(argv=None):
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--spec',type=Path,required=True)
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--plan',action='store_true');mode.add_argument('--execute',action='store_true')
+    mode.add_argument('--check-binding', action='store_true', help='Plan with the cause evidence available in this Git checkout')
     parser.add_argument('--nightly-work',type=Path,help='Use the scheduled Mac candidate directory')
     parser.add_argument('--keep-candidate',action='store_true',
         help='Resume a candidate an earlier hosted run left in the work directories when it is this run\'s; otherwise delete it and build fresh')
@@ -706,6 +708,14 @@ def main(argv=None):
     try:
         spec=load_spec(args.spec)
         if spec.get('status')=='blocked':print(json.dumps(spec,sort_keys=True));return 2
+        if not args.execute and 'release_causes' in spec:
+            from viewer_publication.release_gate import load_causes
+            # The binding runner plans from the checkout root. Standalone plans and
+            # publication with the original run artifacts still check every file.
+            tracked = None
+            if args.check_binding and Path('.git').exists():
+                tracked = set(os.fsdecode(subprocess.check_output(['git', 'ls-files', '-z'])).split('\0'))
+            load_causes(spec['release_causes'], tracked=tracked)
         if args.nightly_work is not None:spec=nightly_spec(spec,args.nightly_work)
         if args.keep_candidate:
             if spec.get('resume'):raise ValueError('A declared resume and a kept candidate are separate paths')

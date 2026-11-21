@@ -20,7 +20,9 @@ from datetime import date, datetime, timedelta, timezone
 import gzip
 from io import BytesIO
 import json
-from pathlib import Path
+import os
+from pathlib import Path, PureWindowsPath
+import posixpath
 import re
 import sys
 from urllib.request import Request, urlopen
@@ -35,6 +37,7 @@ EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 TICKET = re.compile('(ct|cef|ss)-[a-z0-9]{4}')
 ROOT = Path(__file__).resolve().parents[4]  # the checkout running the gate
 TICKETS = ROOT / '.tickets'
+IMMUTABLE_EVIDENCE = ('model/jobs/release-causes/', 'docs/measurements/')
 # ct-4nax: what a cause record's correction may name, as {kind: (field prefix in link_rule, plural)}.
 CORRECTED = {'link_key': ('', 'link keys'), 'lookup_key': ('lookup_', 'lookup keys'), 'address': ('address_', 'addresses')}
 CORRECTION_FIELDS = {'kind', 'key', 'live_body', 'candidate_body', 'decision', 'tickets'}
@@ -286,14 +289,17 @@ def fetch_base(read_release, release_id, work, link_history=(), *, previous_rele
     return base, prior, retired, history
 
 
-def _tickets(entry, name, *, needed_by=None):
+def _tickets(entry, name, *, needed_by=None, tracked=None):
     """An entry's ticket ids; `needed_by` names the kind of entry that must have at least one."""
     tickets = entry.get('tickets', [])
     if not isinstance(tickets, list) or any(not isinstance(t, str) or TICKET.fullmatch(t) is None for t in tickets):
         raise ValueError(f'Cause entry tickets must be ticket ids: {name}')
     if needed_by and not tickets:
         raise ValueError(f'{needed_by} needs a ticket: {name}')
-    missing = [t for t in tickets if not (TICKETS / f'{t}.md').is_file()]
+    if tracked is None:
+        missing = [t for t in tickets if not (TICKETS / f'{t}.md').is_file()]
+    else:
+        missing = [t for t in tickets if f'.tickets/{t}.md' not in tracked]
     if missing:
         raise ValueError(f'Tickets have no file in {TICKETS}: {", ".join(missing)} ({name})')
     return tickets
@@ -304,7 +310,7 @@ def _wanted_bodies(entry):
     return [value] if isinstance(value, str) else value
 
 
-def _corrections(record):
+def _corrections(record, tracked):
     """Validate the record's `corrections` (ct-4nax): each names one link-rule finding exactly.
 
     An entry is {kind, key, live_body, candidate_body, decision, tickets} and nothing else: kind is
@@ -338,24 +344,72 @@ def _corrections(record):
             _sha(cand, f'Correction candidate_body of {name}')
         if not isinstance(entry['decision'], str) or not entry['decision'].strip():
             raise ValueError(f'A correction needs its decision: {name}')
-        _tickets(entry, name, needed_by='A correction')
+        _tickets(entry, name, needed_by='A correction', tracked=tracked)
         if (kind, key, entry['live_body']) in seen:
             raise ValueError(f'Duplicate correction: {name} from {entry["live_body"]}')
         seen.add((kind, key, entry['live_body']))
 
 
-def load_causes(pin):
-    """Read a pinned cause record and custody-check every evidence pin it names."""
+def cause_evidence_pin(path, *, root=ROOT):
+    """Write checkout files relative to the repository that owns the record."""
+    from congress_api.retention.provenance import file_pin
+    path = Path(os.path.abspath(path))
+    root = Path(os.path.abspath(root))
+    name = path.relative_to(root) if path.is_relative_to(root) else path
+    return dict(path=name.as_posix(), **file_pin(path))
+
+
+def repository_evidence_path(name, *, require_relative=False):
+    """Recover immutable Git paths from pins written with an older checkout's prefix."""
+    path = Path(name)
+    if not path.is_absolute() and PureWindowsPath(name).is_absolute():
+        path = PureWindowsPath(name)
+    if path.is_absolute():
+        suffix = re.search(r'/(model/jobs/release-causes/evidence/.+|docs/measurements/.+)$',
+                           posixpath.normpath(path.as_posix()), re.DOTALL)
+        if suffix:
+            if require_relative:
+                raise ValueError(f'Cause evidence requires a repository-relative path: {name}')
+            return suffix[1]
+    return Path(os.path.relpath(name)).as_posix()
+
+
+def repository_evidence(pins, tracked, *, check_sources, require_relative=False):
+    """Select evidence a Git checkout can verify. Historical source pins describe the original release."""
+    for name, digest, size in pins:
+        path = repository_evidence_path(name, require_relative=require_relative)
+        if path.startswith(IMMUTABLE_EVIDENCE):
+            if path not in tracked:
+                raise ValueError(f'Missing tracked cause evidence: {path}')
+        elif not (check_sources and path in tracked):
+            continue
+        yield path, digest, size
+
+
+def load_causes(pin, *, tracked=None):
+    """Check the record and its evidence. A Git binding check can read only repository evidence."""
     from congress_shared.custody import verify_local_file
     path = Path(pin['path'])
     verified = verify_local_file(path, pin['sha256'], pin['size'])
     record = json.loads(path.read_bytes())
     verified.require(path)
-    if not isinstance(record, dict) or record.get('version') != 1 or not isinstance(record.get('groups'), list):
+    evidence = validate_cause_record(record, tracked=tracked)
+    if tracked is not None:
+        evidence = repository_evidence(evidence, tracked, check_sources=True)
+    for name, digest, size in evidence:
+        verify_local_file(repository_evidence_path(name), digest, size)
+    return record
+
+
+def validate_cause_record(record, *, tracked=None):
+    """Check the schema of a historical or active record, including its evidence descriptors."""
+    if (not isinstance(record, dict) or type(record.get('version')) is not int or record['version'] != 1
+            or not isinstance(record.get('groups'), list)):
         raise ValueError('Cause record requires version 1 and a groups list')
     for side in ('base_release_id', 'candidate_release_id'):
         _sha(record.get(side), f'Cause record {side}')
-    _corrections(record)
+    _corrections(record, tracked)
+    evidence_files = set()
     seen = set()
     for entry in record['groups']:
         if not isinstance(entry, dict) or not isinstance(entry.get('id'), str) or entry['id'].count('|') < 2:
@@ -369,13 +423,21 @@ def load_causes(pin):
             raise ValueError(f'Cause entry disposition must be explained or accepted_defect: {entry["id"]}')
         if not isinstance(entry.get('cause'), str) or not entry['cause'].strip():
             raise ValueError(f'Cause entry requires a stated cause: {entry["id"]}')
-        _tickets(entry, entry['id'], needed_by='An accepted defect' if entry['disposition'] == 'accepted_defect' else None)
+        _tickets(entry, entry['id'], tracked=tracked,
+                 needed_by='An accepted defect' if entry['disposition'] == 'accepted_defect' else None)
         if entry['disposition'] == 'explained' and not entry.get('evidence'):
             # An explanation names what was read (raw lines, a query result) by pinned file.
             raise ValueError(f'An explained cause needs pinned evidence: {entry["id"]}')
-        for evidence in entry.get('evidence', []):
-            verify_local_file(evidence['path'], evidence['sha256'], evidence['size'])
-    return record
+        pins = entry.get('evidence', [])
+        if not isinstance(pins, list):
+            raise ValueError(f'Cause evidence must be a list of file pins: {entry["id"]}')
+        for evidence in pins:
+            if (not isinstance(evidence, dict) or not isinstance(evidence.get('path'), str)
+                    or not evidence['path'] or type(evidence.get('size')) is not int or evidence['size'] < 0):
+                raise ValueError(f'Cause evidence requires a path and byte size: {entry["id"]}')
+            digest = _sha(evidence.get('sha256'), 'Cause evidence digest')
+            evidence_files.add((evidence['path'], digest, evidence['size']))
+    return sorted(evidence_files)
 
 
 # ct-ud0b (owner decision 2026-11-02): nightly publication without a person when every
@@ -454,6 +516,73 @@ def _raw_line_facts(line):
     return bodies, request if isinstance(request, str) else None
 
 
+def new_recording_pages(recordings, new_receipts, *, export, trace, read_receipt, read_object, meetings=None):
+    """For each requested video, find linking pages whose full body first arrived in a new receipt.
+
+    The model keeps (extracted video key, page SHA-256) pairs. Use the prefix only to
+    find captures, then check the full digest and its exact raw receipt line. A page
+    already held before this night cannot explain a new recording. Check its HTML against the
+    claimed key. For linked additions, also read the event identity on that page. `recordings`
+    maps each requested video key to its claimed events. Read each receipt once.
+    """
+    links = _recording_page_bodies(recordings, export)
+    lines = trace({body[:16] for body in links}) if links else []
+    return _prove_recording_pages(recordings, links, lines, new_receipts, read_receipt, read_object, meetings)
+
+
+def _recording_page_bodies(recordings, export):
+    from collections import defaultdict
+    path = export.path
+    export.require(path)
+    links = defaultdict(set)
+    for row in pq.read_table(path, columns=['extracted_key', 'page_body'],
+                             filters=[('extracted_key', 'in', sorted(recordings))]).to_pylist():
+        body = row['page_body']
+        if isinstance(body, str) and DIGEST.fullmatch(body):
+            links[body].add(row['extracted_key'])
+    export.require(path)
+    return links
+
+
+def _prove_recording_pages(recordings, links, lines, new_receipts, read_receipt, read_object, meetings=None):
+    from collections import defaultdict
+    from viewer_publication.recording_pages import captured_body, meeting_calendar, recording_page_events
+    old = {row['sha'] for row in lines if row['receipt_key'] not in new_receipts}
+    by_receipt = defaultdict(lambda: defaultdict(set))
+    for row in lines:
+        body = row['sha']
+        if body in links and body not in old and row['receipt_key'] in new_receipts:
+            by_receipt[row['receipt_key']][row['receipt_line']].add(body)
+    proven = defaultdict(dict)
+    event_keys = {video for video, events in recordings.items() if events}
+    calendar = meeting_calendar(meetings) if event_keys else {}
+    parsed = {}
+    for key, wanted in sorted(by_receipt.items()):
+        with gzip.open(BytesIO(read_receipt(key)), 'rt') as stream:
+            for number, line in enumerate(stream, 1):
+                if number not in wanted:
+                    continue
+                receipt = json.loads(line)
+                if not isinstance(receipt, dict):
+                    continue
+                record = receipt if 'mode' in receipt else receipt.get('record')
+                if (not isinstance(record, dict) or record.get('mode') != 'fetch' or record.get('http_status') != 200
+                        or record.get('outcome') not in ('stored', 'unchanged')):
+                    continue
+                for capture in receipt.get('captures') or ():
+                    if not isinstance(capture, dict):
+                        continue
+                    body = capture.get('sha256')
+                    if body in wanted[number] and capture.get('complete') is True and capture.get('sniffed_format') == 'html':
+                        url = record.get('url') or record.get('requested_url') or ''
+                        if (body, url) not in parsed:
+                            parsed[body, url] = recording_page_events(captured_body(capture, read_object), url,
+                                calendar, links[body] & event_keys, links[body] - event_keys)
+                        for video, events in parsed[body, url].items():
+                            proven[video].setdefault(body, dict(receipt_key=key, receipt_line=number, event_ids=events))
+    return proven
+
+
 def _captures_source(captures):
     return captures['path'] if captures.get('kind') == 'parquet' else {k: v for k, v in captures.items() if k != 'kind'}
 
@@ -470,8 +599,33 @@ _HOUSE_XML_EVENT_PATTERNS = (
 _YOUTUBE_CACHE_PATH = re.compile(r'/(youtube/youtube_[0-9]+[.]json)$')
 
 
+def _publisher_recording_reasons(base_dir, candidate_dir, lines, new_receipts, read_object):
+    """Check each newly linked recording against the captured Congress.gov meeting that lists it."""
+    from viewer_publication.recording_pages import captured_body, publisher_video_keys
+    from viewer_publication.release_comparison import Diff
+    d = Diff(Path(base_dir), Path(candidate_dir))
+    claims = d.rows("""WITH added AS (
+        SELECT video_key, unnest(event_ids) AS event_id FROM candidate_recordings
+        ANTI JOIN base_recordings USING(video_key))
+        SELECT a.event_id, list(DISTINCT a.video_key ORDER BY a.video_key), m.congress_gov_detail_observation.successful_read
+        FROM added a LEFT JOIN candidate_meetings m USING(event_id) GROUP BY ALL ORDER BY a.event_id""")
+    reasons = []
+    for event, videos, read in claims:
+        listed = set()
+        line = lines.get((read['receipt_key'], read['receipt_line'], read['capture_index'])) if read else None
+        endpoint = rf'https://api\.congress\.gov/v3/committee-meeting/[0-9]+/(house|senate|joint)/{event}/?(?:\?[^#]*)?'
+        if (line and line['receipt_key'] in new_receipts and line['successful_fetch'] and read_object is not None
+                and line['sha'] == read['body_sha256'] and re.fullmatch(endpoint, line['source_url'] or '', re.I)):
+            body = captured_body(dict(sha256=line['sha'], stored_suffix=line['stored_suffix']), read_object)
+            listed = publisher_video_keys(body, event)
+        missing = sorted(set(videos) - listed)
+        if missing:
+            reasons.append(f'automatic causes: added recordings lack a captured Congress.gov listing for event {event}: {missing}')
+    return reasons
+
+
 def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work, updated_events=(),
-                        candidate_receipt_keys=None):
+                        candidate_receipt_keys=None, check_added_recordings=False, read_object=None):
     """Reasons a re-fetch-only change cannot pass without a person (ct-syp1, ct-uywf, ct-rhqw); empty when it can.
 
     The comparison shows only that the candidate is consistent with itself. Here every body the
@@ -493,8 +647,8 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
     receipt delivered a new House meeting XML body for an updated meeting (a null-status,
     unchanged-stamp House XML leaves no trace in `meetings.parquet`, yet leads title, date and
     videos). One engine job; the evidence file lists each hash's receipts and each read's line.
-    Cannot see: whether the body holds the published values, or the raw receipt line (the capture
-    mapping is trusted for hash, family and address; documents are checked against raw).
+    For recording additions attributed to that read, verify the listed video and event in the
+    captured Congress.gov body. Other meeting values rely on the comparison and capture trace.
     """
     from congress_api.lake.tables import table_input
     from congress_api.retention.provenance import run_job
@@ -516,10 +670,17 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
               dict(name='cited_files', kind='parquet', path=str(work / 'cited-files.parquet')),
               dict(name='cited_reads', kind='parquet', path=str(work / 'cited-reads.parquet'))]
     steps = []
+    recording_fields = ''
+    if check_added_recordings:
+        has_suffix = captures.get('kind') != 'parquet' or 'stored_suffix' in pq.read_schema(captures['path']).names
+        suffix = 'c.stored_suffix' if has_suffix else "'.gz'"
+        recording_fields = (f", {suffix} AS stored_suffix, coalesce(c.url,c.requested_url) AS source_url, "
+                            "c.mode='fetch' AND c.complete AND c.http_status=200 "
+                            "AND c.outcome IN ('stored','unchanged') AS successful_fetch")
     queries = [dict(name='files', sql="""SELECT DISTINCT k.sha,c.receipt_key FROM cited_files k
             JOIN captures c ON c.sha256=k.sha_bin ORDER BY 1,2"""),
-               dict(name='reads', sql="""SELECT k.receipt_key,k.receipt_line,k.capture_index,lower(encode(c.sha256,'hex')) AS sha,
-            c.requested_url,arrow_cast(c.retrieved_at,'Int64') AS t FROM cited_reads k JOIN captures c ON c.receipt_key=k.receipt_key AND c.receipt_line=k.receipt_line
+               dict(name='reads', sql=f"""SELECT k.receipt_key,k.receipt_line,k.capture_index,lower(encode(c.sha256,'hex')) AS sha,
+            c.requested_url,arrow_cast(c.retrieved_at,'Int64') AS t {recording_fields} FROM cited_reads k JOIN captures c ON c.receipt_key=k.receipt_key AND c.receipt_line=k.receipt_line
             AND c.capture_index=k.capture_index ORDER BY 1,2,3""")]
     video_check_hex = sorted({s for s in (*video_shas, *(o for o, _ in channel_pairs), *(n for _, n in channel_pairs))
                               if re.fullmatch('[0-9a-f]{64}', s)})
@@ -617,6 +778,8 @@ def cited_files_are_new(base_dir, candidate_dir, *, engine, captures, held, work
             if (ids_in_url & updated_set) or (not ids_in_url and non_senate_update):
                 reasons.append(
                     f"automatic causes: new House XML body {row['sha'][:16]} ({row['receipt_key']}) accompanies an updated meeting")
+    if check_added_recordings and not reasons:
+        reasons += _publisher_recording_reasons(base_dir, candidate_dir, lines, set(candidate_receipt_keys or ()) - held, read_object)
     (work / 'citation-trace.json').write_text(json.dumps(dict(live_receipts=len(held), files=receipts, reads=found['reads']),
                                                           indent=1, default=str) + '\n')
     return reasons
@@ -1277,7 +1440,7 @@ def untraceable_groups(report):
 
 
 def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_receipt_keys, read_receipt, work,
-                     candidate_receipt_keys=None, evidence_dir=None, qualification_files=()):
+                     candidate_receipt_keys=None, recording_export=None, read_object=None, qualification_files=()):
     """Cause entries for a difference whose every row comes from receipts new to the release.
 
     Returns (entries, reasons); entries is empty unless every check passes: the proof is all or
@@ -1315,7 +1478,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     every = [dict(group, file=name) for name, facts in report['files'].items() for group in facts['groups']]
     differences = [g for g in every if not g.get('refetch_only')]
     url_state = [g for g in differences if g['file'] == 'url_state.parquet' and (g['group'], g['cause']) in URL_STATE_GROUPS]
-    recording_adds = [g for g in differences if (g['file'], g['group'], g['cause']) in RECORDING_ADD_GROUPS]
+    recording_adds = [g for g in differences if (g['file'], g['group']) == ('recordings.parquet', 'added keys')]
     version_key_adds = [g for g in differences if (g['file'], g['group'], g['cause']) in VERSION_KEY_ADD_GROUPS]
     shared_addr_adds = [g for g in differences if (g['file'], g['group'], g['cause']) in SHARED_ADDRESS_ADD_GROUPS]
     other = untraceable_groups(report)
@@ -1329,9 +1492,12 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
         return [], ['automatic causes: the live release has no receipt set to compare with']
     updated_events = report['files'].get('meetings.parquet', {}).get('congress_gov_updates') or []
     if len(every) > len(differences):
+        publisher_adds = any(g.get('refetch_only') and g['group'] == 'added keys'
+                             for g in report['files'].get('recordings.parquet', {}).get('groups', ()))
         reasons = cited_files_are_new(base_dir, candidate_dir, engine=engine, captures=captures, held=held,
                                       work=Path(work) / 'cited', updated_events=updated_events,
-                                      candidate_receipt_keys=candidate_receipt_keys)
+                                      candidate_receipt_keys=candidate_receipt_keys,
+                                      check_added_recordings=publisher_adds, read_object=read_object)
         if reasons or not differences:
             return [], reasons
     d = Diff(Path(base_dir), Path(candidate_dir))
@@ -1397,29 +1563,15 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
                     EXCEPT SELECT DISTINCT {fields},list_row AS r FROM candidate_{table})""")
                 if lost_addr:
                     reasons.append(f'automatic causes: {lost_addr} {table} rows were removed from existing documents')
-    recording_pages = set()
+    added_videos, recording_links, recording_pages = {}, {}, {}
     if recording_adds:
-        cand_rec_cols = set(d.columns('candidate', 'recordings')) if d.has('candidate', 'recordings') else set()
-        tracks_expr = "list_transform(coalesce(tracks,[]),t->left(lower(hex(t.body)),16))" if 'tracks' in cand_rec_cols else 'CAST([] AS VARCHAR[])'
-        base_rec_anti = 'ANTI JOIN base_recordings USING(video_key)' if d.has('base', 'recordings') else ''
-        added_recs = d.rows(f"SELECT video_key,{tracks_expr} FROM candidate_recordings {base_rec_anti} WHERE coalesce(len(event_ids),0)=0 ORDER BY 1")
-        reasons += over_cap(len(added_recs), 'added recordings', AUTOMATIC_ADDITION_CAP)
-        rvl_dir = Path(evidence_dir) if evidence_dir is not None else Path(candidate_dir).parent / 'evidence'
-        rvl_file = rvl_dir / 'recording_video_links.parquet'
-        pages_by_video = {}
-        if rvl_file.is_file():
-            for vk, pb in d.rows(f"SELECT extracted_key,left(lower(page_body),16) FROM read_parquet('{rvl_file}') WHERE extracted_key IS NOT NULL AND page_body IS NOT NULL"):
-                pages_by_video.setdefault(vk, set()).add(pb)
-        unlinked_recs = []
-        for vk, track_prefixes in added_recs:
-            linked_pages = pages_by_video.get(vk, set())
-            valid_tracks = {tp for tp in (track_prefixes or []) if tp}
-            if not linked_pages and not valid_tracks:
-                unlinked_recs.append(vk)
-            else:
-                recording_pages |= linked_pages | valid_tracks
-        if unlinked_recs:
-            reasons.append(f'automatic causes: {len(unlinked_recs)} added recordings have no linking page in kept evidence (first {unlinked_recs[:3]})')
+        added_videos = {vk: set() for vk, in d.rows("""SELECT video_key FROM candidate_recordings
+            ANTI JOIN base_recordings USING(video_key) WHERE coalesce(len(event_ids),0)=0""")}
+        reasons += over_cap(len(added_videos), 'added recordings', AUTOMATIC_ADDITION_CAP)
+        if len(added_videos) != sum(g['count'] for g in recording_adds):
+            reasons.append('automatic causes: added recording keys differ from the comparison')
+        if not reasons and recording_export is not None and read_object is not None:
+            recording_links = _recording_page_bodies(added_videos, recording_export)
     if not keys and len(url_state) + len(recording_adds) < len(differences):
         reasons.append('automatic causes: no new document carries a key to trace')
     if reasons:
@@ -1427,7 +1579,7 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     # From here every check runs and every reason is kept, so a refused night names all it found.
     # One engine job for the trace and the url_state proof: one scan of the capture input.
     summary, pages, url_lines, lines = {}, set(), [], None
-    trace_keys = sorted(set(keys) | recording_pages)
+    trace_keys = set(keys) | {body[:16] for body in recording_links}
     work = Path(work)
     if url_state and candidate_receipt_keys is None:
         reasons.append("automatic causes: url_state needs the candidate's receipt set")
@@ -1437,12 +1589,21 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
             held_receipts=held, updated_events=updated_events, work=work / 'url-state', keys=trace_keys,
             qualification_files=qualification_files)
     if lines is None:
-        lines = capture_job(work / 'trace', engine, captures, keys=set(trace_keys))['trace'] if trace_keys else []
+        lines = capture_job(work / 'trace', engine, captures, keys=trace_keys)['trace'] if trace_keys else []
+    if added_videos:
+        from viewer_publication.data_only_night import added_recording_pages
+        new = set(candidate_receipt_keys or ()) - held
+        sources = _prove_recording_pages(added_videos, recording_links, lines, new, read_receipt, read_object)
+        recording_pages, refused = added_recording_pages(added_videos, sources, new)
+        reasons += refused
+        # Recording pages can have alternate sources. The document and queued-page rule
+        # below requires every capture of those specific keys to be new.
+        required = set(keys) | pages
+        lines = [r for r in lines if r['prefix'] in required]
     work.mkdir(parents=True, exist_ok=True)
     traced = {row['prefix'] for row in lines}
     for kind, missing in (('new document', [k for k in keys if k not in traced]),
-                          ('queued link page', sorted(pages - traced)),
-                          ('recording page', sorted(recording_pages - traced))):
+                          ('queued link page', sorted(pages - traced))):
         if missing:
             reasons.append(f'automatic causes: {len(missing)} {kind} keys have no capture to trace (first {missing[:3]})')
     raw, facts = {}, {}
@@ -1471,12 +1632,12 @@ def automatic_causes(report, base_dir, candidate_dir, *, engine, captures, live_
     if reasons:
         return [], sorted(set(reasons))
     evidence = work / 'automatic-trace.json'
-    evidence.write_text(json.dumps(dict(live_receipts=len(held), new_receipts=len(raw), lines=lines,
-                                        recording_pages=sorted(recording_pages),
+    supporting_receipts = raw.keys() | {source['receipt_key'] for source in recording_pages.values()}
+    evidence.write_text(json.dumps(dict(live_receipts=len(held), new_receipts=len(supporting_receipts), lines=lines,
+                                        recording_pages=recording_pages,
                                         url_state=dict(groups=summary, lines=len(url_lines), queued_link_pages=sorted(pages))),
                                    indent=1, default=str) + '\n')
-    from congress_api.retention.provenance import file_pin
-    pin = dict(path=str(evidence), **file_pin(evidence))
+    pin = cause_evidence_pin(evidence)
     bookkeeping = {group_id(g) for g in url_state}
     recording_ids = {group_id(g) for g in recording_adds}
     edition_ids = {group_id(g) for g in [*version_key_adds, *shared_addr_adds]}
@@ -1624,6 +1785,8 @@ def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evide
             report['reasons'] = [
                 f'comparison: re-fetch group {group_id(g)} ({g["count"]}) requires automatic capture verification or a cause record'
                 for g in refetch]
+            if any(g['group'] == 'added keys' for g in report['files'].get('recordings.parquet', {}).get('groups', ())):
+                report['reasons'].append('comparison: added recordings require page and receipt verification or a cause record')
     report_path.write_text(json.dumps(report, indent=1, default=str) + '\n')
     # ct-rhqw: the morning report, written once the night's outcome is known.
     write_meeting_updates(report, base_dir, candidate_dir, report_path.parent, refused=report['reasons'])

@@ -14,10 +14,10 @@ nothing here stands in for a check that ran and refused. An additions-only night
 
 The caps are tripwires, not proof. They stop a night that moved more than its new receipts can
 explain, which is how a publisher serving wrong pages, or the right code reading the wrong table,
-would look. The caps scale with the receipts new to the release, and no group may move more than
-2% of its file however many receipts there are. That share is the ceiling: a catch-up after a
-stopped night or an outage approves itself like any night, and a backlog large enough to move
-more than 2% of a file stops for a person. No count of nights is kept. Measured on three capture
+would look. The caps scale with the receipts new to the release. An untraced group may move
+at most 2% of its file, subject to the small-group floor.
+An added recording without an event must trace to a new page receipt even below that cap.
+These proven keys keep the receipt and whole-file limits. Measured on three capture
 nights with gate reports:
 
     night (candidate)            new receipts   largest group     largest file total
@@ -40,6 +40,7 @@ the comparison cannot see. The traced proof's per-document caps on link keys and
 not apply on this path. The link rule, the model's invariants and completeness
 checks, and the contract and canary gates run as on any night.
 """
+from collections import Counter, defaultdict
 from pathlib import Path
 
 GROUP_SHARE, GROUP_FLOOR = 0.02, 50
@@ -66,6 +67,9 @@ SAME_INPUTS = ('profile', 'entity_digests', 'provenance', 'unprofiled_inputs')
 # Pages one night may capture again with new bytes; a site-wide template change would exceed it.
 RECAPTURED_PAGES = 100
 REMOVED_RECORDING_MATCHES = 20
+# Run 44737429192 attributed at most four unlinked videos to one committee receipt.
+UNLINKED_PER_RECEIPT = 20
+UNLINKED_RECORDINGS_ID = 'recordings.parquet|added keys|empty event_ids; source not traced'
 RECORDING_MATCH_REMOVAL_ID = 'recording_matches.parquet|removed keys|no evidence given'
 # A page: saved as HTML, with a title read from the page itself. A PDF's title is its listing's
 # link text, which does not change when the file is replaced, so an equal title proves nothing.
@@ -159,6 +163,10 @@ def _group_reasons(report, new_receipts, *, proven_groups=frozenset()):
                 cap = REMOVED_DOCUMENTS if file in DOCUMENT_FILES else max(GROUP_FLOOR, int(base * REMOVAL_SHARE))
                 if -count > cap:
                     reasons.append(f'data-only night: {name} ({count}) removes more than the {cap} rows one unattended night may')
+            elif file == 'recordings.parquet' and group['group'] == 'added keys' and name in proven_groups:
+                cap = GROUP_ROWS_PER_RECEIPT * new_receipts
+                if count > cap:
+                    reasons.append(f'data-only night: {name} ({count}) exceeds {cap} rows for {new_receipts} new receipts')
             else:
                 cap = max(GROUP_FLOOR, min(int(base * GROUP_SHARE), GROUP_ROWS_PER_RECEIPT * new_receipts))
                 if count > cap:
@@ -213,7 +221,7 @@ def _column_reasons(base_dir, candidate_dir):
     return reasons, sum(file != QUEUE_FILE for file, _ in base)
 
 
-def recaptured_pages(rule, base_dir, candidate_dir, *, held, trace, read_receipt):
+def recaptured_pages(rule, base_dir, candidate_dir, *, new_receipts, trace, read_receipt):
     """Corrections a night proves for itself: a page captured again at its own address.
 
     Owner decision 2026-11-17 (ct-pz32). The link rule reports each live link key, lookup key and
@@ -271,7 +279,7 @@ def recaptured_pages(rule, base_dir, candidate_dir, *, held, trace, read_receipt
             url, status, bodies = stored(row['receipt_key'], row['receipt_line'])
             return url == address and status == 200 and body in bodies
         receipt = next((row['receipt_key'] for row in lines
-                        if row['sha'] == body and row['receipt_key'] not in held and stores(row)), None)
+                        if row['sha'] == body and row['receipt_key'] in new_receipts and stores(row)), None)
         if receipt is not None and page:
             moved[answer['live_body']] = body
             recaptures.append(dict(address=address, live_body=answer['live_body'], candidate_body=body, receipt=receipt, title=old[0]))
@@ -290,7 +298,7 @@ def recaptured_pages(rule, base_dir, candidate_dir, *, held, trace, read_receipt
     return proven, reasons, dict(recaptures=recaptures)
 
 
-def _link_reasons(rule, link_proof):
+def _link_reasons(rule, link_proof, new):
     """(reasons, proven corrections, facts) for the link rule on a data night.
 
     A key that vanishes, dangles, is retired while published or is demoted to an alternate, and a
@@ -306,24 +314,47 @@ def _link_reasons(rule, link_proof):
         return [], [], {}
     if link_proof is None:
         return ['data-only night: the link rule failed (live keys would open another file, and they were not examined)'], [], {}
-    proven, reasons, facts = link_proof(rule)
+    proven, reasons, facts = link_proof(rule, new)
     return reasons, proven, facts
 
 
-def _prove_replaced_recording_matches(base_dir, candidate_dir, *, expected_removed, recaptures=()):
+def _recording_events(directory):
+    """Map recorded video keys to their events. None means the release cannot supply the proof."""
+    import pyarrow.parquet as pq
+    path = Path(directory) / 'recordings.parquet'
+    columns = ['video_key', 'event_ids']
+    if not path.is_file() or not set(columns) <= set(pq.read_schema(path).names):
+        return None
+    return {row['video_key']: set(row['event_ids'] or ()) for row in pq.read_table(path, columns=columns).to_pylist()}
+
+
+def _meeting_videos(directory, events):
+    """The video keys the publisher lists for the meetings losing a generic page match."""
+    import pyarrow.parquet as pq
+    path = Path(directory) / 'meetings.parquet'
+    if not events or not path.is_file() or not {'event_id', 'videos'} <= set(pq.read_schema(path).names):
+        return {}
+    meetings = pq.read_table(path, columns=['event_id', 'videos'], filters=[('event_id', 'in', sorted(events))])
+    return {r['event_id']: {v['video_key'] for v in r['videos'] or () if v and v.get('video_key')}
+            for r in meetings.to_pylist()}
+
+
+def _recording_match_replacements(base_dir, candidate_dir, base_rec, cand_rec, *, expected_removed, recaptures, new_receipts):
     """Prove removed `committee_page` recording matches replaced on a data-only night (ct-618r).
 
     A removed `recording_matches` row is proven only when `0 < expected_removed <= REMOVED_RECORDING_MATCHES`
     and every removed row (`base_recording_matches` minus `candidate_recording_matches` on `match_id`,
     excluding `publisher_link` rows already verified by `MEETING_UPDATE`) is a `committee_page` match
-    whose `event_id` still carries an active `linked` match in `candidate_recording_matches` AND either:
+    whose event still has an active linked match. Each removal must meet one of three conditions.
       1. `recaptured_page`: its cited `committee_page:<live_body>` was proven recaptured at its own
          address under an unchanged HTML title (`live_body -> candidate_body`), and `event_id` now has
-         a `committee_page` match citing `candidate_body`; or
+         a `committee_page` match citing `candidate_body`.
       2. `event_ids_replaced`: its `video_key` changed `event_ids` in `recordings.parquet` to a non-empty
          set (never dropping the video to `[]`), and every added `event_id` on `video_key` is backed by a
          candidate `committee_page` match citing a newly added HTML body absent from `base` `detail.parquet`.
-    Returns a list of proven replacement dicts, or `None` when any removed row is unproven.
+      3. `publisher_corroborated`: a generic single-day match lost its event to a video the
+         publisher lists for the same meeting. Return the newly cited page for receipt verification.
+    Return None when any removed row lacks a replacement.
     """
     import pyarrow.parquet as pq
     if not (0 < expected_removed <= REMOVED_RECORDING_MATCHES):
@@ -339,41 +370,48 @@ def _prove_replaced_recording_matches(base_dir, candidate_dir, *, expected_remov
     base_rows = {r['match_id']: r for r in pq.read_table(base_rm_path, columns=rm_cols).to_pylist() if r.get('match_id')}
     cand_list = pq.read_table(cand_rm_path, columns=rm_cols).to_pylist()
     cand_ids = {r['match_id'] for r in cand_list if r.get('match_id')}
-    removed = [base_rows[mid] for mid in sorted(base_rows.keys() - cand_ids) if base_rows[mid].get('basis') != 'publisher_link']
+    removed_ids = base_rows.keys() - cand_ids
+    if len(removed_ids) > REMOVED_RECORDING_MATCHES:
+        return None
+    removed = [base_rows[mid] for mid in sorted(removed_ids) if base_rows[mid].get('basis') != 'publisher_link']
     if len(removed) != expected_removed:
         return None
 
     recapture_map = {item['live_body']: item['candidate_body'] for item in (recaptures or ())
-                     if isinstance(item, dict) and item.get('live_body') and item.get('candidate_body')}
+                     if isinstance(item, dict) and item.get('live_body') and item.get('candidate_body') and item.get('receipt') in new_receipts}
     covered_events = {
         r['event_id'] for r in cand_list
-        if r.get('event_id') is not None and r.get('decision') == 'linked' and r.get('status') in ('asserted', 'decided')
+        if r.get('video_key') and r.get('event_id') is not None and r.get('decision') == 'linked' and r.get('status') in ('asserted', 'decided')
     }
-    cand_page_by_event = {}
+    official = _meeting_videos(candidate_dir, {r['event_id'] for r in removed if r['note'] == 'house_single_day_generic'
+                                              and r['event_id'] is not None})
+    publisher_links = {(r['event_id'], r['video_key']) for r in cand_list if r.get('video_key')
+                       and r.get('basis') == 'publisher_link' and r.get('decision') == 'linked'
+                       and r.get('status') == 'asserted' and r.get('source_ref') == 'meetings.videos'}
+    corroborated = {}
+    cand_page_by_event = defaultdict(set)
     cand_page_by_video_event = {}
     for r in cand_list:
-        if r.get('basis') == 'committee_page' and r.get('event_id') is not None:
+        if (r.get('basis') == 'committee_page' and r.get('event_id') is not None
+                and r.get('decision') == 'linked' and r.get('status') in ('asserted', 'decided')):
             sref = r.get('source_ref') or ''
             cites = set()
             if sref.startswith('committee_page:'):
                 cites.add(sref.removeprefix('committee_page:'))
             note = r.get('note') or ''
+            if (r['video_key'] in official.get(r['event_id'], ()) and (r['event_id'], r['video_key']) in publisher_links
+                    and sref.startswith('committee_page:')
+                    and note.split(' [via ', 1)[0] == 'house_doc_link'
+                    and sref != base_rows.get(r['match_id'], {}).get('source_ref')):
+                corroborated.setdefault(r['event_id'], []).append((r['video_key'], sref.removeprefix('committee_page:')))
             if '[via committee_page:' in note:
                 cites.add(note.split('[via committee_page:', 1)[1].split(']', 1)[0])
-            cand_page_by_event.setdefault(r['event_id'], set()).update(cites)
+            cand_page_by_event[r['event_id']].update((r['video_key'], body) for body in cites if r.get('video_key'))
             if r.get('video_key'):
                 cand_page_by_video_event.setdefault((r['video_key'], r['event_id']), set()).update(cites)
 
-    base_rec_path, cand_rec_path = Path(base_dir) / 'recordings.parquet', Path(candidate_dir) / 'recordings.parquet'
     base_det_path, cand_det_path = Path(base_dir) / 'detail.parquet', Path(candidate_dir) / 'detail.parquet'
-    base_rec, cand_rec, new_html_bodies = {}, {}, set()
-    if (base_rec_path.is_file() and cand_rec_path.is_file()
-            and {'video_key', 'event_ids'}.issubset(pq.read_schema(base_rec_path).names)
-            and {'video_key', 'event_ids'}.issubset(pq.read_schema(cand_rec_path).names)):
-        base_rec = {r['video_key']: set(r.get('event_ids') or ())
-                    for r in pq.read_table(base_rec_path, columns=['video_key', 'event_ids']).to_pylist() if r.get('video_key')}
-        cand_rec = {r['video_key']: set(r.get('event_ids') or ())
-                    for r in pq.read_table(cand_rec_path, columns=['video_key', 'event_ids']).to_pylist() if r.get('video_key')}
+    new_html_bodies = set()
     if (base_det_path.is_file() and cand_det_path.is_file()
             and 'saved_body' in pq.read_schema(base_det_path).names
             and {'saved_body', 'saved_media_type'}.issubset(pq.read_schema(cand_det_path).names)):
@@ -394,10 +432,20 @@ def _prove_replaced_recording_matches(base_dir, candidate_dir, *, expected_remov
         sref = row.get('source_ref') or ''
         live_page = sref.removeprefix('committee_page:') if sref.startswith('committee_page:') else None
         cand_page = recapture_map.get(live_page) if live_page else None
-        if cand_page and cand_page in cand_page_by_event.get(ev, set()):
+        recaptured = [(video, body) for video, body in cand_page_by_event[ev] if body == cand_page]
+        if recaptured:
             proven.append(dict(match_id=row['match_id'], event_id=ev, video_key=vk, reason='recaptured_page',
-                               live_page=live_page, candidate_page=cand_page))
+                               live_page=live_page, candidate_page=cand_page, claims={ev: recaptured}))
             continue
+        if (row.get('note') == 'house_single_day_generic' and vk not in official.get(ev, ()) and row.get('decision') == 'linked'
+                and row.get('status') == 'asserted' and live_page and base_rec.get(vk) == {ev} and cand_rec.get(vk) == set()):
+            alternatives = [(video, page) for video, page in corroborated.get(ev, ())
+                            if video != vk and ev in cand_rec.get(video, ()) and page in new_html_bodies]
+            if len(alternatives) == 1:
+                video, page = alternatives[0]
+                proven.append(dict(match_id=row['match_id'], event_id=ev, video_key=vk, reason='publisher_corroborated',
+                                   replacement_video_key=video, candidate_page=page, claims={ev: [(video, page)]}))
+                continue
         if vk and vk in base_rec and vk in cand_rec:
             old_evs, new_evs = base_rec[vk], cand_rec[vk]
             added_evs = new_evs - old_evs
@@ -405,19 +453,119 @@ def _prove_replaced_recording_matches(base_dir, candidate_dir, *, expected_remov
                 bool(cand_page_by_video_event.get((vk, aev), set()) & new_html_bodies) for aev in added_evs
             ):
                 proven.append(dict(match_id=row['match_id'], event_id=ev, video_key=vk, reason='event_ids_replaced',
-                                   new_event_ids=sorted(added_evs)))
+                                   new_event_ids=sorted(added_evs), claims={event: [(vk, page) for page in
+                                       cand_page_by_video_event[vk, event] & new_html_bodies] for event in added_evs}))
                 continue
         return None
     return proven
 
 
+def added_recording_pages(added, pages, new):
+    """Attribute each unlinked addition to one admitted receipt, then count by that receipt."""
+    additions = {}
+    for video in sorted(added):
+        sources = pages.get(video, {})
+        for body, source in sorted(sources.items()):
+            if source.get('receipt_key') in new:
+                additions[video] = dict(page_body=body, **source)
+                break
+    missing = sorted(set(added) - additions.keys())
+    if missing:
+        return {}, [f'data-only night: {len(missing)} added recordings lack a linking page from a new receipt (first {missing[:3]})']
+    counts = Counter(source['receipt_key'] for source in additions.values())
+    return additions, [f'data-only night: {key} accounts for {n} added recordings, above the limit of {UNLINKED_PER_RECEIPT}'
+                       for key, n in sorted(counts.items()) if n > UNLINKED_PER_RECEIPT]
+
+
+def _linked_additions(base_dir, candidate_dir, linked, pages):
+    """Each event must have a linked match and independent publisher or raw committee-page evidence."""
+    import pyarrow.parquet as pq
+    path = Path(candidate_dir) / 'recording_matches.parquet'
+    columns = ['event_id', 'video_key', 'basis', 'source_ref', 'decision', 'status']
+    proven = defaultdict(dict)
+    if path.is_file() and set(columns) <= set(pq.read_schema(path).names):
+        rows = pq.read_table(path, columns=columns, filters=[('video_key', 'in', sorted(linked))]).to_pylist()
+        publisher_events = {r['event_id'] for r in rows if r['basis'] == 'publisher_link' and r['source_ref'] == 'meetings.videos'}
+        listed = _meeting_videos(candidate_dir, publisher_events)
+        held = _meeting_videos(base_dir, publisher_events)
+        for row in rows:
+            event, video = row['event_id'], row['video_key']
+            if event not in linked[video] or row['decision'] != 'linked' or row['status'] not in ('asserted', 'decided'):
+                continue
+            for body, source in sorted(pages.get(video, {}).items()):
+                page_names_event = event in source.get('event_ids', ())
+                # A new listing and a new match can share the same faulty model output.
+                # Confirm the event independently on the page or in the held publisher listing.
+                publisher = (row['basis'] == 'publisher_link' and row['source_ref'] == 'meetings.videos'
+                             and video in listed.get(event, ()) and (page_names_event or video in held.get(event, ())))
+                committee = (row['basis'] == 'committee_page' and row['source_ref'] == 'committee_page:' + body
+                             and page_names_event)
+                if publisher or committee:
+                    proven[video][event] = dict(page_body=body, corroboration='committee_page' if page_names_event else 'held_publisher',
+                                               **source)
+                    break
+    missing = [(video, ev) for video in sorted(linked) for ev in sorted(linked[video] - proven[video].keys())]
+    return proven, ([f'data-only night: {len(missing)} video/event pairs on added recordings lack publisher or '
+                     f'committee-page corroboration (first {missing[:3]})'] if missing else [])
+
+
+def _prove_recording_changes(base_dir, candidate_dir, *, removed, expected, expected_unlinked, recaptures, new, page_proof):
+    """Select added keys from the tables and verify their pages and every replacement in one scan."""
+    base, candidate = _recording_events(base_dir), _recording_events(candidate_dir)
+    if base is None and candidate is None and not (removed or expected):
+        return {}, []
+    if base is None or candidate is None:
+        return {}, ['data-only night: the recording tables cannot identify the added recordings']
+    added = {video: candidate[video] for video in candidate.keys() - base.keys()}
+    empty = [video for video, events in added.items() if not events]
+    if len(added) != expected or len(empty) != expected_unlinked or any(not video for video in added):
+        return {}, [f'data-only night: expected {expected} added recordings ({expected_unlinked} unlinked), '
+                    f'found {len(added)} ({len(empty)} unlinked) in the recording tables']
+    replacements = (_recording_match_replacements(base_dir, candidate_dir, base, candidate, expected_removed=removed,
+                    recaptures=recaptures, new_receipts=new) if removed else [])
+    # A replacement also claims a proceeding video, so its receipt must verify that scoped link.
+    wanted = {video: events.copy() for video, events in added.items()}
+    for row in replacements or ():
+        for event, choices in row['claims'].items():
+            for video, _ in choices:
+                wanted.setdefault(video, set()).add(event)
+    supplied = page_proof(wanted, new) if wanted and page_proof else {}
+    pages = {video: {body: src for body, src in sources.items() if src.get('receipt_key') in new}
+             for video, sources in supplied.items()}
+    facts, reasons = {}, []
+    for row in replacements or ():
+        sources = []
+        for event, choices in sorted(row.pop('claims').items()):
+            proof = None
+            for video, body in sorted(choices):
+                source = pages.get(video, {}).get(body)
+                if source and (row['reason'] != 'event_ids_replaced' or event in source.get('event_ids', ())):
+                    proof = dict(event_id=event, video_key=video, page_body=body, **source)
+                    break
+            if not proof:
+                reasons.append(f'data-only night: removed keys match {row["match_id"]} lacks a corroborating new page receipt for event {event}')
+                break
+            sources.append(proof)
+        row['page_receipts'] = sources
+    if replacements and not reasons:
+        facts['replaced_recording_matches'] = replacements
+    if empty:
+        facts['added_recording_pages'], missing = added_recording_pages(empty, pages, new)
+        reasons.extend(missing)
+    linked = {video: events for video, events in added.items() if events}
+    if linked:
+        facts['added_recording_events'], missing = _linked_additions(base_dir, candidate_dir, linked, pages)
+        reasons.extend(missing)
+    return facts, reasons
+
+
 def data_only_causes(report, *, candidate_record, live_records, candidate_receipt_keys, base_dir, candidate_dir, link_proof=None,
-                     qualification_files=None):
+                     qualification_files=None, recording_page_proof=None):
     """Cause entries for every failing group of a night only new receipts can explain.
 
     `live_records` are the live release's kept input records (`receipt_pins.kept_input_records`).
     Returns (entries, reasons, facts); entries is empty unless every check passes, and every
-    refusal found is returned, so a stopped night names all of it. `link_proof(rule)` may prove
+    refusal found is returned, so a stopped night names all of it. `link_proof(rule, new_receipts)` may prove
     link findings (`recaptured_pages`); facts then carries `proven_corrections` for the link rule.
     """
     from congress_api.lake.versions import version_digest
@@ -457,40 +605,47 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
                        f'candidate (first {sorted(held - candidate)[:3]})')
     if not new:
         reasons.append('data-only night: the candidate read no receipt the live release did not, so nothing explains a difference')
-    rm_removed = next(
-        (-g['count'] for g in report.get('files', {}).get('recording_matches.parquet', {}).get('groups', ())
-         if not g.get('refetch_only') and g.get('group') == 'removed keys' and g.get('cause') == 'no evidence given'
-         and g.get('count', 0) < 0),
-        0,
-    )
-    tentative_proven = {RECORDING_MATCH_REMOVAL_ID} if 0 < rm_removed <= REMOVED_RECORDING_MATCHES else frozenset()
-    other_group_reasons = _group_reasons(report, len(new), proven_groups=tentative_proven)
+    counts = {group_id(dict(g, file=file)): g['count'] for file in ('recording_matches.parquet', 'recordings.parquet')
+              for g in report['files'].get(file, {}).get('groups', ())
+              if g['status'] == 'unverified' and not g.get('flag') and not g.get('refetch_only')}
+    removed = -counts.get(RECORDING_MATCH_REMOVAL_ID, 0)
+    tentative = set()
+    if 0 < removed <= REMOVED_RECORDING_MATCHES:
+        tentative.add(RECORDING_MATCH_REMOVAL_ID)
+    additions = [g for g in report['files'].get('recordings.parquet', {}).get('groups', ()) if g['group'] == 'added keys']
+    empty_groups = {group_id(dict(g, file='recordings.parquet')) for g in additions if g['cause'].startswith('empty event_ids;')}
+    tentative.update(empty_groups)
+    group_reasons = _group_reasons(report, len(new), proven_groups=tentative)
     lost, columns = _column_reasons(base_dir, candidate_dir)
-    pre_reasons = [*reasons, *other_group_reasons, *lost]
-    # Last: the recapture proof scans the capture table, so it runs only on a night nothing else stopped.
-    stopped, proven, link_facts = _link_reasons(report['link_rule'], link_proof if not pre_reasons else None)
-    proven_rm = (
-        _prove_replaced_recording_matches(base_dir, candidate_dir, expected_removed=rm_removed,
-                                          recaptures=link_facts.get('recaptures', ()))
-        if tentative_proven and not pre_reasons and not stopped else None
-    )
-    final_group_reasons = other_group_reasons if proven_rm is not None else _group_reasons(report, len(new))
-    reasons = [*stopped, *reasons, *final_group_reasons, *lost]
+    stopped, proven, link_facts = _link_reasons(report['link_rule'], link_proof if not (reasons or group_reasons or lost) else None, new)
+    recording_facts = {}
+    if not (stopped or reasons or group_reasons or lost):
+        recording_facts, reasons = _prove_recording_changes(base_dir, candidate_dir, removed=removed, expected=sum(g['count'] for g in additions),
+            expected_unlinked=sum(g['count'] for g in additions if g['cause'].startswith('empty event_ids;')),
+            recaptures=link_facts.get('recaptures', ()), new=new, page_proof=recording_page_proof)
+    proven_groups = set()
+    if 'replaced_recording_matches' in recording_facts:
+        proven_groups.add(RECORDING_MATCH_REMOVAL_ID)
+    if 'added_recording_pages' in recording_facts:
+        proven_groups.update(empty_groups)
+    if proven_groups != tentative:
+        group_reasons = _group_reasons(report, len(new), proven_groups=proven_groups)
+    reasons = [*stopped, *reasons, *group_reasons, *lost]
     if reasons:
         return [], reasons, {}
-    extra_rm = dict(replaced_recording_matches=proven_rm) if proven_rm is not None else {}
     facts = dict(version=1, profile_sha256=version_digest(packages={}, files={}, values=candidate_record['profile']),
                  live_input=same[-1]['key'], live_receipts=len(held), new_receipts=len(new), new_receipt_keys=sorted(new),
-                 groups=len(groups), columns_compared=columns, proven_corrections=proven, **link_facts, **extra_rm,
-                 caps=dict(recaptured_pages=RECAPTURED_PAGES, removed_recording_matches=REMOVED_RECORDING_MATCHES,
+                 groups=len(groups), columns_compared=columns, proven_corrections=proven, **link_facts, **recording_facts,
+                 caps=dict(unlinked_recordings_per_receipt=UNLINKED_PER_RECEIPT, recaptured_pages=RECAPTURED_PAGES, removed_recording_matches=REMOVED_RECORDING_MATCHES,
                            group_share=GROUP_SHARE, group_floor=GROUP_FLOOR,
                            group_rows_per_receipt=GROUP_ROWS_PER_RECEIPT, file_rows_per_receipt=FILE_ROWS_PER_RECEIPT,
                            removal_share=REMOVAL_SHARE, removed_documents=REMOVED_DOCUMENTS,
                            column_loss_share=COLUMN_LOSS_SHARE, column_loss_floor=COLUMN_LOSS_FLOOR))
-    proven_rm_ids = {RECORDING_MATCH_REMOVAL_ID} if proven_rm is not None else frozenset()
+    recording_causes = {UNLINKED_RECORDINGS_ID: 'A page stored in a new receipt links to each added recording.',
+                        RECORDING_MATCH_REMOVAL_ID: 'Each removed committee-page match has a verified replacement.'}
     return [dict(id=group_id(group), count=group['count'], disposition='explained', automatic=True,
-                 cause=DATA_ONLY_CAUSE,
-                 tickets=['ct-618r', 'ct-pz32'] if group_id(group) in proven_rm_ids else ['ct-pz32'])
+                 cause=recording_causes.get(group_id(group), DATA_ONLY_CAUSE),
+                 tickets=['ct-618r', 'ct-pz32'] if group_id(group) == RECORDING_MATCH_REMOVAL_ID else ['ct-pz32'])
             for group in groups], [], facts
 
 

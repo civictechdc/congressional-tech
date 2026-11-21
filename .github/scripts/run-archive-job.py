@@ -116,8 +116,8 @@ def retire_for_backfill(spec_path, archive_dir, *, backfill_spec_path=None):
             shutil.move(str(target), str(destination))
 
 
-def export_publisher_work(command, output):
-    result = subprocess.run([*command[:-1], '--plan'], cwd=ROOT, capture_output=True, text=True)
+def check_publisher_plan(command, output):
+    result = subprocess.run([*command[:-1], '--check-binding'], cwd=ROOT, capture_output=True, text=True)
     if result.returncode:
         print(result.stderr or 'Archive job refused: owner publish plan refused', file=sys.stderr)
         return result.returncode
@@ -128,8 +128,9 @@ def export_publisher_work(command, output):
                 or not isinstance(work, str) or not work or not Path(work).is_absolute()
                 or any(char in work for char in '\r\n\0')):
             raise ValueError('Owner publish plan did not supply safe work metadata')
-        with output.open('a') as destination:
-            destination.write('publisher_work=' + work + '\n')
+        if output is not None:
+            with output.open('a') as destination:
+                destination.write('publisher_work=' + work + '\n')
     except (ValueError, OSError) as error:
         print('Archive job refused: ' + str(error), file=sys.stderr)
         return 2
@@ -170,7 +171,7 @@ def main():
         print('Archive job refused: ' + str(error), file=sys.stderr)
         return 2
     if args.check_binding:
-        return export_publisher_work(command, args.github_output) if args.github_output is not None else 0
+        return check_publisher_plan(command, args.github_output) if args.operation == 'publish' else 0
     if args.nightly_work is not None:
         command.extend(['--nightly-work', str(args.nightly_work.resolve())])
     if args.keep_candidate:

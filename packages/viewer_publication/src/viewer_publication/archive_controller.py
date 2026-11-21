@@ -388,6 +388,9 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 probe_selectors=_probe_evidence(reports)
             else:
                 manifest=json.loads(Path(checkpoint['manifest_pin']['path']).read_text())
+            if manifest is not None:
+                from viewer_publication.recording_pages import verified_export
+                verified_export(result,Path(stage['scratch']))
             automatic_qualifications=()
             if automatic_causes and manifest is not None:
                 from congress_api.retention.derived_files import copy_checked
