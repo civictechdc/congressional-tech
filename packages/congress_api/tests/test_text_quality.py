@@ -283,41 +283,59 @@ def test_partial_ocr_move_requires_twelve_tokens(length, missing):
     phrase = ' '.join(f'word{i}' for i in range(length))
     omitted = ' '.join(['lost'] * 10)
     deleted = f'{omitted} {phrase} {omitted}'
-    assert _largest_unmatched_ocr_passage([
-        dict(intermediate_slice=deleted, output_slice=f'new {phrase} text'),
-    ]) == missing
-    # The same short phrase qualifies when it accounts for the entire insertion.
-    assert _largest_unmatched_ocr_passage([dict(intermediate_slice=deleted, output_slice=phrase)]) == 10
+    assert _largest_unmatched_ocr_passage(deleted, f'new {phrase} text') == missing
+    assert _largest_unmatched_ocr_passage(deleted, phrase) == missing
 
 
-@pytest.mark.parametrize('whole_chunk', [True, False])
-def test_complete_or_longer_ocr_move_wins_over_an_eligible_twelve_token_overlap(whole_chunk):
+@pytest.mark.parametrize(('reference', 'output', 'missing'), [
+    ('---', 'new', 0), ('first last', 'FIRST! LAST', 0),
+    ('first last', '---', 2), ('first lost words last', 'first last', 2),
+])
+def test_short_ocr_pages_measure_alphanumeric_gaps(reference, output, missing):
+    assert _largest_unmatched_ocr_passage(reference, output) == missing
+
+
+@pytest.mark.parametrize('extra_words', [True, False])
+def test_longer_ocr_move_wins_over_an_eligible_twelve_token_overlap(extra_words):
     words = [f'word{i}' for i in range(18)]
     overlap = ' '.join(words[:12])
     sentence = ' '.join(words)
     lost = f'opening {overlap} conclusion'
-    # The first deletion could take twelve words that belong to the second.
-    changes = [
-        dict(intermediate_slice=lost, output_slice=''),
-        dict(intermediate_slice=sentence if whole_chunk else f'old {sentence}', output_slice=''),
-        dict(intermediate_slice='', output_slice=sentence if whole_chunk else f'{sentence} new'),
-    ]
-    assert _largest_unmatched_ocr_passage(changes) == 14
+    # The omitted opening could take twelve words that belong to the moved sentence.
+    retained = ' '.join(f'retained{i}' for i in range(24))
+    ref = f'{lost} {retained} {sentence}'
+    out = f'{sentence} {retained}'
+    if extra_words:
+        ref = f'{lost} {retained} old {sentence}'
+        out = f'{sentence} new {retained}'
+    assert _largest_unmatched_ocr_passage(ref, out) == 14
 
 
-def test_whole_block_alignment_preserves_changed_fields_and_requires_matching_context():
+def test_edited_rows_require_matching_context():
     def fields(label, prefix):
         return ' '.join(f'{label} {prefix if i > 2 else "same"}{i}' for i in range(20))
 
     # Three unchanged rows give the span matcher a long exact reservation.
     label = 'current year approved amount'
-    assert _largest_unmatched_ocr_passage([
-        dict(intermediate_slice=fields(label, 'old'), output_slice=fields(label, 'new')),
-    ]) == 1
+    assert _largest_unmatched_ocr_passage(fields(label, 'old'), fields(label, 'new')) == 1
     # Isolated common words alone do not establish a corresponding block.
-    assert _largest_unmatched_ocr_passage([
-        dict(intermediate_slice=fields('the', 'old'), output_slice=fields('the', 'new')),
-    ]) == 40
+    assert _largest_unmatched_ocr_passage(fields('the', 'old'), fields('the', 'new')) == 40
+
+
+@pytest.mark.parametrize(('ref_gap', 'out_gap', 'missing'), [
+    ('old1 old2 same old4', 'new1 new2 same new4', 2),
+    ('', 'e', 1),  # Insertion repeats the first word of the next anchor.
+    ('', 'new1 new2 new3 new4', 1),
+    ('old1 old2 old3 old4', '', 4),
+    ('old1 old2 old3 old4 old5', 'new', 18),
+    ('old', 'new1 new2 new3 new4 new5', 14),
+])
+def test_four_word_anchors_need_twelve_matches_with_gaps_of_at_most_four(ref_gap, out_gap, missing):
+    # The table and the retained paragraph exchange places on the page.
+    tail = ' '.join(f'tail{i}' for i in range(20))
+    ref = f'a b c d {ref_gap} e f g h old i j k l {tail}'
+    out = f'{tail} a b c d {out_gap} e f g h new i j k l'
+    assert _largest_unmatched_ocr_passage(ref, out) == missing
 
 
 def test_cli_measure_bounds_hash_and_actual_proposal(tmp_path):

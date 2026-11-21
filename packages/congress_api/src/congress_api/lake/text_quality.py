@@ -3,9 +3,11 @@
 Native/final differences preserve order, multiplicity and original character
 spans. They nominate review, including legitimate cleanup, never a defect verdict.
 """
-from collections import Counter, defaultdict, deque
+from collections import defaultdict, deque
+from difflib import SequenceMatcher
 from hashlib import sha256
-from itertools import islice
+from itertools import islice, product
+import re
 
 from spicy_docs.extraction.quality import (
     MAX_COMPARE_CHARS as MAX_COMPARE_CHARS,
@@ -21,6 +23,7 @@ from congress_api.parsers.response_roles import assess_response
 POLICY_VERSION = 'ct-text-quality-measures-v3'
 FEATURE_VERSION = 'pdf-page-features-20261113-1'
 MAX_TEXT_BYTES = 256 << 10
+_MIN_MISSING_PASSAGE = 20
 _KEY = ('body_sha256', 'parser', 'parser_version', 'text_sha256')
 
 
@@ -90,7 +93,7 @@ def fts_triage(axes):
         reasons.append('severe_mechanical_garbling')
     elif bad_chars or r.get('longest_latin_single_letter_run', 0) >= 8:
         later.append('possible_mechanical_garbling')
-    if r.get('largest_unmatched_ocr_passage_tokens', 0) >= 20:
+    if r.get('largest_unmatched_ocr_passage_tokens', 0) >= _MIN_MISSING_PASSAGE:
         later.append('possible_missing_content')
     if (slots >= 3 and (c.get('sparse_repeated_line_char_fraction') or 0) >= 0.8
             and c.get('sparse_under_1000_slots', 0)/slots >= 0.8
@@ -162,77 +165,133 @@ def _moved_spans(deleted, inserted, width):
                 passed.rotate(-1)
 
 
-def _match_edited_chunks(deleted, inserted, deleted_masks, inserted_masks):
-    """Mark aligned words in whole blocks that differ only by isolated substitutions."""
-    shared = {word for chunk in deleted for word in chunk}.intersection(
-        word for chunk in inserted for word in chunk)
+def _reserve_exact_spans(ref, out, ref_mask, out_mask):
+    buckets = [[] for _ in range(min(len(ref), len(out)) + 1)]
+    for length, _, a, _, b in _moved_spans([ref], [out], width=_MIN_INTERIOR_MOVE):
+        buckets[length].append((a, b))
 
-    def pattern(chunk):
-        # A field absent from the other side cannot have moved elsewhere.
-        key = tuple(word if word in shared else None for word in chunk)
-        edits = [i for i, word in enumerate(key) if word is None]
-        if (edits and len(key) - len(edits) >= _MIN_INTERIOR_MOVE
-                and all(b - a > _MIN_MOVE_ANCHOR for a, b in zip(edits, edits[1:]))):
-            return key
-
-    # Earlier reservations must agree at every position before the remaining
-    # fields can be paired in order. Count each matching block only once.
-    counts = Counter((pattern(chunk), bytes(mask)) for chunk, mask in zip(inserted, inserted_masks))
-    for chunk, mask in zip(deleted, deleted_masks):
-        key = pattern(chunk)
-        pair = key, bytes(mask)
-        if key is not None and counts[pair]:
-            counts[pair] -= 1
-            mask[:] = bytes(word is not None for word in key)
-
-
-def _largest_unmatched_ocr_passage(changes):
-    """Reserve complete moves, then longest spans, and measure the remaining gaps."""
-    def chunks(field):
-        counts = Counter()
-        for change in changes:
-            tokens = tuple(token for token, _, _ in _comparison_tokens(change[field])
-                           if any(c.isalnum() for c in token))
-            if tokens:
-                counts[tokens] += 1
-        return counts
-
-    before, after = chunks('intermediate_slice'), chunks('output_slice')
-    deleted = list((before - after).elements())
-    inserted = list((after - before).elements())
-    longest = max(map(len, deleted), default=0)
-    if not inserted or longest < _MIN_MOVE_ANCHOR:
-        return longest
-
-    deleted_masks = [bytearray(len(chunk)) for chunk in deleted]
-    inserted_masks = [bytearray(len(chunk)) for chunk in inserted]
-    # Only a whole chunk can qualify below 12 tokens, so shorter anchors are
-    # necessary only when such a chunk is present.
-    width = min(_MIN_INTERIOR_MOVE, *(len(c) for c in deleted + inserted if len(c) >= _MIN_MOVE_ANCHOR))
-    buckets = [[] for _ in range(longest + 1)]
-    for length, d, a, i, b in _moved_spans(deleted, inserted, width):
-        if length >= _MIN_INTERIOR_MOVE or length in (len(deleted[d]), len(inserted[i])):
-            buckets[length].append((d, a, i, b))
-
-    for length in range(longest, width - 1, -1):
-        for d, a, i, b in buckets[length]:
-            # Every reserved interval is at least this long. Any overlap must
-            # cover an endpoint; put its unused remainder back at its true length.
+    for length in range(len(buckets) - 1, _MIN_INTERIOR_MOVE - 1, -1):
+        for a, b in buckets[length]:
+            # A reservation at least this long can cover only a prefix, suffix,
+            # or the entire candidate. Reconsider the remainder at its own length.
             left, right = 0, length
-            source, output = deleted_masks[d], inserted_masks[i]
-            while left < right and (source[a + left] or output[b + left]):
+            while left < right and (ref_mask[a + left] or out_mask[b + left]):
                 left += 1
-            while right > left and (source[a + right - 1] or output[b + right - 1]):
+            while right > left and (ref_mask[a + right - 1] or out_mask[b + right - 1]):
                 right -= 1
             remaining = right - left
             if remaining == length:
-                source[a:a + length] = output[b:b + length] = b'\x01' * length
+                ref_mask[a:a + length] = out_mask[b:b + length] = b'\x01' * length
             elif remaining >= _MIN_INTERIOR_MOVE:
-                buckets[remaining].append((d, a + left, i, b + left))
+                buckets[remaining].append((a + left, b + left))
 
-    # A moved table may have only short exact runs between changed row identifiers.
-    _match_edited_chunks(deleted, inserted, deleted_masks, inserted_masks)
-    return max(len(run) for mask in deleted_masks for run in mask.split(b'\x01'))
+
+# Prefer nearby continuations when several four-word anchors fit the edit gap.
+_MAX_EDIT_GAP = 4
+_EDIT_GAPS = sorted(product(range(_MAX_EDIT_GAP + 1), repeat=2), key=lambda gaps: (max(gaps), sum(gaps)))
+
+
+def _anchor_chain(ref, out, a, b, ref_end, out_end, out_mask):
+    """Follow exact runs forward while both sides have at most four intervening words."""
+    width = _MIN_MOVE_ANCHOR
+    blocks = []
+    start_a, start_b = a, b
+    a, b = a + width, b + width
+    while True:
+        used = out_mask.find(1, b, min(out_end, b + _MAX_EDIT_GAP + width))
+        if used >= 0:
+            out_end = used
+        for gap_ref, gap_out in _EDIT_GAPS:
+            p, q = a + gap_ref, b + gap_out
+            if (p + width <= ref_end and q + width <= out_end
+                    and ref[p:p + width] == out[q:q + width]):
+                # Extend only up to the next anchor. An inserted copy of its
+                # first word could otherwise consume part of that four-word run.
+                while a < p and b < q and ref[a] == out[b]:
+                    a += 1
+                    b += 1
+                blocks.append((start_a, start_b, a - start_a))
+                start_a, start_b = p, q
+                a, b = p + width, q + width
+                break
+        else:
+            if a == ref_end or b == out_end or ref[a] != out[b]:
+                blocks.append((start_a, start_b, a - start_a))
+                return blocks
+            a += 1
+            b += 1
+
+
+def _reserve_edited_spans(ref, out, ref_mask, out_mask):
+    """Reserve each chain once, including equal words at corresponding offsets in its gaps."""
+    width = _MIN_MOVE_ANCHOR
+    positions = defaultdict(deque)
+    for run in re.finditer(b'\x00+', out_mask):
+        for b in range(run.start(), run.end() - _MIN_INTERIOR_MOVE + 1):
+            positions[out[b:b + width]].append((b, run.end()))
+
+    for run in re.finditer(b'\x00+', ref_mask):
+        a = run.start()
+        while a + _MIN_INTERIOR_MOVE <= run.end():
+            starts = positions.get(ref[a:a + width], ())
+            for b, end in islice(starts, _MAX_ANCHOR_PROBES):
+                if out_mask.find(1, b, b + width) >= 0:
+                    continue
+                blocks = _anchor_chain(ref, out, a, b, run.end(), end, out_mask)
+                if sum(length for _, _, length in blocks) < _MIN_INTERIOR_MOVE:
+                    continue
+                for p, q, length in blocks:
+                    for i, j in zip(range(a, p), range(b, q)):
+                        if ref[i] == out[j]:
+                            ref_mask[i] = out_mask[j] = 1
+                    a, b = p + length, q + length
+                    ref_mask[p:a] = out_mask[q:b] = b'\x01' * length
+                break
+            else:
+                a += 1
+            if len(starts) > _MAX_ANCHOR_PROBES:
+                starts.rotate(-1)
+
+
+def _reserve_page_edges(ref, out, ref_mask, out_mask):
+    """Credit short headings and footers when one omission or insertion explains an edge."""
+    def edges(mask):
+        first = mask.find(1)
+        if first < 0:
+            return [(0, len(mask))]
+        return [(0, first), (mask.rfind(1) + 1, len(mask))]
+
+    for (a, end_a), (b, end_b) in zip(edges(ref_mask), edges(out_mask)):
+        shorter = min(end_a - a, end_b - b)
+        prefix = 0
+        while prefix < shorter and ref[a + prefix] == out[b + prefix]:
+            prefix += 1
+        suffix = shorter - prefix
+        if ref[end_a - suffix:end_a] == out[end_b - suffix:end_b]:
+            ref_mask[a:a + prefix] = out_mask[b:b + prefix] = b'\x01' * prefix
+            ref_mask[end_a - suffix:end_a] = out_mask[end_b - suffix:end_b] = b'\x01' * suffix
+
+
+def _largest_unmatched_ocr_passage(intermediate, text):
+    """Measure the longest unaccounted stretch of the independent OCR page."""
+    def words(s):
+        return tuple(token for token, _, _ in _comparison_tokens(s)
+                     if any(c.isalnum() for c in token))
+
+    ref, out = words(intermediate), words(text)
+    if not ref or ref == out:
+        return 0
+    if not out:
+        return len(ref)
+    if len(ref) < _MIN_MISSING_PASSAGE:
+        changes = SequenceMatcher(None, ref, out, autojunk=False).get_opcodes()
+        return max((b - a for tag, a, b, _, _ in changes if tag != 'equal'), default=0)
+
+    ref_mask, out_mask = bytearray(len(ref)), bytearray(len(out))
+    _reserve_exact_spans(ref, out, ref_mask, out_mask)
+    _reserve_edited_spans(ref, out, ref_mask, out_mask)
+    _reserve_page_edges(ref, out, ref_mask, out_mask)
+    return max(map(len, ref_mask.split(b'\x01')))
 
 
 def measure_quality(identity, *, text=None, intermediate=None, feature=None, raw_markup=None):
@@ -265,7 +324,7 @@ def measure_quality(identity, *, text=None, intermediate=None, feature=None, raw
             comparison = compare_intermediate(intermediate, text)
             recognition['independent_ocr_comparison'] = comparison
             if comparison['status'] == 'measured':
-                recognition['largest_unmatched_ocr_passage_tokens'] = _largest_unmatched_ocr_passage(comparison['changes'])
+                recognition['largest_unmatched_ocr_passage_tokens'] = _largest_unmatched_ocr_passage(intermediate, text)
         cleanup = {'status': 'missing_intermediate', 'changes': []}
     elif intermediate is not None and not related_intermediate:
         cleanup = {'status': 'unassessed_intermediate_scope', 'changes': []}

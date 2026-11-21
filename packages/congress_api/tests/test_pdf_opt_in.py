@@ -350,7 +350,7 @@ def test_cleanup_review_flags_a_dropped_native_block_with_surviving_furniture():
 @pytest.mark.parametrize(("case", "missing_tokens"), [
     ("complete", 0), ("reflow", 0), ("omitted", 23), ("short_page", 0),
     ("moved", 0), ("lost_duplicate", 34), ("inspection_omitted", 23), ("moved_and_omitted", 23),
-    ("lost_duplicate_with_moved_sentence", 34),
+    ("lost_duplicate_with_moved_sentence", 34), ("lost_duplicate_with_short_findings", 34),
 ])
 def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens, tmp_path):
     from contextlib import closing
@@ -377,7 +377,7 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
     elif case == "reflow":
         observed = observed.replace("\n", " ").replace("each site", "each\nsite")
     elif case in {"moved", "lost_duplicate", "inspection_omitted", "moved_and_omitted",
-                  "lost_duplicate_with_moved_sentence"}:
+                  "lost_duplicate_with_moved_sentence", "lost_duplicate_with_short_findings"}:
         # Excerpts from report page 151. The inspection and response share individual words.
         inspection = [
             "conducted remote inspections of the ICE hotel facilities to",
@@ -400,7 +400,9 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
             "recommendations were administratively closed. See",
             "Appendix B for ICE's full response.",
         ]
-        if case == "lost_duplicate_with_moved_sentence":
+        if case in {"lost_duplicate_with_moved_sentence", "lost_duplicate_with_short_findings"}:
+            if case == "lost_duplicate_with_short_findings":
+                findings = [*findings[:3], "hotel space."]
             sentence = ["Agency officials confirmed that one recommendation",
                         "was resolved after the committee published its formal notice."]
             lines = [*response, *response, *sentence, *findings]
@@ -464,6 +466,11 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
         deleted, inserted = comparison["changes"]
         assert deleted["intermediate_slice"].split() == " ".join(response * 2 + sentence).split()
         assert inserted["output_slice"].split() == " ".join(sentence + response).split()
+    elif case == "lost_duplicate_with_short_findings":
+        # None of the ordered deletions contains the full missing response.
+        assert comparison["changes"]
+        assert all(" ".join(response) not in " ".join(change["intermediate_slice"].split())
+                   for change in comparison["changes"])
     elif case in {"inspection_omitted", "moved_and_omitted"}:
         assert any(" ".join(change["intermediate_slice"].split()) == " ".join(inspection)
                    for change in comparison["changes"])
@@ -481,7 +488,8 @@ def test_selective_review_of_recognition_on_a_scanned_page(case, missing_tokens,
         assert proposal["action"] == "keep"
 
 
-def test_moved_paragraph_across_repetitive_table_matches_in_under_50ms():
+@pytest.mark.parametrize("last_id", ["new159", "old0"])
+def test_moved_paragraph_across_repetitive_table_matches_in_under_50ms(last_id):
     from hashlib import sha256
     from timeit import repeat
 
@@ -493,7 +501,7 @@ def test_moved_paragraph_across_repetitive_table_matches_in_under_50ms():
 
     paragraph = " ".join(f"The committee reviewed funding for district {i}" for i in range(28))
     reference = f"{table('old')}\n{paragraph}"
-    output = f"{paragraph}\n{table('new')}"
+    output = f"{paragraph}\n{table('new')}".replace("new159", last_id)
     digest = sha256(output.encode()).hexdigest()
     identity = dict(body_sha256="a"*64, parser="pdf_text", parser_version="test", text_sha256=digest,
                     output_sha256=digest, source_format="pdf", source_state="retained",
@@ -511,8 +519,8 @@ def test_moved_paragraph_across_repetitive_table_matches_in_under_50ms():
     evidence = dict(stage="measurement", path="/measure.json", sha256="b"*64, locator="line 1")
     assert assess_text(assessment_facts(measured, evidence))["action"] == "keep"
 
-    # Time span matching on the actual ordered diff, excluding the upstream alignment.
-    elapsed = min(repeat(lambda: _largest_unmatched_ocr_passage(comparison["changes"]), number=1, repeat=3))
+    # Include full-page tokenization and both matching phases.
+    elapsed = min(repeat(lambda: _largest_unmatched_ocr_passage(reference, output), number=1, repeat=3))
     assert elapsed < 0.05, f"span matching took {elapsed:.4f}s on the 996-token page"
 
 
