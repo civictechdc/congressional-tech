@@ -303,6 +303,49 @@ def test_moved_whole_lines_on_a_short_page_use_each_copy_once():
     assert _largest_unmatched_ocr_passage(f'{title}\n{title}\n{other}', output) == 5
 
 
+@pytest.mark.parametrize(('copies', 'retained', 'move_heading'), [
+    (0, 0, False), (1, 1, True), (1, 0, False), (1, 0, True), (2, 1, True),
+])
+def test_joined_ocr_columns_preserve_each_printed_line_once(copies, retained, move_heading):
+    from itertools import zip_longest
+
+    # Excerpts from the two columns of the Inspector General report on page 151.
+    left = [
+        'We evaluated U.S.', 'Immigration and Customs', "Enforcement's (ICE) plans to",
+        'house migrant families in', 'hotels and how ICE selected a', 'contractor to implement these',
+        'plans. From April 2021 to', 'September 2021, we',
+    ]
+    right = [
+        'at six hotels that went largely unused between April and',
+        "June 2021. ICE's sole source contract with Endeavors",
+        'resulted in millions of dollars being spent on unused',
+        'hotel space. In addition, Endeavors did not meet new',
+        'healthcare protocols or ensure proper COVID-19 testing',
+        'for families. For example, families were not tested by',
+        'ICE for COVID-19 prior to being transported to hotels',
+    ]
+    passage = ['and were not always tested by Endeavors staff upon',
+               'arrival at or departure from hotels, putting migrant',
+               'families and the outside population at risk of']
+    tail = 'contracting COVID-19. Further, Endeavors did not'
+    heading = 'Report of the Inspector General'
+    reference = '\n'.join([heading, *left, *right, *passage * copies, tail])
+    # Each output row follows the ink across both columns. A missing cell
+    # leaves the text printed beside it in place, including on the last row.
+    cells = [*right, *passage * retained, *[''] * (len(passage) * (copies - retained)), tail]
+    rows = [' '.join(cell for cell in row if cell) for row in zip_longest(left, cells, fillvalue='')]
+    output = '\n'.join([*rows, heading] if move_heading else [heading, *rows])
+
+    ident = identity(output, source_state='retained', intermediate_kind='independent_ocr',
+                     intermediate_body_sha256='a'*64, intermediate_scope='page', intermediate_page_number=151)
+    ident.update(scope='page', page_number=151, source_page_count=151)
+    measured = measure_quality(ident, text=output, intermediate=reference)
+    missing = 25 * (copies - retained)
+    assert measured['axes']['recognition']['largest_unmatched_ocr_passage_tokens'] == missing
+    evidence = dict(stage='measurement', path='/measure.json', sha256='b'*64, locator='line 1')
+    assert assess_text(assessment_facts(measured, evidence))['action'] == ('manual_review' if missing else 'keep')
+
+
 @pytest.mark.parametrize(('last_word', 'missing', 'action'), [('promptly.', 19, 'keep'),
                                                              ('very promptly.', 20, 'manual_review')])
 def test_independent_ocr_credits_a_bare_page_number(last_word, missing, action):

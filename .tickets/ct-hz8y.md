@@ -124,3 +124,7 @@ Evidence: /Users/mikewolfd/Work/congressional-tech/.cache/archive-release/long-t
 **2026-11-20T23:44:51Z**
 
 Review follow-up. The original planted test exercised cleanup after native extraction. The new image-only PDF regression plants a 23-word omission in the recognizer. An independent Tesseract reading of the same rendered page sends that case to manual review. Complete text, a whitespace reflow and a genuinely short page with the same surviving header and page number all receive keep. On retained report page 151, the 300-DPI comparison also flags the 25 missing words about Endeavors testing. The recorded pre-cleanup text and the delivered page slice agree.
+
+**2026-11-21T03:36:31Z**
+
+The page-level comparison now recognizes joined columns when two OCR readings preserve the same printed lines in a different order. On the retained Inspector General page 151, two intact layouts produced zero missing words. Removing a 34-word column or one of two copies sent the page to manual review. The delivered page still went to manual review and the comparison identified the real 25-word Endeavors omission. The two affected test files passed all 99 cases. The independent two-column Tesseract probe and its evidence are under <main checkout>/.cache/archive-release/long-tail-20261120/reviews/ and integration/.

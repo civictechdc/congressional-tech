@@ -279,22 +279,51 @@ def _page_words(text):
     for line in text.split('\n'):
         start = len(words)
         words.extend(token for token, _, _ in _comparison_tokens(line) if any(c.isalnum() for c in token))
-        size = len(words) - start
-        if size >= _MIN_MOVE_ANCHOR:
-            lines.append((line, start, size))
+        if len(words) > start:
+            lines.append((tuple(words[start:]), start))
     return tuple(words), lines
 
 
-def _reserve_lines(ref_lines, out_lines, ref_mask, out_mask, reserved):
+def _line_parts(row, starts, widths):
+    """Find a complete division of a joined OCR row into lines on the other page."""
+    if row in starts:
+        return [row] if len(row) >= _MIN_MOVE_ANCHOR else []
+    # Several printed lines can have the same opening. Keep each reachable
+    # boundary so a longer prefix cannot hide the only complete division.
+    previous = {0: 0}
+    for i, word in enumerate(row):
+        if i in previous:
+            for width in widths.get(word, ()):
+                end = i + width
+                if end <= len(row) and end not in previous and row[i:end] in starts:
+                    previous[end] = i
+    if len(row) not in previous:
+        return []
+    parts = []
+    end = len(row)
+    while end:
+        i = previous[end]
+        parts.append(row[i:end])
+        end = i
+    return reversed(parts)
+
+
+def _reserve_lines(lines, rows, line_mask, row_mask):
     starts = defaultdict(deque)
-    for line, b, size in out_lines:
-        if out_mask.find(1, b, b + size) < 0:
-            starts[line].append(b)
-    for line, a, size in ref_lines:
-        if starts.get(line) and ref_mask.find(1, a, a + size) < 0:
-            b = starts[line].popleft()
-            ref_mask[a:a + size] = out_mask[b:b + size] = b'\x01' * size
-            reserved.append((a, b, size))
+    widths = defaultdict(set)
+    for line, a in lines:
+        widths[line[0]].add(len(line))
+        available = starts[line]
+        if line_mask.find(1, a, a + len(line)) < 0:
+            available.append(a)
+    for row, b in rows:
+        for line in _line_parts(row, starts, widths):
+            size = len(line)
+            if starts[line] and row_mask.find(1, b, b + size) < 0:
+                a = starts[line].popleft()
+                line_mask[a:a + size] = row_mask[b:b + size] = b'\x01' * size
+                yield a, b, size
+            b += size
 
 
 _MAX_SLOT_TOKENS = 128
@@ -366,7 +395,8 @@ def _largest_unmatched_ocr_passage(intermediate, text):
         return len(ref)
     ref_mask, out_mask = bytearray(len(ref)), bytearray(len(out))
     reserved = _reserve_spans(ref, out, ref_mask, out_mask)
-    _reserve_lines(ref_lines, out_lines, ref_mask, out_mask, reserved)
+    reserved.extend(_reserve_lines(ref_lines, out_lines, ref_mask, out_mask))
+    reserved.extend((a, b, n) for b, a, n in _reserve_lines(out_lines, ref_lines, out_mask, ref_mask))
     if not reserved and len(ref) < _MIN_MISSING_PASSAGE:
         for a, b, n in SequenceMatcher(None, ref, out, autojunk=False).get_matching_blocks():
             ref_mask[a:a + n] = out_mask[b:b + n] = b'\x01' * n
