@@ -113,13 +113,16 @@ ring run has not been made since; `v64_ep1_ring_fp16.json` predates this and is 
 - **The pad fix is a correctness fix.** Eight docs within 31 tokens of each other had 0 to 31 wrong
   sliding-window positions each in the first decode step's window (the predicted counts); with the fix 0 to 1,
   as few as prefilling one doc at a time.
-- **Seven chunks are a speed gain.** Both changes together: 1.77 to 2.02 docs/s (+14%), about 36 h for the
-  258,440-row queue instead of 41 h. Against the pad-fix ring run alone the gain is 5% (1.92 to 2.02).
+- **Seven chunks are a speed gain:** 1.77 to 2.02 docs/s (+14%), about 36 h for the 258,440-row queue instead
+  of 41 h. The pad fix adds nothing to that (next point).
 - **Seven chained chunks hold KV fidelity.** Cosine against GPU per chunk: layers 0..11 0.9993 to 0.9995 in
   every chunk; layers 12..14 0.9979 to 0.9984 in chunks 0 to 4 and 0.9968 to 0.9972 in chunks 5 and 6. The
   GPU's own chunk-size noise floor is 0.9971 to 0.9995.
-- **Unexplained:** the pad-fix runs were 8 to 10% faster than their baselines, one run each, and the fix has no
-  reason to change speed. Do not count on it until repeated.
+- **The pad fix does not change speed.** Its 11-17 runs read 8 to 10% faster, one run each (1.68 and 1.92 in
+  the table). Six interleaved reruns on 11-18 did not repeat it: back-to-back pairs under like load agree
+  within 2% in both directions (ring 140.9 s against 141.6 s, GPU only 166.5 s against 163.9 s; fast-gemma4
+  `artifacts/eval/ring_speed_repeat_20261118/`). Other jobs loaded the machine during that rerun and the same
+  code differed by 17% between its two runs, so sweep timings count only from an idle machine.
 - The two seven-chunk runs differ on 6 docs, in `topics` and `gist` only; the two three-chunk runs are
   identical. Not investigated.
 - Peak MLX memory was 9.6 GB. Reports and logs: `artifacts/eval/ring_followups_20261117/`.

@@ -20,6 +20,10 @@ eval_blind and the sweep command take a memory limit with a safe default; a run 
 
 ## Notes
 
+**2026-11-18T22:05:32Z**
+
+Evidence from the ANE ring side session: 13 evals of valid_sweep,val48_sweep (212 docs, gemma4_e2b_v64_c2c4_w8) run through fast-gemma4 artifacts/logs/rd_capped_run.py (mx.set_memory_limit 24 GB, mx.set_cache_limit 6 GB, watchdog exit above 28 GB) on 2026-11-17 and 11-18 peaked at 9.62 GB MLX memory with the ring and 8.45 GB GPU only. Repeats of the same code under the cap gave identical predictions on all 212 docs, so a 6 GB cache cap is a tested starting default. The wrapper sits outside Git (artifacts/ is ignored); copy its three lines, do not depend on the file.
+
 **2026-11-20T17:29:15Z**
 
 2026-11-20: Added mx.set_memory_limit and mx.set_cache_limit controls with safe defaults to congress_docmeta.silicon_runtime_v6, eval_blind, and cli (commit 0e554d3f). Verified in test_docmeta_audit_remediation.py and live Apple Silicon MLX hardware eval (.cache/archive-release/docmeta-move-20261117/eval_after_ct2cig_cts9l2_20261120.json).
