@@ -110,6 +110,15 @@ dispatch. Limits bound cases, files and comparisons; unsupported or unavailable
 comparisons remain explicit. Use these observations to find substantial search
 content loss, not to reject harmless formatting differences or every OCR typo.
 
+To check a retained PDF page against a second OCR reading, supply that reading
+as the intermediate file with `intermediate_kind="independent_ocr"`. Include its
+SHA-256 and bind it to the same body and physical page with
+`intermediate_body_sha256`, `intermediate_scope="page"` and
+`intermediate_page_number`. An unmatched passage of at least 20 content tokens
+in the reference raises `possible_missing_content` for manual review. The
+measurement records the differing passages so a reviewer can check them
+against the source image. Whitespace changes preserve the token sequence.
+
 When original markup is supplied, `ct-response-roles-v2` also recognizes the
 House repository's meeting-not-found and file-not-found templates. It requires
 the House title, primary meeting area, direct error panel and combined
@@ -118,7 +127,7 @@ its completed extraction stays separate from the `review_first` response signal.
 Quoted examples, explicitly hidden panels, mixed meeting content and incomplete
 diagnostics remain unassessed by these rules. Evidence retains source byte
 anchors and the observed diagnostic text. The measurement policy is
-`ct-text-quality-measures-v2`; extraction versions and selection are unchanged.
+`ct-text-quality-measures-v3`.
 
 The maintained implementations now live in SpicyDocs:
 `reading.response_roles.assess_response` and
