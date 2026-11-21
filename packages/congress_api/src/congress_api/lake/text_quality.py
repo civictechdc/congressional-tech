@@ -3,7 +3,7 @@
 Native/final differences preserve order, multiplicity and original character
 spans. They nominate review, including legitimate cleanup, never a defect verdict.
 """
-from collections import Counter
+from difflib import SequenceMatcher
 from hashlib import sha256
 
 from spicy_docs.extraction.quality import (
@@ -115,19 +115,30 @@ def fts_triage(axes):
 
 
 def _largest_unmatched_ocr_passage(changes):
-    """Credit each inserted content token once across all removed passages on the page."""
-    inserted = Counter(
-        token for change in changes for token, _, _ in _comparison_tokens(change['output_slice'])
-        if any(char.isalnum() for char in token)
-    )
-    largest = 0
-    for change in changes:
-        missing = change['removed_content_tokens']
-        for token, _, _ in _comparison_tokens(change['intermediate_slice']):
-            if inserted[token]:
-                inserted[token] -= 1
-                missing -= 1
-        largest = max(largest, missing)
+    """Pair moved spans longest first, then count the longest remaining deletion."""
+    def content_tokens(field, boundary):
+        tokens = []
+        for change in changes:
+            tokens.extend(token for token, _, _ in _comparison_tokens(change[field])
+                          if any(char.isalnum() for char in token))
+            tokens.append(boundary)
+        return tokens
+
+    # Distinct boundaries prevent a match from crossing a change or a previously paired span.
+    inserted_boundary = object()
+    deleted = content_tokens('intermediate_slice', None)
+    inserted = content_tokens('output_slice', inserted_boundary)
+    while True:
+        match = SequenceMatcher(None, deleted, inserted, autojunk=False).find_longest_match()
+        if match.size < 4:
+            break
+        deleted[match.a:match.a + match.size] = [None]
+        inserted[match.b:match.b + match.size] = [inserted_boundary]
+
+    largest = run = 0
+    for token in deleted:
+        run = 0 if token is None else run + 1
+        largest = max(largest, run)
     return largest
 
 
