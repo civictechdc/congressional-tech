@@ -55,6 +55,8 @@ def exposure(db, shas):
         db,
         """SELECT w.sha, d.*,r.kind,r.ordinal,r.recovered_url,r.identity_note
             FROM recoveries r JOIN wanted w ON r.body=unhex(w.sha)
+            JOIN detail x ON r.list_row=x.file_row_number AND r.file_row_number >= x.rec_start
+                AND r.file_row_number < x.rec_start + x.rec_len
             JOIN docs d USING(list_row) ORDER BY list_row,ordinal""",
     ):
         associations[r.pop("sha")]["recoveries"].append(r)

@@ -1,4 +1,5 @@
 """Body reconciliation uses fresh versions and falls back to exact bytes."""
+from copy import deepcopy
 import gzip
 import hashlib
 import io
@@ -194,7 +195,7 @@ def test_missed_error_and_public_copy_checks_are_independent(source_roles):
         body_sha256="playlist",
         bucket="missing_recording_playlist",
         capture_history=[{"http_status": 404}],
-        live={"export": None, "documents": []},
+        live={"export": None, "documents": [], "alternates": [], "recoveries": []},
     )
     soft = dict(
         body_sha256="html",
@@ -203,6 +204,8 @@ def test_missed_error_and_public_copy_checks_are_independent(source_roles):
         live={
             "export": None,
             "documents": [{"hidden": False, "doc_id": "public-link", "saved_body": "html"}],
+            "alternates": [],
+            "recoveries": [],
         },
         exclusion={"source_role": "error_response"},
     )
@@ -222,12 +225,17 @@ def test_public_copy_check_counts_wrappers_and_hidden_detail_downloads(source_ro
             body_sha256=key,
             bucket=bucket,
             live={
-                "documents": [dict(doc_id=doc_id, hidden=hidden, saved_body=key) for doc_id, hidden in docs]
+                "documents": [dict(doc_id=doc_id, hidden=hidden, saved_body=key) for doc_id, hidden in docs],
+                "alternates": [],
+                "recoveries": [],
             },
             **fields,
         )
 
-    rows = [source(str(i), "damaged_pdf", (str(i), False)) for i in range(22)]
+    walling = "20568d1abba1b309"
+    rows = [source(str(i), "damaged_pdf", (str(i), False)) for i in range(21)]
+    rows.append(source("walling-body", "damaged_pdf", (walling, False)))
+    rows[-1]["live"]["recoveries"] = [dict(rows[-1]["live"]["documents"][0])]
     wrappers = {}
     for payload, wrapper in [
         ("359e3b8b6b844d69", "6eea94ddc3e78724"),
@@ -244,11 +252,14 @@ def test_public_copy_check_counts_wrappers_and_hidden_detail_downloads(source_ro
         ("90bd27046786ab4e",),
         ("8b408d366abfb89d", "e8c6aced18461017"),
     ]:
-        rows.append(source(keys[0], "publisher_html_error_at_pdf_target", *((key, True) for key in keys)))
+        row = source(keys[0], "publisher_html_error_at_pdf_target", *((key, True) for key in keys))
+        row["live"]["recoveries"] = [dict(doc) for doc in row["live"]["documents"]]
+        rows.append(row)
 
     check = source_roles.public_copy_control(rows, wrappers)
     assert (check["default_list_visible"], check["detail_downloads"], check["passed"]) == (26, 31, False)
     by_key = {d["doc_id"]: d for d in check["records"]}
+    assert [d["kind"] for d in by_key[walling]["downloads"]] == ["primary"]
     assert {
         k for k, d in by_key.items() if d["detail_download_available"] and not d["default_list_visible"]
     } == {"85afe0532f6c8e0b", "a3002f39e37a6384", "90bd27046786ab4e", "8b408d366abfb89d", "e8c6aced18461017"}
@@ -256,17 +267,76 @@ def test_public_copy_check_counts_wrappers_and_hidden_detail_downloads(source_ro
         assert by_key[wrapper]["default_list_visible"] and by_key[wrapper]["detail_download_available"]
         assert by_key[wrapper]["recovery_payload_sha256"] == r["payload_sha256"]
     assert len({d["recovery_payload_sha256"] for d in check["records"]}) == len(rows)
-    for row in [*rows, *wrappers.values()]:
-        for doc in row["live"]["documents"]:
-            doc["hidden"] = True
-    hidden = source_roles.public_copy_control(rows, wrappers)
+    hidden_rows, hidden_wrappers = deepcopy((rows, wrappers))
+    for row in [*hidden_rows, *hidden_wrappers.values()]:
+        for field in ("documents", "recoveries"):
+            for doc in row["live"][field]:
+                doc["hidden"] = True
+    hidden = source_roles.public_copy_control(hidden_rows, hidden_wrappers)
     assert (hidden["default_list_visible"], hidden["detail_downloads"], hidden["passed"]) == (0, 31, False)
     assert hidden["default_list_passed"] and not hidden["detail_downloads_passed"]
     for row in [*rows, *wrappers.values()]:
-        for doc in row["live"]["documents"]:
+        # Removing the invalid primaries from detail.parquet removes their saved-body
+        # joins. recoveries.parquet still joins all six bodies to the same pages.
+        row["live"]["documents"].clear()
+        for doc in row["live"]["recoveries"]:
             doc["saved_body"] = None
     cleared = source_roles.public_copy_control(rows, wrappers)
-    assert cleared["passed"] and cleared["detail_downloads"] == 0
+    assert (cleared["default_list_visible"], cleared["detail_downloads"], cleared["passed"]) == (1, 6, False)
+    assert {d["doc_id"] for d in cleared["records"]} == {
+        "85afe0532f6c8e0b", "a3002f39e37a6384", "90bd27046786ab4e",
+        "8b408d366abfb89d", "e8c6aced18461017", walling,
+    }
+    assert all([link["kind"] for link in d["downloads"]] == ["recovery"] for d in cleared["records"])
+
+
+def test_alternate_and_recovery_on_the_same_detail_page(source_roles):
+    page = dict(doc_id="page", saved_body="qualified-primary", hidden=True)
+    alternate = dict(
+        body_sha256="a", bucket="damaged_pdf", live=dict(documents=[], alternates=[page], recoveries=[])
+    )
+    recovery = dict(
+        body_sha256="b", bucket="damaged_pdf", live=dict(documents=[], alternates=[], recoveries=[page])
+    )
+    rows = [alternate, recovery]
+
+    def check(expected):
+        result = source_roles.public_copy_control(rows, {})
+        assert result["passed"] == (not expected)
+        assert result["detail_downloads"] == len(result["records"]) == int(bool(expected))
+        assert [(d["kind"], d["body_sha256"]) for p in result["records"] for d in p["downloads"]] == expected
+
+    check([("alternate", "a"), ("recovery", "b")])
+    page["saved_body"] = None
+    check([("recovery", "b")])
+    recovery["live"]["recoveries"].clear()
+    check([])
+    page["saved_body"] = "qualified-primary"
+    check([("alternate", "a")])
+
+
+def test_handoff_replaces_obsolete_associations_and_labels_their_releases(source_roles):
+    stale = dict(link_key="11eb671c53675b03", hidden=False, saved_kind="original")
+    row = dict(
+        body_sha256="damaged", release_associations=[stale], release_associations_20261117=[dict(stale, title="old")]
+    )
+    prior_ids = {"release_associations": "first", "release_associations_20261117": "second"}
+    live = dict(documents=[], alternates=[], recoveries=[])
+    handoff = source_roles.handoff_associations(row, live, prior_ids)
+    assert handoff["release_id"] == source_roles.RELEASE
+    assert handoff["release_associations"] == []
+    assert handoff["prior_release_associations"] == [
+        dict(release_id="first", associations=[stale]),
+        dict(release_id="second", associations=row["release_associations_20261117"]),
+    ]
+    for field in live:
+        live[field].append(dict(doc_id=field, saved_body="damaged" if field == "documents" else "other"))
+    current = source_roles.handoff_associations(row, live, prior_ids)["release_associations"]
+    assert [(d["link_key"], d["association_type"], d["body_sha256"], d["saved_body"]) for d in current] == [
+        ("documents", "primary", "damaged", "damaged"),
+        ("alternates", "alternate", "damaged", "other"),
+        ("recoveries", "recovery", "damaged", "other"),
+    ]
 
 
 @pytest.mark.parametrize(

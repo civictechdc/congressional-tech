@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-11-20T23:54:04Z",
+  "updated_at": "2026-11-21T01:19:54Z",
   "archive_root": "<main checkout>/.cache/archive-release",
   "owner_tickets": [
     "ct-en4n",
@@ -32,12 +32,13 @@
     "retry_behavior": "Do not retry broken publisher copies unless Last-Modified or ETag changes; search alternative archives and use browser_session_capture for bot-screened LoC/GAO targets.",
     "recovery_open": "Preserves the exact-original decision from ct-z4w5. Use document_fetch_eligibility and the per-target qualification before planning a request.",
     "reconstructed_listings": "The 188 reconstructed targets identify House meeting listing members or a Senate hearings listing. The receipt records no HTTP request URL for these bodies. Preserve the source history and skip document acquisition.",
-    "undecided_refetch": "The remaining 210 null needs_refetch values refer to 197 recording playlists and 13 sources awaiting target qualification. Capture-history review is complete."
+    "undecided_refetch": "The remaining 210 null needs_refetch values refer to 197 recording playlists and 13 sources awaiting target qualification. Capture-history review is complete.",
+    "release_associations": "Every row names its current Explorer release in release_id. release_associations lists primary, alternate and recovery entries from that release. prior_release_associations preserves earlier matches by release ID. release_associations_20261117 retains the dated document metadata used for archive lookup."
   },
   "inventory": {
     "path": "long-tail-20261120/pdf-source/invalid-sources.jsonl",
-    "sha256": "adeb3f4f2acbb82d299762e48669ff254162cbf16640465207e3e74c2108b7b1",
-    "bytes": 1827752
+    "sha256": "e52228b9bde9f3e5b4a2cd2e21b8bd8e0b1a3d607ace700c89df1137bca3ba00",
+    "bytes": 1937500
   },
   "review_view": {
     "path": "long-tail-20261120/pdf-source/invalid-sources.csv",
@@ -51,13 +52,13 @@
   },
   "instructions": {
     "path": "long-tail-20261120/pdf-source/ct-en4n-summary.md",
-    "sha256": "d363639db71f13ed119a76b83f4932c5ef1725bcadd15f054e909491df0e7d1f",
-    "bytes": 5528
+    "sha256": "f9320bb756a7e0301ae0dd369b96c2ea2441205e635f6f1ecad8ec3a0eb01d0f",
+    "bytes": 6022
   },
   "verification": {
     "path": "long-tail-20261120/pdf-source/ct-en4n-reconciliation.json",
-    "sha256": "f0c41e2abdaadfbaacb1fb6bdb59be402b68a6aa153045a6182a5f4d772f11d6",
-    "bytes": 8676871
+    "sha256": "c556db1771b008179beb9f9123666a8d285860f8a3ddb6f6f7f13531957a05ae",
+    "bytes": 8688206
   },
   "previous_manifest": {
     "path": "ct-z4w5-acceptance-20261120/inventory/manifest.json",

@@ -34,6 +34,11 @@ from pdf_source_release import exposure, query, release_db, serializable
 
 ASSESSMENT = OCR / "repairs/corpus-assessment-20261113"
 OLD = Path("ticket-fixes-20261117/inventory/post-capture-append/invalid-sources.jsonl")
+PRIOR_ASSOCIATION_SOURCES = {
+    "release_associations": OCR
+    / "repairs/accepted-text-adoption-20261114/full-delivery-admission/release-metadata-receipt.json",
+    "release_associations_20261117": Path("ticket-fixes-20261117/inventory/metadata.json"),
+}
 PROPOSAL = OCR / "repairs/response-roles-offline-20261113/deferred-source-proposal.json"
 VIEWERS = ASSESSMENT / "triage-current-20261114/ct-g4yz-fallback-release-binding-20261115/binding.json"
 EMPTY_CONTROLS = (
@@ -218,23 +223,50 @@ def check_missed_errors(rows):
     )
 
 
+def body_associations(state):
+    for kind, field in (("primary", "documents"), ("alternate", "alternates"), ("recovery", "recoveries")):
+        for doc in state[field]:
+            yield kind, doc
+
+
 def public_copy_control(rows, wrappers):
-    """Check Explorer's list filter and its detail download link for each saved-body association."""
-    records = []
+    """Check the download links ArchiveDetail renders, once per Explorer link key."""
+    sources = {}
+    pages = {}
+    attachments = defaultdict(list)
     for row in [*rows, *wrappers.values()]:
-        for doc in row["live"]["documents"]:
+        sha = row["body_sha256"]
+        sources[sha] = dict(
+            body_sha256=sha, recovery_payload_sha256=row.get("payload_sha256", sha), bucket=row["bucket"]
+        )
+        for kind, doc in body_associations(row["live"]):
+            key = doc["doc_id"]  # Hex detail.link_key, including for recovery-only pages.
+            if kind == "primary" or key not in pages:
+                pages[key] = doc
+            if kind != "primary":
+                attachments[key].append((kind, sha))
+
+    records = []
+    for key, doc in pages.items():
+        primary = doc["saved_body"]
+        downloads = [dict(kind="primary", **sources[primary])] if primary in sources else []
+        for kind, sha in attachments[key]:
+            # Alternates live inside the saved-copy section. A recovery matching the
+            # primary is labeled "saved copy above"; other recoveries have their own link.
+            if (kind == "alternate" and primary) or (kind == "recovery" and sha != primary):
+                downloads.append(dict(kind=kind, **sources[sha]))
+        if downloads:
             records.append(
                 dict(
-                    body_sha256=row["body_sha256"],
-                    recovery_payload_sha256=row.get("payload_sha256", row["body_sha256"]),
-                    bucket=row["bucket"],
-                    **doc,
+                    doc,
+                    **sources.get(primary, {}),
                     default_list_visible=not doc["hidden"],
-                    detail_download_available=doc["saved_body"] is not None,
+                    detail_download_available=True,
+                    downloads=downloads,
                 )
             )
     visible = sum(d["default_list_visible"] for d in records)
-    downloads = sum(d["detail_download_available"] for d in records)
+    downloads = len(records)
     return dict(
         passed=not (visible or downloads),
         default_list_passed=visible == 0,
@@ -243,6 +275,20 @@ def public_copy_control(rows, wrappers):
         detail_downloads=downloads,
         records=records,
     )
+
+
+def handoff_associations(row, state, prior_release_ids):
+    prior = [
+        dict(release_id=release_id, associations=row[field])
+        for field, release_id in prior_release_ids.items()
+        if row.get(field)
+    ]
+    current = []
+    for kind, doc in body_associations(state):
+        association = dict(doc, association_type=kind, body_sha256=row["body_sha256"])
+        association["link_key"] = association.pop("doc_id")
+        current.append(association)
+    return dict(release_id=RELEASE, release_associations=current, prior_release_associations=prior)
 
 
 def recovery_record(item, fact, bucket, addresses):
@@ -454,6 +500,9 @@ def reconcile(root):
     require(not (set(positive) & {r["body_sha256"] for r in zeros}), "valid source in damaged-PDF set")
     rows = []
     handoff = []
+    prior_release_ids = {
+        field: load(root / path)["release_id"] for field, path in PRIOR_ASSOCIATION_SOURCES.items()
+    }
     for r in inventory:
         sha = r["body_sha256"]
         fact = provenance.get(sha)
@@ -499,6 +548,7 @@ def reconcile(root):
         handoff.append(
             dict(
                 r,
+                **handoff_associations(r, live[sha], prior_release_ids),
                 exclusion=excluded.get(sha),
                 selected_readings=live[sha]["readings"],
                 v13_exported=live[sha]["export"] is not None,
@@ -659,6 +709,7 @@ def reconcile(root):
                 for p in (
                     INVENTORY,
                     OLD,
+                    *PRIOR_ASSOCIATION_SOURCES.values(),
                     *CONTROL_INPUTS,
                     OUT / "receipt-provenance.json",
                     OUT / "capture-history.parquet",
@@ -705,7 +756,7 @@ The original receipt line and capture index resolve all 188 historical provenanc
     content += f"""
 Fifty of these 345 SHA values also occur in the 455-record inventory. Each of the 345 has a PDF source header and a documented defect or incomplete transfer. None has delivered v13 text. The capture query covers all {summary['zero_page_addresses']} zero-page addresses. For CHRG-118shrg53785 the October 5 batch reached its size limit. The October 6 capture stored the complete PDF offered at Explorer link `1e68f460bf1cd70f`. Each zero-page record names the body hashes captured at its addresses and the ledger gives their release associations.
 
-**Live exposure.** {summary['public_saved_hashes']} distinct inventory hashes are saved on {summary['public_saved_rows']} Explorer rows. The default list includes 22 damaged PDFs, two State Department HTML errors and both archive wrappers. The wrapper link keys are `6eea94ddc3e78724` and `b6aaf0d8fdba71e2`. Each wrapper shares its payload's recovery record. Four Natural Resources HTML errors occupy five hidden rows, including the separate Bakst and Mitchell targets. All five detail pages still offer the saved body. All 398 inventory error responses and both wrappers carry explicit v13 error exclusions. The public URL-state table has one `body_not_qualified` entry, outside the 455.
+**Live exposure.** {summary['public_saved_hashes']} distinct inventory hashes are saved on {summary['public_saved_rows']} Explorer rows. The default list includes 22 damaged PDFs, two State Department HTML errors and both archive wrappers. The wrapper link keys are `6eea94ddc3e78724` and `b6aaf0d8fdba71e2`. Each wrapper shares its payload's recovery record. Four Natural Resources HTML errors occupy five hidden rows, including the separate Bakst and Mitchell targets. Those five pages and the Walling page (`20568d1abba1b309`) each reference the same invalid body through their primary and recovery entries. Clearing their primaries exposes six recovery downloads. The guard checks primary, alternate and recovery links and counts each affected link key once. All 398 inventory error responses and both wrappers carry explicit v13 error exclusions. The public URL-state table has one `body_not_qualified` entry, outside the 455.
 
 Exactly {summary['inventory_pdf_errors']} of the 27 selected public PDF error readings belong to the inventory. Twenty-one have the historical zero-page diagnostic, and one is the Walling source. The other five failures are named separately in the ledger. These are reading statuses. The export itself contains only saved body, text, offsets and digest.
 
@@ -714,6 +765,8 @@ Exactly {summary['inventory_pdf_errors']} of the 27 selected public PDF error re
 The HTTP control compares actual failed receipts and served body hashes with the public release. The good-fetch rule in `model/sql/good-fetches.sql` requires HTTP 200–299. Ticket ct-fb29 documents release-schema descriptions. The historical wrappers, raw receipts and completed reading history remain available through the evidence files.
 
 **Reproduce** from the isolated checkout with its frozen Python environment. Run each of `scripts/measure/pdf_source_evidence.py`, `pdf_source_structure.py`, `pdf_source_history.py`, `reconcile_ct_en4n_source_roles.py` and `reconcile_ct_kfsd_cleanup.py` with the archive-release directory as its only argument and the requested archive watchdog. The first three produce the read-only evidence inputs. The latter two produce the ledgers. The full text column is only opened in row groups containing one of the 56 named readbacks.
+
+Each inventory row identifies its Explorer release in `release_id`. Its `release_associations` lists the primary, alternate and recovery entries for that body in that release. Earlier links carry their own release IDs in `prior_release_associations`.
 
 The source-role command writes the inventory and ledger before returning exit 1 if an invalid saved body appears in the default list or a detail page offers it for download.
 """
