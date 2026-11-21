@@ -536,10 +536,14 @@ def _prove_recording_changes(base_dir, candidate_dir, *, removed, expected, expe
     for row in replacements or ():
         sources = []
         for event, choices in sorted(row.pop('claims').items()):
-            proof = next((dict(event_id=event, video_key=video, page_body=body, **pages[video][body])
-                          for video, body in sorted(choices) if body in pages.get(video, {})), None)
+            proof = None
+            for video, body in sorted(choices):
+                source = pages.get(video, {}).get(body)
+                if source and (row['reason'] != 'event_ids_replaced' or event in source.get('event_ids', ())):
+                    proof = dict(event_id=event, video_key=video, page_body=body, **source)
+                    break
             if not proof:
-                reasons.append(f'data-only night: removed keys match {row["match_id"]} lacks a new page receipt for event {event}')
+                reasons.append(f'data-only night: removed keys match {row["match_id"]} lacks a corroborating new page receipt for event {event}')
                 break
             sources.append(proof)
         row['page_receipts'] = sources

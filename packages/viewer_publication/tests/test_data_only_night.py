@@ -521,17 +521,20 @@ def test_replaced_committee_page_recording_match_passes_when_traced_and_stops_wh
         return data_only_causes(rep, candidate_record=INPUTS, live_records=[live()], candidate_receipt_keys=[*LIVE_KEYS, *NIGHT],
                                 base_dir=base_d, candidate_dir=cand_d, recording_page_proof=proof, **options)
 
-    def pages(key):
-        return lambda videos, new: {'youtube:vidA': {new_page.hex(): dict(receipt_key=key, receipt_line=1)}}
+    def pages(key, events):
+        return lambda videos, new: {'youtube:vidA': {new_page.hex(): dict(receipt_key=key, receipt_line=1, event_ids=events)}}
 
-    for proof in (None, pages(LIVE_KEYS[0]), pages('outside')):
+    for proof in (None, pages(LIVE_KEYS[0], [200]), pages('outside', [200])):
         assert decide(proof)[1]
-    entries, reasons, facts = decide(pages(NIGHT[0]))
+    for wrong_events in ([300], []):
+        entries, reasons, _ = decide(pages(NIGHT[0], wrong_events))
+        assert not entries and any('m_old lacks a corroborating new page receipt for event 200' in r for r in reasons)
+    entries, reasons, facts = decide(pages(NIGHT[0], [200]))
     assert reasons == [] and len(entries) == 2
     replacement, = facts['replaced_recording_matches']
     assert replacement['reason'] == 'event_ids_replaced' and replacement['new_event_ids'] == [200]
     assert replacement['page_receipts'] == [dict(video_key='youtube:vidA', event_id=200, page_body=new_page.hex(),
-                                                 receipt_key=NIGHT[0], receipt_line=1)]
+                                                 receipt_key=NIGHT[0], receipt_line=1, event_ids=[200])]
     assert next(e for e in entries if 'removed keys' in e['id'])['tickets'] == ['ct-618r', 'ct-pz32']
 
     # Planted loss (`ct-mwod` shape: video drops to event_ids=[]): must STOP.
@@ -759,17 +762,21 @@ def test_only_the_proceeding_video_can_corroborate_a_linked_addition(tmp_path):
     import gzip
     from hashlib import sha256
     from congress_shared.custody import verify_local_file
+    from viewer_publication.data_only_night import _linked_additions
     from viewer_publication.release_gate import new_recording_pages
 
-    markup = b'''<main><a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=116718">Meeting</a>
+    markup = b'''<main><article><a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=116718">Meeting</a>
         <iframe src="https://youtube.com/embed/Fyr9cXKd6NU"></iframe>
         <aside><a href="https://youtu.be/Sidebar0001">Related hearing</a></aside>
         <div class="region-sidebar"><a href="https://youtu.be/Sidebar0002">Related hearing</a></div>
-        <nav><a href="https://youtu.be/Sidebar0003">Video archive</a></nav></main>
+        <div class="sidebar-nav"><a href="https://youtu.be/Sidebar0004">Related hearing</a></div>
+        <nav><a href="https://youtu.be/Sidebar0003">Video archive</a></nav></article>
+        <article><a href="https://youtu.be/Sibling0001">Other hearing</a></article></main>
         <div><a href="https://youtu.be/Outside0001">Elsewhere</a></div>
         <footer><a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=999999">Calendar</a></footer>'''
     digest = sha256(markup).hexdigest()
-    recordings = {f'youtube:{video}': {116718} for video in ('Fyr9cXKd6NU', 'Sidebar0001', 'Sidebar0002', 'Outside0001')}
+    recordings = {f'youtube:{video}': {116718} for video in
+                  ('Fyr9cXKd6NU', 'Sidebar0001', 'Sidebar0002', 'Sidebar0004', 'Sibling0001', 'Outside0001')}
     recordings['youtube:Sidebar0003'] = set()
     path = tmp_path / 'recording_video_links.parquet'
     pq.write_table(pa.Table.from_pylist([dict(extracted_key=k, page_body=digest) for k in recordings]), path)
@@ -780,7 +787,66 @@ def test_only_the_proceeding_video_can_corroborate_a_linked_addition(tmp_path):
         read_receipt={'new': raw}.__getitem__, read_object=lambda key: markup)
     assert pages == {
         'youtube:Fyr9cXKd6NU': {digest: dict(receipt_key='new', receipt_line=1, event_ids=[116718])},
+        'youtube:Sibling0001': {digest: dict(receipt_key='new', receipt_line=1, event_ids=[])},
         'youtube:Sidebar0003': {digest: dict(receipt_key='new', receipt_line=1, event_ids=[])}}
+    claims = {key: {116718} for key in ('youtube:Fyr9cXKd6NU', 'youtube:Sidebar0004', 'youtube:Sibling0001')}
+    pq.write_table(pa.Table.from_pylist([dict(event_id=116718, video_key=key, basis='committee_page',
+        source_ref='committee_page:' + digest, decision='linked', status='asserted') for key in claims]),
+        tmp_path / 'recording_matches.parquet')
+    proven, reasons = _linked_additions(tmp_path / 'base', tmp_path, claims, pages)
+    assert {v for v in claims if 116718 in proven[v]} == {'youtube:Fyr9cXKd6NU'}
+    assert len(reasons) == 1 and '2 video/event pairs' in reasons[0]
+
+
+@pytest.mark.parametrize('attribute', [
+    'role="navigation"', 'role="complementary"', 'role="banner"', 'role="contentinfo"',
+    'id="sidebar"', 'class="side-nav"', 'class="sidebar-nav"', 'class="related"', 'id="recent"',
+    'class="more-hearings"', 'class="nav"', 'id="menu"', 'class="breadcrumb"', 'id="pager"', 'class="pagination"',
+])
+def test_proceeding_ignores_both_event_and_video_links_in_chrome(attribute):
+    from viewer_publication.recording_pages import recording_page_events
+
+    markup = f'''<main><a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=116718">Hearing</a>
+        <iframe src="https://youtube.com/embed/Fyr9cXKd6NU"></iframe><div {attribute}>
+        <a href="https://www.congress.gov/event/118th-congress/house-event/116719">Other hearing</a>
+        <a href="https://youtu.be/Sidebar0001">Other video</a></div></main>'''.encode()
+    found = recording_page_events(markup, 'https://transportation.house.gov/hearing', {},
+                                  {'youtube:Fyr9cXKd6NU', 'youtube:Sidebar0001'}, set())
+    assert found == {'youtube:Fyr9cXKd6NU': [116718]}
+
+
+@pytest.mark.parametrize('tag,attributes', [('article', ''), ('li', ''), ('div', 'role="listitem"'),
+                                            ('div', 'class="hearing-card"'), ('section', 'class="hearing"')])
+def test_listing_binds_each_video_to_its_own_event(tag, attributes):
+    from viewer_publication.recording_pages import page_links, recording_page_events
+
+    url = 'https://transportation.house.gov/hearings/fixture'
+    first, second = 'youtube:Fyr9cXKd6NU', 'youtube:Sibling0001'
+    def block(video, event=''):
+        return f'<{tag} {attributes}><a href="https://youtu.be/{video.split(":")[1]}">Watch</a>{event}</{tag}>'
+    heading = '<h1>Bridge hearing</h1><p>Hearing Date: November 20, 2026</p>'
+    calendar = {('hspw', '2026-11-20'): {116718: {}}}
+    def page(*blocks):
+        content = ''.join(blocks)
+        if tag == 'li':
+            content = f'<ul>{content}</ul>'
+        return f'<main>{heading}{content}</main>'.encode()
+    def events(markup):
+        return recording_page_events(markup, url, calendar, {first, second}, set())
+    # The same calendar identifies a single detail page but cannot identify two proceedings.
+    assert events(page(block(first))) == {first: [116718]}
+    assert events(page(block(first), block(second))) == {first: [], second: []}
+    house = '<a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=116718">Meeting A</a>'
+    congress = '<a href="https://www.congress.gov/event/118th-congress/house-event/0116719">Meeting B</a>'
+    assert events(page(house, block(first), block(second))) == {first: [], second: []}
+    assert events(page(block(first, house), block(second))) == {first: [116718], second: []}
+    both = page(block(first, house), block(second, congress))
+    assert events(both) == {first: [116718], second: [116719]}
+    assert page_links(both, url, calendar) == ({first, second}, [])
+    between = '<a href="https://youtu.be/Outside0001">Other recording</a>'
+    listing = page(house, between, block(first, house), block(second))
+    assert recording_page_events(listing, url, calendar, {'youtube:Outside0001'}, set()) == {}
+    assert recording_page_events(page(house, block(first)), url, {}, {first}, set()) == {first: [116718]}
 
 
 def test_new_publisher_match_must_name_the_event_on_the_page_or_in_the_held_listing(tmp_path):

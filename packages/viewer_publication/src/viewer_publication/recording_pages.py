@@ -132,32 +132,16 @@ def _document(body):
     return html.document_fromstring(body, parser=html.HTMLParser(no_network=True), ensure_head_body=True)
 
 
+_URL_ATTRIBUTES = './/@href | .//@src | .//object/@data'
+_CHROME_TOKEN = re.compile(r'(?:^|[\s_-])(?:sidebar|nav|related|recent|more-hearings|menu|breadcrumb|pager|pagination)(?:$|[\s_-])', re.I)
+_ITEM_TOKEN = re.compile(r'(?:^|[\s_-])(?:card|item)(?:$|\s)|(?:^|\s)(?:hearing|event|meeting)(?:$|\s)', re.I)
+
+
 def _targets(node, url):
-    return {urljoin(url, ref) for ref in node.xpath('.//@href | .//@src | .//object/@data')}
+    return {urljoin(url, ref) for ref in node.xpath(_URL_ATTRIBUTES)}
 
 
-def _proceeding_links(tree, url, calendar):
-    body = tree.body
-    for node in body.xpath('.//aside | .//nav | .//footer | .//header | .//*[@role or @class or @id]'):
-        if (_is_cms_chrome(node) or node.tag in ('aside', 'footer') or node.get('role') == 'complementary'
-                or (node.tag == 'header' and not node.xpath('ancestor::article'))
-                or node.get('id') == 'sidebar' or {'sidebar', 'second-level-nav'}.intersection(node.classes)):
-            node.drop_tree()
-    # Keep the document head for the publisher's event metadata. A legacy page
-    # may have only an article or an unmarked body instead of a main landmark.
-    roots = body.xpath('.//main | .//*[@role="main"]') or body.xpath('.//article[not(ancestor::article)]')
-    if roots:
-        outer = [root for root in roots if not any(parent in roots for parent in root.iterancestors())]
-        if len(outer) != 1:
-            return set(), []
-        body.clear()
-        body.append(outer[0])
-    targets = _targets(body, url)
-    videos = video_keys(targets)
-    # A third-party page can link the video and House calendar without speaking for the committee.
-    host = (urlsplit(url).hostname or '').removeprefix('www.')
-    if host not in ('csce.gov', 'house.gov', 'senate.gov') and not host.endswith(('.house.gov', '.senate.gov')):
-        return videos, []
+def _event_ids(targets):
     events = set()
     for target in targets:
         address = urlsplit(target)
@@ -166,16 +150,86 @@ def _proceeding_links(tree, url, calendar):
             if match:
                 events.add(int(match[1]))
             elif address.path.lower() == '/committee/calendar/byevent.aspx':
-                events.update(int(v) for v in parse_qs(address.query).get('EventID', []) if re.fullmatch(r'[0-9]{1,10}', v))
-    # The displayed proceeding can link background documents from other meetings.
-    # Its committee calendar identifies the proceeding independently of those links.
-    proceeding = _calendar_event(tree, url, calendar)
-    return videos, sorted(proceeding or (events if len(events) == 1 else set()))
+                events.update(int(v) for k, values in parse_qs(address.query).items() if k.lower() == 'eventid'
+                              for v in values if re.fullmatch(r'[0-9]{1,10}', v))
+        elif address.hostname in ('congress.gov', 'www.congress.gov'):
+            match = re.fullmatch(r'/event/[0-9]+(?:st|nd|rd|th)?(?:-congress)?/(?:house|senate)-event/([0-9]{1,10})/?',
+                                 address.path, re.I)
+            if match:
+                events.add(int(match[1]))
+    return events
+
+
+def _item_scopes(root, url):
+    """Articles own their links. Repeated list items and cards can also hold separate proceedings."""
+    scopes = set(root.xpath('.//article | .//*[@role="article"]'))
+    siblings = defaultdict(list)
+    for node in root.xpath('.//li | .//*[@role="listitem"] | .//div[@class] | .//section[@class]'):
+        if node.tag == 'li' or node.get('role') == 'listitem' or _ITEM_TOKEN.search(node.get('class', '')):
+            siblings[node.getparent()].append(node)
+    for items in siblings.values():
+        if len(items) > 1 and any(video_keys(_targets(item, url)) for item in items):
+            scopes.update(items)
+    return scopes
+
+
+def _proceeding_body(tree):
+    body = tree.body
+    for node in body.xpath('.//aside | .//nav | .//footer | .//header | .//template | .//*[@role or @class or @id]'):
+        if (_is_cms_chrome(node) or node.tag in ('aside', 'footer', 'template')
+                or (node.tag == 'header' and not node.xpath('ancestor::article'))
+                or {'navigation', 'complementary', 'banner', 'contentinfo'}.intersection(node.get('role', '').lower().split())
+                or _CHROME_TOKEN.search(f"{node.get('class', '')} {node.get('id', '')}")):
+            node.drop_tree()
+    # Keep head metadata for the committee calendar. Some legacy templates mark only the article.
+    mains = body.xpath('.//main | .//*[@role="main"]')
+    outer = [node for node in mains if not any(parent in mains for parent in node.iterancestors())]
+    if len(outer) > 1:
+        return None
+    if not outer:
+        outer = body.xpath('.//article | .//*[@role="article"]')
+    if len(outer) == 1:
+        body.clear()
+        body.append(outer[0])
+    return body
+
+
+def _proceeding_links(tree, url, calendar):
+    body = _proceeding_body(tree)
+    if body is None:
+        return {}
+    items = _item_scopes(body, url)
+    targets = {scope: set() for scope in (body, *items)}
+    for ref in body.xpath(_URL_ATTRIBUTES):
+        owner = ref.getparent()
+        while owner not in targets:
+            owner = owner.getparent()
+        targets[owner].add(urljoin(url, ref))
+
+    videos = {scope: keys for scope, refs in targets.items() if (keys := video_keys(refs))}
+    # Head metadata and a single hearing on the calendar describe a detail page. A listing
+    # needs an explicit event link in the same item as the recording, even for its first item.
+    host = (urlsplit(url).hostname or '').removeprefix('www.')
+    official = host in ('csce.gov', 'house.gov', 'senate.gov') or host.endswith(('.house.gov', '.senate.gov'))
+    detail = len(videos) == 1 and (not items or (len(items) == 1 and body not in videos))
+    proceeding = _calendar_event(tree, url, calendar) if official and detail else set()
+    found = defaultdict(set)
+    for scope, keys in videos.items():
+        if scope is body and items:
+            continue  # Links between items do not belong to any proceeding.
+        refs = targets[scope]
+        if detail and scope is not body:
+            refs = refs | targets[body]  # A single proceeding can have its calendar link above its article.
+        events = proceeding or (_event_ids(refs) if official else set())
+        for key in keys:
+            found[key].update(events if len(events) == 1 else ())
+    return found
 
 
 def page_links(body, url, calendar):
-    """Video keys and the event identified within a single proceeding."""
-    return _proceeding_links(_document(body), url, calendar)
+    """Return the videos and only the events corroborated for every one of them."""
+    found = _proceeding_links(_document(body), url, calendar)
+    return set(found), sorted(set.intersection(*found.values())) if found else []
 
 
 def recording_page_events(body, url, calendar, linked, unlinked):
@@ -183,6 +237,6 @@ def recording_page_events(body, url, calendar, linked, unlinked):
     # An unlinked addition claims only that a new page contains its URL.
     found = {video: [] for video in unlinked & video_keys(_targets(tree, url))} if unlinked else {}
     if linked:
-        videos, events = _proceeding_links(tree, url, calendar)
-        found.update((video, events) for video in linked & videos)
+        by_video = _proceeding_links(tree, url, calendar)
+        found.update((video, sorted(by_video[video])) for video in linked & by_video.keys())
     return found
