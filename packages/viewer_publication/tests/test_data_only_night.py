@@ -815,6 +815,46 @@ def test_proceeding_ignores_both_event_and_video_links_in_chrome(attribute):
     assert found == {'youtube:Fyr9cXKd6NU': [116718]}
 
 
+@pytest.mark.parametrize('tag,role', [
+    ('menu', ''), ('dialog', ''),
+    *(('div', role) for role in ('menu', 'menubar', 'menuitem', 'toolbar', 'tablist',
+                                 'dialog', 'alertdialog', 'search', 'status')),
+])
+def test_widget_video_cannot_inherit_the_hearing_event(tag, role):
+    from viewer_publication.recording_pages import recording_page_events
+
+    attribute = f' role="{role}"' if role else ''
+    markup = f'''<main><a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID=200">Hearing</a>
+        <iframe src="https://youtube.com/embed/Fyr9cXKd6NU"></iframe>
+        <{tag}{attribute}><a href="https://youtu.be/Sidebar0001">Other video</a></{tag}></main>'''.encode()
+    found = recording_page_events(markup, 'https://transportation.house.gov/hearing', {},
+                                  {'youtube:Fyr9cXKd6NU', 'youtube:Sidebar0001'}, set())
+    assert found == {'youtube:Fyr9cXKd6NU': [200]}
+
+
+@pytest.mark.parametrize('root', ['main', 'body'])
+@pytest.mark.parametrize('section,article,calendar_event,expected', [
+    (None, None, 200, [200]),
+    (200, 200, 200, [200]),
+    (None, 300, 200, []),
+    (200, 300, 200, []),
+    (200, 300, None, []),
+])
+def test_detail_page_requires_calendar_and_explicit_event_links_to_agree(root, section, article, calendar_event, expected):
+    from viewer_publication.recording_pages import recording_page_events
+
+    def link(event):
+        return f'<a href="https://docs.house.gov/Committee/Calendar/ByEvent.aspx?EventID={event}">Hearing</a>' if event else ''
+
+    markup = f'''<{root}><section>{link(section)}</section><article><h1>Bridge hearing</h1>
+        <p>Hearing Date: November 20, 2026</p>{link(article)}
+        <iframe src="https://youtube.com/embed/Fyr9cXKd6NU"></iframe></article></{root}>'''.encode()
+    calendar = {('hspw', '2026-11-20'): {calendar_event: {}}} if calendar_event else {}
+    video = 'youtube:Fyr9cXKd6NU'
+    assert recording_page_events(markup, 'https://transportation.house.gov/hearings/bridge', calendar,
+                                 {video}, set()) == {video: expected}
+
+
 @pytest.mark.parametrize('tag,attributes', [('article', ''), ('li', ''), ('div', 'role="listitem"'),
                                             ('div', 'class="hearing-card"'), ('section', 'class="hearing"')])
 def test_listing_binds_each_video_to_its_own_event(tag, attributes):

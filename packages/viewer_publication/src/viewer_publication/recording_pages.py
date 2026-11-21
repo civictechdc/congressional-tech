@@ -133,6 +133,8 @@ def _document(body):
 
 
 _URL_ATTRIBUTES = './/@href | .//@src | .//object/@data'
+_CHROME_ROLES = {'navigation', 'complementary', 'banner', 'contentinfo', 'menu', 'menubar', 'menuitem',
+                 'toolbar', 'tablist', 'dialog', 'alertdialog', 'search', 'status'}
 _CHROME_TOKEN = re.compile(r'(?:^|[\s_-])(?:sidebar|nav|related|recent|more-hearings|menu|breadcrumb|pager|pagination)(?:$|[\s_-])', re.I)
 _ITEM_TOKEN = re.compile(r'(?:^|[\s_-])(?:card|item)(?:$|\s)|(?:^|\s)(?:hearing|event|meeting)(?:$|\s)', re.I)
 
@@ -175,10 +177,10 @@ def _item_scopes(root, url):
 
 def _proceeding_body(tree):
     body = tree.body
-    for node in body.xpath('.//aside | .//nav | .//footer | .//header | .//template | .//*[@role or @class or @id]'):
-        if (_is_cms_chrome(node) or node.tag in ('aside', 'footer', 'template')
+    for node in body.xpath('.//aside | .//nav | .//footer | .//header | .//template | .//menu | .//dialog | .//*[@role or @class or @id]'):
+        if (_is_cms_chrome(node) or node.tag in ('aside', 'footer', 'template', 'menu', 'dialog')
                 or (node.tag == 'header' and not node.xpath('ancestor::article'))
-                or {'navigation', 'complementary', 'banner', 'contentinfo'}.intersection(node.get('role', '').lower().split())
+                or _CHROME_ROLES.intersection(node.get('role', '').lower().split())
                 or _CHROME_TOKEN.search(f"{node.get('class', '')} {node.get('id', '')}")):
             node.drop_tree()
     # Keep head metadata for the committee calendar. Some legacy templates mark only the article.
@@ -189,8 +191,10 @@ def _proceeding_body(tree):
     if not outer:
         outer = body.xpath('.//article | .//*[@role="article"]')
     if len(outer) == 1:
+        # A legacy article can have an explicit event link in a sibling section.
+        roots = outer if mains else outer[0].xpath('. | ../section')
         body.clear()
-        body.append(outer[0])
+        body.extend(roots)
     return body
 
 
@@ -212,15 +216,14 @@ def _proceeding_links(tree, url, calendar):
     host = (urlsplit(url).hostname or '').removeprefix('www.')
     official = host in ('csce.gov', 'house.gov', 'senate.gov') or host.endswith(('.house.gov', '.senate.gov'))
     detail = len(videos) == 1 and (not items or (len(items) == 1 and body not in videos))
-    proceeding = _calendar_event(tree, url, calendar) if official and detail else set()
+    detail_events = set()
+    if official and detail:
+        detail_events = _calendar_event(tree, url, calendar) | _event_ids(set().union(*targets.values()))
     found = defaultdict(set)
     for scope, keys in videos.items():
         if scope is body and items:
             continue  # Links between items do not belong to any proceeding.
-        refs = targets[scope]
-        if detail and scope is not body:
-            refs = refs | targets[body]  # A single proceeding can have its calendar link above its article.
-        events = proceeding or (_event_ids(refs) if official else set())
+        events = detail_events if detail else (_event_ids(targets[scope]) if official else set())
         for key in keys:
             found[key].update(events if len(events) == 1 else ())
     return found
