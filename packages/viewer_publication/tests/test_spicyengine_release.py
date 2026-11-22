@@ -22,11 +22,15 @@ def test_publication_replay(tmp_path, monkeypatch):
                title="Housing report", filename="report.pdf", package_id="HR-1", format="pdf",
                document_date=date(2026, 11, 20), document_date_status="accepted", congress=119, chambers=["house"],
                committee_keys=["HS"], document_kind="report", document_family="legislative",
-               src_start=0, src_len=1)
-    detail = pa.Table.from_pylist([doc, doc | {"link_key": b"87654321"}, doc | {"hidden": True},
+               src_start=0, src_len=2)
+    detail = pa.Table.from_pylist([doc, doc | {"link_key": b"87654321", "src_start": 2, "src_len": 1}, doc | {"hidden": True},
                                    doc | {"link_key": b"no-text!", "saved_body": None}])
     pq.write_table(detail, stage / "detail.parquet")
-    pq.write_table(pa.Table.from_pylist([dict(ordinal=0, url="https://example.gov/a.pdf", link_text="Report", member_path="a.pdf")]), stage / "sources.parquet")
+    pq.write_table(pa.Table.from_pylist([
+        dict(ordinal=0, url="https://example.gov/a.pdf", listed_on=None, link_text="Report", member_path=None, is_saved=True),
+        dict(ordinal=1, url="https://example.gov/alternate.pdf", listed_on="https://example.gov/hearing", link_text="Exhibit", member_path=None, is_saved=False),
+        dict(ordinal=0, url="https://example.gov/hearing.zip", listed_on=None, link_text="Archive", member_path="a.pdf", is_saved=True),
+    ]), stage / "sources.parquet")
     files = []
     for f in sorted(stage.glob("*.parquet")):
         raw = f.read_bytes()
@@ -51,7 +55,19 @@ def test_publication_replay(tmp_path, monkeypatch):
     assert rows[0]["document_date"] == date(2026, 11, 20)
     assert sum(r["body"] == "housing evidence" and r["page_offsets"] == [0] for r in rows) == 2
     assert sum(r["text_status"] == "No text in this export" for r in rows) == 1
+    links = pq.read_table(work / "source-links.parquet").to_pylist()
+    by_id = {r["id"]: r for r in links}
+    primary = by_id["archive-documents:" + b"12345678".hex()]
+    assert primary["listed_on"] == "https://example.gov/hearing" and primary["pdf_url"] == "https://example.gov/a.pdf"
+    child = by_id["archive-documents:" + b"87654321".hex()]
+    assert child["listed_on"] is None and child["pdf_url"] == f"{release.ORIGIN}/bodies/sha256/ab/{body_key.hex()}.pdf"
+    assert json.loads((work / "dataset.json").read_text())["source_links"] == str(work / "source-links.parquet")
     assert not list((work / "downloads").glob("*.parquet"))
+    # An existing installation gains citations even when the large text export is offline.
+    (text_dir / f"{digest}.parquet").unlink()
+    (work / "source-links.parquet").unlink()
+    assert release.update(root, origin=origin, saved=work / "pin.json") == work
+    assert pq.read_table(work / "source-links.parquet").to_pylist() == links
     (text_dir / "current.json").write_text(json.dumps(pointer | {"release_id": "0"*64}))
     with pytest.raises(ValueError, match="same immutable release"):
         release.update(root, origin=origin)

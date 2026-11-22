@@ -21,6 +21,7 @@ ORIGIN = "https://congressional-data.spicygov.ai"
 RECIPE = "search-v1"
 FIELDS = {
     "title": "title", "text": ["body"], "url": "source_url", "identifiers": "identifiers",
+    "page_offsets": {"body": "page_offsets"},
     "date_default": "document_date",
     "labels": {"committee_keys": "Committees", "document_kind": "Document kind",
                "document_family": "Document family", "document_date": "Document date",
@@ -210,12 +211,36 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
         if not (work / "pin.json").is_file():
             save(work / "pin.json", pin)
         ready = prepare(origin, work, pin, local)
+        links = work / "source-links.parquet"
+        if not links.is_file():
+            # The live index already holds page starts. Only the small release metadata supplies listing URLs.
+            locate = source_files(origin, work, pin, local)
+            temporary = links.with_suffix(".partial")
+            with closing(duckdb.connect(config={"threads": 1})) as db:
+                db.sql("""WITH sources AS (
+                    SELECT file_row_number - ordinal AS src_start,
+                           arg_min(listed_on, ordinal) FILTER (WHERE listed_on <> url AND
+                               regexp_matches(listed_on, '^https?://', 'i')) AS listed_on,
+                           max(url) FILTER (WHERE ordinal=0 AND is_saved AND nullif(member_path,'') IS NULL AND
+                               regexp_matches(url, '^https?://[^?#]+[.]pdf([?#].*)?$', 'i')) AS direct_pdf
+                    FROM read_parquet(?, file_row_number=true) GROUP BY 1
+                ) SELECT 'archive-documents:' || lower(hex(d.link_key)) AS id, s.listed_on,
+                         CASE WHEN d.format='pdf' AND d.saved_suffix='.pdf' THEN coalesce(s.direct_pdf,
+                             ? || '/bodies/sha256/' || left(lower(hex(d.saved_body)),2) || '/' ||
+                             lower(hex(d.saved_body)) || '.pdf') END AS pdf_url
+                  FROM read_parquet(?) d LEFT JOIN sources s ON d.src_len>0 AND s.src_start=d.src_start
+                  WHERE d.hidden IS NOT TRUE AND (listed_on IS NOT NULL OR pdf_url IS NOT NULL)
+                  ORDER BY id""", params=[locate("sources.parquet"), ORIGIN, locate("detail.parquet")]
+                ).write_parquet(str(temporary), compression="zstd", row_group_size=2048)
+            with temporary.open("rb") as complete:
+                os.fsync(complete.fileno())
+            temporary.replace(links)
         # Once preparation commits, only the search partitions are needed locally.
         for name in ("body_text.parquet", "detail.parquet", "sources.parquet"):
             (work / "downloads" / name).unlink(missing_ok=True)
         manifest = work / "dataset.json"
         definition = {"input": {"parquet": str(work / "serving" / "*.parquet")}, "text_storage": "source",
-                      "label": f"Congressional archive · {release[:12]}", "fields": FIELDS}
+                      "label": f"Congressional archive · {release[:12]}", "fields": FIELDS, "source_links": str(links)}
         if not manifest.exists() or json.loads(manifest.read_text()) != definition:
             save(manifest, definition)
         if engine:
