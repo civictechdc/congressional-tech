@@ -39,7 +39,7 @@ higher quality at much higher throughput, with **`100.0%` `strict_v4_valid`** ac
 - **Zero-cost `ExtractConf` replaces blocking ANE/20B local repair:** Lightweight pre-mask telemetry + calibrated logistic/hybrid scoring delivers `0.707–0.745` any-defect AUROC (`0.876–0.907` PK, `0.807–0.844` Dates, `0.779–0.808` Role, `ECE ~0.04`) at `0 ms` model overhead for async downstream routing, while Pass-2 `GPT-OSS`, blocking Pass-1 `Laya/Kev`, Arm B `DCCD+MBR` (`1471s`), and Arm C `Single-Field Hunter` (`p=0.004` M5 regression) are retired from defaults.
 - **`24 GiB` Base M5 auto-sizing out of the box:** `silicon_runtime_v6.py` auto-caps `<= 24 GiB` Macs to `19.2 GiB` (`0.80 * RAM`) MLX active memory, `1.5 GiB` cache, and `b_slots=128` (`24.0 GiB` / `2.0 GiB` / `256` on `>= 48 GiB` Macs) without manual flags.
 
-See **[`BENCHMARKS.md`](BENCHMARKS.md)** for the full `26`-sweep leaderboards, paired cross-Mac equivalence CIs, 5-fold CV detector tables, falsified architectures ledger, and reproducible CLI commands, and [`docs/architecture.md`](docs/architecture.md) for pipeline stage internals.
+See **[`BENCHMARKS.md`](BENCHMARKS.md)** for the full `26`-sweep leaderboards, paired cross-Mac equivalence CIs, 5-fold CV detector tables, falsified architectures ledger, Section 9 v2.2 parity & `--embed-ane` measurements, and reproducible CLI commands, and [`docs/architecture.md`](docs/architecture.md) for pipeline stage internals.
 
 ## What is where
 
@@ -107,8 +107,7 @@ PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python -m con
 ## Tests
 
 - `tests/` (including [`test_croq_extractconf_v6.py`](tests/test_croq_extractconf_v6.py)): rules, parsers, schema, `CROQ` calibration, `ExtractConf`, `24 GiB` auto-sizing, address reader (`production-offline`).
-- `tests/model/`: the engine seam (tokenizer, `llguidance`, ANE, MLX). Run with
-  `.venv/bin/python scripts/dev.py test docmeta-model`; under `production-offline` they are collected and skip.
+- `tests/model/`: the engine seam (tokenizer, `llguidance`, ANE, MLX). Run via `uv run python packages/congress_docmeta/scripts/model_lane.py test packages/congress_docmeta/tests/model -v` (`12 passed`, `pytest.importorskip("fast_gemma4")`); without `fast_gemma4` installed they skip.
 
 Local data (rosters lookup, gold sets, the queue) is read from
 `<main checkout>/.cache/archive-release/docmeta-v6-20261116`; `DOCMETA_V6_DATA_DIR` overrides it. Tests that need

@@ -220,5 +220,26 @@ PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python \
 .venv/bin/python -m pytest -v packages/congress_docmeta/tests/test_croq_extractconf_v6.py
 
 # Hardware model seam lane (Gemma-4 + MLX/ANE; requires fast-gemma4 / fast-silicon checkout)
-.venv/bin/python scripts/dev.py test docmeta-model
+uv run python packages/congress_docmeta/scripts/model_lane.py test packages/congress_docmeta/tests/model -v
 ```
+
+---
+
+## 9. Cross-Mac v2.2 Parity, `--embed-ane` & Pass-2 Falsification (2026-11-21)
+
+Verified after fixing the `MAX_PERSONAS` / schema parity tests so `tests/model/` runs zero-skip via `pytest.importorskip("fast_gemma4")` (`12 passed in 179.29s` on M4 Pro via `model_lane.py`):
+
+| Configuration (`n=212` `llm_queue_v6_2`) | Host / Auto Limits | Peak Memory | Throughput (`docs/s` / `tok/s`) | `valid` HL | `val48` HL | Strict Valid | Notes |
+|---|---|---:|---:|---:|---:|---:|---|
+| Baseline (`CROQ alpha=0.05`) | M4 Pro (`24G / 2G / B=256`) | `18.39 GiB` | `1.067` / `427.76` | `87.86` | `89.92` | `100%` | Cross-Mac parity reference |
+| Baseline (`CROQ alpha=0.05`) | Base M5 (`19.2G / 1.5G / B=128` auto) | `16.61 GiB` | **`1.4875`** / **`529.55`** | **`88.46`** | `89.84` | `100%` | Fits inside `19.2 GiB` cap (`0` swap) |
+| `--embed-ane bge-small` | Base M5 (`19.2G / 1.5G / B=128`) | `16.30 GiB` | `1.4624 docs/s` | `88.46` | `89.84` | `100%` | `0.00` accuracy delta vs baseline |
+| `--embed-ane embeddinggemma-2` | Base M5 (`19.2G / 1.5G / B=128`) | `17.02 GiB` | `1.4143 docs/s` | `88.46` | `89.84` | `100%` | `0.00` accuracy delta vs baseline |
+| `m4_spaced_colon` (`spaced : ` vs `compact :`) | M4 Pro (`24G / 2G / B=256`) | — | `+10.74%` completion tokens (`57,437 -> 63,604`) | `87.00` (`-0.86`) | — | `212/212` flagged | Confirms checkpoint `compact :` parity requirement |
+
+### Local Pass-2 Teacher Escalation Falsification (Same-Process / Synchronous Routing)
+
+- **Base M5 `Q8 GPT-OSS` (`24 GB`):** Triggered OOM/swap pressure (`16.26 GB + 2.71/3.00 GiB`) when co-scheduled locally -> **rejected**.
+- **Base M5 `Qwen3.5-4B` (`n=21` escalated subset on `any_top5`):** Only `14/21` valid, `1086.4s` (`0.2974` effective `docs/s`), regressed `valid` HL (`-0.046`) and `val48` HL (`-0.222`) -> **rejected**.
+- **M4 Pro `Q4 GPT-OSS` (`n=168` escalated subset):** Only `139/168` valid in `1085.5s` -> **rejected** for synchronous Pass-2 routing.
+- **v2.3 Direction:** Keep Pass-1 single-model and fast; queue ambiguous/truncated records asynchronously offline instead of co-loading two large models, and target Tier-A salvage/wipe fixes (`_salvage_truncated_docmeta_v4`, `25w` clamp before `DocMetaValidationError`, `-Transcript-`/`-TTF-`/`BA00`/`FD00`/`HA08` prefixes) plus `>6k` persona tail harvesting (`6k–9k+`) on `valid_sweep + val48_sweep`.
