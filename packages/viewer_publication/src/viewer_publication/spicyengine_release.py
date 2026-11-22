@@ -228,7 +228,7 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
                          CASE WHEN d.format='pdf' AND d.saved_suffix='.pdf' THEN coalesce(s.direct_pdf,
                              ? || '/bodies/sha256/' || left(lower(hex(d.saved_body)),2) || '/' ||
                              lower(hex(d.saved_body)) || '.pdf') END AS pdf_url
-                  FROM read_parquet(?) d LEFT JOIN sources s ON d.src_len>0 AND s.src_start=d.src_start
+                  FROM read_parquet(?) d LEFT JOIN sources s ON s.src_start=CASE WHEN d.src_len>0 THEN d.src_start END
                   WHERE d.hidden IS NOT TRUE AND (listed_on IS NOT NULL OR pdf_url IS NOT NULL)
                   ORDER BY id""", params=[locate("sources.parquet"), ORIGIN, locate("detail.parquet")]
                 ).write_parquet(str(temporary), compression="zstd", row_group_size=2048)
