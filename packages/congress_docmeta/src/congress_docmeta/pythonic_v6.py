@@ -2148,13 +2148,18 @@ class PythonicEngineV6:
         self._schema_str = DOCMETA_V6_COMPACT_SCHEMA_STR if self.wire_format == "compact" else SCHEMA_V4_STR
         self._build_prompt_fn = build_prompt_v6_compact if self.wire_format == "compact" else build_prompt_v4
 
-        new_to_old = getattr(eng, "new_to_old", None)
+        new_to_old = getattr(eng, "new_to_old", getattr(eng, "_new_to_old", None))
         if new_to_old is None and hasattr(eng, "model"):
-            new_to_old = eng.model.new_to_old
-        self.gh_std = GrammarHelper(resolved_tok, self._schema_str, new_to_old, whitespace_flexible=False)
-        self._kind_grammar_cache: dict[str, tuple[Any, list[int]]] = {}
+            new_to_old = getattr(eng.model, "new_to_old", None)
+        from .silicon_runtime_v6 import format_chat_no_thinking, resolve_default_whitespace_flexible
 
-        from .silicon_runtime_v6 import format_chat_no_thinking
+        self.gh_std = GrammarHelper(
+            resolved_tok,
+            self._schema_str,
+            new_to_old,
+            whitespace_flexible=resolve_default_whitespace_flexible(eng),
+        )
+        self._kind_grammar_cache: dict[str, tuple[Any, list[int]]] = {}
 
         def _fmt_chat(msgs: list[dict[str, str]]) -> str:
             return format_chat_no_thinking(resolved_tok, msgs)

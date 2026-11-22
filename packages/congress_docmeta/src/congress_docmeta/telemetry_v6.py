@@ -407,7 +407,7 @@ def create_telemetry_grammar_helper(
     schema: str | dict[str, Any],
     new_to_old: Any = None,
     *,
-    whitespace_flexible: bool = False,
+    whitespace_flexible: bool | None = False,
     max_whitespace_run: int | None = None,
     eos_token_id: int | None = None,
     force_greedy: bool = True,

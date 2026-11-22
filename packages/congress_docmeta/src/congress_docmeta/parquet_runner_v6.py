@@ -74,6 +74,8 @@ from .silicon_runtime_v6 import (
     mlx_wired_limit_scope,
     probe_host_memory_gb,
     resolve_default_docmeta_batch_size,
+    resolve_default_whitespace_flexible,
+    resolve_pass2_source_tag,
     run_silicon_preflight,
     unload_engine_memory,
 )
@@ -521,6 +523,7 @@ def escalate_anomalies_gpt_oss(
     max_tokens: int = MAX_OUTPUT_TOKENS,
     batch_size: int = 8,
     k: int = 1,
+    whitespace_flexible: Any = "auto",
 ) -> tuple[int, int, dict[int, str]]:
     """Run closed-loop `fast-gpt-oss` (`H2_Sel` Pass-2 teacher escalation) on anomaly-flagged documents.
 
@@ -584,6 +587,7 @@ def escalate_anomalies_gpt_oss(
     supports_per_doc = "per_doc_grammars" in params
     supports_thinking = "enable_thinking" in params
     supports_seed = "seed" in params
+    eff_ws_flex = resolve_default_whitespace_flexible(gpt_oss_engine, explicit=whitespace_flexible)
 
     valid_candidates: list[tuple[int, int, dict[str, Any], dict[str, Any]]] = []
     for sample_idx in range(eff_k):
@@ -603,7 +607,7 @@ def escalate_anomalies_gpt_oss(
                 max_tokens=max_tokens,
                 temperature=temp_s,
                 batch_size=batch_size,
-                whitespace_flexible=False,
+                whitespace_flexible=eff_ws_flex,
                 **extra_kw,
             )
             gen_items = list(batch_res.items)
@@ -624,7 +628,7 @@ def escalate_anomalies_gpt_oss(
                     max_tokens=max_tokens,
                     temperature=temp_s,
                     batch_size=batch_size,
-                    whitespace_flexible=False,
+                    whitespace_flexible=eff_ws_flex,
                     **extra_kw,
                 )
                 for p, it in zip(positions, r_sub.items):
@@ -769,6 +773,27 @@ def _cast_results_arrow_table(rows_out: list[dict[str, Any]]) -> Any:
     return pa.Table.from_arrays(cols, schema=pa.schema(fields))
 
 
+def _create_pass2_engine(
+    *,
+    escalate_qwen: bool = False,
+    gpt_oss_model_dir: str | Path | None = None,
+    qwen_model_dir: str | Path | None = None,
+    qwen_lora: str | Path | None = None,
+) -> Any:
+    if escalate_qwen or qwen_model_dir is not None or qwen_lora is not None:
+        from fast_qwen3 import FastQwen3Engine
+
+        return FastQwen3Engine(
+            model_dir=qwen_model_dir,
+            lora_adapter=qwen_lora,
+            default_enable_thinking=False,
+            warmup=True,
+        )
+    from fast_gpt_oss import FastGptOssEngine
+
+    return FastGptOssEngine(model_dir=gpt_oss_model_dir, warmup=True)
+
+
 def _apply_pass2_update_to_row_v6(
     rec: dict[str, Any],
     c_obj: Mapping[str, Any],
@@ -778,11 +803,12 @@ def _apply_pass2_update_to_row_v6(
     backup_json: str,
     *,
     verdicts_json: str | None = None,
+    docmeta_source: str = "fast-gpt-oss-20b-pass2",
 ) -> tuple[bool, bool]:
-    """Patch one Pass-1 result row with an accepted Pass-2 GPT-OSS-20B update."""
+    """Patch one Pass-1 result row with an accepted Pass-2 teacher escalation update."""
     ok_new, _ = validate_docmeta_v4(c_obj)
     is_flagged_new = bool(anom.get("escalate_to_teacher") or anom.get("needs_teacher_escalation"))
-    rec["docmeta_source"] = "fast-gpt-oss-20b-pass2"
+    rec["docmeta_source"] = str(docmeta_source)
     rec["primary_kind"] = c_obj.get("primary_kind")
     rec["status"] = c_obj.get("status")
     rec["congress"] = (
@@ -860,6 +886,9 @@ def run_docmeta_parquet_sweep(
     gpt_oss_model_dir: str | Path | None = None,
     gpt_oss_batch_size: int = 8,
     gpt_oss_k: int = 1,
+    escalate_qwen: bool = False,
+    qwen_model_dir: str | Path | None = None,
+    qwen_lora: str | Path | None = None,
     two_phase_pass2: bool | str = "auto",
     require_r8_deps: bool = True,
     use_wired_limit: bool = True,
@@ -883,9 +912,13 @@ def run_docmeta_parquet_sweep(
 
     if chunk_rows <= 0:
         raise ValueError(f"chunk_rows must be >= 1, got {chunk_rows}")
+    if escalate_gpt_oss and escalate_qwen:
+        raise ValueError("Specify at most one of escalate_gpt_oss or escalate_qwen.")
 
+    any_pass2_escalation = bool(escalate_gpt_oss or escalate_qwen)
     preflight = run_silicon_preflight(
         escalate_gpt_oss=escalate_gpt_oss,
+        escalate_qwen=escalate_qwen,
         require_r8_deps=require_r8_deps,
         once=True,
     )
@@ -904,7 +937,7 @@ def run_docmeta_parquet_sweep(
     if tp_raw not in ("auto", "true", "false"):
         raise ValueError(f"Unsupported two_phase_pass2={two_phase_pass2!r}; expected 'auto', True, or False.")
     use_two_phase_pass2 = bool(
-        escalate_gpt_oss
+        any_pass2_escalation
         and (
             tp_raw == "true"
             or (tp_raw == "auto" and gpt_oss_engine is None and (host_ram_gb == 0 or host_ram_gb <= 48))
@@ -949,9 +982,9 @@ def run_docmeta_parquet_sweep(
     tok = getattr(engine, "tokenizer", None)
     if tok is None:
         raise ValueError("Engine must expose `.tokenizer` for `run_docmeta_parquet_sweep`.")
-    new_to_old = getattr(engine, "new_to_old", None)
+    new_to_old = getattr(engine, "new_to_old", getattr(engine, "_new_to_old", None))
     if new_to_old is None and hasattr(engine, "model"):
-        new_to_old = engine.model.new_to_old
+        new_to_old = getattr(engine.model, "new_to_old", None)
 
     wf_norm = str(wire_format or "auto").strip().lower()
     if wf_norm not in ("auto", "v4", "compact", "compact_v6"):
@@ -964,7 +997,12 @@ def run_docmeta_parquet_sweep(
     pass1_prompt_fn = build_prompt_v6_compact if is_compact_wire else build_prompt_v4
     pass1_wire = "compact" if is_compact_wire else "v4"
 
-    gh_std = GrammarHelper(tok, pass1_schema_str, new_to_old, whitespace_flexible=False)
+    gh_std = GrammarHelper(
+        tok,
+        pass1_schema_str,
+        new_to_old,
+        whitespace_flexible=resolve_default_whitespace_flexible(engine),
+    )
     kind_grammar_cache: dict[str, tuple[Any, list[int]]] = {}
 
     def _fmt_chat(user_content: str) -> str:
@@ -1047,9 +1085,12 @@ def run_docmeta_parquet_sweep(
     def _ensure_gpt_oss_engine() -> Any:
         nonlocal gpt_oss_engine, owned_gpt_oss
         if gpt_oss_engine is None:
-            from fast_gpt_oss import FastGptOssEngine
-
-            gpt_oss_engine = FastGptOssEngine(model_dir=gpt_oss_model_dir, warmup=True)
+            gpt_oss_engine = _create_pass2_engine(
+                escalate_qwen=escalate_qwen,
+                gpt_oss_model_dir=gpt_oss_model_dir,
+                qwen_model_dir=qwen_model_dir,
+                qwen_lora=qwen_lora,
+            )
             owned_gpt_oss = True
         return gpt_oss_engine
 
@@ -1186,7 +1227,7 @@ def run_docmeta_parquet_sweep(
                             anom_r["needs_teacher_escalation"] = False
 
         flagged_idxs: list[int] = []
-        if escalate_gpt_oss:
+        if any_pass2_escalation:
             flagged_idxs = [
                 i
                 for i, a in enumerate(c_anomalies)
@@ -1195,8 +1236,14 @@ def run_docmeta_parquet_sweep(
             ]
 
         pass1_backup_by_i: dict[int, str] = {}
-        if escalate_gpt_oss and flagged_idxs and not use_two_phase_pass2:
+        active_p2_tag = (
+            resolve_pass2_source_tag(gpt_oss_engine)
+            if gpt_oss_engine is not None
+            else ("fast-qwen3-pass2" if escalate_qwen else "fast-gpt-oss-20b-pass2")
+        )
+        if any_pass2_escalation and flagged_idxs and not use_two_phase_pass2:
             active_gpt_oss = _ensure_gpt_oss_engine()
+            active_p2_tag = resolve_pass2_source_tag(active_gpt_oss)
             lazy_prompts = _build_lazy_v4_prompts(flagged_idxs, c_chunk, c_known_strs, c_raw_txts)
             esc_n, acc_n, pass1_backup_by_i = escalate_anomalies_gpt_oss(
                 active_gpt_oss,
@@ -1246,7 +1293,7 @@ def run_docmeta_parquet_sweep(
 
             was_p2_accepted = i in pass1_backup_by_i
             src_tag = (
-                "fast-gpt-oss-20b-pass2"
+                active_p2_tag
                 if was_p2_accepted
                 else (
                     "runner_triage_short_circuit"
@@ -1921,6 +1968,7 @@ def run_docmeta_parquet_sweep(
                     if backup_by_local:
                         part_p: Path = dp["part_path"]
                         part_rows_list = pq.read_table(part_p).to_pylist()
+                        p2_src_tag = resolve_pass2_source_tag(active_gpt_oss)
                         for local_i, part_row_idx in enumerate(dp["part_row_indices"]):
                             if local_i not in backup_by_local:
                                 continue
@@ -1936,6 +1984,7 @@ def run_docmeta_parquet_sweep(
                                 row_orig,
                                 backup_by_local[local_i],
                                 verdicts_json=p_verdicts_json[local_i],
+                                docmeta_source=p2_src_tag,
                             )
                             strict_v4_valid_docs += int(ok_new) - int(old_valid_flags[local_i])
                             anomaly_flagged_docs += int(is_flagged_new) - int(old_anom_flags[local_i])
@@ -2017,11 +2066,14 @@ def run_offline_escalation_queue_v6(
     gpt_oss_model_dir: str | Path | None = None,
     gpt_oss_batch_size: int = 8,
     gpt_oss_k: int = 1,
+    escalate_qwen: bool = False,
+    qwen_model_dir: str | Path | None = None,
+    qwen_lora: str | Path | None = None,
     max_tokens: int = MAX_OUTPUT_TOKENS,
     require_r8_deps: bool = True,
     use_wired_limit: bool = True,
 ) -> dict[str, Any]:
-    """Run single-model GPT-OSS-20B Pass-2 offline over an exported JSONL escalation queue (`0` co-residency)."""
+    """Run single-model GPT-OSS-20B or Qwen Pass-2 offline over an exported JSONL escalation queue."""
     import pyarrow.parquet as pq
     from .anomaly_router_v6 import score_docmeta_anomalies_v6
 
@@ -2049,7 +2101,13 @@ def run_offline_escalation_queue_v6(
             "output_path": str(out_target),
         }
 
-    run_silicon_preflight(escalate_gpt_oss=True, require_r8_deps=require_r8_deps, once=True)
+    use_qwen_p2 = bool(escalate_qwen or qwen_model_dir is not None or qwen_lora is not None)
+    run_silicon_preflight(
+        escalate_gpt_oss=not use_qwen_p2,
+        escalate_qwen=use_qwen_p2,
+        require_r8_deps=require_r8_deps,
+        once=True,
+    )
     out_rows = pq.read_table(p1_path).to_pylist()
     by_lk: dict[str, int] = {}
     by_dk: dict[str, int] = {}
@@ -2137,10 +2195,14 @@ def run_offline_escalation_queue_v6(
     with mlx_wired_limit_scope(enabled=use_wired_limit):
         try:
             if active_gpt_oss is None:
-                from fast_gpt_oss import FastGptOssEngine
+                active_gpt_oss = _create_pass2_engine(
+                    escalate_qwen=escalate_qwen,
+                    gpt_oss_model_dir=gpt_oss_model_dir,
+                    qwen_model_dir=qwen_model_dir,
+                    qwen_lora=qwen_lora,
+                )
 
-                active_gpt_oss = FastGptOssEngine(model_dir=gpt_oss_model_dir, warmup=True)
-
+            p2_src_tag = resolve_pass2_source_tag(active_gpt_oss)
             local_idxs = list(range(len(matched_out_idxs)))
             esc_n, acc_n, backup_by_local = escalate_anomalies_gpt_oss(
                 active_gpt_oss,
@@ -2166,6 +2228,7 @@ def run_offline_escalation_queue_v6(
                     cur_anoms[local_i],
                     sim_rows[local_i],
                     backup_by_local[local_i],
+                    docmeta_source=p2_src_tag,
                 )
             _write_table_atomic(_cast_results_arrow_table(out_rows), out_target, row_group_size=32768)
         finally:

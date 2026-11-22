@@ -180,6 +180,7 @@ def probe_silicon_environment() -> dict[str, Any]:
 def run_silicon_preflight(
     *,
     escalate_gpt_oss: bool = False,
+    escalate_qwen: bool = False,
     require_r8_deps: bool = True,
     strict_os_mlx: bool = False,
     stream: Any = None,
@@ -239,6 +240,11 @@ def run_silicon_preflight(
         warnings.append(
             f"Host unified memory is {mem_gb} GiB (<= 48 GiB) with --escalate-gpt-oss enabled: "
             "using two-phase Pass-1 unload before Pass-2 GPT-OSS-20B to stay clear of compressed-memory swapout."
+        )
+    elif escalate_qwen and 0 < mem_gb <= 24:
+        warnings.append(
+            f"Host unified memory is {mem_gb} GiB (<= 24 GiB) with --escalate-qwen enabled: "
+            "using two-phase Pass-1 unload before Pass-2 Qwen to stay within the 19.2 GiB MLX working-set budget."
         )
 
     info["warnings"] = warnings
@@ -535,6 +541,48 @@ def format_chat_no_thinking(tok: Any, msgs: Sequence[Mapping[str, str]]) -> str:
     return str(tok.format_chat(msg_list, add_generation_prompt=True, enable_thinking=False))
 
 
+def is_qwen_engine_or_model(engine_or_model: Any) -> bool:
+    """Return True when `engine_or_model` looks like a Qwen engine/model rather than Gemma/GPT-OSS."""
+    if engine_or_model is None:
+        return False
+    cls = type(engine_or_model)
+    parts: list[str] = [cls.__name__, cls.__module__]
+    for attr in ("model_name", "model_dir", "repo_id"):
+        val = getattr(engine_or_model, attr, None)
+        if val is not None:
+            parts.append(str(val))
+    inner = getattr(engine_or_model, "model", None)
+    if inner is not None:
+        parts.extend([type(inner).__name__, type(inner).__module__])
+        for attr in ("model_name", "model_dir", "repo_id"):
+            val = getattr(inner, attr, None)
+            if val is not None:
+                parts.append(str(val))
+    return any("qwen" in p.lower() for p in parts if p)
+
+
+def resolve_default_whitespace_flexible(engine_or_model: Any, *, explicit: Any = "auto") -> bool | None:
+    """Resolve `GrammarHelper(..., whitespace_flexible=...)`: `None` (spaced `: `) for Qwen, `False` otherwise."""
+    if explicit != "auto":
+        return explicit
+    if is_qwen_engine_or_model(engine_or_model):
+        return None
+    gen_fn = getattr(engine_or_model, "generate_batch", None)
+    if callable(gen_fn):
+        try:
+            ws_param = inspect.signature(gen_fn).parameters.get("whitespace_flexible")
+            if ws_param is not None and ws_param.default is None:
+                return None
+        except (TypeError, ValueError):
+            pass
+    return False
+
+
+def resolve_pass2_source_tag(engine_or_model: Any) -> str:
+    """Return canonical `docmeta_source` provenance tag for a Pass-2 escalation engine."""
+    return "fast-qwen3-pass2" if is_qwen_engine_or_model(engine_or_model) else "fast-gpt-oss-20b-pass2"
+
+
 __all__ = [
     "DEFAULT_DOCMETA_BATCH_SIZE",
     "DEFAULT_MLX_CACHE_LIMIT_GB",
@@ -549,6 +597,7 @@ __all__ = [
     "clear_mlx_wave_cache",
     "format_chat_no_thinking",
     "get_and_cap_mlx_cache_limit",
+    "is_qwen_engine_or_model",
     "mlx_limits_scope",
     "mlx_wired_limit_scope",
     "parse_semver",
@@ -556,6 +605,8 @@ __all__ = [
     "probe_silicon_environment",
     "resolve_default_docmeta_batch_size",
     "resolve_default_mlx_limits",
+    "resolve_default_whitespace_flexible",
+    "resolve_pass2_source_tag",
     "restore_mlx_cache_limit",
     "run_silicon_preflight",
     "unload_engine_memory",

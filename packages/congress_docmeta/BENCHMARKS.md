@@ -269,3 +269,17 @@ PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python -m con
 PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python -m congress_docmeta.cli \
   retry-escalated /tmp/esc.jsonl /tmp/pass1.parquet /tmp/pass2_merged.parquet
 ```
+
+---
+
+## 11. Offline `retry-escalated --escalate-qwen` Pass-2 Slice Validation (`n=16`, 2026-11-22)
+
+Verified end-to-end on M4 Pro (`48 GiB`) over a `16`-doc blind `val48` subset where `docmeta-sweep` Pass-1 (`gemma4_e2b_v64a35_c2c4_w8`, `B=16`) naturally queued all `16/16` rows into `esc.jsonl`, and standalone `retry-escalated --escalate-qwen` replayed both `4b-optiq` and `9b-optiq` (`whitespace_flexible=None` -> `": "` BPE grammar, zero Pass-1/Pass-2 co-residency, `docmeta_source = fast-qwen3-pass2` on accepted rows):
+
+| Configuration | Wall (`s`) | Accepted / Escalated | `strict_valid_pct` | `primary_kind_acc` | `committees_f1` | `dates_f1` | `personas_name_f1` | `subcommittees_f1` | `headline_mean` (`legacy`) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| **`Pass-1` (`gemma4_e2b_v64` SFT)** | `32.19s` (`29.29s` dec, `0.55 d/s`) | — | `100.0%` (`16/16`) | `87.5` | **`96.6`** | **`64.9`** | `78.9` | `60.0` | **`87.51`** (`87.74`) |
+| **`+ Pass-2` Zero-Shot `4b-optiq`** | `230.26s` | `10/16` | `100.0%` (`16/16`) | **`93.8`** (fixed `2/2` `event_web_page`) | `66.7` | `57.9` | `70.3` | `57.1` | `74.76` (`75.97`) |
+| **`+ Pass-2` Zero-Shot `9b-optiq`** | `347.63s` | `7/16` | `100.0%` (`16/16`) | `87.5` | `64.0` | `59.5` | **`80.0`** | **`85.7`** | `78.91` (`80.10`) |
+
+- **Takeaway:** The offline `--escalate-qwen` / `retry-escalated` contract (`100%` `strict_v4_valid` + model-aware BPE spacing) is clean and production-safe, and confirms that zero-shot Qwen checkpoints (just like zero-shot GPT-OSS) lack DocMeta schema priors (`committees_f1`, `fiscal_years`, `event_type_acc`, `work_addr` specificity). Keep Qwen Pass-2 strictly opt-in (`--escalate-qwen --qwen-lora <adapter>`) unless paired with a DocMeta `R2`-trained Qwen LoRA adapter.

@@ -26,7 +26,17 @@ def _run_retry_escalated_with_limits(
         run_silicon_preflight,
     )
 
-    preflight = run_silicon_preflight(escalate_gpt_oss=True, require_r8_deps=True, once=True)
+    use_qwen_p2 = bool(
+        getattr(args, "escalate_qwen", False)
+        or getattr(args, "qwen_model_dir", None) is not None
+        or getattr(args, "qwen_lora", None) is not None
+    )
+    preflight = run_silicon_preflight(
+        escalate_gpt_oss=not use_qwen_p2,
+        escalate_qwen=use_qwen_p2,
+        require_r8_deps=True,
+        once=True,
+    )
     host_ram_gb = int(preflight.get("mem_gb") or 0)
     def_mem_gb, def_cache_gb = resolve_default_mlx_limits(host_ram_gb)
     raw_mem = getattr(args, "memory_limit_gb", None)
@@ -45,6 +55,9 @@ def _run_retry_escalated_with_limits(
             gpt_oss_model_dir=getattr(args, "gpt_oss_model_dir", None),
             gpt_oss_batch_size=int(getattr(args, "gpt_oss_batch_size", 8)),
             gpt_oss_k=int(getattr(args, "gpt_oss_k", 1)),
+            escalate_qwen=use_qwen_p2,
+            qwen_model_dir=getattr(args, "qwen_model_dir", None),
+            qwen_lora=getattr(args, "qwen_lora", None),
             max_tokens=int(getattr(args, "max_tokens", MAX_OUTPUT_TOKENS)),
         )
     receipt["mlx_limits"] = mlx_limits
@@ -86,6 +99,7 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
 
     preflight = run_silicon_preflight(
         escalate_gpt_oss=bool(getattr(args, "escalate_gpt_oss", False)),
+        escalate_qwen=bool(getattr(args, "escalate_qwen", False)),
         require_r8_deps=True,
         once=True,
     )
@@ -141,6 +155,9 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
                 gpt_oss_model_dir=args.gpt_oss_model_dir,
                 gpt_oss_batch_size=args.gpt_oss_batch_size,
                 gpt_oss_k=args.gpt_oss_k,
+                escalate_qwen=bool(getattr(args, "escalate_qwen", False)),
+                qwen_model_dir=getattr(args, "qwen_model_dir", None),
+                qwen_lora=getattr(args, "qwen_lora", None),
                 two_phase_pass2=two_phase_pass2,
                 bm25_multicrop=bool(getattr(args, "bm25_multicrop", False)),
                 use_telemetry=getattr(args, "telemetry", "auto"),
@@ -308,7 +325,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     re_p = sub.add_parser(
         "retry-escalated",
-        help="Run single-model GPT-OSS-20B Pass-2 offline over an exported escalation JSONL queue",
+        help="Run single-model GPT-OSS-20B or Qwen Pass-2 offline over an exported escalation JSONL queue",
     )
     re_p.add_argument("escalation_queue", help="Input JSONL escalation queue produced by --escalation-queue-out")
     re_p.add_argument("pass1_results", help="Pass-1 results .parquet file to update with accepted Pass-2 repairs")
@@ -319,6 +336,22 @@ def build_parser() -> argparse.ArgumentParser:
     re_p.add_argument("--max-tokens", type=int, default=MAX_OUTPUT_TOKENS)
     re_p.add_argument("--memory-limit-gb", type=float, default=None)
     re_p.add_argument("--cache-limit-gb", type=float, default=None)
+    for target_p in (dm_p, re_p):
+        target_p.add_argument(
+            "--escalate-qwen",
+            action="store_true",
+            help="Escalate anomaly-flagged docs to fast-qwen3 Pass-2 (uses spaced `: ` grammar by default)",
+        )
+        target_p.add_argument(
+            "--qwen-model-dir",
+            default=None,
+            help="Optional Qwen model path, HF repo, or fast-qwen3 preset alias (e.g. 4b-optiq, 9b-optiq)",
+        )
+        target_p.add_argument(
+            "--qwen-lora",
+            default=None,
+            help="Optional PEFT/LoRA adapter directory or weights file for Qwen Pass-2",
+        )
     re_p.set_defaults(func=_cmd_retry_escalated)
 
     return p

@@ -705,3 +705,172 @@ def test_async_single_model_escalation_queue_and_cli_options(
     assert re_args.escalation_queue == "q.jsonl"
     assert re_args.pass1_results == "p1.parquet"
     assert re_args.output == "out.parquet"
+
+
+def test_qwen_pass2_whitespace_flexible_lora_and_cli_wiring(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from congress_docmeta import silicon_runtime_v6
+
+    _install_fake_fast_gemma4(monkeypatch)
+
+    seen_ws_gh: list[Any] = []
+    fg4_grammar = sys.modules["fast_gemma4.grammar"]
+    orig_gh = fg4_grammar.GrammarHelper
+
+    class _CapturingGH(orig_gh):  # type: ignore[misc, valid-type]
+        def __init__(self, tok: Any, schema_str: str, new_to_old: Any, whitespace_flexible: Any = False) -> None:
+            seen_ws_gh.append(whitespace_flexible)
+            super().__init__(tok, schema_str, new_to_old, whitespace_flexible=whitespace_flexible)
+
+    monkeypatch.setattr(fg4_grammar, "GrammarHelper", _CapturingGH)
+
+    class _FakeQwenEngine:
+        def __init__(
+            self,
+            *,
+            model_dir: Any = None,
+            lora_adapter: Any = None,
+            default_enable_thinking: bool = False,
+            warmup: bool = True,
+        ) -> None:
+            self.model_dir = model_dir
+            self.lora_adapter = lora_adapter
+            self.default_enable_thinking = default_enable_thinking
+            self.warmup = warmup
+            self.tokenizer = _ByteTokenizer()
+            self.model_name = "Qwen3.5-9B-OptiQ-4bit"
+            self.calls: list[dict[str, Any]] = []
+
+        def generate_batch(
+            self,
+            prompts: list[str],
+            *,
+            per_doc_grammars: Any = None,
+            whitespace_flexible: bool | None = None,
+            **kwargs: Any,
+        ) -> Any:
+            self.calls.append({"whitespace_flexible": whitespace_flexible, **kwargs})
+            repaired = {
+                "status": "usable",
+                "text_quality": "native",
+                "primary_kind": "witness_statement",
+                "personas": [{"name": "John Smith", "role": "witness", "entity_type": "non_gov_person"}],
+                "composed_title": "Testimony of John Smith on Transmission Permitting",
+                "gist": "Testimony of John Smith on transmission permitting reforms and bulk electric system standards.",
+                "topics": ["grid reliability"],
+            }
+            return types.SimpleNamespace(
+                items=[types.SimpleNamespace(parsed=repaired, text=json.dumps(repaired)) for _ in prompts]
+            )
+
+    q_eng = _FakeQwenEngine(model_dir="9b-optiq", lora_adapter="/tmp/fake-lora")
+    g_eng = types.SimpleNamespace(tokenizer=_ByteTokenizer(), model_name="gemma-4-e2b-it")
+    assert silicon_runtime_v6.resolve_default_whitespace_flexible(q_eng) is None
+    assert silicon_runtime_v6.resolve_default_whitespace_flexible(g_eng) is False
+    assert silicon_runtime_v6.resolve_default_whitespace_flexible(q_eng, explicit=False) is False
+    assert silicon_runtime_v6.resolve_pass2_source_tag(q_eng) == "fast-qwen3-pass2"
+    assert silicon_runtime_v6.resolve_pass2_source_tag(g_eng) == "fast-gpt-oss-20b-pass2"
+
+    # PythonicEngineV6 resolves spaced `: ` grammar (`None`) for Qwen and compact (`False`) for Gemma
+    pythonic_v6.PythonicEngineV6(q_eng)
+    pythonic_v6.PythonicEngineV6(g_eng)
+    assert seen_ws_gh == [None, False]
+
+    # Fake `fast_qwen3.FastQwen3Engine` for `run_offline_escalation_queue_v6(escalate_qwen=True, ...)`
+    created_qwen: list[_FakeQwenEngine] = []
+
+    def _ctor(**kw: Any) -> _FakeQwenEngine:
+        inst = _FakeQwenEngine(**kw)
+        created_qwen.append(inst)
+        return inst
+
+    fq3_mod = types.ModuleType("fast_qwen3")
+    fq3_mod.FastQwen3Engine = _ctor  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "fast_qwen3", fq3_mod)
+
+    esc_jsonl = tmp_path / "esc.jsonl"
+    esc_jsonl.write_text(
+        json.dumps(
+            {
+                "link_key_hex": "0000000000000001",
+                "filename": "Wstate-SmithJ-20250201.pdf",
+                "known_json": "{}",
+                "p12_raw_text": "Statement of John Smith on transmission permitting standards.",
+                "pass1_docmeta_json": "{}",
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    p1_pq = tmp_path / "pass1.parquet"
+    pq.write_table(
+        pa.Table.from_pylist(
+            [
+                {
+                    "list_row": 0,
+                    "link_key_hex": "0000000000000001",
+                    "doc_key": "doc-1",
+                    "package_id": None,
+                    "disposition": "llm_queue",
+                    "v6_route": "llm_open_extraction",
+                    "docmeta_source": "fast-gemma4-e2b-v6_2",
+                    "filename": "Wstate-SmithJ-20250201.pdf",
+                    "effective_format": "pdf",
+                    "primary_kind": "other",
+                    "status": "usable",
+                    "congress": 119,
+                    "chamber": "house",
+                    "committees": [],
+                    "docmeta_json": "{}",
+                    "strict_v4_valid": False,
+                    "completion_tokens": 32,
+                    "llm_vs_det_diff_json": "{}",
+                    "anomaly_score": 1.0,
+                    "anomaly_flags": ["atomic_kind_suspect"],
+                    "needs_teacher_escalation": True,
+                    "gist_grounding_score": 0.5,
+                    "external_verifier_json": None,
+                    "croq_lock_spec": None,
+                    "croq_lock_type": None,
+                    "extractconf_risk_json": None,
+                    "pass2_escalated": False,
+                    "pass1_docmeta_json": None,
+                }
+            ]
+        ),
+        p1_pq,
+    )
+    merged_pq = tmp_path / "merged_qwen.parquet"
+    receipt = parquet_runner_v6.run_offline_escalation_queue_v6(
+        esc_jsonl,
+        p1_pq,
+        merged_pq,
+        escalate_qwen=True,
+        qwen_model_dir="9b-optiq",
+        qwen_lora="/tmp/test-qwen-lora",
+        use_wired_limit=False,
+    )
+    assert len(created_qwen) == 1
+    assert created_qwen[0].model_dir == "9b-optiq"
+    assert created_qwen[0].lora_adapter == "/tmp/test-qwen-lora"
+    assert created_qwen[0].default_enable_thinking is False
+    assert created_qwen[0].calls[0]["whitespace_flexible"] is None
+    assert receipt["accepted_docs"] >= 1
+    out_rows = pq.read_table(merged_pq).to_pylist()
+    assert out_rows[0]["docmeta_source"] == "fast-qwen3-pass2"
+    assert out_rows[0]["pass2_escalated"] is True
+
+    sweep_args = cli.build_parser().parse_args(
+        ["docmeta-sweep", "in.parquet", "out.parquet", "--escalate-qwen", "--qwen-model-dir", "9b-optiq", "--qwen-lora", "/tmp/l"]
+    )
+    assert sweep_args.escalate_qwen is True
+    assert sweep_args.qwen_model_dir == "9b-optiq"
+    assert sweep_args.qwen_lora == "/tmp/l"
+    re_q = cli.build_parser().parse_args(
+        ["retry-escalated", "q.jsonl", "p1.parquet", "out.parquet", "--escalate-qwen", "--qwen-model-dir", "4b-optiq", "--qwen-lora", "/tmp/l2"]
+    )
+    assert re_q.escalate_qwen is True
+    assert re_q.qwen_model_dir == "4b-optiq"
+    assert re_q.qwen_lora == "/tmp/l2"

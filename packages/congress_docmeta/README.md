@@ -79,7 +79,7 @@ which `model/sql/document-docmeta-v6-1.sql` passes through to the release.
 
 ## Running with the model
 
-Apple Silicon inference engines (`fast-gemma4`, `fast-gpt-oss`, `fast-decision-models`, `fast-bge-small`,
+Apple Silicon inference engines (`fast-gemma4`, `fast-qwen3`, `fast-gpt-oss`, `fast-decision-models`, `fast-bge-small`,
 `fast-embeddinggemma-2`) are deliberately omitted from `congressional-tech/uv.lock`. Standardize on the single
 unified `../fast-silicon/.venv` interpreter synced with its `extract` extra (which installs `pyarrow`,
 `jsonschema`, and the pinned R8 postal-address dependencies `usaddress==0.5.14`, `pycountry==26.2.16`,
@@ -103,6 +103,14 @@ PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python -m con
 
 ```bash
 PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python -m congress_docmeta.cli docmeta-sweep llm_queue_v6_2.parquet out.parquet
+```
+
+Optional standalone offline Pass-2 replay with `fast-qwen3` (automatically aligns BPE grammar spacing via `whitespace_flexible=None` -> `": "`; pair `--qwen-lora` with a DocMeta-tuned `R2` adapter rather than zero-shot base checkpoints):
+
+```bash
+PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python -m congress_docmeta.cli \
+  retry-escalated /tmp/esc.jsonl /tmp/pass1.parquet /tmp/pass2_qwen.parquet \
+  --escalate-qwen --qwen-model-dir 4b-optiq [--qwen-lora path/to/adapter]
 ```
 
 ## Tests
