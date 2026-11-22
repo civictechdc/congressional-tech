@@ -1,5 +1,6 @@
 """Release pinning, resumable preparation, and visible document identities."""
 import json
+from datetime import date
 from hashlib import sha256
 
 import pyarrow as pa
@@ -19,7 +20,7 @@ def test_publication_replay(tmp_path, monkeypatch):
     body_key = bytes.fromhex("ab" * 32)
     doc = dict(link_key=b"12345678", saved_body=body_key, hidden=False, saved_suffix=".pdf",
                title="Housing report", filename="report.pdf", package_id="HR-1", format="pdf",
-               document_date="2026-11-20", document_date_status="accepted", congress=119, chambers=["house"],
+               document_date=date(2026, 11, 20), document_date_status="accepted", congress=119, chambers=["house"],
                committee_keys=["HS"], document_kind="report", document_family="legislative",
                src_start=0, src_len=1)
     detail = pa.Table.from_pylist([doc, doc | {"link_key": b"87654321"}, doc | {"hidden": True},
@@ -47,6 +48,7 @@ def test_publication_replay(tmp_path, monkeypatch):
     work = release.update(root, origin=origin)
     rows = pq.read_table(work / "prepared").to_pylist()
     assert len(rows) == 3 and len({r["member_key"] for r in rows}) == 3
+    assert rows[0]["document_date"] == date(2026, 11, 20)
     assert sum(r["body"] == "housing evidence" and r["page_offsets"] == [0] for r in rows) == 2
     assert sum(r["text_status"] == "No text in this export" for r in rows) == 1
     assert not list((work / "downloads").glob("*.parquet"))
