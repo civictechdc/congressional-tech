@@ -18,7 +18,7 @@ from congress_shared.custody import write_atomic_bytes
 from viewer_publication.archive_format import release_identity
 
 ORIGIN = "https://congressional-data.spicygov.ai"
-RECIPE = "search-v1"
+RECIPE = "search-v2"
 FIELDS = {
     "title": "title", "text": ["body"], "url": "source_url", "identifiers": "identifiers",
     "page_offsets": {"body": "page_offsets"},
@@ -30,13 +30,28 @@ FIELDS = {
                "text_sha256": "Selected text SHA-256", "member_path": "File inside source archive"},
 }
 DOCUMENTS = """CREATE TEMPORARY TABLE documents AS
+WITH sources AS (
+    SELECT file_row_number - ordinal AS src_start,
+           max(url) FILTER (WHERE ordinal=0) AS publisher_url,
+           max(link_text) FILTER (WHERE ordinal=0) AS link_text,
+           max(member_path) FILTER (WHERE ordinal=0) AS member_path,
+           arg_min(listed_on, ordinal) FILTER (WHERE listed_on <> url AND
+               regexp_matches(listed_on, '^https?://', 'i')) AS listed_on,
+           arg_min(url, ordinal) FILTER (WHERE is_saved AND nullif(member_path,'') IS NULL AND
+               regexp_matches(url, '^https?://', 'i') AND
+               NOT regexp_matches(url, '[.](zip|gz)([?#].*)?$', 'i')) AS direct_file
+    FROM read_parquet(?, file_row_number=true) GROUP BY 1
+)
 SELECT d.link_key, d.saved_body, d.saved_suffix, d.title AS archive_title, d.filename, d.package_id,
            substr(coalesce(lower(hex(d.saved_body)), lower(hex(d.link_key))), 1, 2) AS shard,
            d.format, d.document_date, d.document_date_status, d.congress, d.chambers, d.committee_keys,
-           d.document_kind, d.document_family, s.url AS publisher_url, s.link_text, s.member_path
+           d.document_kind, d.document_family, s.publisher_url, s.link_text, s.member_path, s.listed_on,
+           CASE WHEN d.format='pdf' THEN coalesce(s.direct_file,
+                CASE WHEN d.saved_suffix IN ('', '.pdf') THEN ? || '/bodies/sha256/' ||
+                    left(lower(hex(d.saved_body)),2) || '/' || lower(hex(d.saved_body)) || d.saved_suffix END)
+           END AS pdf_url
     FROM read_parquet(?) AS d
-    LEFT JOIN read_parquet(?, file_row_number=true) AS s
-      ON s.file_row_number = CASE WHEN d.src_len > 0 THEN d.src_start END AND s.ordinal = 0
+    LEFT JOIN sources s ON s.src_start = CASE WHEN d.src_len > 0 THEN d.src_start END
     WHERE d.hidden IS NOT TRUE
 """
 PARTITION = """SELECT 'archive-documents'::VARCHAR AS source_id, lower(hex(d.link_key)) AS member_key,
@@ -46,7 +61,7 @@ PARTITION = """SELECT 'archive-documents'::VARCHAR AS source_id, lower(hex(d.lin
        coalesce(d.publisher_url, 'https://congressional-data.spicygov.ai/bodies/sha256/' ||
                 left(lower(hex(d.saved_body)), 2) || '/' || lower(hex(d.saved_body)) || d.saved_suffix) AS source_url,
        CASE WHEN nullif(d.package_id,'') IS NULL THEN []::VARCHAR[] ELSE [d.package_id] END AS identifiers,
-       d.document_date, d.document_date_status, d.congress, d.chambers, d.committee_keys,
+       d.listed_on, d.pdf_url, d.document_date, d.document_date_status, d.congress, d.chambers, d.committee_keys,
        d.document_kind, d.document_family, d.format, d.filename, d.archive_title, d.member_path,
        lower(hex(d.saved_body)) AS saved_body_sha256, lower(hex(b.text_sha256)) AS text_sha256, b.page_offsets,
        CASE WHEN b.saved_body IS NULL THEN 'No text in this export'
@@ -162,7 +177,7 @@ def prepare(origin, work, pin, local):
     output = work / "prepared"
     output.mkdir(exist_ok=True)
     with closing(duckdb.connect(config={"threads": 1, "preserve_insertion_order": False})) as db:
-        db.execute(DOCUMENTS, [locate("detail.parquet"), locate("sources.parquet")])
+        db.execute(DOCUMENTS, [locate("sources.parquet"), ORIGIN, locate("detail.parquet")])
         counts = dict(db.execute("SELECT shard, count(*) FROM documents GROUP BY shard").fetchall())
         total = sum(counts.values())
         if total != db.execute("SELECT count(DISTINCT link_key) FROM documents").fetchone()[0]:
@@ -206,43 +221,35 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
         fcntl.flock(lock, fcntl.LOCK_EX)
         pin = resolve(origin, saved)
         release = pin["release_id"]
-        work = root / RECIPE / release / pin["text"]["sha256"]
+        version = Path(release) / pin["text"]["sha256"]
+        legacy = root / "search-v1" / version
+        work = legacy if (legacy / "prepared.json").is_file() else root / RECIPE / version
         work.mkdir(parents=True, exist_ok=True)
         if not (work / "pin.json").is_file():
             save(work / "pin.json", pin)
         ready = prepare(origin, work, pin, local)
-        links = work / "source-links.parquet"
-        if not links.is_file():
-            # The live index already holds page starts. Only the small release metadata supplies listing URLs.
-            locate = source_files(origin, work, pin, local)
-            temporary = links.with_suffix(".partial")
-            with closing(duckdb.connect(config={"threads": 1})) as db:
-                db.sql("""WITH sources AS (
-                    SELECT file_row_number - ordinal AS src_start,
-                           arg_min(listed_on, ordinal) FILTER (WHERE listed_on <> url AND
-                               regexp_matches(listed_on, '^https?://', 'i')) AS listed_on,
-                           arg_min(url, ordinal) FILTER (WHERE is_saved AND nullif(member_path,'') IS NULL AND
-                               regexp_matches(url, '^https?://', 'i') AND
-                               NOT regexp_matches(url, '[.](zip|gz)([?#].*)?$', 'i')) AS direct_file
-                    FROM read_parquet(?, file_row_number=true) GROUP BY 1
-                ) SELECT 'archive-documents:' || lower(hex(d.link_key)) AS id, s.listed_on,
-                         CASE WHEN d.format='pdf' THEN coalesce(s.direct_file,
-                             CASE WHEN d.saved_suffix IN ('', '.pdf') THEN ? || '/bodies/sha256/' ||
-                                 left(lower(hex(d.saved_body)),2) || '/' || lower(hex(d.saved_body)) ||
-                                 d.saved_suffix END) END AS pdf_url
-                  FROM read_parquet(?) d LEFT JOIN sources s ON s.src_start=CASE WHEN d.src_len>0 THEN d.src_start END
-                  WHERE d.hidden IS NOT TRUE AND (listed_on IS NOT NULL OR pdf_url IS NOT NULL)
-                  ORDER BY id""", params=[locate("sources.parquet"), ORIGIN, locate("detail.parquet")]
-                ).write_parquet(str(temporary), compression="zstd", row_group_size=2048)
-            with temporary.open("rb") as complete:
-                os.fsync(complete.fileno())
-            temporary.replace(links)
+        definition = {"input": {"parquet": str(work / "serving" / "*.parquet")}, "text_storage": "source",
+                      "label": f"Congressional archive · {release[:12]}",
+                      "fields": FIELDS | {"listed_on": "listed_on", "pdf_url": "pdf_url"}}
+        if work == legacy:
+            # A completed v1 release keeps its index and immutable shards, including on restore.
+            links = work / "source-links.parquet"
+            if not links.is_file():
+                locate = source_files(origin, work, pin, local)
+                temporary = links.with_suffix(".partial")
+                with closing(duckdb.connect(config={"threads": 1})) as db:
+                    db.execute(DOCUMENTS, [locate("sources.parquet"), ORIGIN, locate("detail.parquet")])
+                    db.sql("""SELECT 'archive-documents:' || lower(hex(link_key)) AS id, listed_on, pdf_url
+                              FROM documents WHERE listed_on IS NOT NULL OR pdf_url IS NOT NULL
+                              ORDER BY id""").write_parquet(str(temporary), compression="zstd", row_group_size=2048)
+                with temporary.open("rb") as complete:
+                    os.fsync(complete.fileno())
+                temporary.replace(links)
+            definition.update(fields=FIELDS, source_links=str(links))
         # Once preparation commits, only the search partitions are needed locally.
         for name in ("body_text.parquet", "detail.parquet", "sources.parquet"):
             (work / "downloads" / name).unlink(missing_ok=True)
         manifest = work / "dataset.json"
-        definition = {"input": {"parquet": str(work / "serving" / "*.parquet")}, "text_storage": "source",
-                      "label": f"Congressional archive · {release[:12]}", "fields": FIELDS, "source_links": str(links)}
         if not manifest.exists() or json.loads(manifest.read_text()) != definition:
             save(manifest, definition)
         if engine:

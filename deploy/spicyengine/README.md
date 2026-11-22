@@ -9,7 +9,9 @@ database volume. The host profile keeps the search runtime uncapped.
 Run `sudo spicyengine-update` to install the current release. The command reads
 the archive and text pointers, requires the same release and detail-file pin,
 and saves the immutable inputs in `pin.json`. It prepares visible documents
-once, then publishes the complete snapshot privately. A rerun skips completed
+once, then publishes the complete snapshot privately. New releases include the publisher
+listing and page-addressable PDF URL in each prepared row. A completed search-v1
+release reuses its original shards, index and link file. A rerun skips completed
 preparation and indexing. To replay an earlier release, run
 `sudo spicyengine-update --pin /path/to/pin.json`. Copy that small file off
 the host to reproduce the selection after an upstream pointer change.

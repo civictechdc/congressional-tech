@@ -55,26 +55,33 @@ def test_publication_replay(tmp_path, monkeypatch):
     assert rows[0]["document_date"] == date(2026, 11, 20)
     assert sum(r["body"] == "housing evidence" and r["page_offsets"] == [0] for r in rows) == 2
     assert sum(r["text_status"] == "No text in this export" for r in rows) == 1
-    links = pq.read_table(work / "source-links.parquet").to_pylist()
-    by_id = {r["id"]: r for r in links}
-    primary = by_id["archive-documents:" + b"12345678".hex()]
+    by_key = {r["member_key"]: r for r in rows}
+    primary = by_key[b"12345678".hex()]
     assert primary["listed_on"] == "https://example.gov/hearing" and primary["pdf_url"] == "https://example.gov/a.pdf"
-    child = by_id["archive-documents:" + b"87654321".hex()]
+    child = by_key[b"87654321".hex()]
     assert child["listed_on"] is None and child["pdf_url"] == f"{release.ORIGIN}/bodies/sha256/ab/{body_key.hex()}"
-    assert json.loads((work / "dataset.json").read_text())["source_links"] == str(work / "source-links.parquet")
+    definition = json.loads((work / "dataset.json").read_text())
+    assert definition["fields"]["listed_on"] == "listed_on" and definition["fields"]["pdf_url"] == "pdf_url"
+    assert "source_links" not in definition and not (work / "source-links.parquet").exists()
     assert not list((work / "downloads").glob("*.parquet"))
-    # An existing installation gains citations even when the large text export is offline.
     (text_dir / f"{digest}.parquet").unlink()
-    (work / "source-links.parquet").unlink()
     assert release.update(root, origin=origin, saved=work / "pin.json") == work
-    assert pq.read_table(work / "source-links.parquet").to_pylist() == links
+    # An already-prepared v1 index is replayed without reading or rebuilding bodies.
+    old = root / "search-v1" / release_id / digest
+    old.mkdir(parents=True)
+    (old / "prepared.json").write_text((work / "prepared.json").read_text())
+    assert release.update(root, origin=origin, saved=work / "pin.json") == old
+    old_links = {r["id"].split(":")[1]:r for r in pq.read_table(old / "source-links.parquet").to_pylist()}
+    for key, row in by_key.items():
+        assert (row["listed_on"],row["pdf_url"]) == (old_links.get(key,{}).get("listed_on"),old_links.get(key,{}).get("pdf_url"))
+    assert json.loads((old / "dataset.json").read_text())["source_links"] == str(old / "source-links.parquet")
     (text_dir / "current.json").write_text(json.dumps(pointer | {"release_id": "0"*64}))
     with pytest.raises(ValueError, match="same immutable release"):
         release.update(root, origin=origin)
     def unexpected(*args):
         raise AssertionError("Pinned replay reopened upstream data")
     monkeypatch.setattr(release, "open_object", unexpected)
-    assert release.update(root, origin=origin, saved=work / "pin.json") == work
+    assert release.update(root, origin=origin, saved=work / "pin.json") == old
 
 
 def test_transfer_resumes_a_pinned_partial(tmp_path, monkeypatch):
