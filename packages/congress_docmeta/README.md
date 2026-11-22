@@ -38,8 +38,9 @@ higher quality at much higher throughput, with **`100.0%` `strict_v4_valid`** ac
 - **Keep full uncut Pass-1 text by default:** Unconditional `BM25` / ANE multi-crop drops `1.2–2.2` `valid_sweep` points (`p=0.007` on M4 Pro); `--bm25-multicrop` stays opt-in only for throughput-bound `~2.48 docs/s` M5 runs.
 - **Zero-cost `ExtractConf` replaces blocking ANE/20B local repair:** Lightweight pre-mask telemetry + calibrated logistic/hybrid scoring delivers `0.707–0.745` any-defect AUROC (`0.876–0.907` PK, `0.807–0.844` Dates, `0.779–0.808` Role, `ECE ~0.04`) at `0 ms` model overhead for async downstream routing, while Pass-2 `GPT-OSS`, blocking Pass-1 `Laya/Kev`, Arm B `DCCD+MBR` (`1471s`), and Arm C `Single-Field Hunter` (`p=0.004` M5 regression) are retired from defaults.
 - **`24 GiB` Base M5 auto-sizing out of the box:** `silicon_runtime_v6.py` auto-caps `<= 24 GiB` Macs to `19.2 GiB` (`0.80 * RAM`) MLX active memory, `1.5 GiB` cache, and `b_slots=128` (`24.0 GiB` / `2.0 GiB` / `256` on `>= 48 GiB` Macs) without manual flags.
+- **`v2.3` rule/salvage/long-doc improvements (`ed3e710d`) + async offline queue (`--escalation-queue-out` / `retry-escalated`):** Paired M4 Pro `212`-doc `eval_blind` rose **`+2.24` `valid` HL** (`70.95 → 73.19`, `dates_f1 +11.7` `57.8 → 69.5`, `>6k` `personas/Role +3.4/+3.5`) and **`+3.32` `val48` HL** (`87.28 → 90.60`, `PK +4.2`, `committees +4.8`, `other_count 1 → 0`) at `100.0%` strict valid (`220.9s → 218.6s`), with zero co-residency offline Pass-2 queue support.
 
-See **[`BENCHMARKS.md`](BENCHMARKS.md)** for the full `26`-sweep leaderboards, paired cross-Mac equivalence CIs, 5-fold CV detector tables, falsified architectures ledger, Section 9 v2.2 parity & `--embed-ane` measurements, and reproducible CLI commands, and [`docs/architecture.md`](docs/architecture.md) for pipeline stage internals.
+See **[`BENCHMARKS.md`](BENCHMARKS.md)** for the full `26`-sweep leaderboards, paired cross-Mac equivalence CIs, 5-fold CV detector tables, falsified architectures ledger, Sections 9–10 (`v2.2` / `v2.3`) measurements, and reproducible CLI commands, and [`docs/architecture.md`](docs/architecture.md) for pipeline stage internals.
 
 ## What is where
 
@@ -106,7 +107,7 @@ PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python -m con
 
 ## Tests
 
-- `tests/` (including [`test_croq_extractconf_v6.py`](tests/test_croq_extractconf_v6.py)): rules, parsers, schema, `CROQ` calibration, `ExtractConf`, `24 GiB` auto-sizing, address reader (`production-offline`).
+- `tests/` (including [`test_croq_extractconf_v6.py`](tests/test_croq_extractconf_v6.py) and [`test_v23_docmeta_accuracy.py`](tests/test_v23_docmeta_accuracy.py)): rules, parsers, schema, `CROQ` calibration, `ExtractConf`, `24 GiB` auto-sizing, Tier-A salvage, `>6k` persona harvest, offline escalation queue (`--escalation-queue-out` / `retry-escalated`), address reader (`production-offline`).
 - `tests/model/`: the engine seam (tokenizer, `llguidance`, ANE, MLX). Run via `uv run python packages/congress_docmeta/scripts/model_lane.py test packages/congress_docmeta/tests/model -v` (`12 passed`, `pytest.importorskip("fast_gemma4")`); without `fast_gemma4` installed they skip.
 
 Local data (rosters lookup, gold sets, the queue) is read from

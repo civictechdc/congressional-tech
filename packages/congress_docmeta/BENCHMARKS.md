@@ -242,4 +242,30 @@ Verified after fixing the `MAX_PERSONAS` / schema parity tests so `tests/model/`
 - **Base M5 `Q8 GPT-OSS` (`24 GB`):** Triggered OOM/swap pressure (`16.26 GB + 2.71/3.00 GiB`) when co-scheduled locally -> **rejected**.
 - **Base M5 `Qwen3.5-4B` (`n=21` escalated subset on `any_top5`):** Only `14/21` valid, `1086.4s` (`0.2974` effective `docs/s`), regressed `valid` HL (`-0.046`) and `val48` HL (`-0.222`) -> **rejected**.
 - **M4 Pro `Q4 GPT-OSS` (`n=168` escalated subset):** Only `139/168` valid in `1085.5s` -> **rejected** for synchronous Pass-2 routing.
-- **v2.3 Direction:** Keep Pass-1 single-model and fast; queue ambiguous/truncated records asynchronously offline instead of co-loading two large models, and target Tier-A salvage/wipe fixes (`_salvage_truncated_docmeta_v4`, `25w` clamp before `DocMetaValidationError`, `-Transcript-`/`-TTF-`/`BA00`/`FD00`/`HA08` prefixes) plus `>6k` persona tail harvesting (`6k–9k+`) on `valid_sweep + val48_sweep`.
+- **v2.3 Direction (Landed in `ed3e710d`):** Keep Pass-1 single-model and fast; queue flagged/truncated records asynchronously offline (`docmeta-sweep --escalation-queue-out` -> standalone `retry-escalated`) with zero co-residency, paired with Tier-A salvage/bio-date restraint and `>6k` persona tail harvesting.
+
+---
+
+## 10. v2.3 Paired `eval_blind` Accuracy & Offline Escalation Queue (`ed3e710d`, 2026-11-22)
+
+Paired M4 Pro (`48 GiB`) `212`-doc `eval_blind` runs (`165` `valid_sweep` + `47` `val48_sweep`, identical `llm_queue_v6_2.parquet` split, `100.0%` `strict_valid_pct`), adding Tier-A truncated/clamped record salvage, bio-date restraint, `>6k` persona tail harvesting, and offline JSONL Pass-2 escalation queue export/replay (`docmeta-sweep --escalation-queue-out`, `retry-escalated`):
+
+| Split | Metric | Pre-v2.3 Baseline | Post-v2.3 (`ed3e710d`) | Delta |
+|---|---|---:|---:|---:|
+| **`valid_sweep` (`n=165`)** | `headline_mean` / `legacy headline_mean` | `70.95` / `88.34` | **`73.19` / `90.58`** | **`+2.24` / `+2.24`** |
+| `valid_sweep` (`n=165`) | `dates_f1` / `legacy dates_f1` | `57.8` / `80.1` | **`69.5` / `91.4`** | **`+11.7` / `+11.3`** |
+| `valid_sweep` (`n=165`) | `primary_kind_acc` / `personas_name_f1` / `personas_name_role_f1` | `93.3` / `77.2` / `73.8` | **`94.5` / `79.1` / `75.8`** | **`+1.2` / `+1.9` / `+2.0`** |
+| `valid_sweep >6k` (`n=75`) | `headline_mean` / `personas_name_f1` / `Role` / `dates_f1` | `75.56` / `74.7` / `71.9` / `64.6` | **`77.03` / `78.1` / `75.4` / `68.1`** | **`+1.47` / `+3.4` / `+3.5` / `+3.5`** |
+| **`val48_sweep` (`n=47`)** | `headline_mean` / `legacy headline_mean` | `87.28` / `89.14` | **`90.60` / `92.30`** | **`+3.32` / `+3.16`** |
+| `val48_sweep` (`n=47`) | `primary_kind_acc` / `committees_f1` / `personas` / `Role` | `89.4` / `90.7` / `78.4` / `76.7` | **`93.6` / `95.5` / `81.9` / `80.2`** | **`+4.2` / `+4.8` / `+3.5` / `+3.5`** |
+| `val48_sweep` (`n=47`) | `status_acc` / `chamber_acc` / `other_count` | `97.9` / `93.6` / `1` | **`100.0` / `97.9` / `0`** | **`+2.1` / `+4.3` / `-1`** |
+| `val48_sweep >6k` (`n=21`) | `headline_mean` / `PK` / `personas` / `dates_f1` | `89.00` / `90.5` / `81.8` / `87.0` | **`91.64` / `95.2` / `84.7` / `90.1`** | **`+2.64` / `+4.7` / `+2.9` / `+3.1`** |
+| **Sweep Wall (`212` docs)** | `elapsed_sec` / `docs_per_sec` / `strict_valid_pct` | `220.9s` / `0.96` / `100.0%` | **`218.6s` / `0.97` / `100.0%`** | **`-2.3s` (`+0.01 docs/s`)** |
+
+```bash
+# Offline decoupled Pass-2 workflow (zero co-residency between Pass-1 Gemma-4 and Pass-2 GPT-OSS-20B)
+PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python -m congress_docmeta.cli \
+  docmeta-sweep llm_queue_v6_2.parquet /tmp/pass1.parquet --escalation-queue-out /tmp/esc.jsonl
+PYTHONPATH=packages/congress_docmeta/src ../fast-silicon/.venv/bin/python -m congress_docmeta.cli \
+  retry-escalated /tmp/esc.jsonl /tmp/pass1.parquet /tmp/pass2_merged.parquet
+```
