@@ -1863,8 +1863,19 @@ _RX_V5_REPORT_NEG = re.compile(
 )
 
 # 9. `transcript_clerk_rptr_or_prelim_v5` -> `hearing_transcript`
-_RX_V5_TRANSCRIPT_RPTR = re.compile(r"^(?:1\s+)?RPTR\s+[A-Z][A-Z_.-]*\s+EDTR\s+[A-Z][A-Z_.-]*\b")
+_RX_V5_TRANSCRIPT_RPTR = re.compile(
+    r"^(?:1\s+)?RPTR\s+[A-Z][A-Z_.-]*\s+EDTR\s+[A-Z][A-Z_.-]*\b"
+    r"|(?:^|\b)(?:\d+\s+)?Diversified\s+Reporting\s+Services,\s+Inc\.\s+RPTS\b"
+)
 _RX_V5_TRANSCRIPT_PRELIM = re.compile(r"\bThis\s+is\s+a\s+preliminary,\s+unedited\s+transcript\.", re.I)
+
+_RX_V5_TTF_UNBANNERED_EXT = re.compile(
+    r"^(?:\d+\s+)?(?:Witness\s+Name|Your\s+Name|Name)\s*:\s*[A-Z].{1,260}?\s+"
+    r"(?:1|5)\.\s*(?:Please\s+list\s+)?any\s+federal\s+grants\s+or\s+contracts\s*\(including\s+subgrants\s+or\s+subcontracts\)"
+    r".{0,160}?since\s+October\s+1",
+    re.I,
+)
+_RX_V5_TTF_DIGITALLY_SIGNED_TAIL = re.compile(r"\bNone\s+None\s+Digitally\s+signed\s+by\b")
 _RX_V5_TRANSCRIPT_NEG = re.compile(
     r"(?:TRANSCRIBED\s+INTERVIEW|DEPOSITION\s+OF|INTERVIEW\s+OF\s*:?\s+[A-Z])",
     re.I,
@@ -1933,9 +1944,13 @@ def detect_new_tier1_signatures_v5(
             hits.append(("questionnaire_nominee_apq_v5", "nominee_questionnaire_apq"))
 
     # 3. `transcript_clerk_rptr_or_prelim_v5` -> `hearing_transcript`
-    if "rptr " in t_low[:80] or "preliminary, unedited transcript" in t_low[:450]:
+    if (
+        "rptr " in t_low[:80]
+        or "diversified reporting" in t_low[:200]
+        or "preliminary, unedited transcript" in t_low[:450]
+    ):
         if not _RX_V5_TRANSCRIPT_NEG.search(t_ws[:600]) and (
-            _RX_V5_TRANSCRIPT_RPTR.match(t_ws[:120]) or _RX_V5_TRANSCRIPT_PRELIM.search(t_ws[:450])
+            _RX_V5_TRANSCRIPT_RPTR.search(t_ws[:200]) or _RX_V5_TRANSCRIPT_PRELIM.search(t_ws[:450])
         ):
             hits.append(("transcript_clerk_rptr_or_prelim_v5", "hearing_transcript"))
 
@@ -2045,6 +2060,23 @@ def detect_new_tier1_signatures_v5(
             t_ws_full = _norm_ws_prefix(text, 2600)
         if not _RX_V5_MEMBER_OPENING_NEG.search(t_ws_full[:1400]) and _RX_V5_MEMBER_OPENING_POS.search(t550):
             hits.append(("stmt_member_opening_formal_v5", "member_opening_statement"))
+
+    # 12. Unbannered 112-115 TTF forms (`Name: ... 5. Any federal grants ... since October 1`) and `-TTF-` custom-font forms with Adobe `None None Digitally signed by`
+    if not hits:
+        if (
+            "october 1" in t_low[:750]
+            and "subgrants" in t_low[:750]
+            and not RX_TTF_NEG_STRICT.search(t_ws[:1000])
+            and not RX_TTF_HEAD_NEG_STRICT.search(t_ws[:360])
+            and not RX_TTF_ALLCAPS_RULES.search(t_ws[:360])
+            and _RX_V5_TTF_UNBANNERED_EXT.match(t_ws[:750])
+        ):
+            hits.append(("ttf_committee_bespoke_form_112_118", "truth_in_testimony_disclosure"))
+        elif "-ttf-" in base_fn.lower():
+            if t_ws_full is None:
+                t_ws_full = _norm_ws_prefix(text, 2600)
+            if _RX_V5_TTF_DIGITALLY_SIGNED_TAIL.search(t_ws_full):
+                hits.append(("ttf_committee_bespoke_form_112_118", "truth_in_testimony_disclosure"))
 
     return hits
 

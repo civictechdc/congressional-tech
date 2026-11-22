@@ -103,6 +103,7 @@ __all__ = [
     "gao_product_id",
     "gpo_name_key",
     "gpo_roster",
+    "harvest_tail_and_toc_personas_v6",
     "names_page",
     "parse_cbo_cost_estimate_v6",
     "parse_document_witnesses",
@@ -2116,6 +2117,12 @@ _WIT_BLOCK_STOP_RE = re.compile(
 )
 
 
+_CONVERSATION_NAME_GUARD_RE = re.compile(
+    r"(?i:\b(?:Mr|Mrs|Ms|Dr)\.\s*$|\b(?:good\s+copy|thank\s+you)\b)"
+    r"|\b[a-z]{3,}\.\s+[A-Z][a-z]+",
+)
+
+
 def parse_document_witnesses(text: str) -> list[DocumentWitness]:
     """Stdlib port of `congress_api.parsers.witness_pdf.parse_document_witnesses` (+ panel & creds)."""
     out: list[dict[str, Any]] = []
@@ -2152,7 +2159,13 @@ def parse_document_witnesses(text: str) -> list[DocumentWitness]:
         parsed = witness_line_parse(line) if (title_m or credential) else None
         nm = parsed["name"].rstrip("*†‡ ") if parsed else ""
 
-        if parsed and _is_person_name(nm) and (len(line.split()) <= 8 or "," in line) and not line.endswith(":"):
+        if (
+            parsed
+            and _is_person_name(nm)
+            and not _CONVERSATION_NAME_GUARD_RE.search(nm)
+            and (len(line.split()) <= 8 or "," in line)
+            and not line.endswith(":")
+        ):
             inline_details: list[str] = []
             if parsed["position"]:
                 inline_details.append(parsed["position"])
@@ -2608,18 +2621,28 @@ def parse_gpo_p12_personas_v6(p12_lines: str) -> list[dict[str, Any]]:
 
 
 _TOC_STOP_SECTION_RE = re.compile(
-    r"^\s*(?:SUBMISSIONS?\s+FOR\s+THE\s+RECORD|ADDITIONAL\s+MATERIAL|APPENDIX(?:ES)?|"
+    r"^\s*(?:SUBMISSIONS?\s+FOR\s+THE\s+RECORD|ADDITIONAL\s+MATERIAL|APPENDIX(?:ES)?:?|"
     r"LETTERS?,?\s+STATEMENTS?,?\s+ETC\.|MATERIAL\s+SUBMITTED|QUESTIONS\s+(?:AND\s+ANSWERS|SUBMITTED))\b",
+    re.I,
+)
+_TOC_WITNESS_HEADER_RE = re.compile(
+    r"^\s*(?:WITNESS(?:ES)?|CHRONOLOGICAL\s+LIST\s+OF\s+WITNESSES|LIST\s+OF\s+WITNESSES|"
+    r"PANEL\s+OF\s+WITNESSES|PANEL\s+(?:I|II|III|IV|1|2|3|4|ONE|TWO|THREE|\w+)):?\s*$",
     re.I,
 )
 _TOC_SECTION_HEADER_RE = re.compile(
     r"^\s*(?:C\s*O\s*N\s*T\s*E\s*N\s*T\s*S|CO|NT|EN|TS|Pages?|Page|"
     r"(?:OPENING\s+|PREPARED\s+)?STATEMENTS?\s+OF:?|WITNESS(?:ES)?:?|"
     r"CHRONOLOGICAL\s+LIST\s+OF\s+WITNESSES|LIST\s+OF\s+WITNESSES|"
-    r"PANEL\s+(?:I|II|III|IV|1|2|3|4|ONE|TWO|THREE)|"
+    r"PANEL\s+OF\s+WITNESSES|PANEL\s+(?:I|II|III|IV|1|2|3|4|ONE|TWO|THREE)|"
     r"(?:MONDAY|TUESDAY|WEDNESDAY|THURSDAY|FRIDAY|SATURDAY|SUNDAY),\s+[A-Z]+\s+\d{1,2},\s+\d{4})\s*$",
     re.I,
 )
+_TOC_FRESH_ENTRY_START_RE = re.compile(
+    r"^(?:[A-Z][a-zA-Z'\u00C0-\u024F-]+,\s+(?:[A-Z]\.?\s+){0,2}[A-Z][a-zA-Z'\u00C0-\u024F.-]+,|"
+    r"(?:The\s+Honorable|Hon\.|Mr\.|Mrs\.|Ms\.|Dr\.|Senator|Representative)\s+[A-Z])"
+)
+_TOC_CONTINUATION_TAIL_RE = re.compile(r"(?:,|-|\b(?:and|of|for|the|or|in|at|on|by|to|U\.S\.|Inc\.|Co\.))\s*$", re.I)
 
 
 def parse_gpo_p3_slice_personas_v6(p3_slice: str) -> list[dict[str, Any]]:
@@ -2637,26 +2660,62 @@ def parse_gpo_p3_slice_personas_v6(p3_slice: str) -> list[dict[str, Any]]:
 
     # 1. Reconstruct wrapped dotted-leader TOC entries (joining hyphen-wraps + multi-line entries ending in `.... <page>`)
     raw_lines = [ln.strip() for ln in p3_slice.replace("\r", "").split("\n")]
-    stitched: list[str] = []
+    stitched: list[tuple[str, bool]] = []
     buf = ""
     in_opening_section = False
+    in_witness_section = False
+    has_later_witness_hdr = [False] * (len(raw_lines) + 1)
+    for idx_rev in range(len(raw_lines) - 1, -1, -1):
+        has_later_witness_hdr[idx_rev] = has_later_witness_hdr[idx_rev + 1] or bool(
+            _TOC_WITNESS_HEADER_RE.match(raw_lines[idx_rev])
+        )
 
-    for ln in raw_lines:
+    for idx_ln, ln in enumerate(raw_lines):
         if not ln or ln == ")" or re.fullmatch(r"\([IVXLCDM]+\)|\d{1,4}", ln):
             continue
         if _TOC_STOP_SECTION_RE.match(ln):
+            if not stitched and not in_opening_section and has_later_witness_hdr[idx_ln + 1]:
+                buf = ""
+                continue
+            if buf and in_witness_section and "," in buf:
+                stitched.append((buf, False))
+                buf = ""
             break
         if re.match(r"^\s*OPENING\s+STATEMENTS?\s+OF:?\s*$", ln, re.I):
+            if buf and in_witness_section and "," in buf:
+                stitched.append((buf, False))
             in_opening_section = True
+            in_witness_section = False
             buf = ""
             continue
-        if re.match(r"^\s*(?:WITNESS(?:ES)?|CHRONOLOGICAL\s+LIST\s+OF\s+WITNESSES|PANEL\s+\w+):?\s*$", ln, re.I):
+        if _TOC_WITNESS_HEADER_RE.match(ln):
+            if buf and in_witness_section and "," in buf:
+                stitched.append((buf, False))
             in_opening_section = False
+            in_witness_section = True
             buf = ""
             continue
         if _TOC_SECTION_HEADER_RE.match(ln):
+            if buf and in_witness_section and "," in buf:
+                stitched.append((buf, False))
             buf = ""
             continue
+
+        if buf and in_witness_section and "," in buf and not _TOC_CONTINUATION_TAIL_RE.search(buf):
+            is_fresh = bool(_TOC_FRESH_ENTRY_START_RE.match(ln))
+            if not is_fresh and "," in ln:
+                cand_w = witness_line_parse(ln)
+                cand_nm = (cand_w.get("name") or "").strip()
+                if (
+                    cand_nm
+                    and _is_person_name(cand_nm)
+                    and not _ENTRY_WORDS_RE.match(cand_nm)
+                    and not _TAIL_TITLE_OR_ORG_REJECT_RE.search(cand_nm)
+                ):
+                    is_fresh = True
+            if is_fresh:
+                stitched.append((buf, in_opening_section))
+                buf = ""
 
         if buf:
             if buf.endswith("-"):
@@ -2667,10 +2726,13 @@ def parse_gpo_p3_slice_personas_v6(p3_slice: str) -> list[dict[str, Any]]:
             buf = ln
 
         if re.search(r"\.{4,}\s*(?:\d+|[IVXLCDM]+)?\s*$", buf):
-            stitched.append((buf, in_opening_section))  # type: ignore[arg-type]
+            stitched.append((buf, in_opening_section))
             buf = ""
         elif len(buf) > 260:
             buf = ""
+
+    if buf and in_witness_section and "," in buf:
+        stitched.append((buf, in_opening_section))
 
     for entry_tuple in stitched:
         entry_line, is_open_sec = entry_tuple  # type: ignore[misc]
@@ -2748,6 +2810,269 @@ def parse_gpo_p3_slice_personas_v6(p3_slice: str) -> list[dict[str, Any]]:
             out.append(p_obj)
 
     return out[:MAX_PERSONAS]
+
+
+_TAIL_MEMO_WITNESS_HDR_RE = re.compile(
+    r"(?:^|\n)\s*(?:[IVXLC]+\.\s*\n\s*)?WITNESS(?:ES)?\s*:?\s*\n"
+    r"(?:\s*The\s+following\s+witnesses\s+have\s+been\s+invited\s+to\s+testify:?\s*\n)?",
+    re.I,
+)
+_TAIL_TITLE_OR_ORG_REJECT_RE = re.compile(
+    r"\b(?:Chief|Officer|Principal|Vice\s+President|President|Director|Professor|Manager|Counsel|"
+    r"Attorney|Commissioner|Executive|Fellow|Partner|Founder|Chair(?:man|woman)?|Secretary|"
+    r"Administrator|Coordinator|Specialist|Correspondent|Reporter|Journalist|Economist|Analyst|"
+    r"Member|Trustee|Advis[eo]r|Consultant|Delegate|Designee|Witness|Speaker|Moderator|Panelist|"
+    r"University|College|Corporation|Consulting|Association|Institute|Company|Enterprise|"
+    r"Agency|System|Bureau|Administration|Board|Program|Division|Authority|Commission|"
+    r"Conservancy|Foundation|Initiative|Coalition|Hospital|School|Refuge|Wildlife|"
+    r"Environmental|Protection|Channel|Broadcasting|United\s+States|U\.S\.|"
+    r"Public\s+(?:Justice|Citizen|Interest|Policy|Health|Affairs|Defender|Utilities)|"
+    r"Inc\.|LLC|LLP|Network|Group|Club|Council|Alliance|Center|Fund|Federation|Committee|Department|Office)\b",
+    re.I,
+)
+_TAIL_HONORIFIC_LINE_START_RE = re.compile(
+    r"^(?:The\s+Honorable|Hon\.|Mr\.|Mrs\.|Ms\.|Dr\.|Prof\.|Senator|Sen\.|"
+    r"Representative|Rep\.|Ambassador|General|Gen\.|Admiral|Adm\.|Brig\.|Col\.|Maj\.|Capt\.|Cmdr\.|Lt\.)\b",
+    re.I,
+)
+_TAIL_CLOSING_SAL_RE = re.compile(
+    r"(?:^|\n)\s*(?:Most\s+)?(?:Respectfully(?:\s+submitted)?|Sincerely|Very\s+truly\s+yours),?\s*\n",
+    re.I,
+)
+_TAIL_ORG_LINE_CUE_RE = re.compile(
+    r"\b(?:Network|Place|Club|Council|Federation|Collaborative|Alliance|Group|Waste|Coal|"
+    r"Environment|Issues|Mining|Association|Center|Institute|Committee|Foundation|"
+    r"League|Union|Project|Society|Coalition|Chapter|Trust|Partners|Inc\.|LLC)\b",
+    re.I,
+)
+_TAIL_PERSON_TITLE_FOLLOW_RE = re.compile(
+    r"\b(?:VP|Vice\s+President|President|Director|Chief|CEO|CFO|Chair|Counsel|Professor|Executive|Secretary|Manager|Partner|Founder|Fellow)\b",
+    re.I,
+)
+
+
+def _is_clean_person_token_shape_v6(nm: str) -> bool:
+    """Reject Caesar-shifted font garble (`WKe`, `VLdeOLQeV.`) and sentence-final periods on harvested names."""
+    if not nm or re.search(r"\b[A-Z]{2,}[a-z]", nm):
+        return False
+    toks = nm.split()
+    if not toks:
+        return False
+    last_tok = toks[-1]
+    if (
+        last_tok.endswith(".")
+        and len(last_tok) > 3
+        and last_tok.lower() not in ("jr.", "sr.", "esq.", "inc.", "corp.", "ltd.", "ph.d.", "m.d.")
+    ):
+        return False
+    return True
+
+
+def _extract_gpo_toc_slice_from_text(text: str) -> str:
+    """Locate an in-body GPO `CONTENTS` / `WITNESSES` TOC region when `\f` page breaks are absent."""
+    head = text[:7500]
+    m_start = re.search(
+        r"(?:^|\n)\s*(?:C\s*O\s*N\s*T\s*E\s*N\s*T\s*S|WITNESS(?:ES)?|PANEL\s+OF\s+WITNESSES)\b",
+        head,
+        re.I,
+    )
+    if not m_start:
+        return ""
+    sub = head[m_start.start() : m_start.start() + 4500]
+    m_end = re.search(
+        r"(?:^|\n)\s*(?:The\s+(?:committee|subcommittee)\s+met,\s*pursuant\s+to\s+call|SUBMISSIONS?\s+FOR\s+THE\s+RECORD|QUESTIONS\s+(?:AND\s+ANSWERS|SUBMITTED))\b",
+        sub,
+        re.I,
+    )
+    if m_end:
+        sub = sub[: m_end.start()]
+    return sub if ("." in sub or "WITNESS" in sub.upper()) else ""
+
+
+def _extract_memo_witness_block_personas(text: str) -> list[dict[str, Any]]:
+    """Parse `WITNESSES` sections (including `>6k` tails) in hearing memos, notices, and witness lists."""
+    out: list[dict[str, Any]] = []
+    seen_keys: set[str] = set()
+    for m_hdr in _TAIL_MEMO_WITNESS_HDR_RE.finditer(text):
+        tail_block = text[m_hdr.end() : m_hdr.end() + 2600]
+        cur_p: dict[str, Any] | None = None
+        details: list[str] = []
+
+        def _flush() -> None:
+            nonlocal cur_p, details
+            if cur_p is None:
+                return
+            pos = details[0] if len(details) >= 1 else ""
+            org = ", ".join(details[1:2]) if len(details) >= 2 else ""
+            pos_clean, creds = peel_leading_position_credentials(pos, cur_p.pop("_creds", None))
+            if creds:
+                cur_p["creds"] = creds
+            if pos_clean:
+                cur_p["title"] = pos_clean
+            if org:
+                cur_p["org"] = org
+            if _GOV_ORG_CUE_RE.search(f"{pos_clean} {org}"):
+                cur_p["entity_type"] = "gov_official"
+            out.append(cur_p)
+            cur_p = None
+            details = []
+
+        for raw_ln in tail_block.splitlines():
+            ln = raw_ln.strip()
+            if not ln:
+                continue
+            if re.match(r"^Panel\s+(?:[IVXLC]+|\d+|One|Two|Three)\s*:?$", ln, re.I):
+                _flush()
+                continue
+            if re.match(
+                r"^(?:[IVXLC]+\.|APPENDIX|ATTACHMENTS?|NOTES?:|BACKGROUND:|THEMES\s+FOR\b|\d{1,2}\s+See\b|Endnotes?|###|Unsubscribe\b)",
+                ln,
+                re.I,
+            ):
+                break
+            parsed = witness_line_parse(ln)
+            nm = parsed["name"].rstrip("*†‡ ").strip()
+            looks_person = (
+                bool(nm)
+                and _is_person_name(nm)
+                and _is_clean_person_token_shape_v6(nm)
+                and not _CONVERSATION_NAME_GUARD_RE.search(ln)
+                and not _TAIL_TITLE_OR_ORG_REJECT_RE.search(nm)
+                and len(nm.split()) <= 4
+                and not parsed["position"]
+            )
+            has_explicit_cue = bool(
+                parsed["honorific"] or parsed["credentials"] or _TAIL_HONORIFIC_LINE_START_RE.match(ln)
+            )
+            if looks_person and (cur_p is None or len(details) >= 2 or has_explicit_cue):
+                _flush()
+                pk = person_key(nm)
+                if pk in seen_keys:
+                    continue
+                seen_keys.add(pk)
+                cur_p = {
+                    "name": nm,
+                    "role": "witness",
+                    "entity_type": "non_gov_person",
+                    "_creds": parsed["credentials"] or None,
+                }
+            elif cur_p is not None and len(details) < 2 and len(ln) <= 140:
+                details.append(ln)
+        _flush()
+        if out:
+            break
+    return out[:MAX_PERSONAS]
+
+
+def _extract_tail_letter_close_personas(
+    text: str,
+    *,
+    primary_kind: str | None = None,
+) -> tuple[list[dict[str, Any]], int | None]:
+    """Harvest signatory/sender and undersigned counts from `>5.5k` closing signature blocks."""
+    if len(text) <= 5500:
+        return [], None
+    base_off = max(0, len(text) - 2500)
+    tail = text[base_off:]
+    matches = list(_TAIL_CLOSING_SAL_RE.finditer(tail))
+    if not matches:
+        return [], None
+    sal_m = matches[-1]
+    if base_off + sal_m.start() < 5200:
+        return [], None
+
+    raw_sig_lines = [ln.strip() for ln in tail[sal_m.end() :].splitlines()]
+    clean_lines: list[str] = []
+    for ln in raw_sig_lines:
+        if not ln:
+            continue
+        if re.match(r"^(?:Printed\s+on\s+Recycle|cc:|Page\s+\d+|_+$|[-=]{3,}$|\[\d+\])", ln, re.I):
+            continue
+        clean_lines.append(ln)
+    if not clean_lines:
+        return [], None
+
+    # Multi-organization coalition close (e.g. `Respectfully,\nPrairie Rivers Network\n...`)
+    org_hits = sum(1 for ln in clean_lines if _TAIL_ORG_LINE_CUE_RE.search(ln))
+    if (
+        len(clean_lines) >= 5
+        and org_hits >= max(3, len(clean_lines) // 2)
+        and primary_kind in ("external_submission_letter", "oversight_letter")
+    ):
+        first_org = clean_lines[0].strip()
+        m_cnt = re.search(
+            r"\bundersigned\s+(\d{1,4})\b|\bwe,\s+the\s+(\d{1,4})\s+undersigned\b|\b(\d{1,4})\s+(?:coalition|member|public\s+interest)\s+groups\b",
+            text,
+            re.I,
+        )
+        sig_cnt: int | None = None
+        if m_cnt:
+            grp = next((g for g in m_cnt.groups() if g), None)
+            if grp and grp.isdigit() and int(grp) >= 2:
+                sig_cnt = int(grp)
+        if sig_cnt is None and len(clean_lines) >= 5:
+            sig_cnt = len(clean_lines) - 1 if len(clean_lines) >= 10 else len(clean_lines)
+        return [{"name": first_org[:120], "role": "sender", "entity_type": "organization"}], sig_cnt
+
+    # Personal letter close in transcript/letter tail (`Sincerely,\n[signature OCR]\nJeanne de Cervens\nVP and Director...`)
+    if primary_kind in ("hearing_transcript", "external_submission_letter"):
+        for idx in range(min(4, len(clean_lines) - 1)):
+            cand_nm = clean_lines[idx]
+            nxt = clean_lines[idx + 1]
+            if (
+                _is_person_name(cand_nm)
+                and not _CONVERSATION_NAME_GUARD_RE.search(cand_nm)
+                and not _TAIL_TITLE_OR_ORG_REJECT_RE.search(cand_nm)
+                and len(cand_nm.split()) <= 4
+                and _TAIL_PERSON_TITLE_FOLLOW_RE.search(nxt)
+            ):
+                role = "author_or_speaker" if primary_kind == "hearing_transcript" else "sender"
+                p_obj: dict[str, Any] = {
+                    "name": cand_nm,
+                    "title": nxt.rstrip("., ")[:140],
+                    "role": role,
+                    "entity_type": "gov_official" if _GOV_ORG_CUE_RE.search(nxt) else "non_gov_person",
+                }
+                if idx + 2 < len(clean_lines) and len(clean_lines[idx + 2]) <= 120:
+                    org_ln = re.sub(r"^(?:Part\s+of\s+the|Member\s+of)\s+", "", clean_lines[idx + 2], flags=re.I).strip()
+                    if org_ln:
+                        p_obj["org"] = org_ln
+                return [p_obj], None
+    return [], None
+
+
+def harvest_tail_and_toc_personas_v6(
+    text: str,
+    *,
+    primary_kind: str | None = None,
+    p3_slice: str | None = None,
+) -> dict[str, Any]:
+    """Extract deterministic witness/letter personas from GPO TOC slices and `>6k` document tails."""
+    toc_personas: list[dict[str, Any]] = []
+    tail_personas: list[dict[str, Any]] = []
+    signatory_count: int | None = None
+
+    eff_p3 = (p3_slice or "").strip()
+    if not eff_p3 and primary_kind == "hearing_transcript" and text:
+        eff_p3 = _extract_gpo_toc_slice_from_text(text)
+    if eff_p3:
+        toc_personas = parse_gpo_p3_slice_personas_v6(eff_p3)
+
+    if text and primary_kind in ("hearing_memo_or_charter", "hearing_notice", "witness_list"):
+        tail_personas.extend(_extract_memo_witness_block_personas(text))
+
+    if text and primary_kind in ("hearing_transcript", "external_submission_letter", "oversight_letter"):
+        close_p, sig_n = _extract_tail_letter_close_personas(text, primary_kind=primary_kind)
+        if close_p:
+            tail_personas.extend(close_p)
+        if sig_n is not None:
+            signatory_count = sig_n
+
+    return {
+        "toc_personas": toc_personas,
+        "tail_personas": tail_personas,
+        "signatory_count": signatory_count,
+    }
 
 
 # ===========================================================================

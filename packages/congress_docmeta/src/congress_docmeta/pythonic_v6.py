@@ -110,6 +110,8 @@ from .pythonic_v5 import (
     _norm_ws_prefix,
     _parse_single_ref,
     _salvage_truncated_docmeta_v4,
+    has_structural_docmeta_corruption_v4,
+    repair_clean_docmeta_budget_v4,
     _surname_token,
     _text_mentions_explicit_congress,
     _year_grounded_in_context,
@@ -936,6 +938,337 @@ def _extract_citations_bundle_v6(
     return {}
 
 
+_BIO_MONTH_NUMS_V6: dict[str, int] = {
+    "january": 1,
+    "jan": 1,
+    "february": 2,
+    "feb": 2,
+    "march": 3,
+    "mar": 3,
+    "april": 4,
+    "apr": 4,
+    "may": 5,
+    "june": 6,
+    "jun": 6,
+    "july": 7,
+    "jul": 7,
+    "august": 8,
+    "aug": 8,
+    "september": 9,
+    "sep": 9,
+    "sept": 9,
+    "october": 10,
+    "oct": 10,
+    "november": 11,
+    "nov": 11,
+    "december": 12,
+    "dec": 12,
+}
+_BIO_MONTH_NAMES_V6: dict[int, tuple[str, ...]] = {
+    1: ("january", "jan"),
+    2: ("february", "feb"),
+    3: ("march", "mar"),
+    4: ("april", "apr"),
+    5: ("may",),
+    6: ("june", "jun"),
+    7: ("july", "jul"),
+    8: ("august", "aug"),
+    9: ("september", "sept", "sep"),
+    10: ("october", "oct"),
+    11: ("november", "nov"),
+    12: ("december", "dec"),
+}
+_BIO_MONTH_ALT_V6 = "|".join(sorted(_BIO_MONTH_NUMS_V6, key=len, reverse=True))
+_BIO_CURRENT_AS_OF_RE_V6 = re.compile(
+    rf"(?:\bcurrent\s+as\s+of|^\s*(?:as\s+of|updated(?:\s+as\s+of)?|date:))\s+"
+    rf"({_BIO_MONTH_ALT_V6})\.?,?\s+(?:(\d{{1,2}}),?\s+)?((?:19|20)\d{{2}})\b",
+    re.I | re.M,
+)
+_BIO_FOOTER_MONTH_YEAR_RE_V6 = re.compile(
+    rf"^\s*({_BIO_MONTH_ALT_V6})\.?,?\s+((?:19|20)\d{{2}})\s*$",
+    re.I,
+)
+_BARE_PERSONA_STOPWORDS_V6 = frozenset(
+    {
+        "president",
+        "vice",
+        "bill",
+        "senator",
+        "representative",
+        "rep",
+        "sen",
+        "chairman",
+        "chairwoman",
+        "chairperson",
+        "chair",
+        "ranking",
+        "member",
+        "mr",
+        "mrs",
+        "ms",
+        "miss",
+        "dr",
+        "hon",
+        "honorable",
+        "secretary",
+        "director",
+        "administrator",
+        "commissioner",
+        "governor",
+        "judge",
+        "justice",
+        "general",
+        "colonel",
+        "admiral",
+        "professor",
+        "sir",
+        "madam",
+        "speaker",
+        "leader",
+        "whip",
+        "counsel",
+        "clerk",
+        "witness",
+        "witnesses",
+        "panel",
+        "staff",
+        "committee",
+        "subcommittee",
+        "congress",
+        "house",
+        "senate",
+    }
+)
+_PERSONA_HONORIFIC_STRIP_RE_V6 = re.compile(
+    r"^(?:(?:hon|rep|sen|mr|mrs|ms|miss|dr|prof|rev|gov|gen|adm|col|amb|sec|dir)\.?|"
+    r"president|senator|representative|chairman|chairwoman|chairperson|chair|"
+    r"ranking\s+member|judge|justice|secretary|director|professor)\s+",
+    re.I,
+)
+
+
+def _fix_ba_fd_committees_v6(
+    obj: dict[str, Any],
+    *,
+    known_dict: Mapping[str, Any] | None,
+    relational: Mapping[str, Any] | None,
+    filename: str,
+    norm_txt: str,
+) -> None:
+    """Fix House Banking (`BA00`) -> Financial Services and drop spurious `Foreign Affairs` on `FD00`."""
+    cmts = obj.get("committees")
+    if not isinstance(cmts, list) or not cmts:
+        return
+    codes: set[str] = set()
+    for src in (known_dict, relational):
+        if isinstance(src, Mapping):
+            for key in ("cmt", "rel_host_committee_codes"):
+                for code in src.get(key) or ():
+                    if isinstance(code, str) and code.strip():
+                        codes.add(code.strip().lower())
+    fn_low = (filename or "").lower()
+    is_house_ba = (
+        obj.get("chamber") == "house"
+        or any(c.startswith("hsba") or c.startswith("ba") for c in codes)
+        or "hsba" in fn_low
+        or "-ba" in fn_low
+    )
+    is_fd00 = any(c in ("hlfd00", "fd00") for c in codes) or "-fd00" in fn_low
+    if not is_house_ba and not is_fd00:
+        return
+    updated: list[str] = []
+    seen: set[str] = set()
+    for raw_c in cmts:
+        if not isinstance(raw_c, str) or not raw_c.strip():
+            continue
+        c = raw_c.strip()
+        if is_house_ba and c == "House Committee on Banking, Housing, and Urban Affairs":
+            c = "House Committee on Financial Services"
+        elif is_fd00 and c == "House Committee on Foreign Affairs" and "foreign affairs" not in norm_txt:
+            continue
+        if c not in seen:
+            seen.add(c)
+            updated.append(c)
+    if updated:
+        obj["committees"] = updated
+    else:
+        obj.pop("committees", None)
+
+
+def _bio_exact_date_is_printed_v6(iso_str: Any, raw_text: str) -> bool:
+    if not isinstance(iso_str, str) or not raw_text:
+        return False
+    s = iso_str.strip()
+    fold = _nfkc_fold(raw_text)
+    m_full = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", s)
+    if m_full:
+        y, mo_s, dy_s = m_full.groups()
+        mo, dy = int(mo_s), int(dy_s)
+        if f"{y}-{mo_s}-{dy_s}" in fold or f"{y}/{mo_s}/{dy_s}" in fold:
+            return True
+        if re.search(rf"(?<!\d)0?{mo}[/\-]0?{dy}[/\-](?:{y}|{y[2:]})(?!\d)", fold):
+            return True
+        m_names = _BIO_MONTH_NAMES_V6.get(mo, ())
+        if m_names:
+            alt = "|".join(m_names)
+            if re.search(rf"\b(?:{alt})\.?\s+0?{dy},?\s+{y}\b", fold) or re.search(
+                rf"\b0?{dy}\s+(?:{alt})\.?\s+{y}\b", fold
+            ):
+                return True
+        return False
+    m_ym = re.fullmatch(r"(\d{4})-(\d{2})", s)
+    if m_ym:
+        y, mo_s = m_ym.groups()
+        mo = int(mo_s)
+        if f"{y}-{mo_s}" in fold or f"{y}/{mo_s}" in fold:
+            return True
+        if re.search(rf"(?<!\d)0?{mo}/{y}(?!\d)", fold):
+            return True
+        m_names = _BIO_MONTH_NAMES_V6.get(mo, ())
+        if m_names:
+            alt = "|".join(m_names)
+            if re.search(rf"\b(?:{alt})\.?,?\s+{y}\b", fold):
+                return True
+        return False
+    return False
+
+
+def _extract_printed_bio_doc_date_v6(raw_text: str) -> str | None:
+    if not raw_text:
+        return None
+    m_cur = _BIO_CURRENT_AS_OF_RE_V6.search(raw_text)
+    if m_cur:
+        mon_num = _BIO_MONTH_NUMS_V6.get(m_cur.group(1).lower())
+        day_s, yr_s = m_cur.group(2), m_cur.group(3)
+        if mon_num is not None:
+            if day_s and 1 <= int(day_s) <= 31:
+                return f"{yr_s}-{mon_num:02d}-{int(day_s):02d}"
+            return f"{yr_s}-{mon_num:02d}"
+    tail_lines = [ln.strip() for ln in raw_text[-600:].splitlines() if ln.strip()][-6:]
+    for ln in reversed(tail_lines):
+        m_ftr = _BIO_FOOTER_MONTH_YEAR_RE_V6.match(ln)
+        if m_ftr:
+            mon_num = _BIO_MONTH_NUMS_V6.get(m_ftr.group(1).lower())
+            if mon_num is not None:
+                return f"{m_ftr.group(2)}-{mon_num:02d}"
+    return None
+
+
+def _enforce_witness_bio_date_restraint_v6(obj: dict[str, Any], raw_text: str) -> None:
+    """Strip unprinted leaked dates on `witness_biography` and recover explicit printed bio dates."""
+    for dk in ("event_date", "doc_date"):
+        if dk in obj and not _bio_exact_date_is_printed_v6(obj.get(dk), raw_text):
+            obj.pop(dk, None)
+    if "doc_date" not in obj:
+        printed_dd = _extract_printed_bio_doc_date_v6(raw_text)
+        if printed_dd is not None:
+            obj["doc_date"] = printed_dd
+
+
+def _persona_richness_score_v6(p: Mapping[str, Any]) -> tuple[int, int, int, int]:
+    role = str(p.get("role") or "")
+    specific_role = 1 if role and role not in ("author_or_speaker", "discussed") else 0
+    has_etype = 1 if isinstance(p.get("entity_type"), str) and bool(p.get("entity_type")) else 0
+    extra_fields = sum(
+        1 for fk in ("org", "title", "party", "state", "bioguide_id", "role_detail", "work_addr") if p.get(fk)
+    )
+    name_toks = len(str(p.get("name") or "").split())
+    return (specific_role, has_etype, extra_fields, name_toks)
+
+
+def _merge_persona_pair_v6(a: dict[str, Any], b: dict[str, Any]) -> dict[str, Any]:
+    winner, loser = (a, b) if _persona_richness_score_v6(a) >= _persona_richness_score_v6(b) else (b, a)
+    merged = dict(winner)
+    for k, v in loser.items():
+        if v not in (None, "", []) and merged.get(k) in (None, "", []):
+            merged[k] = v
+    return merged
+
+
+def _persona_dedup_key_v6(p: Mapping[str, Any], pkey_fn: Any) -> tuple[bool, str]:
+    nm = str(p.get("name") or "").strip()
+    if p.get("entity_type") == "organization":
+        return True, "org:" + re.sub(r"\W+", " ", nm.lower()).strip()
+    cleaned = _PERSONA_HONORIFIC_STRIP_RE_V6.sub("", nm).strip() or nm
+    k = pkey_fn(cleaned) if callable(pkey_fn) else cleaned.lower()
+    return False, k
+
+
+def _clean_dedup_and_cap_personas_v6(
+    obj: dict[str, Any],
+    *,
+    primary_kind: str | None,
+    pkey_fn: Any,
+) -> None:
+    """Drop bare title stopwords, dedup by `person_key`, and cap multi-signer non-transcript lists at 10."""
+    raw_ps = obj.get("personas")
+    if not isinstance(raw_ps, list) or not raw_ps:
+        return
+    filtered: list[dict[str, Any]] = []
+    for p in raw_ps:
+        if not isinstance(p, dict):
+            continue
+        nm = str(p.get("name") or "").strip()
+        if not nm:
+            continue
+        toks = [re.sub(r"^[^\w]+|[^\w]+$", "", t).lower() for t in nm.split()]
+        toks = [t for t in toks if t]
+        if not toks:
+            continue
+        if len(toks) == 1 and p.get("entity_type") != "organization" and toks[0] in _BARE_PERSONA_STOPWORDS_V6:
+            continue
+        if p.get("entity_type") != "organization":
+            last_raw = nm.split()[-1]
+            if re.search(r"\b[A-Z]{2,}[a-z]", nm) or (
+                last_raw.endswith(".")
+                and len(last_raw) > 3
+                and last_raw.lower() not in ("jr.", "sr.", "esq.", "inc.", "corp.", "ltd.", "ph.d.", "m.d.")
+            ):
+                continue
+        filtered.append(dict(p, name=nm))
+
+    # Map bare surname entries (`Shimkus`) to a unique multi-token `surname-first` key when present.
+    multi_keys: dict[str, list[str]] = {}
+    raw_keys: list[tuple[bool, str]] = []
+    for p in filtered:
+        is_org, k = _persona_dedup_key_v6(p, pkey_fn)
+        if not is_org and "-" in k:
+            sur = k.split("-", 1)[0]
+            multi_keys.setdefault(sur, []).append(k)
+        raw_keys.append((is_org, k))
+
+    deduped: list[dict[str, Any]] = []
+    key_to_idx: dict[str, int] = {}
+    for p, (is_org, k) in zip(filtered, raw_keys):
+        if not is_org and "-" not in k and len(set(multi_keys.get(k, ()))) == 1:
+            k = multi_keys[k][0]
+        if k in key_to_idx:
+            idx = key_to_idx[k]
+            deduped[idx] = _merge_persona_pair_v6(deduped[idx], p)
+        else:
+            key_to_idx[k] = len(deduped)
+            deduped.append(p)
+
+    if primary_kind != "hearing_transcript" and len(deduped) > 10:
+        signer_idxs = [i for i, p in enumerate(deduped) if p.get("role") in ("sender", "cosigner")]
+        if len(signer_idxs) >= 3:
+            indiv_sig = sum(1 for i in signer_idxs if deduped[i].get("entity_type") != "organization")
+            sig_total = indiv_sig if indiv_sig >= 3 else len(signer_idxs)
+            cur_sc = obj.get("signatory_count")
+            if not isinstance(cur_sc, int) or isinstance(cur_sc, bool) or cur_sc < sig_total:
+                obj["signatory_count"] = sig_total
+            non_signers = [i for i, p in enumerate(deduped) if p.get("role") not in ("sender", "cosigner")]
+            org_signers = [i for i in signer_idxs if deduped[i].get("entity_type") == "organization"]
+            indiv_signers = [i for i in signer_idxs if deduped[i].get("entity_type") != "organization"]
+            keep_idxs = sorted((non_signers + org_signers + indiv_signers)[:10])
+            deduped = [deduped[i] for i in keep_idxs]
+
+    if deduped:
+        obj["personas"] = deduped[:MAX_PERSONAS]
+    else:
+        obj.pop("personas", None)
+
+
 def post_pass_v6(
     raw_obj: dict[str, Any],
     known: str | dict[str, Any] | None = None,
@@ -1224,13 +1557,70 @@ def post_pass_v6(
                 except Exception:
                     pass
             mp_slice = (multipage or {}).get("p3_toc_or_gavel_slice") if isinstance(multipage, Mapping) else None
-            if isinstance(mp_slice, str) and mp_slice.strip() and hasattr(h_mod, "parse_gpo_p3_slice_personas_v6"):
+            harvested_ps: dict[str, Any] = {}
+            if hasattr(h_mod, "harvest_tail_and_toc_personas_v6"):
                 try:
-                    gpo_p3_p = h_mod.parse_gpo_p3_slice_personas_v6(mp_slice)
-                    if gpo_p3_p:
-                        line_parser_sidecar["gpo_p3_p8_personas"] = gpo_p3_p
+                    harvested_ps = h_mod.harvest_tail_and_toc_personas_v6(
+                        text_for_v5 or p12_lines or text,
+                        primary_kind=pk if isinstance(pk, str) else None,
+                        p3_slice=mp_slice if isinstance(mp_slice, str) else None,
+                    )
                 except Exception:
-                    pass
+                    harvested_ps = {}
+            toc_ps = list(harvested_ps.get("toc_personas") or ())
+            if not toc_ps and isinstance(mp_slice, str) and mp_slice.strip() and hasattr(h_mod, "parse_gpo_p3_slice_personas_v6"):
+                try:
+                    toc_ps = h_mod.parse_gpo_p3_slice_personas_v6(mp_slice)
+                except Exception:
+                    toc_ps = []
+            if toc_ps:
+                line_parser_sidecar["gpo_p3_p8_personas"] = toc_ps
+
+            pkey_fn = getattr(h_mod, "person_key", None)
+            cur_p_harv = [p for p in (obj.get("personas") or []) if isinstance(p, dict) and p.get("name")]
+            seen_harv_keys = {_persona_dedup_key_v6(p, pkey_fn)[1] for p in cur_p_harv}
+            harv_added = False
+            if pk == "hearing_transcript" and toc_ps:
+                for tp in toc_ps:
+                    if not isinstance(tp, dict) or not tp.get("name"):
+                        continue
+                    if tp.get("role") not in ("witness", "nominee"):
+                        continue
+                    tk = _persona_dedup_key_v6(tp, pkey_fn)[1]
+                    if tk and tk not in seen_harv_keys and len(cur_p_harv) < MAX_PERSONAS:
+                        seen_harv_keys.add(tk)
+                        cur_p_harv.append(dict(tp))
+                        harv_added = True
+
+            tail_ps = [
+                dict(tp)
+                for tp in (harvested_ps.get("tail_personas") or ())
+                if isinstance(tp, Mapping) and tp.get("name")
+            ]
+            if tail_ps:
+                tail_ordered = sorted(
+                    tail_ps,
+                    key=lambda x: (0 if x.get("entity_type") == "organization" else 1),
+                )
+                for tp in tail_ordered:
+                    tk = _persona_dedup_key_v6(tp, pkey_fn)[1]
+                    if tk and tk not in seen_harv_keys and len(cur_p_harv) < MAX_PERSONAS:
+                        seen_harv_keys.add(tk)
+                        if tp.get("entity_type") == "organization" and pk != "hearing_transcript":
+                            cur_p_harv.insert(0, tp)
+                        else:
+                            cur_p_harv.append(tp)
+                        harv_added = True
+            if harv_added and cur_p_harv:
+                obj["personas"] = cur_p_harv[:MAX_PERSONAS]
+            harv_sig_cnt = harvested_ps.get("signatory_count")
+            if (
+                pk != "hearing_transcript"
+                and isinstance(harv_sig_cnt, int)
+                and not isinstance(harv_sig_cnt, bool)
+                and harv_sig_cnt > (obj.get("signatory_count") or 0)
+            ):
+                obj["signatory_count"] = harv_sig_cnt
             if pk == "revenue_or_cost_estimate" and isinstance(p12_lines, str) and "\n" in p12_lines and hasattr(h_mod, "parse_cbo_cost_estimate_v6"):
                 try:
                     cbo_d = h_mod.parse_cbo_cost_estimate_v6(p12_lines)
@@ -1583,6 +1973,30 @@ def post_pass_v6(
                 raise  # a missing address library is an installation fault, not a document the rule cannot read
             except Exception:
                 pass
+
+    known_d_final: Mapping[str, Any] | None = known if isinstance(known, Mapping) else None
+    if known_d_final is None and isinstance(known, str) and known.strip():
+        try:
+            kd_tmp = json.loads(known)
+            if isinstance(kd_tmp, Mapping):
+                known_d_final = kd_tmp
+        except Exception:
+            known_d_final = None
+    _fix_ba_fd_committees_v6(
+        obj,
+        known_dict=known_d_final,
+        relational=relational if isinstance(relational, Mapping) else None,
+        filename=clean_fn,
+        norm_txt=_nfkc_fold(text_for_v5 or text or ""),
+    )
+    if obj.get("primary_kind") == "witness_biography":
+        _enforce_witness_bio_date_restraint_v6(obj, text_for_v5 or text or "")
+    h_mod_dedup = _load_optional_submodule("hygiene")
+    _clean_dedup_and_cap_personas_v6(
+        obj,
+        primary_kind=obj.get("primary_kind") if isinstance(obj.get("primary_kind"), str) else None,
+        pkey_fn=getattr(h_mod_dedup, "person_key", None) if h_mod_dedup is not None else None,
+    )
 
     final_obj = canonicalize_docmeta_v4(obj)
 
@@ -2027,6 +2441,8 @@ class PythonicEngineV6:
         anomaly_reports: list[dict[str, Any]] = []
 
         for idx, (raw_txt, r, pmeta) in enumerate(zip(raw_llm_texts, records, pre_metas)):
+            target_pk = pmeta.get("tier1_target_kind")
+            salvaged = False
             if short_circuit_triage and pmeta["triage"] is not None:
                 parsed_raw = pmeta["triage"]["docmeta"]
                 raw_llm_texts[idx] = json.dumps(parsed_raw, separators=(",", ":"), ensure_ascii=False)
@@ -2043,13 +2459,25 @@ class PythonicEngineV6:
                     elif isinstance(parsed_cand_obj, dict):
                         parsed_raw = parsed_cand_obj
                     else:
-                        parsed_raw = _salvage_truncated_docmeta_v4(raw_txt, filename=r.get("filename", ""))
+                        parsed_raw = _salvage_truncated_docmeta_v4(
+                            raw_txt,
+                            filename=r.get("filename", ""),
+                            wire_format=self.wire_format,
+                            target_primary_kind=target_pk,
+                        )
+                        salvaged = True
                 except Exception:
-                    parsed_raw = _salvage_truncated_docmeta_v4(raw_txt, filename=r.get("filename", ""))
+                    parsed_raw = _salvage_truncated_docmeta_v4(
+                        raw_txt,
+                        filename=r.get("filename", ""),
+                        wire_format=self.wire_format,
+                        target_primary_kind=target_pk,
+                    )
+                    salvaged = True
 
-            try:
-                clean_obj, sidecar = post_pass_v6(
-                    parsed_raw,
+            def _run_post(cand: dict[str, Any], triage_val: dict[str, Any] | None) -> tuple[dict[str, Any], dict[str, Any]]:
+                return post_pass_v6(
+                    cand,
                     known=r.get("known"),
                     filename=r.get("filename", ""),
                     text=r.get("text", ""),
@@ -2058,7 +2486,7 @@ class PythonicEngineV6:
                     pre_meta=pmeta,
                     provenance=pmeta["provenance"],
                     multipage=pmeta["multipage"],
-                    triage=pmeta["triage"] if short_circuit_triage else None,
+                    triage=triage_val,
                     relational=pmeta.get("relational"),
                     citations=pmeta.get("citations"),
                     hygiene=pmeta.get("hygiene"),
@@ -2067,32 +2495,32 @@ class PythonicEngineV6:
                     use_hygiene=use_hygiene,
                     usc_oracle=self.usc_oracle,
                 )
+
+            triage_arg = pmeta["triage"] if short_circuit_triage else None
+            clean_obj_pair: tuple[dict[str, Any], dict[str, Any]] | None = None
+            try:
+                clean_obj_pair = _run_post(parsed_raw, triage_arg)
             except DocMetaValidationError:
+                if not has_structural_docmeta_corruption_v4(parsed_raw, require_primary_kind=not salvaged):
+                    try:
+                        repaired = repair_clean_docmeta_budget_v4(
+                            parsed_raw,
+                            filename=str(r.get("filename") or ""),
+                            target_primary_kind=target_pk if salvaged else None,
+                        )
+                        clean_obj_pair = _run_post(repaired, triage_arg)
+                    except DocMetaValidationError:
+                        clean_obj_pair = None
+            if clean_obj_pair is not None:
+                clean_obj, sidecar = clean_obj_pair
+            else:
                 fn_rec = str(r.get("filename") or "")
                 fallback_triage = _build_triage_result(
                     "stub_or_blank",
                     "garbled",
                     f"Malformed 2B extraction output salvaged to non-usable triage ({fn_rec[:60]})",
                 )
-                clean_obj, sidecar = post_pass_v6(
-                    fallback_triage["docmeta"],
-                    known=r.get("known"),
-                    filename=fn_rec,
-                    text=r.get("text", ""),
-                    p12_lines=pmeta.get("p12_lines"),
-                    explicit_format=r.get("effective_format") or r.get("format"),
-                    pre_meta=pmeta,
-                    provenance=pmeta["provenance"],
-                    multipage=pmeta["multipage"],
-                    triage=fallback_triage,
-                    relational=pmeta.get("relational"),
-                    citations=pmeta.get("citations"),
-                    hygiene=pmeta.get("hygiene"),
-                    use_citations=use_citations,
-                    use_relational=use_relational,
-                    use_hygiene=use_hygiene,
-                    usc_oracle=self.usc_oracle,
-                )
+                clean_obj, sidecar = _run_post(fallback_triage["docmeta"], fallback_triage)
             if use_zero_llm_bypass and pmeta["zero_llm_docmeta"] is not None:
                 sidecar["zero_llm_bypassed"] = True
             clean_objs.append(clean_obj)

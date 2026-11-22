@@ -2030,9 +2030,98 @@ post_pass_v4 = post_pass_v5
 # ---------------------------------------------------------------------------
 
 
-def _salvage_truncated_docmeta_v4(raw_txt: str, filename: str = "") -> dict[str, Any]:
+def _clamp_gist_words(text: str, max_words: int = 25) -> str:
+    """Trim a summary cleanly to at most `max_words` whitespace tokens without corrupting endings."""
+    words = text.strip().split()
+    if len(words) <= max_words:
+        return " ".join(words)
+    clipped = " ".join(words[:max_words]).rstrip(",;:—–-")
+    if clipped and not clipped.endswith((".", "!", "?")):
+        clipped += "."
+    return clipped
+
+
+def has_structural_docmeta_corruption_v4(
+    raw_obj: Mapping[str, Any] | Any,
+    *,
+    require_primary_kind: bool = True,
+) -> bool:
+    """Return True only when `raw_obj` has container/element type corruption or missing un-salvaged kind."""
+    if not isinstance(raw_obj, Mapping):
+        return True
+    st = raw_obj.get("status", "usable")
+    if isinstance(st, str) and st in NON_USABLE_TRIAGE_STATUSES:
+        return False
+    for arr_k in ("refs", "topics", "committees", "subcommittees", "short_titles", "secondary_kinds", "orgs_mentioned", "places", "date_spans"):
+        if arr_k in raw_obj:
+            v = raw_obj[arr_k]
+            if not isinstance(v, list) or any(not isinstance(x, str) for x in v):
+                return True
+    if "personas" in raw_obj:
+        pv = raw_obj["personas"]
+        if not isinstance(pv, list) or any(not isinstance(p, Mapping) for p in pv):
+            return True
+    if require_primary_kind and not raw_obj.get("primary_kind"):
+        return True
+    return False
+
+
+def repair_clean_docmeta_budget_v4(
+    raw_obj: Mapping[str, Any],
+    *,
+    filename: str = "",
+    target_primary_kind: str | None = None,
+) -> dict[str, Any]:
+    """Repair clean length/word-budget or empty-required-field defects without touching structural corruption."""
+    obj = dict(raw_obj)
+    st = obj.get("status", "usable")
+    if isinstance(st, str) and st in NON_USABLE_TRIAGE_STATUSES:
+        return obj
+    obj.setdefault("status", "usable")
+    obj.setdefault("text_quality", "native")
+    eff_pk = (
+        target_primary_kind
+        if isinstance(target_primary_kind, str) and "|" not in target_primary_kind and target_primary_kind in DOC_KINDS_SET
+        else None
+    )
+    if not isinstance(obj.get("primary_kind"), str) or obj["primary_kind"] not in DOC_KINDS_SET:
+        obj["primary_kind"] = eff_pk or "other"
+    title_s = obj.get("composed_title")
+    if not isinstance(title_s, str) or not title_s.strip():
+        obj["composed_title"] = (filename or "Congressional Document").strip()[:100] or "Congressional Document"
+    gist_s = obj.get("gist")
+    if not isinstance(gist_s, str) or not gist_s.strip():
+        obj["gist"] = _clamp_gist_words(str(obj["composed_title"])) or "Congressional committee document."
+    else:
+        obj["gist"] = _clamp_gist_words(gist_s, 25)
+    topics_v = obj.get("topics")
+    cleaned_topics = (
+        [str(t).strip() for t in topics_v if isinstance(t, str) and str(t).strip()]
+        if isinstance(topics_v, list)
+        else []
+    )
+    if not cleaned_topics:
+        obj["topics"] = ["congressional operations"]
+    else:
+        obj["topics"] = cleaned_topics
+    return obj
+
+
+def _salvage_truncated_docmeta_v4(
+    raw_txt: str,
+    filename: str = "",
+    *,
+    wire_format: str = "v4",
+    target_primary_kind: str | None = None,
+) -> dict[str, Any]:
     """Deterministically close a `max_tokens`-truncated JSON prefix into a valid `DocMetaV4Causal` dict."""
     s = raw_txt.strip()
+    eff_pk = (
+        target_primary_kind
+        if isinstance(target_primary_kind, str) and "|" not in target_primary_kind and target_primary_kind in DOC_KINDS_SET
+        else None
+    )
+    expand_fn: Any = None
     for cut in range(len(s), 1, -1):
         if cut < len(s) and s[cut] not in (",", "{", "["):
             continue
@@ -2068,21 +2157,34 @@ def _salvage_truncated_docmeta_v4(raw_txt: str, filename: str = "") -> dict[str,
         try:
             obj = json.loads(closed)
             if isinstance(obj, dict):
+                if wire_format == "compact" or any(
+                    k in obj
+                    for k in (
+                        "st", "tq", "vt", "sts", "ch", "cg", "cm", "sc", "io",
+                        "et", "ev", "vk", "vn", "tm", "ds", "dd", "ed", "du",
+                        "pk", "sk", "sb", "ps", "rf", "pg", "om", "pl", "fy",
+                        "cf", "sn", "as", "dc", "ct", "gi", "tp",
+                    )
+                ):
+                    if expand_fn is None:
+                        from .compact_wire_v6 import expand_compact_v6_to_v4 as expand_fn
+                    obj = expand_fn(obj)
                 obj.setdefault("status", "usable")
                 obj.setdefault("text_quality", "native")
                 st_s = obj.get("status")
                 if not (isinstance(st_s, str) and st_s in NON_USABLE_TRIAGE_STATUSES):
-                    obj.setdefault("primary_kind", "other")
-                    obj.setdefault("composed_title", (filename or "Congressional Document")[:100])
-                    obj.setdefault("gist", "Congressional committee document.")
-                    obj.setdefault("topics", ["congressional operations"])
+                    obj = repair_clean_docmeta_budget_v4(
+                        obj,
+                        filename=filename,
+                        target_primary_kind=eff_pk,
+                    )
                 return obj
         except Exception:
             continue
     return {
         "status": "usable",
         "text_quality": "native",
-        "primary_kind": "other",
+        "primary_kind": eff_pk or "other",
         "composed_title": (filename or "Congressional Document")[:100],
         "gist": "Congressional committee document.",
         "topics": ["congressional operations"],

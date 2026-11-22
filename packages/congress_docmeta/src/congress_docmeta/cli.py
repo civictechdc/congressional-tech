@@ -12,7 +12,67 @@ import json
 from .schema_v4 import MAX_OUTPUT_TOKENS
 
 
+def _run_retry_escalated_with_limits(
+    queue_path: str,
+    pass1_results_path: str,
+    output_path: str,
+    args: argparse.Namespace,
+) -> dict[str, object]:
+    from .parquet_runner_v6 import run_offline_escalation_queue_v6
+    from .silicon_runtime_v6 import (
+        mlx_limits_scope,
+        mlx_wired_limit_scope,
+        resolve_default_mlx_limits,
+        run_silicon_preflight,
+    )
+
+    preflight = run_silicon_preflight(escalate_gpt_oss=True, require_r8_deps=True, once=True)
+    host_ram_gb = int(preflight.get("mem_gb") or 0)
+    def_mem_gb, def_cache_gb = resolve_default_mlx_limits(host_ram_gb)
+    raw_mem = getattr(args, "memory_limit_gb", None)
+    raw_cache = getattr(args, "cache_limit_gb", None)
+    mem_limit_gb = float(def_mem_gb if raw_mem is None else raw_mem)
+    cache_limit_gb = float(def_cache_gb if raw_cache is None else raw_cache)
+
+    with (
+        mlx_limits_scope(memory_limit_gb=mem_limit_gb, cache_limit_gb=cache_limit_gb) as mlx_limits,
+        mlx_wired_limit_scope(),
+    ):
+        receipt = run_offline_escalation_queue_v6(
+            queue_path,
+            pass1_results_path,
+            output_path,
+            gpt_oss_model_dir=getattr(args, "gpt_oss_model_dir", None),
+            gpt_oss_batch_size=int(getattr(args, "gpt_oss_batch_size", 8)),
+            gpt_oss_k=int(getattr(args, "gpt_oss_k", 1)),
+            max_tokens=int(getattr(args, "max_tokens", MAX_OUTPUT_TOKENS)),
+        )
+    receipt["mlx_limits"] = mlx_limits
+    return receipt
+
+
+def _cmd_retry_escalated(args: argparse.Namespace) -> int:
+    receipt = _run_retry_escalated_with_limits(
+        args.escalation_queue,
+        args.pass1_results,
+        args.output,
+        args,
+    )
+    print(json.dumps(receipt, indent=2))
+    return 0
+
+
 def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
+    if getattr(args, "retry_escalated", None):
+        receipt = _run_retry_escalated_with_limits(
+            str(args.retry_escalated),
+            args.input,
+            args.output,
+            args,
+        )
+        print(json.dumps(receipt, indent=2))
+        return 0
+
     from fast_gemma4.engine import FastGemma4Engine
 
     from .parquet_runner_v6 import run_docmeta_parquet_sweep
@@ -85,6 +145,7 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
                 bm25_multicrop=bool(getattr(args, "bm25_multicrop", False)),
                 use_telemetry=getattr(args, "telemetry", "auto"),
                 use_extractconf=not bool(getattr(args, "no_extractconf", False)),
+                escalation_queue_out=getattr(args, "escalation_queue_out", None),
             )
             print(
                 json.dumps(
@@ -108,6 +169,12 @@ def _cmd_docmeta_sweep(args: argparse.Namespace) -> int:
                         "decode_tok_s": round(summary.decode_tok_s, 1),
                         "output_path": str(summary.output_path),
                         "parts_dir": str(summary.parts_dir),
+                        "escalation_queue_path": (
+                            str(getattr(summary, "escalation_queue_path", None))
+                            if getattr(summary, "escalation_queue_path", None)
+                            else None
+                        ),
+                        "escalation_queued_docs": getattr(summary, "escalation_queued_docs", 0),
                         "b_slots": eff_b_slots,
                         "mlx_limits": mlx_limits,
                     },
@@ -227,7 +294,32 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="MLX free-buffer cache cap in GiB (default: auto: 1.5 on <=24 GiB Macs, 2.0 otherwise; <0 disables, 0 turns caching off)",
     )
+    dm_p.add_argument(
+        "--escalation-queue-out",
+        default=None,
+        help="Optional JSONL path exporting flagged/ExtractConf rows for standalone single-model Pass-2 escalation",
+    )
+    dm_p.add_argument(
+        "--retry-escalated",
+        default=None,
+        help="Run standalone single-model GPT-OSS-20B Pass-2 over this JSONL queue using INPUT as Pass-1 Parquet and OUTPUT as updated Parquet",
+    )
     dm_p.set_defaults(func=_cmd_docmeta_sweep)
+
+    re_p = sub.add_parser(
+        "retry-escalated",
+        help="Run single-model GPT-OSS-20B Pass-2 offline over an exported escalation JSONL queue",
+    )
+    re_p.add_argument("escalation_queue", help="Input JSONL escalation queue produced by --escalation-queue-out")
+    re_p.add_argument("pass1_results", help="Pass-1 results .parquet file to update with accepted Pass-2 repairs")
+    re_p.add_argument("output", help="Output merged .parquet file")
+    re_p.add_argument("--gpt-oss-model-dir", default=None)
+    re_p.add_argument("--gpt-oss-batch-size", type=int, default=8)
+    re_p.add_argument("--gpt-oss-k", type=int, default=1)
+    re_p.add_argument("--max-tokens", type=int, default=MAX_OUTPUT_TOKENS)
+    re_p.add_argument("--memory-limit-gb", type=float, default=None)
+    re_p.add_argument("--cache-limit-gb", type=float, default=None)
+    re_p.set_defaults(func=_cmd_retry_escalated)
 
     return p
 

@@ -147,7 +147,6 @@ _DATE_RESCUE_SAFE_KINDS: frozenset[str] = frozenset(
         "hearing_memo_or_charter",
         "hearing_transcript",
         "witness_list",
-        "witness_biography",
         "witness_statement",
         "member_opening_statement",
         "truth_in_testimony_disclosure",

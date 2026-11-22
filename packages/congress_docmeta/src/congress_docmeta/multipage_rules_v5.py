@@ -331,8 +331,8 @@ _RX_TTF_GRANTS_CUE = re.compile(
     re.I,
 )
 _RX_TTF_UNBANNERED_112_115 = re.compile(
-    r"^(?:\d+\s+)?(?:Witness\s+Name|Your\s+Name|Name)\s*:\s*[A-Z].{1,120}?\s+"
-    r"1\.\s*(?:Please\s+list\s+)?any\s+federal\s+grants\s+or\s+contracts\s*\(including\s+subgrants\s+or\s+subcontracts\)"
+    r"^(?:\d+\s+)?(?:Witness\s+Name|Your\s+Name|Name)\s*:\s*[A-Z].{1,260}?\s+"
+    r"(?:1|5)\.\s*(?:Please\s+list\s+)?any\s+federal\s+grants\s+or\s+contracts\s*\(including\s+subgrants\s+or\s+subcontracts\)"
     r".{0,160}?since\s+October\s+1",
     re.I,
 )
@@ -382,7 +382,7 @@ def detect_ttf_page_signature(page_text: str) -> str | None:
     if (
         has_tit_360
         or "disclosure" in t360_low
-        or ("october 1" in t_low[:600] and "subgrants" in t_low[:600])
+        or ("october 1" in t_low[:750] and "subgrants" in t_low[:750])
     ):
         t1000 = t_ws[:1000]
         if (
@@ -398,7 +398,7 @@ def detect_ttf_page_signature(page_text: str) -> str | None:
                     and _RX_TTF_GENERIC_FIELD.search(t2400)
                     and _RX_TTF_GRANTS_CUE.search(t2400)
                 )
-                or _RX_TTF_UNBANNERED_112_115.match(t600)
+                or _RX_TTF_UNBANNERED_112_115.match(t_ws[:750])
             ):
                 return "ttf_committee_bespoke_form_112_118"
     return None

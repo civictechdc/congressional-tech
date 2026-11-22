@@ -51,6 +51,8 @@ from .pythonic_v5 import (
     SYS_DOCMETA_V4,
     _build_triage_result,
     _salvage_truncated_docmeta_v4,
+    has_structural_docmeta_corruption_v4,
+    repair_clean_docmeta_budget_v4,
     build_prompt_v4,
     canonicalize_docmeta_v4,
     validate_docmeta_v4,
@@ -106,6 +108,8 @@ class DocMetaSweepSummary:
     extractconf_flagged_docs: int = 0
     telemetry_wrapped_chunks: int = 0
     resolved_b_slots: int = 256
+    escalation_queue_path: Path | None = None
+    escalation_queued_docs: int = 0
 
 
 def _row_resume_key(row: Mapping[str, Any], fallback_idx: int) -> str:
@@ -765,6 +769,50 @@ def _cast_results_arrow_table(rows_out: list[dict[str, Any]]) -> Any:
     return pa.Table.from_arrays(cols, schema=pa.schema(fields))
 
 
+def _apply_pass2_update_to_row_v6(
+    rec: dict[str, Any],
+    c_obj: Mapping[str, Any],
+    c_json: str,
+    anom: Mapping[str, Any],
+    row_orig: Mapping[str, Any],
+    backup_json: str,
+    *,
+    verdicts_json: str | None = None,
+) -> tuple[bool, bool]:
+    """Patch one Pass-1 result row with an accepted Pass-2 GPT-OSS-20B update."""
+    ok_new, _ = validate_docmeta_v4(c_obj)
+    is_flagged_new = bool(anom.get("escalate_to_teacher") or anom.get("needs_teacher_escalation"))
+    rec["docmeta_source"] = "fast-gpt-oss-20b-pass2"
+    rec["primary_kind"] = c_obj.get("primary_kind")
+    rec["status"] = c_obj.get("status")
+    rec["congress"] = (
+        c_obj.get("congress")
+        if c_obj.get("congress") is not None
+        else row_orig.get("rel_congress")
+    )
+    rec["chamber"] = c_obj.get("chamber") or row_orig.get("rel_chamber")
+    rec["committees"] = list(c_obj.get("committees") or row_orig.get("rel_committees") or ())
+    rec["docmeta_json"] = c_json
+    rec["strict_v4_valid"] = bool(ok_new)
+    rec["anomaly_score"] = float(anom.get("anomaly_score", 0.0))
+    rec["anomaly_flags"] = list(
+        anom.get("anomaly_codes")
+        or [
+            f["code"] if isinstance(f, Mapping) and "code" in f else str(f)
+            for f in (anom.get("anomalies") or anom.get("anomaly_flags") or ())
+        ]
+    )
+    rec["needs_teacher_escalation"] = is_flagged_new
+    rec["gist_grounding_score"] = float(
+        (anom.get("gist_grounding") or {}).get("grounding_score", 1.0)
+    )
+    if verdicts_json is not None:
+        rec["external_verifier_json"] = verdicts_json
+    rec["pass2_escalated"] = True
+    rec["pass1_docmeta_json"] = backup_json
+    return bool(ok_new), is_flagged_new
+
+
 def _write_table_atomic(table: Any, out_path: Path, *, row_group_size: int = 32768) -> None:
     import pyarrow.parquet as pq
 
@@ -824,6 +872,7 @@ def run_docmeta_parquet_sweep(
     use_telemetry: bool | str = "auto",
     use_extractconf: bool = True,
     extractconf_calibration_path: str | Path | None = None,
+    escalation_queue_out: str | Path | None = None,
     _after_chunk_hook: Callable[[int, Path], None] | None = None,
 ) -> DocMetaSweepSummary:
     """Stream `llm_queue_v6_2.parquet` in `chunk_rows` batches with atomic `link_key_hex` checkpointing."""
@@ -1016,9 +1065,21 @@ def run_docmeta_parquet_sweep(
     pass2_accepted_docs = 0
     ane_embedded_docs = 0
     chunks_written = 0
+    escalation_queued_docs = 0
     total_prompt_tokens = 0
     total_completion_tokens = 0
     total_decode_sec = 0.0
+
+    esc_queue_target = Path(escalation_queue_out) if escalation_queue_out is not None else None
+    esc_queue_tmp: Path | None = None
+    if esc_queue_target is not None:
+        esc_queue_target.parent.mkdir(parents=True, exist_ok=True)
+        esc_queue_tmp = esc_queue_target.parent / f".{esc_queue_target.name}.tmp"
+        esc_queue_tmp.unlink(missing_ok=True)
+        if resume and esc_queue_target.exists():
+            existing_esc = esc_queue_target.read_text(encoding="utf-8")
+            if existing_esc:
+                esc_queue_tmp.write_text(existing_esc, encoding="utf-8")
 
     global_row_cursor = 0
     can_async_stage1 = bool(
@@ -1058,7 +1119,7 @@ def run_docmeta_parquet_sweep(
         precomputed_stage1: Mapping[str, Any] | None = None,
     ) -> None:
         nonlocal strict_v4_valid_docs, anomaly_flagged_docs, extractconf_flagged_docs, pass2_escalated_docs, pass2_accepted_docs
-        nonlocal docs_processed, chunks_written, next_shard_idx
+        nonlocal docs_processed, chunks_written, next_shard_idx, escalation_queued_docs
 
         c_chunk: list[dict[str, Any]] = ctx["chunk"]
         c_pmetas: list[dict[str, Any]] = ctx["pmetas"]
@@ -1158,6 +1219,7 @@ def run_docmeta_parquet_sweep(
             pass2_accepted_docs += acc_n
 
         out_rows: list[dict[str, Any]] = []
+        esc_queue_lines: list[str] | None = [] if esc_queue_tmp is not None else None
         for i, (row, c_obj, c_json, anom, diff_j) in enumerate(
             zip(c_chunk, c_clean_objs, c_clean_texts, c_anomalies, c_diffs_json)
         ):
@@ -1268,10 +1330,43 @@ def run_docmeta_parquet_sweep(
                 rec_out["ane_embed_model"] = ane_model_tag
                 rec_out["ane_embedding"] = c_ane_vectors[i]
             out_rows.append(rec_out)
+            ec_flagged = bool((anom.get("extractconf") or {}).get("escalate_recommended"))
+            if esc_queue_lines is not None and row_pm.get("triage") is None and (is_flagged or ec_flagged):
+                esc_queue_lines.append(
+                    json.dumps(
+                        {
+                            "resume_key": r_key,
+                            "link_key_hex": rec_out["link_key_hex"],
+                            "doc_key": rec_out["doc_key"],
+                            "filename": rec_out["filename"],
+                            "effective_format": rec_out["effective_format"],
+                            "known_json": c_known_strs[i],
+                            "p12_raw_text": c_raw_txts[i],
+                            "primary_kind": rec_out["primary_kind"],
+                            "anomaly_score": rec_out["anomaly_score"],
+                            "anomaly_flags": rec_out["anomaly_flags"],
+                            "needs_teacher_escalation": is_flagged,
+                            "extractconf_escalate": ec_flagged,
+                            "extractconf_risk_json": ec_risk_json,
+                            "croq_lock_spec": lock_spec_out,
+                            "croq_lock_type": lock_type_out,
+                            "pass1_docmeta_json": c_json,
+                            "rel_congress": row.get("rel_congress"),
+                            "rel_chamber": row.get("rel_chamber"),
+                            "rel_committees": list(row.get("rel_committees") or ()),
+                        },
+                        separators=(",", ":"),
+                        ensure_ascii=False,
+                    )
+                )
 
         part_path = parts_dir / f"part-{next_shard_idx:05d}.parquet"
         shard_tbl = _cast_results_arrow_table(out_rows)
         _write_table_atomic(shard_tbl, part_path, row_group_size=min(32768, max(1, len(out_rows))))
+        if esc_queue_tmp is not None and esc_queue_lines:
+            with esc_queue_tmp.open("a", encoding="utf-8") as eq_f:
+                eq_f.write("\n".join(esc_queue_lines) + "\n")
+            escalation_queued_docs += len(esc_queue_lines)
 
         if use_two_phase_pass2 and flagged_idxs:
             # Retain only the flagged subset so Pass-2 can run after Pass-1 Gemma-4 is fully unloaded!
@@ -1341,11 +1436,25 @@ def run_docmeta_parquet_sweep(
         }
 
     def _postprocess_one_row(
-        args_tuple: tuple[dict[str, Any], dict[str, Any], str],
+        args_tuple: tuple[Any, ...],
     ) -> tuple[dict[str, Any], str, dict[str, Any], str]:
-        row, pmeta, raw_txt_out = args_tuple
+        if len(args_tuple) >= 4:
+            row, pmeta, raw_txt_out, row_rd = args_tuple[0], args_tuple[1], args_tuple[2], args_tuple[3]
+        else:
+            row, pmeta, raw_txt_out = args_tuple[0], args_tuple[1], args_tuple[2]
+            row_rd = None
         fn = str(row.get("filename") or "")
         src_txt = str(row.get("p12_raw_text") or row.get("p12_clean_text") or row.get("text") or "")
+        lock_spec_rd = row_rd.get("lock_spec") if isinstance(row_rd, Mapping) else None
+        target_pk = (
+            pmeta.get("tier1_target_kind")
+            if isinstance(pmeta.get("tier1_target_kind"), str)
+            else (
+                lock_spec_rd
+                if isinstance(lock_spec_rd, str) and "|" not in lock_spec_rd and lock_spec_rd in DOC_KINDS_SET
+                else None
+            )
+        )
         raw_ok = True
         salvaged = False
         if pmeta.get("triage") is not None:
@@ -1358,35 +1467,61 @@ def run_docmeta_parquet_sweep(
                 else:
                     raw_ok = False
                     salvaged = True
-                    parsed_raw = _salvage_truncated_docmeta_v4(raw_txt_out, filename=fn)
+                    parsed_raw = _salvage_truncated_docmeta_v4(
+                        raw_txt_out,
+                        filename=fn,
+                        wire_format=pass1_wire,
+                        target_primary_kind=target_pk,
+                    )
             except Exception:
                 raw_ok = False
                 salvaged = True
-                parsed_raw = _salvage_truncated_docmeta_v4(raw_txt_out, filename=fn)
+                parsed_raw = _salvage_truncated_docmeta_v4(
+                    raw_txt_out,
+                    filename=fn,
+                    wire_format=pass1_wire,
+                    target_primary_kind=target_pk,
+                )
 
-        try:
-            clean_obj, sidecar = post_pass_v6(
+        def _try_canon_row(
+            cand_obj: dict[str, Any],
+            *,
+            triage_arg: dict[str, Any] | None,
+        ) -> tuple[bool, dict[str, Any], dict[str, Any]]:
+            try:
+                clean_obj, sidecar_l = post_pass_v6(
+                    cand_obj,
+                    known=pmeta.get("known_dict"),
+                    filename=fn,
+                    text=src_txt,
+                    p12_lines=pmeta.get("p12_lines"),
+                    explicit_format=row.get("effective_format") or row.get("format"),
+                    pre_meta=pmeta,
+                    provenance=pmeta.get("provenance"),
+                    multipage=pmeta.get("multipage"),
+                    triage=triage_arg,
+                    relational=pmeta.get("relational"),
+                    citations=pmeta.get("citations"),
+                    hygiene=pmeta.get("hygiene"),
+                    usc_oracle=usc_oracle,
+                )
+                canon_l = canonicalize_docmeta_v4(clean_obj)
+                ok_l, _ = validate_docmeta_v4(canon_l)
+                return bool(ok_l), canon_l, sidecar_l
+            except DocMetaValidationError:
+                return False, {}, {}
+
+        ok_v4, canon_obj, sidecar = _try_canon_row(parsed_raw, triage_arg=pmeta.get("triage"))
+        if not ok_v4 and not has_structural_docmeta_corruption_v4(
+            parsed_raw,
+            require_primary_kind=not salvaged,
+        ):
+            repaired_raw = repair_clean_docmeta_budget_v4(
                 parsed_raw,
-                known=pmeta.get("known_dict"),
                 filename=fn,
-                text=src_txt,
-                p12_lines=pmeta.get("p12_lines"),
-                explicit_format=row.get("effective_format") or row.get("format"),
-                pre_meta=pmeta,
-                provenance=pmeta.get("provenance"),
-                multipage=pmeta.get("multipage"),
-                triage=pmeta.get("triage"),
-                relational=pmeta.get("relational"),
-                citations=pmeta.get("citations"),
-                hygiene=pmeta.get("hygiene"),
-                usc_oracle=usc_oracle,
+                target_primary_kind=target_pk if salvaged else None,
             )
-            canon_obj = canonicalize_docmeta_v4(clean_obj)
-            ok_v4, _ = validate_docmeta_v4(canon_obj)
-        except DocMetaValidationError:
-            ok_v4 = False
-            canon_obj = {}
-            sidecar = {}
+            ok_v4, canon_obj, sidecar = _try_canon_row(repaired_raw, triage_arg=pmeta.get("triage"))
 
         if not ok_v4:
             # Guaranteed schema-valid fallback if model output or truncated salvage failed a constraint
@@ -1395,23 +1530,7 @@ def run_docmeta_parquet_sweep(
                 "garbled",
                 f"Malformed 2B extraction output salvaged to non-usable triage ({fn[:60]})",
             )
-            canon_obj, sidecar = post_pass_v6(
-                fallback_triage["docmeta"],
-                known=pmeta.get("known_dict"),
-                filename=fn,
-                text=src_txt,
-                p12_lines=pmeta.get("p12_lines"),
-                explicit_format=row.get("effective_format") or row.get("format"),
-                pre_meta=pmeta,
-                provenance=pmeta.get("provenance"),
-                multipage=pmeta.get("multipage"),
-                triage=fallback_triage,
-                relational=pmeta.get("relational"),
-                citations=pmeta.get("citations"),
-                hygiene=pmeta.get("hygiene"),
-                usc_oracle=usc_oracle,
-            )
-            ok_v4, _ = validate_docmeta_v4(canon_obj)
+            ok_v4, canon_obj, sidecar = _try_canon_row(fallback_triage["docmeta"], triage_arg=fallback_triage)
 
         diff_d = compute_llm_vs_det_diff_v6(
             parsed_raw,
@@ -1674,7 +1793,7 @@ def run_docmeta_parquet_sweep(
                     ane_embedded_docs += sum(1 for v in ane_vectors if v is not None)
 
                 # Post-pass V6 + deterministic diff logging + C0_Stdlib anomaly scoring (P-core threaded for large chunks)
-                work_items = list(zip(chunk, pmetas, raw_llm_texts))
+                work_items = list(zip(chunk, pmetas, raw_llm_texts, route_decisions))
                 if eff_post_workers > 1 and n_chunk >= 32:
                     if post_pool is None:
                         post_pool = ThreadPoolExecutor(max_workers=eff_post_workers, thread_name_prefix="docmeta-post")
@@ -1809,41 +1928,17 @@ def run_docmeta_parquet_sweep(
                             c_json = p_texts[local_i]
                             anom = p_anoms[local_i]
                             row_orig = p_rows[local_i]
-                            ok_new, _ = validate_docmeta_v4(c_obj)
-                            is_flagged_new = bool(
-                                anom.get("escalate_to_teacher") or anom.get("needs_teacher_escalation")
+                            ok_new, is_flagged_new = _apply_pass2_update_to_row_v6(
+                                part_rows_list[part_row_idx],
+                                c_obj,
+                                c_json,
+                                anom,
+                                row_orig,
+                                backup_by_local[local_i],
+                                verdicts_json=p_verdicts_json[local_i],
                             )
                             strict_v4_valid_docs += int(ok_new) - int(old_valid_flags[local_i])
                             anomaly_flagged_docs += int(is_flagged_new) - int(old_anom_flags[local_i])
-
-                            rec = part_rows_list[part_row_idx]
-                            rec["docmeta_source"] = "fast-gpt-oss-20b-pass2"
-                            rec["primary_kind"] = c_obj.get("primary_kind")
-                            rec["status"] = c_obj.get("status")
-                            rec["congress"] = (
-                                c_obj.get("congress")
-                                if c_obj.get("congress") is not None
-                                else row_orig.get("rel_congress")
-                            )
-                            rec["chamber"] = c_obj.get("chamber") or row_orig.get("rel_chamber")
-                            rec["committees"] = list(c_obj.get("committees") or row_orig.get("rel_committees") or ())
-                            rec["docmeta_json"] = c_json
-                            rec["strict_v4_valid"] = bool(ok_new)
-                            rec["anomaly_score"] = float(anom.get("anomaly_score", 0.0))
-                            rec["anomaly_flags"] = list(
-                                anom.get("anomaly_codes")
-                                or [
-                                    f["code"] if isinstance(f, Mapping) and "code" in f else str(f)
-                                    for f in (anom.get("anomalies") or anom.get("anomaly_flags") or ())
-                                ]
-                            )
-                            rec["needs_teacher_escalation"] = is_flagged_new
-                            rec["gist_grounding_score"] = float(
-                                (anom.get("gist_grounding") or {}).get("grounding_score", 1.0)
-                            )
-                            rec["external_verifier_json"] = p_verdicts_json[local_i]
-                            rec["pass2_escalated"] = True
-                            rec["pass1_docmeta_json"] = backup_by_local[local_i]
 
                         re_tbl = _cast_results_arrow_table(part_rows_list)
                         _write_table_atomic(re_tbl, part_p, row_group_size=min(32768, max(1, len(part_rows_list))))
@@ -1852,6 +1947,11 @@ def run_docmeta_parquet_sweep(
                     gpt_oss_engine = None
                     owned_gpt_oss = False
                     clear_mlx_wave_cache(0, force=True)
+
+            if esc_queue_target is not None and esc_queue_tmp is not None:
+                if not esc_queue_tmp.exists():
+                    esc_queue_tmp.write_text("", encoding="utf-8")
+                os.replace(esc_queue_tmp, esc_queue_target)
 
             # If caller requested a single `.parquet` output file, seal all parts atomically with `row_group_size=32768`
             if seal_single_file:
@@ -1862,6 +1962,8 @@ def run_docmeta_parquet_sweep(
                     _write_table_atomic(merged, out_target, row_group_size=32768)
 
         finally:
+            if esc_queue_tmp is not None:
+                esc_queue_tmp.unlink(missing_ok=True)
             if prep_pool is not None:
                 prep_pool.shutdown(wait=True)
             if post_pool is not None:
@@ -1901,7 +2003,182 @@ def run_docmeta_parquet_sweep(
         extractconf_flagged_docs=extractconf_flagged_docs,
         telemetry_wrapped_chunks=telemetry_wrapped_chunks,
         resolved_b_slots=eff_b_slots_cap,
+        escalation_queue_path=esc_queue_target,
+        escalation_queued_docs=escalation_queued_docs,
     )
+
+
+def run_offline_escalation_queue_v6(
+    escalation_queue_path: str | Path,
+    pass1_results_path: str | Path,
+    output_path: str | Path,
+    *,
+    gpt_oss_engine: Any = None,
+    gpt_oss_model_dir: str | Path | None = None,
+    gpt_oss_batch_size: int = 8,
+    gpt_oss_k: int = 1,
+    max_tokens: int = MAX_OUTPUT_TOKENS,
+    require_r8_deps: bool = True,
+    use_wired_limit: bool = True,
+) -> dict[str, Any]:
+    """Run single-model GPT-OSS-20B Pass-2 offline over an exported JSONL escalation queue (`0` co-residency)."""
+    import pyarrow.parquet as pq
+    from .anomaly_router_v6 import score_docmeta_anomalies_v6
+
+    q_path = Path(escalation_queue_path)
+    p1_path = Path(pass1_results_path)
+    out_target = Path(output_path)
+
+    q_items: list[dict[str, Any]] = []
+    if q_path.exists():
+        for raw_ln in q_path.read_text(encoding="utf-8").splitlines():
+            s = raw_ln.strip()
+            if not s:
+                continue
+            item = json.loads(s)
+            if isinstance(item, dict):
+                q_items.append(item)
+
+    if not q_items:
+        tbl_in = pq.read_table(p1_path)
+        _write_table_atomic(tbl_in, out_target, row_group_size=32768)
+        return {
+            "queued_docs": 0,
+            "escalated_docs": 0,
+            "accepted_docs": 0,
+            "output_path": str(out_target),
+        }
+
+    run_silicon_preflight(escalate_gpt_oss=True, require_r8_deps=require_r8_deps, once=True)
+    out_rows = pq.read_table(p1_path).to_pylist()
+    by_lk: dict[str, int] = {}
+    by_dk: dict[str, int] = {}
+    by_fn: dict[str, int] = {}
+    for idx_r, r in enumerate(out_rows):
+        if isinstance(r.get("link_key_hex"), str) and r["link_key_hex"]:
+            by_lk[r["link_key_hex"]] = idx_r
+        if isinstance(r.get("doc_key"), str) and r["doc_key"]:
+            by_dk[r["doc_key"]] = idx_r
+        if isinstance(r.get("filename"), str) and r["filename"]:
+            by_fn.setdefault(r["filename"], idx_r)
+
+    usc_oracle = load_default_usc_oracle_v6()
+    matched_out_idxs: list[int] = []
+    prompts: list[str] = []
+    sim_rows: list[dict[str, Any]] = []
+    sim_pmetas: list[dict[str, Any]] = []
+    cur_objs: list[dict[str, Any]] = []
+    cur_texts: list[str] = []
+    cur_anoms: list[dict[str, Any]] = []
+
+    for qi in q_items:
+        out_idx: int | None = None
+        for map_d, key_field in ((by_lk, "link_key_hex"), (by_dk, "doc_key"), (by_dk, "resume_key"), (by_fn, "filename")):
+            kv = qi.get(key_field)
+            if isinstance(kv, str) and kv in map_d:
+                out_idx = map_d[kv]
+                break
+        if out_idx is None:
+            continue
+        pass1_row = out_rows[out_idx]
+        fn = str(qi.get("filename") or pass1_row.get("filename") or "")
+        txt = str(qi.get("p12_raw_text") or "")
+        known_raw = qi.get("known_json")
+        eff_fmt = str(qi.get("effective_format") or pass1_row.get("effective_format") or "")
+        sim_row: dict[str, Any] = {
+            "filename": fn,
+            "p12_raw_text": txt,
+            "known_json": known_raw,
+            "effective_format": eff_fmt,
+            "rel_congress": qi.get("rel_congress") if qi.get("rel_congress") is not None else pass1_row.get("congress"),
+            "rel_chamber": qi.get("rel_chamber") or pass1_row.get("chamber"),
+            "rel_committees": list(qi.get("rel_committees") or pass1_row.get("committees") or ()),
+        }
+        known_str, pmeta, _, raw_txt, _ = _build_precomputed_context_from_queue_row(sim_row)
+        lock_sp = qi.get("croq_lock_spec") or pass1_row.get("croq_lock_spec")
+        if pmeta.get("tier1_target_kind") is None and isinstance(lock_sp, str) and "|" not in lock_sp and lock_sp in DOC_KINDS_SET:
+            pmeta["tier1_target_kind"] = lock_sp
+
+        pass1_json = str(qi.get("pass1_docmeta_json") or pass1_row.get("docmeta_json") or "{}")
+        c_obj = json.loads(pass1_json)
+        anom = score_docmeta_anomalies_v6(
+            c_obj,
+            {
+                "filename": fn,
+                "text": raw_txt,
+                "known": known_raw,
+                "rel_congress": sim_row["rel_congress"],
+                "rel_chamber": sim_row["rel_chamber"],
+                "rel_committees": sim_row["rel_committees"],
+            },
+            usc_oracle=usc_oracle,
+        )
+        matched_out_idxs.append(out_idx)
+        sim_rows.append(sim_row)
+        sim_pmetas.append(pmeta)
+        prompts.append(build_prompt_v4(known_str, fn, raw_txt))
+        cur_objs.append(c_obj)
+        cur_texts.append(pass1_json)
+        cur_anoms.append(anom)
+
+    if not matched_out_idxs:
+        _write_table_atomic(pq.read_table(p1_path), out_target, row_group_size=32768)
+        return {
+            "queued_docs": len(q_items),
+            "escalated_docs": 0,
+            "accepted_docs": 0,
+            "output_path": str(out_target),
+        }
+
+    owned_gpt_oss = gpt_oss_engine is None
+    active_gpt_oss = gpt_oss_engine
+    esc_n = 0
+    acc_n = 0
+    with mlx_wired_limit_scope(enabled=use_wired_limit):
+        try:
+            if active_gpt_oss is None:
+                from fast_gpt_oss import FastGptOssEngine
+
+                active_gpt_oss = FastGptOssEngine(model_dir=gpt_oss_model_dir, warmup=True)
+
+            local_idxs = list(range(len(matched_out_idxs)))
+            esc_n, acc_n, backup_by_local = escalate_anomalies_gpt_oss(
+                active_gpt_oss,
+                flagged_indices=local_idxs,
+                prompts_user_content=prompts,
+                rows=sim_rows,
+                pmetas=sim_pmetas,
+                current_objs=cur_objs,
+                current_texts=cur_texts,
+                current_anomalies=cur_anoms,
+                usc_oracle=usc_oracle,
+                max_tokens=max_tokens,
+                batch_size=gpt_oss_batch_size,
+                k=gpt_oss_k,
+            )
+            for local_i, out_idx in enumerate(matched_out_idxs):
+                if local_i not in backup_by_local:
+                    continue
+                _apply_pass2_update_to_row_v6(
+                    out_rows[out_idx],
+                    cur_objs[local_i],
+                    cur_texts[local_i],
+                    cur_anoms[local_i],
+                    sim_rows[local_i],
+                    backup_by_local[local_i],
+                )
+            _write_table_atomic(_cast_results_arrow_table(out_rows), out_target, row_group_size=32768)
+        finally:
+            if owned_gpt_oss and active_gpt_oss is not None and hasattr(active_gpt_oss, "close"):
+                active_gpt_oss.close()
+            clear_mlx_wave_cache(0, force=True)
+
+    return {
+        "queued_docs": len(q_items),
+        "escalated_docs": esc_n,
+        "accepted_docs": acc_n,
+        "output_path": str(out_target),
+    }
 
 
 __all__ = [
@@ -1911,4 +2188,5 @@ __all__ = [
     "compute_llm_vs_det_diff_v6",
     "escalate_anomalies_gpt_oss",
     "run_docmeta_parquet_sweep",
+    "run_offline_escalation_queue_v6",
 ]

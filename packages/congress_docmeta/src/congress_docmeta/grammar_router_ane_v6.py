@@ -434,7 +434,7 @@ class PreDecodeGrammarRouterV6:
                     "top_candidates": [],
                 }
                 continue
-            det_tk = pm.get("tier1_target_kind") or row.get("locked_primary_kind")
+            det_tk = pm["tier1_target_kind"] if "tier1_target_kind" in pm else row.get("locked_primary_kind")
             if isinstance(det_tk, str) and det_tk in DOC_KINDS_SET:
                 results[i] = {
                     "lock_spec": det_tk,
