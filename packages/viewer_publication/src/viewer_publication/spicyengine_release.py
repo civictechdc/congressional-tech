@@ -134,8 +134,8 @@ def source_files(origin, work, pin, local):
     inputs = {name: (f"{prefix}/{name}", entries[name]["sha256"], entries[name]["size"])
               for name in ("detail.parquet", "sources.parquet")}
     inputs["body_text.parquet"] = (text["key"], text["sha256"], text["bytes"])
-    sources = []
-    for name, (key, digest, size) in inputs.items():
+    def locate(name):
+        key, digest, size = inputs[name]
         target = work / "downloads" / name
         existing = local / name if local else None
         if existing and existing.is_file():
@@ -148,19 +148,20 @@ def source_files(origin, work, pin, local):
                 raise ValueError(f"Incomplete retained download: {name}")
         else:
             download(origin, key, target, digest, size)
-        sources.append(str(target))
-    return sources
+        return str(target)
+    return locate
 
 
 def prepare(origin, work, pin, local):
     ready = work / "prepared.json"
     if ready.is_file():
         return json.loads(ready.read_text())
-    detail, sources, body = source_files(origin, work, pin, local)
+    locate = source_files(origin, work, pin, local)
+    body = None
     output = work / "prepared"
     output.mkdir(exist_ok=True)
     with closing(duckdb.connect(config={"threads": 1, "preserve_insertion_order": False})) as db:
-        db.execute(DOCUMENTS, [detail, sources])
+        db.execute(DOCUMENTS, [locate("detail.parquet"), locate("sources.parquet")])
         counts = dict(db.execute("SELECT shard, count(*) FROM documents GROUP BY shard").fetchall())
         total = sum(counts.values())
         if total != db.execute("SELECT count(DISTINCT link_key) FROM documents").fetchone()[0]:
@@ -174,6 +175,8 @@ def prepare(origin, work, pin, local):
                     raise ValueError(f"Incomplete retained partition {shard}")
                 continue
             tmp = target.with_suffix(".partial")
+            if body is None:
+                body = locate("body_text.parquet")
             reader = db.execute(PARTITION, [body, shard + "00" * 31, shard + "ff" * 31, shard]).to_arrow_reader(8)
             rows = 0
             with pq.ParquetWriter(tmp, reader.schema, compression="zstd", compression_level=3) as writer:
