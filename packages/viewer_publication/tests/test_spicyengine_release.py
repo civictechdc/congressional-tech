@@ -18,12 +18,12 @@ def test_publication_replay(tmp_path, monkeypatch):
     text_dir = tmp_path / "origin" / "derived" / "body_text"
     text_dir.mkdir(parents=True)
     body_key = bytes.fromhex("ab" * 32)
-    doc = dict(link_key=b"12345678", saved_body=body_key, hidden=False, saved_suffix=".pdf",
+    doc = dict(link_key=b"12345678", saved_body=body_key, hidden=False, saved_suffix=".gz",
                title="Housing report", filename="report.pdf", package_id="HR-1", format="pdf",
                document_date=date(2026, 11, 20), document_date_status="accepted", congress=119, chambers=["house"],
                committee_keys=["HS"], document_kind="report", document_family="legislative",
                src_start=0, src_len=2)
-    detail = pa.Table.from_pylist([doc, doc | {"link_key": b"87654321", "src_start": 2, "src_len": 1}, doc | {"hidden": True},
+    detail = pa.Table.from_pylist([doc, doc | {"link_key": b"87654321", "src_start": 2, "src_len": 1, "saved_suffix": ""}, doc | {"hidden": True},
                                    doc | {"link_key": b"no-text!", "saved_body": None}])
     pq.write_table(detail, stage / "detail.parquet")
     pq.write_table(pa.Table.from_pylist([
@@ -60,7 +60,7 @@ def test_publication_replay(tmp_path, monkeypatch):
     primary = by_id["archive-documents:" + b"12345678".hex()]
     assert primary["listed_on"] == "https://example.gov/hearing" and primary["pdf_url"] == "https://example.gov/a.pdf"
     child = by_id["archive-documents:" + b"87654321".hex()]
-    assert child["listed_on"] is None and child["pdf_url"] == f"{release.ORIGIN}/bodies/sha256/ab/{body_key.hex()}.pdf"
+    assert child["listed_on"] is None and child["pdf_url"] == f"{release.ORIGIN}/bodies/sha256/ab/{body_key.hex()}"
     assert json.loads((work / "dataset.json").read_text())["source_links"] == str(work / "source-links.parquet")
     assert not list((work / "downloads").glob("*.parquet"))
     # An existing installation gains citations even when the large text export is offline.

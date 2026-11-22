@@ -221,13 +221,15 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
                     SELECT file_row_number - ordinal AS src_start,
                            arg_min(listed_on, ordinal) FILTER (WHERE listed_on <> url AND
                                regexp_matches(listed_on, '^https?://', 'i')) AS listed_on,
-                           max(url) FILTER (WHERE ordinal=0 AND is_saved AND nullif(member_path,'') IS NULL AND
-                               regexp_matches(url, '^https?://[^?#]+[.]pdf([?#].*)?$', 'i')) AS direct_pdf
+                           arg_min(url, ordinal) FILTER (WHERE is_saved AND nullif(member_path,'') IS NULL AND
+                               regexp_matches(url, '^https?://', 'i') AND
+                               NOT regexp_matches(url, '[.](zip|gz)([?#].*)?$', 'i')) AS direct_file
                     FROM read_parquet(?, file_row_number=true) GROUP BY 1
                 ) SELECT 'archive-documents:' || lower(hex(d.link_key)) AS id, s.listed_on,
-                         CASE WHEN d.format='pdf' AND d.saved_suffix='.pdf' THEN coalesce(s.direct_pdf,
-                             ? || '/bodies/sha256/' || left(lower(hex(d.saved_body)),2) || '/' ||
-                             lower(hex(d.saved_body)) || '.pdf') END AS pdf_url
+                         CASE WHEN d.format='pdf' THEN coalesce(s.direct_file,
+                             CASE WHEN d.saved_suffix IN ('', '.pdf') THEN ? || '/bodies/sha256/' ||
+                                 left(lower(hex(d.saved_body)),2) || '/' || lower(hex(d.saved_body)) ||
+                                 d.saved_suffix END) END AS pdf_url
                   FROM read_parquet(?) d LEFT JOIN sources s ON s.src_start=CASE WHEN d.src_len>0 THEN d.src_start END
                   WHERE d.hidden IS NOT TRUE AND (listed_on IS NOT NULL OR pdf_url IS NOT NULL)
                   ORDER BY id""", params=[locate("sources.parquet"), ORIGIN, locate("detail.parquet")]
