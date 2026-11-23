@@ -79,7 +79,8 @@ def test_archive_tools_use_selected_release_over_http(tmp_path, phase2, monkeypa
                                            ('read_section', {'url':hit['url']})]:
                             outcome = await client.call_tool(name, args, raise_on_error=False)
                             assert outcome.is_error and 'archive release' in outcome.content[0].text
-                        assert (await client.call_tool('get_dataset_status')).data['release_id'] == selected
+                        status = (await client.call_tool('get_dataset_status')).data
+                        assert status['release_id'] == selected and status['archive_document_search']['search'] == 'search_docs'
                 asyncio.run(verify())
         finally:
             backend.shutdown()
