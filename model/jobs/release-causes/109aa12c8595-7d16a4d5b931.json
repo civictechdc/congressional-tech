@@ -1,0 +1,1047 @@
+{
+ "version": 1,
+ "base_release_id": "109aa12c85951c2cc66df066659381f5dcd82d01603d8281ee7cb4533aaea5ba",
+ "candidate_release_id": "7d16a4d5b93102beaf54c525dcadd9e446ed33187f6ae7a36786bc8303b4abf7",
+ "notes": {
+  "identifiers": [
+   {
+    "statement": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+    "decision": "ct-pz32, ct-4nax"
+   }
+  ]
+ },
+ "corrections": [
+  {
+   "kind": "link_key",
+   "key": "50cb263543b1bf7a",
+   "live_body": "50cb263543b1bf7a613d6a7690b67e9a6e6a7cde6544384a929b7c96a60c1a46",
+   "candidate_body": "6a7accaaa8ab64d290cf4345df44c2f92b00668d40036982c5c3aeec907b3c86",
+   "decision": "Live link_key 50cb263543b1bf7a, lookup keys 60ebc71a581f23cc and a734ad4e6fc58c4c, and address https://transportation.house.gov/calendar/eventsingle.aspx?EventID=405601 moved from capture 50cb263543b1bf7a613d6a7690b67e9a6e6a7cde6544384a929b7c96a60c1a46 (33,271 B, 520 lines, live row 292951) to newer capture 6a7accaaa8ab64d290cf4345df44c2f92b00668d40036982c5c3aeec907b3c86 (33,263 B, 520 lines, candidate row 293109). Verified side-by-side from raw SHA-256-checked bytes on 2026-11-23: identical <title> ('Full Committee Markup - Budget Reconciliation II (September 14, 2021) | Transportation and Infrastructure Committee') and identical event text; the entire diff is 25 lines in the site's Latest News sidebar (Sep 16 items 410277/410278 replaced by Nov 17/13 items 410343/410342).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "60ebc71a581f23cc",
+   "live_body": "50cb263543b1bf7a613d6a7690b67e9a6e6a7cde6544384a929b7c96a60c1a46",
+   "candidate_body": "6a7accaaa8ab64d290cf4345df44c2f92b00668d40036982c5c3aeec907b3c86",
+   "decision": "Live link_key 50cb263543b1bf7a, lookup keys 60ebc71a581f23cc and a734ad4e6fc58c4c, and address https://transportation.house.gov/calendar/eventsingle.aspx?EventID=405601 moved from capture 50cb263543b1bf7a613d6a7690b67e9a6e6a7cde6544384a929b7c96a60c1a46 (33,271 B, 520 lines, live row 292951) to newer capture 6a7accaaa8ab64d290cf4345df44c2f92b00668d40036982c5c3aeec907b3c86 (33,263 B, 520 lines, candidate row 293109). Verified side-by-side from raw SHA-256-checked bytes on 2026-11-23: identical <title> ('Full Committee Markup - Budget Reconciliation II (September 14, 2021) | Transportation and Infrastructure Committee') and identical event text; the entire diff is 25 lines in the site's Latest News sidebar (Sep 16 items 410277/410278 replaced by Nov 17/13 items 410343/410342).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "a734ad4e6fc58c4c",
+   "live_body": "50cb263543b1bf7a613d6a7690b67e9a6e6a7cde6544384a929b7c96a60c1a46",
+   "candidate_body": "6a7accaaa8ab64d290cf4345df44c2f92b00668d40036982c5c3aeec907b3c86",
+   "decision": "Live link_key 50cb263543b1bf7a, lookup keys 60ebc71a581f23cc and a734ad4e6fc58c4c, and address https://transportation.house.gov/calendar/eventsingle.aspx?EventID=405601 moved from capture 50cb263543b1bf7a613d6a7690b67e9a6e6a7cde6544384a929b7c96a60c1a46 (33,271 B, 520 lines, live row 292951) to newer capture 6a7accaaa8ab64d290cf4345df44c2f92b00668d40036982c5c3aeec907b3c86 (33,263 B, 520 lines, candidate row 293109). Verified side-by-side from raw SHA-256-checked bytes on 2026-11-23: identical <title> ('Full Committee Markup - Budget Reconciliation II (September 14, 2021) | Transportation and Infrastructure Committee') and identical event text; the entire diff is 25 lines in the site's Latest News sidebar (Sep 16 items 410277/410278 replaced by Nov 17/13 items 410343/410342).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ]
+  },
+  {
+   "kind": "address",
+   "key": "https://transportation.house.gov/calendar/eventsingle.aspx?EventID=405601",
+   "live_body": "50cb263543b1bf7a613d6a7690b67e9a6e6a7cde6544384a929b7c96a60c1a46",
+   "candidate_body": "6a7accaaa8ab64d290cf4345df44c2f92b00668d40036982c5c3aeec907b3c86",
+   "decision": "Live link_key 50cb263543b1bf7a, lookup keys 60ebc71a581f23cc and a734ad4e6fc58c4c, and address https://transportation.house.gov/calendar/eventsingle.aspx?EventID=405601 moved from capture 50cb263543b1bf7a613d6a7690b67e9a6e6a7cde6544384a929b7c96a60c1a46 (33,271 B, 520 lines, live row 292951) to newer capture 6a7accaaa8ab64d290cf4345df44c2f92b00668d40036982c5c3aeec907b3c86 (33,263 B, 520 lines, candidate row 293109). Verified side-by-side from raw SHA-256-checked bytes on 2026-11-23: identical <title> ('Full Committee Markup - Budget Reconciliation II (September 14, 2021) | Transportation and Infrastructure Committee') and identical event text; the entire diff is 25 lines in the site's Latest News sidebar (Sep 16 items 410277/410278 replaced by Nov 17/13 items 410343/410342).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ]
+  }
+ ],
+ "groups": [
+  {
+   "id": "channels.parquet|changed custom_url|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "channels.parquet|changed record_sha|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 278,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed link_key|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_body|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_bytes|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 241,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 241,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 459,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 278,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 241,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 24,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 34,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 29,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 27,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed committees|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed house_xml_updated|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed meeting_type|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed publisher_status_observations|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed session|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed witness_keys|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 39,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed note|value differs on matched key",
+   "count": 22,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 25,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 35,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 64,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed recording_scope|value differs on matched key",
+   "count": 7,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 282,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 1082,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 1082,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 366,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 2043,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 2043,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 1460,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 1908,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 1630,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 2067,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 2043,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 71,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 374,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|added keys|no evidence given",
+   "count": 78,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed available|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed details_checked_at|value differs on matched key",
+   "count": 17,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed duration_seconds|value differs on matched key",
+   "count": 15,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed has_caption|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed published_at|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed record_sha|value differs on matched key",
+   "count": 234,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed source_description|value differs on matched key",
+   "count": 52,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed title|value differs on matched key",
+   "count": 51,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed video_published_at|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|added keys|no evidence given",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed superseded_by|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Two-day capture backlog (2026-11-22 and 2026-11-23; +3,973 new receipts, 0 removed) plus weekly YouTube refresh, built in hosted run 45269484298 from the live release's identical model definition, SQL, registries, parser versions, entity digests, and manual decision provenance. Data-only night did not auto-approve solely because daily ingest added an automated unreadable provenance file on 2026-11-22 (model.unreadable_files 56837127d225 -> 0e3a74eb0079), which caused _provenance_compatible to bail before running automatic link_proof. All 58 groups are additive/update capture changes (0 removals, 0 vanished/dangling/demoted keys): +278 documents (276 HTML, 2 PDF), +459 link keys, +282 source URLs, +374 lookup keys, 1,082 source re-listings updating 241 document titles/title_sources, +372 url_state rows, 1 updated House meeting (+1 witness), +78 videos and 234 video metadata updates (+99 recordings, +39 recording matches, 0 removed), and the recurring byte-only recoveries.parquet rewrite (0 row/value diffs).",
+   "tickets": [
+    "ct-pz32",
+    "ct-4nax"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/109aa12c8595-7d16a4d5b931.json",
+     "sha256": "044f15dc0f5144f331ca688be7b0007cf1d06f31934196f957680616b3a97488",
+     "size": 9771
+    }
+   ]
+  }
+ ]
+}
