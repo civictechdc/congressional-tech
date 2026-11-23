@@ -17,6 +17,75 @@ from congressional_explorer_mcp.release import prepare
 from congressional_explorer_mcp.server import create_server
 
 
+def test_archive_tools_use_selected_release_over_http(tmp_path, phase2, monkeypatch):
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from threading import Thread
+    from urllib.parse import parse_qs, urlsplit
+    from congressional_explorer_mcp import ARCHIVE_SEARCH_TOOLS, TOOL_NAMES
+
+    root = tmp_path / 'data'
+    selected = prepare(root, phase2)['release_id']
+    state = {'release': selected}
+    path = '/page?id=doc%3A1&field=body&page=3&configVersion=' + 'a' * 64
+    listing = 'https://example.gov/hearings'
+    calls = []
+
+    class Origin(BaseHTTPRequestHandler):
+        def reply(self, data):
+            raw = json.dumps(dict(data, release_id=state['release'])).encode()
+            self.send_response(200)
+            self.send_header('Content-Length', str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+        def do_GET(self):
+            url = urlsplit(self.path)
+            calls.append(url.path)
+            if url.path == '/v1/health':
+                self.reply({'searchType': 'fulltext', 'serenedb': {'connected': True}, 'index': {'sections': 4}})
+            else:
+                assert url.path == '/v1/section' and parse_qs(url.query) == {'url': [path]}
+                self.reply({'id': 'doc:1', 'url': path, 'content': 'Health evidence.', 'publisher_url': listing})
+
+        def do_POST(self):
+            assert self.path == '/v1/search'
+            request = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+            assert request['mode'] == 'fulltext' and request['limit'] == 1
+            hits = [] if request['q'] == 'absent' else [{'id': 'doc:1', 'url': path, 'publisher_url': listing}]
+            self.reply({'results': hits})
+
+    with ThreadingHTTPServer(('127.0.0.1', 0), Origin) as backend:
+        thread = Thread(target=backend.serve_forever, daemon=True)
+        thread.start()
+        origin = f'http://127.0.0.1:{backend.server_port}'
+        monkeypatch.setenv('CONGRESS_MCP_SEARCH_ORIGIN', origin)
+        try:
+            with http_server(root, phase2, False) as url:
+                async def verify():
+                    async with Client(url, timeout=15) as client:
+                        assert {t.name for t in await client.list_tools()} == TOOL_NAMES | ARCHIVE_SEARCH_TOOLS
+                        results = (await client.call_tool('search_docs', {'query': 'health', 'limit': 1})).data
+                        hit = results['results'][0]
+                        assert hit['url'] == origin + path and hit['publisher_url'] == listing
+                        assert (await client.call_tool('docs_health')).data['release_id'] == selected
+                        page = (await client.call_tool('read_section', {'url': hit['url']})).data
+                        assert page['content'] == 'Health evidence.' and page['url'] == hit['url']
+                        assert (await client.call_tool('search_docs', {'query': 'absent', 'limit': 1})).data['results'] == []
+                        prior = len(calls)
+                        rejected = await client.call_tool('read_section', {'url': 'https://elsewhere.gov/'}, raise_on_error=False)
+                        assert rejected.is_error and len(calls) == prior
+                        state['release'] = 'f' * 64
+                        for name, args in [('docs_health', {}), ('search_docs', {'query':'absent', 'limit':1}),
+                                           ('read_section', {'url':hit['url']})]:
+                            outcome = await client.call_tool(name, args, raise_on_error=False)
+                            assert outcome.is_error and 'archive release' in outcome.content[0].text
+                        assert (await client.call_tool('get_dataset_status')).data['release_id'] == selected
+                asyncio.run(verify())
+        finally:
+            backend.shutdown()
+            thread.join()
+
+
 @contextmanager
 def http_server(root, publication, lazy):
     with socket.socket() as listener:

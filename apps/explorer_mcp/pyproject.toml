@@ -13,6 +13,7 @@ dependencies = [
     "duckdb==2.0.0",
     "fastmcp==4.1.4",
     "fonttools==4.66.0",
+    "httpx2==2.16.0",
     "pypdf==6.21.4",
     "regex==2026.9.29",
 ]

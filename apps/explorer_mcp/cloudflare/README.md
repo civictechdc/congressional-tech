@@ -9,9 +9,13 @@
 
 The Worker exposes `/mcp` over HTTPS and forwards requests to the existing
 Python FastMCP and DuckDB server in Cloudflare Containers. A browser MCP client
-needs only the URL. The server offers the same declared read-only tools as the local
-installation. This uses Cloudflare's supported Containers integration, without
-a DuckDB-Wasm rewrite or a tunnel to a developer's computer.
+needs only the URL. The hosted profile adds SereneDB’s read-only `search_docs`,
+`read_section` and `docs_health` tools to the local research tools. The Worker
+passes its configured `SPICYENGINE_ORIGIN` to the container. Each response must
+identify the same immutable publication as Congress Explorer. During a release
+mismatch, the archive search tools report the mismatch and the other research
+tools continue serving their selected release. A local installation can opt in
+with `CONGRESS_MCP_SEARCH_ORIGIN`. See [SereneDB’s native example](https://github.com/serenedb/serenedb/tree/28d42876076c4d9f047b88c50f76d9ef879cf3d1/apps/serene-docs-search/packages/mcp).
 
 The endpoint is public and requires no authentication. It serves the public
 archive only. A client sends tool arguments to Cloudflare; its AI provider also
@@ -84,10 +88,10 @@ the pointer names (`curl -fsS <ARCHIVE_POINTER> | jq -r .release_id`):
 ```sh
 uv sync --locked --project apps/explorer_mcp
 apps/explorer_mcp/.venv/bin/python apps/explorer_mcp/cloudflare/smoke.py \
-  https://YOUR-WORKER.workers.dev/mcp --release-id FULL_RELEASE_ID
+  https://YOUR-WORKER.workers.dev/mcp --release-id FULL_RELEASE_ID --require-archive-search
 ```
 
-The check compares the tool list with the package's `TOOL_NAMES`, exercises
+The check verifies the research and archive tools, reopens a search result, exercises
 available research paths, confirms the selected release, checks useful SQL errors,
 rejects a write, and reads through two concurrent clients. Older fixtures retain
 explicit unavailable results. For final release qualification, add

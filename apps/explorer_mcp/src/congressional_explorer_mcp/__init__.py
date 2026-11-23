@@ -1,6 +1,9 @@
 """Congress research over the current archive release model."""
 __version__ = '0.6.7'
 
+# Registered by the hosted profile when it has a SpicyEngine origin.
+ARCHIVE_SEARCH_TOOLS = frozenset({'search_docs', 'read_section', 'docs_health'})
+
 # Shared by shipped launch checks and transport tests. Adding a public tool must
 # update the same declared surface that installed and hosted checks verify.
 TOOL_NAMES = frozenset({
