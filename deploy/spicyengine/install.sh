@@ -26,3 +26,5 @@ ln -sfn "$target" /opt/spicyengine/congress-current.next
 mv -Tf /opt/spicyengine/congress-current.next /opt/spicyengine/congress-current
 install -m 0644 "$assets/search.env" /etc/spicyengine/search.env
 install -m 0755 "$assets/update.sh" /usr/local/sbin/spicyengine-update
+install -m 0644 "$assets/spicyengine-update.service" "$assets/spicyengine-update.timer" /etc/systemd/system/
+systemctl daemon-reload

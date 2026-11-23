@@ -230,7 +230,7 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
         ready = prepare(origin, work, pin, local)
         definition = {"input": {"parquet": str(work / "serving" / "*.parquet")}, "text_storage": "source",
                       "excerpt_key": "text_sha256",
-                      "label": f"Congressional archive · {release[:12]}",
+                      "label": f"Congressional archive · {release[:12]}", "release_id": release,
                       "fields": FIELDS | {"listed_on": "listed_on", "pdf_url": "pdf_url"}}
         if work == legacy:
             # A completed v1 release keeps its index and immutable shards, including on restore.

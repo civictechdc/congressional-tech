@@ -16,6 +16,14 @@ preparation and indexing. To replay an earlier release, run
 `sudo spicyengine-update --pin /path/to/pin.json`. Copy that small file off
 the host to reproduce the selection after an upstream pointer change.
 
+After the first successful publication, enable regular updates with
+`sudo systemctl enable --now spicyengine-update.timer`. The timer checks every
+15 minutes using the same publisher and release lock. If the archive and text
+pointers disagree, the current index stays online and the next run retries.
+Inspect the latest attempt with `journalctl -u spicyengine-update.service`.
+Stop the timer before deliberately holding the host on an earlier pin.
+An exact release match is required for Congress Explorer’s hosted search tools.
+
 Pass `--source-dir /absolute/path` to reuse matching local `detail.parquet`,
 `sources.parquet` or `body_text.parquet`. The producer verifies supplied files
 in place. It verifies downloads while writing and releases its own download

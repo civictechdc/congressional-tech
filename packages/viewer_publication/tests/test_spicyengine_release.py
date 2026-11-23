@@ -61,6 +61,7 @@ def test_publication_replay(tmp_path, monkeypatch):
     child = by_key[b"87654321".hex()]
     assert child["listed_on"] is None and child["pdf_url"] == f"{release.ORIGIN}/bodies/sha256/ab/{body_key.hex()}"
     definition = json.loads((work / "dataset.json").read_text())
+    assert definition["release_id"] == release_id
     assert definition["excerpt_key"] == "text_sha256" and primary["text_sha256"] == (b"X"*32).hex()
     assert definition["fields"]["listed_on"] == "listed_on" and definition["fields"]["pdf_url"] == "pdf_url"
     assert "source_links" not in definition and not (work / "source-links.parquet").exists()
