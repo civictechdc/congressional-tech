@@ -12,7 +12,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from congress_docmeta import cli, hygiene_and_line_parsers_v6, parquet_runner_v6, pythonic_v6
+from congress_docmeta import CANONICAL_CROQ_KINDS, cli, hygiene_and_line_parsers_v6, parquet_runner_v6, pythonic_v6
 from congress_docmeta.grammar_router_ane_v6 import PreDecodeGrammarRouterV6
 from congress_docmeta.pythonic_v5 import (
     _salvage_truncated_docmeta_v4,
@@ -197,7 +197,7 @@ def test_clean_budget_repair_vs_structural_corruption_wipe(
     assert out_rows[2]["status"] == "stub_or_blank"
 
 
-def test_tier1_transcript_ttf_prefix_and_grammar_router_lock_clearing() -> None:
+def test_tier1_transcript_ttf_prefix_and_grammar_router_lock_clearing(tmp_path: Path) -> None:
     transcript_txt = (
         "Diversified Reporting Services, Inc. RPTS\n"
         "HOUSE COMMITTEE ON ENERGY AND COMMERCE\n"
@@ -229,7 +229,38 @@ def test_tier1_transcript_ttf_prefix_and_grammar_router_lock_clearing() -> None:
     assert detect_new_tier1_signatures_v5("HHRG-115-SY00-Wstate-FriedmanPhDR-20170629.pdf", wstate_txt) == []
 
     # PreDecodeGrammarRouterV6 must respect cleared pmeta["tier1_target_kind"] = None even when row has stale locked_primary_kind
-    router = PreDecodeGrammarRouterV6(mode="fast")
+    import numpy as np
+
+    art_dir = tmp_path / "router_artifacts"
+    art_dir.mkdir(parents=True, exist_ok=True)
+    classes = list(CANONICAL_CROQ_KINDS) + ["status:stub_or_blank", "status:garbled_ocr"]
+    dim = 4096
+    rng = np.random.default_rng(12345)
+    W = rng.normal(0.0, 0.002, size=(len(classes), dim)).astype(np.float16)
+    b = np.zeros((len(classes),), dtype=np.float32)
+    for st_cls in ("status:stub_or_blank", "status:garbled_ocr"):
+        b[classes.index(st_cls)] = -15.0
+    np.savez(
+        art_dir / "router_v63_linear.npz",
+        W_f16=W,
+        b_f32=b,
+        classes=np.asarray(classes),
+        dim=np.asarray(dim, dtype=np.int32),
+        temperature=np.asarray(1.0, dtype=np.float32),
+    )
+    (art_dir / "router_v63_calibration.json").write_text(
+        json.dumps(
+            {
+                "fusion_linear_alpha": 0.45,
+                "ane_choice_temperature": 1.0,
+                "fast_linear_tau_top1": 0.90,
+                "fast_linear_tau_top2": 0.90,
+                "fast_linear_tau_top3": 0.93,
+            }
+        ),
+        encoding="utf-8",
+    )
+    router = PreDecodeGrammarRouterV6(mode="fast", artifacts_dir=art_dir)
     decs = router.route_chunk(
         [
             {

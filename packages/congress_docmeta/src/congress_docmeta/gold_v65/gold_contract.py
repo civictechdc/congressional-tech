@@ -2143,7 +2143,7 @@ def removed_unstated(orig: dict[str, Any], new: dict[str, Any] | None, r: Row) -
 
 
 def check_signal(rows: list[Row], ctx: "Ctx") -> tuple[int, dict[str, str]]:
-    orig = ctx.cache.setdefault("original_labels", original_labels())
+    orig = ctx.cache["original_labels"] if "original_labels" in ctx.cache else ctx.cache.setdefault("original_labels", original_labels())
     out, checked = {}, 0
     for r in rows:
         if r.split not in EXPORTED_SPLITS or r.lk not in orig or r.label is None:
@@ -2166,7 +2166,7 @@ def date_written(value: str, v: View) -> bool:
 
 
 def check_dates_kept(rows: list[Row], ctx: "Ctx") -> tuple[int, dict[str, str]]:
-    orig = ctx.cache.setdefault("original_labels", original_labels())
+    orig = ctx.cache["original_labels"] if "original_labels" in ctx.cache else ctx.cache.setdefault("original_labels", original_labels())
     out, checked = {}, 0
     for r in rows:
         if r.split not in EXPORTED_SPLITS or r.lk not in orig or not usable_or_masthead(r):
@@ -2451,7 +2451,7 @@ DATASET_RULES = [
     Rule("D09_blind_set_overlap", "dataset", "error", "Blind sets (val48, docs8) are never trained on or re-tested.",
          "No non-blind row matches a blind doc by the gold gate's keys or the trainer's load_blind_keys (rows the "
          "trainer would drop silently).", "Blind docs re-posted with different text heads.",
-         lambda rows, ctx: (len(rows), {**ctx.cache.setdefault("blind_trainer", blind_overlap_trainer_keys(rows)),
+         lambda rows, ctx: (len(rows), {**(ctx.cache["blind_trainer"] if "blind_trainer" in ctx.cache else ctx.cache.setdefault("blind_trainer", blind_overlap_trainer_keys(rows))),
                                         **ctx.label_errors.get("D09_blind_set_overlap", {})})),
     Rule("D10_no_think_or_empty_body", "dataset", "error", "Training prompts are what production sends.",
          "No prompt or training text contains <|think|> or [EMPTY_BODY].", "Other template tokens.",
