@@ -1,0 +1,1935 @@
+{
+ "version": 1,
+ "base_release_id": "7d16a4d5b93102beaf54c525dcadd9e446ed33187f6ae7a36786bc8303b4abf7",
+ "candidate_release_id": "453351a3a57bdd28031a43de218832f5cd8b89c30048bc04354aaba37b337c47",
+ "notes": {
+  "identifiers": [
+   {
+    "statement": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+    "decision": "ct-9vwc"
+   }
+  ]
+ },
+ "groups": [
+  {
+   "id": "bill_actions.parquet|added keys|no evidence given",
+   "count": 979,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed action_code|value differs on matched key",
+   "count": 657,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed action_date|value differs on matched key",
+   "count": 705,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed action_text|value differs on matched key",
+   "count": 802,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed action_time|value differs on matched key",
+   "count": 305,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed action_type|value differs on matched key",
+   "count": 553,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed is_latest_action|value differs on matched key",
+   "count": 19,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed recorded_vote_count|value differs on matched key",
+   "count": 22,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed source_generation|value differs on matched key",
+   "count": 932877,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed source_reference|value differs on matched key",
+   "count": 932877,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed source_system_name|value differs on matched key",
+   "count": 512,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed stage|value differs on matched key",
+   "count": 584,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|added bills|unexplained",
+   "count": 132,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|removed bills|unexplained",
+   "count": -1,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed amendments|value differs on matched key",
+   "count": 235,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed cbo_estimates|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed committee_activities|value differs on matched key",
+   "count": 71,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed committees|value differs on matched key",
+   "count": 18,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed cosponsor_count|value differs on matched key",
+   "count": 420,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed floor_votes|value differs on matched key",
+   "count": 24,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed latest_action_date|value differs on matched key",
+   "count": 88,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed latest_action_text|value differs on matched key",
+   "count": 89,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed policy_area|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed public_law_number|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed related_bills|value differs on matched key",
+   "count": 250,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed short_title|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed source_update_including_text|value differs on matched key",
+   "count": 952,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed source_updated_at|value differs on matched key",
+   "count": 930,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed stage|value differs on matched key",
+   "count": 76,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed subjects|value differs on matched key",
+   "count": 50,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed title|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "capture_scope.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 222,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed committee_keys|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_source|value differs on matched key",
+   "count": 14,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_status|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed meeting_keys|value differs on matched key",
+   "count": 14,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 160,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 160,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed witness_keys|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 222,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 222,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed committee_keys|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date_status|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed meeting_keys|value differs on matched key",
+   "count": 14,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 160,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed witness_keys|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 60,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 124,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 96,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 96,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome|value differs on matched key",
+   "count": 8,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_basis|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_reason|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_source_reference|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed subject_keys|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed transcripts|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "member_votes.parquet|added keys|no evidence given",
+   "count": 7928,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "member_votes.parquet|changed source_generation|value differs on matched key",
+   "count": 10561417,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "member_votes.parquet|changed source_reference|value differs on matched key",
+   "count": 10561417,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|added keys|no evidence given",
+   "count": 562,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed committee_activities|value differs on matched key",
+   "count": 85,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed committees|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed floor_votes|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed latest_action_date|value differs on matched key",
+   "count": 87,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed latest_action_text|value differs on matched key",
+   "count": 87,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed source_updated_at|value differs on matched key",
+   "count": 109,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed transcripts|value differs on matched key",
+   "count": 17,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed appearance_count|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed hearing_count|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed last_seen_date|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed positions|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed witness_keys|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|removed keys|no evidence given",
+   "count": -54,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 101,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed note|value differs on matched key",
+   "count": 86,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 87,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 36,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 26,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 81,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|added keys|no evidence given",
+   "count": 36,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed bill_id|value differs on matched key",
+   "count": 72,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed bill_references|value differs on matched key",
+   "count": 11726,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|added subfield documents[].nomination_id|subfield new in the candidate, set on matched rows",
+   "count": 918,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed majority_requirement|value differs on matched key",
+   "count": 691,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed modify_date|value differs on matched key",
+   "count": 691,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed source_generation|value differs on matched key",
+   "count": 30702,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed source_reference|value differs on matched key",
+   "count": 30702,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed tie_breaker_by_whom|value differs on matched key",
+   "count": 7,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed tie_breaker_vote|value differs on matched key",
+   "count": 7,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed vote_question_text|value differs on matched key",
+   "count": 691,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed vote_title|value differs on matched key",
+   "count": 691,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "schema.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 222,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 1142,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 1142,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 1236,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 2049,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed capture_disposition|value differs on matched key",
+   "count": 22,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed capture_reason|value differs on matched key",
+   "count": 22,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 2049,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 1985,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 1917,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 1903,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 1904,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 2069,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 71,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 312,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|added keys|no evidence given",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed details_checked_at|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed duration_seconds|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed record_sha|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed event_id|value differs on matched key",
+   "count": 23,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed occasion|value differs on matched key",
+   "count": 23,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed person_key|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed superseded_by|value differs on matched key",
+   "count": 23,
+   "disposition": "explained",
+   "cause": "Combines PR #212 (ct-9vwc: match House committee pages by hearing date instead of page date, removing 54 false recording_matches and re-attributing 81 recordings / 23 witnesses), PR #233 (T14a: sync live spicy-regs pins for amendments, bill-family, members, nominations, and repaired 118th Senate roll-call-votes adding +979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 918 documents[].nomination_id links, and schema.json; T17: exclude WordPress /wp-json/ junk in capture_scope.json removing 87 verified unattempted URLs), PR #232 (jjec00 Senate routing), and daily capture receipts from run 45409095781 (ea2aae44 GPO transcripts, 0bd354fa YouTube report, Congress.gov updates: +222 documents/links/sources, +312 urls, +2 meetings, +6 videos, +11 verified person_aliases).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  }
+ ]
+}
