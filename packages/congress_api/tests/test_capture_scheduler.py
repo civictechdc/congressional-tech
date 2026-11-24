@@ -239,6 +239,36 @@ def test_scope_registry_refuses_credentials_private_addresses_and_traps():
     assert not private('https://docs.house.gov/meetings/a.pdf')
 
 
+def test_capture_policy_sql_and_wordpress_scope(tmp_path):
+    from congress_api.acquisition.capture_scheduler import CapturePolicy
+    from congress_api.retention.provenance import json_input, parquet_output, run_job
+    path=Path(__file__).resolve().parents[3]/'model/registries/capture-scope.json'
+    policy=CapturePolicy(path,resolve=lambda _:['8.8.8.8'])
+    cases=[
+        ('https://www.finance.senate.gov/wp-json/oembed/1.0/embed?url=x', None),
+        ('https://www.finance.senate.gov/wp-json/yoast/v1/get_head?url=x', None),
+        ('https://foreignaffairs.house.gov/wp-json/popup-maker/v1/popups', None),
+        ('https://www.judiciary.senate.gov/wp-json/wp/v2/wp_pattern_category', None),
+        ('https://www.judiciary.senate.gov/wp-json/wp/v2/wp_pattern_category/12', None),
+        ('https://www.banking.senate.gov/wp-json/wp/v2/types', 'senate/pages'),
+        ('https://www.appropriations.senate.gov/wp-json/wp/v2/meeting?per_page=100', 'senate/pages'),
+        ('https://www.hsgac.senate.gov/wp-json/wp/v2/hearings_bmfwra?per_page=100', 'senate/pages'),
+        ('https://www.hsgac.senate.gov/wp-json/wp/v2/hearings_invest?per_page=100', 'senate/pages'),
+    ]
+    for url, expected in cases:
+        assert policy.pattern_family(url) == expected
+    run_job(
+        tmp_path/'job',
+        engine(),
+        inputs=[json_input(tmp_path, 'urls', [{'url': url} for url, _ in cases], url='Utf8')],
+        steps=[],
+        outputs=[parquet_output(tmp_path, 'matched', f"SELECT url,{policy.sql('url')} AS family FROM urls", ['url'])],
+        queries=[],
+    )
+    actual={row['url']: row['family'] for row in pq.read_table(tmp_path/'matched.parquet').to_pylist()}
+    assert actual == dict(cases)
+
+
 def test_provider_fallback_keeps_both_attempts_and_budget_accounting(tmp_path):
     from congress_api.acquisition.capture_scheduler import run_capture
     from congress_api.acquisition.admission import Admission

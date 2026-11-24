@@ -200,6 +200,7 @@ SPICY_SCHEMAS={
         documents=list_of(struct(congress='Int32',type='Utf8',number='Utf8')),
     ),
     'spicy_nominations':dict(
+        nomination_id='Utf8',
         congress='Int32',number='Int32',part_number='Utf8',
         description='Utf8',organization='Utf8',received_date='Utf8',
         latest_action_date='Utf8',latest_action_text='Utf8',update_date='Utf8',
@@ -216,7 +217,7 @@ SPICY_SCHEMAS['spicy_member_votes']=BALLOT_SCHEMA
 SPICY_SCHEMAS['spicy_roll_call_votes'].update(VOTE_EXTRA)
 SPICY_SCHEMAS['spicy_roll_call_votes'].update(congress='Utf8',session='Utf8',roll_number='Utf8',yea='Int64',nay='Int64')
 # Preserve the full source document reference, including its names and titles.
-SPICY_SCHEMAS['spicy_roll_call_votes']['documents']=list_of(struct(congress='Int64',name='Utf8',number='Utf8',short_title='Utf8',title='Utf8',type='Utf8'))
+SPICY_SCHEMAS['spicy_roll_call_votes']['documents']=list_of(struct(congress='Int64',name='Utf8',nomination_id='Utf8',number='Utf8',short_title='Utf8',title='Utf8',type='Utf8'))
 
 CHANNEL_DIRECTORY=Path('packages/congress_shared/src/congress_shared/youtube/youtube-accounts.csv')
 
