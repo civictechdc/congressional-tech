@@ -29,6 +29,10 @@ or the directory's display name where it has no name history. Earlier names are
 searchable and selections keep their original committee IDs. The first update of
 an existing release reads only its committee ID column and the pinned directory.
 
+The search filters and archive viewer share the document classification vocabulary in
+`packages/congress_shared/src/congress_shared/data/document-classifications.json`.
+The search release publishes its display names and definitions as filter metadata.
+
 Pass `--source-dir /absolute/path` to reuse matching local `detail.parquet`,
 `sources.parquet`, `committees.parquet` or `body_text.parquet`. The producer verifies supplied files
 in place. It verifies downloads while writing and releases its own download
