@@ -71,10 +71,5 @@
       "sha256": "5a5a8bb9c7095c9ebd6f4a8fcee848548294e9736674b0d42e01d5e1633ac065",
       "size": 2105
     }
-  },
-  "release_causes": {
-    "path": "release-causes/109aa12c8595-7d16a4d5b931.json",
-    "sha256": "8d4f3891d02dbd1ad6676d750c7be2762f8b5d52b12aff291698c4dbb34df9f2",
-    "size": 89119
   }
 }

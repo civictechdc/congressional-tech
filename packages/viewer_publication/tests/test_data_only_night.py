@@ -213,6 +213,105 @@ def test_daily_qualification_provenance_may_grow_while_decisions_and_removed_led
     assert any('cites unknown receipts' in r for r in ru_reasons)
 
 
+def test_daily_unreadable_provenance_may_grow_only_for_bounded_automated_additions(tmp_path, releases):
+    """Daily ingest may append bounded automated producer unreadable ledgers on a data-only night."""
+    import hashlib
+    from congress_api.retention.provenance import file_pin
+    from viewer_publication.data_only_night import UNREADABLE_RECORDS
+
+    base = releases('ubase', ['t'] * 1000, ['n'] * 200 + [None] * 800)
+    cand = releases('ucand', ['t'] * 1000, ['n'] * 200 + [None] * 800)
+    u_key_1 = 'provenance/unreadable/readings-20261116.jsonl'
+    u_key_2 = 'provenance/unreadable/readings-20261122.jsonl'
+
+    def write_ledger(name, rows):
+        p = tmp_path / name
+        raw = b''.join((json.dumps(r, sort_keys=True, separators=(',', ':')) + '\n').encode() for r in rows)
+        p.write_bytes(raw)
+        return p, '"' + hashlib.md5(raw).hexdigest() + '"'
+
+    def row(idx, *, decided_by='readings', supersedes=None, reason='parser_timeout'):
+        return dict(
+            id=f'unr-{idx:04d}',
+            body_sha256=f'{idx + 1:064x}',
+            parser='html',
+            parser_version='v1',
+            reason=reason,
+            decided_by=decided_by,
+            decided_at='2026-11-22T12:00:00Z',
+            supersedes=supersedes,
+        )
+
+    u_path_2, etag_2 = write_ledger('u2.jsonl', [row(1)])
+    live_prov = [*INPUTS['provenance'], dict(key=u_key_1, etag='"' + 'a' * 32 + '"')]
+    cand_prov = [*live_prov, dict(key=u_key_2, etag=etag_2)]
+    val = report(group('list.parquet', 'changed title', 5))
+
+    entries, reasons, facts = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=cand_prov),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        unreadable_files=[dict(key=u_key_2, path=str(u_path_2), **file_pin(u_path_2))],
+    )
+    assert reasons == [] and len(entries) == 1
+    assert facts['added_unreadable_files'] == [u_key_2]
+    assert facts['caps']['unreadable_records'] == UNREADABLE_RECORDS
+
+    # Dropping or mutating an existing live unreadable ledger stops the night.
+    _, dropped_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*INPUTS['provenance'], dict(key=u_key_2, etag=etag_2)]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+    )
+    assert dropped_reasons == ['data-only night: the candidate differs from the live release in provenance']
+
+    # Missing verified local file or ETag mismatch stops the night.
+    _, missing_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=cand_prov),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+    )
+    assert any('lacks verified files' in r for r in missing_reasons)
+
+    _, mismatch_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*live_prov, dict(key=u_key_2, etag='"' + 'b' * 32 + '"')]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        unreadable_files=[dict(key=u_key_2, path=str(u_path_2), **file_pin(u_path_2))],
+    )
+    assert any('do not match candidate ETag' in r for r in mismatch_reasons)
+
+    # Superseding/withdrawing prior unreadable decisions stops the night.
+    u_sup, etag_sup = write_ledger('u-sup.jsonl', [row(2, supersedes='unr-0001', reason='withdrawn')])
+    _, sup_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*live_prov, dict(key=u_key_2, etag=etag_sup)]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        unreadable_files=[dict(key=u_key_2, path=str(u_sup), **file_pin(u_sup))],
+    )
+    assert any('supersedes or withdraws' in r for r in sup_reasons)
+
+    # Non-automated writer (e.g., owner decision) stops the night.
+    u_owner, etag_owner = write_ledger('u-owner.jsonl', [row(3, decided_by='owner')])
+    _, owner_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*live_prov, dict(key=u_key_2, etag=etag_owner)]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        unreadable_files=[dict(key=u_key_2, path=str(u_owner), **file_pin(u_owner))],
+    )
+    assert any('not written by an automated producer' in r for r in owner_reasons)
+
+    # Exceeding the per-night cap stops the night.
+    u_big, etag_big = write_ledger('u-big.jsonl', [row(i) for i in range(UNREADABLE_RECORDS + 1)])
+    _, big_reasons, _ = data_only_causes(
+        val, candidate_record=dict(INPUTS, provenance=[*live_prov, dict(key=u_key_2, etag=etag_big)]),
+        live_records=[live(provenance=live_prov)],
+        candidate_receipt_keys=[*LIVE_KEYS, *NIGHT], base_dir=base, candidate_dir=cand,
+        unreadable_files=[dict(key=u_key_2, path=str(u_big), **file_pin(u_big))],
+    )
+    assert any(f'more than the {UNREADABLE_RECORDS}' in r for r in big_reasons)
+
+
 def test_any_kept_input_of_the_live_release_with_the_same_inputs_serves_and_every_kept_receipt_counts_as_live(decide):
     older = live(keys=['receipts/documents/2026-11-15/z.jsonl.gz'], entity_digests={'members': 'o' * 64})
     value = report(group('list.parquet', 'added rows', 2, 'no surviving link key'))

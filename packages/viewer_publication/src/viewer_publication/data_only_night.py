@@ -41,6 +41,8 @@ not apply on this path. The link rule, the model's invariants and completeness
 checks, and the contract and canary gates run as on any night.
 """
 from collections import Counter, defaultdict
+import hashlib
+import json
 from pathlib import Path
 
 GROUP_SHARE, GROUP_FLOOR = 0.02, 50
@@ -69,6 +71,11 @@ RECAPTURED_PAGES = 100
 REMOVED_RECORDING_MATCHES = 20
 # Run 44737429192 attributed at most four unlinked videos to one committee receipt.
 UNLINKED_PER_RECEIPT = 20
+UNREADABLE_RECORDS = 100
+AUTOMATED_UNREADABLE_PRODUCERS = frozenset({
+    'appearance_records', 'body_text', 'committee_records', 'filename_readings',
+    'meeting_records', 'playlist_records', 'readings', 'transcript_headings', 'video_records',
+})
 UNLINKED_RECORDINGS_ID = 'recordings.parquet|added keys|empty event_ids; source not traced'
 RECORDING_MATCH_REMOVAL_ID = 'recording_matches.parquet|removed keys|no evidence given'
 # A page: saved as HTML, with a title read from the page itself. A PDF's title is its listing's
@@ -80,7 +87,7 @@ DATA_ONLY_CAUSE = ("data-only night: built by the live release's definition and 
 
 
 def _provenance_compatible(candidate_prov, live_prov):
-    """Decision provenance must match; receipt-bound qualification provenance may only grow."""
+    """Decision provenance must match; receipt-bound qualification and automated unreadable provenance may only grow."""
     if candidate_prov == live_prov:
         return True
     if not isinstance(candidate_prov, list) or not isinstance(live_prov, list):
@@ -88,28 +95,72 @@ def _provenance_compatible(candidate_prov, live_prov):
     from viewer_publication.archive_model_job import provenance_etag_md5, provenance_record_kind
 
     def split_prov(items):
-        other, quals = [], {}
+        other, append_only = [], {}
         for item in items:
             if not isinstance(item, dict) or not isinstance(item.get('key'), str) or not isinstance(item.get('etag'), str):
                 return None
-            if provenance_record_kind(item['key']) == 'qualifications':
+            if provenance_record_kind(item['key']) in ('qualifications', 'unreadable'):
                 try:
                     md5 = provenance_etag_md5(item['etag'])
                 except ValueError:
                     return None
-                if item['key'] in quals and quals[item['key']] != md5:
+                if item['key'] in append_only and append_only[item['key']] != md5:
                     return None
-                quals[item['key']] = md5
+                append_only[item['key']] = md5
             else:
                 other.append(item)
-        return other, quals
+        return other, append_only
 
     cand_split, live_split = split_prov(candidate_prov), split_prov(live_prov)
     if cand_split is None or live_split is None:
         return False
-    cand_other, cand_quals = cand_split
-    live_other, live_quals = live_split
-    return cand_other == live_other and all(cand_quals.get(k) == v for k, v in live_quals.items())
+    cand_other, cand_append = cand_split
+    live_other, live_append = live_split
+    return cand_other == live_other and all(cand_append.get(k) == v for k, v in live_append.items())
+
+
+def _unreadable_reasons(added_keys, cand_etags, unreadable_files):
+    """Allow append-only, content-verified automated producer unreadable decisions up to UNREADABLE_RECORDS."""
+    from congress_api.retention.provenance import validate_provenance
+    from viewer_publication.archive_model_job import provenance_etag_md5
+
+    by_key = {item['key']: item for item in (unreadable_files or ())
+              if isinstance(item, dict) and isinstance(item.get('key'), str) and isinstance(item.get('path'), str)}
+    missing = sorted(set(added_keys) - set(by_key))
+    if missing:
+        return [f'data-only night: added unreadable provenance lacks verified files ({missing[:3]})']
+    total_rows = 0
+    for key in sorted(added_keys):
+        path = Path(by_key[key]['path'])
+        if not path.is_file():
+            return [f'data-only night: added unreadable provenance lacks verified files ({[key]})']
+        raw = path.read_bytes()
+        try:
+            expected_md5 = provenance_etag_md5(cand_etags[key])
+        except ValueError:
+            return ['data-only night: added unreadable provenance bytes do not match candidate ETag']
+        if hashlib.md5(raw).hexdigest() != expected_md5:
+            return ['data-only night: added unreadable provenance bytes do not match candidate ETag']
+        try:
+            lines = [line for line in raw.decode('utf-8').splitlines() if line.strip()]
+        except UnicodeDecodeError:
+            return ['data-only night: added unreadable provenance contains invalid records']
+        if not lines:
+            return ['data-only night: added unreadable provenance contains invalid records']
+        for line in lines:
+            try:
+                row = json.loads(line)
+                validate_provenance('unreadable', row)
+            except (ValueError, json.JSONDecodeError):
+                return ['data-only night: added unreadable provenance contains invalid records']
+            if row['supersedes'] is not None or row['reason'] == 'withdrawn':
+                return ['data-only night: added unreadable provenance supersedes or withdraws a prior decision']
+            if row['decided_by'] not in AUTOMATED_UNREADABLE_PRODUCERS:
+                return ['data-only night: added unreadable provenance was not written by an automated producer']
+            total_rows += 1
+    if total_rows > UNREADABLE_RECORDS:
+        return [f'data-only night: {total_rows} unreadable decisions were added, more than the {UNREADABLE_RECORDS} one unattended night may']
+    return []
 
 
 def _same_input(name, candidate_val, live_val):
@@ -574,7 +625,7 @@ def _prove_recording_changes(base_dir, candidate_dir, *, removed, expected, expe
 
 
 def data_only_causes(report, *, candidate_record, live_records, candidate_receipt_keys, base_dir, candidate_dir, link_proof=None,
-                     qualification_files=None, recording_page_proof=None):
+                     qualification_files=None, unreadable_files=None, recording_page_proof=None):
     """Cause entries for every failing group of a night only new receipts can explain.
 
     `live_records` are the live release's kept input records (`receipt_pins.kept_input_records`).
@@ -594,6 +645,7 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
     candidate = set(candidate_receipt_keys)
     new, groups = candidate - held, report['failing']
     reasons = [] if same else _input_reasons(candidate_record, live_records)
+    added_u_keys = []
     if same:
         from congress_api.retention.qualification_facts import load_qualification_facts
         from viewer_publication.archive_model_job import provenance_record_kind
@@ -614,6 +666,13 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
                 outside_q = sorted((loaded_q.get('all_receipt_keys') or set()) - candidate)
                 if outside_q:
                     reasons.append(f'data-only night: added qualification provenance cites unknown receipts ({outside_q[:3]})')
+        live_u_keys = {item['key'] for item in (same[-1]['record'].get('provenance') or ())
+                       if isinstance(item, dict) and provenance_record_kind(item.get('key')) == 'unreadable'}
+        cand_u_etags = {item['key']: item['etag'] for item in (candidate_record.get('provenance') or ())
+                        if isinstance(item, dict) and provenance_record_kind(item.get('key')) == 'unreadable'}
+        added_u_keys = sorted(set(cand_u_etags) - live_u_keys)
+        if added_u_keys:
+            reasons.extend(_unreadable_reasons(added_u_keys, cand_u_etags, unreadable_files))
     if held - candidate:
         reasons.append(f'data-only night: {len(held - candidate)} receipts the live release read are absent from the '
                        f'candidate (first {sorted(held - candidate)[:3]})')
@@ -650,7 +709,9 @@ def data_only_causes(report, *, candidate_record, live_records, candidate_receip
     facts = dict(version=1, profile_sha256=version_digest(packages={}, files={}, values=candidate_record['profile']),
                  live_input=same[-1]['key'], live_receipts=len(held), new_receipts=len(new), new_receipt_keys=sorted(new),
                  groups=len(groups), columns_compared=columns, proven_corrections=proven, **link_facts, **recording_facts,
+                 **(dict(added_unreadable_files=added_u_keys) if added_u_keys else {}),
                  caps=dict(unlinked_recordings_per_receipt=UNLINKED_PER_RECEIPT, recaptured_pages=RECAPTURED_PAGES, removed_recording_matches=REMOVED_RECORDING_MATCHES,
+                           unreadable_records=UNREADABLE_RECORDS,
                            group_share=GROUP_SHARE, group_floor=GROUP_FLOOR,
                            group_rows_per_receipt=GROUP_ROWS_PER_RECEIPT, file_rows_per_receipt=FILE_ROWS_PER_RECEIPT,
                            removal_share=REMOVAL_SHARE, removed_documents=REMOVED_DOCUMENTS,

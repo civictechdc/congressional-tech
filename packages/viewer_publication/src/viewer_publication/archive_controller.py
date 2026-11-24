@@ -391,24 +391,31 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             if manifest is not None:
                 from viewer_publication.recording_pages import verified_export
                 verified_export(result,Path(stage['scratch']))
-            automatic_qualifications=()
-            if automatic_causes and manifest is not None:
+            def retain_gate_files(prefix, pairs, default_key):
+                if not pairs:
+                    return ()
                 from congress_api.retention.derived_files import copy_checked
+                gate_dir=work/(prefix+uuid4().hex)
+                retained=[]
+                for idx,(spec_item,arg_item) in enumerate(pairs):
+                    src_path=Path(arg_item['path'])
+                    dest_path=gate_dir/f'{idx}-{src_path.name}'
+                    with src_path.open('rb') as src_file:
+                        owned=copy_checked(src_file,dest_path,size=spec_item['size'],
+                            expected=dict(bytes=spec_item['size'],sha256=spec_item['sha256']),
+                            key=spec_item.get('key',default_key),exclusive=True)
+                    retained.append(dict(spec_item,path=str(owned.path)))
+                return tuple(retained)
+
+            automatic_qualifications=()
+            automatic_unreadable=()
+            if automatic_causes and manifest is not None:
                 qual_pairs=[*zip(model_spec.get('qualification_files') or (),arguments.get('qualification_files') or ())]
                 if model_spec.get('body_qualifications') is not None and arguments.get('body_qualifications') is not None:
                     qual_pairs.append((model_spec['body_qualifications'],arguments['body_qualifications']))
-                if qual_pairs:
-                    gate_qual_dir=work/('gate-qualifications-'+uuid4().hex)
-                    retained_quals=[]
-                    for idx,(spec_item,arg_item) in enumerate(qual_pairs):
-                        src_path=Path(arg_item['path'])
-                        dest_path=gate_qual_dir/f'{idx}-{src_path.name}'
-                        with src_path.open('rb') as q_src:
-                            owned_q=copy_checked(q_src,dest_path,size=spec_item['size'],
-                                expected=dict(bytes=spec_item['size'],sha256=spec_item['sha256']),
-                                key=spec_item.get('key','body_qualifications'),exclusive=True)
-                        retained_quals.append(dict(spec_item,path=str(owned_q.path)))
-                    automatic_qualifications=tuple(retained_quals)
+                automatic_qualifications=retain_gate_files('gate-qualifications-',qual_pairs,'body_qualifications')
+                unreadable_pairs=[*zip(model_spec.get('unreadable_files') or (),arguments.get('unreadable_files') or ())]
+                automatic_unreadable=retain_gate_files('gate-unreadable-',unreadable_pairs,'unreadable_files')
         # Local custody must still hold after native consumption and before any
         # successful status, reader probe, release upload or input-record write.
         require_comparison(comparison_acceptance,captures=model_spec['captures'])
@@ -463,7 +470,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             selected_pointer_reconciled=check_current_daily is not None and selected_candidate,
             base_release=base_release,release_causes=release_causes,link_history_dirs=history,first_release=first_release,
             automatic_captures=model_spec['captures'] if automatic_causes else None,
-            automatic_qualifications=automatic_qualifications if automatic_causes else (),receipt_client=receipt_client,
+            automatic_qualifications=automatic_qualifications if automatic_causes else (),
+            automatic_unreadable=automatic_unreadable if automatic_causes else (),receipt_client=receipt_client,
             contract=lambda **context:contract(**context,probe_selectors=probe_selectors),
             canary=lambda **context:canary(**context,probe_selectors=probe_selectors))
     except BaseException as error:

@@ -480,7 +480,7 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
                       input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None,asset_journal=None,
                       base_release=None,release_causes=None,link_history_dirs=(),first_release=False,automatic_captures=None,
-                      automatic_qualifications=(),selected_pointer_reconciled=False,receipt_client=None):
+                      automatic_qualifications=(),automatic_unreadable=(),selected_pointer_reconciled=False,receipt_client=None):
     """Upload a pinned model candidate and use the existing reader gates and CAS.
 
     The caller owns actual model planning, completeness and early skip. This stage
@@ -583,7 +583,7 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
                         qualification_files=automatic_qualifications),
                     data_only=lambda value:data_only_causes(value,candidate_record=input_record,live_records=entries,
                         candidate_receipt_keys=receipt_keys,base_dir=base_release,candidate_dir=Path(release),
-                        qualification_files=automatic_qualifications,
+                        qualification_files=automatic_qualifications,unreadable_files=automatic_unreadable,
                         recording_page_proof=recording_pages,
                         # A page captured again at its own address is proven from the raw receipt that stored it.
                         link_proof=lambda rule,new:recaptured_pages(rule,base_release,Path(release),new_receipts=new,read_receipt=read_object,
