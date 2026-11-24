@@ -190,25 +190,28 @@ WITH sitting_rows AS (
 ), nomination_jacket_subjects AS (
  -- Source 5a (jacket part): confirmation hearing nominations matched by jacketNumber / jacket_number / package_id
  SELECT DISTINCT jr.event_id,
-  cast(n.congress AS VARCHAR)||'-pn-'||cast(n.number AS VARCHAR)||
-  CASE
-   WHEN n.part_number IS NOT NULL AND try_cast(n.part_number AS INT) IS NOT NULL AND try_cast(n.part_number AS INT)<>0
-    THEN '-'||regexp_replace(trim(n.part_number),'^0+','')
-   ELSE ''
-  END AS subject_key
+  coalesce(
+   nullif(lower(trim(n.nomination_id)),''),
+   cast(n.congress AS VARCHAR)||'-pn-'||cast(n.number AS VARCHAR)||
+   CASE
+    WHEN n.part_number IS NOT NULL AND try_cast(n.part_number AS INT) IS NOT NULL AND try_cast(n.part_number AS INT)<>0
+     THEN '-'||regexp_replace(trim(n.part_number),'^0+','')
+    ELSE ''
+   END
+  ) AS subject_key
  FROM jacket_rows jr
  JOIN meeting_records_merged m ON m.event_id=jr.event_id
  JOIN (
-  SELECT congress,number,part_number,
+  SELECT nomination_id,congress,number,part_number,
    try_cast(coalesce(
     (regexp_match(chunk,'(?i)"jacket(?:_?number)?"\s*:\s*"?([0-9]+)"?'))[1],
     (regexp_match(chunk,'CHRG-[0-9]+[hsj]hrg([0-9]+)'))[1]
    ) AS BIGINT) AS jacket
   FROM (
-   SELECT congress,number,part_number,
+   SELECT nomination_id,congress,number,part_number,
     unnest(string_to_array(hearings_json,'}')) AS chunk
    FROM spicy_nominations
-   WHERE congress IS NOT NULL AND number IS NOT NULL AND hearings_json IS NOT NULL
+   WHERE (nullif(trim(nomination_id),'') IS NOT NULL OR (congress IS NOT NULL AND number IS NOT NULL)) AND hearings_json IS NOT NULL
   )
  ) n ON n.jacket=jr.jacket AND (m.congress IS NULL OR m.congress=n.congress)
  WHERE n.jacket IS NOT NULL

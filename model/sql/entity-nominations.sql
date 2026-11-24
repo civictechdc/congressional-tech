@@ -2,14 +2,24 @@ WITH referenced_nominations AS (
  SELECT DISTINCT lower(trim(unnest(subject_keys))) AS nomination_id FROM meetings_export WHERE subject_keys IS NOT NULL
  UNION
  SELECT DISTINCT lower(trim(unnest(measure_keys))) AS nomination_id FROM ordered WHERE measure_keys IS NOT NULL
+), keyed_nominations_raw AS (
+ SELECT
+  coalesce(
+   nullif(lower(trim(sn.nomination_id)),''),
+   cast(sn.congress AS VARCHAR)||'-pn-'||cast(sn.number AS VARCHAR)||
+   CASE WHEN sn.part_number IS NOT NULL AND try_cast(sn.part_number AS INT) IS NOT NULL AND try_cast(sn.part_number AS INT)<>0
+        THEN '-'||regexp_replace(trim(sn.part_number),'^0+','') ELSE '' END
+  ) AS resolved_nomination_id,
+  sn.congress,sn.number,sn.part_number,sn.description,sn.organization,sn.received_date,
+  sn.latest_action_date,sn.latest_action_text,sn.update_date,sn.committee_activities,sn.hearings_json
+ FROM spicy_nominations sn
+ WHERE nullif(trim(sn.nomination_id),'') IS NOT NULL OR (sn.congress IS NOT NULL AND sn.number IS NOT NULL)
 ), keyed_nominations AS (
  SELECT
-  cast(congress AS VARCHAR)||'-pn-'||cast(number AS VARCHAR)||
-  CASE WHEN part_number IS NOT NULL AND try_cast(part_number AS INT) IS NOT NULL AND try_cast(part_number AS INT)<>0
-       THEN '-'||regexp_replace(trim(part_number),'^0+','') ELSE '' END AS nomination_id,
+  resolved_nomination_id AS nomination_id,
   congress,number,part_number,description,organization,received_date,
   latest_action_date,latest_action_text,update_date,committee_activities,hearings_json
- FROM spicy_nominations WHERE congress IS NOT NULL AND number IS NOT NULL
+ FROM keyed_nominations_raw
 ), matched_nominations AS (
  SELECT k.* FROM keyed_nominations k
  JOIN referenced_nominations r ON k.nomination_id=r.nomination_id
@@ -48,19 +58,22 @@ WITH referenced_nominations AS (
  WHERE v.documents IS NOT NULL AND lower(trim(v.chamber)) IN ('s','senate')
 ), pn_votes AS (
  SELECT DISTINCT
-  coalesce(cast(doc['congress'] AS VARCHAR),cast(vote_congress AS VARCHAR))||'-pn-'||
-  regexp_replace(
+  coalesce(
+   nullif(lower(trim(doc['nomination_id'])),''),
+   coalesce(cast(doc['congress'] AS VARCHAR),cast(vote_congress AS VARCHAR))||'-pn-'||
    regexp_replace(
-    regexp_replace(lower(trim(doc['number'])),'^(?:pn\s*)?0*([0-9]+)', '$1'),
-    '-0+([1-9][0-9]*)$','-$1'
-   ),
-   '-0+$',''
+    regexp_replace(
+     regexp_replace(lower(trim(doc['number'])),'^(?:pn\s*)?0*([0-9]+)', '$1'),
+     '-0+([1-9][0-9]*)$','-$1'
+    ),
+    '-0+$',''
+   )
   ) AS nomination_id,
   vote_id,
   coalesce(try_cast(vote_day AS DATE),cast(arrow_cast(try_cast(vote_day AS TIMESTAMP WITH TIME ZONE),'Timestamp(Second, Some("America/New_York"))') AS DATE)) AS vote_date,
   question,result,try_cast(yea AS SMALLINT) AS yea,try_cast(nay AS SMALLINT) AS nay
  FROM vote_docs
- WHERE upper(trim(doc['type']))='PN' AND doc['number'] IS NOT NULL
+ WHERE nullif(trim(doc['nomination_id']),'') IS NOT NULL OR (upper(trim(doc['type']))='PN' AND doc['number'] IS NOT NULL)
 ), pn_votes_matched AS (
  SELECT pv.*
  FROM pn_votes pv

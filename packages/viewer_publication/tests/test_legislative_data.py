@@ -67,3 +67,34 @@ def test_native_ordering_refuses_duplicate_ballots_before_publication(tmp_path):
     with pytest.raises(DocSpecFailure,match='export ordering keys are not unique'):
         run_job(tmp_path/'job',engine,inputs=[],steps=[],outputs=[parquet_output(tmp_path,'member_votes',sql,['vote_id','member_key'])],queries=[])
     assert not (tmp_path/'member_votes.parquet').exists()
+
+
+def test_roll_call_vote_nomination_id_direct_and_fallback(tmp_path):
+    from viewer_publication.archive_model import build_release
+    from test_phase2_model_entities import _stage_raw_fixture
+    engine=NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    staged=_stage_raw_fixture(tmp_path,engine,[dict(url='https://fixture.test/nom.html',format='html',data=b'<html><head><title>Hearing</title></head><body>'+b'Nomination testimony. '*100+b'</body></html>')])
+    meetings=[dict(record_sha='aa'*32,source='congress_gov',meetings=[dict(
+        event_id='340001',chamber='senate',congress=118,meeting_date='2024-09-10',
+        title='Nominations',status='Scheduled',meeting_type='HHRG',subject_keys=['118-pn-1748','118-pn-123'])])]
+    votes=[
+        dict(vote_id='118-senate-2-231',congress='118',chamber='senate',session='2',roll_number='231',
+             vote_day='2024-09-24',question='On the Nomination',result='Confirmed',yea=52,nay=45,
+             documents=[dict(congress=118,name='PN1748',nomination_id='118-pn-1748',number='1748',short_title=None,title='Adam B. Abelson',type='PN')]),
+        dict(vote_id='118-senate-1-99',congress='118',chamber='senate',session='1',roll_number='99',
+             vote_day='2023-05-18',question='On the Nomination',result='Confirmed',yea=55,nay=44,
+             documents=[dict(congress=118,type='PN',number='PN0123-00')]),
+    ]
+    noms=[
+        dict(nomination_id='118-pn-1748',congress=118,number=1748,part_number='00',description='Adam B. Abelson'),
+        dict(congress=118,number=123,part_number='00',description='Legacy Fallback'),
+    ]
+    build_release(**staged,meeting_records=meetings,appearance_records=[],
+        spicy_regs=spicy_input(spicy_roll_call_votes=votes,spicy_nominations=noms),
+        engine=engine,output=tmp_path/'release',scratch=tmp_path/'model')
+    by_id={row['nomination_id']:row for row in pq.read_table(tmp_path/'release/nominations.parquet').to_pylist()}
+    assert [v['vote_id'] for v in by_id['118-pn-1748']['floor_votes']]==['118-senate-2-231']
+    assert [v['vote_id'] for v in by_id['118-pn-123']['floor_votes']]==['118-senate-1-99']
+    exported={row['vote_id']:row for row in pq.read_table(tmp_path/'release/roll_call_votes.parquet').to_pylist()}
+    assert exported['118-senate-2-231']['documents'][0]['nomination_id']=='118-pn-1748'
+    assert exported['118-senate-1-99']['documents'][0]['nomination_id'] is None

@@ -131,18 +131,21 @@ WITH keys AS (
  FROM transcript_ranked GROUP BY event_id
 ), nomination_hearing_chunks AS (
  SELECT
-  cast(congress AS VARCHAR)||'-pn-'||cast(number AS VARCHAR)||
-  CASE
-   WHEN part_number IS NOT NULL AND try_cast(part_number AS INT) IS NOT NULL AND try_cast(part_number AS INT)<>0
-    THEN '-'||regexp_replace(trim(part_number),'^0+','')
-   ELSE ''
-  END AS nomination_id,
-  congress,
-  unnest(string_to_array(hearings_json,'}')) AS chunk
- FROM spicy_nominations
- WHERE congress IS NOT NULL AND number IS NOT NULL AND hearings_json IS NOT NULL
+  coalesce(
+   nullif(lower(trim(sn.nomination_id)),''),
+   cast(sn.congress AS VARCHAR)||'-pn-'||cast(sn.number AS VARCHAR)||
+   CASE
+    WHEN sn.part_number IS NOT NULL AND try_cast(sn.part_number AS INT) IS NOT NULL AND try_cast(sn.part_number AS INT)<>0
+     THEN '-'||regexp_replace(trim(sn.part_number),'^0+','')
+    ELSE ''
+   END
+  ) AS nom_key,
+  sn.congress,
+  unnest(string_to_array(sn.hearings_json,'}')) AS chunk
+ FROM spicy_nominations sn
+ WHERE (nullif(trim(sn.nomination_id),'') IS NOT NULL OR (sn.congress IS NOT NULL AND sn.number IS NOT NULL)) AND sn.hearings_json IS NOT NULL
 ), nomination_hearing_packages AS (
- SELECT DISTINCT nomination_id,
+ SELECT DISTINCT nom_key AS nomination_id,
   coalesce(
    (regexp_match(chunk,'(?i)"package_?id"\s*:\s*"([^"]+)"'))[1],
    (regexp_match(chunk,'(CHRG-[0-9]+[hsj]hrg[0-9]+)'))[1],
