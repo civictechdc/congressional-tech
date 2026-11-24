@@ -198,7 +198,9 @@ jobs:
         if: ${{ always() && steps.publisher_binding.outputs.publisher_work != '' }}
         run: |
           for summary in "${{ steps.publisher_binding.outputs.publisher_work }}"/candidate-*/release-gate-summary.md; do
-            [ -f "$summary" ] && cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+            if [ -f "$summary" ]; then
+              cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+            fi
           done
       # ct-pz32: the hosted MCP follows the pointer by itself (apps/explorer_mcp/cloudflare). It
       # re-reads the pointer within a minute and a fresh container needs up to 90 s, so a release

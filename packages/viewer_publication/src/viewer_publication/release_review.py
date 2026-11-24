@@ -255,6 +255,10 @@ def write_review_samples(report, base_dir, candidate_dir, out_path, *, max_per_g
     return payload
 
 
+def _md_cell(value) -> str:
+    return re.sub(r'\s+', ' ', str(value or '')).strip().replace('|', '\\|')
+
+
 def _removed_examples_for_file(file_name: str, report: dict, samples: dict | None, limit=3) -> str:
     tables = (samples or {}).get('tables', {})
     removed = (tables.get(file_name) or {}).get('removed') or []
@@ -262,12 +266,12 @@ def _removed_examples_for_file(file_name: str, report: dict, samples: dict | Non
         rendered = []
         for row in removed[:limit]:
             # Show key + first context value when compact
-            items = [f'{k}={v}' for k, v in row.items() if v is not None]
+            items = [f'{k}={_md_cell(v)}' for k, v in row.items() if v is not None]
             rendered.append('`' + ', '.join(items[:2]) + '`')
         return '; '.join(rendered)
     notes = (report.get('files', {}).get(file_name) or {}).get('removed_keys') or []
     if notes:
-        return '; '.join('`' + _format_key(item) + '`' for item in notes[:limit])
+        return '; '.join('`' + _md_cell(_format_key(item)) + '`' for item in notes[:limit])
     return '—'
 
 
@@ -337,10 +341,10 @@ def render_review_summary(report, *, samples=None, record=None) -> str:
         for g in red_flags:
             gid = _group_id(g)
             ex = _removed_examples_for_file(g['file'], report, samples) if g.get('count', 0) < 0 else '—'
-            cause = (causes_by_id.get(gid) or {}).get('cause') or g.get('cause', '')
+            cause = _md_cell((causes_by_id.get(gid) or {}).get('cause') or g.get('cause', ''))
             if len(cause) > 140:
                 cause = cause[:137] + '...'
-            lines.append(f"| `{g['file']}` | {g['group']} | {g['count']:,} | {g.get('status', '')} | {ex} | {cause} |")
+            lines.append(f"| `{_md_cell(g['file'])}` | {_md_cell(g['group'])} | {g['count']:,} | {_md_cell(g.get('status', ''))} | {ex} | {cause} |")
         lines.append('')
 
     lines += ['## 2. Content Changes to Spot-Check', '']
@@ -369,14 +373,14 @@ def render_review_summary(report, *, samples=None, record=None) -> str:
                     direction = f"{cinfo['none_to_val']:,} filled, {cinfo['val_to_none']:,} cleared, {cinfo['val_to_val']:,} modified"
                     ex_list = cinfo.get('samples') or []
                     ex = (
-                        f"`{ex_list[0]['key']}`: `{ex_list[0]['before']}` → `{ex_list[0]['after']}`"
+                        f"`{_md_cell(ex_list[0]['key'])}`: `{_md_cell(ex_list[0]['before'])}` → `{_md_cell(ex_list[0]['after'])}`"
                         if ex_list
                         else '—'
                     )
                 else:
-                    direction = g.get('cause', '')
+                    direction = _md_cell(g.get('cause', ''))
                     ex = '—'
-                lines.append(f"| {g['group']} | {g['count']:,} | {direction} | {ex} |")
+                lines.append(f"| {_md_cell(g['group'])} | {g['count']:,} | {direction} | {ex} |")
             lines.append('')
 
     if mechanical:

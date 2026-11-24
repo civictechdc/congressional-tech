@@ -150,6 +150,7 @@ def main(argv=None, root=ROOT):
                             record = candidate
             rendered = render_review_summary(report, samples=samples, record=record)
             if out_path is not None:
+                out_path.parent.mkdir(parents=True, exist_ok=True)
                 out_path.write_text(rendered)
             else:
                 sys.stdout.write(rendered)

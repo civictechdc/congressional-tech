@@ -117,10 +117,28 @@ def test_render_review_summary_works_on_stopped_night_fixture_and_cli(tmp_path):
     ev_dir = tmp_path / 'ev/candidate-1'
     ev_dir.mkdir(parents=True)
     (ev_dir / 'release-gate.json').write_text(json.dumps(report))
-    out_md = tmp_path / 'summary.md'
+    out_md = tmp_path / 'nested/summary.md'
     assert cause_record.main(['summarize', '--evidence', str(tmp_path / 'ev'), '--out', str(out_md)]) == 0
     text = out_md.read_text()
     assert '## At a Glance' in text and '0 broken, changed, or demoted live links' in text
+
+    # Pipes and newlines inside table cell values must never break GFM table columns.
+    esc = render_review_summary(
+        {
+            'base_release': 'a' * 64,
+            'candidate_release': 'b' * 64,
+            'link_rule': {'ok': True},
+            'files': {'bills.parquet': {'rows': {'base': 1, 'candidate': 1}, 'delta': 0, 'groups': [
+                {'group': 'changed title', 'cause': 'val', 'count': 1, 'status': 'unverified', 'value': True},
+            ]}},
+            'failing': [{'file': 'bills.parquet', 'group': 'changed title', 'cause': 'line1\nwith | pipe', 'count': 1, 'status': 'unverified', 'value': True}],
+        },
+        samples={'tables': {'bills.parquet': {'changed_columns': {'title': {
+            'none_to_val': 0, 'val_to_none': 0, 'val_to_val': 1,
+            'samples': [{'key': 'k|1', 'before': 'a | b', 'after': 'c\nd|e'}],
+        }}}}},
+    )
+    assert '\\|' in esc and 'c d\\|e' in esc
 
 
 def test_require_release_gates_writes_summary_and_samples_on_stop(tmp_path, monkeypatch):
