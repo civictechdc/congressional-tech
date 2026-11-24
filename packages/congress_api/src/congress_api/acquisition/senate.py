@@ -74,6 +74,12 @@ WITNESS_FIELDS = "event_id name position organization page location".split()
 DOCUMENT_FIELDS = "event_id kind name url page source_labels witness_indexes witness_names".split()
 
 
+# Congress.gov assigns Joint Economic Committee meetings to jjec00, while
+# parsers.senate_page.SITE keys jec.senate.gov under jsec00. Keep the alias
+# outside byte-hashed parsers/senate_page.py.
+SENATE_SITE = {**SITE, "jjec00": SITE["jsec00"]}
+
+
 # Pages newly failing with none answering 200 or 404 make a host outage, not page outcomes.
 OUTAGE_MIN_FAILURES = 3
 OUTAGE_STOP_AFTER = 10
@@ -309,9 +315,11 @@ def main(meetings, state_dir, output_dir, seed_cache=None, offline=False, as_of=
     state, totals = normalize_senate_state(read_state(path)), collections.Counter()
     versions = collections.defaultdict(dict)
     for m in ms:
-        codes = codes_of(m)
-        if m.get("chamber") != "House" and codes and codes[0] in SITE:
-            versions[SITE[codes[0]]][m["eventId"]] = m.get("updateDate", "")
+        if m.get("chamber") == "House":
+            continue
+        for code in codes_of(m):
+            if host := SENATE_SITE.get(code.lower()):
+                versions[host][m["eventId"]] = m.get("updateDate", "")
     for host in site or ():
         versions.setdefault(host, {})
     maintenance = refresh_urls(state, versions, as_of, refresh_limit, site)

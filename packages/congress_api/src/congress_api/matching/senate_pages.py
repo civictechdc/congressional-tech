@@ -16,15 +16,15 @@ from congress_api.parsers.senate_page import BUSINESS, DATE, NEAR, OWN, SITE, to
 
 
 def match_pages(meetings, state):
-    code = lambda r: r["committees"].split(";")[0]
+    code = lambda r: r.get("committee") or r["committees"].split(";")[0]
     hearings, titles = [], collections.defaultdict(list)
     for m in meetings:
         codes = codes_of(m)
         if m.get("chamber") != "House" and codes:
-            c = codes[0]
-            titles[c].append(set(words(topic(m.get("title") or ""))))
-            if c in SITE and m.get("date") and (meeting_access(m)[0] != "closed" or c in ("slia00", "scnc00")):
-                hearings.append({"event_id": m["eventId"], "date": m["date"][:10], "title": (m.get("title") or "").strip(), "committees": ";".join(codes), "kind": meeting_type(m)[0]})
+            for c in codes:
+                titles[c].append(set(words(topic(m.get("title") or ""))))
+                if c in SITE and m.get("date") and (meeting_access(m)[0] != "closed" or c in ("slia00", "scnc00")):
+                    hearings.append({"event_id": m["eventId"], "date": m["date"][:10], "title": (m.get("title") or "").strip(), "committee": c, "committees": ";".join(codes), "kind": meeting_type(m)[0]})
     ## a subject word weighs by how few of the committee's titles hold it
     held_in = {c: collections.Counter(w for t in ts for w in t) for c, ts in titles.items()}
     weight = lambda c, w: math.log(len(titles[c]) / held_in[c][w])

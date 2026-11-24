@@ -16,7 +16,7 @@ def native_parent(code):
 def parent_code(code):
     """Parent code for channel/catalog mapping (select committees share a tracked channel)."""
     parent = native_parent(code)
-    return ALIAS.get(parent, parent)
+    return ALIAS.get(parent.lower(), parent)
 
 
 def codes_of(meeting):
