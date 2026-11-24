@@ -1,0 +1,1943 @@
+{
+ "version": 1,
+ "base_release_id": "7d16a4d5b93102beaf54c525dcadd9e446ed33187f6ae7a36786bc8303b4abf7",
+ "candidate_release_id": "453351a3a57bdd28031a43de218832f5cd8b89c30048bc04354aaba37b337c47",
+ "notes": {
+  "identifiers": [
+   {
+    "statement": "PR #212 (ct-9vwc): Matches House committee pages by hearing date instead of page date and rejects contradicting embeds, removing 54 false recording_matches and updating 81 recordings / 23 witnesses.",
+    "decision": "ct-9vwc"
+   },
+   {
+    "statement": "PR #233 (T14a & T17): Syncs live spicy-regs pins (+979 bill_actions, +132/-1 bills, +7,928 member_votes, +562 nominations, +36 roll_call_votes, 691 repaired 118th Senate roll calls, 918 documents[].nomination_id links, schema.json) and excludes WordPress /wp-json/ junk (-87 url_state URLs).",
+    "decision": "ct-9vwc"
+   },
+   {
+    "statement": "Run 45409095781 daily capture receipts: +2,420 captures, +2,507 readings, 29 Congress.gov meeting_records (16 119th Congress transcript jackets), +52 video_records adding +222 documents/links/sources, 160 untitled-document link_text titles (0 overwrites), and 23 linked GPO mods witnesses.",
+    "decision": "ct-9vwc"
+   }
+  ]
+ },
+ "groups": [
+  {
+   "id": "bill_actions.parquet|added keys|no evidence given",
+   "count": 979,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` pin from `f719442c` to `082232ac`: +979 new actions (`932,877 -> 933,856`), updated action fields on active bills, and `source_generation`/`source_reference` re-stamped on all 932,877 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed action_code|value differs on matched key",
+   "count": 657,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` pin from `f719442c` to `082232ac`: +979 new actions (`932,877 -> 933,856`), updated action fields on active bills, and `source_generation`/`source_reference` re-stamped on all 932,877 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed action_date|value differs on matched key",
+   "count": 705,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` pin from `f719442c` to `082232ac`: +979 new actions (`932,877 -> 933,856`), updated action fields on active bills, and `source_generation`/`source_reference` re-stamped on all 932,877 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed action_text|value differs on matched key",
+   "count": 802,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` pin from `f719442c` to `082232ac`: +979 new actions (`932,877 -> 933,856`), updated action fields on active bills, and `source_generation`/`source_reference` re-stamped on all 932,877 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed action_time|value differs on matched key",
+   "count": 305,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` pin from `f719442c` to `082232ac`: +979 new actions (`932,877 -> 933,856`), updated action fields on active bills, and `source_generation`/`source_reference` re-stamped on all 932,877 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed action_type|value differs on matched key",
+   "count": 553,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` pin from `f719442c` to `082232ac`: +979 new actions (`932,877 -> 933,856`), updated action fields on active bills, and `source_generation`/`source_reference` re-stamped on all 932,877 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed is_latest_action|value differs on matched key",
+   "count": 19,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` pin from `f719442c` to `082232ac`: +979 new actions (`932,877 -> 933,856`), updated action fields on active bills, and `source_generation`/`source_reference` re-stamped on all 932,877 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed recorded_vote_count|value differs on matched key",
+   "count": 22,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` pin from `f719442c` to `082232ac`: +979 new actions (`932,877 -> 933,856`), updated action fields on active bills, and `source_generation`/`source_reference` re-stamped on all 932,877 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed source_generation|value differs on matched key",
+   "count": 932877,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` pin from `f719442c` to `082232ac`: +979 new actions (`932,877 -> 933,856`), updated action fields on active bills, and `source_generation`/`source_reference` re-stamped on all 932,877 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed source_reference|value differs on matched key",
+   "count": 932877,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` pin from `f719442c` to `082232ac`: +979 new actions (`932,877 -> 933,856`), updated action fields on active bills, and `source_generation`/`source_reference` re-stamped on all 932,877 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed source_system_name|value differs on matched key",
+   "count": 512,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` pin from `f719442c` to `082232ac`: +979 new actions (`932,877 -> 933,856`), updated action fields on active bills, and `source_generation`/`source_reference` re-stamped on all 932,877 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bill_actions.parquet|changed stage|value differs on matched key",
+   "count": 584,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` pin from `f719442c` to `082232ac`: +979 new actions (`932,877 -> 933,856`), updated action fields on active bills, and `source_generation`/`source_reference` re-stamped on all 932,877 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|added bills|unexplained",
+   "count": 132,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|removed bills|unexplained",
+   "count": -1,
+   "disposition": "explained",
+   "cause": "Upstream Congress.gov `related_bills` update in `bill-family` `f719442c -> 082232ac` dropped the `119-s-3798 -> 117-hr-9248` related edge; `117-hr-9248` (2 cosponsors, no public law/CBO/votes/hearings, referred-only) was included solely via that edge (`0` bills removed from `spicy_congress_bills`, `substantive_bills`, `cbo`, or `bill_vote_references`).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed amendments|value differs on matched key",
+   "count": 235,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed cbo_estimates|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed committee_activities|value differs on matched key",
+   "count": 71,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed committees|value differs on matched key",
+   "count": 18,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed cosponsor_count|value differs on matched key",
+   "count": 420,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed floor_votes|value differs on matched key",
+   "count": 24,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed latest_action_date|value differs on matched key",
+   "count": 88,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed latest_action_text|value differs on matched key",
+   "count": 89,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed policy_area|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed public_law_number|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed related_bills|value differs on matched key",
+   "count": 250,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed short_title|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed source_update_including_text|value differs on matched key",
+   "count": 952,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed source_updated_at|value differs on matched key",
+   "count": 930,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed stage|value differs on matched key",
+   "count": 76,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed subjects|value differs on matched key",
+   "count": 50,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "bills.parquet|changed title|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped spicy-regs `bill-family` (`f719442c -> 082232ac`, +176 upstream bills, +59 substantive), `amendments` (`75c96edc -> 31dd38b6`), and `roll-call-votes` (`e7cdd80d -> 1b86d720`), adding 132 bills (+1 meeting subject) and updating bill metadata, cosponsors, amendments, committee activities, CBO estimates, and floor votes.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "capture_scope.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "PR #233 (T17) added WordPress `/wp-json/` and REST-API exclusions to `model/registries/capture-scope.json`, also removing 87 gate-verified unattempted URLs from `url_state.parquet`.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 222,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed committee_keys|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_source|value differs on matched key",
+   "count": 14,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_status|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed meeting_keys|value differs on matched key",
+   "count": 14,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 160,
+   "disposition": "explained",
+   "cause": "Run `45409095781` captured 1,105 new House committee pages (`1,074` HTML readings across `edworkforce`, `armedservices`, `foreignaffairs`, `transportation`, and `agriculture.house.gov`), adding `listed_on`/`link_text` to existing `sources` rows (999 previously `listed_on=None`) and supplying `link_text` titles to 160 previously untitled documents (`title_source=None`, `0` existing titles overwritten; `title-rules.json` filtered 902 bare/junk link words; examples: `BILLS-116-HR4719-D000191-Amdt-1.pdf` -> `Amendment in the Nature of a Substitute (ANS) to H.R. 4719`).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 160,
+   "disposition": "explained",
+   "cause": "Run `45409095781` captured 1,105 new House committee pages (`1,074` HTML readings across `edworkforce`, `armedservices`, `foreignaffairs`, `transportation`, and `agriculture.house.gov`), adding `listed_on`/`link_text` to existing `sources` rows (999 previously `listed_on=None`) and supplying `link_text` titles to 160 previously untitled documents (`title_source=None`, `0` existing titles overwritten; `title-rules.json` filtered 902 bare/junk link words; examples: `BILLS-116-HR4719-D000191-Amdt-1.pdf` -> `Amendment in the Nature of a Substitute (ANS) to H.R. 4719`).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed witness_keys|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 222,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 222,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed committee_keys|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed document_date_status|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed meeting_keys|value differs on matched key",
+   "count": 14,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 160,
+   "disposition": "explained",
+   "cause": "Run `45409095781` captured 1,105 new House committee pages (`1,074` HTML readings across `edworkforce`, `armedservices`, `foreignaffairs`, `transportation`, and `agriculture.house.gov`), adding `listed_on`/`link_text` to existing `sources` rows (999 previously `listed_on=None`) and supplying `link_text` titles to 160 previously untitled documents (`title_source=None`, `0` existing titles overwritten; `title-rules.json` filtered 902 bare/junk link words; examples: `BILLS-116-HR4719-D000191-Amdt-1.pdf` -> `Amendment in the Nature of a Substitute (ANS) to H.R. 4719`).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed witness_keys|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 60,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`29` new Congress.gov `meeting_records`) updated 27 meetings (adding 16 119th Congress GPO `transcript_jackets` across 12 hearings, flipping `outcome` on 8 hearings to `held`, updating `subject_keys` on 20 meetings, and adding 2 meetings `338900`/`338901`) alongside PR #212 (`ct-9vwc`) recording coverage updates.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 124,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`29` new Congress.gov `meeting_records`) updated 27 meetings (adding 16 119th Congress GPO `transcript_jackets` across 12 hearings, flipping `outcome` on 8 hearings to `held`, updating `subject_keys` on 20 meetings, and adding 2 meetings `338900`/`338901`) alongside PR #212 (`ct-9vwc`) recording coverage updates.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 96,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`29` new Congress.gov `meeting_records`) updated 27 meetings (adding 16 119th Congress GPO `transcript_jackets` across 12 hearings, flipping `outcome` on 8 hearings to `held`, updating `subject_keys` on 20 meetings, and adding 2 meetings `338900`/`338901`) alongside PR #212 (`ct-9vwc`) recording coverage updates.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 96,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`29` new Congress.gov `meeting_records`) updated 27 meetings (adding 16 119th Congress GPO `transcript_jackets` across 12 hearings, flipping `outcome` on 8 hearings to `held`, updating `subject_keys` on 20 meetings, and adding 2 meetings `338900`/`338901`) alongside PR #212 (`ct-9vwc`) recording coverage updates.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome|value differs on matched key",
+   "count": 8,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`29` new Congress.gov `meeting_records`) updated 27 meetings (adding 16 119th Congress GPO `transcript_jackets` across 12 hearings, flipping `outcome` on 8 hearings to `held`, updating `subject_keys` on 20 meetings, and adding 2 meetings `338900`/`338901`) alongside PR #212 (`ct-9vwc`) recording coverage updates.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_basis|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`29` new Congress.gov `meeting_records`) updated 27 meetings (adding 16 119th Congress GPO `transcript_jackets` across 12 hearings, flipping `outcome` on 8 hearings to `held`, updating `subject_keys` on 20 meetings, and adding 2 meetings `338900`/`338901`) alongside PR #212 (`ct-9vwc`) recording coverage updates.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_reason|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`29` new Congress.gov `meeting_records`) updated 27 meetings (adding 16 119th Congress GPO `transcript_jackets` across 12 hearings, flipping `outcome` on 8 hearings to `held`, updating `subject_keys` on 20 meetings, and adding 2 meetings `338900`/`338901`) alongside PR #212 (`ct-9vwc`) recording coverage updates.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_source_reference|value differs on matched key",
+   "count": 9,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`29` new Congress.gov `meeting_records`) updated 27 meetings (adding 16 119th Congress GPO `transcript_jackets` across 12 hearings, flipping `outcome` on 8 hearings to `held`, updating `subject_keys` on 20 meetings, and adding 2 meetings `338900`/`338901`) alongside PR #212 (`ct-9vwc`) recording coverage updates.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed subject_keys|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`29` new Congress.gov `meeting_records`) updated 27 meetings (adding 16 119th Congress GPO `transcript_jackets` across 12 hearings, flipping `outcome` on 8 hearings to `held`, updating `subject_keys` on 20 meetings, and adding 2 meetings `338900`/`338901`) alongside PR #212 (`ct-9vwc`) recording coverage updates.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed transcripts|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`29` new Congress.gov `meeting_records`) updated 27 meetings (adding 16 119th Congress GPO `transcript_jackets` across 12 hearings, flipping `outcome` on 8 hearings to `held`, updating `subject_keys` on 20 meetings, and adding 2 meetings `338900`/`338901`) alongside PR #212 (`ct-9vwc`) recording coverage updates.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "member_votes.parquet|added keys|no evidence given",
+   "count": 7928,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` added 7,928 ballot rows (`10,561,417 -> 10,569,345`) for the 36 new votes and updated `source_generation`/`source_reference` on all 10,561,417 matched ballots.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "member_votes.parquet|changed source_generation|value differs on matched key",
+   "count": 10561417,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` added 7,928 ballot rows (`10,561,417 -> 10,569,345`) for the 36 new votes and updated `source_generation`/`source_reference` on all 10,561,417 matched ballots.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "member_votes.parquet|changed source_reference|value differs on matched key",
+   "count": 10561417,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` added 7,928 ballot rows (`10,561,417 -> 10,569,345`) for the 36 new votes and updated `source_generation`/`source_reference` on all 10,561,417 matched ballots.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|added keys|no evidence given",
+   "count": 562,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped `nominations` (`d17c43e1 -> 8a7c0657`, `2,287 -> 4,734` upstream rows) and `roll-call-votes` (`1b86d720`) with `nomination_id` wiring, adding 562 referenced nominations (`800 -> 1,362`) and updating actions, committee activities, floor votes, and transcripts.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed committee_activities|value differs on matched key",
+   "count": 85,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped `nominations` (`d17c43e1 -> 8a7c0657`, `2,287 -> 4,734` upstream rows) and `roll-call-votes` (`1b86d720`) with `nomination_id` wiring, adding 562 referenced nominations (`800 -> 1,362`) and updating actions, committee activities, floor votes, and transcripts.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed committees|value differs on matched key",
+   "count": 4,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped `nominations` (`d17c43e1 -> 8a7c0657`, `2,287 -> 4,734` upstream rows) and `roll-call-votes` (`1b86d720`) with `nomination_id` wiring, adding 562 referenced nominations (`800 -> 1,362`) and updating actions, committee activities, floor votes, and transcripts.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed floor_votes|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped `nominations` (`d17c43e1 -> 8a7c0657`, `2,287 -> 4,734` upstream rows) and `roll-call-votes` (`1b86d720`) with `nomination_id` wiring, adding 562 referenced nominations (`800 -> 1,362`) and updating actions, committee activities, floor votes, and transcripts.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed latest_action_date|value differs on matched key",
+   "count": 87,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped `nominations` (`d17c43e1 -> 8a7c0657`, `2,287 -> 4,734` upstream rows) and `roll-call-votes` (`1b86d720`) with `nomination_id` wiring, adding 562 referenced nominations (`800 -> 1,362`) and updating actions, committee activities, floor votes, and transcripts.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed latest_action_text|value differs on matched key",
+   "count": 87,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped `nominations` (`d17c43e1 -> 8a7c0657`, `2,287 -> 4,734` upstream rows) and `roll-call-votes` (`1b86d720`) with `nomination_id` wiring, adding 562 referenced nominations (`800 -> 1,362`) and updating actions, committee activities, floor votes, and transcripts.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed source_updated_at|value differs on matched key",
+   "count": 109,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped `nominations` (`d17c43e1 -> 8a7c0657`, `2,287 -> 4,734` upstream rows) and `roll-call-votes` (`1b86d720`) with `nomination_id` wiring, adding 562 referenced nominations (`800 -> 1,362`) and updating actions, committee activities, floor votes, and transcripts.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "nominations.parquet|changed transcripts|value differs on matched key",
+   "count": 17,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) bumped `nominations` (`d17c43e1 -> 8a7c0657`, `2,287 -> 4,734` upstream rows) and `roll-call-votes` (`1b86d720`) with `nomination_id` wiring, adding 562 referenced nominations (`800 -> 1,362`) and updating actions, committee activities, floor votes, and transcripts.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed appearance_count|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "Run `45409095781` added 16 119th Congress GPO `transcript_jackets` on updated hearings (`118682`, `118711`, `118793`, `118818`, `119072`, `119085`, `119307`, `119382`), linking 23 previously unlinked GPO `mods` witnesses (`CHRG-119hhrg*`) from `occasion=package:...` to `event:<id>` and `superseded_by` their `congress_gov`/`house_xml` records, updating 2 `person_key`s and merging 11 gate-verified `people` aliases (`person_aliases +11`, 12 `people` appearance/hearing count updates).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed hearing_count|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "Run `45409095781` added 16 119th Congress GPO `transcript_jackets` on updated hearings (`118682`, `118711`, `118793`, `118818`, `119072`, `119085`, `119307`, `119382`), linking 23 previously unlinked GPO `mods` witnesses (`CHRG-119hhrg*`) from `occasion=package:...` to `event:<id>` and `superseded_by` their `congress_gov`/`house_xml` records, updating 2 `person_key`s and merging 11 gate-verified `people` aliases (`person_aliases +11`, 12 `people` appearance/hearing count updates).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed last_seen_date|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Run `45409095781` added 16 119th Congress GPO `transcript_jackets` on updated hearings (`118682`, `118711`, `118793`, `118818`, `119072`, `119085`, `119307`, `119382`), linking 23 previously unlinked GPO `mods` witnesses (`CHRG-119hhrg*`) from `occasion=package:...` to `event:<id>` and `superseded_by` their `congress_gov`/`house_xml` records, updating 2 `person_key`s and merging 11 gate-verified `people` aliases (`person_aliases +11`, 12 `people` appearance/hearing count updates).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed positions|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "Run `45409095781` added 16 119th Congress GPO `transcript_jackets` on updated hearings (`118682`, `118711`, `118793`, `118818`, `119072`, `119085`, `119307`, `119382`), linking 23 previously unlinked GPO `mods` witnesses (`CHRG-119hhrg*`) from `occasion=package:...` to `event:<id>` and `superseded_by` their `congress_gov`/`house_xml` records, updating 2 `person_key`s and merging 11 gate-verified `people` aliases (`person_aliases +11`, 12 `people` appearance/hearing count updates).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed witness_keys|value differs on matched key",
+   "count": 12,
+   "disposition": "explained",
+   "cause": "Run `45409095781` added 16 119th Congress GPO `transcript_jackets` on updated hearings (`118682`, `118711`, `118793`, `118818`, `119072`, `119085`, `119307`, `119382`), linking 23 previously unlinked GPO `mods` witnesses (`CHRG-119hhrg*`) from `occasion=package:...` to `event:<id>` and `superseded_by` their `congress_gov`/`house_xml` records, updating 2 `person_key`s and merging 11 gate-verified `people` aliases (`person_aliases +11`, 12 `people` appearance/hearing count updates).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|removed keys|no evidence given",
+   "count": -54,
+   "disposition": "explained",
+   "cause": "PR #212 (`ct-9vwc`) switched House committee page matching from page publication date to hearing date and rejected contradicting embeds (live `7d16a4d5` had 33 `committee_page` matches whose video title stated a different `EventID`, 5 on canceled hearings such as `118481`, and 12 with contradicting video dates), removing 54 false matches, adding 101 matches (+28 gate-verified), updating 81 `recordings.event_ids` and 62 newly captured recordings from run `45409095781`.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 101,
+   "disposition": "explained",
+   "cause": "PR #212 (`ct-9vwc`) switched House committee page matching from page publication date to hearing date and rejected contradicting embeds (live `7d16a4d5` had 33 `committee_page` matches whose video title stated a different `EventID`, 5 on canceled hearings such as `118481`, and 12 with contradicting video dates), removing 54 false matches, adding 101 matches (+28 gate-verified), updating 81 `recordings.event_ids` and 62 newly captured recordings from run `45409095781`.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed note|value differs on matched key",
+   "count": 86,
+   "disposition": "explained",
+   "cause": "PR #212 (`ct-9vwc`) switched House committee page matching from page publication date to hearing date and rejected contradicting embeds (live `7d16a4d5` had 33 `committee_page` matches whose video title stated a different `EventID`, 5 on canceled hearings such as `118481`, and 12 with contradicting video dates), removing 54 false matches, adding 101 matches (+28 gate-verified), updating 81 `recordings.event_ids` and 62 newly captured recordings from run `45409095781`.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 87,
+   "disposition": "explained",
+   "cause": "PR #212 (`ct-9vwc`) switched House committee page matching from page publication date to hearing date and rejected contradicting embeds (live `7d16a4d5` had 33 `committee_page` matches whose video title stated a different `EventID`, 5 on canceled hearings such as `118481`, and 12 with contradicting video dates), removing 54 false matches, adding 101 matches (+28 gate-verified), updating 81 `recordings.event_ids` and 62 newly captured recordings from run `45409095781`.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 36,
+   "disposition": "explained",
+   "cause": "PR #212 (`ct-9vwc`) switched House committee page matching from page publication date to hearing date and rejected contradicting embeds (live `7d16a4d5` had 33 `committee_page` matches whose video title stated a different `EventID`, 5 on canceled hearings such as `118481`, and 12 with contradicting video dates), removing 54 false matches, adding 101 matches (+28 gate-verified), updating 81 `recordings.event_ids` and 62 newly captured recordings from run `45409095781`.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 26,
+   "disposition": "explained",
+   "cause": "PR #212 (`ct-9vwc`) switched House committee page matching from page publication date to hearing date and rejected contradicting embeds (live `7d16a4d5` had 33 `committee_page` matches whose video title stated a different `EventID`, 5 on canceled hearings such as `118481`, and 12 with contradicting video dates), removing 54 false matches, adding 101 matches (+28 gate-verified), updating 81 `recordings.event_ids` and 62 newly captured recordings from run `45409095781`.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 81,
+   "disposition": "explained",
+   "cause": "PR #212 (`ct-9vwc`) switched House committee page matching from page publication date to hearing date and rejected contradicting embeds (live `7d16a4d5` had 33 `committee_page` matches whose video title stated a different `EventID`, 5 on canceled hearings such as `118481`, and 12 with contradicting video dates), removing 54 false matches, adding 101 matches (+28 gate-verified), updating 81 `recordings.event_ids` and 62 newly captured recordings from run `45409095781`.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "Parquet file re-written with identical logical keys and values (`changed bytes, no key or value difference found`, 12,529 rows unchanged).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|added keys|no evidence given",
+   "count": 36,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` added 36 new votes (`30,702 -> 30,738`), strictly backfilled 691 repaired 118th Senate roll calls (`majority_requirement`, `modify_date`, `vote_question_text`, `vote_title`; all `None -> value`, `0` overwrites) and 7 Vice President tie-breaker votes (`None -> Yea`), and updated `source_generation`/`source_reference` on all 30,702 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed bill_id|value differs on matched key",
+   "count": 72,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` strictly backfilled 72 missing `bill_id` values (`72` `None -> value`, `0` `value -> None`, `0` overwrites; e.g. `118-senate-1-136..140 -> 118-hr-3746`).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed bill_references|value differs on matched key",
+   "count": 11726,
+   "disposition": "explained",
+   "cause": "`legislative_data.py` embeds `bill-family` `source_generation`/`source_reference` inside every non-null `bill_references` struct, re-stamping all 11,726 matched roll calls on the `bill-family` `f719442c -> 082232ac` pin bump (+8 newly added bill vote references).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|added subfield documents[].nomination_id|subfield new in the candidate, set on matched rows",
+   "count": 918,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) wired upstream `spicy_roll_call_votes.documents[].nomination_id` from `roll-call-votes` `1b86d720`, populating 918 matched roll calls.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed majority_requirement|value differs on matched key",
+   "count": 691,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` added 36 new votes (`30,702 -> 30,738`), strictly backfilled 691 repaired 118th Senate roll calls (`majority_requirement`, `modify_date`, `vote_question_text`, `vote_title`; all `None -> value`, `0` overwrites) and 7 Vice President tie-breaker votes (`None -> Yea`), and updated `source_generation`/`source_reference` on all 30,702 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed modify_date|value differs on matched key",
+   "count": 691,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` added 36 new votes (`30,702 -> 30,738`), strictly backfilled 691 repaired 118th Senate roll calls (`majority_requirement`, `modify_date`, `vote_question_text`, `vote_title`; all `None -> value`, `0` overwrites) and 7 Vice President tie-breaker votes (`None -> Yea`), and updated `source_generation`/`source_reference` on all 30,702 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed source_generation|value differs on matched key",
+   "count": 30702,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` added 36 new votes (`30,702 -> 30,738`), strictly backfilled 691 repaired 118th Senate roll calls (`majority_requirement`, `modify_date`, `vote_question_text`, `vote_title`; all `None -> value`, `0` overwrites) and 7 Vice President tie-breaker votes (`None -> Yea`), and updated `source_generation`/`source_reference` on all 30,702 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed source_reference|value differs on matched key",
+   "count": 30702,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` added 36 new votes (`30,702 -> 30,738`), strictly backfilled 691 repaired 118th Senate roll calls (`majority_requirement`, `modify_date`, `vote_question_text`, `vote_title`; all `None -> value`, `0` overwrites) and 7 Vice President tie-breaker votes (`None -> Yea`), and updated `source_generation`/`source_reference` on all 30,702 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed tie_breaker_by_whom|value differs on matched key",
+   "count": 7,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` added 36 new votes (`30,702 -> 30,738`), strictly backfilled 691 repaired 118th Senate roll calls (`majority_requirement`, `modify_date`, `vote_question_text`, `vote_title`; all `None -> value`, `0` overwrites) and 7 Vice President tie-breaker votes (`None -> Yea`), and updated `source_generation`/`source_reference` on all 30,702 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed tie_breaker_vote|value differs on matched key",
+   "count": 7,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` added 36 new votes (`30,702 -> 30,738`), strictly backfilled 691 repaired 118th Senate roll calls (`majority_requirement`, `modify_date`, `vote_question_text`, `vote_title`; all `None -> value`, `0` overwrites) and 7 Vice President tie-breaker votes (`None -> Yea`), and updated `source_generation`/`source_reference` on all 30,702 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed vote_question_text|value differs on matched key",
+   "count": 691,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` added 36 new votes (`30,702 -> 30,738`), strictly backfilled 691 repaired 118th Senate roll calls (`majority_requirement`, `modify_date`, `vote_question_text`, `vote_title`; all `None -> value`, `0` overwrites) and 7 Vice President tie-breaker votes (`None -> Yea`), and updated `source_generation`/`source_reference` on all 30,702 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "roll_call_votes.parquet|changed vote_title|value differs on matched key",
+   "count": 691,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) `roll-call-votes` pin `e7cdd80d -> 1b86d720` added 36 new votes (`30,702 -> 30,738`), strictly backfilled 691 repaired 118th Senate roll calls (`majority_requirement`, `modify_date`, `vote_question_text`, `vote_title`; all `None -> value`, `0` overwrites) and 7 Vice President tie-breaker votes (`None -> Yea`), and updated `source_generation`/`source_reference` on all 30,702 matched rows.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "schema.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "PR #233 (T14a) added the `documents[].nomination_id` subfield to `roll_call_votes.parquet` in the release schema.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 222,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 1142,
+   "disposition": "explained",
+   "cause": "Run `45409095781` captured 1,105 new House committee pages (`1,074` HTML readings across `edworkforce`, `armedservices`, `foreignaffairs`, `transportation`, and `agriculture.house.gov`), adding `listed_on`/`link_text` to existing `sources` rows (999 previously `listed_on=None`) and supplying `link_text` titles to 160 previously untitled documents (`title_source=None`, `0` existing titles overwritten; `title-rules.json` filtered 902 bare/junk link words; examples: `BILLS-116-HR4719-D000191-Amdt-1.pdf` -> `Amendment in the Nature of a Substitute (ANS) to H.R. 4719`).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 1142,
+   "disposition": "explained",
+   "cause": "Run `45409095781` captured 1,105 new House committee pages (`1,074` HTML readings across `edworkforce`, `armedservices`, `foreignaffairs`, `transportation`, and `agriculture.house.gov`), adding `listed_on`/`link_text` to existing `sources` rows (999 previously `listed_on=None`) and supplying `link_text` titles to 160 previously untitled documents (`title_source=None`, `0` existing titles overwritten; `title-rules.json` filtered 902 bare/junk link words; examples: `BILLS-116-HR4719-D000191-Amdt-1.pdf` -> `Amendment in the Nature of a Substitute (ANS) to H.R. 4719`).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `2,000` new receipts) recorded 5 newly attempted URLs, 1,236 newly queued links, and updated attempt/status/recheck state across 2,049 URLs (while PR #233 T17 removed 87 gate-verified `/wp-json/` exclusions).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 1236,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `2,000` new receipts) recorded 5 newly attempted URLs, 1,236 newly queued links, and updated attempt/status/recheck state across 2,049 URLs (while PR #233 T17 removed 87 gate-verified `/wp-json/` exclusions).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 2049,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `2,000` new receipts) recorded 5 newly attempted URLs, 1,236 newly queued links, and updated attempt/status/recheck state across 2,049 URLs (while PR #233 T17 removed 87 gate-verified `/wp-json/` exclusions).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed capture_disposition|value differs on matched key",
+   "count": 22,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `2,000` new receipts) recorded 5 newly attempted URLs, 1,236 newly queued links, and updated attempt/status/recheck state across 2,049 URLs (while PR #233 T17 removed 87 gate-verified `/wp-json/` exclusions).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed capture_reason|value differs on matched key",
+   "count": 22,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `2,000` new receipts) recorded 5 newly attempted URLs, 1,236 newly queued links, and updated attempt/status/recheck state across 2,049 URLs (while PR #233 T17 removed 87 gate-verified `/wp-json/` exclusions).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 2049,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `2,000` new receipts) recorded 5 newly attempted URLs, 1,236 newly queued links, and updated attempt/status/recheck state across 2,049 URLs (while PR #233 T17 removed 87 gate-verified `/wp-json/` exclusions).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 1985,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `2,000` new receipts) recorded 5 newly attempted URLs, 1,236 newly queued links, and updated attempt/status/recheck state across 2,049 URLs (while PR #233 T17 removed 87 gate-verified `/wp-json/` exclusions).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 1917,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `2,000` new receipts) recorded 5 newly attempted URLs, 1,236 newly queued links, and updated attempt/status/recheck state across 2,049 URLs (while PR #233 T17 removed 87 gate-verified `/wp-json/` exclusions).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 1903,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `2,000` new receipts) recorded 5 newly attempted URLs, 1,236 newly queued links, and updated attempt/status/recheck state across 2,049 URLs (while PR #233 T17 removed 87 gate-verified `/wp-json/` exclusions).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 1904,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `2,000` new receipts) recorded 5 newly attempted URLs, 1,236 newly queued links, and updated attempt/status/recheck state across 2,049 URLs (while PR #233 T17 removed 87 gate-verified `/wp-json/` exclusions).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 2069,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `2,000` new receipts) recorded 5 newly attempted URLs, 1,236 newly queued links, and updated attempt/status/recheck state across 2,049 URLs (while PR #233 T17 removed 87 gate-verified `/wp-json/` exclusions).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 71,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `2,000` new receipts) recorded 5 newly attempted URLs, 1,236 newly queued links, and updated attempt/status/recheck state across 2,049 URLs (while PR #233 T17 removed 87 gate-verified `/wp-json/` exclusions).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 312,
+   "disposition": "explained",
+   "cause": "Run `45409095781` daily capture receipts (`+2,420` captures, `+2,507` readings) added 222 new documents/links/sources and 312 new URLs, and updated `meeting_keys`/`committee_keys`/`witness_keys`/`document_date` on 4\u201314 existing documents from new House committee pages and Congress.gov meeting updates (with `link_rule.ok=true`, `0` broken/changed links across all `328,855` live docs).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|added keys|no evidence given",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`+52` `video_records`, `0bd354fa` YouTube report) added 6 videos and refreshed 1 video's `record_sha`/`duration_seconds`/`details_checked_at`.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed details_checked_at|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`+52` `video_records`, `0bd354fa` YouTube report) added 6 videos and refreshed 1 video's `record_sha`/`duration_seconds`/`details_checked_at`.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed duration_seconds|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`+52` `video_records`, `0bd354fa` YouTube report) added 6 videos and refreshed 1 video's `record_sha`/`duration_seconds`/`details_checked_at`.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "videos.parquet|changed record_sha|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Run `45409095781` (`+52` `video_records`, `0bd354fa` YouTube report) added 6 videos and refreshed 1 video's `record_sha`/`duration_seconds`/`details_checked_at`.",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed event_id|value differs on matched key",
+   "count": 23,
+   "disposition": "explained",
+   "cause": "Run `45409095781` added 16 119th Congress GPO `transcript_jackets` on updated hearings (`118682`, `118711`, `118793`, `118818`, `119072`, `119085`, `119307`, `119382`), linking 23 previously unlinked GPO `mods` witnesses (`CHRG-119hhrg*`) from `occasion=package:...` to `event:<id>` and `superseded_by` their `congress_gov`/`house_xml` records, updating 2 `person_key`s and merging 11 gate-verified `people` aliases (`person_aliases +11`, 12 `people` appearance/hearing count updates).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed occasion|value differs on matched key",
+   "count": 23,
+   "disposition": "explained",
+   "cause": "Run `45409095781` added 16 119th Congress GPO `transcript_jackets` on updated hearings (`118682`, `118711`, `118793`, `118818`, `119072`, `119085`, `119307`, `119382`), linking 23 previously unlinked GPO `mods` witnesses (`CHRG-119hhrg*`) from `occasion=package:...` to `event:<id>` and `superseded_by` their `congress_gov`/`house_xml` records, updating 2 `person_key`s and merging 11 gate-verified `people` aliases (`person_aliases +11`, 12 `people` appearance/hearing count updates).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed person_key|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Run `45409095781` added 16 119th Congress GPO `transcript_jackets` on updated hearings (`118682`, `118711`, `118793`, `118818`, `119072`, `119085`, `119307`, `119382`), linking 23 previously unlinked GPO `mods` witnesses (`CHRG-119hhrg*`) from `occasion=package:...` to `event:<id>` and `superseded_by` their `congress_gov`/`house_xml` records, updating 2 `person_key`s and merging 11 gate-verified `people` aliases (`person_aliases +11`, 12 `people` appearance/hearing count updates).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed superseded_by|value differs on matched key",
+   "count": 23,
+   "disposition": "explained",
+   "cause": "Run `45409095781` added 16 119th Congress GPO `transcript_jackets` on updated hearings (`118682`, `118711`, `118793`, `118818`, `119072`, `119085`, `119307`, `119382`), linking 23 previously unlinked GPO `mods` witnesses (`CHRG-119hhrg*`) from `occasion=package:...` to `event:<id>` and `superseded_by` their `congress_gov`/`house_xml` records, updating 2 `person_key`s and merging 11 gate-verified `people` aliases (`person_aliases +11`, 12 `people` appearance/hearing count updates).",
+   "tickets": [
+    "ct-9vwc"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/7d16a4d5b931-453351a3a57b.json",
+     "sha256": "5420a7965e148261077d68ae3bed6e823a40eec9f000cb21ab5e5a94f3683472",
+     "size": 22024
+    }
+   ]
+  }
+ ]
+}
