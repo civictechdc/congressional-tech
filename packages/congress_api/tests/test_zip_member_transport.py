@@ -4,7 +4,7 @@ from collections import defaultdict
 from io import BytesIO
 import re
 import struct
-from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile
+from zipfile import ZIP_DEFLATED, ZIP_STORED, ZipFile, ZipInfo
 
 import pytest
 import requests
@@ -21,13 +21,17 @@ MEMBER = 'CHRG-119shrg64090/dip.xml'
 XML = b'<mets xmlns="http://www.loc.gov/METS/" OBJID="CHRG-119shrg64090"/>'
 
 
-def make_zip(*, names=(MEMBER,), comment=b''):
+def make_zip(*, names=(MEMBER,), comment=b'', include_large_pdf=True, extra=b''):
     output = BytesIO()
     with ZipFile(output, 'w') as archive:
         archive.writestr('unrelated.txt', b'not the manifest', compress_type=ZIP_STORED)
         for name in names:
-            archive.writestr(name, XML, compress_type=ZIP_DEFLATED)
-        archive.writestr('large.pdf', b'pdf bytes' * 40000, compress_type=ZIP_STORED)
+            info = ZipInfo(name)
+            info.compress_type = ZIP_DEFLATED
+            info.extra = extra
+            archive.writestr(info, XML)
+        if include_large_pdf:
+            archive.writestr('large.pdf', b'pdf bytes' * 40000, compress_type=ZIP_STORED)
         archive.comment = comment
     return output.getvalue()
 
@@ -70,7 +74,10 @@ class RangeSession:
 
 @pytest.fixture(autouse=True)
 def no_waits(monkeypatch):
+    from congress_api.transport import zip_member
+
     monkeypatch.setattr(http, 'pace_request', lambda *args, **kwargs: None)
+    monkeypatch.setattr(zip_member.time, 'sleep', lambda *args, **kwargs: None)
 
 
 def test_selects_nonfirst_member_with_bounded_pinned_reads_and_provenance():
@@ -83,6 +90,32 @@ def test_selects_nonfirst_member_with_bounded_pinned_reads_and_provenance():
     assert sum(r['bytes'] for r in result.source['requests']) < 70000 < len(session.body)
     assert all(r['http_status'] == 206 and r['sha256'] and r['final_url'] == URL
                for r in result.source['requests'])
+    assert all(response.raw.closed for response in session.responses)
+
+
+def test_range_request_count_coalesced_by_archive_size():
+    large_body = make_zip(include_large_pdf=True)
+    assert len(large_body) > 65557
+    large_session = RangeSession(large_body)
+    large_result = read_zip_member(large_session, URL, MEMBER)
+    assert large_result.data == XML
+    assert len(large_result.source['requests']) == 2
+
+    small_body = make_zip(include_large_pdf=False)
+    assert len(small_body) <= 65557
+    small_session = RangeSession(small_body)
+    small_result = read_zip_member(small_session, URL, MEMBER)
+    assert small_result.data == XML
+    assert len(small_result.source['requests']) == 1
+
+
+def test_extra_field_larger_than_prefetch_window_reads_smoothly():
+    extra = b'\xcd\xab' + struct.pack('<H', 2044) + b'x' * 2044
+    body = make_zip(extra=extra)
+    session = RangeSession(body)
+    result = read_zip_member(session, URL, MEMBER)
+    assert result.data == XML
+    assert len(result.source['requests']) >= 2
     assert all(response.raw.closed for response in session.responses)
 
 
@@ -288,46 +321,57 @@ def test_cold_zip_redirect_to_error_206_html_fails_with_last_bytes_when_exhauste
     assert all(response.raw.closed for response in session.responses)
 
 
-def test_mid_read_412_restarts_once_from_scratch_with_new_validator_and_retains_evidence():
+def test_mid_read_412_restarts_from_scratch_with_new_validator_and_retains_evidence():
     xml_v2 = b'<mets xmlns="http://www.loc.gov/METS/" OBJID="CHRG-119shrg64090" REV="2"/>'
+    xml_v3 = b'<mets xmlns="http://www.loc.gov/METS/" OBJID="CHRG-119shrg64090" REV="3"/>'
+    extra = b'\xcd\xab' + struct.pack('<H', 2044) + b'x' * 2044
     body_v1 = make_zip()
-    # Build v2 archive with larger leading file so member offsets shift completely.
-    buf_v2 = BytesIO()
-    with ZipFile(buf_v2, 'w') as archive:
-        archive.writestr('unrelated.txt', b'shifted payload' * 500, compress_type=ZIP_STORED)
-        archive.writestr(MEMBER, xml_v2, compress_type=ZIP_DEFLATED)
-        archive.writestr('large.pdf', b'pdf bytes' * 40000, compress_type=ZIP_STORED)
-    body_v2 = buf_v2.getvalue()
+    body_v1_extra = make_zip(extra=extra)
+    # Build v2/v3 archives with larger leading files so member offsets shift completely.
+    def make_shifted(xml_payload, repeat):
+        buf = BytesIO()
+        with ZipFile(buf, 'w') as archive:
+            archive.writestr('unrelated.txt', b'shifted payload' * repeat, compress_type=ZIP_STORED)
+            archive.writestr(MEMBER, xml_payload, compress_type=ZIP_DEFLATED)
+            archive.writestr('large.pdf', b'pdf bytes' * 40000, compress_type=ZIP_STORED)
+        return buf.getvalue()
+
+    body_v2 = make_shifted(xml_v2, 500)
+    body_v3 = make_shifted(xml_v3, 700)
 
     class VersionedSession:
-        def __init__(self, *, persistent_412=False, fail_on_call=2):
-            self.persistent_412 = persistent_412
+        def __init__(self, *, initial_body=body_v1, fail_attempts=1, fail_on_call=2):
+            self.versions = [
+                (initial_body, '"source-v1"'),
+                (body_v2, '"source-v2"'),
+                (body_v3, '"source-v3"'),
+            ]
+            self.fail_attempts = fail_attempts
             self.fail_on_call = fail_on_call
+            self.attempt_index = 0
+            self.attempt_calls = 0
             self.calls = []
             self.responses = []
-            self.restarted = False
 
         def request(self, method, url, *, headers, stream, **kwargs):
             self.calls.append(dict(headers))
             is_tail = headers['Range'] == f'bytes=-{22 + 65535}'
-            if not self.restarted and not is_tail and len(self.calls) >= self.fail_on_call:
-                # Subsequent range request after tail hits 412 with updated ETag.
-                assert headers.get('If-Match') == '"source-v1"'
-                self.restarted = True
-                resp = requests.Response()
-                resp.status_code, resp.url = 412, URL
-                resp.headers.update({'Content-Type': 'text/plain', 'ETag': '"source-v2"'})
-                body = b'Precondition Failed'
-            elif self.persistent_412 and self.restarted and not is_tail:
-                assert headers.get('If-Match') == '"source-v2"'
-                resp = requests.Response()
-                resp.status_code, resp.url = 412, URL
-                resp.headers.update({'Content-Type': 'text/plain', 'ETag': '"source-v3"'})
-                body = b'Still Precondition Failed'
+            if is_tail:
+                self.attempt_calls = 1
             else:
-                active_body, active_etag = (body_v2, '"source-v2"') if self.restarted else (body_v1, '"source-v1"')
-                if self.restarted and not is_tail:
-                    assert headers.get('If-Match') == '"source-v2"'
+                self.attempt_calls += 1
+            active_body, active_etag = self.versions[min(self.attempt_index, len(self.versions) - 1)]
+            if self.attempt_index < self.fail_attempts and not is_tail and self.attempt_calls >= self.fail_on_call:
+                assert headers.get('If-Match') == active_etag
+                self.attempt_index += 1
+                next_etag = self.versions[min(self.attempt_index, len(self.versions) - 1)][1]
+                resp = requests.Response()
+                resp.status_code, resp.url = 412, URL
+                resp.headers.update({'Content-Type': 'text/plain', 'ETag': next_etag})
+                body = b'Precondition Failed'
+            else:
+                if not is_tail:
+                    assert headers.get('If-Match') == active_etag
                 match = re.fullmatch(r'bytes=(\d*)-(\d*)', headers['Range'])
                 first, last = match.groups()
                 start = int(first) if first else max(0, len(active_body) - int(last))
@@ -349,8 +393,8 @@ def test_mid_read_412_restarts_once_from_scratch_with_new_validator_and_retains_
             self.responses.append(resp)
             return resp
 
-    for fail_on_call in (2, 4):  # Both early and mid-member 412s trigger a single full restart.
-        session = VersionedSession(fail_on_call=fail_on_call)
+    for initial_body, fail_on_call in ((body_v1, 2), (body_v1_extra, 3)):
+        session = VersionedSession(initial_body=initial_body, fail_attempts=1, fail_on_call=fail_on_call)
         result = read_zip_member(session, URL, MEMBER)
         assert result.data == xml_v2
         assert result.source['etag'] == '"source-v2"'
@@ -364,11 +408,23 @@ def test_mid_read_412_restarts_once_from_scratch_with_new_validator_and_retains_
         assert 'If-Match' not in session.calls[fail_on_call]  # Restarted tail did not send stale If-Match.
         assert all(response.raw.closed for response in session.responses)
 
-    failing = VersionedSession(persistent_412=True)
+    # Second restart succeeds on attempt 2 (3rd total attempt) with 1s then 2s backoff.
+    sleeps = []
+    second_restart = VersionedSession(fail_attempts=2, fail_on_call=2)
+    result = read_zip_member(second_restart, URL, MEMBER, sleep=sleeps.append)
+    assert result.data == xml_v3
+    assert result.source['etag'] == '"source-v3"'
+    assert sleeps == [1.0, 2.0]
+    assert [p['etag'] for p in result.source['prior_attempts']] == ['"source-v1"', '"source-v2"']
+    assert all(p['request_failure']['http_status'] == 412 for p in result.source['prior_attempts'])
+    assert all(response.raw.closed for response in second_restart.responses)
+
+    failing = VersionedSession(fail_attempts=3, fail_on_call=2)
     with pytest.raises(ZipMemberReadError, match='412') as failure:
         read_zip_member(failing, URL, MEMBER)
     assert failure.value.source['request_failure']['http_status'] == 412
-    assert len(failure.value.source['prior_attempts']) == 1
+    assert len(failure.value.source['prior_attempts']) == 2
     assert [r['http_status'] for r in failure.value.source['prior_attempts'][0]['requests']] == [206, 412]
+    assert [r['http_status'] for r in failure.value.source['prior_attempts'][1]['requests']] == [206, 412]
     assert [r['http_status'] for r in failure.value.source['requests']] == [206, 412]
     assert all(response.raw.closed for response in failing.responses)

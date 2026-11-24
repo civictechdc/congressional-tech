@@ -120,6 +120,7 @@ def main(
     ## figure out which packages are new or changed
     to_fetch = {package: modified for package, modified in pending.items()
                 if (match := PACKAGE_ID_REGEX.fullmatch(package)) and match[2] in chambers and int(match[1]) >= min_congress}
+    live_ids = set()
     listings = {}
     for package in list_collection(since, api_key):
         match = PACKAGE_ID_REGEX.match(package["packageId"])
@@ -134,6 +135,7 @@ def main(
         old = existing.get(package["packageId"])
         if old is None or old["last_modified"] != package["lastModified"]:
             to_fetch[package["packageId"]] = package["lastModified"]
+            live_ids.add(package["packageId"])
     stale = sorted((row for row in existing.values()
                     if (match := PACKAGE_ID_REGEX.match(row["package_id"]))
                     and match[2] in chambers
@@ -151,11 +153,16 @@ def main(
     if skipped_ids:
         logging.warning(f"Skipping {len(skipped_ids)} malformed package_id(s) in CSV: {skipped_ids[0]}"
                         + (f" (+{len(skipped_ids) - 1} more)" if len(skipped_ids) > 1 else ""))
-    for row in stale[:refresh_limit]:
+    stale_budget = max(0, refresh_limit - len(pending))
+    for row in stale[:stale_budget]:
         to_fetch[row["package_id"]] = row["last_modified"]
+    backfill_ids = set(to_fetch) - live_ids
     pending.update(to_fetch)
     write_pending(pending, pending_path)
-    logging.info(f"Fetching metadata for {len(to_fetch)} new, changed or parser-stale hearings")
+    logging.info(
+        f"Fetching metadata for {len(to_fetch)} hearings "
+        f"({len(live_ids)} live, {len(backfill_ids)} backfill)"
+    )
 
     failures = []
     session = requests.Session()
@@ -279,6 +286,7 @@ def main(
                 and r["package_id"] not in failed_packages
                 and not r.get("text_read")),
                 key=lambda row: (-int(row["congress"]), row["package_id"]))[:refresh_limit]
+    transcript_completed = 0
     if backfill:
         logging.info(f"Reading hearing days from {len(backfill)} transcripts")
 
@@ -295,6 +303,7 @@ def main(
                 if error:
                     failures.append(error)
                     continue
+                transcript_completed += 1
                 row["hearing_dates"] = read["hearing_dates"]
                 row["committee_name"] = row["committee_name"] or read["committee_name"]
                 if read.get("text_read"):
@@ -315,11 +324,18 @@ def main(
     write_pending({package: modified for package, modified in pending.items() if package not in completed}, pending_path)
     logging.info(f"Wrote {len(existing)} hearings to {output_path}")
 
-    if failures:
+    live_failures = failed_packages & live_ids
+    has_progress = bool(completed) or transcript_completed > 0
+    if live_failures or (failures and not has_progress):
         logging.error(
             f"{len(failures)} hearing(s) failed:\n  " + "\n  ".join(failures[:50])
         )
         sys.exit(1)
+    if failures:
+        logging.warning(
+            f"{len(failures)} backfill hearing(s) failed and remain queued in {pending_path.name}:\n  "
+            + "\n  ".join(failures[:50])
+        )
 
 
 def govinfo_api_headers(api_key: str):
