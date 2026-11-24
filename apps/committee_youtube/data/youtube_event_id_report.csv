@@ -26,7 +26,7 @@ Agriculture,@HouseAgDems,0,0,115,Republican,house,0
 Agriculture,@HouseAgDems,43,8,116,Democratic,house,0
 Agriculture,@HouseAgDems,77,71,117,Democratic,house,0
 Agriculture,@HouseAgDems,30,30,118,Republican,house,0
-Agriculture,@HouseAgDems,56,56,119,Republican,house,1
+Agriculture,@HouseAgDems,57,57,119,Republican,house,1
 Agriculture,@houseagriculturecommittee2800,0,0,106,Republican,house,0
 Agriculture,@houseagriculturecommittee2800,0,0,107,Republican,house,0
 Agriculture,@houseagriculturecommittee2800,0,0,108,Republican,house,0
@@ -96,7 +96,7 @@ Armed Services,@armedservices8789,0,0,115,Republican,house,0
 Armed Services,@armedservices8789,0,0,116,Democratic,house,0
 Armed Services,@armedservices8789,0,0,117,Democratic,house,0
 Armed Services,@armedservices8789,2,0,118,Republican,house,1
-Armed Services,@armedservices8789,374,369,119,Republican,house,213
+Armed Services,@armedservices8789,377,372,119,Republican,house,216
 Armed Services,@armedservicesGOP,0,0,106,Republican,house,0
 Armed Services,@armedservicesGOP,0,0,107,Republican,house,0
 Armed Services,@armedservicesGOP,0,0,108,Republican,house,0
@@ -530,7 +530,7 @@ Oversight and Government Reform,@OversightDems,54,54,115,Republican,house,0
 Oversight and Government Reform,@OversightDems,673,673,116,Democratic,house,1
 Oversight and Government Reform,@OversightDems,369,369,117,Democratic,house,0
 Oversight and Government Reform,@OversightDems,142,142,118,Republican,house,1
-Oversight and Government Reform,@OversightDems,423,423,119,Republican,house,5
+Oversight and Government Reform,@OversightDems,424,424,119,Republican,house,5
 Oversight and Government Reform,@COVIDOversight,0,0,106,Republican,house,0
 Oversight and Government Reform,@COVIDOversight,0,0,107,Republican,house,0
 Oversight and Government Reform,@COVIDOversight,0,0,108,Republican,house,0
@@ -852,7 +852,7 @@ Intelligence,@gophouseintelligencecommit715,0,0,115,Republican,house,0
 Intelligence,@gophouseintelligencecommit715,0,0,116,Democratic,house,0
 Intelligence,@gophouseintelligencecommit715,23,23,117,Democratic,house,0
 Intelligence,@gophouseintelligencecommit715,36,36,118,Republican,house,4
-Intelligence,@gophouseintelligencecommit715,113,113,119,Republican,house,52
+Intelligence,@gophouseintelligencecommit715,114,114,119,Republican,house,53
 Intelligence,@selectcommitteeonintellige289,0,0,106,Republican,house,0
 Intelligence,@selectcommitteeonintellige289,0,0,107,Republican,house,0
 Intelligence,@selectcommitteeonintellige289,0,0,108,Republican,house,0
