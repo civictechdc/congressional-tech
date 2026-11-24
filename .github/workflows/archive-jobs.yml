@@ -184,6 +184,8 @@ jobs:
             ${{ steps.publisher_binding.outputs.publisher_work }}/completed-model.json
             ${{ steps.publisher_binding.outputs.publisher_work }}/model-intent.json
             ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/release-gate.json
+            ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/release-gate-samples.json
+            ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/release-gate-summary.md
             ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/automatic/automatic-trace.json
             ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/data-only-night.json
             ${{ steps.publisher_binding.outputs.publisher_work }}/candidate-*/meeting-updates.*
@@ -192,6 +194,14 @@ jobs:
             ${{ runner.temp }}/*-disk-admission.json
             ${{ runner.temp }}/*-watchdog.json
             ${{ runner.temp }}/*-watchdog.timeline.jsonl
+      - name: Publish Gate-1 review summary to step summary
+        if: ${{ always() && steps.publisher_binding.outputs.publisher_work != '' }}
+        run: |
+          for summary in "${{ steps.publisher_binding.outputs.publisher_work }}"/candidate-*/release-gate-summary.md; do
+            if [ -f "$summary" ]; then
+              cat "$summary" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
       # ct-pz32: the hosted MCP follows the pointer by itself (apps/explorer_mcp/cloudflare). It
       # re-reads the pointer within a minute and a fresh container needs up to 90 s, so a release
       # it still does not serve after five minutes turns this run red.

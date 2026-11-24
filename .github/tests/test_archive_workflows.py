@@ -416,6 +416,8 @@ def test_publish_retains_only_named_run_evidence_on_success_or_failure():
                 'completed-model.json',
                 'model-intent.json',
                 'candidate-*/release-gate.json',
+                'candidate-*/release-gate-samples.json',
+                'candidate-*/release-gate-summary.md',
                 'candidate-*/automatic/automatic-trace.json',
                 'candidate-*/data-only-night.json',
                 'candidate-*/meeting-updates.*',
@@ -429,6 +431,10 @@ def test_publish_retains_only_named_run_evidence_on_success_or_failure():
     ]
     assert 'env' not in evidence
     assert steps.index(evidence)>publisher_index(steps)
+    summary_step=next(s for s in steps if s.get('name')=='Publish Gate-1 review summary to step summary')
+    assert steps.index(evidence)<steps.index(summary_step)<len(steps)-1
+    assert 'release-gate-summary.md' in summary_step['run'] and 'GITHUB_STEP_SUMMARY' in summary_step['run']
+    assert 'if [ -f "$summary" ]; then' in summary_step['run']
 
 
 def test_publish_ends_by_checking_the_hosted_mcp_against_the_pointer():
