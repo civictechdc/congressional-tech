@@ -11,10 +11,17 @@ import zlib
 import requests
 
 from congress_api.retention.archive_members import ArchiveReadError, ZipLimits, validate_zip_directory
-from congress_api.transport.http import get_with_retry, HttpRequestError, response_metadata
+from congress_api.transport.http import (
+    get_with_retry,
+    HttpRequestError,
+    response_metadata,
+    retry_delay_for_response,
+)
 
 
 TAIL_BYTES = 22 + 65535
+SOFT_RANGE_ATTEMPTS = 4
+MAX_RANGE_REQUESTS = 24
 MEMBER_LIMITS = ZipLimits(max_archive_bytes=2**32 - 1, max_member_bytes=1024**2,
                          max_total_bytes=1024**2)
 
@@ -35,6 +42,7 @@ class ZipMemberReadError(ValueError):
 
 class _RangeFile(RawIOBase):
     def __init__(self, session, url, limits):
+        super().__init__()
         self.session, self.url, self.limits = session, url, limits
         self.position, self.size = 0, 0
         self.source = {'url': url, 'requests': []}
@@ -42,80 +50,105 @@ class _RangeFile(RawIOBase):
         self.last_data, self.media_type = b'', 'application/zip'
         self.transferred = 0
         self.validator = {}
-        tail, start, end, size, headers = self._fetch(f'bytes=-{TAIL_BYTES}', TAIL_BYTES)
-        if (start, end) != (max(0, size - TAIL_BYTES), size - 1):
-            self.fail('Publisher returned a different ZIP tail range')
-        if size > limits.max_archive_bytes:
-            self.fail('ZIP archive exceeds the source size limit')
-        etag, modified = headers.get('ETag'), headers.get('Last-Modified')
-        if etag and not etag.startswith('W/'):
-            self.validator = {'If-Match': etag}
-        elif modified:
-            self.validator = {'If-Unmodified-Since': modified}
-        else:
-            self.fail('ZIP source has no version validator')
-        self.source.update(bytes=size, etag=etag, last_modified=modified)
-        self.size, self.cache = size, [(start, tail)]
-        self._preflight(tail, start)
+        try:
+            tail, start, end, size, headers = self._fetch(f'bytes=-{TAIL_BYTES}', TAIL_BYTES)
+            if (start, end) != (max(0, size - TAIL_BYTES), size - 1):
+                self.fail('Publisher returned a different ZIP tail range')
+            if size > limits.max_archive_bytes:
+                self.fail('ZIP archive exceeds the source size limit')
+            etag, modified = headers.get('ETag'), headers.get('Last-Modified')
+            if etag and not etag.startswith('W/'):
+                self.validator = {'If-Match': etag}
+            elif modified:
+                self.validator = {'If-Unmodified-Since': modified}
+            else:
+                self.fail('ZIP source has no version validator')
+            self.source.update(bytes=size, etag=etag, last_modified=modified)
+            self.size, self.cache = size, [(start, tail)]
+            self._preflight(tail, start)
+        except BaseException:
+            self.close()
+            raise
 
     def fail(self, message):
         raise ZipMemberReadError(message, data=self.last_data, source=self.source,
                                  media_type=self.media_type)
 
     def _fetch(self, byte_range, budget):
-        if len(self.source['requests']) >= 16 or self.transferred + budget > 3 * 1024**2:
-            self.fail('ZIP range request or transfer budget exceeded')
-        data = None
-        try:
-            with get_with_retry(self.session, self.url, allowed=(200, 206), stream=True,
-                                headers={'Accept-Encoding': 'identity', 'Range': byte_range,
-                                         **self.validator}) as response:
-                receipt = {**response_metadata(response), 'range': byte_range}
-                self.source['requests'].append(receipt)
-                self.last_data = b''
-                self.media_type = response.headers.get('Content-Type', 'application/zip')
-                if response.headers.get('Content-Encoding', 'identity') != 'identity':
-                    self.fail('ZIP ranges must use identity content encoding')
-                # Freeze only on completion or refusal, including interrupted streams below.
-                data = bytearray()
-                for chunk in response.iter_content(8192):
-                    remaining = budget - len(data)
-                    data.extend(chunk[:max(0, remaining)])
-                    if len(chunk) > remaining:
+        for attempt in range(SOFT_RANGE_ATTEMPTS):
+            if len(self.source['requests']) >= MAX_RANGE_REQUESTS or self.transferred + budget > 3 * 1024**2:
+                self.fail('ZIP range request or transfer budget exceeded')
+            data = None
+            try:
+                with get_with_retry(self.session, self.url, allowed=(200, 206, 412), stream=True,
+                                    headers={'Accept-Encoding': 'identity', 'Range': byte_range,
+                                             **self.validator}) as response:
+                    receipt = {**response_metadata(response), 'range': byte_range}
+                    self.source['requests'].append(receipt)
+                    self.last_data = b''
+                    self.media_type = response.headers.get('Content-Type', 'application/zip')
+                    if response.headers.get('Content-Encoding', 'identity') != 'identity':
+                        self.fail('ZIP ranges must use identity content encoding')
+                    redirected = response.url != self.url
+                    is_html = self.media_type.split(';')[0].strip().lower() in ('text/html', 'application/xhtml+xml')
+                    is_412 = response.status_code == 412
+                    soft_error = is_412 or redirected or is_html
+                    read_limit = max(budget, TAIL_BYTES) if soft_error else budget
+                    # Freeze only on completion or refusal, including interrupted streams below.
+                    data = bytearray()
+                    for chunk in response.iter_content(8192):
+                        remaining = read_limit - len(data)
+                        data.extend(chunk[:max(0, remaining)])
+                        if len(chunk) > remaining:
+                            self.last_data = bytes(data)
+                            receipt['truncated'] = True
+                            if soft_error:
+                                break
+                            self.fail('Publisher exceeded the ZIP range byte limit')
+                    else:
                         self.last_data = bytes(data)
-                        receipt['truncated'] = True
-                        self.fail('Publisher exceeded the ZIP range byte limit')
-                self.last_data = body = bytes(data)
-                data = None
-                self.transferred += len(body)
-                receipt.update(bytes=len(body), sha256=hashlib.sha256(body).hexdigest())
-                if response.status_code != 206 or response.url != self.url:
-                    self.fail('Publisher did not return the requested ZIP range URL with HTTP 206')
-                if self.media_type.split(';')[0].lower() in ('text/html', 'application/xhtml+xml'):
-                    self.fail('Publisher returned HTML instead of a ZIP range')
-                match = re.fullmatch(r'bytes (\d+)-(\d+)/(\d+)', response.headers.get('Content-Range', ''))
-                if not match:
-                    self.fail('ZIP range lacks an exact Content-Range')
-                start, end, size = map(int, match.groups())
-                if not 0 <= start <= end < size or len(body) != end - start + 1:
-                    self.fail('ZIP range length does not match Content-Range')
-                if self.size:
-                    if size != self.size:
-                        self.fail('ZIP source size changed between requests')
-                    if ('If-Match' in self.validator
-                            and response.headers.get('ETag') != self.validator['If-Match']):
-                        self.fail('ZIP source ETag changed between requests')
-                    if ('If-Unmodified-Since' in self.validator and response.headers.get('Last-Modified')
-                            != self.validator['If-Unmodified-Since']):
-                        self.fail('ZIP source Last-Modified changed between requests')
-                return body, start, end, size, response.headers
-        except (requests.RequestException, HttpRequestError) as error:
-            if data is not None:
-                self.last_data = bytes(data)
-            if isinstance(error, HttpRequestError):
-                self.source['request_failure'] = {'http_status': error.status, **error.details}
-            raise ZipMemberReadError('ZIP range transfer failed: ' + type(error).__name__,
-                data=self.last_data, source=self.source, media_type=self.media_type) from error
+                    body = self.last_data
+                    data = None
+                    self.transferred += len(body)
+                    receipt.update(bytes=len(body), sha256=hashlib.sha256(body).hexdigest())
+                    if is_412:
+                        self.source['request_failure'] = {
+                            'http_status': 412, 'status': 412, 'attempts': 1, 'exception_types': [],
+                        }
+                        self.fail('ZIP source precondition failed (HTTP 412)')
+                    if redirected or is_html:
+                        message = ('Publisher did not return the requested ZIP range URL with HTTP 206'
+                                   if response.status_code != 206 or redirected
+                                   else 'Publisher returned HTML instead of a ZIP range')
+                        if attempt + 1 < SOFT_RANGE_ATTEMPTS:
+                            retry_delay_for_response(self.url, response, attempt)
+                            continue
+                        self.fail(message)
+                    if response.status_code != 206:
+                        self.fail('Publisher did not return the requested ZIP range URL with HTTP 206')
+                    match = re.fullmatch(r'bytes (\d+)-(\d+)/(\d+)', response.headers.get('Content-Range', ''))
+                    if not match:
+                        self.fail('ZIP range lacks an exact Content-Range')
+                    start, end, size = map(int, match.groups())
+                    if not 0 <= start <= end < size or len(body) != end - start + 1:
+                        self.fail('ZIP range length does not match Content-Range')
+                    if self.size:
+                        if size != self.size:
+                            self.fail('ZIP source size changed between requests')
+                        if ('If-Match' in self.validator
+                                and response.headers.get('ETag') != self.validator['If-Match']):
+                            self.fail('ZIP source ETag changed between requests')
+                        if ('If-Unmodified-Since' in self.validator and response.headers.get('Last-Modified')
+                                != self.validator['If-Unmodified-Since']):
+                            self.fail('ZIP source Last-Modified changed between requests')
+                    return body, start, end, size, response.headers
+            except (requests.RequestException, HttpRequestError) as error:
+                if data is not None:
+                    self.last_data = bytes(data)
+                if isinstance(error, HttpRequestError):
+                    self.source['request_failure'] = {'http_status': error.status, **error.details}
+                raise ZipMemberReadError('ZIP range transfer failed: ' + type(error).__name__,
+                    data=self.last_data, source=self.source, media_type=self.media_type) from error
 
     def _preflight(self, tail, start):
         # Bound allocations before ZipFile reads its central directory. The
@@ -181,12 +214,7 @@ class _RangeFile(RawIOBase):
         return data
 
 
-def read_zip_member(session, url, member_name, *, limits=MEMBER_LIMITS):
-    """Return complete CRC-checked member bytes and archive/range provenance.
-
-    No filesystem extraction, first-member assumption or full-download fallback.
-    Publishers that refuse pinned ranges leave the caller's work retryable.
-    """
+def _read_zip_member_once(session, url, member_name, *, limits=MEMBER_LIMITS):
     source = _RangeFile(session, url, limits)
     try:
         with source, ZipFile(source) as archive:
@@ -212,3 +240,28 @@ def read_zip_member(session, url, member_name, *, limits=MEMBER_LIMITS):
     except (BadZipFile, EOFError, NotImplementedError, zlib.error) as error:
         raise ZipMemberReadError('Invalid ZIP member: ' + str(error),
             data=source.last_data, source=source.source, media_type=source.media_type) from error
+
+
+def read_zip_member(session, url, member_name, *, limits=MEMBER_LIMITS):
+    """Return complete CRC-checked member bytes and archive/range provenance.
+
+    No filesystem extraction, first-member assumption or full-download fallback.
+    Restarts once from scratch if a conditional range request returns HTTP 412.
+    Publishers that refuse pinned ranges leave the caller's work retryable.
+    """
+    prior_attempts = []
+    for attempt in range(2):
+        try:
+            response = _read_zip_member_once(session, url, member_name, limits=limits)
+        except ZipMemberReadError as error:
+            failure = error.source.get('request_failure') or {}
+            has_validator = bool(error.source.get('etag') or error.source.get('last_modified'))
+            if attempt == 0 and failure.get('http_status') == 412 and has_validator:
+                prior_attempts.append(error.source)
+                continue
+            if prior_attempts:
+                error.source['prior_attempts'] = prior_attempts
+            raise
+        if prior_attempts:
+            response.source['prior_attempts'] = prior_attempts
+        return response

@@ -15,6 +15,8 @@ describes received headers; callers decide whether to retain that metadata.
 """
 
 import collections
+from datetime import timezone
+from email.utils import parsedate_to_datetime
 import math
 import threading
 import time
@@ -122,6 +124,90 @@ def response_metadata(response: requests.Response) -> dict:
     }
 
 
+RETRYABLE_STATUSES = (202, 403, 408, 429, 500, 502, 503, 504, 520)
+MAX_RETRY_AFTER_SECONDS = 3600
+
+
+def _retry_after_values(response):
+    """Return every Retry-After header string across redirect hops and the final response."""
+    if response is None:
+        return []
+    values = []
+    for hop in [*(getattr(response, "history", None) or ()), response]:
+        raw = getattr(hop, "raw", None)
+        original = getattr(raw, "_original_response", None)
+        message = getattr(original, "msg", None)
+        raw_headers = getattr(raw, "headers", None)
+        hop_values = None
+        if message is not None and hasattr(message, "get_all"):
+            hop_values = message.get_all("Retry-After")
+        elif raw_headers is not None and hasattr(raw_headers, "getlist"):
+            hop_values = raw_headers.getlist("Retry-After")
+        if hop_values:
+            values.extend(hop_values)
+        elif hasattr(hop, "headers") and hop.headers is not None:
+            for key, val in hop.headers.items():
+                if key.lower() == "retry-after" and val is not None:
+                    values.append(val)
+    return values
+
+
+def parse_retry_after(value, *, now=None):
+    """Parse a Retry-After numeric delay or HTTP-date into non-negative seconds."""
+    if not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not text or len(text) > 128:
+        return None
+    if text.isascii() and text.isdecimal():
+        return min(MAX_RETRY_AFTER_SECONDS, int(text))
+    try:
+        target = parsedate_to_datetime(text)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    if target is None:
+        return None
+    if target.tzinfo is None:
+        target = target.replace(tzinfo=timezone.utc)
+    current = time.time() if now is None else now
+    try:
+        delta = target.timestamp() - current
+    except (OverflowError, OSError, ValueError):
+        return None
+    if not math.isfinite(delta):
+        return None
+    return min(MAX_RETRY_AFTER_SECONDS, max(0, math.ceil(delta)))
+
+
+def response_retry_after(response, *, now=None):
+    """Return the longest valid Retry-After delay across redirect hops and response."""
+    delays = [
+        parsed
+        for raw in _retry_after_values(response)
+        if (parsed := parse_retry_after(raw, now=now)) is not None
+    ]
+    return max(delays) if delays else None
+
+
+def schedule_retry_delay(url, delay, *, through_zyte=False):
+    """Advance the shared host pacing deadline without sleeping synchronously."""
+    host = urlsplit(url).hostname
+    pace_key = f"zyte:{host}" if through_zyte else host
+    with nullcontext() if through_zyte else _locks[host]:
+        _next[pace_key] = max(_next[pace_key], time.monotonic() + delay)
+
+
+def retry_delay_for_response(url, response, attempt, *, through_zyte=False):
+    """Schedule and return the retry delay honoring Retry-After and host backoff."""
+    host = urlsplit(url).hostname
+    status = getattr(response, "status_code", None)
+    delay = 60 if status == 403 and host == "docs.house.gov" and not through_zyte else 2 ** (attempt + 1)
+    if (retry_after := response_retry_after(response)) is not None:
+        delay = max(delay, retry_after)
+    schedule_retry_delay(url, delay, through_zyte=through_zyte)
+    return delay
+
+
 def pace_request(url, *, through_zyte=False, request_pacer=None):
     """Share the publisher request-start limit across HTTP implementations."""
     host = urlsplit(url).hostname
@@ -141,7 +227,6 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
             _local.session = requests.Session()
         session = _local.session
     host = urlsplit(url).hostname
-    pace_key = f"zyte:{host}" if through_zyte else host
     status = "request error"
     attempted, failure_types = 0, []
     if json_body is not None and method != "POST":
@@ -150,6 +235,7 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
         raise ValueError("Custom headers and streaming require direct HTTP")
     for attempt in range(attempts):
         attempted = attempt + 1
+        response = None
         pace_request(url, through_zyte=through_zyte, request_pacer=request_pacer)
         try:
             if through_zyte:
@@ -188,10 +274,12 @@ def get_with_retry(session, url, params=None, attempts=3, *, method="GET", allow
             failure_types = exception_types(error)
             COUNTS[f"{method} {host} request error"] += 1
         ## A refusal is retryable, including a site's 200 challenge when a caller rejects its format.
-        delay = 60 if status == 403 and host == "docs.house.gov" and not through_zyte else 2 ** (attempt + 1)
-        with nullcontext() if through_zyte else _locks[host]:
-            _next[pace_key] = max(_next[pace_key], time.monotonic() + delay)
-        if isinstance(status, int) and status not in (202, 403, 408, 429, 500, 502, 503, 504, 520):
+        if isinstance(status, int) and status in RETRYABLE_STATUSES:
+            retry_delay_for_response(url, response, attempt, through_zyte=through_zyte)
+        else:
+            delay = 60 if status == 403 and host == "docs.house.gov" and not through_zyte else 2 ** (attempt + 1)
+            schedule_retry_delay(url, delay, through_zyte=through_zyte)
+        if isinstance(status, int) and status not in RETRYABLE_STATUSES:
             break
     detail = f" ({', '.join(failure_types)}; {attempted} attempts)" if failure_types else ''
     raise HttpRequestError(f"{method} {host}{urlsplit(url).path}: {status}{detail}", status,

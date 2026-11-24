@@ -285,3 +285,81 @@ def test_zyte_attempts_use_the_same_global_pacer(clock, monkeypatch):
     for host in ('a', 'b'):
         http.get_with_retry(None, f'https://{host}.house.gov/', through_zyte=True, request_pacer=pacer)
     assert starts == pytest.approx([100, 100 + 1 / 30])
+
+
+@pytest.mark.parametrize('header_value,expected_wait', [
+    ('15', 15.0),
+    ('Wed, 21 Oct 2026 07:28:15 GMT', 15.0),
+    ('Wed, 21 Oct 2026 07:27:00 GMT', 2.0),  # Past HTTP-date falls back to backoff floor.
+    ('invalid-retry-after', 2.0),
+    ('1', 2.0),  # Never undercuts 2**(attempt+1) backoff floor.
+])
+def test_retry_after_numeric_and_http_date_honored_with_backoff_floor(clock, monkeypatch, header_value, expected_wait):
+    from datetime import datetime, timezone
+    base_epoch = datetime(2026, 10, 21, 7, 28, 0, tzinfo=timezone.utc).timestamp()
+    monkeypatch.setattr(http.time, 'time', lambda: base_epoch)
+    starts = []
+    def request(*args, **kwargs):
+        starts.append(clock[0])
+        resp = response(503 if len(starts) == 1 else 200)
+        if len(starts) == 1:
+            resp.headers['Retry-After'] = header_value
+        return resp
+    result = http.get_with_retry(SimpleNamespace(request=request), 'https://www.govinfo.gov/pkg.zip')
+    assert result.status_code == 200
+    assert starts == pytest.approx([100.0, 100.0 + expected_wait])
+
+
+def test_retry_after_on_302_redirect_history_and_house_403_floor(clock):
+    starts = []
+    def request(*args, **kwargs):
+        starts.append(clock[0])
+        if len(starts) == 1:
+            redirect = response(302)
+            redirect.headers['Retry-After'] = '15'
+            final = response(503)
+            final.history = [redirect]
+            return final
+        return response(200)
+    http.get_with_retry(SimpleNamespace(request=request), 'https://www.govinfo.gov/pkg.zip')
+    assert starts == pytest.approx([100.0, 115.0])
+
+    house_starts = []
+    def house_request(*args, **kwargs):
+        house_starts.append(clock[0])
+        resp = response(403 if len(house_starts) == 1 else 200)
+        if len(house_starts) == 1:
+            resp.headers['Retry-After'] = '5'
+        return resp
+    http.get_with_retry(SimpleNamespace(request=house_request), 'https://docs.house.gov/event')
+    assert house_starts == pytest.approx([115.0, 175.0])
+
+
+def test_retry_after_multiple_raw_headers_preserves_http_date_commas(clock, monkeypatch):
+    from datetime import datetime, timezone
+    from urllib3.response import HTTPResponse
+    base_epoch = datetime(2026, 10, 21, 7, 28, 0, tzinfo=timezone.utc).timestamp()
+    monkeypatch.setattr(http.time, 'time', lambda: base_epoch)
+    starts = []
+    def request(*args, **kwargs):
+        starts.append(clock[0])
+        resp = response(429 if len(starts) == 1 else 200)
+        if len(starts) == 1:
+            raw = HTTPResponse(headers={})
+            raw.headers.add('Retry-After', '5')
+            raw.headers.add('Retry-After', 'Wed, 21 Oct 2026 07:28:25 GMT')
+            resp.raw = raw
+        return resp
+    http.get_with_retry(SimpleNamespace(request=request), 'https://www.govinfo.gov/pkg.zip')
+    assert starts == pytest.approx([100.0, 125.0])
+
+
+def test_http_412_fails_without_retrying(unpaced):
+    calls = []
+    def request(*args, **kwargs):
+        calls.append(kwargs)
+        return response(412)
+    with pytest.raises(http.HttpRequestError) as failure:
+        http.get_with_retry(SimpleNamespace(request=request), 'https://www.govinfo.gov/pkg.zip', allowed=(200, 206))
+    assert failure.value.status == 412
+    assert len(calls) == 1

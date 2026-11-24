@@ -452,3 +452,53 @@ def test_the_host_answered_marker_survives_a_round_trip(tmp_path, monkeypatch):
     again = records_read_state(tmp_path/'again.json.gz')['indian.senate.gov']
     assert all(again['workflow'][url]['last_check']['host_answered'] for url in urls[:-1])
 
+
+@pytest.mark.parametrize('committees', [
+    [{'systemCode': 'jjec00'}],
+    [{'systemCode': 'JJEC00'}],
+    [{'systemCode': 'hsag00'}, {'systemCode': 'jjec00'}],
+])
+def test_jjec00_routes_to_jec_senate_gov_without_touching_hashed_site_map(tmp_path, monkeypatch, committees):
+    import gzip
+    from congress_api.parsers.senate_page import SITE
+
+    assert 'jjec00' not in SITE
+    assert records.SENATE_SITE['jjec00'] == 'jec.senate.gov'
+    host = 'jec.senate.gov'
+    url = 'https://www.jec.senate.gov/hearings/economic-outlook-2026'
+    html = (
+        '<html><title>Economic Outlook 2026</title>'
+        '<p>May 14, 2026</p>'
+        '<p>Hearings to examine the economic outlook.</p>'
+        '<h3>Witnesses</h3>'
+        '<p><a href="https://www.jec.senate.gov/public/testimony.pdf">Jane Doe, Economist</a></p>'
+        '</html>'
+    ).encode()
+    native = {
+        'eventId': '335901',
+        'congress': 119,
+        'chamber': 'Joint',
+        'date': '2026-05-14',
+        'meetingStatus': 'Scheduled',
+        'updateDate': 'v-jec-1',
+        'type': 'Hearing',
+        'title': 'Hearings to examine the economic outlook.',
+        'committees': committees,
+    }
+    path = tmp_path / 'native.jsonl.gz'
+    path.write_bytes(gzip.compress((json.dumps(native) + '\n').encode()))
+    monkeypatch.setattr(
+        records, 'listed',
+        lambda h, get, saved=None, since=None: ([(date(2026, 5, 14), url, 'Economic Outlook 2026')], {'form': '/hearings?page={}', 'from_0': False}),
+    )
+    monkeypatch.setattr(
+        records_http, 'get_with_retry',
+        lambda _session, target, **kwargs: SimpleNamespace(status_code=200, content=html),
+    )
+    records.main(path, tmp_path, tmp_path, as_of=date(2026, 9, 28))
+    saved = records_read_state(tmp_path / 'senate.json.gz')
+    assert list(saved) == [host]
+    assert saved[host]['versions'] == {'335901': 'v-jec-1'}
+    assert saved[host]['workflow'][url]['events'] == ['335901']
+    assert '335901,' in (tmp_path / 'senate_hearing_pages_found.csv').read_text()
+
