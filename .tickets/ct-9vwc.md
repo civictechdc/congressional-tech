@@ -1,6 +1,6 @@
 ---
 id: ct-9vwc
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-11-18T22:05:04Z
@@ -39,3 +39,10 @@ Rebased onto `origin/main` (`53787ec9`, integrating `ct-414r`, `ct-6v77`, and Ic
 - `model/sql/house-page-meeting-links.sql`: kept all `ct-414r` protections (`link_rule`, `match_note`, `direct_stated_conflict`, `outbound_event_ids`, `single_page_on_date` via `page_key`, roundtable separation, suffix stripping) alongside `ct-9vwc`'s `hearing_date` vs `page_date` separation (`outbound_same_date_event_ids` and `single_page_on_date` use `hearing_date`), `not_held` exclusion, and `(page_body, event_id, link_rule, match_note, hearing_date, page_date)` projection.
 - `packages/viewer_publication/src/viewer_publication/archive_model.py` & `model/sql/entity-recording-matches.sql`: kept `origin/main`'s thin `entity-recording-matches.sql` (0 repeated CTEs); extended `known_meetings_sql()` with `meeting_date`, `not_held`, and `committees`; integrated `ct-9vwc` embed-contradiction filters (`not_held`, pre-hearing `published_at < meeting_date - 30 days`, video title date, held stated-event conflict, channel parent/level mismatch, explicit topic conflict) with `ct-414r` filters inside materialized `recording_match_prep_steps()` (`recording_topic_stopwords`, `recording_page_video_facts`, `recording_page_video_stated_overlaps`, `recording_page_meeting_committees`, `recording_page_match_rows`).
 - `packages/viewer_publication/tests/test_explorer_native_tables.py`: preserved all `origin/main` tests (`ct-414r`, frozen DAG, Iceberg field-id regression) and updated both `ct-9vwc` planted tests to the materialized prep-step schema.
+
+**2026-11-24T18:00:00Z**
+
+Merged, published live, and verified:
+- PR #212 (`3f512657`) merged `recording-match-hearing-date` (`Match recordings to hearings by hearing date, not page date`).
+- Gate-1 cause record (`d5671f30`, PR #235) and 1-page review summary (`9f603e0f`, PR #236) merged cleanly with `12/12` GitHub CI checks passing.
+- Candidate `453351a3a57bdd28031a43de218832f5cd8b89c30048bc04354aaba37b337c47` (`-54` contradicted `recording_matches` removed, `0` false removals) published live in run `45431881822` and verified on `https://congressional-data.spicygov.ai/viewer-publications/manifest.json`. All acceptance criteria met; closing `ct-9vwc`.
