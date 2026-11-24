@@ -5,6 +5,7 @@ from io import RawIOBase
 import hashlib
 import re
 import struct
+import time
 from zipfile import BadZipFile, ZIP_DEFLATED, ZIP_STORED, ZipFile
 import zlib
 
@@ -230,6 +231,15 @@ def _read_zip_member_once(session, url, member_name, *, limits=MEMBER_LIMITS):
             if (entry.file_size > min(limits.max_member_bytes, limits.max_total_bytes)
                     or entry.compress_size > limits.max_member_bytes):
                 source.fail('ZIP member exceeds compressed or expanded byte limits')
+            prefetch_end = min(
+                source.length,
+                entry.header_offset + 30 + len(entry.orig_filename.encode('utf-8')) + 1024 + entry.compress_size,
+            )
+            prefetch_size = prefetch_end - entry.header_offset
+            max_read = max(limits.max_directory_bytes, limits.max_member_bytes)
+            if prefetch_size > 0:
+                source.seek(entry.header_offset)
+                source.read(min(prefetch_size, max_read))
             with archive.open(entry) as member:
                 data = member.read(min(limits.max_member_bytes, limits.max_total_bytes) + 1)
             if len(data) != entry.file_size:
@@ -242,22 +252,24 @@ def _read_zip_member_once(session, url, member_name, *, limits=MEMBER_LIMITS):
             data=source.last_data, source=source.source, media_type=source.media_type) from error
 
 
-def read_zip_member(session, url, member_name, *, limits=MEMBER_LIMITS):
+def read_zip_member(session, url, member_name, *, limits=MEMBER_LIMITS, sleep=None):
     """Return complete CRC-checked member bytes and archive/range provenance.
 
     No filesystem extraction, first-member assumption or full-download fallback.
-    Restarts once from scratch if a conditional range request returns HTTP 412.
+    Restarts up to twice from scratch if a conditional range request returns HTTP 412.
     Publishers that refuse pinned ranges leave the caller's work retryable.
     """
     prior_attempts = []
-    for attempt in range(2):
+    sleep_fn = time.sleep if sleep is None else sleep
+    for attempt in range(3):
         try:
             response = _read_zip_member_once(session, url, member_name, limits=limits)
         except ZipMemberReadError as error:
             failure = error.source.get('request_failure') or {}
             has_validator = bool(error.source.get('etag') or error.source.get('last_modified'))
-            if attempt == 0 and failure.get('http_status') == 412 and has_validator:
+            if attempt < 2 and failure.get('http_status') == 412 and has_validator:
                 prior_attempts.append(error.source)
+                sleep_fn(1.0 * (attempt + 1))
                 continue
             if prior_attempts:
                 error.source['prior_attempts'] = prior_attempts
