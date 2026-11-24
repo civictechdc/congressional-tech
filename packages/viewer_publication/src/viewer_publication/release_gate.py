@@ -1799,6 +1799,12 @@ def require_release_gates(base_dir, candidate_dir, causes, *, report_path, evide
     report_path.write_text(json.dumps(report, indent=1, default=str) + '\n')
     # ct-rhqw: the morning report, written once the night's outcome is known.
     write_meeting_updates(report, base_dir, candidate_dir, report_path.parent, refused=report['reasons'])
+    if report.get('failing') or report['reasons']:
+        from viewer_publication.release_review import render_review_summary, write_review_samples
+        samples = write_review_samples(report, base_dir, candidate_dir, report_path.parent / 'release-gate-samples.json')
+        (report_path.parent / 'release-gate-summary.md').write_text(
+            render_review_summary(report, samples=samples, record=causes)
+        )
     if report['reasons']:
         # Why no automatic rule took the night comes first: the per-group lines below follow from it.
         raise ValueError('Release gates refused (report ' + str(report_path) + '):\n' + '\n'.join(

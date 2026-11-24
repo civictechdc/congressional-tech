@@ -114,12 +114,45 @@ def main(argv=None, root=ROOT):
     drafting.add_argument('--ticket', action='append', required=True, help='ticket id; repeat for more')
     drafting.add_argument('--correction', help='why each live link may open its new file (needed when links moved)')
     commands.add_parser('pin', help='re-pin the record after editing it by hand')
+    summarizing = commands.add_parser('summarize', help='render a 1-page Gate-1 Markdown review summary')
+    summarizing.add_argument('--evidence', type=Path, required=True, help='folder from `gh run download <run id>`')
+    summarizing.add_argument('--record', type=Path, help='optional cause record JSON (defaults to matching pinned record)')
+    summarizing.add_argument('--out', type=Path, help='optional output Markdown file instead of stdout')
     args = parser.parse_args(argv)
     evidence = getattr(args, 'evidence', None) and args.evidence.resolve()
+    record_path = getattr(args, 'record', None) and args.record.resolve()
+    out_path = getattr(args, 'out', None) and args.out.resolve()
     os.chdir(root)  # a record's evidence pins are paths from the checkout's root
     try:
         if args.command == 'pin':
             print(f'Pinned {pin_record(root)} in {SPEC}.')
+            return 0
+        if args.command == 'summarize':
+            from viewer_publication.release_review import render_review_summary
+            found = sorted(Path(evidence).glob('**/release-gate.json'))
+            if len(found) != 1:
+                raise ValueError(f'Expected one release-gate.json under {evidence}, found {len(found)}')
+            report = json.loads(found[0].read_text())
+            samples_file = found[0].parent / 'release-gate-samples.json'
+            samples = json.loads(samples_file.read_text()) if samples_file.exists() else None
+            record = None
+            if record_path is not None:
+                record = json.loads(record_path.read_text())
+            elif (Path(root) / SPEC).exists():
+                spec = json.loads((Path(root) / SPEC).read_text())
+                if 'release_causes' in spec:
+                    pinned = Path(root) / 'model/jobs' / spec['release_causes']['path']
+                    if pinned.exists():
+                        candidate = json.loads(pinned.read_text())
+                        if (candidate.get('base_release_id'), candidate.get('candidate_release_id')) == (
+                            report.get('base_release'), report.get('candidate_release')
+                        ):
+                            record = candidate
+            rendered = render_review_summary(report, samples=samples, record=record)
+            if out_path is not None:
+                out_path.write_text(rendered)
+            else:
+                sys.stdout.write(rendered)
             return 0
         report = gate_report(evidence)
         path = draft(report, cause=args.cause, tickets=args.ticket, correction=args.correction, root=root)
