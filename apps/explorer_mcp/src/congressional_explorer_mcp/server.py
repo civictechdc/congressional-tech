@@ -1,15 +1,17 @@
 """The public MCP surface uses only the current published archive model."""
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from functools import partial
 import time
 
 import anyio
+import httpx2 as httpx
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from pydantic import StrictInt, StrictStr
 
 from . import __version__
+from .archive_search import backend_origin, register_tools
 from .models import (DocumentSearch, DocumentQuery, DocumentBatch, TextSearch, EntitySearch, EntityQuery,
                      SqlQuery, ExplorerError, MAX_BYTES, BillActions, RollCalls, MemberBallots,
                      ActivityQuery, ResearchQuery)
@@ -18,11 +20,13 @@ from .release import PUBLICATION, encoded, load_selection, prepare
 from .hearing_models import HearingBundleQuery, TranscriptQuery
 
 
-def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PUBLICATION, warm_on_start=False):
+def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PUBLICATION, warm_on_start=False,
+                  search_origin=None):
     if selection is None and data_dir is None:
         raise ValueError('A selected release or data directory is required')
     worker = Worker(selection, timeout=timeout)
     setup_lock = anyio.Lock()
+    origin = backend_origin(search_origin) if search_origin else None
 
     async def ensure_selection():
         if worker.selection is None:
@@ -42,10 +46,19 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         try:
             if warm_on_start:
                 await warm()
-            yield
+            async with AsyncExitStack() as stack:
+                clients = {}
+                if origin:
+                    clients['archive_search'] = await stack.enter_async_context(
+                        httpx.AsyncClient(base_url=origin, timeout=timeout, follow_redirects=False, trust_env=False))
+                yield clients
         finally:
             await worker.close()
 
+    text_tools = (
+        'Use search_docs for archive document text and read_section to open the cited page. '
+        'Use search_text for caption cues when get_dataset_status reports a text index. '
+        if origin else 'Use search_text for indexed document bodies and caption cues. ')
     mcp = FastMCP('Congress Explorer', version=__version__, lifespan=lifespan, instructions=(
         'Start with get_overview for capabilities and get_dataset_status for release dates and coverage. '
         'Use get_dataset_info relationship or recipe selectors for published joins and SQL examples. '
@@ -53,10 +66,17 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         'Use query_sql for arbitrary joins, nested lists and aggregations across all release tables. '
         'Document references and page cursors belong to one release. Saved file URLs are for you to fetch and read. '
         'Missing tables mean unavailable, not zero records. Witnesses identify appearances, not deduplicated people. '
-        "Use search_documents for metadata and search_text for indexed document bodies and caption cues. "
+        f"Use search_documents for metadata. {text_tools}"
         "Read verified archived document text with get_document(section='text'); get_dataset_status describes index coverage. "
         'Use get_hearing_bundle for a hearing dossier; get_transcript discovers release-bound official, committee and caption sources. '
         'Pass a returned citation to resolve_citation to reopen its original passage.'))
+
+    if origin:
+        async def selected_release():
+            await ensure_selection()
+            return worker.selection['release_id']
+
+        register_tools(mcp, origin, selected_release, timeout)
 
     @mcp.custom_route('/ready', methods=['GET'])
     async def ready(request):
@@ -179,7 +199,11 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
     @mcp.tool(annotations=annotations)
     async def get_overview() -> dict:
         """Read compact capabilities, table names, limits, and focused discovery selectors."""
-        return await call('overview', {})
+        overview = await call('overview', {})
+        if origin:
+            overview['capabilities'].append('archive_document_search')
+            overview['discovery']['archive_search'] = 'docs_health()'
+        return overview
 
     @mcp.tool(annotations=annotations)
     async def get_dataset_status() -> dict:
@@ -188,7 +212,10 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
         Null dates are unavailable. Source updates, capture times, record dates and release publication are distinct.
         Bounds describe observed records and do not establish complete history. Reads retained metadata only.
         """
-        return await call('dataset_status', {})
+        status = await call('dataset_status', {})
+        if origin:
+            status['archive_document_search'] = dict(search='search_docs', read='read_section', coverage='docs_health')
+        return status
 
     @mcp.tool(annotations=annotations)
     async def search_text(query: TextSearch) -> dict:

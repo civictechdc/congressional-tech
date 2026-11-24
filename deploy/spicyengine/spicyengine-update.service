@@ -1,0 +1,8 @@
+[Unit]
+Description=Publish the current complete congressional archive to SpicyEngine
+After=network-online.target spicyengine-db.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/spicyengine-update

@@ -2,11 +2,11 @@
 from hashlib import sha256
 import time
 
-from . import TOOL_NAMES, __version__
+from . import ARCHIVE_SEARCH_TOOLS, TOOL_NAMES, __version__
 from .citations import TEXT_READER_VERSION
 
 
-async def check_client(client, release_id=None, *, plan=None, require_research=False):
+async def check_client(client, release_id=None, *, plan=None, require_research=False, require_archive_search=False):
     """Check available research paths; retain explicit gaps on older fixtures.
 
     A release qualification can supply event_id, document_reference and search_text
@@ -14,7 +14,9 @@ async def check_client(client, release_id=None, *, plan=None, require_research=F
     """
     plan = plan or {}
     tools = await client.list_tools()
-    assert {tool.name for tool in tools} == TOOL_NAMES
+    listed = {tool.name for tool in tools}
+    expected = TOOL_NAMES | ARCHIVE_SEARCH_TOOLS if require_archive_search or listed & ARCHIVE_SEARCH_TOOLS else TOOL_NAMES
+    assert listed == expected, (listed - expected, expected - listed)
     assert all(tool.annotations.read_only_hint for tool in tools)
     assert client.server_info is not None and client.server_info.version == __version__
     checks, timings, called = [], {}, set()
@@ -46,6 +48,17 @@ async def check_client(client, release_id=None, *, plan=None, require_research=F
     overview = await call('get_overview')
     status = await call('get_dataset_status')
     assert overview['release_id'] == status['release_id'] == release_id
+    if ARCHIVE_SEARCH_TOOLS <= expected:
+        health = await call('docs_health')
+        assert health['release_id'] == release_id and health['serenedb']['connected'] and health['index']['sections'] > 0
+        search = await call('search_docs', {'query': plan.get('archive_query', 'Congress'), 'limit': 1})
+        assert search['release_id'] == release_id and search['results']
+        hit = search['results'][0]
+        section = await call('read_section', {'url': hit['url']})
+        assert (section['release_id'] == release_id and section['id'] == hit['id']
+                and section['url'] == hit['url'] and section['content']
+                and section['configVersion'] == search['configVersion'])
+        record('archive-search-and-section', url=hit['url'], publisher_url=hit.get('publisher_url'))
     tables = info['tables']
     record('discovery', tables=len(tables), publication_status=status['publication_status'])
     found = await call('search_documents', {'query': {'limit': 1}})
@@ -149,20 +162,20 @@ async def check_client(client, release_id=None, *, plan=None, require_research=F
             saved_body='0' * 64, reader_version=TEXT_READER_VERSION, location=dict(kind='body_text', page=1, offset=0, length=1), text_sha256='0' * 64)})
         assert result['state'] in ('unavailable', 'different_source')
         record('stale-citation-refusal')
-    for query, expected in [({'sql': 'SELECT FROM'}, 'Parser Error'),
+    for query, error_text in [({'sql': 'SELECT FROM'}, 'Parser Error'),
         ({'sql': 'SELECT imaginary_column FROM documents'}, 'imaginary_column'),
         ({'sql': 'SELECT ? AS n'}, 'parameters: 1'),
         ({'sql': 'DROP VIEW documents'}, 'read-only SELECT')]:
         result = await client.call_tool('query_sql', {'query': query}, raise_on_error=False)
-        assert result.is_error and expected in result.content[0].text
+        assert result.is_error and error_text in result.content[0].text
     assert await sql('SELECT ? AS n', [7]) == [{'n': 7}]
     record('sql-diagnostics-and-read-only')
     if require_research:
         assert cue_read and body_read and search_read and single_keys, 'Research qualification requires entity, caption, document and search citation round trips'
-        assert called == TOOL_NAMES, f'Tools without a successful normal call: {sorted(TOOL_NAMES-called)}'
+        assert called == expected, f'Tools without a successful normal call: {sorted(expected-called)}'
         assert all(item['state'] != 'unavailable' for item in checks if item['operation'] in
                    {'get_bill_actions', 'get_roll_calls', 'get_member_ballots', 'activity', 'named-query'})
-    return dict(status='ok', version=__version__, release_id=release_id, tools=sorted(TOOL_NAMES),
+    return dict(status='ok', version=__version__, release_id=release_id, tools=sorted(expected),
         tables=len(tables), sample_rows=len(document['rows']), checks=checks, seconds=timings,
-        tool_coverage=dict(called=sorted(called), unavailable=sorted(TOOL_NAMES-called)),
+        tool_coverage=dict(called=sorted(called), unavailable=sorted(expected-called)),
         research_qualified=cue_read and body_read and search_read)

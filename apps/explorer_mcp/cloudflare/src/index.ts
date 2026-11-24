@@ -13,7 +13,10 @@ export class CongressExplorer extends Container<Env> {
     const publication = request.headers.get(PUBLICATION_HEADER);
     if (!publication) return new Response("Missing archive release", { status: 500 });
     // This instance is named after one immutable release; every start selects that release.
-    this.envVars = { CONGRESS_MCP_PUBLICATION: publication };
+    this.envVars = {
+      CONGRESS_MCP_PUBLICATION: publication,
+      CONGRESS_MCP_SEARCH_ORIGIN: this.env.SPICYENGINE_ORIGIN,
+    };
     // A fresh filesystem must download and verify the pinned metadata before
     // accepting MCP calls. The SDK's default 20 seconds is too short for this.
     await this.startAndWaitForPorts({

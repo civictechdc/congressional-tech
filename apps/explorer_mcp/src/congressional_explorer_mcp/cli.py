@@ -44,7 +44,8 @@ def serve(args, selection=None):
                        stateless_http=True, json_response=True)
     warm_on_start = bool(args.warm or (args.transport == 'http' and selection is not None))
     create_server(selection, data_dir=args.data_dir, publication=args.publication,
-                  timeout=args.query_timeout, warm_on_start=warm_on_start).run(
+                  timeout=args.query_timeout, warm_on_start=warm_on_start,
+                  search_origin=os.environ.get('CONGRESS_MCP_SEARCH_ORIGIN')).run(
         transport=args.transport, show_banner=False, **options)
 
 

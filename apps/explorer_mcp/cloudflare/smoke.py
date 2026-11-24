@@ -11,7 +11,7 @@ from congressional_explorer_mcp import __version__
 from congressional_explorer_mcp.validation import check_client
 
 
-async def check(url, release_id, *, plan=None, require_research=False):
+async def check(url, release_id, *, plan=None, require_research=False, require_archive_search=False):
     readiness_url = url.removesuffix('/mcp').rstrip('/') + '/ready'
     def readiness():
         request = Request(readiness_url, headers={'User-Agent': f'congress-explorer-smoke/{__version__}'})
@@ -21,7 +21,8 @@ async def check(url, release_id, *, plan=None, require_research=False):
     ready = await asyncio.to_thread(readiness)
     assert ready == dict(status='ready', version=__version__, release_id=release_id), ready
     async with Client(url, timeout=120) as client:
-        result = await check_client(client, release_id, plan=plan, require_research=require_research)
+        result = await check_client(client, release_id, plan=plan, require_research=require_research,
+                                    require_archive_search=require_archive_search)
         async with Client(url, timeout=120) as second:
             assert second.server_info is not None and second.server_info.version == __version__
             values = await asyncio.gather(*[
@@ -38,6 +39,8 @@ if __name__ == '__main__':
     parser.add_argument('--release-id', required=True)
     parser.add_argument('--probe-plan', type=Path)
     parser.add_argument('--require-research', action='store_true')
+    parser.add_argument('--require-archive-search', action='store_true')
     args = parser.parse_args()
     plan = json.loads(args.probe_plan.read_text()) if args.probe_plan else None
-    print(json.dumps(asyncio.run(check(args.url, args.release_id, plan=plan, require_research=args.require_research)), indent=2))
+    print(json.dumps(asyncio.run(check(args.url, args.release_id, plan=plan, require_research=args.require_research,
+                                      require_archive_search=args.require_archive_search)), indent=2))

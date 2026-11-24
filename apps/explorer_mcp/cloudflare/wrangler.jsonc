@@ -28,7 +28,8 @@
     "CongressExplorer": { "type": "durable-object", "storage": "sqlite" }
   },
   "vars": {
-    "ARCHIVE_POINTER": "https://congressional-data.spicygov.ai/viewer-publications/manifest.json"
+    "ARCHIVE_POINTER": "https://congressional-data.spicygov.ai/viewer-publications/manifest.json",
+    "SPICYENGINE_ORIGIN": "https://spicyengine.45.55.61.191.sslip.io"
   },
   "ratelimits": [
     {
