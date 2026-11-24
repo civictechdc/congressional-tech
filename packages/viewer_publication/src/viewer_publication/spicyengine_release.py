@@ -6,6 +6,7 @@ import json
 import os
 import re
 import subprocess
+from collections import Counter
 from contextlib import closing
 from hashlib import file_digest, sha256
 from pathlib import Path
@@ -147,10 +148,14 @@ def source_files(origin, work, pin, local):
     entries = {f["name"]: f for f in manifest["files"]}
     if text["detail"] != {k: entries["detail.parquet"][k] for k in ("sha256", "size")}:
         raise ValueError("Text export and archive detail pins disagree")
-    inputs = {name: (f"{prefix}/{name}", entries[name]["sha256"], entries[name]["size"])
-              for name in ("detail.parquet", "sources.parquet")}
+    names = ["detail.parquet", "sources.parquet"]
+    if "committees.parquet" in entries:
+        names.append("committees.parquet")
+    inputs = {name: (f"{prefix}/{name}", entries[name]["sha256"], entries[name]["size"]) for name in names}
     inputs["body_text.parquet"] = (text["key"], text["sha256"], text["bytes"])
     def locate(name):
+        if name == "committees.parquet" and name not in inputs:
+            return None  # Older archive releases can omit the committee directory.
         key, digest, size = inputs[name]
         target = work / "downloads" / name
         existing = local / name if local else None
@@ -168,11 +173,7 @@ def source_files(origin, work, pin, local):
     return locate
 
 
-def prepare(origin, work, pin, local):
-    ready = work / "prepared.json"
-    if ready.is_file():
-        return json.loads(ready.read_text())
-    locate = source_files(origin, work, pin, local)
+def prepare_documents(work, locate):
     body = None
     output = work / "prepared"
     output.mkdir(exist_ok=True)
@@ -209,8 +210,53 @@ def prepare(origin, work, pin, local):
         os.fsync(directory)
     finally:
         os.close(directory)
-    result = {"records": total}
-    save(ready, result)
+    return total
+
+
+def committee_vocabulary(directory, prepared):
+    if directory is None:
+        return {}
+    # Project only the committee IDs already present in these immutable shards.
+    with closing(duckdb.connect(config={"threads": 1})) as db:
+        active = {key for key, in db.execute("SELECT DISTINCT unnest(committee_keys) FROM read_parquet(?)",
+                                             [str(prepared / "*.parquet")]).fetchall()}
+    columns = ["system_code", "chamber", "name", "names"]
+    labels, aliases = {}, {}
+    for row in pq.read_table(directory, columns=columns).to_pylist():
+        key = row["system_code"]
+        if key not in active:
+            continue
+        # The archive orders official names most recent first, including for retired committees.
+        history = [entry["name"] for entry in row["names"] or [] if entry["name"]]
+        name = history[0] if history else row["name"]
+        if not name or name.casefold() == key.casefold():
+            continue
+        chamber = (row["chamber"] or "").title()
+        label = f"{chamber} {name}" if chamber and not name.casefold().startswith(chamber.casefold() + " ") else name
+        if key in labels:
+            raise ValueError(f"Duplicate committee directory entry: {key}")
+        labels[key] = label
+        alternatives = list(dict.fromkeys(n for n in [row["name"], *history] if n and n.casefold() not in label.casefold()))
+        if alternatives:
+            aliases[key] = alternatives
+    # Some distinct archive IDs share even the same chamber and formal name.
+    counts = Counter(labels.values())
+    for key, label in labels.items():
+        if counts[label] > 1:
+            labels[key] = f"{label} ({key})"
+    return {"facet_labels": {"committee_keys": labels},
+            "facet_aliases": {"committee_keys": aliases}}
+
+
+def prepare(origin, work, pin, local):
+    ready = work / "prepared.json"
+    result = json.loads(ready.read_text()) if ready.is_file() else {}
+    if "committee_vocabulary" not in result:
+        locate = source_files(origin, work, pin, local)
+        if "records" not in result:
+            result["records"] = prepare_documents(work, locate)
+        result["committee_vocabulary"] = committee_vocabulary(locate("committees.parquet"), work / "prepared")
+        save(ready, result)
     return result
 
 
@@ -231,6 +277,7 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
         definition = {"input": {"parquet": str(work / "serving" / "*.parquet")}, "text_storage": "source",
                       "excerpt_key": "text_sha256",
                       "label": f"Congressional archive · {release[:12]}", "release_id": release,
+                      **ready["committee_vocabulary"],
                       "fields": FIELDS | {"listed_on": "listed_on", "pdf_url": "pdf_url"}}
         if work == legacy:
             # A completed v1 release keeps its index and immutable shards, including on restore.
@@ -248,7 +295,7 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
                 temporary.replace(links)
             definition.update(fields=FIELDS, source_links=str(links))
         # Once preparation commits, only the search partitions are needed locally.
-        for name in ("body_text.parquet", "detail.parquet", "sources.parquet"):
+        for name in ("body_text.parquet", "detail.parquet", "sources.parquet", "committees.parquet"):
             (work / "downloads" / name).unlink(missing_ok=True)
         manifest = work / "dataset.json"
         if not manifest.exists() or json.loads(manifest.read_text()) != definition:
