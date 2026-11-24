@@ -11,7 +11,8 @@ from viewer_publication import spicyengine_release as release
 from viewer_publication.archive_format import release_identity
 
 
-def test_publication_replay(tmp_path, monkeypatch):
+@pytest.mark.parametrize("committee_directory", [True, False])
+def test_publication_replay(tmp_path, monkeypatch, committee_directory):
     archive = tmp_path / "origin" / "viewer-publications"
     stage = archive / "releases" / "staging"
     stage.mkdir(parents=True)
@@ -21,7 +22,7 @@ def test_publication_replay(tmp_path, monkeypatch):
     doc = dict(link_key=b"12345678", saved_body=body_key, hidden=False, saved_suffix=".gz",
                title="Housing report", filename="report.pdf", package_id="HR-1", format="pdf",
                document_date=date(2026, 11, 20), document_date_status="accepted", congress=119, chambers=["house"],
-               committee_keys=["HS"], document_kind="report", document_family="legislative",
+               committee_keys=["hsap00", "ssap00", "retired", "other1", "other2"], document_kind="report", document_family="legislative",
                src_start=0, src_len=2)
     detail = pa.Table.from_pylist([doc, doc | {"link_key": b"87654321", "src_start": 2, "src_len": 1, "saved_suffix": ""}, doc | {"hidden": True},
                                    doc | {"link_key": b"no-text!", "saved_body": None}])
@@ -31,6 +32,14 @@ def test_publication_replay(tmp_path, monkeypatch):
         dict(ordinal=1, url="https://example.gov/alternate.pdf", listed_on="https://example.gov/hearing", link_text="Exhibit", member_path=None, is_saved=False),
         dict(ordinal=0, url="https://example.gov/hearing.zip", listed_on=None, link_text="Archive", member_path="a.pdf", is_saved=True),
     ]), stage / "sources.parquet")
+    if committee_directory:
+        house = dict(system_code="hsap00", chamber="house", name="Appropriations Committee",
+                     names=[{"name": "Committee on Appropriations"}, {"name": "Former Appropriations Panel"}])
+        other = dict(system_code="other1", chamber="joint", name="Joint Example Committee", names=[])
+        rows = [house, house | {"system_code": "ssap00", "chamber": "senate"}, other, other | {"system_code": "other2"},
+                house | {"system_code": "retired", "name": "House Historical Committee", "names": []},
+                house | {"system_code": "unused"}]
+        pq.write_table(pa.Table.from_pylist(rows), stage / "committees.parquet")
     files = []
     for f in sorted(stage.glob("*.parquet")):
         raw = f.read_bytes()
@@ -43,8 +52,9 @@ def test_publication_replay(tmp_path, monkeypatch):
     body = text_dir / "body.parquet"
     pq.write_table(pa.Table.from_pylist([dict(saved_body=body_key, text="housing evidence", page_offsets=[0], text_sha256=b"X"*32)]), body)
     digest = sha256(body.read_bytes()).hexdigest()
+    detail_entry = next(f for f in files if f["name"] == "detail.parquet")
     pointer = dict(release_id=release_id, sha256=digest, bytes=body.stat().st_size,
-                   key=f"derived/body_text/{digest}.parquet", detail={k: files[0][k] for k in ("sha256","size")})
+                   key=f"derived/body_text/{digest}.parquet", detail={k: detail_entry[k] for k in ("sha256","size")})
     body.rename(text_dir / f"{digest}.parquet")
     (text_dir / "current.json").write_text(json.dumps(pointer))
     origin = (tmp_path / "origin").as_uri()
@@ -62,12 +72,33 @@ def test_publication_replay(tmp_path, monkeypatch):
     assert child["listed_on"] is None and child["pdf_url"] == f"{release.ORIGIN}/bodies/sha256/ab/{body_key.hex()}"
     definition = json.loads((work / "dataset.json").read_text())
     assert definition["release_id"] == release_id
+    if committee_directory:
+        assert definition["facet_labels"]["committee_keys"] == {
+            "hsap00": "House Committee on Appropriations", "ssap00": "Senate Committee on Appropriations",
+            "retired": "House Historical Committee", "other1": "Joint Example Committee (other1)",
+            "other2": "Joint Example Committee (other2)"}
+        assert definition["facet_aliases"]["committee_keys"]["hsap00"] == ["Appropriations Committee", "Former Appropriations Panel"]
+    else:
+        assert "facet_labels" not in definition
+    assert primary["committee_keys"] == doc["committee_keys"]
     assert definition["excerpt_key"] == "text_sha256" and primary["text_sha256"] == (b"X"*32).hex()
     assert definition["fields"]["listed_on"] == "listed_on" and definition["fields"]["pdf_url"] == "pdf_url"
     assert "source_links" not in definition and not (work / "source-links.parquet").exists()
     assert not list((work / "downloads").glob("*.parquet"))
     (text_dir / f"{digest}.parquet").unlink()
+    # Upgrade a release prepared before committee names shipped, with its document input offline.
+    (work / "prepared.json").write_text(json.dumps({"records": len(rows)}))
+    shard = next((work / "prepared").glob("*.parquet"))
+    shard_time = shard.stat().st_mtime_ns
+    if committee_directory:
+        wrong = tmp_path / "wrong-release"
+        wrong.mkdir()
+        (wrong / "committees.parquet").write_bytes(b"unrelated release")
+        with pytest.raises(ValueError, match="Local committees.parquet differs"):
+            release.update(root, origin=origin, saved=work / "pin.json", local=wrong)
     assert release.update(root, origin=origin, saved=work / "pin.json") == work
+    assert shard.stat().st_mtime_ns == shard_time
+    assert json.loads((work / "dataset.json").read_text()) == definition
     # An already-prepared v1 index is replayed without reading or rebuilding bodies.
     old = root / "search-v1" / release_id / digest
     old.mkdir(parents=True)

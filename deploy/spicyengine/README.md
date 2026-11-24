@@ -24,8 +24,13 @@ Inspect the latest attempt with `journalctl -u spicyengine-update.service`.
 Stop the timer before deliberately holding the host on an earlier pin.
 An exact release match is required for Congress Explorer’s hosted search tools.
 
+Search filters use the most recent formal name in the release's committee directory,
+or the directory's display name where it has no name history. Earlier names are
+searchable and selections keep their original committee IDs. The first update of
+an existing release reads only its committee ID column and the pinned directory.
+
 Pass `--source-dir /absolute/path` to reuse matching local `detail.parquet`,
-`sources.parquet` or `body_text.parquet`. The producer verifies supplied files
+`sources.parquet`, `committees.parquet` or `body_text.parquet`. The producer verifies supplied files
 in place. It verifies downloads while writing and releases its own download
 copies after the prepared output commits. Keep the previous and current
 release files while their native indexes reference them. The command changes
