@@ -1,5 +1,9 @@
 import congressMetadata from '../../../data/congress_metadata.json' with { type: 'json' };
 
+import documentClassifications from '../../../../../../packages/congress_shared/src/congress_shared/data/document-classifications.json' with { type: 'json' };
+
+const documentKindLabels: Readonly<Record<string, { label: string } | undefined>> = documentClassifications.kinds;
+
 const standingCommittees: Record<string, string> = {
   hhah00: "House Ad Hoc Committee on Energy",
   hlcn00: "House Select Climate Crisis",
@@ -477,107 +481,6 @@ const parentCommitteeOverrides: Record<string, string> = {
   hzgo34: 'hsgo00',
 };
 
-const documentKindLabels: Record<string, string> = {
-  'published-hearing': 'Published Hearing',
-  'meeting-support': 'Meeting Support Document',
-  'testimony': 'Witness Testimony',
-  'witness-statement': 'Witness Statement',
-  'testimony-disclosure': 'Truth in Testimony Disclosure',
-  'witness-biography': 'Witness Biography',
-  'committee-amendment': 'Committee Amendment',
-  'bill-numbered': 'Numbered Bill',
-  'committee-vote': 'Committee Recorded Vote',
-  'committee-amendment-described': 'Committee Amendment (Described)',
-  'witness-support': 'Witness Supporting Material',
-  'member-statement': 'Member Statement',
-  'amendment': 'Amendment',
-  'opening-statement': 'Opening Statement',
-  'statement': 'Statement',
-  'witness-list': 'Witness List',
-  'committee-transcript': 'Committee Transcript',
-  'committee-memorandum': 'Committee Memorandum',
-  'bill-untyped-numbered': 'Numbered Legislation',
-  'published-report': 'Published Committee Report',
-  'meeting-notice': 'Meeting Notice',
-  'questions-for-record': 'Questions for the Record',
-  'questions-for-record-response': 'Responses to Questions for the Record',
-  'bill-untyped-draft': 'Discussion Draft Bill',
-  'biography': 'Biography',
-  'member-roster': 'Committee Roster',
-  'transcript': 'Transcript',
-  'legislative-text': 'Legislative Text',
-  'bill-suspension-numbered': 'Suspension Bill',
-  'nomination': 'Nomination',
-  'committee-enbloc-numbered': 'En Bloc Amendment',
-  'letter-of-support': 'Letter of Support',
-  'questionnaire': 'Questionnaire',
-  'bill-measure-list': 'List of Bills & Measures',
-  'business-meeting': 'Business Meeting / Markup',
-  'committee-report': 'Committee Report',
-  'report': 'Report',
-  'hearing-charter': 'Hearing Charter',
-  'appropriation-described': 'Appropriations Material',
-  'letter': 'Letter',
-  'committee-print': 'Committee Print',
-  'meeting-results': 'Markup / Meeting Results',
-  'opening-remarks': 'Opening Remarks',
-  'remarks': 'Remarks',
-  'bill-unnumbered': 'Unnumbered Bill',
-  'appropriation-routed': 'Appropriations Routing Table',
-  'summary': 'Summary',
-  'attachment': 'Attachment',
-  'exhibit': 'Exhibit',
-  'committee-document': 'Committee Document',
-  'bill-named-draft': 'Named Draft Bill',
-  'bill-titled-draft': 'Titled Draft Bill',
-  'appendix': 'Appendix',
-  'bill-house-amendment': 'House Amendment',
-  'bill-preintroduced': 'Pre-Introduced Bill Draft',
-  'committee-enbloc-described': 'En Bloc Amendment (Described)',
-  'amendment-collection': 'Amendment Packet',
-  'bill-numbered-described': 'Numbered Bill (Described)',
-  'section-by-section': 'Section-by-Section Summary',
-  'oversight-plan': 'Oversight Plan',
-  'tally-sheet': 'Vote Tally Sheet',
-  'bill-comparison': 'Comparative Print',
-  'committee-resolution': 'Committee Resolution',
-  'fact-sheet': 'Fact Sheet',
-  'committee-report-unnumbered': 'Unnumbered Committee Report',
-  'public-law': 'Public Law',
-  'field-hearing': 'Field Hearing',
-  'explanatory-statement': 'Explanatory Statement',
-  'response': 'Response',
-  'published-print': 'Published Committee Print',
-  'slides': 'Presentation Slides',
-  'chair-mark': "Chairman's Mark",
-  'budget-views-and-estimates': 'Budget Views & Estimates',
-  'revenue-estimate': 'Revenue / Cost Estimate',
-  'interchamber-amendment': 'Interchamber Amendment',
-  'exhibit-collection': 'Exhibit Packet',
-  'managers-package': "Manager's Amendment Package",
-  'treaty-document': 'Treaty Document',
-  'conference-unnumbered': 'Conference Material',
-  'amendment-list': 'Amendment List',
-  'mark-description': "Description of the Chairman's Mark",
-  'mark-modification': "Modification to the Chairman's Mark",
-  'conference-legislation-part': 'Conference Report Part',
-  'issue-brief': 'Issue Brief',
-  'activity-report': 'Committee Activity Report',
-  'committee-report-part': 'Committee Report Part',
-  'conference-report': 'Conference Report',
-  'exhibit-list': 'Exhibit List',
-  'flyer': 'Flyer',
-  'graphic': 'Graphic',
-  'motion': 'Motion',
-  'notice': 'Notice',
-  'pamphlet': 'Pamphlet',
-  'panel-discussion': 'Panel Discussion',
-  'panelist-list': 'Panelist List',
-  'participant-list': 'Participant List',
-  'rules-memorandum': 'Rules Committee Memorandum',
-  'brochure': 'Brochure',
-};
-
 const formatNames: Record<string, string> = {
   pdf: 'PDF',
   html: 'HTML',
@@ -1050,7 +953,8 @@ export function buildCommitteeGroups(
 export function documentKindLabel(kind: string): string {
   const clean = String(kind ?? '').trim().toLowerCase();
   if (!clean) return '';
-  if (documentKindLabels[clean]) return documentKindLabels[clean];
+  const label = Object.hasOwn(documentKindLabels, clean) ? documentKindLabels[clean]?.label : undefined;
+  if (label) return label;
   return clean
     .split('-')
     .filter(Boolean)

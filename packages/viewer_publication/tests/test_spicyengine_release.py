@@ -79,7 +79,10 @@ def test_publication_replay(tmp_path, monkeypatch, committee_directory):
             "other2": "Joint Example Committee (other2)"}
         assert definition["facet_aliases"]["committee_keys"]["hsap00"] == ["Appropriations Committee", "Former Appropriations Panel"]
     else:
-        assert "facet_labels" not in definition
+        assert "committee_keys" not in definition["facet_labels"]
+    assert definition["facet_labels"]["chambers"]["house"] == "House"
+    assert definition["facet_labels"]["document_kind"]["questions-for-record"] == "Questions for the Record"
+    assert definition["facet_help"]["document_family"]["description"] != definition["facet_help"]["document_kind"]["description"]
     assert primary["committee_keys"] == doc["committee_keys"]
     assert definition["excerpt_key"] == "text_sha256" and primary["text_sha256"] == (b"X"*32).hex()
     assert definition["fields"]["listed_on"] == "listed_on" and definition["fields"]["pdf_url"] == "pdf_url"
@@ -115,6 +118,19 @@ def test_publication_replay(tmp_path, monkeypatch, committee_directory):
         raise AssertionError("Pinned replay reopened upstream data")
     monkeypatch.setattr(release, "open_object", unexpected)
     assert release.update(root, origin=origin, saved=work / "pin.json") == old
+
+
+def test_document_filter_help_covers_classification_families():
+    from house_naming import document_families
+
+    vocabulary = release.filter_vocabulary({})
+    labels, help_text = vocabulary["facet_labels"], vocabulary["facet_help"]
+    assert set(document_families(labels["document_kind"])) <= set(labels["document_family"])
+    for field in ("document_family", "document_kind"):
+        assert labels[field].keys() == help_text[field]["values"].keys()
+        assert all(value.strip() for value in help_text[field]["values"].values())
+    assert labels["document_kind"]["crs-report"] == "CRS Report"
+    assert help_text["document_family"]["values"]["statement"] != help_text["document_kind"]["values"]["statement"]
 
 
 def test_transfer_resumes_a_pinned_partial(tmp_path, monkeypatch):

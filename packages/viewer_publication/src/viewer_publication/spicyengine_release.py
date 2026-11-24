@@ -9,6 +9,7 @@ import subprocess
 from collections import Counter
 from contextlib import closing
 from hashlib import file_digest, sha256
+from importlib.resources import files
 from pathlib import Path
 from urllib.request import Request, urlopen
 
@@ -260,6 +261,25 @@ def prepare(origin, work, pin, local):
     return result
 
 
+def filter_vocabulary(committees):
+    terms = json.loads(files("congress_shared").joinpath("data/document-classifications.json").read_text(encoding="utf-8"))
+    kinds = terms["kinds"]
+    families = {key: entry if entry is not None else kinds[key] for key, entry in terms["families"].items()}
+    groups = {"document_family": families, "document_kind": kinds}
+    labels = dict(committees.get("facet_labels", {}))
+    labels["chambers"] = {"house": "House", "senate": "Senate", "joint": "Joint"}
+    descriptions = {
+        "document_family": "A broad group of related document kinds. For example, Statement includes opening statements and witness testimony.",
+        "document_kind": "A specific type assigned to a document, such as Opening Statement or Witness Testimony. A record can have more than one kind.",
+    }
+    help_text = {}
+    for field, entries in groups.items():
+        labels[field] = {key: entry["label"] for key, entry in entries.items()}
+        help_text[field] = {"description": descriptions[field],
+                            "values": {key: entry["description"] for key, entry in entries.items()}}
+    return {**committees, "facet_labels": labels, "facet_help": help_text}
+
+
 def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_query=None):
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -277,7 +297,7 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
         definition = {"input": {"parquet": str(work / "serving" / "*.parquet")}, "text_storage": "source",
                       "excerpt_key": "text_sha256",
                       "label": f"Congressional archive · {release[:12]}", "release_id": release,
-                      **ready["committee_vocabulary"],
+                      **filter_vocabulary(ready["committee_vocabulary"]),
                       "fields": FIELDS | {"listed_on": "listed_on", "pdf_url": "pdf_url"}}
         if work == legacy:
             # A completed v1 release keeps its index and immutable shards, including on restore.

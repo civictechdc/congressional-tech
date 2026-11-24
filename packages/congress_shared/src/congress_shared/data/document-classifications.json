@@ -1,0 +1,540 @@
+{
+  "kinds": {
+    "activity-report": {
+      "label": "Committee Activity Report",
+      "description": "An account of a committee’s work over a period of time."
+    },
+    "amendment": {
+      "label": "Amendment",
+      "description": "A proposed change to a measure, draft, or set of rules without a more specific amendment label."
+    },
+    "amendment-collection": {
+      "label": "Amendment Packet",
+      "description": "A packet that brings together multiple amendments."
+    },
+    "amendment-list": {
+      "label": "Amendment List",
+      "description": "An index of amendments that helps readers identify individual proposals."
+    },
+    "appendix": {
+      "label": "Appendix",
+      "description": "A section placed after the main text to provide additional detail or reference material."
+    },
+    "appropriation-described": {
+      "label": "Appropriations Material",
+      "description": "An appropriations measure identified by a description, such as its subject or fiscal year."
+    },
+    "appropriation-routed": {
+      "label": "Appropriations Routing",
+      "description": "Appropriations material identified by routing details in the file name, such as the fiscal year or committee code."
+    },
+    "attachment": {
+      "label": "Attachment",
+      "description": "A separate item included with a primary document."
+    },
+    "bill-comparison": {
+      "label": "Comparative Print",
+      "description": "A print that compares legislative texts or shows how a proposal would change existing law."
+    },
+    "bill-house-amendment": {
+      "label": "House Amendment",
+      "description": "An amendment identified as a House amendment to a legislative measure."
+    },
+    "bill-measure-list": {
+      "label": "List of Bills & Measures",
+      "description": "A list identifying bills, resolutions, or other legislative measures."
+    },
+    "bill-named-draft": {
+      "label": "Named Draft Bill",
+      "description": "A draft or committee resolution identified by a name such as Discussion Draft or Committee Rules."
+    },
+    "bill-numbered": {
+      "label": "Numbered Bill",
+      "description": "A measure identified by both its type and number, such as H.R. 123."
+    },
+    "bill-numbered-described": {
+      "label": "Numbered Bill (Described)",
+      "description": "A numbered measure identified with an additional description in the file name."
+    },
+    "bill-preintroduced": {
+      "label": "Pre-Introduced Bill Draft",
+      "description": "A draft identified as prepared before formal introduction."
+    },
+    "bill-suspension-numbered": {
+      "label": "Suspension Bill",
+      "description": "A numbered measure identified for consideration under suspension of the House rules."
+    },
+    "bill-titled-draft": {
+      "label": "Titled Draft Bill",
+      "description": "A draft whose file name uses a title or description before the introduction-stage marker."
+    },
+    "bill-unnumbered": {
+      "label": "Unnumbered Bill",
+      "description": "A legislative file identified without a bill or resolution number."
+    },
+    "bill-untyped-draft": {
+      "label": "Discussion Draft Bill",
+      "description": "A pre-introduction draft whose file name does not identify its measure type."
+    },
+    "bill-untyped-numbered": {
+      "label": "Numbered Legislation",
+      "description": "A numbered measure whose file name does not identify its measure type."
+    },
+    "biography": {
+      "label": "Biography",
+      "description": "An account of a person’s background, career, or qualifications."
+    },
+    "brochure": {
+      "label": "Brochure",
+      "description": "A short handout that introduces a topic, organization, or program."
+    },
+    "budget-views-and-estimates": {
+      "label": "Budget Views & Estimates",
+      "description": "A committee’s views on the budget and estimates for programs within its jurisdiction."
+    },
+    "business-meeting": {
+      "label": "Business Meeting / Markup",
+      "description": "A record or notice of a committee meeting for business such as debating and amending legislation."
+    },
+    "chair-mark": {
+      "label": "Chairman's Mark",
+      "description": "Legislative text proposed by a committee chair as the basis for committee consideration."
+    },
+    "committee-amendment": {
+      "label": "Committee Amendment",
+      "description": "An amendment identified for committee consideration."
+    },
+    "committee-amendment-described": {
+      "label": "Committee Amendment (Described)",
+      "description": "A committee amendment whose target is identified in words, such as by a draft title."
+    },
+    "committee-document": {
+      "label": "Committee Document",
+      "description": "A document identified as committee material without a more specific document label."
+    },
+    "committee-enbloc-described": {
+      "label": "En Bloc Amendment (Described)",
+      "description": "One or more amendments grouped for committee consideration with their target identified in words."
+    },
+    "committee-enbloc-numbered": {
+      "label": "En Bloc Amendment",
+      "description": "One or more amendments grouped for committee consideration on a numbered measure."
+    },
+    "committee-memorandum": {
+      "label": "Committee Memorandum",
+      "description": "A memo that briefs a committee or its members, often before a hearing or business meeting."
+    },
+    "committee-print": {
+      "label": "Committee Print",
+      "description": "A document printed for committee use, such as draft legislation or a study."
+    },
+    "committee-report": {
+      "label": "Committee Report",
+      "description": "A report identified as a committee report, often accompanying legislation or documenting committee work."
+    },
+    "committee-report-part": {
+      "label": "Committee Report Part",
+      "description": "One separately identified portion of a committee report."
+    },
+    "committee-report-unnumbered": {
+      "label": "Unnumbered Committee Report",
+      "description": "A committee report identified without a report number."
+    },
+    "committee-resolution": {
+      "label": "Committee Resolution",
+      "description": "A resolution concerning committee business, such as its rules or procedures."
+    },
+    "committee-transcript": {
+      "label": "Committee Transcript",
+      "description": "A written record of what was said at a committee proceeding."
+    },
+    "committee-vote": {
+      "label": "Committee Recorded Vote",
+      "description": "A record of votes cast on a question before a committee."
+    },
+    "conference-legislation-part": {
+      "label": "Conference Legislative Text Part",
+      "description": "One separately identified portion of legislative text associated with a conference report."
+    },
+    "conference-report": {
+      "label": "Conference Report",
+      "description": "A report presenting the agreement reached by House and Senate negotiators."
+    },
+    "conference-unnumbered": {
+      "label": "Conference Material",
+      "description": "Conference report material identified without a report number."
+    },
+    "cost-estimate": {
+      "label": "Cost Estimate",
+      "description": "An estimate of the costs of legislation, a program, or a proposed action."
+    },
+    "crs-report": {
+      "label": "CRS Report",
+      "description": "A research report from the Congressional Research Service."
+    },
+    "exhibit": {
+      "label": "Exhibit",
+      "description": "An individual item presented or submitted as part of a proceeding or its record."
+    },
+    "exhibit-collection": {
+      "label": "Exhibit Packet",
+      "description": "A packet containing multiple exhibits."
+    },
+    "exhibit-list": {
+      "label": "Exhibit List",
+      "description": "An index of exhibits associated with a proceeding or record."
+    },
+    "explanatory-statement": {
+      "label": "Explanatory Statement",
+      "description": "A statement explaining legislative provisions or the intent behind them."
+    },
+    "fact-sheet": {
+      "label": "Fact Sheet",
+      "description": "A short reference that lists key facts about a topic or proposal."
+    },
+    "federal-register-notice": {
+      "label": "Federal Register Notice",
+      "description": "A notice published in the Federal Register."
+    },
+    "field-hearing": {
+      "label": "Field Hearing",
+      "description": "A record or notice of a congressional hearing held outside Washington, D.C."
+    },
+    "flyer": {
+      "label": "Flyer",
+      "description": "A brief handout publicizing an event, initiative, or message."
+    },
+    "gao-report": {
+      "label": "GAO Report",
+      "description": "A report from the Government Accountability Office."
+    },
+    "graphic": {
+      "label": "Graphic",
+      "description": "A standalone visual, such as a chart, diagram, or illustration."
+    },
+    "hearing-charter": {
+      "label": "Hearing Charter",
+      "description": "A briefing document that lays out a hearing’s subject and background."
+    },
+    "interchamber-amendment": {
+      "label": "Interchamber Amendment",
+      "description": "An amendment identified as part of an exchange between the House and Senate."
+    },
+    "issue-brief": {
+      "label": "Issue Brief",
+      "description": "A short overview of a policy issue and its context."
+    },
+    "legislative-text": {
+      "label": "Legislative Text",
+      "description": "The wording of a bill, resolution, or other measure identified as legislative text."
+    },
+    "letter": {
+      "label": "Letter",
+      "description": "Correspondence identified as a letter without a more specific letter label."
+    },
+    "letter-of-support": {
+      "label": "Letter of Support",
+      "description": "A letter expressing support for a measure, nominee, or other subject."
+    },
+    "managers-package": {
+      "label": "Manager's Amendment Package",
+      "description": "A package of amendments offered together by the managers of a measure."
+    },
+    "mark-description": {
+      "label": "Description of the Chairman's Mark",
+      "description": "A document explaining the contents or provisions of a committee chair’s proposed text."
+    },
+    "mark-modification": {
+      "label": "Modification to the Chairman's Mark",
+      "description": "A proposed change to the legislative text offered by a committee chair."
+    },
+    "meeting-notice": {
+      "label": "Meeting Notice",
+      "description": "An announcement of a specific meeting or hearing, often giving the date, time, and subject."
+    },
+    "meeting-results": {
+      "label": "Markup / Meeting Results",
+      "description": "A record of actions or decisions from a committee meeting or markup."
+    },
+    "meeting-support": {
+      "label": "Meeting Support Document",
+      "description": "Background or reference material accompanying a meeting or hearing."
+    },
+    "member-roster": {
+      "label": "Committee Roster",
+      "description": "A list of the legislators who serve on a committee or subcommittee."
+    },
+    "member-statement": {
+      "label": "Member Statement",
+      "description": "A statement attributed to a member of Congress."
+    },
+    "motion": {
+      "label": "Motion",
+      "description": "A proposal asking a committee or chamber to take a particular action."
+    },
+    "nomination": {
+      "label": "Nomination",
+      "description": "A record of, or material identified with, a nomination for an appointment."
+    },
+    "notice": {
+      "label": "Notice",
+      "description": "An announcement or notification without a more specific notice label."
+    },
+    "opening-remarks": {
+      "label": "Opening Remarks",
+      "description": "Comments identified as introductory remarks at a proceeding."
+    },
+    "opening-statement": {
+      "label": "Opening Statement",
+      "description": "A statement identified as opening a hearing or other proceeding."
+    },
+    "oversight-plan": {
+      "label": "Oversight Plan",
+      "description": "A committee’s plan for reviewing programs, agencies, or implementation of laws."
+    },
+    "pamphlet": {
+      "label": "Pamphlet",
+      "description": "A short booklet that explains a topic or provides reference information."
+    },
+    "panel-discussion": {
+      "label": "Panel Discussion",
+      "description": "A record or notice of a discussion among a group of panelists."
+    },
+    "panelist-list": {
+      "label": "Panelist List",
+      "description": "A list identifying the people on a panel."
+    },
+    "participant-list": {
+      "label": "Participant List",
+      "description": "A list identifying participants in a meeting or event."
+    },
+    "press-release": {
+      "label": "Press Release",
+      "description": "An announcement prepared for public or media distribution."
+    },
+    "public-law": {
+      "label": "Public Law",
+      "description": "A measure enacted into law and identified as a public law."
+    },
+    "published-hearing": {
+      "label": "Published Hearing",
+      "description": "A published record of a congressional hearing that may include proceedings and submitted material."
+    },
+    "published-print": {
+      "label": "Published Committee Print",
+      "description": "A committee print identified in a congressional publication collection."
+    },
+    "published-report": {
+      "label": "Published Committee Report",
+      "description": "A committee report identified in a congressional publication collection."
+    },
+    "questionnaire": {
+      "label": "Questionnaire",
+      "description": "A form or set of prompts used to collect written information."
+    },
+    "questions-for-record": {
+      "label": "Questions for the Record",
+      "description": "Written questions submitted for inclusion in a hearing record, often after the hearing."
+    },
+    "questions-for-record-response": {
+      "label": "Responses to Questions for the Record",
+      "description": "Written answers to questions submitted for the hearing record."
+    },
+    "remarks": {
+      "label": "Remarks",
+      "description": "Comments identified as remarks without a more specific remarks label."
+    },
+    "report": {
+      "label": "Report",
+      "description": "A document that presents findings or describes work without a more specific report label."
+    },
+    "response": {
+      "label": "Response",
+      "description": "A written reply without a more specific response label."
+    },
+    "revenue-estimate": {
+      "label": "Revenue Estimate",
+      "description": "An estimate of how a proposal would affect government revenues."
+    },
+    "rules-memorandum": {
+      "label": "Rules Committee Memorandum",
+      "description": "A memorandum identified with House Rules Committee business."
+    },
+    "section-by-section": {
+      "label": "Section-by-Section Summary",
+      "description": "A summary that explains a measure in the order of its sections."
+    },
+    "slides": {
+      "label": "Presentation Slides",
+      "description": "Visual pages prepared for a presentation or briefing."
+    },
+    "staff-report": {
+      "label": "Staff Report",
+      "description": "A report attributed to committee or other congressional staff."
+    },
+    "statement": {
+      "label": "Statement",
+      "description": "A written or prepared statement without a more specific statement label."
+    },
+    "subpoena": {
+      "label": "Subpoena",
+      "description": "A formal demand to provide records, testimony, or both."
+    },
+    "summary": {
+      "label": "Summary",
+      "description": "A condensed account of a measure, document, or proceeding."
+    },
+    "supporting-material": {
+      "label": "Supporting Material",
+      "description": "Material supplied as background or evidence for another document or proceeding."
+    },
+    "tally-sheet": {
+      "label": "Vote Tally Sheet",
+      "description": "A sheet recording or totaling votes on a question."
+    },
+    "testimony": {
+      "label": "Witness Testimony",
+      "description": "A witness’s account or evidence offered to a congressional committee."
+    },
+    "testimony-disclosure": {
+      "label": "Truth in Testimony Disclosure",
+      "description": "A witness disclosure form covering matters such as relevant funding and affiliations."
+    },
+    "transcript": {
+      "label": "Transcript",
+      "description": "A written record of spoken proceedings without a more specific transcript label."
+    },
+    "treaty-document": {
+      "label": "Treaty Document",
+      "description": "A document concerning a treaty submitted to the Senate for advice and consent."
+    },
+    "vote-record": {
+      "label": "Vote Record",
+      "description": "A document recording votes cast or the result of a vote."
+    },
+    "witness-biography": {
+      "label": "Witness Biography",
+      "description": "An account of the background or qualifications of a congressional witness."
+    },
+    "witness-list": {
+      "label": "Witness List",
+      "description": "A list identifying witnesses for a hearing."
+    },
+    "witness-statement": {
+      "label": "Witness Statement",
+      "description": "A written statement attributed to a witness and submitted for a congressional proceeding."
+    },
+    "witness-support": {
+      "label": "Witness Supporting Material",
+      "description": "Supporting material associated with a witness or their statement."
+    }
+  },
+  "families": {
+    "activity-report": null,
+    "amendment": {
+      "label": "Amendment",
+      "description": "Proposed changes to measures, drafts, or rules, including individual amendments and amendment packets."
+    },
+    "appendix": null,
+    "attachment": null,
+    "bill-comparison": null,
+    "biography": {
+      "label": "Biography",
+      "description": "Accounts of people’s backgrounds or qualifications, including witness biographies."
+    },
+    "brochure": null,
+    "budget-views-and-estimates": null,
+    "business-meeting": null,
+    "chair-mark": null,
+    "committee-document": null,
+    "committee-resolution": null,
+    "cost-estimate": null,
+    "crs-report": null,
+    "disclosure": {
+      "label": "Disclosure",
+      "description": "Documents that disclose information, including witnesses’ Truth in Testimony forms."
+    },
+    "exhibit": {
+      "label": "Exhibit",
+      "description": "Individual exhibits and packets of exhibits presented or submitted for the record."
+    },
+    "explanatory-statement": null,
+    "fact-sheet": null,
+    "federal-register-notice": null,
+    "field-hearing": null,
+    "flyer": null,
+    "gao-report": null,
+    "graphic": null,
+    "hearing-charter": null,
+    "issue-brief": null,
+    "legislation": {
+      "label": "Legislation",
+      "description": "Legislative texts and related materials, including drafts, numbered measures, appropriations materials, and public laws."
+    },
+    "letter": {
+      "label": "Letter",
+      "description": "Correspondence, including letters that express support for a measure, nominee, or other subject."
+    },
+    "list": {
+      "label": "List",
+      "description": "Lists identifying people or documents, including witness lists, committee rosters, and lists of measures."
+    },
+    "mark-description": null,
+    "meeting-results": null,
+    "memorandum": {
+      "label": "Memorandum",
+      "description": "Memos, including briefings prepared for committee business."
+    },
+    "motion": null,
+    "nomination": null,
+    "notice": {
+      "label": "Notice",
+      "description": "Announcements, including notices of meetings and hearings."
+    },
+    "oversight-plan": null,
+    "pamphlet": null,
+    "panel-discussion": null,
+    "press-release": null,
+    "print": {
+      "label": "Print",
+      "description": "Committee prints, including legislative drafts and studies prepared for committee use."
+    },
+    "published-hearing": null,
+    "questions-and-answers": {
+      "label": "Questions and Answers",
+      "description": "Questionnaires, written questions for the hearing record, and responses to those questions."
+    },
+    "remarks": {
+      "label": "Remarks",
+      "description": "Comments identified as remarks, including comments that open a proceeding."
+    },
+    "report": {
+      "label": "Report",
+      "description": "Reports and related report materials, including committee and conference reports."
+    },
+    "response": null,
+    "revenue-estimate": null,
+    "section-by-section": null,
+    "slides": null,
+    "staff-report": null,
+    "statement": {
+      "label": "Statement",
+      "description": "Prepared statements and testimony, including opening statements and submissions by members or witnesses."
+    },
+    "subpoena": null,
+    "summary": null,
+    "supporting-material": {
+      "label": "Supporting Material",
+      "description": "Background or evidence associated with documents, meetings, or witnesses."
+    },
+    "transcript": {
+      "label": "Transcript",
+      "description": "Written records of spoken proceedings, including committee transcripts."
+    },
+    "treaty-document": null,
+    "vote-record": {
+      "label": "Vote Record",
+      "description": "Documents that record votes cast or vote totals, including committee vote records and tally sheets."
+    }
+  }
+}
