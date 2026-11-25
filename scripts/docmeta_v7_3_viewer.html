@@ -1,0 +1,1870 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocMeta V7.3a.1 Corpus Inspector</title>
+<style>
+  :root {
+    --bg: #F5F7FA;
+    --surface: #FFFFFF;
+    --surface-subtle: #EEF2F7;
+    --surface-hover: #F8FAFC;
+    --ink: #0F1D32;
+    --ink-muted: #516178;
+    --line: #D8E0EB;
+    --line-strong: #B9C6D8;
+    --accent: #1D4ED8;
+    --accent-soft: #DBEAFE;
+    --ok-bg: #ECFDF5;
+    --ok-fg: #065F46;
+    --warn-bg: #FFFBEB;
+    --warn-fg: #92400E;
+    --bad-bg: #FEF2F2;
+    --bad-fg: #991B1B;
+    --span-title-bg: #DBEAFE;
+    --span-title-fg: #1E40AF;
+    --span-title-border: #93C5FD;
+    --span-date-bg: #D1FAE5;
+    --span-date-fg: #065F46;
+    --span-date-border: #6EE7B7;
+    --span-spec-bg: #FEF3C7;
+    --span-spec-fg: #92400E;
+    --span-spec-border: #FCD34D;
+    --serif: 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
+    --mono: 'SF Mono', ui-monospace, Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Header Bar */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 18px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-right: 6px;
+  }
+  .brand h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .corpus-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-muted);
+    background: var(--surface-subtle);
+    border: 1px solid var(--line);
+    padding: 2px 8px;
+    border-radius: 999px;
+  }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface-subtle);
+    padding: 3px;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+  }
+  .tab-btn {
+    border: none;
+    background: transparent;
+    color: var(--ink-muted);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 11px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+  }
+  .tab-btn.active {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: 0 1px 2px rgba(15, 29, 50, 0.08);
+  }
+
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+  .search-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .search-input {
+    width: 260px;
+    padding: 6px 30px 6px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    font-family: var(--sans);
+    font-size: 12.5px;
+    background: var(--surface);
+    color: var(--ink);
+  }
+  .search-input:focus {
+    outline: 2px solid var(--accent-soft);
+    border-color: var(--accent);
+  }
+  .kbd-hint {
+    position: absolute;
+    right: 8px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-muted);
+    background: var(--surface-subtle);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 0 4px;
+    pointer-events: none;
+  }
+  .select-input, .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .btn:hover { background: var(--surface-subtle); }
+  .btn.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #FFFFFF;
+  }
+  .btn.primary:hover { filter: brightness(0.95); }
+  .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-sm { padding: 4px 9px; font-size: 11.5px; }
+
+  /* Workspace Grid */
+  .main-view {
+    flex: 1;
+    min-height: 0;
+    display: none;
+  }
+  .main-view.active {
+    display: flex;
+  }
+
+  #view-browse.active {
+    display: grid;
+    grid-template-columns: 235px 330px 1fr;
+    min-height: 0;
+    width: 100%;
+  }
+
+  .pane {
+    height: 100%;
+    overflow-y: auto;
+    border-right: 1px solid var(--line);
+  }
+  .pane:last-child { border-right: none; }
+
+  /* Facet Rail */
+  .facet-rail {
+    background: var(--surface);
+    padding: 12px;
+  }
+  .facet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  .facet-header h2 {
+    margin: 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-muted);
+  }
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 2px 4px;
+  }
+  .link-btn:hover { text-decoration: underline; }
+
+  .facet-group { margin-bottom: 14px; }
+  .facet-group-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-muted);
+    margin-bottom: 5px;
+  }
+  .facet-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 4px 7px;
+    margin-bottom: 2px;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--ink);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .facet-item:hover { background: var(--surface-subtle); }
+  .facet-item.active {
+    background: var(--accent-soft);
+    border-color: #93C5FD;
+    color: #1E3A8A;
+    font-weight: 600;
+  }
+  .facet-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-right: 6px;
+  }
+  .facet-count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-muted);
+    flex-shrink: 0;
+  }
+
+  /* Record List */
+  .list-pane {
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .list-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--line);
+    font-size: 12px;
+    color: var(--ink-muted);
+    flex-shrink: 0;
+  }
+  .list-scroll {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .record-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 10px 11px;
+    margin-bottom: 7px;
+    cursor: pointer;
+    transition: border-color 0.1s, box-shadow 0.1s;
+  }
+  .record-card:hover {
+    border-color: var(--line-strong);
+    background: var(--surface-hover);
+  }
+  .record-card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+  }
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 5px;
+  }
+  .tag {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--surface-subtle);
+    color: var(--ink-muted);
+    border: 1px solid var(--line);
+  }
+  .tag.genre { background: #EEF2FF; color: #3730A3; border-color: #C7D2FE; }
+  .tag.split-train { background: #F1F5F9; color: #334155; }
+  .tag.split-sealed_temporal_2026 { background: #ECFDF5; color: #065F46; border-color: #A7F3D0; }
+  .tag.split-dev_iter { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+  .tag.verdict-checkeval_resolved { background: #FFF7ED; color: #9A3412; border-color: #FED7AA; }
+  .tag.status-nonusable { background: #FEF2F2; color: #991B1B; border-color: #FECACA; }
+  .tag.packet { background: #F3E8FF; color: #6B21A8; border-color: #E9D5FF; }
+
+  .card-title {
+    font-family: var(--serif);
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 0 0 4px 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-gist {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin: 0 0 6px 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-muted);
+  }
+  .pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--surface);
+    border-top: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+
+  /* Inspector Pane */
+  .inspector-pane {
+    background: var(--bg);
+    padding: 16px 20px 40px 20px;
+  }
+  .empty-state {
+    background: var(--surface);
+    border: 1px dashed var(--line-strong);
+    border-radius: 8px;
+    padding: 36px;
+    text-align: center;
+    color: var(--ink-muted);
+    margin-top: 24px;
+  }
+  .spec-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+  }
+  .spec-header-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .spec-title {
+    margin: 0 0 6px 0;
+    font-family: var(--serif);
+    font-size: 21px;
+    line-height: 1.25;
+    color: var(--ink);
+  }
+  .spec-gist {
+    margin: 0 0 12px 0;
+    font-size: 13.5px;
+    color: #24364D;
+  }
+  .copy-key-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 5px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface-subtle);
+    color: var(--ink);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .copy-key-btn:hover { background: var(--line); }
+
+  /* Raw file action bar & original source links */
+  .raw-actions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 0;
+    margin: 8px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+  .sources-list {
+    margin: 6px 0 10px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .source-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    background: #F8FAFC;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 5px 9px;
+  }
+  .source-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 500;
+    word-break: break-all;
+  }
+  .source-link:hover { text-decoration: underline; }
+  .source-sublink {
+    color: var(--ink-muted);
+    font-size: 11px;
+    text-decoration: none;
+  }
+  .source-sublink:hover { color: var(--ink); text-decoration: underline; }
+
+  .mode-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .mode-pills {
+    display: inline-flex;
+    gap: 4px;
+    background: var(--surface);
+    padding: 4px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+  }
+  .mode-btn {
+    border: none;
+    background: transparent;
+    color: var(--ink-muted);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  .mode-btn.active {
+    background: var(--accent);
+    color: #FFFFFF;
+  }
+
+  .kv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+    gap: 8px 14px;
+    padding-top: 8px;
+  }
+  .kv-item { min-width: 0; }
+  .kv-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-muted);
+  }
+  .kv-value {
+    font-size: 12.5px;
+    color: var(--ink);
+    word-break: break-word;
+  }
+  .kv-value.mono { font-family: var(--mono); font-size: 11.5px; }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+  }
+  .topic-chip {
+    font-size: 11px;
+    background: var(--surface-subtle);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 2px 8px;
+    color: var(--ink);
+  }
+  .rationale-box {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background: #F8FAFC;
+    border-left: 3px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    font-size: 12.5px;
+    color: #24364D;
+  }
+
+  /* Grounded Spans & Source Text + Raw Inline Workspace */
+  .grounding-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+    align-items: start;
+  }
+  .split-layout {
+    display: grid;
+    grid-template-columns: minmax(320px, 1fr) minmax(360px, 1.15fr);
+    gap: 14px;
+    margin-bottom: 14px;
+    align-items: start;
+  }
+  .split-left-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .spans-rail {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    max-height: 620px;
+    overflow-y: auto;
+  }
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .section-head h3 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--ink-muted);
+  }
+  .span-pill {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: var(--surface-hover);
+    border: 1px solid var(--line);
+    border-left-width: 4px;
+    border-radius: 6px;
+    padding: 7px 9px;
+    margin-bottom: 7px;
+    cursor: pointer;
+    font-family: var(--sans);
+  }
+  .span-pill:hover { border-color: var(--line-strong); background: var(--surface-subtle); }
+  .span-pill.cat-title { border-left-color: #2563EB; }
+  .span-pill.cat-date { border-left-color: #059669; }
+  .span-pill.cat-specialist { border-left-color: #D97706; }
+  .span-pill-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-bottom: 3px;
+  }
+  .span-field {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--ink);
+    word-break: break-all;
+  }
+  .span-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .span-badge.exact, .span-badge.clean_exact { background: var(--ok-bg); color: var(--ok-fg); }
+  .span-badge.bidi_reanchored, .span-badge.substring_fallback { background: var(--warn-bg); color: var(--warn-fg); }
+  .span-badge.mismatch, .span-badge.no_text { background: var(--bad-bg); color: var(--bad-fg); }
+  .span-quote {
+    font-size: 12px;
+    color: #1E293B;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .span-offsets {
+    margin-top: 3px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-muted);
+  }
+
+  .source-panel, .raw-viewer-panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+  }
+  .text-body {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.62;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: #FAFBFD;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px;
+    max-height: 550px;
+    overflow-y: auto;
+    color: #0F1D32;
+  }
+  .raw-frame {
+    width: 100%;
+    height: 680px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #FFFFFF;
+  }
+  .raw-status {
+    font-size: 12px;
+    color: var(--ink-muted);
+    margin-bottom: 8px;
+  }
+
+  mark.span-mark {
+    border-radius: 3px;
+    padding: 1px 2px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+  }
+  mark.span-mark.cat-title {
+    background: var(--span-title-bg);
+    color: var(--span-title-fg);
+    border-bottom-color: var(--span-title-border);
+  }
+  mark.span-mark.cat-date {
+    background: var(--span-date-bg);
+    color: var(--span-date-fg);
+    border-bottom-color: var(--span-date-border);
+  }
+  mark.span-mark.cat-specialist {
+    background: var(--span-spec-bg);
+    color: var(--span-spec-fg);
+    border-bottom-color: var(--span-spec-border);
+  }
+  mark.span-mark.pulse-active {
+    outline: 2px solid #0F1D32;
+    box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.25);
+  }
+
+  .payload-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 10px;
+  }
+  .payload-box {
+    background: #F8FAFC;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 9px 11px;
+  }
+  .json-pre {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: #FAFBFD;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px;
+    max-height: 420px;
+    overflow-y: auto;
+  }
+
+  /* Overview & Quarantined Full Views */
+  .scroll-page {
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    padding: 18px 24px 48px 24px;
+  }
+  .overview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+  }
+  .bar-row {
+    display: grid;
+    grid-template-columns: 195px 1fr 56px;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 12px;
+  }
+  .bar-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .bar-track {
+    height: 10px;
+    background: var(--surface-subtle);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 999px;
+  }
+  .bar-val {
+    font-family: var(--mono);
+    font-size: 11px;
+    text-align: right;
+    color: var(--ink-muted);
+  }
+
+  table.matrix {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  table.matrix th, table.matrix td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+  }
+  table.matrix th {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ink-muted);
+    background: var(--surface-subtle);
+  }
+  table.matrix td.num, table.matrix th.num {
+    text-align: right;
+    font-family: var(--mono);
+  }
+
+  .q-card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+
+  @media (max-width: 1200px) {
+    .split-layout { grid-template-columns: 1fr; }
+    .grounding-layout { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 1040px) {
+    #view-browse.active {
+      grid-template-columns: 205px 285px 1fr;
+    }
+  }
+  @media (max-width: 860px) {
+    #view-browse.active {
+      display: block;
+      overflow-y: auto;
+    }
+    .pane { height: auto; border-right: none; border-bottom: 1px solid var(--line); }
+    .list-scroll { max-height: 360px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <h1>DocMeta V7.3a.1</h1>
+      <span id="corpus-badge" class="corpus-pill">Loading...</span>
+    </div>
+    <nav class="tabs" aria-label="Views">
+      <button class="tab-btn active" data-tab="browse">Browse &amp; Inspect</button>
+      <button class="tab-btn" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="quarantined">Quarantined &amp; Deadlocks</button>
+    </nav>
+    <div class="controls">
+      <div class="search-wrap">
+        <input id="search-input" class="search-input" type="search" placeholder="Search title, gist, topic, filename, sha...">
+        <span class="kbd-hint">/</span>
+      </div>
+      <select id="sort-select" class="select-input" aria-label="Sort order">
+        <option value="default">Sort: Split &amp; Genre</option>
+        <option value="date_desc">Sort: Date (newest)</option>
+        <option value="date_asc">Sort: Date (oldest)</option>
+        <option value="title_asc">Sort: Title (A–Z)</option>
+        <option value="congress_desc">Sort: Congress (newest)</option>
+        <option value="random">Sort: Shuffle</option>
+      </select>
+      <button id="random-btn" class="btn primary" title="Jump to a random matching record (r)">Random</button>
+    </div>
+  </header>
+
+  <section id="view-browse" class="main-view active">
+    <aside id="facet-rail" class="pane facet-rail" aria-label="Filters"></aside>
+    <section class="pane list-pane" aria-label="Records">
+      <div class="list-toolbar">
+        <span id="results-summary">Loading records...</span>
+        <span id="page-summary" class="corpus-pill">1 / 1</span>
+      </div>
+      <div id="record-list" class="list-scroll"></div>
+      <div class="pager">
+        <button id="prev-page-btn" class="btn">Prev</button>
+        <span style="font-size:11px;color:var(--ink-muted)">Keys: j/k select · / search · r random</span>
+        <button id="next-page-btn" class="btn">Next</button>
+      </div>
+    </section>
+    <main id="inspector-pane" class="pane inspector-pane" aria-label="Record details">
+      <div class="empty-state">Select a record to inspect its metadata, grounded spans, 9K window, and raw file.</div>
+    </main>
+  </section>
+
+  <section id="view-overview" class="main-view">
+    <div id="overview-content" class="scroll-page">Loading overview...</div>
+  </section>
+
+  <section id="view-quarantined" class="main-view">
+    <div id="quarantined-content" class="scroll-page">Loading quarantined &amp; deadlock items...</div>
+  </section>
+</div>
+
+<script>
+(function() {
+  "use strict";
+
+  const FACET_DEFS = [
+    ["split", "Split"],
+    ["status", "Status"],
+    ["primary_genre", "Primary Genre"],
+    ["specialist_family", "Specialist Family"],
+    ["verdict", "Verdict"],
+    ["chamber", "Chamber"],
+    ["media_format", "Media Format"],
+    ["is_packet", "Packet"],
+    ["specialist_teacher", "Specialist Teacher"],
+  ];
+
+  const state = {
+    tab: "browse",
+    filters: {
+      q: "",
+      split: "",
+      status: "",
+      primary_genre: "",
+      specialist_family: "",
+      verdict: "",
+      chamber: "",
+      media_format: "",
+      is_packet: "",
+      specialist_teacher: "",
+    },
+    sort: "default",
+    page: 1,
+    pageSize: 50,
+    total: 0,
+    items: [],
+    facets: {},
+    selectedKey: null,
+    currentRecord: null,
+    textMode: "clean",
+    inspectMode: "spans", // "spans" | "raw" | "split"
+    htmlRawMode: "rendered", // "rendered" | "source"
+    showRawPayload: false,
+    overviewLoaded: false,
+    quarantinedLoaded: false,
+  };
+
+  function el(tag, attrs, children) {
+    const node = document.createElement(tag);
+    if (attrs) {
+      for (const [k, v] of Object.entries(attrs)) {
+        if (k === "className") node.className = v;
+        else if (k === "textContent") node.textContent = v;
+        else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2).toLowerCase(), v);
+        else if (v !== null && v !== undefined) node.setAttribute(k, String(v));
+      }
+    }
+    if (children) {
+      const list = Array.isArray(children) ? children : [children];
+      for (const ch of list) {
+        if (ch === null || ch === undefined) continue;
+        node.appendChild(typeof ch === "string" ? document.createTextNode(ch) : ch);
+      }
+    }
+    return node;
+  }
+
+  function safeExternalUrl(url) {
+    if (typeof url !== "string") return null;
+    const trimmed = url.trim();
+    if (trimmed.startsWith("https://") || trimmed.startsWith("http://")) return trimmed;
+    return null;
+  }
+
+  function formatBytes(bytes) {
+    if (typeof bytes !== "number" || bytes <= 0) return null;
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  }
+
+  async function apiGet(url) {
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} for ${url}`);
+    }
+    return res.json();
+  }
+
+  function buildQueryParams() {
+    const sp = new URLSearchParams();
+    sp.set("page", String(state.page));
+    sp.set("page_size", String(state.pageSize));
+    sp.set("sort", state.sort);
+    for (const [k, v] of Object.entries(state.filters)) {
+      if (v) sp.set(k, v);
+    }
+    return sp.toString();
+  }
+
+  function renderFacets() {
+    const rail = document.getElementById("facet-rail");
+    rail.replaceChildren();
+    const hasFilter = Object.values(state.filters).some(Boolean);
+    const hdr = el("div", { className: "facet-header" }, [
+      el("h2", { textContent: "Filters" }),
+      hasFilter
+        ? el("button", {
+            className: "link-btn",
+            textContent: "Reset all",
+            onClick: () => {
+              for (const k of Object.keys(state.filters)) state.filters[k] = "";
+              document.getElementById("search-input").value = "";
+              state.page = 1;
+              loadRecords(true);
+            },
+          })
+        : null,
+    ]);
+    rail.appendChild(hdr);
+
+    for (const [key, title] of FACET_DEFS) {
+      const buckets = state.facets[key] || [];
+      if (!buckets.length) continue;
+      const grp = el("div", { className: "facet-group" }, [
+        el("div", { className: "facet-group-title", textContent: title }),
+      ]);
+      for (const b of buckets) {
+        const isActive = state.filters[key] === b.value;
+        const btn = el(
+          "button",
+          {
+            className: "facet-item" + (isActive ? " active" : ""),
+            onClick: () => {
+              state.filters[key] = isActive ? "" : b.value;
+              state.page = 1;
+              loadRecords(true);
+            },
+          },
+          [
+            el("span", { className: "facet-label", textContent: b.label, title: b.label }),
+            el("span", { className: "facet-count", textContent: b.count.toLocaleString() }),
+          ]
+        );
+        grp.appendChild(btn);
+      }
+      rail.appendChild(grp);
+    }
+  }
+
+  function renderRecordList() {
+    const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
+    document.getElementById("results-summary").textContent = `${state.total.toLocaleString()} matching records`;
+    document.getElementById("page-summary").textContent = `Page ${state.page} / ${totalPages}`;
+    document.getElementById("prev-page-btn").disabled = state.page <= 1;
+    document.getElementById("next-page-btn").disabled = state.page >= totalPages;
+
+    const listEl = document.getElementById("record-list");
+    listEl.replaceChildren();
+    if (!state.items.length) {
+      listEl.appendChild(el("div", { className: "empty-state", textContent: "No records match the current filters." }));
+      return;
+    }
+
+    for (const item of state.items) {
+      const isSelected = state.selectedKey === item.doc_key;
+      const tags = el("div", { className: "card-tags" }, [
+        item.primary_genre
+          ? el("span", { className: "tag genre", textContent: item.primary_genre })
+          : el("span", { className: "tag status-nonusable", textContent: item.status || "non-usable" }),
+        el("span", { className: `tag split-${item.split}`, textContent: item.split }),
+        item.verdict === "checkeval_resolved"
+          ? el("span", { className: "tag verdict-checkeval_resolved", textContent: "checkeval" })
+          : null,
+        item.is_packet ? el("span", { className: "tag packet", textContent: "packet" }) : null,
+      ]);
+
+      const titleText = item.verbatim_title || item.filename || item.doc_key.slice(0, 16);
+      const card = el(
+        "div",
+        {
+          className: "record-card" + (isSelected ? " selected" : ""),
+          "data-doc-key": item.doc_key,
+          onClick: () => selectRecord(item.doc_key),
+        },
+        [
+          tags,
+          el("div", { className: "card-title", textContent: titleText }),
+          item.gist ? el("div", { className: "card-gist", textContent: item.gist }) : null,
+          el("div", { className: "card-meta" }, [
+            item.doc_date ? el("span", { textContent: item.doc_date }) : null,
+            item.chamber ? el("span", { textContent: item.chamber }) : null,
+            item.congress ? el("span", { textContent: `${item.congress}th` }) : null,
+            item.filename ? el("span", { textContent: item.filename }) : null,
+          ]),
+        ]
+      );
+      listEl.appendChild(card);
+    }
+  }
+
+  function renderHighlightedText(textEl, text, spans, mode) {
+    textEl.replaceChildren();
+    if (!text) {
+      textEl.appendChild(el("span", { style: "color:var(--ink-muted)", textContent: "No source text available." }));
+      return;
+    }
+
+    const active = [];
+    spans.forEach((sp, idx) => {
+      const s = mode === "raw" ? sp.start : (sp.clean_start !== null ? sp.clean_start : sp.start);
+      const e = mode === "raw" ? sp.end : (sp.clean_end !== null ? sp.clean_end : sp.end);
+      const valid =
+        mode === "raw"
+          ? sp.raw_match || (sp.start >= 0 && sp.end > sp.start && sp.end <= text.length && text.slice(sp.start, sp.end) === sp.quote)
+          : sp.clean_start !== null && sp.clean_end !== null && sp.clean_end <= text.length;
+      if (valid && s >= 0 && e > s && e <= text.length) {
+        active.push({ idx, start: s, end: e, category: sp.category, field: sp.field });
+      }
+    });
+
+    if (!active.length) {
+      textEl.appendChild(document.createTextNode(text));
+      return;
+    }
+
+    const bounds = new Set([0, text.length]);
+    for (const sp of active) {
+      bounds.add(sp.start);
+      bounds.add(sp.end);
+    }
+    const pts = Array.from(bounds).sort((a, b) => a - b);
+
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      if (a >= b) continue;
+      const chunk = text.slice(a, b);
+      const covering = active.filter((sp) => sp.start <= a && sp.end >= b);
+      if (!covering.length) {
+        textEl.appendChild(document.createTextNode(chunk));
+      } else {
+        const primary = covering[0];
+        const mark = el("mark", {
+          className: `span-mark cat-${primary.category}`,
+          "data-span-ids": covering.map((c) => c.idx).join(","),
+          title: covering.map((c) => c.field).join(" | "),
+          textContent: chunk,
+        });
+        textEl.appendChild(mark);
+      }
+    }
+  }
+
+  function focusSpan(idx) {
+    const allMarks = document.querySelectorAll("mark.span-mark");
+    let firstTarget = null;
+    allMarks.forEach((m) => {
+      m.classList.remove("pulse-active");
+      const ids = (m.getAttribute("data-span-ids") || "").split(",");
+      if (ids.includes(String(idx))) {
+        m.classList.add("pulse-active");
+        if (!firstTarget) firstTarget = m;
+      }
+    });
+    if (firstTarget) {
+      firstTarget.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+
+  function formatFieldValue(val) {
+    if (val === null || val === undefined) return "—";
+    if (typeof val === "string" || typeof val === "number" || typeof val === "boolean") return String(val);
+    return JSON.stringify(val, null, 2);
+  }
+
+  function buildSpansRail(rec) {
+    const spansRail = el("div", { className: "spans-rail" }, [
+      el("div", { className: "section-head" }, [
+        el("h3", { textContent: `Grounded Spans (${rec.spans.length})` }),
+      ]),
+    ]);
+    if (!rec.spans.length) {
+      spansRail.appendChild(
+        el("div", { style: "color:var(--ink-muted);font-size:12px;", textContent: "No grounded spans attached to this record." })
+      );
+      return spansRail;
+    }
+    rec.spans.forEach((sp, idx) => {
+      const pill = el(
+        "button",
+        {
+          className: `span-pill cat-${sp.category}`,
+          onClick: () => focusSpan(idx),
+        },
+        [
+          el("div", { className: "span-pill-top" }, [
+            el("span", { className: "span-field", textContent: sp.field }),
+            el("span", { className: `span-badge ${sp.status}`, textContent: sp.status }),
+          ]),
+          el("div", { className: "span-quote", textContent: sp.quote }),
+          el("div", {
+            className: "span-offsets",
+            textContent:
+              sp.clean_start !== null && sp.clean_start !== sp.start
+                ? `raw [${sp.start}:${sp.end}] · clean [${sp.clean_start}:${sp.clean_end}]`
+                : `[${sp.start}:${sp.end}]`,
+          }),
+        ]
+      );
+      spansRail.appendChild(pill);
+    });
+    return spansRail;
+  }
+
+  function buildSourceTextPanel(rec) {
+    const textEl = el("div", { className: "text-body" });
+    const initialBody = state.textMode === "raw" ? rec.raw_text : rec.clean_text;
+    renderHighlightedText(textEl, initialBody, rec.spans, state.textMode);
+
+    const modeBtn = el("button", {
+      className: "btn btn-sm",
+      textContent: state.textMode === "clean" ? "Showing: Bidi-Clean" : "Showing: Raw Stored",
+      onClick: () => {
+        state.textMode = state.textMode === "clean" ? "raw" : "clean";
+        modeBtn.textContent = state.textMode === "clean" ? "Showing: Bidi-Clean" : "Showing: Raw Stored";
+        const body = state.textMode === "raw" ? rec.raw_text : rec.clean_text;
+        renderHighlightedText(textEl, body, rec.spans, state.textMode);
+      },
+    });
+
+    return el("div", { className: "source-panel" }, [
+      el("div", { className: "section-head" }, [
+        el("h3", {
+          textContent: `9K Window Source Text (${(initialBody || "").length.toLocaleString()} chars${
+            rec.bidi_chars_removed ? `, ${rec.bidi_chars_removed} bidi stripped` : ""
+          })`,
+        }),
+        modeBtn,
+      ]),
+      textEl,
+    ]);
+  }
+
+  function buildRawViewerPanel(rec) {
+    const rf = rec.raw_file || {};
+    const panel = el("div", { className: "raw-viewer-panel" });
+    const sizeText = formatBytes(rf.saved_bytes);
+
+    const headerControls = [
+      rf.viewer_url
+        ? el("a", { className: "btn btn-sm", href: rf.viewer_url, target: "_blank", rel: "noopener", textContent: "Open Tab ↗" })
+        : null,
+      rf.download_url
+        ? el("a", { className: "btn btn-sm", href: rf.download_url, textContent: "Download" })
+        : null,
+    ];
+
+    if (rf.preview_kind === "html" && rf.viewer_url) {
+      const htmlToggle = el("button", {
+        className: "btn btn-sm",
+        textContent: state.htmlRawMode === "rendered" ? "View HTML Source" : "Render Sandboxed HTML",
+        onClick: () => {
+          state.htmlRawMode = state.htmlRawMode === "rendered" ? "source" : "rendered";
+          renderInspector(rec);
+        },
+      });
+      headerControls.unshift(htmlToggle);
+    }
+
+    panel.appendChild(
+      el("div", { className: "section-head" }, [
+        el("h3", {
+          textContent: `Inline Raw File (${rf.media_type || "unknown"}${sizeText ? ` · ${sizeText}` : ""})`,
+        }),
+        el("div", { style: "display:flex;gap:6px;flex-wrap:wrap;" }, headerControls),
+      ])
+    );
+
+    if (!rf.available || !rf.viewer_url) {
+      panel.appendChild(el("div", { className: "empty-state", textContent: "No raw archive blob SHA-256 recorded for this item." }));
+      return panel;
+    }
+
+    const statusLine = el("div", { className: "raw-status", textContent: "Fetching raw archive object via /api/raw proxy..." });
+    panel.appendChild(statusLine);
+
+    if (rf.preview_kind === "pdf") {
+      const frame = el("iframe", {
+        className: "raw-frame",
+        src: `${rf.viewer_url}#view=FitH`,
+        title: `PDF Viewer: ${rec.filename || rec.doc_key}`,
+      });
+      frame.addEventListener("load", () => {
+        statusLine.textContent = "PDF loaded inline.";
+      });
+      frame.addEventListener("error", () => {
+        statusLine.textContent = "Unable to embed PDF inline — use Open Tab or Download above.";
+      });
+      panel.appendChild(frame);
+      return panel;
+    }
+
+    if (rf.preview_kind === "html") {
+      if (state.htmlRawMode === "source") {
+        const pre = el("pre", { className: "json-pre", style: "max-height:680px;", textContent: "Loading source..." });
+        panel.appendChild(pre);
+        fetch(rf.source_mode_url)
+          .then(async (r) => {
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            pre.textContent = await r.text();
+            statusLine.textContent = "Raw unwrapped HTML source loaded.";
+          })
+          .catch((err) => {
+            statusLine.textContent = `Raw fetch error: ${err.message}`;
+            pre.textContent = "";
+          });
+        return panel;
+      }
+
+      const frame = el("iframe", {
+        className: "raw-frame",
+        sandbox: "",
+        src: rf.viewer_url,
+        title: `Sandboxed HTML Viewer: ${rec.filename || rec.doc_key}`,
+      });
+      frame.addEventListener("load", () => {
+        statusLine.textContent = "Sandboxed HTML loaded inline (scripts disabled).";
+      });
+      panel.appendChild(frame);
+      return panel;
+    }
+
+    if (rf.preview_kind === "xml" || rf.preview_kind === "text") {
+      const pre = el("pre", { className: "json-pre", style: "max-height:680px;", textContent: "Loading file..." });
+      panel.appendChild(pre);
+      fetch(rf.source_mode_url || rf.viewer_url)
+        .then(async (r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          pre.textContent = await r.text();
+          statusLine.textContent = `${rf.preview_kind.toUpperCase()} raw file loaded.`;
+        })
+        .catch((err) => {
+          statusLine.textContent = `Raw fetch error: ${err.message}`;
+          pre.textContent = "";
+        });
+      return panel;
+    }
+
+    statusLine.textContent = "Binary format — inline preview is not supported for this media type.";
+    panel.appendChild(
+      el("div", { className: "empty-state", style: "margin-top:8px;" }, [
+        el("div", { style: "margin-bottom:10px;", textContent: `File type: ${rf.media_type} (${rec.filename || rf.sha256})` }),
+        el("a", { className: "btn primary", href: rf.download_url, textContent: "Download Raw File" }),
+      ])
+    );
+    return panel;
+  }
+
+  function renderInspector(rec) {
+    const pane = document.getElementById("inspector-pane");
+    pane.replaceChildren();
+    if (!rec) {
+      pane.appendChild(el("div", { className: "empty-state", textContent: "Select a record to inspect." }));
+      return;
+    }
+
+    const consensus = Array.isArray(rec.consensus_families) ? rec.consensus_families.join(" + ") : "none";
+    const copyBtn = el("button", {
+      className: "copy-key-btn",
+      textContent: `doc_key: ${rec.doc_key.slice(0, 12)}... (copy)`,
+      onClick: () => {
+        navigator.clipboard?.writeText(rec.doc_key);
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => {
+          copyBtn.textContent = `doc_key: ${rec.doc_key.slice(0, 12)}... (copy)`;
+        }, 1200);
+      },
+    });
+
+    const headerTags = el("div", { className: "card-tags" }, [
+      el("span", { className: `tag split-${rec.split}`, textContent: rec.split }),
+      el("span", {
+        className: rec.status === "usable" ? "tag" : "tag status-nonusable",
+        textContent: `status: ${rec.status}`,
+      }),
+      rec.primary_genre ? el("span", { className: "tag genre", textContent: rec.primary_genre }) : null,
+      rec.specialist_family ? el("span", { className: "tag", textContent: rec.specialist_family }) : null,
+      el("span", {
+        className: rec.verdict === "checkeval_resolved" ? "tag verdict-checkeval_resolved" : "tag",
+        textContent: rec.verdict,
+      }),
+      el("span", { className: "tag", textContent: `consensus: ${consensus}` }),
+      rec.is_packet ? el("span", { className: "tag packet", textContent: "packet" }) : null,
+      rec.specialist_teacher ? el("span", { className: "tag", textContent: `teacher: ${rec.specialist_teacher}` }) : null,
+    ]);
+
+    const rf = rec.raw_file || {};
+    const sizeText = formatBytes(rf.saved_bytes);
+    const archiveHref = safeExternalUrl(rf.archive_url);
+    const rawActionsBar = rf.available
+      ? el("div", { className: "raw-actions-bar" }, [
+          el("span", { className: "kv-label", textContent: "Raw File:" }),
+          rf.viewer_url
+            ? el("a", {
+                className: "btn btn-sm primary",
+                href: rf.viewer_url,
+                target: "_blank",
+                rel: "noopener",
+                textContent: "Open Raw File ↗",
+              })
+            : null,
+          rf.download_url
+            ? el("a", { className: "btn btn-sm", href: rf.download_url, textContent: "Download" })
+            : null,
+          archiveHref
+            ? el("a", {
+                className: "btn btn-sm",
+                href: archiveHref,
+                target: "_blank",
+                rel: "noopener noreferrer",
+                textContent: "R2 Archive Blob ↗",
+              })
+            : null,
+          el("span", {
+            className: "tag",
+            textContent: `${rf.media_type}${rf.saved_suffix ? ` (${rf.saved_suffix})` : ""}${sizeText ? ` · ${sizeText}` : ""}`,
+          }),
+        ])
+      : null;
+
+    const sources = Array.isArray(rf.sources) ? rf.sources : [];
+    const sourcesBox = sources.length
+      ? el("div", { className: "sources-list" }, [
+          el("div", { className: "kv-label", textContent: `Original Sources (${sources.length})` }),
+          ...sources.map((src) => {
+            const safeUrl = safeExternalUrl(src.url);
+            const safeListed = safeExternalUrl(src.listed_on);
+            if (!safeUrl) return null;
+            let host = "";
+            try {
+              host = new URL(safeUrl).hostname;
+            } catch (_e) {}
+            return el("div", { className: "source-row" }, [
+              el("a", {
+                className: "source-link",
+                href: safeUrl,
+                target: "_blank",
+                rel: "noopener noreferrer",
+                textContent: `${src.link_text || safeUrl} ↗`,
+                title: safeUrl,
+              }),
+              host ? el("span", { className: "tag", textContent: host }) : null,
+              src.is_saved ? el("span", { className: "tag split-sealed_temporal_2026", textContent: "saved source" }) : null,
+              safeListed
+                ? el("a", {
+                    className: "source-sublink",
+                    href: safeListed,
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    textContent: "Hearing / listing page ↗",
+                  })
+                : null,
+            ]);
+          }),
+        ])
+      : null;
+
+    const kvItems = [
+      ["doc_date", rec.doc_date || "—", true],
+      ["chamber", rec.chamber || "—", false],
+      ["congress", rec.congress !== null && rec.congress !== undefined ? String(rec.congress) : "—", true],
+      ["committees", (rec.committees || []).join("; ") || "—", false],
+      ["subkind", rec.subkind || "—", true],
+      ["archive_document_kind", rec.archive_document_kind || "—", true],
+      ["media_format", rec.media_format || "—", true],
+      ["filename", rec.filename || "—", true],
+      ["stratum", rec.stratum || "—", true],
+      ["effective_format", rec.effective_format || "—", true],
+      ["contains_genres", (rec.contains_genres || []).join(", ") || "—", false],
+      ["window_spec", rec.text_window_spec || "—", true],
+    ];
+
+    const kvGrid = el(
+      "div",
+      { className: "kv-grid" },
+      kvItems.map(([k, v, isMono]) =>
+        el("div", { className: "kv-item" }, [
+          el("div", { className: "kv-label", textContent: k }),
+          el("div", { className: "kv-value" + (isMono ? " mono" : ""), textContent: v }),
+        ])
+      )
+    );
+
+    const topicsRow =
+      Array.isArray(rec.topics) && rec.topics.length
+        ? el("div", { className: "chip-row" }, [
+            el("span", { className: "kv-label", style: "align-self:center;margin-right:4px;", textContent: "Topics:" }),
+            ...rec.topics.map((t) => el("span", { className: "topic-chip", textContent: t })),
+          ])
+        : null;
+
+    const crosswalkItems = [
+      ...(rec.crosswalk_congress_gov_types || []).map((x) => `congress.gov: ${x}`),
+      ...(rec.crosswalk_docs_house_codes || []).map((x) => `docs.house.gov: ${x}`),
+      ...(rec.crosswalk_lcgft_uris || []).map((x) => `LCGFT: ${x.split("/").pop()}`),
+    ];
+    const crosswalkRow = crosswalkItems.length
+      ? el("div", { className: "chip-row" }, [
+          el("span", { className: "kv-label", style: "align-self:center;margin-right:4px;", textContent: "Crosswalk:" }),
+          ...crosswalkItems.map((x) => el("span", { className: "tag", textContent: x })),
+        ])
+      : null;
+
+    pane.appendChild(
+      el("div", { className: "spec-card" }, [
+        el("div", { className: "spec-header-top" }, [
+          el("div", null, [
+            headerTags,
+            el("h2", { className: "spec-title", textContent: rec.verbatim_title || rec.filename || "(No verbatim title)" }),
+          ]),
+          copyBtn,
+        ]),
+        rec.gist ? el("p", { className: "spec-gist", textContent: rec.gist }) : null,
+        rawActionsBar,
+        sourcesBox,
+        kvGrid,
+        topicsRow,
+        crosswalkRow,
+        rec.rationale ? el("div", { className: "rationale-box", textContent: `Rationale: ${rec.rationale}` }) : null,
+      ])
+    );
+
+    // Inspector Workspace Mode Switcher
+    const modes = [
+      ["spans", "9K Window + Spans"],
+      ["raw", "Inline Raw File"],
+      ["split", "Split: Spans + Raw"],
+    ];
+    const modePills = el(
+      "div",
+      { className: "mode-pills", role: "group", "aria-label": "Inspector view mode" },
+      modes.map(([id, label]) =>
+        el("button", {
+          className: "mode-btn" + (state.inspectMode === id ? " active" : ""),
+          textContent: label,
+          onClick: () => {
+            state.inspectMode = id;
+            renderInspector(rec);
+          },
+        })
+      )
+    );
+    pane.appendChild(el("div", { className: "mode-bar" }, [modePills]));
+
+    if (state.inspectMode === "spans") {
+      pane.appendChild(el("div", { className: "grounding-layout" }, [buildSpansRail(rec), buildSourceTextPanel(rec)]));
+    } else if (state.inspectMode === "raw") {
+      pane.appendChild(el("div", { style: "margin-bottom:14px;" }, [buildRawViewerPanel(rec)]));
+    } else {
+      pane.appendChild(
+        el("div", { className: "split-layout" }, [
+          el("div", { className: "split-left-stack" }, [buildSpansRail(rec), buildSourceTextPanel(rec)]),
+          buildRawViewerPanel(rec),
+        ])
+      );
+    }
+
+    // Specialist Payload Card
+    const toggleJsonBtn = el("button", {
+      className: "btn btn-sm",
+      textContent: state.showRawPayload ? "Structured View" : "Raw JSON",
+      onClick: () => {
+        state.showRawPayload = !state.showRawPayload;
+        renderInspector(rec);
+      },
+    });
+
+    const payloadCard = el("div", { className: "spec-card" }, [
+      el("div", { className: "section-head" }, [
+        el("h3", { textContent: `Specialist Payload (${rec.specialist_family || "none"})` }),
+        rec.specialist_payload ? toggleJsonBtn : null,
+      ]),
+    ]);
+
+    if (!rec.specialist_payload) {
+      payloadCard.appendChild(el("div", { style: "color:var(--ink-muted)", textContent: "No specialist payload for this record." }));
+    } else if (state.showRawPayload) {
+      payloadCard.appendChild(
+        el("pre", { className: "json-pre", textContent: JSON.stringify(rec.specialist_payload, null, 2) })
+      );
+    } else {
+      const grid = el("div", { className: "payload-fields" });
+      for (const [k, v] of Object.entries(rec.specialist_payload)) {
+        const isEmpty = v === null || (Array.isArray(v) && v.length === 0);
+        grid.appendChild(
+          el("div", { className: "payload-box" }, [
+            el("div", { className: "kv-label", textContent: k }),
+            el("div", {
+              className: "kv-value" + (typeof v === "object" && v !== null ? " mono" : ""),
+              style: isEmpty ? "color:var(--ink-muted)" : "",
+              textContent: formatFieldValue(v),
+            }),
+          ])
+        );
+      }
+      payloadCard.appendChild(grid);
+    }
+    pane.appendChild(payloadCard);
+  }
+
+  async function selectRecord(docKey) {
+    state.selectedKey = docKey;
+    document.querySelectorAll(".record-card").forEach((c) => {
+      c.classList.toggle("selected", c.getAttribute("data-doc-key") === docKey);
+    });
+    const rec = await apiGet(`/api/records/${encodeURIComponent(docKey)}`);
+    state.currentRecord = rec;
+    renderInspector(rec);
+  }
+
+  async function loadRecords(selectFirst) {
+    const data = await apiGet(`/api/records?${buildQueryParams()}`);
+    state.total = data.total;
+    state.items = data.items;
+    state.facets = data.facets;
+    renderFacets();
+    renderRecordList();
+    if (selectFirst && state.items.length) {
+      await selectRecord(state.items[0].doc_key);
+    } else if (!state.items.length) {
+      state.selectedKey = null;
+      state.currentRecord = null;
+      renderInspector(null);
+    }
+  }
+
+  function buildBarCard(title, rows, keyFn, valFn, maxCount) {
+    const maxVal = maxCount || Math.max(1, ...rows.map(valFn));
+    const card = el("div", { className: "spec-card" }, [
+      el("div", { className: "section-head" }, [el("h3", { textContent: title })]),
+    ]);
+    for (const r of rows) {
+      const count = valFn(r);
+      const pct = Math.max(1, Math.round((count / maxVal) * 100));
+      card.appendChild(
+        el("div", { className: "bar-row" }, [
+          el("span", { className: "bar-label", textContent: keyFn(r), title: keyFn(r) }),
+          el("div", { className: "bar-track" }, [
+            el("div", { className: "bar-fill", style: `width:${pct}%` }),
+          ]),
+          el("span", { className: "bar-val", textContent: count.toLocaleString() }),
+        ])
+      );
+    }
+    return card;
+  }
+
+  async function loadOverview() {
+    if (state.overviewLoaded) return;
+    const data = await apiGet("/api/overview");
+    state.overviewLoaded = true;
+    const container = document.getElementById("overview-content");
+    container.replaceChildren();
+
+    const grid = el("div", { className: "overview-grid" }, [
+      buildBarCard("Splits", data.facets.split || [], (r) => r.label, (r) => r.count),
+      buildBarCard("Verdicts", data.facets.verdict || [], (r) => r.label, (r) => r.count),
+      buildBarCard("Primary Genres", data.facets.primary_genre || [], (r) => r.label, (r) => r.count),
+      buildBarCard("Specialist Families", data.facets.specialist_family || [], (r) => r.label, (r) => r.count),
+      buildBarCard("Document Statuses", data.facets.status || [], (r) => r.label, (r) => r.count),
+      buildBarCard("Chambers", data.facets.chamber || [], (r) => r.label, (r) => r.count),
+      buildBarCard("Teacher Consensus Combinations", data.consensus_counts || [], (r) => r.combo, (r) => r.count),
+      buildBarCard("Congress Breakdown (Top 25)", data.congress_counts || [], (r) => `${r.congress}th Congress`, (r) => r.count),
+    ]);
+    container.appendChild(grid);
+
+    const splits = ["train", "sealed_temporal_2026", "dev_iter"];
+    const byGenre = new Map();
+    for (const row of data.split_by_genre) {
+      if (!byGenre.has(row.genre)) byGenre.set(row.genre, { train: 0, sealed_temporal_2026: 0, dev_iter: 0, total: 0 });
+      const entry = byGenre.get(row.genre);
+      entry[row.split] = (entry[row.split] || 0) + row.count;
+      entry.total += row.count;
+    }
+    const sortedGenres = Array.from(byGenre.entries()).sort((a, b) => b[1].total - a[1].total);
+    const tbl = el("table", { className: "matrix" }, [
+      el("thead", null, [
+        el("tr", null, [
+          el("th", { textContent: "Primary Genre" }),
+          ...splits.map((s) => el("th", { className: "num", textContent: s })),
+          el("th", { className: "num", textContent: "Total" }),
+        ]),
+      ]),
+      el(
+        "tbody",
+        null,
+        sortedGenres.map(([genre, counts]) =>
+          el("tr", null, [
+            el("td", { textContent: genre }),
+            ...splits.map((s) => el("td", { className: "num", textContent: (counts[s] || 0).toLocaleString() })),
+            el("td", { className: "num", style: "font-weight:700", textContent: counts.total.toLocaleString() }),
+          ])
+        )
+      ),
+    ]);
+    container.appendChild(
+      el("div", { className: "spec-card" }, [
+        el("div", { className: "section-head" }, [el("h3", { textContent: "Split x Primary Genre Matrix" })]),
+        tbl,
+      ])
+    );
+  }
+
+  async function loadQuarantined() {
+    if (state.quarantinedLoaded) return;
+    const data = await apiGet("/api/quarantined");
+    state.quarantinedLoaded = true;
+    const container = document.getElementById("quarantined-content");
+    container.replaceChildren();
+
+    const makeSection = (title, rows) => {
+      const sec = el("div", { style: "margin-bottom:22px" }, [
+        el("h2", { style: "font-family:var(--serif);margin:0 0 10px 0;", textContent: `${title} (${rows.length})` }),
+      ]);
+      for (const r of rows) {
+        const previewHost = el("div", { style: "margin-top:8px;" });
+        const previewBtn = el("button", {
+          className: "btn btn-sm",
+          textContent: "Load 9K Source Text",
+          onClick: async () => {
+            previewBtn.disabled = true;
+            previewBtn.textContent = "Loading...";
+            try {
+              const txt = await apiGet(`/api/text/${encodeURIComponent(r.doc_key)}`);
+              previewHost.replaceChildren(
+                el("div", { className: "text-body", style: "max-height:260px", textContent: txt.clean_text || txt.raw_text || "(empty)" })
+              );
+              previewBtn.remove();
+            } catch (err) {
+              previewBtn.textContent = "No source text found";
+            }
+          },
+        });
+        sec.appendChild(
+          el("div", { className: "q-card" }, [
+            el("div", { className: "card-tags" }, [
+              el("span", { className: "tag status-nonusable", textContent: r.verdict || "excluded" }),
+              r.deadlock_reason ? el("span", { className: "tag verdict-checkeval_resolved", textContent: r.deadlock_reason }) : null,
+              r.stratum ? el("span", { className: "tag", textContent: r.stratum }) : null,
+              r.chamber ? el("span", { className: "tag", textContent: r.chamber }) : null,
+            ]),
+            el("div", { className: "card-title", textContent: r.filename || r.doc_key }),
+            el("div", { className: "card-meta", style: "margin-bottom:8px;" }, [
+              el("span", { textContent: `doc_key: ${r.doc_key}` }),
+              r.source_pool ? el("span", { textContent: `pool: ${r.source_pool}` }) : null,
+              Array.isArray(r.consensus_families)
+                ? el("span", { textContent: `consensus: ${r.consensus_families.join("+")}` })
+                : null,
+            ]),
+            previewBtn,
+            previewHost,
+          ])
+        );
+      }
+      return sec;
+    };
+
+    container.appendChild(makeSection("Owner Deadlocks", data.deadlocks || []));
+    container.appendChild(makeSection("Quarantined Exclusions", data.quarantined || []));
+  }
+
+  function switchTab(tab) {
+    state.tab = tab;
+    document.querySelectorAll(".tab-btn").forEach((b) => {
+      b.classList.toggle("active", b.getAttribute("data-tab") === tab);
+    });
+    document.querySelectorAll(".main-view").forEach((v) => {
+      v.classList.toggle("active", v.id === `view-${tab}`);
+    });
+    if (tab === "overview") loadOverview();
+    if (tab === "quarantined") loadQuarantined();
+  }
+
+  function jumpRandom() {
+    if (state.tab !== "browse") switchTab("browse");
+    state.sort = "random";
+    document.getElementById("sort-select").value = "random";
+    state.page = 1;
+    loadRecords(true);
+  }
+
+  function stepSelection(delta) {
+    if (state.tab !== "browse" || !state.items.length) return;
+    const idx = state.items.findIndex((i) => i.doc_key === state.selectedKey);
+    const nextIdx = Math.max(0, Math.min(state.items.length - 1, idx === -1 ? 0 : idx + delta));
+    const target = state.items[nextIdx];
+    if (target && target.doc_key !== state.selectedKey) {
+      selectRecord(target.doc_key);
+      const card = document.querySelector(`.record-card[data-doc-key="${target.doc_key}"]`);
+      card?.scrollIntoView({ block: "nearest" });
+    }
+  }
+
+  // Event listeners
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => switchTab(btn.getAttribute("data-tab")));
+  });
+
+  let searchTimer = null;
+  document.getElementById("search-input").addEventListener("input", (e) => {
+    clearTimeout(searchTimer);
+    const val = e.target.value;
+    searchTimer = setTimeout(() => {
+      if (state.tab !== "browse") switchTab("browse");
+      state.filters.q = val;
+      state.page = 1;
+      loadRecords(true);
+    }, 180);
+  });
+
+  document.getElementById("sort-select").addEventListener("change", (e) => {
+    state.sort = e.target.value;
+    state.page = 1;
+    loadRecords(true);
+  });
+
+  document.getElementById("random-btn").addEventListener("click", jumpRandom);
+  document.getElementById("prev-page-btn").addEventListener("click", () => {
+    if (state.page > 1) {
+      state.page -= 1;
+      loadRecords(true);
+    }
+  });
+  document.getElementById("next-page-btn").addEventListener("click", () => {
+    const totalPages = Math.max(1, Math.ceil(state.total / state.pageSize));
+    if (state.page < totalPages) {
+      state.page += 1;
+      loadRecords(true);
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    const activeTag = document.activeElement?.tagName;
+    if (activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT") {
+      if (e.key === "Escape") document.activeElement.blur();
+      return;
+    }
+    if (e.key === "/") {
+      e.preventDefault();
+      document.getElementById("search-input").focus();
+    } else if (e.key === "r") {
+      e.preventDefault();
+      jumpRandom();
+    } else if (e.key === "j" || e.key === "ArrowDown") {
+      e.preventDefault();
+      stepSelection(1);
+    } else if (e.key === "k" || e.key === "ArrowUp") {
+      e.preventDefault();
+      stepSelection(-1);
+    }
+  });
+
+  async function init() {
+    const meta = await apiGet("/api/meta");
+    document.getElementById("corpus-badge").textContent =
+      `${meta.total_gold.toLocaleString()} gold · ${meta.quarantined_count} quarantined · ${meta.deadlock_count} deadlocks`;
+    await loadRecords(true);
+  }
+
+  init().catch((err) => {
+    document.getElementById("corpus-badge").textContent = "Error loading corpus";
+    document.getElementById("inspector-pane").replaceChildren(
+      el("div", { className: "empty-state", textContent: String(err) })
+    );
+  });
+})();
+</script>
+</body>
+</html>
