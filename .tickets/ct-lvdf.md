@@ -1,6 +1,6 @@
 ---
 id: ct-lvdf
-status: open
+status: closed
 deps: [ct-w34j]
 links: []
 created: 2026-11-09T00:52:02Z
@@ -33,3 +33,7 @@ Size M. Plan: docs/plans/org-entities-20261108.md (Exposure, Stable IDs and chur
 **2026-11-22T19:53:35Z**
 
 2026-11-22 Owner decision A3: Attach Ban, Park & You (APSR 2023, doi:10.1017/S0003055422000405) 9-parent / 18-child witness organization taxonomy to resolved organizations cleanly in parallel with DocMeta V7 (zero blocking dependency on ct-o7j0). Reference: docs/plans/docmeta-v7-consulting-plan-20261122.md.
+
+**2026-11-25T15:01:44Z**
+
+Merged to main in PR #244 (12/12 CI checks green). Publishes organizations, organization_ids, witness_organizations, and organization_redirects in release-schema.json, archive_model/job/controller/release_gate (with prior org custody, 1-hop split UTF-8 tie-break determinism, and canonical appearance share in render_notes), Congress Explorer MCP (get_entity 1-hop redirects + 128 KiB MAX_BYTES budget guard + search_entities), and Astro site (manifest-gated Organizations browse tab, OrganizationDetail, witness/hearing/person links, keyed non-eager Parquet readers).

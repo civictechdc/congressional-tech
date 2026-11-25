@@ -30,3 +30,7 @@ The organization plan and the review of sample witness appearances are complete.
 **2026-11-22T19:53:35Z**
 
 2026-11-22 Owner decision A3: Attach Ban, Park & You (APSR 2023, doi:10.1017/S0003055422000405) 9-parent / 18-child witness organization taxonomy to resolved organizations cleanly in parallel with DocMeta V7 (zero blocking dependency on ct-o7j0). Reference: docs/plans/docmeta-v7-consulting-plan-20261122.md.
+
+**2026-11-25T12:01:56Z**
+
+2026-11-25: Phase 1 (ct-6him) merged in PR #240 (6374ea1f) and closed, unblocking ct-w34j (Phase 2 RefSpec agencies) and ct-39u8 (Phase 3 Wikidata). Minor note from pre-merge review: witness-level org_decisions currently apply to field_rank=1 (organization); consider witness:<wk>:<field> support for on_behalf_of in Phase 2/3 if needed.
