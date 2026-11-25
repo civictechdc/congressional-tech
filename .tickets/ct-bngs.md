@@ -18,3 +18,9 @@ Review, split cleanly by concern, and commit/PR uncommitted changes across both 
 
 Clean commit(s)/PR(s) scoped without unrelated drift; scripts/dev.py doctor, scripts/dev.py inventory, and affected offline suites pass cleanly in both repos.
 
+
+## Notes
+
+**2026-11-25T04:45:53Z**
+
+2026-11-24: congressional-tech side checkpointed, reviewed, refined, and opened PR from rebased feat/v7-org-warc-viewer onto origin/main (covering ct-ogcq, Org Entities Phase 1, DocMeta V7 core/factory/OCR rescue/9K unification/V4-V6.5 retirement, and the DocMeta V7.3a.1 viewer). Remaining scope for ct-bngs: fast-silicon repo commits/PR.

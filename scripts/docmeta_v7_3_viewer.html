@@ -931,6 +931,7 @@
     inspectMode: "spans", // "spans" | "raw" | "split"
     htmlRawMode: "rendered", // "rendered" | "source"
     showRawPayload: false,
+    selectionSeq: 0,
     overviewLoaded: false,
     quarantinedLoaded: false,
   };
@@ -1600,28 +1601,44 @@
   }
 
   async function selectRecord(docKey) {
+    const seq = ++state.selectionSeq;
     state.selectedKey = docKey;
     document.querySelectorAll(".record-card").forEach((c) => {
       c.classList.toggle("selected", c.getAttribute("data-doc-key") === docKey);
     });
-    const rec = await apiGet(`/api/records/${encodeURIComponent(docKey)}`);
-    state.currentRecord = rec;
-    renderInspector(rec);
+    try {
+      const rec = await apiGet(`/api/records/${encodeURIComponent(docKey)}`);
+      if (seq !== state.selectionSeq) return;
+      state.currentRecord = rec;
+      renderInspector(rec);
+    } catch (err) {
+      if (seq !== state.selectionSeq) return;
+      document.getElementById("inspector-pane").replaceChildren(
+        el("div", { className: "empty-state", textContent: `Failed to load record: ${err.message}` })
+      );
+    }
   }
 
   async function loadRecords(selectFirst) {
-    const data = await apiGet(`/api/records?${buildQueryParams()}`);
-    state.total = data.total;
-    state.items = data.items;
-    state.facets = data.facets;
-    renderFacets();
-    renderRecordList();
-    if (selectFirst && state.items.length) {
-      await selectRecord(state.items[0].doc_key);
-    } else if (!state.items.length) {
-      state.selectedKey = null;
-      state.currentRecord = null;
-      renderInspector(null);
+    try {
+      const data = await apiGet(`/api/records?${buildQueryParams()}`);
+      state.total = data.total;
+      state.items = data.items;
+      state.facets = data.facets;
+      renderFacets();
+      renderRecordList();
+      if (selectFirst && state.items.length) {
+        await selectRecord(state.items[0].doc_key);
+      } else if (!state.items.length) {
+        state.selectedKey = null;
+        state.currentRecord = null;
+        renderInspector(null);
+      }
+    } catch (err) {
+      document.getElementById("results-summary").textContent = "Error loading records";
+      document.getElementById("inspector-pane").replaceChildren(
+        el("div", { className: "empty-state", textContent: `Query failed: ${err.message}` })
+      );
     }
   }
 
@@ -1648,10 +1665,11 @@
 
   async function loadOverview() {
     if (state.overviewLoaded) return;
-    const data = await apiGet("/api/overview");
-    state.overviewLoaded = true;
     const container = document.getElementById("overview-content");
-    container.replaceChildren();
+    try {
+      const data = await apiGet("/api/overview");
+      state.overviewLoaded = true;
+      container.replaceChildren();
 
     const grid = el("div", { className: "overview-grid" }, [
       buildBarCard("Splits", data.facets.split || [], (r) => r.label, (r) => r.count),
@@ -1694,20 +1712,24 @@
         )
       ),
     ]);
-    container.appendChild(
-      el("div", { className: "spec-card" }, [
-        el("div", { className: "section-head" }, [el("h3", { textContent: "Split x Primary Genre Matrix" })]),
-        tbl,
-      ])
-    );
+      container.appendChild(
+        el("div", { className: "spec-card" }, [
+          el("div", { className: "section-head" }, [el("h3", { textContent: "Split x Primary Genre Matrix" })]),
+          tbl,
+        ])
+      );
+    } catch (err) {
+      container.replaceChildren(el("div", { className: "empty-state", textContent: `Failed to load overview: ${err.message}` }));
+    }
   }
 
   async function loadQuarantined() {
     if (state.quarantinedLoaded) return;
-    const data = await apiGet("/api/quarantined");
-    state.quarantinedLoaded = true;
     const container = document.getElementById("quarantined-content");
-    container.replaceChildren();
+    try {
+      const data = await apiGet("/api/quarantined");
+      state.quarantinedLoaded = true;
+      container.replaceChildren();
 
     const makeSection = (title, rows) => {
       const sec = el("div", { style: "margin-bottom:22px" }, [
@@ -1756,8 +1778,11 @@
       return sec;
     };
 
-    container.appendChild(makeSection("Owner Deadlocks", data.deadlocks || []));
-    container.appendChild(makeSection("Quarantined Exclusions", data.quarantined || []));
+      container.appendChild(makeSection("Owner Deadlocks", data.deadlocks || []));
+      container.appendChild(makeSection("Quarantined Exclusions", data.quarantined || []));
+    } catch (err) {
+      container.replaceChildren(el("div", { className: "empty-state", textContent: `Failed to load quarantined items: ${err.message}` }));
+    }
   }
 
   function switchTab(tab) {
@@ -1787,7 +1812,7 @@
     const target = state.items[nextIdx];
     if (target && target.doc_key !== state.selectedKey) {
       selectRecord(target.doc_key);
-      const card = document.querySelector(`.record-card[data-doc-key="${target.doc_key}"]`);
+      const card = document.querySelector(`.record-card[data-doc-key="${CSS.escape(target.doc_key)}"]`);
       card?.scrollIntoView({ block: "nearest" });
     }
   }

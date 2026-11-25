@@ -4,7 +4,7 @@ FRBR / ELI-DL-grounded document metadata extraction, 3-family SOTA corpus constr
 
 ## Layout
 
-- `congress_docmeta.v7.models` — Pydantic v2 core envelope + 4 specialist family schemas, exact character-offset `SpanRef` verification (`verify_grounded_extraction`), and non-populated FRBR/ELI-DL conceptual scaffolding.
+- `congress_docmeta.v7.models` — Pydantic v2 core envelope + 5 specialist family schemas, exact character-offset `SpanRef` verification (`verify_grounded_extraction`), and non-populated FRBR/ELI-DL conceptual scaffolding.
 - `congress_docmeta.v7.codebook` & `codebook_v7_0.yaml` — Versioned annotation codebook (v7.0) with strict intrinsic-vs-submission, cover/TOC boundary, and GPO `[ERRATA]` rules.
 - `congress_docmeta.v7.crosswalk` & `crosswalk_v7_0.yaml` — Deterministic mappings from `PrimaryGenre` + `subkind` to canonical `house_naming` `document_kind`, Congress.gov v3, `docs.house.gov`, and LoC LCGFT terms.
 - `congress_docmeta.v7.release_contract` — Locked `docmeta_v7` Arrow sidecar schema, fail-closed validator, DataFusion join/invariant SQL, `format_two_channel_input` (`<<<DOCUMENT_CONTEXT>>>` + `<<<DOC_TEXT>>>` with 50% SFT dropout), and `reanchor_payload_for_clean_text`.

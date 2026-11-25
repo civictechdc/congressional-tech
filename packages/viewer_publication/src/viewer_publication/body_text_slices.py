@@ -251,7 +251,7 @@ def docmeta_v7_window(
             p3_prefix = p12_clean[:head_cap].rstrip()
             rem = max(0, max_chars - len(p3_prefix) - len(marker_p3))
             p3_slice = p3_txt[: min(p3_slice_budget, rem)]
-            head = f"{p3_prefix}{marker_p3}{p3_slice}" if p3_prefix else f"[... p3 rescue ...]\n{p3_txt[:max_chars - 20]}"
+            head = f"{p3_prefix}{marker_p3}{p3_slice}" if p3_prefix else f"[... p3 rescue ...]\n{p3_txt[: max(0, max_chars - len('[... p3 rescue ...]\\n'))]}"
             p3_rescued = True
 
     out = head[:max_chars]

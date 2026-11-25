@@ -25,7 +25,7 @@ import threading
 from typing import Any
 import unicodedata
 import urllib.error
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 import urllib.request
 import webbrowser
 
@@ -34,13 +34,11 @@ import duckdb
 try:
     from viewer_publication.body_text_slices import strip_invisible_format_chars
 except ImportError:  # pragma: no cover - fallback when run outside package env
+    _INVISIBLE_FORMAT_RE = re.compile(r"[\u202a-\u202e\u2066-\u2069\u200e\u200f\ufeff\u00ad]")
+
     def strip_invisible_format_chars(text: str) -> str:
-        """Strip Unicode format (`Cf`) characters such as bidi controls while keeping whitespace."""
-        if not text:
-            return text
-        return "".join(
-            ch for ch in text if unicodedata.category(ch) != "Cf" or ch in ("\n", "\r", "\t")
-        )
+        """Strip bidi/zero-width invisible format characters matching `body_text_slices`."""
+        return _INVISIBLE_FORMAT_RE.sub("", text) if text else text
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -618,7 +616,12 @@ class DocMetaCorpusStore:
             inferred_mt = FORMAT_MEDIA_MAP.get(ext)
         media_type = (detail.get("saved_media_type") or inferred_mt or "application/octet-stream").lower()
 
-        is_container = media_type in {"application/warc+gzip", "application/arc+gzip"}
+        is_container = media_type in {
+            "application/warc+gzip",
+            "application/arc+gzip",
+            "application/warc",
+            "application/arc",
+        }
         if media_type == "application/pdf":
             preview_kind = "pdf"
         elif (is_container or media_type == "application/octet-stream") and filename.lower().endswith(".pdf"):
@@ -676,6 +679,8 @@ class DocMetaCorpusStore:
         sha = info["sha256"]
         if not sha:
             raise FileNotFoundError(f"No SHA-256 associated with doc_key={doc_key}")
+        if not re.fullmatch(r"[0-9a-f]{64}", sha):
+            raise ValueError(f"Invalid archive SHA-256 for doc_key={doc_key}: {sha!r}")
 
         cand = self._cand_meta.get(doc_key) or {}
         detail = self._detail_meta.get(doc_key) or {}
@@ -683,15 +688,19 @@ class DocMetaCorpusStore:
 
         if info["suffix_inferred"]:
             candidate_suffixes = [".gz", ".pdf", ""]
-        else:
+        elif info["saved_suffix"] in {"", ".gz", ".pdf"}:
             candidate_suffixes = [info["saved_suffix"]]
+        else:
+            candidate_suffixes = [info["saved_suffix"] if re.fullmatch(r"\.[A-Za-z0-9]{1,8}", info["saved_suffix"]) else ".gz"]
 
         blob_bytes: bytes | None = None
         saw_not_found = False
         last_err: Exception | None = None
 
         for suffix in candidate_suffixes:
-            cache_path = self.blob_cache_dir / sha[:2] / f"{sha}{suffix}"
+            cache_path = (self.blob_cache_dir / sha[:2] / f"{sha}{suffix}").resolve()
+            if not cache_path.is_relative_to(self.blob_cache_dir):
+                raise ValueError(f"Refusing cache path outside blob directory: {cache_path}")
             if cache_path.exists():
                 blob_bytes = cache_path.read_bytes()
                 break
@@ -729,7 +738,7 @@ class DocMetaCorpusStore:
             payload = blob_bytes
 
         unwrapped_ct: str | None = None
-        if info["media_type"] in {"application/warc+gzip", "application/arc+gzip"} or payload.startswith(b"WARC/"):
+        if info["media_type"] in {"application/warc+gzip", "application/arc+gzip", "application/warc", "application/arc"} or payload.startswith(b"WARC/"):
             payload, unwrapped_ct = unwrap_warc_or_arc(payload)
 
         content_type = sniff_media_type(payload, unwrapped_ct or info["media_type"])
@@ -1143,7 +1152,7 @@ def make_handler(store: DocMetaCorpusStore, html_path: Path) -> type[BaseHTTPReq
                 return
 
             if path.startswith("/api/records/"):
-                doc_key = path[len("/api/records/") :].strip("/")
+                doc_key = unquote(path[len("/api/records/") :].strip("/"))
                 rec = store.get_record(doc_key)
                 if rec is None:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": f"Unknown doc_key: {doc_key}"})
@@ -1152,12 +1161,12 @@ def make_handler(store: DocMetaCorpusStore, html_path: Path) -> type[BaseHTTPReq
                 return
 
             if path.startswith("/api/raw/"):
-                doc_key = path[len("/api/raw/") :].strip("/")
+                doc_key = unquote(path[len("/api/raw/") :].strip("/"))
                 self._handle_raw(doc_key, parsed.query)
                 return
 
             if path.startswith("/api/text/"):
-                doc_key = path[len("/api/text/") :].strip("/")
+                doc_key = unquote(path[len("/api/text/") :].strip("/"))
                 text_info = store.get_source_text(doc_key)
                 if text_info is None:
                     self._send_json(HTTPStatus.NOT_FOUND, {"error": f"No source text for doc_key: {doc_key}"})

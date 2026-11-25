@@ -483,6 +483,10 @@ def test_http_server_and_raw_proxy_endpoints(tmp_path: Path) -> None:
         assert rec["raw_file"]["preview_kind"] == "pdf"
         assert rec["raw_file"]["viewer_url"] == "/api/raw/k1"
 
+        # URL-encoded doc_key path segments decode cleanly
+        rec_enc = json.loads(urlopen(f"{base}/api/records/k%31").read().decode("utf-8"))
+        assert rec_enc["doc_key"] == "k1"
+
         # Inline PDF response must NOT include sandbox CSP
         with urlopen(f"{base}/api/raw/k1") as resp:
             assert resp.status == 200

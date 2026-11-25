@@ -13,9 +13,9 @@ optional `witnesses.parquet`, `bills.parquet`, `committees.parquet`) and optiona
    & `.senate.gov/download/MM/DD/YYYY/` retro-upload folder date-trap regressions.
 4. `BILLS-` slug Congress validation and 20th-Amendment Noon-Jan-3 odd-year boundary
    checks (reusing `house_naming` directly — zero regex forks).
-5. `docmeta_v6_1` `link_key` conservation, `sha_dup_alias` canonical pointer integrity,
-   `saved_body` custody match, and `strict_v4_valid` / zero-NULL invariants (reusing
-   `viewer_publication.docmeta_v6_1` required-column contracts directly).
+5. Legacy `docmeta` `link_key` conservation, `sha_dup_alias` canonical pointer integrity,
+   `saved_body` custody match, and `strict_v4_valid` / zero-NULL invariants (using
+   inlined required-column contracts).
 6. `witnesses.parquet` vs `detail.witness_keys` orphan checks & `docmeta` `personas`
    shortfall anomalies on single-witness testimony/disclosure/biography genres.
 7. `bills.parquet` vs `detail.measure_keys` orphan checks & `docmeta` `refs` coverage
