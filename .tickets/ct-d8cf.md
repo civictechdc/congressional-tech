@@ -5,8 +5,9 @@ deps: [ct-tw3r]
 links: [ct-jo8n, ct-xu1o, ct-pgxn, ct-a3le, ct-0bce, ct-qkvr, ct-4nyy, ct-5yof, ct-ur7v, ct-dzyf, ct-a1aa, ct-8ax6, ct-n6lj, ct-r60e, ct-x0nk, ct-8kl2, ct-98sm, ct-mi03, ct-syem]
 created: 2026-10-24T18:15:54Z
 type: task
-priority: 2
+priority: 4
 assignee: mikewolfd
+tags: [parked]
 ---
 
 # Recover News Lake writes safely on the existing backend
@@ -59,3 +60,7 @@ validated 2026-11-11, left open: parked News Lake work, nothing changed. The las
 **2026-11-17T09:17:02Z**
 
 17 November manual current-code audit: KEEP OPEN, PARKED. ControlStore.claim reads self.epoch() after its write transaction, allowing another claimant to intervene. abandon_cycle rolls back/marks abandoned without clearing _known_upsert_records. Last inspected News Lake source commit remains d4d53baa; current schedules do not launch it. Writer fencing, cached-state cleanup and failed-cycle preservation still need qualification. Exact reads remain ct-jo8n; export rights remain ct-4nyy. This is not an OCR delivery blocker. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.
+
+**2026-11-22T18:41:11Z**
+
+2026-11-22 ticket backlog audit: Parked at P4 — News Lake has no active product consumer or scheduled run; deprioritized until a live consumer exists.

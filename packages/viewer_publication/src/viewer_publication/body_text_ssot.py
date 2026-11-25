@@ -24,7 +24,10 @@ import pyarrow.parquet as pq
 
 from viewer_publication.body_text_export import COLUMNS, file_facts, footer_sha256
 from viewer_publication.body_text_slices import (
+    DOCMETA_V7_WINDOW_MAX_CHARS,
+    DOCMETA_V7_WINDOW_SPEC,
     TAIL_JOINER_SINGLE_PAGE,
+    docmeta_v7_window,
     head_tail_window,
     slice_pages,
 )
@@ -200,6 +203,24 @@ def split_pages_utf8(text: str, page_offsets: Sequence[int]) -> list[str]:
             end_b = total_bytes
         pages.append(encoded[start_b:end_b].decode("utf-8", errors="replace"))
     return pages
+
+
+def _load_ocr_rescue_map(path: str | Path | None) -> dict[str, tuple[str, str]]:
+    """Load `{saved_body_hex: (rescued_status, rescued_text)}` from `rescued_p15.parquet`."""
+    if path is None:
+        return {}
+    pq_path = Path(path).resolve()
+    if not pq_path.is_file():
+        raise FileNotFoundError(f"OCR rescue Parquet does not exist: {pq_path}")
+    tbl = pq.read_table(pq_path, columns=["saved_body", "rescued_status", "rescued_text"])
+    out: dict[str, tuple[str, str]] = {}
+    for row in tbl.to_pylist():
+        sb = row.get("saved_body")
+        st = row.get("rescued_status")
+        txt = row.get("rescued_text")
+        if isinstance(sb, (bytes, bytearray)) and len(sb) == 32 and st == "ok" and isinstance(txt, str) and txt.strip():
+            out[bytes(sb).hex()] = (str(st), txt)
+    return out
 
 
 class BodyTextSSOT:
@@ -463,15 +484,17 @@ class BodyTextSSOT:
         self,
         detail_parquet: str | Path,
         *,
-        max_chars: int = 8000,
+        max_chars: int = DOCMETA_V7_WINDOW_MAX_CHARS,
         head_pages: int = 2,
         tail_chars: int = 2400,
         verify_row_hashes: bool = True,
         batch_size: int = 512,
         limit: int | None = None,
         handoff: str | Path | None = None,
+        ocr_rescue_parquet: str | Path | None = None,
     ) -> Iterator[dict[str, Any]]:
-        """Stream bounded `head_tail_window` slices per `detail.parquet` row directly from `export.parquet`."""
+        """Stream canonical V7 `p12_clean_plus_p3_bidi_clean_9000` windows per `detail.parquet` row."""
+        rescue_map = _load_ocr_rescue_map(ocr_rescue_parquet)
         for doc in self.iter_serenedb_documents(
             detail_parquet,
             max_pages=None,
@@ -481,18 +504,23 @@ class BodyTextSSOT:
             handoff=handoff,
         ):
             full_text = doc.pop("text")
-            if full_text is None:
-                doc["p12_text"] = None
-                doc["full_text_chars"] = None
-                yield doc
-                continue
+            sb_hex = str(doc.get("saved_body_hex") or "").lower()
+            allow_rescue = doc.get("text_status") not in {"held", "refused"}
+            rescued_st, rescued_txt = rescue_map.get(sb_hex, (None, None)) if allow_rescue else (None, None)
             offs = doc["page_offsets"]
-            doc["p12_text"] = head_tail_window(
+            win = docmeta_v7_window(
                 full_text,
                 offs,
+                rescued_text=rescued_txt,
+                rescued_status=rescued_st,
                 max_chars=max_chars,
                 head_pages=head_pages,
                 tail_chars=tail_chars,
             )
-            doc["full_text_chars"] = len(full_text)
+            doc["p12_text"] = win["text"]
+            doc["text_window_spec"] = win["text_window_spec"]
+            doc["text_window_sha256"] = win["text_window_sha256"]
+            doc["window_source"] = win["window_source"]
+            doc["p3_rescued"] = win["p3_rescued"]
+            doc["full_text_chars"] = len(full_text) if full_text is not None else None
             yield doc

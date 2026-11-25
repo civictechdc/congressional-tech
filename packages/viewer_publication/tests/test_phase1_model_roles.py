@@ -37,3 +37,44 @@ def test_s1_role_fixtures_cover_every_sniff_format():
     cases=json.loads((ROOT/'model/fixtures/s1-model-cases.json').read_text())['roles']
     assert {case['input']['format'] for case in cases if case['input']['format'] is not None}=={
         'pdf','zip','xml','html','json','vtt','m3u8','docx','doc','text','image','warc','other','empty'}
+
+
+def test_warc_and_arc_media_type_envelopes_when_sniffed_other_are_envelopes(tmp_path):
+    from viewer_publication.archive_model import registry_inputs
+    rows = [
+        dict(id='warc_gzip_other', sha256='a'*64, format='other', media_type='application/warc+gzip'),
+        dict(id='arc_gzip_other', sha256='b'*64, format='other', media_type='application/arc+gzip'),
+        dict(id='warc_param_other', sha256='c'*64, format='other', media_type='Application/WARC; charset=utf-8'),
+        dict(id='arc_other', sha256='d'*64, format='other', media_type='application/arc'),
+        dict(id='pdf_mislabeled_warc', sha256='e'*64, format='pdf', media_type='application/warc+gzip'),
+        dict(id='other_octet_stream', sha256='f'*64, format='other', media_type='application/octet-stream'),
+    ]
+    fields = dict(id='Utf8', sha256='Utf8', format='Utf8', media_type='Utf8')
+    inputs = registry_inputs(tmp_path / 'registries') + [json_input(tmp_path, 'cases', rows, **fields)]
+    steps = [
+        dict(name='capture_evidence', sql="""SELECT id AS receipt_key,cast(1 AS INT) AS receipt_line,
+            cast(1 AS INT) AS capture_index,sha256,format,'unchecked' AS intact_basis,
+            cast(NULL AS BOOLEAN) AS intact,cast(NULL AS VARCHAR) AS error_type,'fetch' AS mode,
+            'stored' AS outcome,cast(200 AS INT) AS http_status,true AS complete,cast(1024 AS BIGINT) AS bytes,
+            'https://fixture.test/'||id AS url,'https://fixture.test/'||id AS context_url,
+            cast(NULL AS VARCHAR) AS member_path,cast(NULL AS VARCHAR) AS expansion,media_type,
+            'https://fixture.test/'||id AS requested_url FROM cases"""),
+        dict(name='captures', sql='SELECT * FROM capture_evidence'),
+        dict(name='capture_locators', sql=(ROOT/'model/sql/capture-locators.sql').read_text().replace('captures', 'capture_evidence')),
+        dict(name='page_facts', sql="""SELECT sha256 AS body_sha,'completed' AS status,cast(NULL AS VARCHAR) AS xml_root,
+            '' AS title,'' AS heading,'Substantive hearing text.' AS text_head,cast(400 AS BIGINT) AS text_bytes,
+            cast(1 AS BIGINT) AS link_count,cast(10 AS BIGINT) AS link_text_bytes FROM cases"""),
+    ]
+    for name in ['good-archive-containers', 'good-fetches', 'good-fetch-keys', 'body-signals',
+                 'locator-signals', 'placeholders', 'archive-bodies', 'segment-captures', 'record-roles']:
+        steps.append(dict(name=name.replace('-', '_'), sql=(ROOT/'model/sql'/(name+'.sql')).read_text(), materialize=True))
+    result = run_job(tmp_path, NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG']), inputs=inputs, steps=steps, outputs=[],
+                     queries=[dict(name='roles', sql='SELECT receipt_key AS id,record_role,is_real_file AS real_file FROM record_roles ORDER BY receipt_key')])
+    assert {r['id']: (r['record_role'], r['real_file']) for r in result['roles']} == {
+        'warc_gzip_other': ('envelope', False),
+        'arc_gzip_other': ('envelope', False),
+        'warc_param_other': ('envelope', False),
+        'arc_other': ('envelope', False),
+        'pdf_mislabeled_warc': ('document', True),
+        'other_octet_stream': ('document', True),
+    }

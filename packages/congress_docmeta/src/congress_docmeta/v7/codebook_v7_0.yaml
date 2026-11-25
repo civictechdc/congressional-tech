@@ -1,0 +1,1076 @@
+codebook_id: "codebook_v7.0"
+schema_version: "7.1"
+effective_date: "2026-11-22"
+
+governing_principles:
+  text_is_sole_source_of_truth: >
+    Judge every field strictly from the document text slice provided (DOC_TEXT).
+    Filename slugs (-TTF-, -Wstate-, -Bio-, -MState-, HHRG-/HMKP-/HMTG-, CRPT-),
+    upload slot labels, URLs, and upstream metadata hints MUST NOT override or
+    supply any classification, person, date, committee, or Congress not stated
+    in DOC_TEXT.
+  interpret_do_not_invent: >
+    Draw conclusions that DOC_TEXT's own words support (including clean repair of
+    obvious OCR typos when unambiguous), but never hallucinate or import facts
+    from outside memory. Never expand unmentioned acronyms (e.g., never turn
+    "IRS" into "Internal Revenue Service" unless printed in DOC_TEXT), never
+    synthesize em-dash headings absent from text, and never compute Congress
+    numbers from dates unless stated in the text.
+  exact_span_grounding: >
+    Titles, dates, actor names, organizations, disclosure amounts, short titles,
+    and attendance blocks must be anchored to verbatim SpanRef character offsets
+    (quote, start, end) inside DOC_TEXT. Never place raw ISO dates into date_spans
+    unless the literal ISO string appears in DOC_TEXT.
+  concise_rationale_first: >
+    Every Core and Specialist extraction starts with a concise CRANE/SLOT
+    rationale (<= 280 characters) citing concrete textual evidence before emitting
+    classifications or structured fields.
+
+orthogonal_attributes:
+  status:
+    description: >
+      Orthogonal usability and refusal triage status. Absorbs V6.5
+      error_or_non_document. Whenever status != usable, primary_genre,
+      specialist_family, and specialist fields MUST be null/omitted and
+      is_packet MUST be false.
+    values:
+      usable:
+        definition: Substantive congressional, oversight, legislative, or exhibit document with readable prose, slides, web page, or form/table text.
+        positive_indicators:
+          - Readable document heading, correspondence, hearing transcript, testimony, bill text, report, notice, vote sheet, or form content.
+        negative_boundaries:
+          - Do not mark usable if the text is only a standalone cover sheet, TOC, empty GovInfo wrapper, multi-event index, raw XML catalog, blank stub, WAF/HTTP error, or unreadable OCR gibberish.
+          - 'Standalone 1-line title-only web stubs lacking date, venue, agenda, or body text (e.g., "Markup of: H.R. 9772...") are NOT usable (use stub_or_blank).'
+          - 'Captioned photograph or visual exhibits (e.g., before/after site photographs with photo credits/dates) ARE usable (media_format=slides, primary_genre=external_submission_or_comment).'
+        null_and_abstention_rules:
+          - Requires non-null primary_genre, matching specialist_family, and non-null media_format.
+      cover_or_toc:
+        definition: Standalone GPO hearing/report cover page or standalone Table of Contents lacking the underlying document body.
+        positive_indicators:
+          - Only title page masthead, GPO colophon, or CONTENTS listing without substantive body text.
+        negative_boundaries:
+          - A cover page immediately followed by actual testimony, notice body, or transcript dialogue in DOC_TEXT is usable, not cover_or_toc.
+          - Apply cover_or_toc ONLY to genuine standalone 1-2 page covers/TOCs — NOT multi-page hearings/reports whose cover fills pages 1-2, and NOT GPO [ERRATA] correction slips containing errata correction text.
+        null_and_abstention_rules:
+          - primary_genre=null, specialist_family=null, is_packet=false, no specialist extraction.
+      govinfo_wrapper:
+        definition: GPO/GovInfo or Congress.gov package placeholder shell lacking document text.
+        positive_indicators:
+          - 'Contains "[TEXT NOT AVAILABLE]", "[TEXT NOT AVAILABLE REFER TO PDF]", or empty viewer wrapper boilerplate.'
+        negative_boundaries:
+          - 'Do not confuse a full GPO HTML hearing print that merely notes "[GRAPHIC NOT AVAILABLE IN TIFF FORMAT]" alongside full spoken transcript text; that is usable.'
+        null_and_abstention_rules:
+          - primary_genre=null, specialist_family=null, is_packet=false, no specialist extraction.
+      index_or_listing:
+        definition: Multi-event navigation directory, search results listing, or press/hearing index page rather than a single document or single event page.
+        positive_indicators:
+          - Lists multiple distinct hearings, press releases, or navigation links with no single dominant event/document body.
+        negative_boundaries:
+          - A single-hearing HTML page containing that specific hearing's title, date, location, witness list, and links is usable with media_format=web_page, NOT index_or_listing.
+        null_and_abstention_rules:
+          - primary_genre=null, specialist_family=null, is_packet=false, no specialist extraction.
+      catalog_xml:
+        definition: Machine-readable XML metadata feed or archival wrapper (MODS, PREMIS, bill-status, committee-schedule XML) where raw catalog metadata is the artifact.
+        positive_indicators:
+          - Root XML elements such as <mods>, <premis>, <committee-meeting>, <billStatus>, or RSS/Atom schedule XML.
+        negative_boundaries:
+          - USLM legislative bill XML or human-readable HTML/XHTML hearing prose rendered cleanly is usable if substantive text is present.
+        null_and_abstention_rules:
+          - primary_genre=null, specialist_family=null, is_packet=false, no specialist extraction.
+      stub_or_blank:
+        definition: Empty extraction, redirect placeholder, streaming playlist stub (.asx/.wvx), Adobe portfolio shell, or standalone 1-line title-only stub lacking readable body/logistics.
+        positive_indicators:
+          - 'Empty body, "[EMPTY_BODY]", "open this PDF portfolio in Acrobat", single video link stub, or standalone 1-line title-only web stub lacking date, venue, agenda, or body text (e.g., "Markup of: H.R. 9772...").'
+        negative_boundaries:
+          - HTTP 403/404/WAF blocks belong in error_or_block; garbled OCR belongs in ocr_unreadable.
+          - Photograph/visual exhibits with descriptive captions (e.g., photo credits, dates, or subject comparisons) are usable with media_format=slides and primary_genre=external_submission_or_comment, NOT stub_or_blank.
+        null_and_abstention_rules:
+          - primary_genre=null, specialist_family=null, is_packet=false, no specialist extraction.
+      error_or_block:
+        definition: HTTP 4xx/5xx error pages, WAF/Cloudflare challenge pages, or object-storage not-found responses (even when saved with a .pdf filename).
+        positive_indicators:
+          - '"403 Forbidden", "404 Page Not Found", "Cloudflare", "Access Denied", "house-meeting-not-found", "object-storage-no-such-key".'
+        negative_boundaries:
+          - 'Redacted FOIA/investigative exhibits with "[REDACTED]" blocks or legal filings discussing errors are usable, NOT error_or_block.'
+        null_and_abstention_rules:
+          - primary_genre=null, specialist_family=null, is_packet=false, no specialist extraction.
+      ocr_unreadable:
+        definition: Un-OCR'd image scan or severely garbled OCR gibberish where meaning cannot be reliably recovered.
+        positive_indicators:
+          - Repeated non-lexical character noise, broken glyph streams, or blank scan footer-only extractions.
+        negative_boundaries:
+          - 'Minor OCR typos ("RepXblican MeeWing") where a careful human reader can still read the document remain usable.'
+        null_and_abstention_rules:
+          - primary_genre=null, specialist_family=null, is_packet=false, no specialist extraction.
+
+  media_format:
+    description: >
+      Orthogonal layout medium for usable documents. Replaces slides_or_visual
+      and event_web_page as genres so genre reflects communicative function.
+    values:
+      prose:
+        definition: Running narrative text, letters, bills, reports, transcripts, or multi-paragraph memos.
+        positive_indicators:
+          - Paragraphs, numbered legislative sections, Q&A dialogue, or letter salutation/body/signature blocks.
+        negative_boundaries:
+          - Do not choose prose when the artifact is primarily a slide deck (slides), a scraped web event page (web_page), or a structured grid/form (table_or_form).
+        null_and_abstention_rules:
+          - Required when status=usable; optional/null when status != usable.
+      slides:
+        definition: Multi-slide presentation deck, slide-by-slide visual briefing printout, or captioned photograph/visual exhibit.
+        positive_indicators:
+          - Slide numbers, short bullet-point deck frames, presenter deck title slides, repeating deck footers, or captioned photograph/visual exhibit panels (e.g., before/after site photos with credits and dates).
+        negative_boundaries:
+          - Prose testimony containing one embedded chart stays prose, NOT slides.
+        null_and_abstention_rules:
+          - Required when status=usable; classify primary_genre by function (e.g., witness_testimony, external_submission_or_comment for photo exhibits, or committee_or_agency_report).
+      web_page:
+        definition: Scraped single-event committee web page, web press announcement, bill-status webpage, or any HTML document page retaining website navigation chrome/breadcrumbs.
+        positive_indicators:
+          - 'Single-hearing committee webpage layout (heading, date/location metadata, witness links, or web post dateline) OR scraped HTML page retaining site nav chrome/breadcrumbs (e.g., "The Library of Congress > THOMAS Home > Committee Reports > Search Results THIS SEARCH THIS DOCUMENT") wrapping a transcript or report.'
+        negative_boundaries:
+          - 'Multi-hearing directory/calendar listings with no single focal item are status=index_or_listing.'
+          - 'Only clean plain-text PDF or stripped GPO prints WITHOUT HTML navigation bars or breadcrumb chrome are prose; if site chrome/breadcrumbs are present, use web_page even for wrapped transcripts or reports.'
+        null_and_abstention_rules:
+          - Required when status=usable; classify primary_genre by function (e.g., hearing_or_markup_notice, hearing_transcript, member_statement, committee_vote_or_action).
+      table_or_form:
+        definition: Fillable/structured disclosure forms, structured form templates with labeled field rows/columns, tabular roll-call vote sheets, attendance grids, or score tables.
+        positive_indicators:
+          - 'Checkbox/form prompts (Rule XI Truth-in-Testimony form), structured field/column form templates (e.g., NIH Biographical Sketch forms with NAME / POSITION TITLE / EDUCATION/TRAINING fields), Yea/Nay roll-call grids, attendance sheets, or tabular CBO/JCT score tables.'
+        negative_boundaries:
+          - 'Narrative testimony or prose biographies written as paragraphs (even with a short header block) stay prose; structured multi-field form templates use table_or_form.'
+        null_and_abstention_rules:
+          - Required when status=usable.
+
+  is_packet:
+    definition: >
+      Boolean container flag replacing multi_doc_packet as a genre. Set true ONLY
+      when a single file bundles two or more distinct substantive documents
+      (e.g., witness statement + biography + Truth-in-Testimony form, bundled
+      bill + section-by-section + CBO score, or multi-exhibit bundle).
+    positive_indicators:
+      - 'Clear internal document boundaries or section transitions joining distinct functional artifacts (e.g., written testimony followed by CV/bio and/or signed Rule XI disclosure).'
+      - 'Multi-exhibit bundles starting with "Table of Exhibits" followed by concatenated exhibit headings/bodies (e.g., "[... page N tail ...] EXHIBIT 7"); classify as usable + is_packet=true (external_submission_or_comment for stakeholder exhibit bundles), NOT cover_or_toc.'
+    negative_boundaries:
+      - A single multi-page hearing transcript containing opening statements and witness Q&A is ONE document (hearing_transcript), so is_packet=false.
+      - A single numbered House/Senate/Conference committee report (S. Rept. / H. Rept.) containing embedded bill text, Ramseyer changes, or minority views is ONE cohesive document (committee_or_agency_report), so is_packet=false.
+      - Standard cover/letterhead headers preceding a single document do not make is_packet=true.
+    null_and_abstention_rules:
+      - Must be false when status != usable. Whenever is_packet=false, contains_genres MUST be [].
+      - Whenever is_packet=true, primary_genre names the lead document genre in reading order and contains_genres lists all substantive component genres observed in DOC_TEXT (including primary_genre).
+
+specialist_families:
+  event_logistics:
+    description: Scheduled or logistical hearing/markup/meeting documents (notices, advisories, memos, charters, witness lists, member rosters).
+    genres: [hearing_or_markup_notice, hearing_memo_or_witness_list]
+    model: EventLogisticsExtraction
+  testimony_bio_disclosure:
+    description: Witness and member statements, biographies/CVs/APQs, and Truth-in-Testimony or financial conflict disclosures.
+    genres: [witness_testimony, member_statement, witness_biography, truth_in_testimony]
+    model: TestimonyBioDisclosureExtraction
+  transcript_vote_attendance:
+    description: Realized proceeding transcripts, recorded committee roll-call votes, markup actions, and attendance/quorum sheets.
+    genres: [hearing_transcript, committee_vote_or_action]
+    model: TranscriptVoteAttendanceExtraction
+  correspondence_qfr_oversight:
+    description: QFR threads, committee oversight letters/invitations/subpoenas, and external submissions, support letters, exhibits, or comments.
+    genres: [qfr_correspondence, oversight_or_committee_letter, external_submission_or_comment]
+    model: CorrespondenceQfrOversightExtraction
+  legislation_report_fiscal:
+    description: Bills, drafts, amendments, comparative prints, committee/agency/CRS/GAO reports, section-by-sections, and budget/revenue/cost estimates.
+    genres: [bill_or_amendment, committee_or_agency_report, budget_or_cost_estimate]
+    model: LegislationReportFiscalExtraction
+
+genres:
+  hearing_or_markup_notice:
+    family: event_logistics
+    definition: Official notice, advisory, agenda, or single-event webpage announcing a scheduled or upcoming hearing, markup, business meeting, or legislative calendar schedule.
+    positive_indicators:
+      - 'Heading such as "Notice of Hearing", "Hearing Advisory", "Markup Notice", "Full Committee Markup Agenda", or single-event webpage with date, time, location, and witness/bill agenda.'
+      - Weekly House floor/committee legislative calendar or schedule sheet.
+    negative_boundaries:
+      - 'Distinguish from committee_vote_or_action: post-meeting "Announces Committee Action" results or roll-call vote tally sheets belong to committee_vote_or_action, NOT hearing_or_markup_notice.'
+      - 'Distinguish from hearing_memo_or_witness_list: staff background briefing memos ("Hearing Memorandum", "Summary of Subject Matter") or standalone witness lists ("Witness List") belong to hearing_memo_or_witness_list.'
+      - Multi-event calendar index pages listing dozens of unrelated hearings without a focal event are status=index_or_listing.
+    null_and_abstention_rules:
+      - Leave venue/event_time/due_date null if not explicitly printed in DOC_TEXT.
+
+  hearing_memo_or_witness_list:
+    family: event_logistics
+    definition: Staff hearing/markup memorandum, committee charter, background briefing memo, standalone witness list, or standalone committee/hearing member roster.
+    positive_indicators:
+      - '"MEMORANDUM", "Hearing Memo", "Summary of Subject Matter", "Background Memo", "Witness List", "Panel I / Panel II" roster, or "Member Roster".'
+    negative_boundaries:
+      - 'Distinguish from hearing_or_markup_notice: a 1-page public scheduling announcement with only time/room/agenda items is hearing_or_markup_notice; substantive staff background memo or pure witness list is hearing_memo_or_witness_list.'
+      - 'Distinguish from witness_testimony: a witness list gives names/titles/panels, not first-person written testimony.'
+      - 'Distinguish from committee_vote_or_action: attendance/quorum checkoff sheets ("Members Present" / "Quorum") belong to committee_vote_or_action, whereas static committee member rosters belong here (subkind=member_roster).'
+    null_and_abstention_rules:
+      - Do not invent panel numbers or titles absent from text.
+
+  witness_testimony:
+    family: testimony_bio_disclosure
+    definition: Written or prepared testimony presented by an invited or testifying witness (including a Member of Congress testifying as a witness) before a congressional committee.
+    positive_indicators:
+      - 'Heading or salutation such as "Testimony of ...", "Written Statement of ... before the Committee on ...", "Chairman ..., Ranking Member ..., thank you for the opportunity to testify".'
+      - Slides used by a witness presenting oral/written testimony (with media_format=slides).
+    negative_boundaries:
+      - 'Distinguish from external_submission_or_comment: unsolicited public comments, coalition sign-on letters, or statements explicitly submitted "for the record" by someone who did NOT appear as a witness belong to external_submission_or_comment, regardless of whether uploaded in a witness slot.'
+      - 'Distinguish from qfr_correspondence: post-hearing "Questions for the Record" Q&A responses belong to qfr_correspondence EVEN IF the filename contains "-Wstate-".'
+      - 'Distinguish from member_statement: a chair or committee member opening remarks at their own committee (or floor statement) is member_statement; a Member testifying as a witness before another committee is witness_testimony.'
+      - 'Distinguish from truth_in_testimony and witness_biography: standalone CVs or Rule XI disclosure forms are witness_biography or truth_in_testimony; if bundled inside one PDF with testimony first, set is_packet=true and contains_genres=[witness_testimony, ...].'
+    null_and_abstention_rules:
+      - Never extrapolate acronym organizations not spelled out in DOC_TEXT.
+
+  member_statement:
+    family: testimony_bio_disclosure
+    definition: Opening statement, prepared remarks, Congressional Record extension of remarks, or floor statement by a Senator, Representative, Chair, or Ranking Member acting in their legislative capacity.
+    positive_indicators:
+      - '"Opening Statement of Chairman ...", "Remarks of Ranking Member ...", "Statement of Rep./Sen. ...", or Congressional Record floor speech text.'
+      - 'Committee press/web page titled "Opening Remarks" or "Opening Statement" (media_format=web_page when scraped web post).'
+    negative_boundaries:
+      - 'Distinguish from witness_testimony: when a Member of Congress appears as an invited witness testifying before a committee (e.g., Member Day witness panel), classify as witness_testimony with role=witness.'
+      - 'Distinguish from hearing_transcript: a standalone opening statement is member_statement; full multi-speaker stenographic Q&A transcript is hearing_transcript.'
+      - 'Distinguish from committee_or_agency_report: a general committee press release touting legislation without verbatim member remarks is committee_or_agency_report (subkind=press_release_or_fact_sheet) or committee_vote_or_action if announcing markup votes.'
+    null_and_abstention_rules:
+      - 'Write member name verbatim as printed (surname only if text only says "Chairman Roe") without supplying first names from memory.'
+
+  witness_biography:
+    family: testimony_bio_disclosure
+    definition: Standalone biography, curriculum vitae, resume, or nominee biographical questionnaire (APQ) describing a witness or nominee's background and career history.
+    positive_indicators:
+      - '"Biography", "Bio", "Curriculum Vitae", "Resume", "Biographical Sketch", or Senate Committee "Questionnaire for Presidential Nominees" (subkind=nominee_questionnaire_apq).'
+    negative_boundaries:
+      - 'Distinguish from witness_testimony: bio describes career/education without substantive policy testimony; if a short bio sits at the end of a testimony packet, primary_genre=witness_testimony, is_packet=true, contains_genres=[witness_testimony, witness_biography].'
+      - 'Distinguish from truth_in_testimony: Rule XI grant/foreign-payment disclosure forms are truth_in_testimony unless solely biographical.'
+      - Regardless of whether the text explicitly mentions a hearing, a standalone CV/biography is ALWAYS witness_biography.
+    null_and_abstention_rules:
+      - Leave prior_roles and education empty if not explicitly stated in DOC_TEXT.
+
+  truth_in_testimony:
+    family: testimony_bio_disclosure
+    definition: House Rule XI clause 2(g)(5) Truth-in-Testimony disclosure form or formal witness financial/conflict-of-interest disclosure statement.
+    positive_indicators:
+      - '"Truth in Testimony Disclosure Form", "Rule XI, clause 2(g)(5)", attestation checkboxes for federal grants/contracts or foreign government payments received in the prior 36 months.'
+    negative_boundaries:
+      - 'CRITICAL SLUG TRAP: a witness invitation letter or cover correspondence saved with "-TTF-" in its filename is oversight_or_committee_letter, NEVER truth_in_testimony. Always verify the actual form/disclosure text in DOC_TEXT.'
+      - If a witness statement packet includes a signed TTF form appended at the end, lead genre is witness_testimony with is_packet=true and contains_genres=[witness_testimony, truth_in_testimony].
+    null_and_abstention_rules:
+      - Set disclosure_has_grants_or_contracts=null if checkboxes/attestation are blank or illegible; never guess grant amounts.
+
+  hearing_transcript:
+    family: transcript_vote_attendance
+    definition: Verbatim or preliminary stenographic transcript of a congressional hearing, markup, roundtable, or bound GPO CHRG hearing volume containing multi-speaker proceedings.
+    positive_indicators:
+      - 'Speaker turns ("The CHAIRMAN.", "Mr. SMITH.", "VOICE:"), "[Laughter.]", gavel-to-adjournment timestamps, "Present:" attendance headers, or GPO CHRG masthead followed by spoken proceedings.'
+      - 'GPO hearing [ERRATA] correction slips correcting a hearing print or roster (status=usable, media_format=prose, primary_genre=hearing_transcript, subkind=hearing_errata).'
+    negative_boundaries:
+      - 'CRITICAL GROUNDING RULE: Extract presiding_or_witnesses ONLY from DOC_TEXT (p1-2 / supplied slice), NEVER from later pages or external rosters.'
+      - 'Distinguish from member_statement and witness_testimony: a single speaker prepared statement without multi-speaker proceedings is member_statement or witness_testimony.'
+      - 'Distinguish from cover_or_toc / govinfo_wrapper: a bare CHRG cover page without dialogue or errata correction body is status=cover_or_toc (while GPO hearing [ERRATA] correction slips are usable/hearing_errata); "[TEXT NOT AVAILABLE]" is status=govinfo_wrapper.'
+    null_and_abstention_rules:
+      - 'Populate members_present ONLY from explicit "Present:" / "Also Present:" attendance lines; NEVER copy standing committee rosters or roll-call grids.'
+
+  committee_vote_or_action:
+    family: transcript_vote_attendance
+    definition: Recorded committee roll-call vote tally sheet, attendance/quorum sheet, post-markup committee action summary ("meeting results"), formal committee action resolution, or committee website single-bill status/summary page reporting committee action.
+    positive_indicators:
+      - '"Roll Call #", "Recorded Vote", Yea/Nay/Present/Not Voting tally grid, "Announces Committee Action on ...", "Ordered Reported", "Attendance / Quorum Sheet", internal committee resolution (e.g., committee funding/subpoena resolution), OR committee webpage bill-status page ("Bill Status: Passed by Full Committee" with summary and markup links; media_format=web_page).'
+    negative_boundaries:
+      - 'Distinguish from hearing_or_markup_notice: upcoming markup agendas belong to hearing_or_markup_notice; what the markup actually decided or voted belongs to committee_vote_or_action.'
+      - 'NEVER populate personas from roll-call vote grids or attendance grids! Only list an amendment offeror or sponsor if named outside the grid.'
+      - 'Distinguish from bill_or_amendment: text of an amendment itself is bill_or_amendment, whereas a vote tally sheet on that amendment or a committee bill-status action page is committee_vote_or_action.'
+    null_and_abstention_rules:
+      - Summarize vote outcome in action_summary / vote_tallies; abstain from listing individual roll-call voters in personas.
+
+  qfr_correspondence:
+    family: correspondence_qfr_oversight
+    definition: Questions for the Record (QFRs) submitted by Members to witnesses/agencies after a hearing, or written responses/answers to QFRs.
+    positive_indicators:
+      - '"Questions for the Record", "QFR", "Responses to Questions Submitted by ...", numbered Q&A pairs referencing a prior hearing date/title.'
+    negative_boundaries:
+      - 'Distinguish from witness_testimony: QFR answers saved under a "-Wstate-" filename are STILL qfr_correspondence, NOT witness_testimony.'
+      - 'Distinguish from oversight_or_committee_letter: general committee oversight inquiries not tied to hearing QFRs belong to oversight_or_committee_letter.'
+      - 'Distinguish from witness_biography: Senate nominee APQs are witness_biography (subkind=nominee_questionnaire_apq), even if phrased as questions.'
+    null_and_abstention_rules:
+      - Set due_date only if a QFR response deadline is stated in DOC_TEXT.
+
+  oversight_or_committee_letter:
+    family: correspondence_qfr_oversight
+    definition: Formal committee, chair, ranking member, or member correspondence (oversight inquiry letters, document/briefing demands, subpoenas, witness invitation letters, agency responses to congressional inquiries, and official legal/investigative filings/orders).
+    positive_indicators:
+      - 'Official congressional/agency letterhead addressed "Dear Secretary...", "Dear Chair...", "Dear Witness...", subpoena/compelled-production orders, "You are hereby invited to testify", or court/regulatory filings in investigative oversight.'
+    negative_boundaries:
+      - 'Distinguish from qfr_correspondence: post-hearing QFR packets are qfr_correspondence.'
+      - 'Distinguish from external_submission_or_comment: letters from private associations, coalitions, corporations, or members of the public endorsing/opposing bills or submitting comments for the record belong to external_submission_or_comment (EXCEPT agency responses to a congressional oversight inquiry, which belong here).'
+      - 'CRITICAL SLUG TRAP: an invitation letter whose filename contains "-TTF-" is oversight_or_committee_letter, NOT truth_in_testimony.'
+    null_and_abstention_rules:
+      - Set subpoena_or_compelled=true ONLY when text explicitly evidences a subpoena, deposition demand, or compulsory process.
+
+  external_submission_or_comment:
+    family: correspondence_qfr_oversight
+    definition: Unsolicited or submitted external letters, public comments, nomination/bill support or opposition letters, statements or captioned visual/photo exhibits submitted for the record, investigative exhibits (emails, memos, chat logs), or news articles entered into the record.
+    positive_indicators:
+      - '"Letter of Support", "Comments for the Record", multi-organization coalition sign-on letter to the committee, embassy/foreign government letter to Congress, "Exhibit 1", Table of Exhibits stakeholder bundle (is_packet=true), captioned photograph/visual exhibit (media_format=slides), internal email/chat exhibit, or reprinted news clip.'
+    negative_boundaries:
+      - 'INTRINSIC VS. SUBMISSION RULE: Classify what the document itself IS from DOC_TEXT, not merely why a Member entered it into a hearing record. Published Federal Register Executive Orders or rules belong in committee_or_agency_report (subkind=executive_or_regulatory_document) and Congressional Record floor speeches belong in member_statement; third-party news clips, internal emails, highlighted/clipped Congressional Record administrative digest pages entered as documentary evidence, and unattributed visual exhibits belong here (subkind=record_exhibit).'
+      - 'Distinguish from witness_testimony: if the author actually appeared as a witness at the hearing ("Testimony of ... before the Committee"), use witness_testimony. If submitted for the record by a non-appearing organization/individual, use external_submission_or_comment.'
+      - 'Distinguish from oversight_or_committee_letter: letters FROM Congress/committees/members or formal agency oversight replies belong to oversight_or_committee_letter; external stakeholder/coalition/foreign/public submissions belong here.'
+      - Redacted internal email exhibits are usable (external_submission_or_comment), NEVER status=error_or_block.
+    null_and_abstention_rules:
+      - Populate signatory_count only when explicitly stated or directly countable in DOC_TEXT.
+
+  bill_or_amendment:
+    family: legislation_report_fiscal
+    definition: Legislative measure text (bills, joint/concurrent/simple resolutions, discussion drafts), committee/floor/conference amendments, ANS substitutes, Rules Committee Prints of bill text, comparative prints (Ramseyer/Cordon), and treaty transmittals.
+    positive_indicators:
+      - '"A BILL", "H.R. ...", "S. ...", "TEXT OF H.R. ...", "AMENDMENT TO H.R. ... OFFERED BY ...", "Amendment in the Nature of a Substitute", "Showing Changes to Current Law", "Treaty Doc.".'
+    negative_boundaries:
+      - 'Rules Committee Prints showing bill text ("TEXT OF H.R. ... [Showing the text of ...]") are bill_or_amendment, NOT committee_or_agency_report or comparative_print unless showing line-by-line statutory changes against a base text.'
+      - 'Distinguish from committee_vote_or_action: a roll-call tally sheet voting on an amendment or a committee website single-bill status/summary page reporting committee passage/action (e.g. "Bill Status: Passed by Full Committee") is committee_vote_or_action; bare bill or amendment text itself is bill_or_amendment.'
+      - 'Distinguish from committee_or_agency_report: narrative section-by-section summaries or committee reports are committee_or_agency_report.'
+    null_and_abstention_rules:
+      - 'Copy short_titles ONLY if quoted or explicitly designated ("may be cited as the ...") in DOC_TEXT.'
+
+  committee_or_agency_report:
+    family: legislation_report_fiscal
+    definition: Numbered House/Senate/Conference reports, Joint Explanatory Statements, committee prints, committee rules, oversight plans, section-by-section analyses (including JCT "Description of H.R. ..." pamphlets), CRS/GAO/IG/agency reports, and external whitepapers/fact sheets.
+    positive_indicators:
+      - '"H. Rept.", "S. Rept.", "Report together with Minority Views", "Joint Explanatory Statement", "Section-by-Section Summary", "Committee Rules", "Oversight Plan", "GAO-...", "CRS Report R...", or whitepaper/policy report.'
+      - 'GPO committee-print [ERRATA] slips (subkind=committee_print_errata) and published Federal Register agency rules or Presidential Executive Orders entered as references (subkind=executive_or_regulatory_document).'
+    negative_boundaries:
+      - 'Distinguish from budget_or_cost_estimate: standalone CBO cost estimates, JCT revenue score tables, budget Views & Estimates letters, and GSA capital lease prospectuses belong to budget_or_cost_estimate.'
+      - 'Distinguish from committee_vote_or_action: committee website single-bill status/summary pages reporting committee passage/action (e.g. "Bill Status: Passed by Full Committee") belong to committee_vote_or_action (media_format=web_page).'
+      - 'Distinguish from bill_or_amendment: bare statutory text or amendments are bill_or_amendment; analytical reports or section-by-sections explaining them belong here (with is_packet=false when a single numbered S. Rept./H. Rept. embeds the reported bill text).'
+      - Do NOT attribute a host committee onto independent GAO/CRS/external agency reports unless the text explicitly names or addresses that committee.
+    null_and_abstention_rules:
+      - 'Never expand unmentioned agency acronyms (e.g., "GAO" -> "Government Accountability Office" only if spelled out in DOC_TEXT).'
+
+  budget_or_cost_estimate:
+    family: legislation_report_fiscal
+    definition: CBO cost estimates, JCT revenue estimate tables, committee Budget Views & Estimates, federal agency budget justifications, appropriations score tables, and GSA/VA lease/building prospectuses.
+    positive_indicators:
+      - '"Congressional Budget Office Cost Estimate", "Estimated Budget Effects", "Revenue Estimate", "Budget Views and Estimates", "Congressional Budget Justification", or "GSA Prospectus" (with fiscal figures/fiscal years).'
+    negative_boundaries:
+      - 'Distinguish from committee_or_agency_report: JCT narrative pamphlets ("Description of H.R. ...") without a standalone revenue score focus belong to committee_or_agency_report; standalone revenue/cost score tables belong to budget_or_cost_estimate.'
+      - Do not classify general policy testimony that happens to mention one dollar figure as budget_or_cost_estimate.
+    null_and_abstention_rules:
+      - Populate fiscal_years ONLY with fiscal years explicitly stated in DOC_TEXT.
+
+core_fields:
+  rationale:
+    definition: Concise CRANE/SLOT explanation (<= 280 chars) stating the exact textual cues supporting status, media_format, is_packet, and primary_genre.
+    positive_indicators:
+      - Quotes specific structural cues or headings observed in DOC_TEXT.
+    negative_boundaries:
+      - Never cite filename slugs, URLs, or upstream hints; never exceed 280 characters.
+    null_and_abstention_rules:
+      - Required non-empty string on every document, including non-usable statuses.
+  status:
+    definition: Orthogonal usability status (8 values).
+    positive_indicators:
+      - Readable document vs wrapper/TOC/XML/index/blank/error/garbled OCR.
+    negative_boundaries:
+      - Non-usable statuses absorb error_or_non_document and forbid primary_genre and specialist_family.
+    null_and_abstention_rules:
+      - Always required.
+  media_format:
+    definition: Orthogonal medium format (prose, slides, web_page, table_or_form).
+    positive_indicators:
+      - Visual/structural medium observed in DOC_TEXT.
+    negative_boundaries:
+      - Replaces slides_or_visual and event_web_page genres; never use prose for slide decks or pure roll-call forms.
+    null_and_abstention_rules:
+      - Required when status=usable; null permitted when status != usable.
+  is_packet:
+    definition: True iff DOC_TEXT bundles 2+ distinct substantive documents in one artifact.
+    positive_indicators:
+      - Internal transitions between distinct documents (e.g., Testimony -> Bio -> TTF).
+    negative_boundaries:
+      - Replaces multi_doc_packet genre; single multi-speaker transcript is NOT a packet.
+    null_and_abstention_rules:
+      - Must be false when status != usable.
+  contains_genres:
+    definition: Ordered list of substantive component PrimaryGenres present in a packet.
+    positive_indicators:
+      - Distinct genres corresponding to each bundled component in reading order.
+    negative_boundaries:
+      - Must include primary_genre when is_packet=true; must not list unstated components.
+    null_and_abstention_rules:
+      - Must be [] whenever is_packet=false or status != usable.
+  primary_genre:
+    definition: Lead functional PrimaryGenre (14 values) of the document in reading order.
+    positive_indicators:
+      - Matches the primary communicative/institutional purpose evidenced in DOC_TEXT.
+    negative_boundaries:
+      - Never inferred from filename slug; must belong to specialist_family.
+    null_and_abstention_rules:
+      - Required when status=usable; MUST be null when status != usable.
+  specialist_family:
+    definition: Stage-2 specialist extractor family deterministically mapped from primary_genre.
+    positive_indicators:
+      - Exact match to GENRE_TO_FAMILY[primary_genre].
+    negative_boundaries:
+      - Never differs from GENRE_TO_FAMILY[primary_genre].
+    null_and_abstention_rules:
+      - Required when status=usable; MUST be null when status != usable.
+  subkind:
+    definition: Optional fine-grained subtype label preserving domain nuance (e.g., chairs_mark, amendment_in_nature_of_substitute, nominee_questionnaire_apq, committee_rules, press_release_or_fact_sheet, subpoena).
+    positive_indicators:
+      - 'Explicit structural designation in text (e.g., "Chairman Mark", "ANS", "Subpoena").'
+    negative_boundaries:
+      - Do not repeat primary_genre verbatim when no finer subtype applies.
+    null_and_abstention_rules:
+      - Return null when no specific subkind applies.
+  verbatim_title:
+    definition: Exact non-generic document heading copied from DOC_TEXT.
+    positive_indicators:
+      - Printed document title, hearing title, bill title, or report title.
+    negative_boundaries:
+      - 'Omit generic one-word labels ("Testimony", "Roll Call", "Biography"); NEVER synthesize em-dash headings absent from DOC_TEXT.'
+    null_and_abstention_rules:
+      - Return null if no non-generic verbatim heading appears in DOC_TEXT.
+  title_span:
+    definition: Exact SpanRef (quote, start, end) anchoring verbatim_title in DOC_TEXT.
+    positive_indicators:
+      - Verbatim character slice matching verbatim_title.
+    negative_boundaries:
+      - Must match verbatim_title verbatim (whitespace-normalized); never point to nav chrome.
+    null_and_abstention_rules:
+      - Return null when verbatim_title is null.
+  doc_date:
+    definition: Document's own stated date normalized to YYYY-MM-DD (or YYYY-MM / YYYY) when explicitly printed in DOC_TEXT.
+    positive_indicators:
+      - 'Letter dateline, "Dated:", "Adopted:", "Submitted:", release dateline, or document cover date.'
+    negative_boundaries:
+      - Never copy unprinted dates from filenames, URLs, or upstream metadata.
+    null_and_abstention_rules:
+      - Return null if no document date is stated in DOC_TEXT.
+  date_spans:
+    definition: List of SpanRefs quoting exact verbatim date substrings in DOC_TEXT BEFORE ISO normalization.
+    positive_indicators:
+      - '"May 10, 2023", "12/7/22", "February 2024".'
+    negative_boundaries:
+      - 'NEVER emit synthetic ISO strings (e.g., "2023-05-10") into date_spans unless that exact ISO substring literally appears in DOC_TEXT.'
+    null_and_abstention_rules:
+      - Return [] if no verbatim date appears in DOC_TEXT.
+  chamber:
+    definition: Institutional chamber explicitly evident from DOC_TEXT (house, senate, joint, commission, executive_or_external).
+    positive_indicators:
+      - '"U.S. House of Representatives", "United States Senate", "Joint Economic Committee", "Dirksen Senate Office Building", "Rayburn HOB", "Rep.", "Senator".'
+    negative_boundaries:
+      - 'Do not be fooled by "White House", state legislatures, or passing mentions of the other chamber; do not attach a host chamber to external GAO/agency reports unless addressed in text.'
+    null_and_abstention_rules:
+      - Return null when chamber is genuinely unstated in DOC_TEXT.
+  congress:
+    definition: Congress number (integer 1..130) explicitly stated in DOC_TEXT.
+    positive_indicators:
+      - '"118th Congress", "One Hundred Eighteenth Congress", "117h Congress" (typo repairable when unambiguous).'
+    negative_boundaries:
+      - NEVER calculate Congress from a calendar year or public law number; ignore Congress numbers mentioned only in passing references to historical bills.
+    null_and_abstention_rules:
+      - Return null unless the document itself states its Congress.
+  committees:
+    definition: Full canonical names of authoring or jurisdictional committees explicitly named in DOC_TEXT.
+    positive_indicators:
+      - '"House Committee on the Judiciary", "Senate Committee on Finance".'
+    negative_boundaries:
+      - Never use hsxx00 codes; never attach a host committee to external GAO/CRS/whitepaper reports unless the text addresses or names that committee.
+    null_and_abstention_rules:
+      - Return [] when no congressional committee is named in DOC_TEXT.
+  subcommittees:
+    definition: Full subcommittee names explicitly named in DOC_TEXT.
+    positive_indicators:
+      - '"Subcommittee on Health", "Subcommittee on Courts, Intellectual Property, and the Internet".'
+    negative_boundaries:
+      - 'Do not invent subcommittees from codes; use "and" rather than "&" where standard.'
+    null_and_abstention_rules:
+      - Return [] when no subcommittee is stated.
+  gist:
+    definition: Concise factual summary (<= 220 chars / <= 22 words) grounded strictly in DOC_TEXT facts, claims, or actions.
+    positive_indicators:
+      - Direct summary of subject, actors, or legislative action stated in DOC_TEXT.
+    negative_boundaries:
+      - Never assert claims, numbers, or actor roles absent from DOC_TEXT.
+    null_and_abstention_rules:
+      - Return null on non-usable statuses when no substantive content exists.
+  topics:
+    definition: 1-6 normalized policy/subject tags evidenced by DOC_TEXT.
+    positive_indicators:
+      - Concrete policy domains or bill subjects discussed in the text.
+    negative_boundaries:
+      - 'Do not pad with generic tags like "Congress" or "Document".'
+    null_and_abstention_rules:
+      - Return [] on non-usable stubs/errors.
+
+persona_fields:
+  name:
+    definition: Clean actor name strictly as shown in DOC_TEXT without honorifics or degrees (e.g., "Jane Doe", or "Roe" if text only says "Chairman Roe").
+    positive_indicators:
+      - Witnesses, speakers, chairs, ranking members, senders, recipients, signatories, sponsors, offerors, nominees.
+    negative_boundaries:
+      - NEVER supply missing first/middle names from memory; NEVER extract names from roll-call vote grids, attendance grids, or passive letterhead rosters; NEVER pull names from outside DOC_TEXT.
+    null_and_abstention_rules:
+      - Omit any person not explicitly named in DOC_TEXT.
+  name_span:
+    definition: Exact SpanRef (quote, start, end) anchoring name in DOC_TEXT.
+    positive_indicators:
+      - Exact substring in DOC_TEXT containing the person/org name.
+    negative_boundaries:
+      - Required on every PersonaEntry in Stage-2 specialist extractions; offsets must slice DOC_TEXT cleanly.
+    null_and_abstention_rules:
+      - May only be null in non-specialist conceptual records.
+  role:
+    definition: Functional role of the persona in THIS document (16 PersonaRole enums).
+    positive_indicators:
+      - witness, author_or_speaker, chair, ranking_member, presiding, questioner, sponsor, cosponsor, amendment_offeror, nominee, introducer, sender, recipient, signatory, staff, party_or_investigator.
+    negative_boundaries:
+      - On letters, a committee chair who signs is sender (or signatory), NOT chair.
+    null_and_abstention_rules:
+      - Always required when emitting a PersonaEntry.
+  entity_type:
+    definition: Institutional category of the persona (7 EntityType enums).
+    positive_indicators:
+      - member, gov_official, military_officer, judicial_or_exec_nominee, non_gov_person, staff, organization.
+    negative_boundaries:
+      - A Member testifying as a witness has role=witness and entity_type=member.
+    null_and_abstention_rules:
+      - Always required when emitting a PersonaEntry.
+  title:
+    definition: Official job title or nominee target office stated in DOC_TEXT.
+    positive_indicators:
+      - '"Director, Bureau of Land Management", "Nominee to be U.S. District Judge".'
+    negative_boundaries:
+      - 'Do not copy honorifics ("Hon.", "Dr.") as title; do not invent unstated titles.'
+    null_and_abstention_rules:
+      - Return null if no job title is printed.
+  org:
+    definition: Primary employer or institution string verbatim from DOC_TEXT (never comma-cut).
+    positive_indicators:
+      - '"U.S. Department of Veterans Affairs", "IRS", "Third Way".'
+    negative_boundaries:
+      - NEVER expand an acronym into a full name absent from DOC_TEXT.
+    null_and_abstention_rules:
+      - Return null if no organization is stated.
+  org_span:
+    definition: SpanRef anchoring org in DOC_TEXT.
+    positive_indicators:
+      - Verbatim span matching org in DOC_TEXT.
+    negative_boundaries:
+      - Must ground org; prevents unmentioned acronym expansion.
+    null_and_abstention_rules:
+      - Return null when org is null.
+  party_state:
+    definition: Party/state or nominee home state explicitly stated in DOC_TEXT (e.g., "R-UT", "D-NJ-09", "KY").
+    positive_indicators:
+      - '"(R-TX)", "D-CA", "of Virginia".'
+    negative_boundaries:
+      - Never infer party or state from memory or rosters.
+    null_and_abstention_rules:
+      - Return null if unstated.
+  creds:
+    definition: Academic, professional, or military credentials printed with the name (e.g., "Ph.D.", "M.D.", "Maj. Gen. (Ret.) USA").
+    positive_indicators:
+      - Degrees or retired rank suffixes printed adjacent to name.
+    negative_boundaries:
+      - Keep degrees out of PersonaEntry.name.
+    null_and_abstention_rules:
+      - Return null if none stated.
+  on_behalf_of:
+    definition: Distinct coalition, client, or association represented when different from employer org.
+    positive_indicators:
+      - '"testifying on behalf of ...", "representing ...".'
+    negative_boundaries:
+      - Do not duplicate org into on_behalf_of unless text states representation of a distinct group.
+    null_and_abstention_rules:
+      - Return null if not stated.
+
+specialist_fields:
+  event_logistics:
+    rationale:
+      definition: Concise CRANE/SLOT reasoning (<= 280 chars) for extracted event logistics.
+      positive_indicators:
+        - Cites notice/memo/witness-list text cues.
+      negative_boundaries:
+        - Never cite filenames or upstream hints.
+      null_and_abstention_rules:
+        - Required non-empty.
+    event_type:
+      definition: Proceeding type (hearing, field_hearing, nomination_hearing, markup, business_meeting, roundtable_or_briefing, floor_or_other).
+      positive_indicators:
+        - '"Field Hearing", "Markup", "Nomination Hearing", "Business Meeting".'
+      negative_boundaries:
+        - Do not mark markup as hearing when text says markup.
+      null_and_abstention_rules:
+        - Return null if unclear from DOC_TEXT.
+    event_title:
+      definition: Stated hearing, markup, or meeting title in DOC_TEXT.
+      positive_indicators:
+        - 'Heading like "Hearing entitled: ..." or "Markup of H.R. ...".'
+      negative_boundaries:
+        - Do not invent em-dash titles absent from text.
+      null_and_abstention_rules:
+        - Return null if absent.
+    event_title_span:
+      definition: SpanRef anchoring event_title in DOC_TEXT.
+      positive_indicators:
+        - Exact slice matching event_title.
+      negative_boundaries:
+        - Must match event_title verbatim.
+      null_and_abstention_rules:
+        - Return null when event_title is null.
+    event_date:
+      definition: Scheduled/stated proceeding date (YYYY-MM-DD).
+      positive_indicators:
+        - '"Wednesday, May 10, 2023", "Date: 04/12/2024".'
+      negative_boundaries:
+        - Never copy date from filename slug.
+      null_and_abstention_rules:
+        - Return null if no event date is stated.
+    event_date_span:
+      definition: Verbatim SpanRef anchoring event_date in DOC_TEXT.
+      positive_indicators:
+        - Literal printed date substring.
+      negative_boundaries:
+        - Must not contain synthetic ISO string unless literal in text.
+      null_and_abstention_rules:
+        - Return null when event_date is null.
+    event_time:
+      definition: Stated start or gavel-to-adjournment time string (e.g., "10:00 a.m. EDT").
+      positive_indicators:
+        - '"10:00 a.m.", "2:00 PM EST".'
+      negative_boundaries:
+        - Do not guess timezone if unprinted.
+      null_and_abstention_rules:
+        - Return null if unstated.
+    venue_kind:
+      definition: Location type (capitol_room, field_site, virtual, hybrid).
+      positive_indicators:
+        - '"Rayburn HOB", "Dirksen SOB", "Zoom/Webex", "City Hall, Austin, TX".'
+      negative_boundaries:
+        - Use hybrid only when both physical room and remote platform/participation are stated.
+      null_and_abstention_rules:
+        - Return null if no venue is stated.
+    venue:
+      definition: Verbatim room/building, field address, or virtual platform stated in DOC_TEXT.
+      positive_indicators:
+        - '"2125 Rayburn House Office Building", "106 Dirksen Senate Office Building", "Cisco Webex".'
+      negative_boundaries:
+        - Do not expand room acronyms unless printed.
+      null_and_abstention_rules:
+        - Return null if unstated.
+    venue_span:
+      definition: SpanRef anchoring venue in DOC_TEXT.
+      positive_indicators:
+        - Exact venue substring.
+      negative_boundaries:
+        - Must ground venue.
+      null_and_abstention_rules:
+        - Return null when venue is null.
+    witnesses:
+      definition: Scheduled/invited witnesses explicitly listed in DOC_TEXT, each with required name_span.
+      positive_indicators:
+        - '"Panel I / Panel II" witness listings on witness lists or hearing notices.'
+      negative_boundaries:
+        - Never list committee members as witnesses unless explicitly testifying on a witness panel.
+      null_and_abstention_rules:
+        - Return [] if no witnesses are named.
+    due_date:
+      definition: Stated submission deadline (YYYY-MM-DD) for testimony, amendments, or RSVP/questions.
+      positive_indicators:
+        - '"Testimony due by ...", "Amendments must be filed by ...".'
+      negative_boundaries:
+        - Do not confuse event_date with due_date.
+      null_and_abstention_rules:
+        - Return null if no deadline is stated.
+    bill_refs:
+      definition: Canonical bill/measure citations mentioned on the notice/agenda/memo (e.g., "bill:H.R. 1234").
+      positive_indicators:
+        - Explicit bill/resolution numbers printed on the agenda or notice.
+      negative_boundaries:
+        - Never include measures absent from DOC_TEXT.
+      null_and_abstention_rules:
+        - Return [] if none appear.
+
+  testimony_bio_disclosure:
+    rationale:
+      definition: Concise CRANE/SLOT reasoning (<= 280 chars) for testimony/bio/disclosure extraction.
+      positive_indicators:
+        - Cites witness/member name, affiliation, and disclosure/bio evidence.
+      negative_boundaries:
+        - Never cite filenames or upstream hints.
+      null_and_abstention_rules:
+        - Required non-empty.
+    personas:
+      definition: Witness, member speaker, or nominee actors extracted strictly from DOC_TEXT with required name_span.
+      positive_indicators:
+        - Testifying witness, opening member speaker, bio subject, or TTF signatory.
+      negative_boundaries:
+        - Never list individuals merely cited in footnotes/bibliography.
+      null_and_abstention_rules:
+        - Return [] only if document is completely anonymous.
+    issuer_org:
+      definition: Originating organization/agency/institution stated in DOC_TEXT.
+      positive_indicators:
+        - Letterhead organization, witness employer, or agency header.
+      negative_boundaries:
+        - 'NEVER expand unmentioned acronyms (e.g., "IRS" stays "IRS" unless spelled out).'
+      null_and_abstention_rules:
+        - Return null if no issuing organization is stated.
+    issuer_org_span:
+      definition: SpanRef anchoring issuer_org in DOC_TEXT.
+      positive_indicators:
+        - Exact substring in DOC_TEXT.
+      negative_boundaries:
+        - Must ground issuer_org.
+      null_and_abstention_rules:
+        - Return null when issuer_org is null.
+    disclosure_has_grants_or_contracts:
+      definition: Boolean indicating whether Truth-in-Testimony or financial disclosure states receipt of federal grants/contracts or foreign payments.
+      positive_indicators:
+        - '"Yes [X]" or affirmative grant/contract table on TTF form; "No [X]" or "None" -> false.'
+      negative_boundaries:
+        - Populate ONLY when DOC_TEXT includes a Truth-in-Testimony or formal conflict disclosure.
+      null_and_abstention_rules:
+        - Return null on non-disclosure docs or when checkboxes are blank/unmarked.
+    disclosure_amounts:
+      definition: Exact grant, contract, or foreign-payment strings/amounts disclosed on a TTF or conflict disclosure.
+      positive_indicators:
+        - '"$250,000 (NIH Grant R01-...)", "DOD Contract W911NF-... ($1.2M)".'
+      negative_boundaries:
+        - Do not confuse general policy budget numbers in testimony prose with personal/org Rule XI disclosures.
+      null_and_abstention_rules:
+        - Return [] if none disclosed.
+    disclosure_spans:
+      definition: SpanRefs anchoring every entry in disclosure_amounts in DOC_TEXT.
+      positive_indicators:
+        - Verbatim spans covering disclosed grant/contract amounts.
+      negative_boundaries:
+        - Required whenever disclosure_amounts is non-empty.
+      null_and_abstention_rules:
+        - Return [] when disclosure_amounts is empty.
+    prior_roles:
+      definition: Career history entries ("Years | Title | Organization" or verbatim role strings) on biographies/CVs/APQs.
+      positive_indicators:
+        - Employment history sections on witness bios or nominee questionnaires.
+      negative_boundaries:
+        - Do not fabricate dates or organizations not written on the CV/bio.
+      null_and_abstention_rules:
+        - Return [] if no prior career roles are listed.
+    education:
+      definition: Academic degrees/institutions ("Institution | Degree | Year" or verbatim degree strings) on biographies/CVs.
+      positive_indicators:
+        - '"B.A., Yale University, 2005", "J.D., Harvard Law School".'
+      negative_boundaries:
+        - Never infer graduation year or institution from memory.
+      null_and_abstention_rules:
+        - Return [] if no education is stated.
+    event_title:
+      definition: Hearing/event title printed on the statement/bio/TTF header.
+      positive_indicators:
+        - 'Header "Before the Committee on ... Hearing on ...".'
+      negative_boundaries:
+        - Return null on standalone CVs/bios that do not reference a hearing.
+      null_and_abstention_rules:
+        - Return null if unstated.
+    event_date:
+      definition: Hearing/event date (YYYY-MM-DD) printed on the statement/bio/TTF header.
+      positive_indicators:
+        - 'Date printed beneath hearing title or "Hearing Date:".'
+      negative_boundaries:
+        - Do not pull date from filename slug.
+      null_and_abstention_rules:
+        - Return null if unstated.
+    bill_refs:
+      definition: Canonical bill/measure references cited in the testimony/statement.
+      positive_indicators:
+        - '"bill:H.R. 1234", "bill:S. 567".'
+      negative_boundaries:
+        - Only bills explicitly appearing in DOC_TEXT.
+      null_and_abstention_rules:
+        - Return [] if none cited.
+
+  transcript_vote_attendance:
+    rationale:
+      definition: Concise CRANE/SLOT reasoning (<= 280 chars) for transcript/vote/attendance extraction.
+      positive_indicators:
+        - 'Cites speaker turns, Present: line, or roll-call tally outcome.'
+      negative_boundaries:
+        - Never cite filenames or pages outside DOC_TEXT.
+      null_and_abstention_rules:
+        - Required non-empty.
+    event_type:
+      definition: Proceeding type (hearing, field_hearing, nomination_hearing, markup, business_meeting, roundtable_or_briefing, floor_or_other).
+      positive_indicators:
+        - Transcript masthead or markup vote sheet header.
+      negative_boundaries:
+        - Distinguish markup from hearing.
+      null_and_abstention_rules:
+        - Return null if unclear.
+    event_title:
+      definition: Proceeding title stated on the transcript cover/masthead or vote sheet.
+      positive_indicators:
+        - Main hearing or markup title in DOC_TEXT.
+      negative_boundaries:
+        - Do not fabricate em-dash composite titles absent from DOC_TEXT.
+      null_and_abstention_rules:
+        - Return null if unstated.
+    event_title_span:
+      definition: SpanRef anchoring event_title in DOC_TEXT.
+      positive_indicators:
+        - Exact slice matching event_title.
+      negative_boundaries:
+        - Must match event_title verbatim.
+      null_and_abstention_rules:
+        - Return null when event_title is null.
+    event_date:
+      definition: Proceeding date (YYYY-MM-DD) stated in DOC_TEXT.
+      positive_indicators:
+        - '"Thursday, March 16, 2023", "Date: 12/7/22".'
+      negative_boundaries:
+        - Never copy date from filename.
+      null_and_abstention_rules:
+        - Return null if unstated.
+    venue:
+      definition: Room/building or field site stated in DOC_TEXT.
+      positive_indicators:
+        - '"Washington, D.C.", "2125 Rayburn HOB".'
+      negative_boundaries:
+        - Do not guess room numbers not printed.
+      null_and_abstention_rules:
+        - Return null if unstated.
+    presiding_or_witnesses:
+      definition: Presiding officers, questioners, and witnesses explicitly named inside DOC_TEXT ONLY, each with required name_span.
+      positive_indicators:
+        - Transcript witness list/contents page on p1-2 or speakers/witnesses speaking in DOC_TEXT.
+      negative_boundaries:
+        - 'CRITICAL: NEVER include witnesses or speakers from later pages absent from DOC_TEXT; NEVER include voters from roll-call grids or passive standing committee rosters.'
+      null_and_abstention_rules:
+        - Return [] if DOC_TEXT is strictly a roll-call grid with no outside offeror/sponsor.
+    members_present:
+      definition: Member names verbatim from explicit "Present:" / "Members Present:" / "Also Present:" attendance lines (without honorifics).
+      positive_indicators:
+        - '"Present: Representatives Jordan, Nadler, ...".'
+      negative_boundaries:
+        - 'NEVER copy passive committee masthead rosters ("Committee on ..., Majority / Minority") or roll-call vote tables into members_present.'
+      null_and_abstention_rules:
+        - 'Return [] when no explicit Present:/attendance line exists in DOC_TEXT.'
+    members_present_spans:
+      definition: SpanRefs anchoring the members_present attendance line(s) in DOC_TEXT.
+      positive_indicators:
+        - 'Verbatim spans from "Present:" / "Also Present:" blocks.'
+      negative_boundaries:
+        - Required whenever members_present is non-empty.
+      null_and_abstention_rules:
+        - Return [] when members_present is empty.
+    staff_present:
+      definition: Staff names (names only, no titles) explicitly listed on "Staff Present:" or "Also Present:" staff lines.
+      positive_indicators:
+        - '"Staff Present: Jane Smith, Majority Counsel; John Doe, Minority Staff".'
+      negative_boundaries:
+        - Never include Members of Congress or witnesses in staff_present.
+      null_and_abstention_rules:
+        - Return [] when no staff attendance line appears.
+    staff_present_spans:
+      definition: SpanRefs anchoring staff_present entries in DOC_TEXT.
+      positive_indicators:
+        - 'Verbatim spans from "Staff Present:" block.'
+      negative_boundaries:
+        - Required whenever staff_present is non-empty.
+      null_and_abstention_rules:
+        - Return [] when staff_present is empty.
+    action_summary:
+      definition: Concise headline of procedural vote, amendment disposition, or markup action outcome.
+      positive_indicators:
+        - '"Roll Call #8 on Plaskett Amdt #12 to H. Con. Res. 14: Rejected 16-21".'
+      negative_boundaries:
+        - Do not dump full member-by-member vote grids.
+      null_and_abstention_rules:
+        - Return null on standard hearings with no recorded vote/action.
+    vote_tallies:
+      definition: Verbatim vote tally strings (e.g., "21-16", "Yeas 24, Nays 18", "Passed by voice vote").
+      positive_indicators:
+        - Numeric vote totals or voice-vote dispositions printed on tally/results sheets.
+      negative_boundaries:
+        - Never invent totals by counting grid rows if not consistent/clear.
+      null_and_abstention_rules:
+        - Return [] if no vote tally appears.
+    bill_refs:
+      definition: Canonical bill/amendment references under consideration in DOC_TEXT.
+      positive_indicators:
+        - '"bill:H.R. 1234", "amdt:Amdt #12".'
+      negative_boundaries:
+        - Only citations present in DOC_TEXT.
+      null_and_abstention_rules:
+        - Return [] if none appear.
+
+  correspondence_qfr_oversight:
+    rationale:
+      definition: Concise CRANE/SLOT reasoning (<= 280 chars) for correspondence/QFR/submission extraction.
+      positive_indicators:
+        - Cites sender/recipient letterhead, QFR markers, or submission framing.
+      negative_boundaries:
+        - Never cite filenames or upstream hints.
+      null_and_abstention_rules:
+        - Required non-empty.
+    correspondence_direction:
+      definition: Institutional communication direction (9 CorrespondenceDirection enums).
+      positive_indicators:
+        - committee_to_witness, witness_to_committee, congress_to_agency, agency_to_congress, member_to_committee, committee_to_member, external_to_committee, foreign_gov_to_congress, internal_exhibit_chain.
+      negative_boundaries:
+        - Do not set foreign_gov_to_congress unless sender is an embassy, foreign ministry, or foreign government entity.
+      null_and_abstention_rules:
+        - Return null if direction is genuinely ambiguous or document is a standalone news clip.
+    senders:
+      definition: Lead sender(s)/signatory(ies) of the letter/QFR/submission with required name_span.
+      positive_indicators:
+        - 'Signature block, "From:", letterhead author, or QFR questioner/responder.'
+      negative_boundaries:
+        - A Chair signing a letter gets role=sender (or signatory for co-signers), NOT chair.
+      null_and_abstention_rules:
+        - Return [] if sender is completely anonymous/unreadable.
+    recipients:
+      definition: Explicit addressee(s) and copied recipient(s) with required name_span.
+      positive_indicators:
+        - '"To:", "Dear Chairman ...", "cc: ...".'
+      negative_boundaries:
+        - Do not invent addressees from committee jurisdiction.
+      null_and_abstention_rules:
+        - Return [] if no addressee is named.
+    issuer_org:
+      definition: Originating agency, embassy, trade association, or external entity stated in DOC_TEXT.
+      positive_indicators:
+        - Letterhead organization or agency name printed in DOC_TEXT.
+      negative_boundaries:
+        - NEVER expand unmentioned acronyms.
+      null_and_abstention_rules:
+        - Return null for pure individual/member correspondence with no distinct external issuer org.
+    issuer_org_span:
+      definition: SpanRef anchoring issuer_org in DOC_TEXT.
+      positive_indicators:
+        - Exact span matching issuer_org.
+      negative_boundaries:
+        - Must ground issuer_org.
+      null_and_abstention_rules:
+        - Return null when issuer_org is null.
+    signatory_count:
+      definition: Total integer count of signatories on multi-signer letters when explicitly stated or directly countable.
+      positive_indicators:
+        - Coalition or Dear Colleague letters listing multiple signatories.
+      negative_boundaries:
+        - 'Do not estimate beyond the text slice ("and 40 others" is only countable if "40" is stated).'
+      null_and_abstention_rules:
+        - Return null for single-sender letters or uncountable truncated lists.
+    due_date:
+      definition: Response or compliance deadline (YYYY-MM-DD) stated in letter/QFR/subpoena.
+      positive_indicators:
+        - '"Please respond by ...", "Documents due no later than ...".'
+      negative_boundaries:
+        - Do not confuse the letter's own date with due_date.
+      null_and_abstention_rules:
+        - Return null if no deadline is stated.
+    due_date_span:
+      definition: Verbatim SpanRef anchoring due_date in DOC_TEXT.
+      positive_indicators:
+        - Exact deadline substring in DOC_TEXT.
+      negative_boundaries:
+        - Must not be raw ISO unless literal in text.
+      null_and_abstention_rules:
+        - Return null when due_date is null.
+    subpoena_or_compelled:
+      definition: True iff DOC_TEXT is a subpoena, compulsory order, or formal demand under compulsion.
+      positive_indicators:
+        - '"SUBPOENA", "hereby commanded to appear/produce", "compulsory process".'
+      negative_boundaries:
+        - Voluntary oversight request letters or standard witness invitations are false.
+      null_and_abstention_rules:
+        - Default false.
+    bill_refs:
+      definition: Canonical bill/measure references cited in the correspondence.
+      positive_indicators:
+        - '"bill:H.R. 1234", "bill:S. 567".'
+      negative_boundaries:
+        - Only citations present in DOC_TEXT.
+      null_and_abstention_rules:
+        - Return [] if none appear.
+
+  legislation_report_fiscal:
+    rationale:
+      definition: Concise CRANE/SLOT reasoning (<= 280 chars) for legislation/report/fiscal extraction.
+      positive_indicators:
+        - Cites bill/amendment headings, report imprint, or CBO/JCT score table.
+      negative_boundaries:
+        - Never cite filenames or upstream hints.
+      null_and_abstention_rules:
+        - Required non-empty.
+    short_titles:
+      definition: Exact statutory or bill short titles quoted or designated in DOC_TEXT.
+      positive_indicators:
+        - 'Text like "This Act may be cited as the Stop Senior Scams Act." or "Short Title: ...".'
+      negative_boundaries:
+        - Do not invent descriptive phrases as short_titles.
+      null_and_abstention_rules:
+        - Return [] if no formal short title is printed.
+    short_title_spans:
+      definition: SpanRefs anchoring every entry in short_titles in DOC_TEXT.
+      positive_indicators:
+        - Verbatim spans matching short_titles.
+      negative_boundaries:
+        - Required whenever short_titles is non-empty.
+      null_and_abstention_rules:
+        - Return [] when short_titles is empty.
+    issuer_org:
+      definition: Originating analytical/fiscal/executive body (e.g., CBO, GAO, CRS, JCT, GSA) when stated in DOC_TEXT.
+      positive_indicators:
+        - '"Congressional Budget Office", "Joint Committee on Taxation", "GAO".'
+      negative_boundaries:
+        - 'NEVER expand unmentioned acronyms (e.g., "CBO" stays "CBO" unless written out).'
+      null_and_abstention_rules:
+        - Return null when authored directly by a committee/member with no distinct agency issuer.
+    issuer_org_span:
+      definition: SpanRef anchoring issuer_org in DOC_TEXT.
+      positive_indicators:
+        - Exact span matching issuer_org.
+      negative_boundaries:
+        - Must ground issuer_org.
+      null_and_abstention_rules:
+        - Return null when issuer_org is null.
+    sponsors_or_offerors:
+      definition: Bill sponsors, introducers, or amendment offerors explicitly named in DOC_TEXT, each with required name_span.
+      positive_indicators:
+        - '"Offered by Mr. Smith", "Introduced by Sen. Warren", "Sponsor: Rep. ...".'
+      negative_boundaries:
+        - Do not list co-sponsors or voters from external metadata unless named on the text slice.
+      null_and_abstention_rules:
+        - Return [] if no sponsor/offeror is named.
+    fiscal_years:
+      definition: Fiscal years explicitly stated in DOC_TEXT (e.g., "FY2025", "2024-2033").
+      positive_indicators:
+        - '"FY 2025", "Fiscal Year 2026", "2024-2034".'
+      negative_boundaries:
+        - Never treat calendar hearing dates or enactment years as fiscal_years unless marked fiscal/budget period.
+      null_and_abstention_rules:
+        - Return [] if no fiscal year is stated.
+    bill_refs:
+      definition: Canonical bill/amendment/treaty citations in DOC_TEXT.
+      positive_indicators:
+        - '"bill:H.R. 2670", "amdt:S. Amdt. 12", "treaty:Treaty Doc. 117-1".'
+      negative_boundaries:
+        - Only citations explicitly printed in DOC_TEXT.
+      null_and_abstention_rules:
+        - Return [] if none appear.
+    statute_or_rule_refs:
+      definition: Canonical Public Law, U.S.C., C.F.R., House/Senate Rule, or report/agency publication citations in DOC_TEXT.
+      positive_indicators:
+        - '"law:P.L. 117-58", "usc:42 U.S.C. 1395", "rule:House Rule XI", "jct:JCX-14-23", "gao:GAO-23-106123".'
+      negative_boundaries:
+        - Only identifiers present in DOC_TEXT.
+      null_and_abstention_rules:
+        - Return [] if none appear.
+    action_summary:
+      definition: Concise procedural or legislative disposition stated in the document (e.g., "Reported favorably with an amendment", "Ordered to be printed").
+      positive_indicators:
+        - '"Reported without amendment", "Committed to the Committee of the Whole House", "Adopted by House Rules".'
+      negative_boundaries:
+        - Do not invent legislative status from outside knowledge.
+      null_and_abstention_rules:
+        - Return null if no procedural action is stated.

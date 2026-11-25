@@ -16,8 +16,9 @@ from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter,v
 from congress_api.retention.receipt_privacy import cut_paths
 
 
-KINDS=frozenset({'recoveries','reviews','unreadable'})
+KINDS=frozenset({'recoveries','reviews','unreadable','org_decisions'})
 VERDICTS=frozenset({'hide','duplicate_of','title_override','kind_override','withdraw'})
+ORG_VERDICTS=frozenset({'same','different','unsure','withdraw'})
 TARGET_REQUIREMENTS=frozenset({'historical_exact','requested_content','current_official_counterpart'})
 RECOVERY_V2_FIELDS=frozenset({'recovery_record_version','target_requirement','acceptance_status',
                               'acceptance_policy','qualification_sha256'})
@@ -41,6 +42,8 @@ def validate_provenance(kind,row):
         identities=set(row)&{'body_sha256','record_sha'}
         if len(identities)!=1:raise ValueError('Unreadable decision needs one input identity')
         required={'id','parser','parser_version','reason','decided_by','decided_at','supersedes'}|identities
+    elif kind=='org_decisions':
+        required={'id','subject','verdict','object','note','reviewer','decided_at','supersedes'}
     else:
         required=({'id','target','verdict','value','note','reviewer','decided_at','supersedes'} if kind=='reviews' else
             {'id','original_url','recovered_url','recovered_filename','body_sha256','kind','match_basis',
@@ -97,6 +100,20 @@ def validate_provenance(kind,row):
             or verdict=='hide' and type(value) is not bool
             or verdict=='withdraw' and (value is not None or row['supersedes'] is None)):
             raise ValueError('Invalid review value')
+    elif kind=='org_decisions':
+        verdict=row['verdict']
+        if not isinstance(verdict,str) or verdict not in ORG_VERDICTS:
+            raise ValueError('Invalid org decision verdict')
+        if (not isinstance(row['subject'],str)
+                or re.fullmatch(r'(?:(?:bag|witness):)?[0-9a-f]{16}',row['subject']) is None):
+            raise ValueError('Invalid org decision subject')
+        if (not isinstance(row['object'],str)
+                or re.fullmatch(r'(?:(?:org|bag):[0-9a-f]{16}|wikidata:Q[0-9]+)',row['object']) is None):
+            raise ValueError('Invalid org decision object')
+        if verdict=='withdraw' and row['supersedes'] is None:
+            raise ValueError('Withdrawing an org decision requires supersedes')
+        text('note')
+        text('reviewer')
     else:
         url('original_url')
         url('recovered_url',nullable=True)

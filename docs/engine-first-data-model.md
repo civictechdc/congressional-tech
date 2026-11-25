@@ -491,7 +491,9 @@ record_role := per capture row, the first that applies:
                'media'           when format = 'other' and the media type is video/* or audio/*,
                                  or its address matches the recording registry's segment pattern
                                  (a stream segment is not a document or a track)
-               'envelope'        when format = 'warc'
+               'envelope'        when format = 'warc', or format = 'other' with
+                                 media_type in application/warc[+gzip] or
+                                 application/arc[+gzip]
                'damaged'         when format = 'pdf' and intact is not true
                                  and intact_basis <> 'unchecked'
                'api'             when format = 'json'

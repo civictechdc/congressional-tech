@@ -1618,6 +1618,606 @@ def appearance_steps(*,root=ROOT,has_rank_credentials=True):
          'witness-person-facts','witness-people','entity-people','person-aliases-fresh','person-aliases'],root=root)
 
 
+ORG_DECISION_FIELDS=dict(id='Utf8',subject='Utf8',verdict='Utf8',object='Utf8',
+    note='Utf8',reviewer='Utf8',decided_at='Utf8',supersedes='Utf8')
+ORG_TAXONOMY_FIELDS=dict(id='Utf8',label='Utf8',parent_id='Utf8',parent_label='Utf8',
+    org_kind='Utf8',priority='Int64',pattern='Utf8')
+ORG_ORGANIZATIONS_FIELDS=dict(org_id='Utf8',display_name='Utf8',kind='Utf8',
+    taxonomy_parent='Utf8',taxonomy_category='Utf8',parent_org_id='Utf8',
+    appearance_count='Int64',bag_keys=list_of('Utf8'),string_keys=list_of('Utf8'),
+    anchor='Utf8',has_conflict='Boolean')
+ORG_REDIRECTS_FIELDS=dict(old_org_id='Utf8',org_id='Utf8',event='Utf8',release='Utf8')
+ORG_WITNESS_ORGS_FIELDS=dict(witness_key='Utf8',field='Utf8',org_id='Utf8',
+    bag_key='Utf8',string_key='Utf8',raw_text='Utf8')
+
+
+def org_entity_inputs(scratch,*,org_decision_files=(),prior_org_release=None,release_label='current',root=ROOT):
+    """Prepare native engine inputs for Phase 1 organization entity resolution (ct-6him)."""
+    from congress_api.retention.provenance import field
+    work=Path(scratch)/'org_entities'
+    work.mkdir(parents=True,exist_ok=True)
+    taxonomy_raw=json.loads((Path(root)/'model/registries/ban-park-you-org-taxonomy.json').read_text())['categories']
+    taxonomy_rows=[{key:entry.get(key) for key in ORG_TAXONOMY_FIELDS} for entry in taxonomy_raw]
+    inputs=[
+        json_input(work,'ban_park_you_org_taxonomy',taxonomy_rows,**ORG_TAXONOMY_FIELDS),
+        json_input(work,'org_release_meta',[dict(release=str(release_label))],release='Utf8'),
+    ]
+    if org_decision_files:
+        normalized_files=[
+            dict(entry) if isinstance(entry,dict)
+            else dict(key=Path(entry).name,path=str(Path(entry).resolve()))
+            for entry in org_decision_files
+        ]
+        inputs.append(dict(
+            name='org_decisions',
+            kind='json_lines',
+            files=normalized_files,
+            schema=dict(fields=[field(k,v) for k,v in ORG_DECISION_FIELDS.items()],metadata={}),
+        ))
+    else:
+        inputs.append(json_input(work,'org_decisions',[],**ORG_DECISION_FIELDS))
+    prior_map={}
+    if isinstance(prior_org_release,dict):
+        prior_map=dict(prior_org_release)
+    elif prior_org_release is not None:
+        prior_dir=Path(prior_org_release).resolve()
+        if not prior_dir.exists():
+            raise FileNotFoundError(f'Missing prior org release directory: {prior_dir}')
+        prior_map={
+            'prior_organizations':prior_dir/'organizations.parquet',
+            'prior_organization_redirects':prior_dir/'organization_redirects.parquet',
+            'prior_witness_organizations':prior_dir/'witness_organizations.parquet',
+        }
+    for name,fields in [
+        ('prior_organizations',ORG_ORGANIZATIONS_FIELDS),
+        ('prior_organization_redirects',ORG_REDIRECTS_FIELDS),
+        ('prior_witness_organizations',ORG_WITNESS_ORGS_FIELDS),
+    ]:
+        source=prior_map.get(name)
+        if isinstance(source,dict):
+            inputs.append(dict(source,name=name))
+        elif source is not None and Path(source).is_file():
+            inputs.append(dict(name=name,kind='parquet',path=str(Path(source).resolve())))
+        else:
+            inputs.append(json_input(work,name,[],**fields))
+    return inputs
+
+
+def org_entity_steps(*,root=ROOT):
+    """Materialized Phase 1 organization entity resolution steps (ct-6him)."""
+    sql_dir=Path(root)/'model/sql'
+    return [
+        dict(name='org_strings',sql=(sql_dir/'org-strings.sql').read_text(),materialize=True),
+        dict(name='org_raw_strings',sql="""SELECT DISTINCT string_key,l2_text,bag_key,unnest(raw_texts) AS raw_text
+FROM org_strings""",materialize=True),
+        dict(name='org_witness_mentions',sql="""WITH mentions AS (
+ SELECT witness_key,m['field'] AS field,m['raw_text'] AS raw_text
+ FROM (
+  SELECT witness_key,
+   unnest(make_array(
+    named_struct('field','organization','raw_text',nullif(trim(organization),'')),
+    named_struct('field','on_behalf_of','raw_text',nullif(trim(on_behalf_of),''))
+   )) AS m
+  FROM appearance_records_resolved
+ )
+ WHERE m['raw_text'] IS NOT NULL
+)
+SELECT m.witness_key,m.field,m.raw_text,s.string_key,s.l2_text,s.bag_key
+FROM org_raw_strings s
+JOIN mentions m ON m.raw_text=s.raw_text""",materialize=True),
+        dict(name='org_bags',sql="""WITH bag_ranked AS (
+ SELECT
+  bag_key,string_key,l2_text,display_text,tokens,appearance_count,
+  sum(appearance_count) OVER (PARTITION BY bag_key) AS bag_appearances,
+  row_number() OVER (PARTITION BY bag_key ORDER BY appearance_count DESC,string_key ASC) AS rn
+ FROM org_strings
+)
+SELECT
+ bag_key,string_key,l2_text,display_text,tokens,
+ cast(bag_appearances AS BIGINT) AS appearance_count
+FROM bag_ranked
+WHERE rn=1""",materialize=True),
+        dict(name='org_token_df',sql="""SELECT token,cast(count(*) AS BIGINT) AS df
+FROM (SELECT unnest(tokens) AS token FROM org_bags WHERE cardinality(tokens)>0)
+GROUP BY token""",materialize=True),
+        dict(name='org_bag_rarest',sql="""WITH exploded AS (
+ SELECT b.bag_key,b.string_key,b.l2_text,b.display_text,b.tokens,b.appearance_count,
+  unnest(b.tokens) AS token
+ FROM org_bags b
+ WHERE cardinality(b.tokens)>0
+), ranked AS (
+ SELECT e.*,t.df,
+  row_number() OVER (PARTITION BY e.bag_key ORDER BY t.df ASC,e.token ASC) AS rn,
+  cast(floor(cast(cardinality(e.tokens) AS DOUBLE)*0.25) AS BIGINT)+1 AS prefix_len
+ FROM org_token_df t
+ JOIN exploded e ON e.token=t.token
+ WHERE t.df>=2
+)
+SELECT bag_key,string_key,l2_text,display_text,tokens,appearance_count,
+ token AS rarest_token,df AS rarest_df
+FROM ranked
+WHERE rn<=prefix_len""",materialize=True),
+        dict(name='org_fuzzy_block_stats',sql="""WITH bag_cnt AS (
+ SELECT cast(count(*) AS BIGINT) AS distinct_bags FROM org_bags
+), indexed_cnt AS (
+ SELECT cast(count(*) AS BIGINT) AS indexed_bags FROM (SELECT DISTINCT bag_key FROM org_bag_rarest)
+), token_blocks AS (
+ SELECT rarest_token,cast(count(*) AS BIGINT) AS bucket_size
+ FROM org_bag_rarest
+ GROUP BY rarest_token
+), agg AS (
+ SELECT
+  cast(coalesce(max(bucket_size),0) AS BIGINT) AS max_bucket_size,
+  cast(coalesce(sum(bucket_size*(bucket_size-1)/2),0) AS BIGINT) AS raw_blocked_pairs
+ FROM token_blocks
+)
+SELECT b.distinct_bags,i.indexed_bags,a.max_bucket_size,a.raw_blocked_pairs
+FROM bag_cnt b
+CROSS JOIN indexed_cnt i
+CROSS JOIN agg a""",materialize=True),
+        dict(name='org_decisions_current',sql=(sql_dir/'org-decisions-current.sql').read_text(),materialize=True),
+        dict(name='org_fuzzy_pairs',sql=(sql_dir/'org-fuzzy-pairs.sql').read_text(),materialize=True),
+        dict(name='org_prior_anchor_map',sql="""WITH unmerged AS (
+ SELECT
+  'o:'||substr(encode(sha256('org-v1bag:'||bag_key),'hex'),1,16) AS org_node,
+  'b:'||bag_key AS bag_node
+ FROM org_bags
+), prior_bags AS (
+ SELECT DISTINCT
+  po.org_id,
+  unnest(po.bag_keys) AS bag_key
+ FROM prior_organizations po
+ WHERE po.org_id IS NOT NULL AND po.bag_keys IS NOT NULL
+), prior_mapped AS (
+ SELECT DISTINCT
+  'o:'||pb.org_id AS org_node,
+  'b:'||b.bag_key AS bag_node
+ FROM org_bags b
+ JOIN prior_bags pb ON pb.bag_key=b.bag_key
+)
+SELECT org_node,bag_node FROM unmerged
+UNION
+SELECT org_node,bag_node FROM prior_mapped""",materialize=True),
+        dict(name='org_edges',sql="""WITH bag_loops AS (
+ SELECT 'b:'||bag_key AS left_node,'b:'||bag_key AS right_node
+ FROM org_bags
+), witness_loops AS (
+ SELECT DISTINCT
+  d.subject_node AS left_node,
+  d.subject_node AS right_node
+ FROM org_decisions_current d
+ WHERE d.subject_kind='witness'
+  AND d.resolution_status IN ('live','remapped')
+  AND d.subject_node IS NOT NULL
+  AND d.verdict IN ('same','different')
+), same_decisions AS (
+ SELECT
+  d.subject_node,
+  d.object_kind,
+  d.object_key,
+  d.object_node
+ FROM org_decisions_current d
+ LEFT JOIN org_bags b ON d.object_kind='bag' AND b.bag_key=d.object_key
+ WHERE d.verdict='same'
+  AND d.resolution_status IN ('live','remapped')
+  AND d.subject_node IS NOT NULL
+  AND d.object_node IS NOT NULL
+  AND (d.object_kind<>'bag' OR b.bag_key IS NOT NULL)
+), same_edges AS (
+ SELECT subject_node AS left_node,object_node AS right_node
+ FROM same_decisions
+), active_org_nodes AS (
+ SELECT DISTINCT object_node
+ FROM same_decisions
+ WHERE object_kind='org'
+), org_target_edges AS (
+ SELECT pm.org_node AS left_node,pm.bag_node AS right_node
+ FROM active_org_nodes a
+ JOIN org_prior_anchor_map pm ON pm.org_node=a.object_node
+)
+SELECT left_node,right_node FROM bag_loops
+UNION ALL
+SELECT left_node,right_node FROM witness_loops
+UNION ALL
+SELECT left_node,right_node FROM same_edges
+UNION ALL
+SELECT left_node,right_node FROM org_target_edges""",materialize=True),
+        dict(name='org_components',components=dict(
+            sql='SELECT left_node,right_node FROM org_edges',
+            left='left_node',
+            right='right_node',
+            node_limit=10_000_000,
+        )),
+        dict(name='org_decisions_conflicts',sql="""WITH diff_rows AS (
+ SELECT
+  d.id AS decision_id,d.subject,d.object,d.note,d.reviewer,d.decided_at,
+  d.subject_node,
+  coalesce(pm.bag_node,d.object_node) AS resolved_object_node
+ FROM org_decisions_current d
+ LEFT JOIN org_prior_anchor_map pm ON d.object_node=pm.org_node
+ WHERE d.verdict='different'
+  AND d.subject_node IS NOT NULL
+  AND d.object_node IS NOT NULL
+)
+SELECT DISTINCT
+ r.decision_id,
+ c1.component AS conflict_component,
+ r.subject,
+ r.object,
+ r.subject_node,
+ r.resolved_object_node AS object_node,
+ r.note,
+ r.reviewer,
+ r.decided_at
+FROM diff_rows r
+JOIN org_components c1 ON c1.node=r.subject_node
+JOIN org_components c2 ON c2.node=r.resolved_object_node
+WHERE c1.component=c2.component""",materialize=True),
+        dict(name='org_resolved_mentions',sql="""WITH conflicted_components AS (
+ SELECT DISTINCT conflict_component FROM org_decisions_conflicts
+), witness_active AS (
+ SELECT
+  subject_key AS witness_key,
+  bool_or(verdict='same') AS has_same,
+  array_agg(object_node) FILTER (WHERE verdict='different' AND object_node IS NOT NULL) AS diff_objs
+ FROM org_decisions_current
+ WHERE subject_kind='witness'
+  AND resolution_status IN ('live','remapped')
+  AND subject_key IS NOT NULL
+  AND verdict IN ('same','different')
+ GROUP BY subject_key
+), witness_mentions_ranked AS (
+ SELECT
+  m.witness_key,m.field,m.raw_text,m.string_key,m.l2_text,m.bag_key,
+  row_number() OVER (PARTITION BY m.witness_key ORDER BY CASE m.field WHEN 'organization' THEN 1 ELSE 2 END) AS field_rank
+ FROM org_witness_mentions m
+), mention_nodes AS (
+ SELECT
+  r.witness_key,r.field,r.raw_text,r.string_key,r.l2_text,r.bag_key,
+  CASE
+   WHEN r.field_rank=1 AND wa.witness_key IS NOT NULL
+    AND (coalesce(wa.has_same,false) OR array_has(coalesce(wa.diff_objs,arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')),'b:'||r.bag_key))
+    THEN 'w:'||r.witness_key
+   ELSE 'b:'||r.bag_key
+  END AS raw_node
+ FROM witness_active wa
+ RIGHT JOIN witness_mentions_ranked r ON r.witness_key=wa.witness_key
+), joined AS (
+ SELECT
+  mn.witness_key,mn.field,mn.raw_text,mn.string_key,mn.l2_text,mn.bag_key,mn.raw_node,
+  coalesce(oc.component,mn.raw_node) AS component,
+  (cc.conflict_component IS NOT NULL) AS has_conflict
+ FROM conflicted_components cc
+ RIGHT JOIN (
+  org_components oc
+  RIGHT JOIN mention_nodes mn ON mn.raw_node=oc.node
+ ) ON cc.conflict_component=coalesce(oc.component,mn.raw_node)
+)
+SELECT
+ witness_key,field,raw_text,string_key,l2_text,bag_key,raw_node,
+ CASE WHEN has_conflict THEN raw_node ELSE component END AS group_key,
+ has_conflict
+FROM joined""",materialize=True),
+        dict(name='org_group_anchors',sql="""WITH group_base AS (
+ SELECT group_key,bool_or(has_conflict) AS has_conflict
+ FROM org_resolved_mentions
+ GROUP BY group_key
+), node_anchors AS (
+ SELECT DISTINCT
+  m.group_key,
+  CASE
+   WHEN m.raw_node LIKE 'w:%' AND m.group_key LIKE 'w:%' THEN 'witness:'||substr(m.raw_node,3)
+   ELSE 'bag:'||m.bag_key
+  END AS anchor,
+  CASE
+   WHEN m.raw_node LIKE 'w:%' AND m.group_key LIKE 'w:%' THEN 5
+   ELSE 4
+  END AS tier,
+  m.has_conflict
+ FROM org_resolved_mentions m
+), clean_comp_decisions AS (
+ SELECT DISTINCT
+  c_sub.component AS group_key,
+  CASE WHEN d.object LIKE 'wikidata:%' THEN 'wikidata:'||d.object_key ELSE 'decision:'||d.id END AS anchor,
+  CASE WHEN d.object LIKE 'wikidata:%' THEN 2 ELSE 3 END AS tier
+ FROM org_decisions_current d
+ JOIN org_components c_sub ON c_sub.node=d.subject_node
+ JOIN org_components c_obj ON c_obj.node=d.object_node AND c_obj.component=c_sub.component
+ WHERE d.verdict='same'
+  AND d.resolution_status IN ('live','remapped')
+  AND d.subject_node IS NOT NULL
+  AND d.object_node IS NOT NULL
+), all_candidates AS (
+ SELECT na.group_key,na.anchor,na.tier,na.has_conflict FROM node_anchors na
+ UNION ALL
+ SELECT cd.group_key,cd.anchor,cd.tier,false AS has_conflict
+ FROM group_base gb
+ JOIN clean_comp_decisions cd ON cd.group_key=gb.group_key
+ WHERE NOT gb.has_conflict
+), ranked AS (
+ SELECT
+  group_key,anchor,
+  bool_or(has_conflict) OVER (PARTITION BY group_key) AS has_conflict,
+  row_number() OVER (PARTITION BY group_key ORDER BY tier ASC,anchor ASC) AS rn
+ FROM all_candidates
+)
+SELECT
+ group_key,
+ anchor,
+ substr(encode(sha256('org-v1'||anchor),'hex'),1,16) AS org_id,
+ has_conflict
+FROM ranked
+WHERE rn=1""",materialize=True),
+        dict(name='organizations',sql=(sql_dir/'organizations.sql').read_text(),materialize=True),
+        dict(name='organization_ids',sql="""WITH bag_ids AS (
+ SELECT o.org_id,'bag' AS scheme,unnest(o.bag_keys) AS value
+ FROM organizations o
+ WHERE o.bag_keys IS NOT NULL
+), anchor_ids AS (
+ SELECT
+  org_id,
+  split_part(anchor,':',1) AS scheme,
+  substr(anchor,length(split_part(anchor,':',1))+2) AS value
+ FROM organizations
+), decision_ids AS (
+ SELECT DISTINCT
+  ga.org_id,
+  CASE WHEN d.object LIKE 'wikidata:%' THEN 'wikidata' ELSE 'decision' END AS scheme,
+  CASE WHEN d.object LIKE 'wikidata:%' THEN d.object_key ELSE d.id END AS value
+ FROM org_group_anchors ga
+ JOIN org_components c_sub ON c_sub.component=ga.group_key
+ JOIN org_decisions_current d ON d.subject_node=c_sub.node
+ JOIN org_components c_obj ON c_obj.node=d.object_node AND c_obj.component=ga.group_key
+ WHERE NOT ga.has_conflict
+  AND d.verdict='same'
+  AND d.resolution_status IN ('live','remapped')
+)
+SELECT org_id,scheme,value FROM bag_ids
+UNION
+SELECT org_id,scheme,value FROM anchor_ids
+UNION
+SELECT org_id,scheme,value FROM decision_ids""",materialize=True),
+        dict(name='witness_organizations',sql="""SELECT
+ m.witness_key,m.field,a.org_id,m.bag_key,m.string_key,m.raw_text
+FROM org_group_anchors a
+JOIN org_resolved_mentions m ON m.group_key=a.group_key""",materialize=True),
+        dict(name='org_priors_fresh',sql="""WITH live_orgs AS (
+ SELECT org_id FROM organizations
+), gone_orgs AS (
+ SELECT po.org_id AS old_org_id
+ FROM live_orgs lo
+ RIGHT ANTI JOIN prior_organizations po ON lo.org_id=po.org_id
+ WHERE po.org_id IS NOT NULL
+), old_spellings AS (
+ SELECT DISTINCT org_id AS old_org_id,raw_text
+ FROM prior_witness_organizations
+ WHERE org_id IS NOT NULL AND raw_text IS NOT NULL
+), cur_spellings AS (
+ SELECT raw_text,org_id,min(bag_key) AS bag_key
+ FROM witness_organizations
+ WHERE raw_text IS NOT NULL AND org_id IS NOT NULL AND bag_key IS NOT NULL
+ GROUP BY raw_text,org_id
+), inherited_distinct AS (
+ SELECT
+  g.old_org_id,
+  cs.org_id AS target_org_id,
+  os.raw_text,
+  min(cs.bag_key) AS bag_key
+ FROM gone_orgs g
+ JOIN old_spellings os ON os.old_org_id=g.old_org_id
+ JOIN cur_spellings cs ON cs.raw_text=os.raw_text
+ GROUP BY g.old_org_id,cs.org_id,os.raw_text
+), inherited_counts AS (
+ SELECT
+  old_org_id,
+  target_org_id,
+  count(*) AS inherited_spellings,
+  min(bag_key) AS min_bag_key
+ FROM inherited_distinct
+ GROUP BY old_org_id,target_org_id
+), ranked_targets AS (
+ SELECT
+  ic.old_org_id,
+  ic.target_org_id,
+  count(*) OVER (PARTITION BY ic.old_org_id) AS target_count,
+  row_number() OVER (
+   PARTITION BY ic.old_org_id
+   ORDER BY ic.inherited_spellings DESC,coalesce(o.bag_keys[1],ic.min_bag_key) ASC,ic.target_org_id ASC
+  ) AS rn
+ FROM inherited_counts ic
+ JOIN organizations o ON o.org_id=ic.target_org_id
+)
+SELECT
+ r.old_org_id,
+ r.target_org_id AS org_id,
+ CASE WHEN r.target_count=1 THEN 'merged' ELSE 'split_from' END AS event,
+ rm.release
+FROM ranked_targets r
+CROSS JOIN org_release_meta rm
+WHERE r.rn=1""",materialize=True),
+        dict(name='organization_redirects',sql=(sql_dir/'org-priors.sql').read_text(),materialize=True),
+        dict(name='org_review_queue',sql="""WITH bag_to_org AS (
+ SELECT DISTINCT m.bag_key,a.org_id
+ FROM org_group_anchors a
+ JOIN org_resolved_mentions m ON m.group_key=a.group_key
+ WHERE m.raw_node='b:'||m.bag_key
+), fuzzy_items AS (
+ SELECT
+  cast('fuzzy_pair' AS VARCHAR) AS queue_kind,
+  fp.bag_key_a,
+  fp.bag_key_b,
+  oa.org_id AS org_id_a,
+  ob.org_id AS org_id_b,
+  fp.string_key_a,
+  fp.string_key_b,
+  fp.display_text_a,
+  fp.display_text_b,
+  fp.l2_text_a,
+  fp.l2_text_b,
+  fp.jaccard,
+  fp.lev_ratio,
+  fp.rarest_token,
+  fp.rarest_df,
+  fp.appearance_count_a,
+  fp.appearance_count_b,
+  fp.combined_appearances,
+  cast(NULL AS VARCHAR) AS conflict_decision_id,
+  cast(NULL AS VARCHAR) AS conflict_component,
+  cast(NULL AS VARCHAR) AS conflict_note
+ FROM org_fuzzy_pairs fp
+ LEFT JOIN bag_to_org oa ON oa.bag_key=fp.bag_key_a
+ LEFT JOIN bag_to_org ob ON ob.bag_key=fp.bag_key_b
+ WHERE oa.org_id IS NULL OR ob.org_id IS NULL OR oa.org_id<>ob.org_id
+), conflict_items AS (
+ SELECT
+  cast('decision_conflict' AS VARCHAR) AS queue_kind,
+  CASE WHEN c.subject_node LIKE 'b:%' THEN substr(c.subject_node,3) ELSE c.subject_node END AS bag_key_a,
+  CASE WHEN c.object_node LIKE 'b:%' THEN substr(c.object_node,3) ELSE c.object_node END AS bag_key_b,
+  oa.org_id AS org_id_a,
+  ob.org_id AS org_id_b,
+  cast(NULL AS VARCHAR) AS string_key_a,
+  cast(NULL AS VARCHAR) AS string_key_b,
+  c.subject AS display_text_a,
+  c.object AS display_text_b,
+  cast(NULL AS VARCHAR) AS l2_text_a,
+  cast(NULL AS VARCHAR) AS l2_text_b,
+  cast(NULL AS DOUBLE) AS jaccard,
+  cast(NULL AS DOUBLE) AS lev_ratio,
+  cast(NULL AS VARCHAR) AS rarest_token,
+  cast(NULL AS BIGINT) AS rarest_df,
+  cast(NULL AS BIGINT) AS appearance_count_a,
+  cast(NULL AS BIGINT) AS appearance_count_b,
+  cast(0 AS BIGINT) AS combined_appearances,
+  c.decision_id AS conflict_decision_id,
+  c.conflict_component,
+  c.note AS conflict_note
+ FROM org_decisions_conflicts c
+ LEFT JOIN bag_to_org oa ON oa.bag_key=substr(c.subject_node,3) AND c.subject_node LIKE 'b:%'
+ LEFT JOIN bag_to_org ob ON ob.bag_key=substr(c.object_node,3) AND c.object_node LIKE 'b:%'
+)
+SELECT * FROM conflict_items
+UNION ALL
+SELECT * FROM fuzzy_items""",materialize=True),
+    ]
+
+
+def org_entity_outputs(output_dir):
+    """Build native Parquet output specs for Phase 1 organization tables."""
+    from viewer_publication.archive_format import DEFAULT_ROW_GROUP_ROWS,_settings
+    out=Path(output_dir)
+    review_settings=dict(
+        profile='whole',
+        row_group_rows=DEFAULT_ROW_GROUP_ROWS,
+        order_by=[
+            dict(field='queue_kind'),
+            dict(field='combined_appearances',descending=True),
+            dict(field='bag_key_a'),
+            dict(field='bag_key_b'),
+            dict(field='conflict_decision_id'),
+        ],
+        columns=[],
+        dictionary_columns=['queue_kind','rarest_token'],
+        delta_columns=[],
+        key_column=None,
+        created_by='docspec archive release v1',
+        footer_limit=4 << 20,
+    )
+    specs=[
+        ('organizations',['org_id'],['kind','taxonomy_parent','taxonomy_category'],
+         'SELECT * FROM organizations'),
+        ('organization_ids',['org_id','scheme','value'],['scheme'],
+         'SELECT * FROM organization_ids'),
+        ('witness_organizations',['witness_key','field'],['field'],
+         'SELECT * FROM witness_organizations'),
+        ('organization_redirects',['old_org_id'],['event','release'],
+         'SELECT * FROM organization_redirects'),
+        ('org_decisions_conflicts',['decision_id','conflict_component'],[],
+         'SELECT * FROM org_decisions_conflicts'),
+        ('org_strings',['string_key'],[],
+         'SELECT * FROM org_strings'),
+    ]
+    outputs=[
+        dict(
+            name=name+'.parquet',
+            path=str(out/(name+'.parquet')),
+            sql=sql,
+            settings=_settings('whole',order,dictionary=dictionary,footer_limit=4 << 20),
+        )
+        for name,order,dictionary,sql in specs
+    ]
+    outputs.append(dict(
+        name='org_review_queue.parquet',
+        path=str(out/'org_review_queue.parquet'),
+        sql='SELECT * FROM org_review_queue',
+        settings=review_settings,
+    ))
+    return outputs
+
+
+def org_entity_queries():
+    """Return `(metadata_queries, diagnostic_queries)` for Phase 1 organization entities."""
+    meta=[
+        dict(name='org_fuzzy_candidate_stats',sql="""SELECT
+ b.distinct_bags,
+ b.indexed_bags,
+ b.max_bucket_size,
+ b.raw_blocked_pairs,
+ (SELECT cast(count(*) AS BIGINT) FROM org_fuzzy_pairs) AS qualified_candidate_pairs,
+ (SELECT cast(count(*) AS BIGINT) FROM org_review_queue WHERE queue_kind='fuzzy_pair') AS review_queue_pairs,
+ (SELECT cast(count(*) AS BIGINT) FROM org_review_queue WHERE queue_kind='decision_conflict') AS decision_conflict_items,
+ (SELECT cast(count(*) AS BIGINT) FROM organizations) AS organization_count
+FROM org_fuzzy_block_stats b"""),
+    ]
+    diag=[
+        dict(name='org_invariants',sql="""SELECT
+ (SELECT count(*) FROM (SELECT org_id FROM organizations GROUP BY org_id HAVING count(*)>1)) AS duplicate_org_ids,
+ (SELECT count(*) FROM (SELECT o.org_id FROM organizations o RIGHT JOIN witness_organizations w ON o.org_id=w.org_id WHERE o.org_id IS NULL)) AS missing_witness_org_ids,
+ (SELECT count(*) FROM (SELECT o.org_id FROM organizations o RIGHT JOIN organization_redirects r ON o.org_id=r.org_id WHERE o.org_id IS NULL)) AS missing_redirect_target_org_ids,
+ (SELECT count(*) FROM organizations o JOIN organization_redirects r ON o.org_id=r.old_org_id WHERE r.event<>'restored') AS non_one_hop_redirects,
+ (SELECT count(*) FROM (SELECT old_org_id FROM organization_redirects GROUP BY old_org_id HAVING count(*)>1)) AS duplicate_redirect_old_org_ids,
+ (SELECT count(*) FROM organizations WHERE has_conflict AND cardinality(bag_keys)>1) AS conflicted_orgs_still_merged,
+ (SELECT count(*) FROM (SELECT string_key FROM org_strings GROUP BY string_key HAVING count(*)>1)) AS duplicate_org_strings"""),
+    ]
+    return meta,diag
+
+
+def build_org_entities(*,appearance_records_resolved,engine,output,scratch,
+                       witness_key_map=None,org_decision_files=(),
+                       prior_org_release=None,release_label='current',root=ROOT):
+    """Run standalone Phase 1 organization resolution over `appearance_records_resolved`."""
+    from congress_api.retention.provenance import run_job
+    from viewer_publication.archive_model_lifetimes import retire_relations
+    scratch=Path(scratch).resolve()
+    scratch.mkdir(parents=True,exist_ok=True)
+    output=Path(output).resolve()
+    output.mkdir(parents=True,exist_ok=True)
+    def _table_input(name,source):
+        if isinstance(source,dict):
+            return dict(source,name=name)
+        return dict(name=name,kind='parquet',path=str(Path(source).resolve()))
+    inputs=[_table_input('appearance_records_resolved',appearance_records_resolved)]
+    if witness_key_map is not None:
+        inputs.append(_table_input('witness_key_map',witness_key_map))
+    else:
+        inputs.append(json_input(scratch,'witness_key_map',[],old_key='Utf8',witness_key='Utf8',status='Utf8'))
+    inputs += org_entity_inputs(scratch,org_decision_files=org_decision_files,
+        prior_org_release=prior_org_release,release_label=release_label,root=root)
+    steps=org_entity_steps(root=root)
+    outputs=org_entity_outputs(output)
+    meta,diag=org_entity_queries()
+    retired=retire_relations(dict(scratch=str(scratch/'native'),inputs=inputs,steps=steps,outputs=outputs,queries=meta+diag))
+    reports=run_job(scratch/'job',engine,inputs=retired['inputs'],steps=retired['steps'],outputs=retired['outputs'],queries=retired['queries'])
+    invariants=reports['org_invariants'][0]
+    if any(value for value in invariants.values()):
+        raise ValueError(f'Organization entity invariant failed: {invariants}')
+    return dict(
+        output=output,
+        outputs={item['name']:Path(item['path']) for item in outputs},
+        stats=reports['org_fuzzy_candidate_stats'][0],
+        invariants=invariants,
+    )
+
+
 def senate_page_prelim_links_sql(*,root=ROOT):
     """Score senate_page_candidates before package_meeting_links exists so Senate witness rosters corroborate prints (ct-uul8)."""
     text=(Path(root)/'model/sql/senate-page-meeting-links.sql').read_text()
@@ -1677,8 +2277,9 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                          spicy_regs=None,include_entities=False,recovery_requirements=None,
                          video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                          transcript_headings=None,
-                         historical_recording_matcher=None,docmeta_v6_1=None,pdf_cover_evidence=None,body_qualifications=None,prior_links=None,base_retired=None,base_release_id=None,
-                         carried_html_metadata=0,root=ROOT,registry=None):
+                         historical_recording_matcher=None,pdf_cover_evidence=None,body_qualifications=None,prior_links=None,base_retired=None,base_release_id=None,
+                         carried_html_metadata=0,include_org_entities=False,org_decision_files=(),
+                         prior_org_release=None,org_release_label='current',root=ROOT,registry=None):
     """Freeze current input selectors and the shared prefix in fresh private scratch.
 
     `registry` names a compatible-versions file other than the checked-in one (tests only).
@@ -1692,6 +2293,11 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     if type(carried_html_metadata) is not int or carried_html_metadata<0:
         raise ValueError('carried_html_metadata must be a non-negative integer')
     include_entities=bool(include_entities or meeting_records is not None or appearance_records is not None or spicy_regs is not None)
+    include_org_entities=bool(include_org_entities)
+    if (org_decision_files or prior_org_release is not None) and not include_org_entities:
+        raise ValueError('org_decision_files and prior_org_release require include_org_entities=True')
+    if include_org_entities and not include_entities:
+        raise ValueError('Organization entity tables require include_entities=True')
     # All or none: an omitted table means unavailable, never empty (DM8).
     explorer_inputs=video_records is not None or committee_records is not None or bool(recording_decision_files)
     if explorer_inputs and (video_records is None or committee_records is None or not recording_decision_files or not include_entities):
@@ -1742,11 +2348,9 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     qual_input,qual_step=model_qualification_input(qual_sources or None,scratch/'qualifications')
     inputs.append(qual_input)
     prelude.append(qual_step)
-    if docmeta_v6_1 is not None:
-        from viewer_publication.docmeta_v6_1 import docmeta_inputs_and_prelude
-        dm_inputs,dm_prelude=docmeta_inputs_and_prelude(docmeta_v6_1)
-        inputs += dm_inputs
-        prelude += dm_prelude
+    if include_org_entities:
+        inputs += org_entity_inputs(scratch,org_decision_files=org_decision_files,
+            prior_org_release=prior_org_release,release_label=org_release_label,root=root)
     prelude[0:0]=compatible_versions.selected_readings_steps(entries,parsers=pins)
     inputs += provenance
     recovery_policy=None
@@ -1858,7 +2462,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         snapshots=selectors,writer_settings=dict(schema_version=1,whole=_settings('whole',['list_row']),
             ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key']),
             auxiliary_row_group_rows=AUXILIARY_ROW_GROUP_ROWS),root=root,
-        recovery_policy=recovery_policy,historical_recording_matcher=historical_recording_matcher,docmeta_v6_1=docmeta_v6_1,
+        recovery_policy=recovery_policy,historical_recording_matcher=historical_recording_matcher,
         pdf_cover_evidence=pdf_cover_evidence)
     (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
@@ -1868,7 +2472,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         has_document_references=has_document_references,
         has_rank_credentials=has_rank_credentials,
         historical_recording_matcher=historical_recording_matcher is not None,
-        has_docmeta_v6_1=docmeta_v6_1 is not None,
+        include_org_entities=include_org_entities,
         carried_html_metadata=carried_html_metadata)
 
 
@@ -1878,8 +2482,9 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
                   spicy_regs=None,include_entities=False,recovery_requirements=None,
                   video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                   transcript_headings=None,
-                  historical_recording_matcher=None,docmeta_v6_1=None,pdf_cover_evidence=None,body_qualifications=None,prior_links=None,base_retired=None,base_release_id=None,
-                  carried_html_metadata=0,root=ROOT,registry=None):
+                  historical_recording_matcher=None,pdf_cover_evidence=None,body_qualifications=None,prior_links=None,base_retired=None,base_release_id=None,
+                  carried_html_metadata=0,include_org_entities=False,org_decision_files=(),
+                  prior_org_release=None,org_release_label='current',root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
@@ -1888,10 +2493,12 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         appearance_records=appearance_records,spicy_regs=spicy_regs,include_entities=include_entities,
         recovery_requirements=recovery_requirements,video_records=video_records,committee_records=committee_records,
         recording_decision_files=recording_decision_files,playlist_records=playlist_records,transcript_headings=transcript_headings,
-        historical_recording_matcher=historical_recording_matcher,docmeta_v6_1=docmeta_v6_1,pdf_cover_evidence=pdf_cover_evidence,
+        historical_recording_matcher=historical_recording_matcher,pdf_cover_evidence=pdf_cover_evidence,
         body_qualifications=body_qualifications,
         prior_links=prior_links,base_retired=base_retired,base_release_id=base_release_id,
-        carried_html_metadata=carried_html_metadata,root=root,registry=registry)
+        carried_html_metadata=carried_html_metadata,include_org_entities=include_org_entities,
+        org_decision_files=org_decision_files,prior_org_release=prior_org_release,
+        org_release_label=org_release_label,root=root,registry=registry)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
@@ -2185,13 +2792,14 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         m.filename AS effective_filename,m.source_url,c.member_path
         FROM document_members m JOIN document_identities d ON m.component=d.component JOIN ordered o ON d.document_id=o.doc_key
         LEFT JOIN capture_source_contexts c ON m.source_id=c.source_id""",settings=_settings('whole',['document_id','source_id','member_path'],footer_limit=4 << 20))]
-    docmeta_diagnostics=[]
-    if prepared.get('has_docmeta_v6_1'):
-        from viewer_publication.docmeta_v6_1 import docmeta_release_artifacts
-        dm_steps,dm_extra,docmeta_diagnostics=docmeta_release_artifacts(
-            evidence=evidence,settings=_settings('whole',['list_row'],footer_limit=4 << 20),root=root)
-        steps += dm_steps
-        extra += dm_extra
+    org_diagnostics=[]
+    org_meta_queries=[]
+    if prepared.get('include_org_entities'):
+        org_dir=evidence/'org_entities'
+        org_dir.mkdir(parents=True,exist_ok=True)
+        steps += org_entity_steps(root=root)
+        extra += org_entity_outputs(org_dir)
+        org_meta_queries,org_diagnostics=org_entity_queries()
     causes={
         'capture_evidence':['receipt_key','receipt_line','capture_index'],
         'record_roles':['receipt_key','receipt_line','capture_index'],
@@ -2298,6 +2906,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
             ORDER BY record_sha_hex,page_url,name_key"""),
         ]
     if prepared.get('explorer_inputs'):meta_queries+=meta_explorer
+    meta_queries += org_meta_queries
     manifest=_execute(inputs,steps,output=output,scratch=scratch,engine=engine,
         # A real file's copy URLs, and a landing page's (ct-m878: its request URL too) on the document it names.
         lookup_extra="""SELECT o.list_row,a.url FROM source_addresses a JOIN (
@@ -2369,7 +2978,7 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
                     UNION SELECT substr(right_node,3,16) AS prefix FROM body_review_edges WHERE right_node IS NOT NULL
                 ) rev ON substr(o.bh,1,16)=rev.prefix
             ) merged_docs ON single_vk.doc_key=merged_docs.doc_key) AS single_doc_version_keys{entity_invariant_sql}"""),
-            LANDING_PAGE_INVARIANTS,RECOVERED_FILE_INVARIANTS]+explorer_diagnostics+url_state_diagnostics()+docmeta_diagnostics+completeness_checks(
+            LANDING_PAGE_INVARIANTS,RECOVERED_FILE_INVARIANTS]+explorer_diagnostics+url_state_diagnostics()+org_diagnostics+completeness_checks(
             catalog_version=catalog_version,
             include_entities=bool(prepared.get('include_entities')),
             meeting_records_version=parser_versions.get('meeting_records') if isinstance(parser_versions,dict) else None,

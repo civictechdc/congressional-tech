@@ -16,7 +16,7 @@ def main(argv=None):
     parser.add_argument('--apply',action='store_true')
     parser.add_argument('--bucket',default='congressional-tech-raw')
     parser.add_argument('--records',type=Path,help='Author new JSONL decisions into a local stage')
-    parser.add_argument('--kind',choices=('reviews','recoveries'))
+    parser.add_argument('--kind',choices=('reviews','recoveries','org_decisions'))
     parser.add_argument('--decided-at',help='Explicit timestamp for the local decision batch')
     args=parser.parse_args(argv)
     if args.records:

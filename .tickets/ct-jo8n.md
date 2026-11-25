@@ -5,10 +5,10 @@ deps: [ct-qkvr, ct-nloa, ct-5fkx]
 links: [ct-nloa, ct-qkvr, ct-5fkx, ct-f11a, ct-4nyy, ct-gf8i, ct-n6lj, ct-csjp, ct-vt7i, ct-d8cf, ct-mi03]
 created: 2026-10-20T22:15:53Z
 type: feature
-priority: 1
+priority: 4
 assignee: mikewolfd
 parent: ct-d8cf
-tags: [docspec, application-adoption, efficiency]
+tags: [docspec, application-adoption, efficiency, parked]
 ---
 
 # Make News Lake reads agree on one exact published release
@@ -75,3 +75,7 @@ validated 2026-11-11, left open: parked News Lake work, nothing changed since th
 **2026-11-17T09:17:02Z**
 
 17 November manual current-code audit: KEEP OPEN, PARKED. Exact-release reader/CLI delivery remains credited. storage/docspec/views.py:219 still substitutes mutable latest bridge state during incremental refresh; _base_version also falls back to latest. Fresh-process A/B/A and old-release-after-compaction acceptance remain unproved on the intended runtime. Reuse ct-d8cf's recovery/maintenance scenario; do not revive completed backend migration work. No scheduled News Lake run or OCR dependency was introduced. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.
+
+**2026-11-22T18:41:11Z**
+
+2026-11-22 ticket backlog audit: Parked at P4 — News Lake has no active product consumer or scheduled run; deprioritized off P1 until a live consumer exists.

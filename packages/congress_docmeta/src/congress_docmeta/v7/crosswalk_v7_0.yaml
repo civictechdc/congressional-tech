@@ -1,0 +1,833 @@
+crosswalk_id: "crosswalk_v7.0"
+schema_version: "7.1"
+
+standards:
+  congress_gov_v3:
+    meeting_document_types:
+      - "Activity Report"
+      - "Bills and Resolutions"
+      - "Committee Amendment"
+      - "Committee Recorded Vote"
+      - "Committee Report"
+      - "Committee Rules"
+      - "Conference Report"
+      - "Floor Amendment"
+      - "Generic Document"
+      - "Hearing: Cover Page"
+      - "Hearing: Member Roster"
+      - "Hearing: Questions for the Record"
+      - "Hearing: Table of Contents"
+      - "Hearing: Transcript"
+      - "Hearing: Witness List"
+      - "House or Senate Amendment"
+      - "Member Statements"
+      - "Support Document"
+    witness_document_types:
+      - "Witness Biography"
+      - "Witness Statement"
+      - "Witness Supporting Document"
+      - "Witness Truth in Testimony"
+    aliases:
+      "Witness Support Document": "Witness Supporting Document"
+
+  docs_house_gov:
+    codes:
+      WS: "Witness Statement"
+      WT: "Witness Truth in Testimony"
+      WB: "Witness Biography"
+      WD: "Witness Supporting Document"
+      SD: "Support Document"
+      HM: "Hearing: Member Roster / Hearing Memorandum"
+      BR: "Bills and Resolutions"
+      BL: "Bill Text / Legislative Measure"
+      AM: "Amendment"
+      CA: "Committee Amendment"
+      FA: "Floor Amendment"
+      ANS: "Amendment in the Nature of a Substitute"
+      CR: "Committee Report"
+      CV: "Committee Recorded Vote"
+      HT: "Hearing Transcript"
+      NT: "Hearing / Meeting Notice"
+
+  lcgft:
+    "http://id.loc.gov/authorities/genreForms/gf2013025047": "Legislative hearings"
+    "http://id.loc.gov/authorities/genreForms/gf2011026360": "Legislative bills"
+    "http://id.loc.gov/authorities/genreForms/gf2011026362": "Legislative materials"
+
+  v65_legacy:
+    doc_kinds:
+      - "hearing_transcript"
+      - "witness_statement"
+      - "member_opening_statement"
+      - "member_or_floor_statement"
+      - "truth_in_testimony_disclosure"
+      - "witness_biography"
+      - "witness_list"
+      - "member_roster"
+      - "attendance_quorum_sheet"
+      - "qfr_request"
+      - "qfr_response"
+      - "nominee_questionnaire_apq"
+      - "hearing_notice"
+      - "markup_notice"
+      - "hearing_memo_or_charter"
+      - "meeting_results"
+      - "committee_vote"
+      - "bill_or_draft"
+      - "committee_amendment"
+      - "comparative_print"
+      - "section_by_section"
+      - "committee_report"
+      - "explanatory_statement"
+      - "committee_resolution"
+      - "committee_rules"
+      - "oversight_plan"
+      - "budget_views_and_estimates"
+      - "revenue_or_cost_estimate"
+      - "treaty_document"
+      - "agency_or_gao_crs_report"
+      - "external_report_or_whitepaper"
+      - "oversight_letter"
+      - "witness_invitation"
+      - "nomination_or_support_letter"
+      - "external_submission_letter"
+      - "public_comment_or_submission"
+      - "investigative_exhibit"
+      - "legal_or_investigative_filing"
+      - "news_clip_or_article"
+      - "press_release_or_fact_sheet"
+      - "legislative_schedule_or_calendar"
+      - "gsa_prospectus_or_property"
+      - "slides_or_visual"
+      - "event_web_page"
+      - "multi_doc_packet"
+      - "error_or_non_document"
+      - "other"
+    statuses:
+      - "usable"
+      - "cover_or_toc"
+      - "govinfo_wrapper"
+      - "index_or_listing"
+      - "catalog_xml"
+      - "stub_or_blank"
+      - "error_or_block"
+      - "ocr_unreadable"
+
+  archive_document_kind:
+    canonical_kinds:
+      - "meeting-notice"
+      - "weekly-meeting-notice"
+      - "committee-memorandum"
+      - "witness-list"
+      - "member-roster"
+      - "rules-memorandum"
+      - "witness-statement"
+      - "member-statement"
+      - "witness-biography"
+      - "testimony-disclosure"
+      - "committee-transcript"
+      - "committee-vote"
+      - "questions-for-record"
+      - "questions-for-record-response"
+      - "letter"
+      - "support-document"
+      - "legislative-text"
+      - "committee-amendment"
+      - "floor-amendment"
+      - "committee-report"
+      - "revenue-estimate"
+      - "budget-views-and-estimates"
+    synonym_groups:
+      - ["witness-statement", "testimony"]
+      - ["committee-amendment", "amendment"]
+      - ["witness-biography", "biography"]
+      - ["member-statement", "opening-statement"]
+      - ["committee-transcript", "transcript"]
+
+v7_to_document_kind:
+  hearing_or_markup_notice:
+    document_kind: "meeting-notice"
+    aliases: ["weekly-meeting-notice"]
+  hearing_memo_or_witness_list:
+    document_kind: "committee-memorandum"
+    subkind_overrides:
+      witness_list: "witness-list"
+      member_roster: "member-roster"
+      rules_memorandum: "rules-memorandum"
+  witness_testimony:
+    document_kind: "witness-statement"
+    aliases: ["testimony"]
+  member_statement:
+    document_kind: "member-statement"
+    aliases: ["opening-statement"]
+  witness_biography:
+    document_kind: "witness-biography"
+    aliases: ["biography"]
+  truth_in_testimony:
+    document_kind: "testimony-disclosure"
+  hearing_transcript:
+    document_kind: "committee-transcript"
+    aliases: ["transcript"]
+  committee_vote_or_action:
+    document_kind: "committee-vote"
+  qfr_correspondence:
+    document_kind: "questions-for-record"
+    subkind_overrides:
+      qfr_response: "questions-for-record-response"
+      questions_for_the_record_response: "questions-for-record-response"
+  oversight_or_committee_letter:
+    document_kind: "letter"
+  external_submission_or_comment:
+    document_kind: "support-document"
+    aliases: ["meeting-support", "witness-support", "letter-of-support"]
+  bill_or_amendment:
+    document_kind: "legislative-text"
+    subkind_overrides:
+      amendment: "committee-amendment"
+      committee_amendment: "committee-amendment"
+      amendment_in_nature_of_substitute: "committee-amendment"
+      floor_amendment: "floor-amendment"
+  committee_or_agency_report:
+    document_kind: "committee-report"
+    aliases: ["report", "published-report"]
+  budget_or_cost_estimate:
+    document_kind: "revenue-estimate"
+    subkind_overrides:
+      budget_views_and_estimates: "budget-views-and-estimates"
+
+v7_to_external:
+  hearing_or_markup_notice:
+    congress_gov_meeting_doc_types:
+      - "Support Document"
+      - "Generic Document"
+    docs_house_gov_codes:
+      - "NT"
+      - "SD"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  hearing_memo_or_witness_list:
+    congress_gov_meeting_doc_types:
+      - "Hearing: Witness List"
+      - "Hearing: Member Roster"
+      - "Support Document"
+    docs_house_gov_codes:
+      - "HM"
+      - "SD"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  witness_testimony:
+    congress_gov_meeting_doc_types:
+      - "Witness Statement"
+    docs_house_gov_codes:
+      - "WS"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  member_statement:
+    congress_gov_meeting_doc_types:
+      - "Member Statements"
+    docs_house_gov_codes:
+      - "SD"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  witness_biography:
+    congress_gov_meeting_doc_types:
+      - "Witness Biography"
+    docs_house_gov_codes:
+      - "WB"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  truth_in_testimony:
+    congress_gov_meeting_doc_types:
+      - "Witness Truth in Testimony"
+    docs_house_gov_codes:
+      - "WT"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  hearing_transcript:
+    congress_gov_meeting_doc_types:
+      - "Hearing: Transcript"
+    docs_house_gov_codes:
+      - "HT"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2013025047"
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  committee_vote_or_action:
+    congress_gov_meeting_doc_types:
+      - "Committee Recorded Vote"
+      - "Support Document"
+    docs_house_gov_codes:
+      - "CV"
+      - "SD"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  qfr_correspondence:
+    congress_gov_meeting_doc_types:
+      - "Hearing: Questions for the Record"
+    docs_house_gov_codes:
+      - "SD"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  oversight_or_committee_letter:
+    congress_gov_meeting_doc_types:
+      - "Support Document"
+      - "Generic Document"
+    docs_house_gov_codes:
+      - "SD"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  external_submission_or_comment:
+    congress_gov_meeting_doc_types:
+      - "Witness Supporting Document"
+      - "Support Document"
+      - "Generic Document"
+    docs_house_gov_codes:
+      - "WD"
+      - "SD"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  bill_or_amendment:
+    congress_gov_meeting_doc_types:
+      - "Bills and Resolutions"
+      - "Committee Amendment"
+      - "Floor Amendment"
+      - "House or Senate Amendment"
+    docs_house_gov_codes:
+      - "BR"
+      - "BL"
+      - "AM"
+      - "CA"
+      - "FA"
+      - "ANS"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026360"
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  committee_or_agency_report:
+    congress_gov_meeting_doc_types:
+      - "Committee Report"
+      - "Conference Report"
+      - "Activity Report"
+      - "Committee Rules"
+    docs_house_gov_codes:
+      - "CR"
+      - "SD"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+  budget_or_cost_estimate:
+    congress_gov_meeting_doc_types:
+      - "Support Document"
+      - "Committee Report"
+    docs_house_gov_codes:
+      - "SD"
+      - "CR"
+    lcgft_uris:
+      - "http://id.loc.gov/authorities/genreForms/gf2011026362"
+
+congress_gov_to_v7:
+  "Activity Report":
+    status: "usable"
+    primary_genre: "committee_or_agency_report"
+    subkind: "activity_report"
+  "Bills and Resolutions":
+    status: "usable"
+    primary_genre: "bill_or_amendment"
+    subkind: "bill_or_resolution"
+  "Committee Amendment":
+    status: "usable"
+    primary_genre: "bill_or_amendment"
+    subkind: "committee_amendment"
+  "Committee Recorded Vote":
+    status: "usable"
+    primary_genre: "committee_vote_or_action"
+    subkind: "committee_vote"
+  "Committee Report":
+    status: "usable"
+    primary_genre: "committee_or_agency_report"
+    subkind: "committee_report"
+  "Committee Rules":
+    status: "usable"
+    primary_genre: "committee_or_agency_report"
+    subkind: "committee_rules"
+  "Conference Report":
+    status: "usable"
+    primary_genre: "committee_or_agency_report"
+    subkind: "conference_report"
+  "Floor Amendment":
+    status: "usable"
+    primary_genre: "bill_or_amendment"
+    subkind: "floor_amendment"
+  "Generic Document":
+    status: "usable"
+    primary_genre: "external_submission_or_comment"
+    subkind: "generic_document"
+  "Hearing: Cover Page":
+    status: "cover_or_toc"
+    primary_genre: null
+    subkind: "hearing_cover_page"
+  "Hearing: Member Roster":
+    status: "usable"
+    primary_genre: "hearing_memo_or_witness_list"
+    subkind: "member_roster"
+  "Hearing: Questions for the Record":
+    status: "usable"
+    primary_genre: "qfr_correspondence"
+    subkind: null
+  "Hearing: Table of Contents":
+    status: "cover_or_toc"
+    primary_genre: null
+    subkind: "hearing_table_of_contents"
+  "Hearing: Transcript":
+    status: "usable"
+    primary_genre: "hearing_transcript"
+    subkind: null
+  "Hearing: Witness List":
+    status: "usable"
+    primary_genre: "hearing_memo_or_witness_list"
+    subkind: "witness_list"
+  "House or Senate Amendment":
+    status: "usable"
+    primary_genre: "bill_or_amendment"
+    subkind: "interchamber_amendment"
+  "Member Statements":
+    status: "usable"
+    primary_genre: "member_statement"
+    subkind: null
+  "Support Document":
+    status: "usable"
+    primary_genre: "external_submission_or_comment"
+    subkind: "support_document"
+  "Witness Biography":
+    status: "usable"
+    primary_genre: "witness_biography"
+    subkind: null
+  "Witness Statement":
+    status: "usable"
+    primary_genre: "witness_testimony"
+    subkind: null
+  "Witness Supporting Document":
+    status: "usable"
+    primary_genre: "external_submission_or_comment"
+    subkind: "witness_support_document"
+  "Witness Truth in Testimony":
+    status: "usable"
+    primary_genre: "truth_in_testimony"
+    subkind: null
+
+docs_house_gov_to_v7:
+  WS:
+    status: "usable"
+    primary_genre: "witness_testimony"
+    subkind: null
+  WT:
+    status: "usable"
+    primary_genre: "truth_in_testimony"
+    subkind: null
+  WB:
+    status: "usable"
+    primary_genre: "witness_biography"
+    subkind: null
+  WD:
+    status: "usable"
+    primary_genre: "external_submission_or_comment"
+    subkind: "witness_support_document"
+  SD:
+    status: "usable"
+    primary_genre: "external_submission_or_comment"
+    subkind: "support_document"
+  HM:
+    status: "usable"
+    primary_genre: "hearing_memo_or_witness_list"
+    subkind: "member_roster_or_memo"
+  BR:
+    status: "usable"
+    primary_genre: "bill_or_amendment"
+    subkind: "bill_or_resolution"
+  BL:
+    status: "usable"
+    primary_genre: "bill_or_amendment"
+    subkind: "bill_text"
+  AM:
+    status: "usable"
+    primary_genre: "bill_or_amendment"
+    subkind: "amendment"
+  CA:
+    status: "usable"
+    primary_genre: "bill_or_amendment"
+    subkind: "committee_amendment"
+  FA:
+    status: "usable"
+    primary_genre: "bill_or_amendment"
+    subkind: "floor_amendment"
+  ANS:
+    status: "usable"
+    primary_genre: "bill_or_amendment"
+    subkind: "amendment_in_nature_of_substitute"
+  CR:
+    status: "usable"
+    primary_genre: "committee_or_agency_report"
+    subkind: "committee_report"
+  CV:
+    status: "usable"
+    primary_genre: "committee_vote_or_action"
+    subkind: "committee_vote"
+  HT:
+    status: "usable"
+    primary_genre: "hearing_transcript"
+    subkind: null
+  NT:
+    status: "usable"
+    primary_genre: "hearing_or_markup_notice"
+    subkind: "hearing_notice"
+
+v65_statuses_to_v7:
+  usable: "usable"
+  cover_or_toc: "cover_or_toc"
+  govinfo_wrapper: "govinfo_wrapper"
+  index_or_listing: "index_or_listing"
+  catalog_xml: "catalog_xml"
+  stub_or_blank: "stub_or_blank"
+  error_or_block: "error_or_block"
+  ocr_unreadable: "ocr_unreadable"
+
+v65_kinds_to_v7:
+  hearing_transcript:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "hearing_transcript"
+    subkind: null
+    requires_v7_relabel: false
+  witness_statement:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "witness_testimony"
+    subkind: null
+    requires_v7_relabel: false
+  member_opening_statement:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "member_statement"
+    subkind: "opening_statement"
+    requires_v7_relabel: false
+  member_or_floor_statement:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "member_statement"
+    subkind: "floor_or_record_statement"
+    requires_v7_relabel: false
+  truth_in_testimony_disclosure:
+    status: "usable"
+    media_format: "table_or_form"
+    is_packet: false
+    primary_genre: "truth_in_testimony"
+    subkind: null
+    requires_v7_relabel: false
+  witness_biography:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "witness_biography"
+    subkind: null
+    requires_v7_relabel: false
+  witness_list:
+    status: "usable"
+    media_format: "table_or_form"
+    is_packet: false
+    primary_genre: "hearing_memo_or_witness_list"
+    subkind: "witness_list"
+    requires_v7_relabel: false
+  member_roster:
+    status: "usable"
+    media_format: "table_or_form"
+    is_packet: false
+    primary_genre: "hearing_memo_or_witness_list"
+    subkind: "member_roster"
+    requires_v7_relabel: false
+  attendance_quorum_sheet:
+    status: "usable"
+    media_format: "table_or_form"
+    is_packet: false
+    primary_genre: "committee_vote_or_action"
+    subkind: "attendance_quorum_sheet"
+    requires_v7_relabel: false
+  qfr_request:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "qfr_correspondence"
+    subkind: "qfr_request"
+    requires_v7_relabel: false
+  qfr_response:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "qfr_correspondence"
+    subkind: "qfr_response"
+    requires_v7_relabel: false
+  nominee_questionnaire_apq:
+    status: "usable"
+    media_format: "table_or_form"
+    is_packet: false
+    primary_genre: "witness_biography"
+    subkind: "nominee_questionnaire_apq"
+    requires_v7_relabel: false
+  hearing_notice:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "hearing_or_markup_notice"
+    subkind: "hearing_notice"
+    requires_v7_relabel: false
+  markup_notice:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "hearing_or_markup_notice"
+    subkind: "markup_notice"
+    requires_v7_relabel: false
+  hearing_memo_or_charter:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "hearing_memo_or_witness_list"
+    subkind: "hearing_memo_or_charter"
+    requires_v7_relabel: false
+  meeting_results:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "committee_vote_or_action"
+    subkind: "meeting_results"
+    requires_v7_relabel: false
+  committee_vote:
+    status: "usable"
+    media_format: "table_or_form"
+    is_packet: false
+    primary_genre: "committee_vote_or_action"
+    subkind: "committee_vote"
+    requires_v7_relabel: false
+  bill_or_draft:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "bill_or_amendment"
+    subkind: "bill_or_draft"
+    requires_v7_relabel: false
+  committee_amendment:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "bill_or_amendment"
+    subkind: "committee_amendment"
+    requires_v7_relabel: false
+  comparative_print:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "bill_or_amendment"
+    subkind: "comparative_print"
+    requires_v7_relabel: false
+  section_by_section:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "committee_or_agency_report"
+    subkind: "section_by_section"
+    requires_v7_relabel: false
+  committee_report:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "committee_or_agency_report"
+    subkind: "committee_report"
+    requires_v7_relabel: false
+  explanatory_statement:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "committee_or_agency_report"
+    subkind: "explanatory_statement"
+    requires_v7_relabel: false
+  committee_resolution:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "committee_vote_or_action"
+    subkind: "committee_resolution"
+    requires_v7_relabel: false
+  committee_rules:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "committee_or_agency_report"
+    subkind: "committee_rules"
+    requires_v7_relabel: false
+  oversight_plan:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "committee_or_agency_report"
+    subkind: "oversight_plan"
+    requires_v7_relabel: false
+  budget_views_and_estimates:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "budget_or_cost_estimate"
+    subkind: "budget_views_and_estimates"
+    requires_v7_relabel: false
+  revenue_or_cost_estimate:
+    status: "usable"
+    media_format: "table_or_form"
+    is_packet: false
+    primary_genre: "budget_or_cost_estimate"
+    subkind: "revenue_or_cost_estimate"
+    requires_v7_relabel: false
+  treaty_document:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "bill_or_amendment"
+    subkind: "treaty_document"
+    requires_v7_relabel: false
+  agency_or_gao_crs_report:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "committee_or_agency_report"
+    subkind: "agency_or_gao_crs_report"
+    requires_v7_relabel: false
+  external_report_or_whitepaper:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "committee_or_agency_report"
+    subkind: "external_report_or_whitepaper"
+    requires_v7_relabel: false
+  oversight_letter:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "oversight_or_committee_letter"
+    subkind: "oversight_letter"
+    requires_v7_relabel: false
+  witness_invitation:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "oversight_or_committee_letter"
+    subkind: "witness_invitation"
+    requires_v7_relabel: false
+  nomination_or_support_letter:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "external_submission_or_comment"
+    subkind: "nomination_or_support_letter"
+    requires_v7_relabel: false
+  external_submission_letter:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "external_submission_or_comment"
+    subkind: "external_submission_letter"
+    requires_v7_relabel: false
+  public_comment_or_submission:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "external_submission_or_comment"
+    subkind: "public_comment_or_submission"
+    requires_v7_relabel: false
+  investigative_exhibit:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "external_submission_or_comment"
+    subkind: "investigative_exhibit"
+    requires_v7_relabel: false
+  legal_or_investigative_filing:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "oversight_or_committee_letter"
+    subkind: "legal_or_investigative_filing"
+    requires_v7_relabel: false
+  news_clip_or_article:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "external_submission_or_comment"
+    subkind: "news_clip_or_article"
+    requires_v7_relabel: false
+  press_release_or_fact_sheet:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "committee_or_agency_report"
+    subkind: "press_release_or_fact_sheet"
+    requires_v7_relabel: true
+  legislative_schedule_or_calendar:
+    status: "usable"
+    media_format: "table_or_form"
+    is_packet: false
+    primary_genre: "hearing_or_markup_notice"
+    subkind: "legislative_schedule_or_calendar"
+    requires_v7_relabel: false
+  gsa_prospectus_or_property:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "budget_or_cost_estimate"
+    subkind: "gsa_prospectus_or_property"
+    requires_v7_relabel: false
+  slides_or_visual:
+    status: "usable"
+    media_format: "slides"
+    is_packet: false
+    primary_genre: "witness_testimony"
+    subkind: "slides_or_visual_legacy"
+    requires_v7_relabel: true
+  event_web_page:
+    status: "usable"
+    media_format: "web_page"
+    is_packet: false
+    primary_genre: "hearing_or_markup_notice"
+    subkind: "event_web_page_legacy"
+    requires_v7_relabel: true
+  multi_doc_packet:
+    status: "usable"
+    media_format: "prose"
+    is_packet: true
+    primary_genre: "witness_testimony"
+    subkind: "multi_doc_packet_legacy"
+    requires_v7_relabel: true
+  error_or_non_document:
+    status: "stub_or_blank"
+    media_format: null
+    is_packet: false
+    primary_genre: null
+    subkind: "error_or_non_document_legacy"
+    requires_v7_relabel: true
+  other:
+    status: "usable"
+    media_format: "prose"
+    is_packet: false
+    primary_genre: "external_submission_or_comment"
+    subkind: "other_legacy"
+    requires_v7_relabel: true
