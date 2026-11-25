@@ -310,7 +310,7 @@ def test_committed_shard_durations_keep_every_production_offline_shard_within_bu
     parts = [dev.shard_files(files, roots, (i, 6), durations=durations) for i in range(1, 7)]
     loads = [sum(durations.get(name, dev.DEFAULT_SHARD_DURATION_MS) for name in part) for part in parts]
     max_file = max(durations.get(name, dev.DEFAULT_SHARD_DURATION_MS) for name in enrolled)
-    assert max(loads) < 1_050_000
+    assert max(loads) < 1_350_000  # 611 offline files across 6 shards (45m job timeout)
     assert max(loads) <= max(max_file, min(loads) + 30_000)
 
 
