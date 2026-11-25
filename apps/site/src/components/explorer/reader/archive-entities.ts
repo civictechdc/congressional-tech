@@ -71,7 +71,7 @@ export interface ArchiveEntityContext {
   personRecord?: (key: string) => Promise<any | null>;
   personAlias?: (key: string) => Promise<{ key: string; status: string; successor: string | null; kind: string | null; decision_id: string | null; last_release_id: string | null; candidates: string[] } | null>;
   orgRecord?: (key: string) => Promise<any | null>;
-  orgRedirect?: (key: string) => Promise<{ old_org_id: string; org_id: string; event: string | null; release: string | null } | null>;
+  orgRedirect?: (key: string) => Promise<{ old_org_id: string; org_id: string | null; event: string | null; release: string | null } | null>;
   orgChildren?: (parentId: string) => Promise<any[]>;
   orgExternalIds?: (orgId: string) => Promise<any[]>;
   witnessOrgsByWitness?: (witnessKeys: string[]) => Promise<any[]>;
