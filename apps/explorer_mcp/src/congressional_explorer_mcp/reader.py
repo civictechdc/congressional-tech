@@ -12,8 +12,8 @@ from .release import encoded, quote, literal, kind_words
 from .hearing_reader import HearingReader
 
 # Published display columns that text search reads, wherever a table has them.
-TEXT_FIELDS = ('name', 'rank', 'credentials', 'on_behalf_of', 'title', 'short_title', 'public_law_number', 'description',
-               'organization', 'position', 'video_key', 'source_description', 'committee_label', 'handle',
+TEXT_FIELDS = ('name', 'display_name', 'rank', 'credentials', 'on_behalf_of', 'title', 'short_title', 'public_law_number', 'description',
+               'organization', 'raw_text', 'position', 'video_key', 'source_description', 'committee_label', 'handle',
                'note', 'identity_note', 'action_text', 'question', 'member_name')
 LIST_TEXT_FIELDS = ('ranks', 'name_variants', 'organizations', 'positions')
 
@@ -231,6 +231,27 @@ class Reader(HearingReader, LegislativeReader):
                     cands = ', '.join(sorted(candidates or []))
                     raise ExplorerError(f'Person key {key!r} is ambiguous in this release; candidate person_keys: {cands}')
                 raise ExplorerError(f'Person key {key!r} is no longer published and is unresolved in person_aliases')
+        return key, None
+
+    def _resolve_org_id(self, key: str) -> tuple[str, str | None]:
+        if 'organizations' in self.schemas:
+            found = self.db.execute('SELECT org_id FROM organizations WHERE org_id=? LIMIT 1', [key]).fetchall()
+            if found:
+                return found[0][0], None
+        if 'organization_redirects' in self.schemas:
+            order_by = ' ORDER BY release DESC' if 'release' in self.schemas['organization_redirects'] else ''
+            mapped = self.db.execute(
+                f'SELECT org_id FROM organization_redirects WHERE old_org_id=?{order_by} LIMIT 1', [key]
+            ).fetchall()
+            if mapped:
+                target = mapped[0][0]
+                if not target:
+                    raise ExplorerError(f'Organization {key!r} is retired with no target org_id')
+                live = self.db.execute('SELECT org_id FROM organizations WHERE org_id=? LIMIT 1', [target]).fetchall() \
+                    if 'organizations' in self.schemas else []
+                if not live:
+                    raise ExplorerError(f'Organization {key!r} redirect target {target!r} is absent from this release')
+                return live[0][0], key
         return key, None
 
     def search_text(self, value):
@@ -694,6 +715,8 @@ class Reader(HearingReader, LegislativeReader):
             fields = [name for name in TEXT_FIELDS if name in columns]
             if query.table == 'people' and 'bioguide_id' in columns:
                 fields.append('bioguide_id')
+            if query.table == 'organizations' and 'org_id' in columns:
+                fields.append('org_id')
             list_fields = [name for name in LIST_TEXT_FIELDS if name in columns and '[]' in columns[name]]
             clauses = [f'contains(lower(coalesce({quote(name)},\'\')),lower(?))' for name in fields]
             if {'rank', 'name'} <= columns.keys():
@@ -703,6 +726,8 @@ class Reader(HearingReader, LegislativeReader):
                     clauses.append(f'contains(lower(concat_ws(\' \',{base},"credentials")),lower(?))')
                     clauses.append(f'contains(lower(concat_ws(\', \',{base},"credentials")),lower(?))')
             clauses += [f'EXISTS (SELECT 1 FROM unnest({quote(name)}) u(v) WHERE contains(lower(coalesce(u.v,\'\')),lower(?)))' for name in list_fields]
+            if query.table == 'organizations' and 'organization_ids' in self.schemas:
+                clauses.append('EXISTS (SELECT 1 FROM organization_ids oi WHERE oi.org_id=organizations.org_id AND contains(lower(coalesce(oi.value,\'\')),lower(?)))')
             conditions.append('(' + ' OR '.join(clauses) + ')' if clauses else 'false')
             args += [query.text] * len(clauses)
         scalars = ', '.join(k for k, t in columns.items() if '[]' not in t and not t.startswith(('STRUCT', 'MAP', 'BLOB')))
@@ -769,6 +794,8 @@ class Reader(HearingReader, LegislativeReader):
             query.id, redirected_from = self._resolve_witness_key(query.id)
         elif query.table == 'people':
             query.id, redirected_from = self._resolve_person_key(query.id)
+        elif query.table == 'organizations':
+            query.id, redirected_from = self._resolve_org_id(query.id)
         stored = self.db.execute(f'SELECT {quote(key)} FROM {quote(query.table)} WHERE {quote(key)}=? LIMIT 1', [query.id]).fetchall()
         if not stored:
             raise ExplorerError('Entity is absent from this release')
@@ -791,6 +818,10 @@ class Reader(HearingReader, LegislativeReader):
                 )
             elif query.table == 'recordings':
                 sql = 'EXISTS (SELECT 1 FROM recordings r,unnest(r.event_ids) e(event_id) WHERE r.video_key=? AND list_contains(l.meeting_keys,cast(e.event_id AS VARCHAR)))'
+            elif query.table == 'organizations':
+                if 'witness_organizations' not in self.schemas:
+                    raise ExplorerError('This entity has no published document relationship')
+                sql = 'EXISTS (SELECT 1 FROM witness_organizations wo WHERE wo.org_id=? AND list_contains(l.witness_keys,wo.witness_key))'
             else:
                 raise ExplorerError('This entity has no published document relationship')
             docs_res = self.document_rows(self.page(query,
@@ -818,4 +849,83 @@ class Reader(HearingReader, LegislativeReader):
         if selected is not None:
             result['omitted_fields'] = [name for name in self.schemas[query.table] if name not in selected]
             result['detail_access'] = 'Use mode=detail, fields=[...], or query_sql to slice large nested lists.'
+        elif query.table == 'organizations' and result['rows']:
+            row = result['rows'][0]
+            ids_res, app_res = None, None
+            if 'organization_ids' in self.schemas:
+                ids_res = self.rows(
+                    'SELECT scheme,value FROM organization_ids WHERE org_id=? ORDER BY scheme,value',
+                    [query.id], limit=100,
+                )
+            if 'witness_organizations' in self.schemas:
+                if 'witnesses' in self.schemas:
+                    sup_filter = ' AND w.superseded_by IS NULL' if 'superseded_by' in self.schemas['witnesses'] else ''
+                    app_sql = (
+                        'SELECT wo.witness_key,wo.field,wo.raw_text,w.name,w.position,w.organization,'
+                        'w.on_behalf_of,w.occasion,w.event_id,w.package_id,w.witness_type '
+                        'FROM witness_organizations wo JOIN witnesses w USING(witness_key) '
+                        f'WHERE wo.org_id=?{sup_filter} '
+                        'ORDER BY w.event_id NULLS LAST,w.package_id NULLS LAST,wo.witness_key,wo.field'
+                    )
+                else:
+                    app_sql = (
+                        'SELECT witness_key,field,raw_text FROM witness_organizations '
+                        'WHERE org_id=? ORDER BY witness_key,field'
+                    )
+                app_res = self.rows(app_sql, [query.id], limit=100)
+            self._attach_org_details(result, row, ids_res, app_res)
         return self.entity_rows(result, query.table, selected_fields=query.fields)
+
+    def _attach_org_details(self, result, row, ids_res, app_res):
+        """Attach organization_ids and appearances without exceeding MAX_BYTES."""
+        ids_rows = list(ids_res['rows']) if ids_res is not None else []
+        app_rows = list(app_res['rows']) if app_res is not None else []
+        ids_trunc = bool(ids_res['has_more']) if ids_res is not None else False
+        app_trunc = bool(app_res['has_more']) if app_res is not None else False
+        if ids_res is not None:
+            row['organization_ids'] = ids_rows
+            row['organization_ids_truncated'] = ids_trunc
+        if app_res is not None:
+            row['appearances'] = app_rows
+            row['appearances_truncated'] = app_trunc
+        if len(encoded(result)) <= MAX_BYTES:
+            return
+        if ids_res is not None:
+            row['organization_ids'] = []
+            row['organization_ids_truncated'] = True
+        if app_res is not None:
+            row['appearances'] = []
+            row['appearances_truncated'] = True
+        used = len(encoded(result))
+        if ids_res is not None:
+            kept_ids = []
+            for item in ids_rows:
+                step = len(encoded(item)) + 1
+                if used + step > MAX_BYTES:
+                    ids_trunc = True
+                    break
+                kept_ids.append(item)
+                used += step
+            else:
+                ids_trunc = bool(ids_res['has_more'])
+            row['organization_ids'] = kept_ids
+            row['organization_ids_truncated'] = ids_trunc
+        if app_res is not None:
+            kept_apps = []
+            for item in app_rows:
+                step = len(encoded(item)) + 1
+                if used + step > MAX_BYTES:
+                    app_trunc = True
+                    break
+                kept_apps.append(item)
+                used += step
+            else:
+                app_trunc = bool(app_res['has_more'])
+            row['appearances'] = kept_apps
+            row['appearances_truncated'] = app_trunc
+        while len(encoded(result)) > MAX_BYTES and row.get('appearances'):
+            row['appearances'].pop()
+            row['appearances_truncated'] = True
+        while len(encoded(result)) > MAX_BYTES and row.get('organization_ids'):
+            row['organization_ids'].pop()
+            row['organization_ids_truncated'] = True

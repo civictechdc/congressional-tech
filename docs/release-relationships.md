@@ -512,7 +512,7 @@ Nullability: Nullability transcribes the phase-2 annex §3 file table (docs/plan
 
 Outgoing: `witness_meeting`, `witness_transcript_documents`, `witness_member`, `witness_matched_member`, `witness_person`, `witness_package`, `witness_page`.
 
-Incoming: `witness_submitted_documents`, `person_witnesses`, `witness_key_map_successor`, `witness_key_map_candidates`.
+Incoming: `witness_submitted_documents`, `person_witnesses`, `witness_key_map_successor`, `witness_key_map_candidates`, `witness_organization_links`.
 
 ## `witness_key_map` — Earlier witness keys and the current witness each resolves to
 
@@ -1307,6 +1307,107 @@ Outgoing: `ballot_roll_call`, `ballot_member`.
 
 Incoming: none.
 
+## `organizations` — Resolved witness organizations
+
+Explore organizations resolved from witness affiliation and on-behalf-of strings, with Ban-Park-You categories and appearance counts.
+
+One resolved organization entity grouped by normalized token-bag key, registry anchor, or reviewed org decision.
+
+Identity: `org_id` (primary_key; published identifier).
+
+Coverage: Identical generic sub-unit names without distinguishing registry or decision anchors share a token-bag group; parent_org_id is populated only where an authoritative registry establishes hierarchy.
+
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `org_id` | `string` | no | Published organization identifier: lowercase 16-hex SHA-256 prefix over "org-v1" plus the winning anchor (fr_agency:<id>, wikidata:<Q>, decision:<id>, bag:<bag_key>, or witness:<witness_key>) |
+| `display_name` | `string` | no | Canonical display name for the organization (winning anchor label when supplied, else most frequent verbatim affiliation string with lexicographic tie-break) |
+| `kind` | `dict` | yes | Organization kind derived from Ban, Park & You (APSR 2023) classification when matched; null when unclassified |
+| `taxonomy_parent` | `dict` | yes | Ban, Park & You (APSR 2023, doi:10.1017/S0003055422000405) 9-parent witness organization category; null when unclassified |
+| `taxonomy_category` | `dict` | yes | Ban, Park & You (APSR 2023, doi:10.1017/S0003055422000405) 18-child witness organization category; null when unclassified |
+| `parent_org_id` | `string` | yes | Parent organization org_id when established by an authoritative registry; null otherwise |
+| `appearance_count` | `int64` | no | Count of distinct witness_key appearances linked to this organization |
+| `bag_keys` | `list<string>` | no | Sorted normalized token-bag keys grouped into this organization |
+| `string_keys` | `list<string>` | no | Sorted normalized L2 string keys grouped into this organization |
+| `anchor` | `string` | no | Winning anchor string used to derive org_id |
+| `has_conflict` | `boolean` | no | True when active org_decisions contain a same/different contradiction touching this component, keeping it unmerged |
+
+Nullability: All identity, display, grouping, and count columns are required; kind, taxonomy_parent, taxonomy_category, and parent_org_id are nullable. A required column is refused at write time.
+
+- `bag_keys[]`: Normalized token-bag keys belonging to this organization; provenance keys, not foreign keys.
+- `string_keys[]`: Normalized L2 affiliation string keys belonging to this organization; provenance keys, not foreign keys.
+
+Outgoing: `organization_parent`.
+
+Incoming: `witness_organization_org`, `organization_external_ids`, `organization_redirect_target`, `organization_parent`.
+
+## `organization_ids` — External and provenance identifiers for organizations
+
+Look up external registry, Wikidata, decision, and token-bag identifiers associated with published organizations.
+
+One (org_id, scheme, value) identifier binding for a published organization.
+
+Identity: `org_id, scheme, value` (primary_key; published identifier).
+
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `org_id` | `string` | no | Published organization identifier in organizations.parquet |
+| `scheme` | `dict` | no | Identifier scheme (bag, decision, wikidata, fr_agency, or witness) |
+| `value` | `string` | no | Identifier value within the scheme |
+
+Nullability: All columns are required. A required column is refused at write time.
+
+
+Outgoing: `organization_external_ids`.
+
+Incoming: none.
+
+## `witness_organizations` — Links between witness appearances and organizations
+
+Join witness appearances (organization and on_behalf_of fields) to resolved organizations while preserving verbatim text.
+
+One affiliation link between a witness appearance field and its resolved organization.
+
+Identity: `witness_key, field` (primary_key; published identifier).
+
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `witness_key` | `string` | no | Witness appearance identifier in witnesses.parquet |
+| `field` | `dict` | no | Source affiliation field on the witness appearance (organization or on_behalf_of) |
+| `org_id` | `string` | no | Resolved organization identifier in organizations.parquet |
+| `bag_key` | `string` | no | Normalized token-bag key for this stated affiliation |
+| `string_key` | `string` | no | Normalized L2 string key for this stated affiliation |
+| `raw_text` | `string` | no | Verbatim organization or on_behalf_of text from the witness appearance row |
+
+Nullability: All columns are required. A required column is refused at write time.
+
+
+Outgoing: `witness_organization_links`, `witness_organization_org`.
+
+Incoming: none.
+
+## `organization_redirects` — One-hop redirects for retired organization identifiers
+
+Resolve retired organization identifiers to their current live organization in one hop.
+
+One prior org_id mapped directly to its current live org_id.
+
+Identity: `old_org_id` (primary_key; published identifier).
+
+| Field | Published type | Nullable | Meaning |
+| --- | --- | --- | --- |
+| `old_org_id` | `string` | no | A previously published org_id redirected or restored by anchor or normalization updates |
+| `org_id` | `string` | no | Current live organizations.org_id that old_org_id resolves to in one hop |
+| `event` | `dict` | no | Redirect cause: merged, split_from, or restored |
+| `release` | `dict` | no | Release label or identifier in which this redirect event took effect |
+
+Nullability: All columns are required. A required column is refused at write time.
+
+- `old_org_id`: Every redirect target org_id is live in organizations.parquet, resolving historical IDs in a single hop.
+
+Outgoing: `organization_redirect_target`.
+
+Incoming: none.
+
 ## Relationships
 
 ### `document_detail`
@@ -1795,6 +1896,36 @@ many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. S
 
 many-to-one; match: `equal`; nullable: false; resolution: `required`. Scope: selected release.
 
+### `witness_organization_links`
+
+`witness_organizations.witness_key` → `witnesses.witness_key`. Witness appearance row stating this organization or on-behalf-of affiliation.
+
+many-to-one; match: `equal`; nullable: false; resolution: `required`. Scope: selected release.
+
+### `witness_organization_org`
+
+`witness_organizations.org_id` → `organizations.org_id`. Resolved organization entity for this witness appearance affiliation.
+
+many-to-one; match: `equal`; nullable: false; resolution: `required`. Scope: selected release.
+
+### `organization_external_ids`
+
+`organization_ids.org_id` → `organizations.org_id`. Published organization owning this scheme/value identifier.
+
+many-to-one; match: `equal`; nullable: false; resolution: `required`. Scope: selected release.
+
+### `organization_redirect_target`
+
+`organization_redirects.org_id` → `organizations.org_id`. Live organization row a retired org_id resolves to in one hop.
+
+many-to-one; match: `equal`; nullable: false; resolution: `required`. Scope: selected release.
+
+### `organization_parent`
+
+`organizations.parent_org_id` → `organizations.org_id`. Parent organization when established by an authoritative registry.
+
+many-to-one; match: `equal`; nullable: true; resolution: `unresolved_allowed`. Scope: selected release.
+
 ## Pinned upstream relations
 
 These are upstream source relations. A release names a relation’s generation and path only when it states that family’s digest. Locally published detail tables are listed above; a source pin alone does not make its rows locally queryable.
@@ -2190,3 +2321,21 @@ SELECT * FROM bills WHERE list_contains(subjects,?)
 Used by run_research_query with additional exact association filters and release-bound paging.
 
 since inclusive, until exclusive; null bounds are open. Missing values remain unknown.
+
+### `organization_appearances` — Appearances by organization
+
+Requires: `organizations`, `witness_organizations`, `witnesses`.
+
+Result: One canonical witness appearance linked to this organization.
+
+Parameters, in order: `org_id` (example `e5b88f10d3d5a5ea`).
+
+```sql
+SELECT o.org_id,o.display_name,wo.field,wo.raw_text,w.witness_key,w.name,w.position,w.occasion,w.event_id,w.package_id
+FROM organizations o JOIN witness_organizations wo USING (org_id) JOIN witnesses w USING (witness_key)
+WHERE o.org_id=? AND w.superseded_by IS NULL ORDER BY w.event_id NULLS LAST,w.package_id,w.witness_key,wo.field LIMIT 100
+```
+
+Follows witness_organizations.org_id and witness_organizations.witness_key; superseded source rows are excluded.
+
+Check organization_redirects when looking up a retired org_id.

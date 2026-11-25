@@ -18,6 +18,7 @@ import {HearingDetail} from './HearingDetail.tsx';
 import {CommitteeDetail} from './CommitteeDetail.tsx';
 import {WitnessDetail} from './WitnessDetail.tsx';
 import {PersonDetail} from './PersonDetail.tsx';
+import {OrganizationDetail} from './OrganizationDetail.tsx';
 import {MemberDetail} from './MemberDetail.tsx';
 import {SubjectDetail} from './SubjectDetail.tsx';
 
@@ -27,6 +28,7 @@ export {
   CommitteeDetail,
   WitnessDetail,
   PersonDetail,
+  OrganizationDetail,
   MemberDetail,
   SubjectDetail,
   siteBase,

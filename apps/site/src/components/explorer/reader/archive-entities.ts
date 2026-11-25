@@ -53,6 +53,8 @@ export const normalizePersonKey = (key: any): string => {
   return clean;
 };
 
+export const normalizeOrgId = (key: any): string => String(key ?? '').trim().toLowerCase();
+
 export interface ArchiveEntityContext {
   count: number;
   files: Map<string, any>;
@@ -68,6 +70,12 @@ export interface ArchiveEntityContext {
   witnessKeyMap?: (key: string) => Promise<{ key: string; status: string; successor: string | null; basis: string | null; candidates: string[] } | null>;
   personRecord?: (key: string) => Promise<any | null>;
   personAlias?: (key: string) => Promise<{ key: string; status: string; successor: string | null; kind: string | null; decision_id: string | null; last_release_id: string | null; candidates: string[] } | null>;
+  orgRecord?: (key: string) => Promise<any | null>;
+  orgRedirect?: (key: string) => Promise<{ old_org_id: string; org_id: string | null; event: string | null; release: string | null } | null>;
+  orgChildren?: (parentId: string) => Promise<any[]>;
+  orgExternalIds?: (orgId: string) => Promise<any[]>;
+  witnessOrgsByWitness?: (witnessKeys: string[]) => Promise<any[]>;
+  witnessOrgsByOrg?: (orgId: string) => Promise<any[]>;
   videoDurations?: () => Promise<Array<{ video_key: string; duration_seconds: any }>>;
 }
 
@@ -623,6 +631,174 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     return { rows, byKey };
   });
 
+  const normalizeOrganization = (o: any) => ({
+    ...o,
+    org_id: normalizeOrgId(o.org_id),
+    display_name: o.display_name == null ? '' : String(o.display_name),
+    kind: o.kind == null ? null : String(o.kind),
+    taxonomy_parent: o.taxonomy_parent == null ? null : String(o.taxonomy_parent),
+    taxonomy_category: o.taxonomy_category == null ? null : String(o.taxonomy_category),
+    parent_org_id: o.parent_org_id == null ? null : normalizeOrgId(o.parent_org_id),
+    appearance_count: Number(o.appearance_count ?? 0),
+    bag_keys: Array.isArray(o.bag_keys) ? o.bag_keys.map(String) : [],
+    string_keys: Array.isArray(o.string_keys) ? o.string_keys.map(String) : [],
+    anchor: o.anchor == null ? null : String(o.anchor),
+    has_conflict: Boolean(o.has_conflict),
+  });
+
+  const organizationsIndex = () => memoized('organizations', async () => {
+    const rows = (await entity('organizations')).map(normalizeOrganization);
+    rows.sort((a: any, b: any) => (b.appearance_count - a.appearance_count) || String(a.display_name ?? '').localeCompare(String(b.display_name ?? '')) || String(a.org_id ?? '').localeCompare(String(b.org_id ?? '')));
+    const byId = new Map<string, any>(), byParent = new Map<string, any[]>();
+    for (const o of rows) {
+      if (o.org_id) byId.set(o.org_id, o);
+      if (o.parent_org_id) pushMap(byParent, o.parent_org_id, o);
+    }
+    return { rows, byId, byParent };
+  });
+
+  const organizationIdsIndex = () => memoized('organization_ids', async () => {
+    const rows = await entity('organization_ids');
+    const byOrgId = new Map<string, any[]>(), byIdValue = new Map<string, string[]>();
+    for (const r of rows) {
+      const orgId = normalizeOrgId(r.org_id);
+      if (!orgId) continue;
+      const clean = {
+        ...r,
+        org_id: orgId,
+        scheme: r.scheme == null ? '' : String(r.scheme),
+        value: r.value == null ? '' : String(r.value),
+      };
+      pushMap(byOrgId, orgId, clean);
+      if (clean.value) pushMap(byIdValue, clean.value.toLowerCase(), orgId);
+    }
+    return { rows, byOrgId, byIdValue };
+  });
+
+  const witnessOrganizationsIndex = () => memoized('witness_organizations', async () => {
+    const rows = await entity('witness_organizations');
+    const byOrgId = new Map<string, any[]>(), byWitnessKey = new Map<string, any[]>();
+    for (const r of rows) {
+      const orgId = normalizeOrgId(r.org_id);
+      const witnessKey = String(r.witness_key ?? '').trim();
+      if (!orgId || !witnessKey) continue;
+      const clean = {
+        ...r,
+        org_id: orgId,
+        witness_key: witnessKey,
+        event_id: r.event_id == null ? null : String(r.event_id),
+        field: r.field == null ? null : String(r.field),
+        raw_text: r.raw_text == null ? null : String(r.raw_text),
+        string_key: r.string_key == null ? null : String(r.string_key),
+        bag_key: r.bag_key == null ? null : String(r.bag_key),
+        decision_id: r.decision_id == null ? null : String(r.decision_id),
+        role: r.role == null ? null : String(r.role),
+        confidence: r.confidence == null ? null : Number(r.confidence),
+      };
+      pushMap(byOrgId, orgId, clean);
+      pushMap(byWitnessKey, witnessKey.toLowerCase(), clean);
+    }
+    return { rows, byOrgId, byWitnessKey };
+  });
+
+  const organizationRedirectsIndex = () => memoized('organization_redirects', async () => {
+    const rows = await entity('organization_redirects');
+    const byOldId = new Map<string, any>();
+    for (const r of rows) {
+      const oldId = normalizeOrgId(r.old_org_id);
+      if (!oldId) continue;
+      const clean = {
+        ...r,
+        old_org_id: oldId,
+        org_id: normalizeOrgId(r.org_id),
+        event: r.event == null ? null : String(r.event),
+        release: r.release == null ? null : String(r.release),
+      };
+      const prev = byOldId.get(oldId);
+      if (!prev || String(clean.release ?? '').localeCompare(String(prev.release ?? '')) >= 0) {
+        byOldId.set(oldId, clean);
+      }
+    }
+    return { rows, byOldId };
+  });
+
+  const resolveOrgRedirect = async (cleanId: string) => {
+    if (ctx.orgRedirect) return await ctx.orgRedirect(cleanId);
+    if (files.has('organization_redirects.parquet')) {
+      return (await organizationRedirectsIndex()).byOldId.get(cleanId) ?? null;
+    }
+    return null;
+  };
+
+  const enrichWitnessOrgLinks = (links: any[], eventId?: string | null) => {
+    const evClean = eventId ? String(eventId).toLowerCase() : null;
+    const filtered = evClean
+      ? links.filter(l => !l.event_id || String(l.event_id).toLowerCase() === evClean)
+      : links;
+    return filtered.length ? filtered : links;
+  };
+
+  const loadWitnessOrgLinksMap = async (witnessKeys: string[], signal?: AbortSignal): Promise<Map<string, any[]>> => {
+    const out = new Map<string, any[]>();
+    const cleanKeys = [...new Set(witnessKeys.map(k => String(k ?? '').trim().toLowerCase()).filter(Boolean))];
+    if (!cleanKeys.length) return out;
+    if (!files.has('witness_organizations.parquet') && !ctx.witnessOrgsByWitness) return out;
+    let rawLinks: any[] = [];
+    if (ctx.witnessOrgsByWitness) {
+      try {
+        rawLinks = (await awaitShared(ctx.witnessOrgsByWitness(cleanKeys), signal)) ?? [];
+      } catch (error) {
+        signal?.throwIfAborted();
+        if (error instanceof ArchiveReleaseChangedError) throw error;
+        return out;
+      }
+    } else {
+      const { data: woIdx } = await optional('witness_organizations', witnessOrganizationsIndex, signal);
+      if (!woIdx) return out;
+      for (const wk of cleanKeys) {
+        for (const l of woIdx.byWitnessKey.get(wk) ?? []) rawLinks.push(l);
+      }
+    }
+    if (!rawLinks.length) return out;
+    const orgMap = new Map<string, any>();
+    const orgIds = [...new Set(rawLinks.map(l => normalizeOrgId(l.org_id)).filter(Boolean))];
+    if (ctx.orgRecord) {
+      await Promise.all(orgIds.map(async oid => {
+        try {
+          const rec = await awaitShared(ctx.orgRecord!(oid), signal);
+          if (rec) orgMap.set(oid, normalizeOrganization(rec));
+        } catch (error) {
+          signal?.throwIfAborted();
+          if (error instanceof ArchiveReleaseChangedError) throw error;
+        }
+      }));
+    } else {
+      const { data: orgsIdx } = await optional('organizations', organizationsIndex, signal);
+      if (orgsIdx) {
+        for (const oid of orgIds) {
+          const rec = orgsIdx.byId.get(oid);
+          if (rec) orgMap.set(oid, rec);
+        }
+      }
+    }
+    for (const r of rawLinks) {
+      const wk = String(r.witness_key ?? '').trim();
+      const orgId = normalizeOrgId(r.org_id);
+      if (!wk || !orgId) continue;
+      const org = orgMap.get(orgId);
+      pushMap(out, wk.toLowerCase(), {
+        ...r,
+        org_id: orgId,
+        witness_key: wk,
+        display_name: org?.display_name ?? null,
+        kind: org?.kind ?? null,
+        taxonomy_parent: org?.taxonomy_parent ?? null,
+        taxonomy_category: org?.taxonomy_category ?? null,
+      });
+    }
+    return out;
+  };
+
   const membersIndex = () => memoized('members', async () => {
     const rows = (await entity('members')).map(normalizeMember), byBioguide = new Map<string, any>(), byDocRow = new Map<number, any[]>();
     rows.sort((a: any, b: any) => (b.list_rows.length - a.list_rows.length) || (b.appearances.length - a.appearances.length) || String(a.name ?? '').localeCompare(String(b.name ?? '')));
@@ -698,6 +874,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     const subjectWanted = takeWanted(['measure_keys', 'subject_keys', 'subject_key', 'subject', 'bill', 'nomination']);
     const witnessWanted = takeWanted(['witness_keys', 'witness_key', 'witness']);
     const personWanted = takeWanted(['person_keys', 'person_key', 'person']);
+    const orgWanted = takeWanted(['org_ids', 'org_id', 'org', 'organization_id']);
     const memberWanted = takeWanted(['bioguide_ids', 'bioguide_id', 'member']);
 
     const entitySets: Set<number>[] = [];
@@ -797,6 +974,51 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       }
       entitySets.push(rowSet);
     }
+    if (orgWanted.length) {
+      const rowSet = new Set<number>();
+      const { data: woIdx } = ctx.witnessOrgsByOrg ? { data: null } : await optional('witness_organizations', witnessOrganizationsIndex);
+      const { data: wIdx } = await optional('witnesses', witnessesIndex);
+      for (const rawOrgId of orgWanted) {
+        let targetId = normalizeOrgId(rawOrgId);
+        if (!targetId) continue;
+        let hasDirect = false;
+        if (ctx.orgRecord) {
+          hasDirect = Boolean(await ctx.orgRecord(targetId));
+        } else if (files.has('organizations.parquet')) {
+          hasDirect = (await organizationsIndex()).byId.has(targetId);
+        }
+        if (!hasDirect) {
+          const redir = await resolveOrgRedirect(targetId);
+          if (redir?.org_id) targetId = normalizeOrgId(redir.org_id);
+        }
+        const links = ctx.witnessOrgsByOrg
+          ? await ctx.witnessOrgsByOrg(targetId)
+          : (woIdx?.byOrgId.get(targetId) ?? []);
+        for (const link of links) {
+          const wk = String(link.witness_key ?? '').toLowerCase();
+          if (!wk) continue;
+          const evRows = link.event_id ? new Set(rowsForColumn('meeting_keys', String(link.event_id).toLowerCase())) : null;
+          const wkRows = rowsForColumn('witness_keys', wk);
+          let matched = false;
+          if (evRows && evRows.size) {
+            for (const r of wkRows) {
+              if (evRows.has(r)) { rowSet.add(r); matched = true; }
+            }
+          }
+          if (!matched) {
+            for (const r of wkRows) rowSet.add(r);
+          }
+          const w = wIdx?.byKey.get(wk);
+          if (w) {
+            const wRows: number[] = Array.isArray(w.list_rows) ? w.list_rows : [];
+            for (const r of wRows) {
+              if (!evRows || !evRows.size || evRows.has(r)) rowSet.add(r);
+            }
+          }
+        }
+      }
+      entitySets.push(rowSet);
+    }
     if (memberWanted.length) {
       const wantedLower = new Set(memberWanted.map(v => v.toLowerCase())), rowSet = new Set<number>();
       for (const key of wantedLower) for (const r of rowsForColumn('bioguide_ids', key)) rowSet.add(r);
@@ -879,6 +1101,11 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       const resolvedName = cat ? resolveCommitteeHistoricalName(cat, baseMeeting.meeting_date ?? baseMeeting.congress) : (inline?.name ?? lower.toUpperCase());
       return { ...(cat ?? {}), ...(inline ?? {}), committee_key: lower, system_code: lower, name: inline?.name || resolvedName, resolved_name: resolvedName };
     });
+    const meetingWitnessKeys: string[] = [
+      ...baseMeeting.witnesses.map((w: any) => String(w.witness_key ?? wIdx?.byKey.get(String(w.name_key ?? '').toLowerCase())?.witness_key ?? '')),
+      ...(wIdx?.byEventId.get(eventKey) ?? []).map((w: any) => String(w.witness_key ?? '')),
+    ].filter(Boolean);
+    const meetingOrgLinks = await loadWitnessOrgLinksMap(meetingWitnessKeys, actualSignal);
     const mergedWitnesses: any[] = [], seenWitnessKeys = new Set<string>();
     for (const inlineW of baseMeeting.witnesses) {
       const wKey = String(inlineW.witness_key ?? inlineW.name_key ?? '').toLowerCase(), catW = wIdx?.byKey.get(wKey);
@@ -887,9 +1114,12 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       const listRows = uniqueInts([...(Array.isArray(inlineW.list_rows) ? inlineW.list_rows : []), ...(Array.isArray(app?.list_rows) ? app.list_rows : []), ...(catW ? catW.list_rows.filter((r: number) => (value('meeting_keys', r) ?? []).map(String).includes(eventKey)) : [])]);
       if (wKey) seenWitnessKeys.add(wKey);
       if (catW?.witness_key) seenWitnessKeys.add(catW.witness_key.toLowerCase());
+      const resolvedWKey = String(inlineW.witness_key ?? catW?.witness_key ?? '').toLowerCase();
+      const orgLinks = resolvedWKey ? enrichWitnessOrgLinks(meetingOrgLinks.get(resolvedWKey) ?? [], eventKey) : [];
       mergedWitnesses.push({
         ...(catW ?? {}), ...inlineW, witness_key: inlineW.witness_key ?? catW?.witness_key ?? null, bioguide_id: inlineW.bioguide_id ?? catW?.bioguide_id ?? null,
         organization: inlineW.organization ?? catW?.organization ?? null, position: inlineW.position ?? catW?.position ?? null,
+        org_links: orgLinks,
         panel: inlineW.panel ?? app?.panel ?? null, panel_order: inlineW.panel_order ?? inlineW.panel ?? app?.panel ?? null,
         display_order: inlineW.display_order ?? null, list_rows: listRows, documents: listRows.map(row),
       });
@@ -899,9 +1129,11 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       for (const app of catW.appearances) {
         if (app.superseded_by != null || String(app.event_id ?? app.meeting_key ?? '') !== eventKey) continue;
         const listRows = uniqueInts([...app.list_rows, ...catW.list_rows.filter((r: number) => (value('meeting_keys', r) ?? []).map(String).includes(eventKey))]);
+        const orgLinks = enrichWitnessOrgLinks(meetingOrgLinks.get(catW.witness_key.toLowerCase()) ?? [], eventKey);
         mergedWitnesses.push({
           ...catW, ...app, witness_key: catW.witness_key, name: catW.name,
           organization: app.organization ?? catW.organization, position: app.position ?? catW.position,
+          org_links: orgLinks,
           panel: app.panel ?? catW.panel ?? null, panel_order: app.panel_order ?? app.panel ?? null,
           list_rows: listRows, documents: listRows.map(row),
         });
@@ -1031,7 +1263,9 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     signal?.throwIfAborted();
     const clean = String(witnessKey ?? '').trim().toLowerCase();
     if (!clean) return null;
-    const [wIdx, mIdx, memIdx] = await Promise.all([witnessesIndex(), meetingsIndex(), membersIndex()]);
+    const [wIdx, mIdx, memIdx] = await Promise.all([
+      witnessesIndex(), meetingsIndex(), membersIndex(),
+    ]);
     let found = wIdx.byKey.get(clean);
     let redirectedFrom: string | null = null;
     if (!found && ctx.witnessKeyMap) {
@@ -1057,6 +1291,8 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
         list_rows: colRows,
       });
     }
+    const resolvedWitnessKey = String(found.witness_key ?? clean).toLowerCase();
+    const rawOrgLinks = (await loadWitnessOrgLinksMap([resolvedWitnessKey], signal)).get(resolvedWitnessKey) ?? [];
     const enrichedAppearances = found.appearances.map((a: any) => {
       const evKey = String(a.event_id ?? a.meeting_key ?? '').toLowerCase();
       const pkgKey = String(a.package_id ?? '').toLowerCase();
@@ -1077,6 +1313,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
         congress: a.congress ?? m?.congress ?? pkg?.congress ?? null,
         meeting_title: a.title ?? m?.title ?? pkg?.title ?? null,
         committee_keys: committeeKeys,
+        org_links: enrichWitnessOrgLinks(rawOrgLinks, a.event_id ?? m?.event_id ?? null),
         list_rows: uniqueInts([...(a.list_rows ?? []), ...(pkg?.list_rows ?? [])]),
       };
     });
@@ -1086,7 +1323,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     ]);
     const named = witnessMember(found);
     const member = named ? memIdx.byBioguide.get(named.bioguide_id.toLowerCase()) ?? null : null;
-    return { ...found, list_rows: witnessDocRows, appearances: enrichedAppearances, hearings: enrichedAppearances, member, member_name_matched: Boolean(member && named?.name_matched),
+    return { ...found, org_links: rawOrgLinks, list_rows: witnessDocRows, appearances: enrichedAppearances, hearings: enrichedAppearances, member, member_name_matched: Boolean(member && named?.name_matched),
       documents: witnessDocRows.map(row), redirected_from: redirectedFrom };
   }
 
@@ -1128,6 +1365,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     };
     for (const wk of base.witness_keys) addWitnessRow(wIdx?.byKey.get(wk.toLowerCase()));
     for (const w of wIdx?.byPersonKey.get(base.person_key.toLowerCase()) ?? []) addWitnessRow(w);
+    const personOrgLinks = await loadWitnessOrgLinksMap(witnessRows.map(w => String(w.witness_key ?? '')), signal);
 
     const appearances = witnessRows.flatMap((w: any) => {
       const apps = w.appearances.length ? w.appearances : [{
@@ -1165,6 +1403,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
           unlisted_since: a.unlisted_since ?? w.unlisted_since ?? null,
           meeting_title: a.title ?? m?.title ?? pkg?.title ?? null,
           committee_keys: committeeKeys,
+          org_links: enrichWitnessOrgLinks(personOrgLinks.get(String(w.witness_key ?? '').toLowerCase()) ?? [], a.event_id ?? m?.event_id ?? null),
           list_rows: uniqueInts([...(a.list_rows ?? []), ...(pkg?.list_rows ?? [])]),
         };
       });
@@ -1173,6 +1412,13 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       || String(b.event_id ?? '').localeCompare(String(a.event_id ?? ''))
       || String(a.witness_key ?? '').localeCompare(String(b.witness_key ?? '')));
 
+    const personOrgLinksMap = new Map<string, any>();
+    for (const w of witnessRows) {
+      for (const l of personOrgLinks.get(String(w.witness_key ?? '').toLowerCase()) ?? []) {
+        const key = `${l.org_id}:${l.field ?? ''}:${l.raw_text ?? ''}`;
+        if (!personOrgLinksMap.has(key)) personOrgLinksMap.set(key, l);
+      }
+    }
     const allListRows = uniqueInts([
       ...base.list_rows,
       ...witnessRows.flatMap((w: any) => w.list_rows),
@@ -1181,6 +1427,126 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     ]);
     return {
       ...base,
+      org_links: [...personOrgLinksMap.values()],
+      appearances,
+      hearings: appearances,
+      list_rows: allListRows,
+      documents: allListRows.map(row),
+      redirectedFrom,
+      redirected_from: redirectedFrom,
+    };
+  }
+
+  async function getOrganization(orgId: string, signal?: AbortSignal) {
+    signal?.throwIfAborted();
+    const clean = normalizeOrgId(orgId);
+    if (!clean) return null;
+    let rawOrg = ctx.orgRecord
+      ? await ctx.orgRecord(clean)
+      : (files.has('organizations.parquet') ? (await organizationsIndex()).byId.get(clean) ?? null : null);
+    let redirectedFrom: string | null = null;
+    if (!rawOrg) {
+      const redir = await resolveOrgRedirect(clean);
+      if (redir) {
+        if (!redir.org_id) return { org_id: clean, retired: redir };
+        redirectedFrom = clean;
+        const targetId = normalizeOrgId(redir.org_id);
+        rawOrg = ctx.orgRecord
+          ? await ctx.orgRecord(targetId)
+          : (files.has('organizations.parquet') ? (await organizationsIndex()).byId.get(targetId) ?? null : null);
+        if (!rawOrg) throw new Error('Organization redirect successor is not published.');
+      }
+    }
+    if (!rawOrg) return null;
+    const base = normalizeOrganization(rawOrg);
+    const [
+      { data: orgsIdx },
+      { data: orgIdsIdx },
+      { data: woIdx },
+      { data: wIdx },
+      { data: mIdx },
+    ] = await Promise.all([
+      (ctx.orgChildren && (ctx.orgRecord || !base.parent_org_id)) ? Promise.resolve({ state: 'ready' as const, data: null }) : optional('organizations', organizationsIndex, signal),
+      ctx.orgExternalIds ? Promise.resolve({ state: 'ready' as const, data: null }) : optional('organization_ids', organizationIdsIndex, signal),
+      ctx.witnessOrgsByOrg ? Promise.resolve({ state: 'ready' as const, data: null }) : optional('witness_organizations', witnessOrganizationsIndex, signal),
+      optional('witnesses', witnessesIndex, signal),
+      optional('meetings', meetingsIndex, signal),
+    ]);
+    const externalIds = ctx.orgExternalIds
+      ? ((await awaitShared(ctx.orgExternalIds(base.org_id), signal)) ?? []).map((r: any) => ({ ...r, org_id: base.org_id, scheme: String(r.scheme ?? ''), value: String(r.value ?? '') }))
+      : (orgIdsIdx?.byOrgId.get(base.org_id) ?? []);
+    const parentOrg = base.parent_org_id
+      ? (ctx.orgRecord ? await awaitShared(ctx.orgRecord(base.parent_org_id), signal) : orgsIdx?.byId.get(base.parent_org_id) ?? null)
+      : null;
+    const childOrgs = ctx.orgChildren
+      ? ((await awaitShared(ctx.orgChildren(base.org_id), signal)) ?? []).map(normalizeOrganization)
+      : (orgsIdx?.byParent.get(base.org_id) ?? []);
+    const links = ctx.witnessOrgsByOrg
+      ? ((await awaitShared(ctx.witnessOrgsByOrg(base.org_id), signal)) ?? [])
+      : (woIdx?.byOrgId.get(base.org_id) ?? []);
+    const appearances = links.map((link: any) => {
+      const wkLower = String(link.witness_key ?? '').toLowerCase();
+      let w = wIdx?.byKey.get(wkLower) ?? null;
+      const visited = new Set<string>();
+      while (w?.superseded_by != null) {
+        const succ = String(w.superseded_by).toLowerCase();
+        if (visited.has(succ)) break;
+        visited.add(succ);
+        w = wIdx?.byKey.get(succ) ?? w;
+      }
+      const linkEvKey = String(link.event_id ?? '').toLowerCase();
+      const app = (linkEvKey
+        ? w?.appearances?.find((a: any) => String(a.event_id ?? a.meeting_key ?? '').toLowerCase() === linkEvKey)
+        : undefined) ?? w?.appearances?.[0];
+      const effectiveEvKey = String(link.event_id ?? app?.event_id ?? app?.meeting_key ?? w?.event_id ?? '').toLowerCase();
+      const pkgKey = String(app?.package_id ?? w?.package_id ?? '').toLowerCase();
+      const pkg = pkgKey ? packageSummary(pkgKey) : undefined;
+      const m = (effectiveEvKey ? mIdx?.byEventId.get(effectiveEvKey)?.[0] : undefined)
+        ?? (pkgKey ? mIdx?.byPackageId.get(pkgKey)?.[0] : undefined);
+      const committeeKeys = (Array.isArray(app?.committee_keys) && app.committee_keys.length)
+        ? app.committee_keys
+        : (m?.committee_keys?.length ? m.committee_keys : (pkg?.committee_keys ?? []));
+      const evRows = effectiveEvKey ? new Set(rowsForColumn('meeting_keys', effectiveEvKey)) : null;
+      const witnessColRows = rowsForColumn('witness_keys', wkLower).filter(r => !evRows || !evRows.size || evRows.has(r));
+      const appListRows = uniqueInts([
+        ...(app?.list_rows ?? []),
+        ...(!app?.list_rows?.length && Array.isArray(w?.list_rows) ? w.list_rows.filter((r: number) => !evRows || !evRows.size || evRows.has(r)) : []),
+        ...witnessColRows,
+      ]);
+      return {
+        witness_key: link.witness_key,
+        witness_name: w?.name ?? null,
+        event_id: link.event_id ?? app?.event_id ?? app?.meeting_key ?? w?.event_id ?? m?.event_id ?? null,
+        field: link.field ?? null,
+        raw_text: link.raw_text ?? null,
+        string_key: link.string_key ?? null,
+        bag_key: link.bag_key ?? null,
+        role: link.role ?? null,
+        confidence: link.confidence ?? null,
+        decision_id: link.decision_id ?? null,
+        position: app?.position ?? w?.position ?? null,
+        organization: app?.organization ?? w?.organization ?? link.raw_text ?? null,
+        meeting_date: app?.meeting_date ?? m?.meeting_date ?? pkg?.meeting_date ?? null,
+        chamber: app?.chamber ?? m?.chamber ?? pkg?.chamber ?? null,
+        congress: app?.congress ?? m?.congress ?? pkg?.congress ?? null,
+        meeting_title: app?.title ?? m?.title ?? pkg?.title ?? null,
+        committee_keys: committeeKeys,
+        list_rows: appListRows,
+      };
+    }).sort((a: any, b: any) =>
+      String(b.meeting_date ?? '').localeCompare(String(a.meeting_date ?? ''))
+      || String(b.event_id ?? '').localeCompare(String(a.event_id ?? ''))
+      || String(a.witness_key ?? '').localeCompare(String(b.witness_key ?? ''))
+      || String(a.field ?? '').localeCompare(String(b.field ?? '')));
+
+    const allListRows = uniqueInts([
+      ...appearances.flatMap((a: any) => a.list_rows ?? []),
+    ]);
+    return {
+      ...base,
+      organization_ids: externalIds,
+      parent_org: parentOrg ? normalizeOrganization(parentOrg) : null,
+      child_orgs: childOrgs,
       appearances,
       hearings: appearances,
       list_rows: allListRows,
@@ -1293,6 +1659,17 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       case 'meetings': items = (await meetingsIndex()).rows; break;
       case 'witnesses': items = (await witnessesIndex()).currentRows; break;
       case 'people': items = (await peopleIndex()).rows; break;
+      case 'organizations': {
+        const [orgs, orgIds] = await Promise.all([
+          optional('organizations', organizationsIndex, signal),
+          optional('organization_ids', organizationIdsIndex, signal),
+        ]);
+        items = (orgs.data?.rows ?? []).map((o: any) => ({
+          ...o,
+          organization_ids: orgIds.data?.byOrgId.get(o.org_id) ?? [],
+        }));
+        break;
+      }
       case 'recordings': {
         const [recordings, videos] = await Promise.all([recordingsIndex(), optional('videos', videosIndex, signal)]);
         items = recordings.rows.map(r => withVideoDuration(r, videos.data));
@@ -1311,7 +1688,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       default: throw new Error(`Unknown archive entity kind: ${kind}`);
     }
     const filtered = items.filter((item: any) => {
-      if (congressFilter != null && kind !== 'committees') {
+      if (congressFilter != null && kind !== 'committees' && kind !== 'organizations') {
         if (Array.isArray(item.terms) && item.terms.length) {
           const matchesTerm = item.terms.some((t: any) =>
             Number(t?.congress) === congressFilter
@@ -1325,7 +1702,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
           return false;
         }
       }
-      if (chamberFilter) {
+      if (chamberFilter && kind !== 'organizations') {
         if (Array.isArray(item.terms) && item.terms.length) {
           if (!item.terms.some((t: any) => String(t?.chamber ?? '').toLowerCase() === chamberFilter)) return false;
         } else if (item.chamber) {
@@ -1336,7 +1713,7 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
           return false;
         }
       }
-      if (committeeFilter) {
+      if (committeeFilter && kind !== 'organizations') {
         const keys = [
           item.committee_key, item.system_code, item.parent_key,
           ...(Array.isArray(item.committee_keys) ? item.committee_keys : []),
@@ -1347,12 +1724,16 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
       }
       if (text) {
         const hay = [
-          item.title, item.short_title, item.description, item.name, formatRankedName(item.name, item.rank),
+          item.title, item.short_title, item.description, item.name, item.display_name, formatRankedName(item.name, item.rank),
           item.rank, ...(Array.isArray(item.ranks) ? item.ranks : []), item.credentials, item.on_behalf_of,
           kind === 'witnesses' ? witnessLabel(item) : null, item.current_name, item.organization,
           ...(Array.isArray(item.name_variants) ? item.name_variants : []),
           ...(Array.isArray(item.organizations) ? item.organizations : []), item.position, ...(Array.isArray(item.positions) ? item.positions : []),
-          item.subject_key, item.bill_id, item.public_law_number, item.nomination_id, item.citation, item.bioguide_id, item.matched_bioguide_id, item.person_key, item.committee_key, item.event_id,
+          item.subject_key, item.bill_id, item.public_law_number, item.nomination_id, item.citation, item.bioguide_id, item.matched_bioguide_id, item.person_key, item.org_id, item.kind, item.taxonomy_parent, item.taxonomy_category,
+          ...(Array.isArray(item.bag_keys) ? item.bag_keys : []),
+          ...(Array.isArray(item.string_keys) ? item.string_keys : []),
+          ...(Array.isArray(item.organization_ids) ? item.organization_ids.map((id: any) => `${id?.scheme ?? ''} ${id?.value ?? ''}`) : []),
+          item.committee_key, item.event_id,
           item.sponsor_name, item.policy_area, item.state, item.party,
         ].filter(Boolean).join(' ').toLowerCase();
         if (!hay.includes(text)) return false;
@@ -1430,5 +1811,5 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     };
   }
 
-  return { prepareQuery, getMeeting, getCommittee, getWitness, getPerson, getMember, getBill, getNomination, getSubject, listEntities, openDocument };
+  return { prepareQuery, getMeeting, getCommittee, getWitness, getPerson, getOrganization, getMember, getBill, getNomination, getSubject, listEntities, openDocument };
 }

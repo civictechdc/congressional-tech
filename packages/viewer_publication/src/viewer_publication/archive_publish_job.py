@@ -112,6 +112,10 @@ def completed_daily_inputs(template,production,records):
     # Recording decisions only feed the Explorer tables, which daily does not produce; the
     # template carries those pins when a release has them, so the decisions go with them.
     if not all(value.get(name) is not None for name in EXPLORER_TABLES):value['recording_decision_files']=[]
+    if not all(value.get(name) is not None for name in ENTITY_TABLES):
+        value['org_decision_files']=[]
+        value.pop('include_org_entities',None)
+        value.pop('publish_org_entities',None)
     return validate_model_spec(value,base=Path.cwd()),list(keys)
 
 

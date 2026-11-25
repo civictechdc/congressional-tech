@@ -828,4 +828,63 @@ test('cat2-pkk1 and P0-3b UI: military rank/credentials, MODS witness stubs, par
   }
   assert(dupOrdHearingHtml.includes('Current Ordinal 1')&&dupOrdHearingHtml.includes('Dropped Ordinal 1'),dupOrdHearingHtml);
   assert(!consoleErrors.some(msg=>msg.includes('Encountered two children with the same key')),consoleErrors.join('\n'));
+
+  // ct-lvdf: OrganizationDetail, witness/hearing/person org links, and Organizations browse tab.
+  const {OrganizationDetail}=await compile('ArchiveDetail.tsx');
+  const {ArchiveEntityRows,normalizeArchiveTab,visibleArchiveTabs}=await compile('ArchiveEntityBrowse.tsx');
+  assert.equal(normalizeArchiveTab('organizations'),'organizations');
+  assert.equal(normalizeArchiveTab('org'),'organizations');
+  assert(!visibleArchiveTabs({witnesses:5}).some(t=>t.key==='organizations'));
+  assert(visibleArchiveTabs({witnesses:5,organizations:2}).some(t=>t.key==='organizations'));
+  const orgObj={
+    org_id:'e5b88f10d3d5a5ea',
+    display_name:'Transit Lab',
+    kind:'think_tank',
+    taxonomy_parent:'research',
+    taxonomy_category:'think_tank_and_university',
+    parent_org_id:'1111222233334444',
+    parent_org:{org_id:'1111222233334444',display_name:'National Policy Institute'},
+    child_orgs:[{org_id:'2222333344445555',display_name:'Transit Lab West'}],
+    appearance_count:1,
+    organization_ids:[{scheme:'wikidata',value:'Q7834918'}],
+    appearances:[{witness_key:'wk-alice',witness_name:'Alice Smith',event_id:'118001',meeting_title:'Transit Hearing',meeting_date:'2024-03-10',field:'organization',raw_text:'The Transit Lab, Inc.',position:'Director',committee_keys:['hsag00']}],
+    documents:[row],
+    redirected_from:'0000aaaa1111bbbb',
+  };
+  const orgHtml=renderToStaticMarkup(React.createElement(OrganizationDetail,{
+    organization:orgObj,
+    onSelect:()=>{},
+    onHearing:()=>{},
+    onWitness:()=>{},
+    onCommittee:()=>{},
+    onOrganization:()=>{},
+    onFilterDocuments:()=>{},
+  }));
+  for(const text of ['Transit Lab','0000aaaa1111bbbb','Research — Think Tank','wikidata: Q7834918','National Policy Institute','Transit Lab West','Alice Smith','The Transit Lab, Inc.','Transit Hearing','Filter documents in Document Search']){
+    assert(orgHtml.includes(text),`Missing in OrganizationDetail: ${text}`);
+  }
+  const browseOrgsHtml=renderToStaticMarkup(React.createElement(ArchiveEntityRows,{
+    tab:'organizations',
+    rows:[orgObj],
+    onInspectHearing:()=>{},
+    onInspectCommittee:()=>{},
+    onInspectWitness:()=>{},
+    onInspectOrganization:()=>{},
+    onInspectMember:()=>{},
+    onInspectSubject:()=>{},
+  }));
+  assert(browseOrgsHtml.includes('Transit Lab')&&browseOrgsHtml.includes('e5b88f10d3d5a5ea')&&browseOrgsHtml.includes('wikidata:Q7834918'),browseOrgsHtml);
+
+  const witnessOrgHtml=renderToStaticMarkup(React.createElement(WitnessDetail,{
+    witness:{witness_key:'wk-alice',name:'Alice Smith',organization:'Transit Lab',org_links:[{org_id:'e5b88f10d3d5a5ea',display_name:'Transit Lab',raw_text:'Transit Lab'}],appearances:[]},
+    onOrganization:()=>{},
+  }));
+  assert(witnessOrgHtml.includes('<button')&&witnessOrgHtml.includes('Transit Lab'),witnessOrgHtml);
+
+  const hearingOrgHtml=renderToStaticMarkup(React.createElement(HearingDetail,{
+    meeting:{event_id:'118001',congress:118,chamber:'house',title:'Transit Hearing',committees:[],sittings:[],coverage:[],witnesses:[{witness_key:'wk-alice',name:'Alice Smith',organization:'Transit Lab',org_links:[{org_id:'e5b88f10d3d5a5ea',display_name:'Transit Lab'}]}],subjects:[],transcripts:[],videos:[],documents:[]},
+    onWitness:()=>{},
+    onOrganization:()=>{},
+  }));
+  assert(hearingOrgHtml.includes('Transit Lab')&&hearingOrgHtml.includes('archive-measure-pill'),hearingOrgHtml);
 });

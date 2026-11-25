@@ -346,6 +346,17 @@ def publication_checks(schema, auxiliary, published=None, *, keyed_documents=Tru
             checks.append(f'''(SELECT count(*) FROM person_aliases_export a RIGHT ANTI JOIN (
                 people_export p RIGHT ANTI JOIN ({prior_pk_sql}) pp ON p.person_key=pp.pk
             ) ON a.old_person_key=pp.pk) AS lost_person_keys''')
+    if 'organizations' in auxiliary and 'witness_organizations' in auxiliary:
+        checks.append('''(SELECT count(*) FROM organizations_export o RIGHT ANTI JOIN witness_organizations_export w
+            ON o.org_id=w.org_id WHERE w.org_id IS NOT NULL) AS missing_witness_org_id''')
+    if 'organizations' in auxiliary and 'organization_ids' in auxiliary:
+        checks.append('''(SELECT count(*) FROM organizations_export o RIGHT ANTI JOIN organization_ids_export oi
+            ON o.org_id=oi.org_id WHERE oi.org_id IS NOT NULL) AS missing_org_id_target''')
+    if 'organizations' in auxiliary and 'organization_redirects' in auxiliary:
+        checks.append('''(SELECT count(*) FROM organizations_export o RIGHT ANTI JOIN organization_redirects_export r
+            ON o.org_id=r.org_id WHERE r.org_id IS NOT NULL) AS missing_redirect_target_org_id''')
+        checks.append('''(SELECT count(*) FROM organizations_export o JOIN organization_redirects_export r
+            ON o.org_id=r.old_org_id WHERE r.event<>'restored') AS non_one_hop_org_redirect''')
     counts = ' CROSS JOIN '.join(f'({sql}) required_{i}' for i, sql in enumerate(required_counts))
     sql = 'SELECT ' + ',\n'.join(checks) + (' FROM ' + counts if counts else '')
     return [dict(name='relationship_invariants', sql=sql)] if checks else []

@@ -28,7 +28,7 @@ def exact_scalar(value, column_type, field):
         if not isinstance(value, str):
             raise ExplorerError(f'{field} requires text; preserve the published identifier or value exactly')
         name = field.split('.')[-1]
-        if name in {'system_code', 'parent_system_code', 'committee_key', 'bill_id', 'nomination_id', 'measure_key', 'witness_key', 'link_key'}:
+        if name in {'system_code', 'parent_system_code', 'committee_key', 'bill_id', 'nomination_id', 'measure_key', 'witness_key', 'link_key', 'org_id', 'old_org_id', 'parent_org_id'}:
             return value.strip().lower()
         if name in {'bioguide_id', 'sponsor_bioguide_id', 'sponsor_bioguide'}:
             return value.strip().upper()

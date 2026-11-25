@@ -93,6 +93,24 @@ def phase2(tmp_path_factory):
             []::VARCHAR[],[]::VARCHAR[],[]::VARCHAR[],'bioguide',1::INTEGER,1::INTEGER,DATE '2025-03-01',DATE '2025-03-01',['member-appearance-1']""")
         write('person_aliases', """SELECT '0011223344556677' AS old_person_key,'aa11bb22cc33dd44' AS person_key,
             'unambiguous' AS status,'regrouped' AS kind,NULL::VARCHAR AS decision_id,repeat('0',64) AS last_release_id,[]::VARCHAR[] AS candidate_keys""")
+        write('organizations', """SELECT 'e5b88f10d3d5a5ea' AS org_id,'Transit Lab' AS display_name,
+            'research_or_university' AS kind,'research' AS taxonomy_parent,'think_tank_and_university' AS taxonomy_category,
+            NULL::VARCHAR AS parent_org_id,2::BIGINT AS appearance_count,
+            ['1111111111111111'] AS bag_keys,['2222222222222222'] AS string_keys,
+            'bag:1111111111111111' AS anchor,false AS has_conflict
+            UNION ALL
+            SELECT 'f6c79021e4e6b6fb','Policy Group','nonprofit_advocacy','nonprofit','nonprofit',
+            NULL::VARCHAR,2::BIGINT,['3333333333333333'],['4444444444444444'],'bag:3333333333333333',false""")
+        write('organization_ids', """SELECT 'e5b88f10d3d5a5ea' AS org_id,'bag' AS scheme,'1111111111111111' AS value
+            UNION ALL SELECT 'e5b88f10d3d5a5ea','wikidata','Q999001'
+            UNION ALL SELECT 'f6c79021e4e6b6fb','bag','3333333333333333'""")
+        write('witness_organizations', """SELECT 'appearance-1' AS witness_key,'organization' AS field,'e5b88f10d3d5a5ea' AS org_id,
+            '1111111111111111' AS bag_key,'2222222222222222' AS string_key,'Transit Lab' AS raw_text
+            UNION ALL SELECT 'appearance-2','organization','e5b88f10d3d5a5ea','1111111111111111','2222222222222222','Transit Lab'
+            UNION ALL SELECT '0001497931f99cd1','organization','f6c79021e4e6b6fb','3333333333333333','4444444444444444','Policy Group'
+            UNION ALL SELECT '0000b43c099edbc2','organization','f6c79021e4e6b6fb','3333333333333333','4444444444444444','Policy Group'""")
+        write('organization_redirects', """SELECT '0000aaaa1111bbbb' AS old_org_id,'e5b88f10d3d5a5ea' AS org_id,
+            'merged' AS event,'rel-prev' AS release""")
         write('recordings', """SELECT 'youtube:abc' AS video_key,[118001::BIGINT, 335321::BIGINT] AS event_ids,
             [struct_pack(body:=unhex(repeat('55',32)),suffix:='.gz',format:='vtt',language:='en',production:='automatic')] AS tracks""")
         write('caption_resources', """SELECT NULL::VARCHAR AS video_key,NULL::BLOB AS track_body,NULL::BIGINT AS ordinal,

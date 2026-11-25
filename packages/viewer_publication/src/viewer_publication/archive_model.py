@@ -2440,8 +2440,8 @@ SELECT * FROM fuzzy_items""",materialize=True),
     ]
 
 
-def org_entity_outputs(output_dir):
-    """Build native Parquet output specs for Phase 1 organization tables."""
+def org_entity_outputs(output_dir,*,include_public=True,include_evidence=True):
+    """Build native Parquet output specs for organization tables."""
     from viewer_publication.archive_format import DEFAULT_ROW_GROUP_ROWS,_settings
     out=Path(output_dir)
     review_settings=dict(
@@ -2461,7 +2461,7 @@ def org_entity_outputs(output_dir):
         created_by='docspec archive release v1',
         footer_limit=4 << 20,
     )
-    specs=[
+    public_specs=[
         ('organizations',['org_id'],['kind','taxonomy_parent','taxonomy_category'],
          'SELECT * FROM organizations'),
         ('organization_ids',['org_id','scheme','value'],['scheme'],
@@ -2470,11 +2470,14 @@ def org_entity_outputs(output_dir):
          'SELECT * FROM witness_organizations'),
         ('organization_redirects',['old_org_id'],['event','release'],
          'SELECT * FROM organization_redirects'),
+    ]
+    evidence_specs=[
         ('org_decisions_conflicts',['decision_id','conflict_component'],[],
          'SELECT * FROM org_decisions_conflicts'),
         ('org_strings',['string_key'],[],
          'SELECT * FROM org_strings'),
     ]
+    specs=(public_specs if include_public else [])+(evidence_specs if include_evidence else [])
     outputs=[
         dict(
             name=name+'.parquet',
@@ -2484,17 +2487,18 @@ def org_entity_outputs(output_dir):
         )
         for name,order,dictionary,sql in specs
     ]
-    outputs.append(dict(
-        name='org_review_queue.parquet',
-        path=str(out/'org_review_queue.parquet'),
-        sql='SELECT * FROM org_review_queue',
-        settings=review_settings,
-    ))
+    if include_evidence:
+        outputs.append(dict(
+            name='org_review_queue.parquet',
+            path=str(out/'org_review_queue.parquet'),
+            sql='SELECT * FROM org_review_queue',
+            settings=review_settings,
+        ))
     return outputs
 
 
 def org_entity_queries():
-    """Return `(metadata_queries, diagnostic_queries)` for Phase 1 organization entities."""
+    """Return `(metadata_queries, diagnostic_queries)` for organization entities."""
     meta=[
         dict(name='org_fuzzy_candidate_stats',sql="""SELECT
  b.distinct_bags,
@@ -2504,7 +2508,13 @@ def org_entity_queries():
  (SELECT cast(count(*) AS BIGINT) FROM org_fuzzy_pairs) AS qualified_candidate_pairs,
  (SELECT cast(count(*) AS BIGINT) FROM org_review_queue WHERE queue_kind='fuzzy_pair') AS review_queue_pairs,
  (SELECT cast(count(*) AS BIGINT) FROM org_review_queue WHERE queue_kind='decision_conflict') AS decision_conflict_items,
- (SELECT cast(count(*) AS BIGINT) FROM organizations) AS organization_count
+ (SELECT cast(count(*) AS BIGINT) FROM organizations) AS organization_count,
+ (SELECT cast(count(DISTINCT witness_key) AS BIGINT) FROM witness_organizations) AS linked_appearances,
+ (SELECT cast(count(DISTINCT witness_key) AS BIGINT) FROM appearance_records_resolved) AS total_appearances,
+ (SELECT cast(count(*) AS BIGINT) FROM organization_redirects) AS retired_org_ids,
+ (SELECT cast(count(*) AS BIGINT) FROM organization_redirects WHERE event='merged') AS retired_merged,
+ (SELECT cast(count(*) AS BIGINT) FROM organization_redirects WHERE event='split_from') AS retired_split_from,
+ (SELECT cast(count(*) AS BIGINT) FROM organization_redirects WHERE event='restored') AS retired_restored
 FROM org_fuzzy_block_stats b"""),
     ]
     diag=[
@@ -2618,7 +2628,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                          video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                          transcript_headings=None,
                          historical_recording_matcher=None,pdf_cover_evidence=None,body_qualifications=None,prior_links=None,base_retired=None,base_release_id=None,
-                         carried_html_metadata=0,include_org_entities=False,org_decision_files=(),
+                         carried_html_metadata=0,include_org_entities=False,publish_org_entities=False,org_decision_files=(),
                          prior_org_release=None,org_release_label='current',refspec=None,root=ROOT,registry=None):
     """Freeze current input selectors and the shared prefix in fresh private scratch.
 
@@ -2633,7 +2643,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     if type(carried_html_metadata) is not int or carried_html_metadata<0:
         raise ValueError('carried_html_metadata must be a non-negative integer')
     include_entities=bool(include_entities or meeting_records is not None or appearance_records is not None or spicy_regs is not None)
-    include_org_entities=bool(include_org_entities)
+    publish_org_entities=bool(publish_org_entities)
+    include_org_entities=bool(include_org_entities or publish_org_entities)
     if (org_decision_files or prior_org_release is not None) and not include_org_entities:
         raise ValueError('org_decision_files and prior_org_release require include_org_entities=True')
     if include_org_entities and not include_entities:
@@ -2691,6 +2702,15 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     from viewer_publication.refspec_inputs import refspec_profile_pin
     refspec_pin=refspec_profile_pin(refspec)
     if include_org_entities:
+        if prior_org_release is None and prior_links is not None:
+            prior_parent=Path(prior_links).parent
+            siblings={
+                name:prior_parent/f'{name}.parquet'
+                for name in ('prior_organizations','prior_organization_redirects','prior_witness_organizations')
+                if (prior_parent/f'{name}.parquet').is_file()
+            }
+            if siblings:
+                prior_org_release=siblings
         inputs += org_entity_inputs(scratch,org_decision_files=org_decision_files,
             prior_org_release=prior_org_release,release_label=org_release_label,refspec=refspec,root=root)
     prelude[0:0]=compatible_versions.selected_readings_steps(entries,parsers=pins)
@@ -2805,7 +2825,8 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
             ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key']),
             auxiliary_row_group_rows=AUXILIARY_ROW_GROUP_ROWS),root=root,
         recovery_policy=recovery_policy,historical_recording_matcher=historical_recording_matcher,
-        pdf_cover_evidence=pdf_cover_evidence,refspec=refspec_pin)
+        pdf_cover_evidence=pdf_cover_evidence,refspec=refspec_pin,
+        include_org_entities=include_org_entities,publish_org_entities=publish_org_entities)
     (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
@@ -2815,6 +2836,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
         has_rank_credentials=has_rank_credentials,
         historical_recording_matcher=historical_recording_matcher is not None,
         include_org_entities=include_org_entities,
+        publish_org_entities=publish_org_entities,
         carried_html_metadata=carried_html_metadata)
 
 
@@ -2825,7 +2847,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
                   video_records=None,committee_records=None,recording_decision_files=(),playlist_records=None,
                   transcript_headings=None,
                   historical_recording_matcher=None,pdf_cover_evidence=None,body_qualifications=None,prior_links=None,base_retired=None,base_release_id=None,
-                  carried_html_metadata=0,include_org_entities=False,org_decision_files=(),
+                  carried_html_metadata=0,include_org_entities=False,publish_org_entities=False,org_decision_files=(),
                   prior_org_release=None,org_release_label='current',refspec=None,root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
@@ -2839,8 +2861,8 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         body_qualifications=body_qualifications,
         prior_links=prior_links,base_retired=base_retired,base_release_id=base_release_id,
         carried_html_metadata=carried_html_metadata,include_org_entities=include_org_entities,
-        org_decision_files=org_decision_files,prior_org_release=prior_org_release,
-        org_release_label=org_release_label,refspec=refspec,root=root,registry=registry)
+        publish_org_entities=publish_org_entities,org_decision_files=org_decision_files,
+        prior_org_release=prior_org_release,org_release_label=org_release_label,refspec=refspec,root=root,registry=registry)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
@@ -3140,7 +3162,16 @@ def build_prepared_release(prepared,*,engine,output,root=ROOT):
         org_dir=evidence/'org_entities'
         org_dir.mkdir(parents=True,exist_ok=True)
         steps += org_entity_steps(root=root)
-        extra += org_entity_outputs(org_dir)
+        if prepared.get('publish_org_entities'):
+            auxiliary += [
+                ('organizations','SELECT * FROM organizations',['org_id'],['kind','taxonomy_parent','taxonomy_category']),
+                ('organization_ids','SELECT * FROM organization_ids',['org_id','scheme','value'],['scheme']),
+                ('witness_organizations','SELECT * FROM witness_organizations',['witness_key','field'],['field']),
+                ('organization_redirects','SELECT * FROM organization_redirects',['old_org_id'],['event','release']),
+            ]
+            extra += org_entity_outputs(org_dir,include_public=False,include_evidence=True)
+        else:
+            extra += org_entity_outputs(org_dir)
         org_meta_queries,org_diagnostics=org_entity_queries()
     causes={
         'capture_evidence':['receipt_key','receipt_line','capture_index'],

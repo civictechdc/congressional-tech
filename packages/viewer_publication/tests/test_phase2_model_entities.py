@@ -1026,6 +1026,7 @@ def test_phase2_entities_meetings_witnesses_recordings_and_spicy_projections(tmp
     explorer = build_release(**staged, playlist_records=playlists['records'], meeting_records=meeting_records, appearance_records=appearance_records, spicy_regs=spicy_regs,
         video_records=video_path, committee_records=committee_path,
         recording_decision_files=[dict(key='provenance/recording_decisions/a.jsonl', path=str(decisions))],
+        publish_org_entities=True,
         engine=engine, output=tmp_path / 'release-explorer', scratch=tmp_path / 'model-explorer')
     with_tables = {f['name']: f for f in explorer['files']}
     assert {'videos.parquet', 'channels.parquet', 'recording_matches.parquet', 'committee_records.parquet', 'meeting_coverage.parquet'} <= with_tables.keys()

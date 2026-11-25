@@ -12,7 +12,7 @@ import {day} from './ArchiveRows.tsx';
 import {integer} from '../view/request-state.tsx';
 import {witnessLabel} from '../reader/archive-entities.ts';
 
-export type ArchiveTab = 'documents' | 'hearings' | 'committees' | 'witnesses' | 'members' | 'subjects';
+export type ArchiveTab = 'documents' | 'hearings' | 'committees' | 'witnesses' | 'organizations' | 'members' | 'subjects';
 
 export const ARCHIVE_TABS: ReadonlyArray<{
   key: ArchiveTab;
@@ -24,9 +24,15 @@ export const ARCHIVE_TABS: ReadonlyArray<{
   {key: 'hearings', label: 'Hearings', noun: 'hearings', singular: 'hearing'},
   {key: 'committees', label: 'Committees', noun: 'committees', singular: 'committee'},
   {key: 'witnesses', label: 'Witnesses', noun: 'witnesses', singular: 'witness'},
+  {key: 'organizations', label: 'Organizations', noun: 'organizations', singular: 'organization'},
   {key: 'members', label: 'Members', noun: 'members', singular: 'member'},
   {key: 'subjects', label: 'Bills & Nominations', noun: 'bills and nominations', singular: 'bill or nomination'},
 ];
+
+export function visibleArchiveTabs(entityCounts?: Record<string, number>) {
+  const hasOrganizations = typeof entityCounts?.organizations === 'number';
+  return ARCHIVE_TABS.filter(tab => tab.key !== 'organizations' || hasOrganizations);
+}
 
 export function normalizeArchiveTab(raw: string | null | undefined): ArchiveTab {
   const clean = String(raw ?? '').trim().toLowerCase();
@@ -42,6 +48,11 @@ export function normalizeArchiveTab(raw: string | null | undefined): ArchiveTab 
     case 'witnesses':
     case 'witness':
       return 'witnesses';
+    case 'organizations':
+    case 'organization':
+    case 'orgs':
+    case 'org':
+      return 'organizations';
     case 'members':
     case 'member':
       return 'members';
@@ -67,6 +78,8 @@ export function tabTotalCount(tab: ArchiveTab, docCount?: number, entityCounts?:
       return entityCounts.committees ?? null;
     case 'witnesses':
       return entityCounts.witnesses ?? null;
+    case 'organizations':
+      return entityCounts.organizations ?? null;
     case 'members':
       return entityCounts.members ?? null;
     case 'subjects': {
@@ -84,6 +97,7 @@ export function ArchiveEntityRows({
   onInspectHearing,
   onInspectCommittee,
   onInspectWitness,
+  onInspectOrganization,
   onInspectMember,
   onInspectSubject,
 }: {
@@ -93,6 +107,7 @@ export function ArchiveEntityRows({
   onInspectHearing: (key: string) => void;
   onInspectCommittee: (key: string) => void;
   onInspectWitness: (key: string) => void;
+  onInspectOrganization?: (orgId: string) => void;
   onInspectMember: (bioguideId: string) => void;
   onInspectSubject: (key: string) => void;
 }) {
@@ -178,6 +193,34 @@ export function ArchiveEntityRows({
         <span className="archive-row-format">{appCount > 0 ? `${integer(appCount)} ${appCount === 1 ? 'hearing' : 'hearings'}` : 'Witness'}</span>
         <div className="archive-row-dates">
           <span>{integer(docCount)} {docCount === 1 ? 'document' : 'documents'}</span>
+        </div>
+      </li>;
+    }
+
+    if (tab === 'organizations') {
+      const orgId = String(item.org_id ?? idx);
+      const extIds: any[] = Array.isArray(item.organization_ids) ? item.organization_ids : [];
+      const contextParts = [
+        item.taxonomy_parent,
+        item.taxonomy_category,
+        item.kind,
+      ].filter(Boolean);
+      const appCount = Number(item.appearance_count ?? 0);
+      const nameCount = Array.isArray(item.string_keys) ? item.string_keys.length : 0;
+      return <li key={orgId}>
+        <div className="archive-row-main">
+          {contextParts.length > 0 && <span className="archive-row-context">{contextParts.join(' · ')}</span>}
+          <button type="button" className="archive-document" onClick={() => onInspectOrganization?.(orgId)}>
+            <strong>{item.display_name || orgId}</strong>
+            {extIds.length > 0 && <span className="archive-document-subtitle">
+              {extIds.map((id: any) => `${id.scheme ?? id.id_scheme ?? ''}:${id.value ?? id.id_value ?? ''}`).join(' · ')}
+            </span>}
+          </button>
+        </div>
+        <span className="archive-row-format">{orgId}</span>
+        <div className="archive-row-dates">
+          <span>{integer(appCount)} {appCount === 1 ? 'appearance' : 'appearances'}</span>
+          {nameCount > 0 && <span>{integer(nameCount)} recorded {nameCount === 1 ? 'name' : 'names'}</span>}
         </div>
       </li>;
     }

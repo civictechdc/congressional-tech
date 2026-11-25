@@ -78,6 +78,19 @@ BASE_PERSON_ALIASES = pa.schema([
     ('kind', pa.string()), ('decision_id', pa.string()), ('last_release_id', pa.string()),
     ('candidate_keys', pa.list_(pa.string())),
 ])
+PRIOR_ORGANIZATIONS = pa.schema([
+    ('org_id', pa.string()), ('display_name', pa.string()), ('kind', pa.string()),
+    ('taxonomy_parent', pa.string()), ('taxonomy_category', pa.string()), ('parent_org_id', pa.string()),
+    ('appearance_count', pa.int64()), ('bag_keys', pa.list_(pa.string())), ('string_keys', pa.list_(pa.string())),
+    ('anchor', pa.string()), ('has_conflict', pa.bool_()),
+])
+PRIOR_ORGANIZATION_REDIRECTS = pa.schema([
+    ('old_org_id', pa.string()), ('org_id', pa.string()), ('event', pa.string()), ('release', pa.string()),
+])
+PRIOR_WITNESS_ORGANIZATIONS = pa.schema([
+    ('witness_key', pa.string()), ('field', pa.string()), ('org_id', pa.string()),
+    ('bag_key', pa.string()), ('string_key', pa.string()), ('raw_text', pa.string()),
+])
 
 
 def _sha(value, what):
@@ -206,6 +219,12 @@ def prior_links(base_dir, history_dirs, out_dir):
     _write_prior_table(base_dir / 'people.parquet', out_dir / 'prior_people.parquet',
                        PRIOR_PEOPLE, defaults={'release_id': base_release_id, 'ranks': []})
     _write_prior_table(base_dir / 'person_aliases.parquet', out_dir / 'base_person_aliases.parquet', BASE_PERSON_ALIASES)
+    _write_prior_table(base_dir / 'organizations.parquet', out_dir / 'prior_organizations.parquet',
+                       PRIOR_ORGANIZATIONS, defaults={'bag_keys': [], 'string_keys': [], 'has_conflict': False})
+    _write_prior_table(base_dir / 'organization_redirects.parquet', out_dir / 'prior_organization_redirects.parquet',
+                       PRIOR_ORGANIZATION_REDIRECTS)
+    _write_prior_table(base_dir / 'witness_organizations.parquet', out_dir / 'prior_witness_organizations.parquet',
+                       PRIOR_WITNESS_ORGANIZATIONS)
     return prior, retired
 
 
@@ -273,7 +292,8 @@ def fetch_base(read_release, release_id, work, link_history=(), *, previous_rele
     # a new release is actually published, so an input-unchanged skip reads no more.
     fetch_release(read_release(release_id), release_id, base,
                   (*LEDGER_FILES, 'retired_links.parquet', 'witnesses.parquet',
-                   'witness_key_map.parquet', 'people.parquet', 'person_aliases.parquet'))
+                   'witness_key_map.parquet', 'people.parquet', 'person_aliases.parquet',
+                   'organizations.parquet', 'organization_redirects.parquet', 'witness_organizations.parquet'))
     require_ledger_history(base, link_history)
     if link_history and previous_release_id is not None and link_history[0] != previous_release_id:
         raise ValueError(f'link_history must start with the live pointer\'s previous release {previous_release_id[:12]}')
@@ -1831,6 +1851,41 @@ def render_notes(causes, base_dir, candidate_dir):
         lines.append('')
     lines += ['## Links', '', f'{redirected} link keys from earlier releases now redirect to their current document. '
               f'{removed} show a removal notice. 0 vanish.', '']
+    org_path = Path(candidate_dir) / 'organizations.parquet'
+    w_org_path = Path(candidate_dir) / 'witness_organizations.parquet'
+    if org_path.exists() and w_org_path.exists():
+        witness_path = Path(candidate_dir) / 'witnesses.parquet'
+        if witness_path.exists():
+            w_tbl = pq.read_table(witness_path, columns=['witness_key', 'superseded_by'])
+            canonical_keys = {
+                wk for wk, sup in zip(w_tbl['witness_key'].to_pylist(), w_tbl['superseded_by'].to_pylist())
+                if wk is not None and sup is None
+            }
+            total_apps = len(canonical_keys)
+        else:
+            canonical_keys = None
+            total_apps = 0
+        wo_tbl = pq.read_table(w_org_path, columns=['witness_key'])
+        linked_keys = {wk for wk in wo_tbl['witness_key'].to_pylist() if wk is not None}
+        if canonical_keys is not None:
+            linked_keys &= canonical_keys
+        linked_apps = len(linked_keys)
+        org_count = pq.read_metadata(org_path).num_rows
+        share_pct = f'{(100.0 * linked_apps / total_apps):.1f}%' if total_apps else '0.0%'
+        red_path = Path(candidate_dir) / 'organization_redirects.parquet'
+        by_cause: dict[str, int] = {}
+        if red_path.exists():
+            r_tbl = pq.read_table(red_path, columns=['event'])
+            for ev in r_tbl['event'].to_pylist():
+                key = str(ev or 'unknown')
+                by_cause[key] = by_cause.get(key, 0) + 1
+        cause_summary = ', '.join(f'{k}: {by_cause[k]}' for k in sorted(by_cause)) if by_cause else 'none'
+        lines += [
+            '## Organizations', '',
+            f'{org_count} organizations published; {linked_apps} of {total_apps} canonical appearances '
+            f'({share_pct}) linked to an organization. Retired organization IDs by cause: {cause_summary}.',
+            '',
+        ]
     corrections = causes.get('corrections', [])
     named_keys = {(c['kind'], c['key'], c['live_body']) for c in corrections}
     proven_list = []
