@@ -22,7 +22,7 @@
     {
       "family": "house/meeting-xml",
       "patterns": [
-        "^https://docs\\.house\\.gov/meetings/[^#]*/HMTG-[^#]+\\.xml(?:\\?[^#]*)?$"
+        "^https://docs\\.house\\.gov/meetings/[^#]*/(?:HHRG|HMKP|HMTG)-[^#]+\\.xml(?:\\?[^#]*)?$"
       ],
       "exclusions": [
         "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/(?:oembed|yoast|popup-maker|wp/v2/wp_pattern_category)(?:/|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
@@ -102,7 +102,8 @@
     {
       "family": "senate/captions",
       "patterns": [
-        "^https://www-senate-gov-media-srs\\.akamaized\\.net/hls/[^#]+\\.(?:vtt|srt)(?:\\?[^#]*)?$"
+        "^https://www-senate-gov-media-srs\\.akamaized\\.net/hls/[^#]+\\.(?:vtt|srt)(?:\\?[^#]*)?$",
+        "^https://www-senate-gov-msl3archive\\.akamaized\\.net/[^#]+\\.(?:vtt|srt)(?:\\?[^#]*)?$"
       ],
       "exclusions": [
         "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/(?:oembed|yoast|popup-maker|wp/v2/wp_pattern_category)(?:/|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
@@ -112,7 +113,8 @@
       "family": "senate/players",
       "patterns": [
         "^https://(?:www\\.)?senate\\.gov/isvp/?\\?[^#]+$",
-        "^https://www-senate-gov-media-srs\\.akamaized\\.net/hls/[^#]+\\.m3u8(?:\\?[^#]*)?$"
+        "^https://www-senate-gov-media-srs\\.akamaized\\.net/hls/[^#]+\\.m3u8(?:\\?[^#]*)?$",
+        "^https://www-senate-gov-msl3archive\\.akamaized\\.net/[^#]+\\.m3u8(?:\\?[^#]*)?$"
       ],
       "exclusions": [
         "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/(?:oembed|yoast|popup-maker|wp/v2/wp_pattern_category)(?:/|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"

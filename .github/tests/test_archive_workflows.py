@@ -188,7 +188,7 @@ def test_capture_relists_recent_meetings_before_the_budgeted_capture(tmp_path):
                             env=dict(PATH=os.defpath, RUNNER_TEMP=str(tmp_path)), capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
     assert json.loads((tmp_path / 'archive-meetings/summary.json').read_text()) == [
-        '-I', '-m', 'congress_api.cli.fetch_meetings', '--since-days', '7',
+        '-I', '-m', 'congress_api.cli.fetch_meetings', '--since-days', '7', '--gpo-since-days', '7',
         '--user-agent', 'congressional-tech-research/1.0', '--apply']
 
 
