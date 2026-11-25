@@ -1,6 +1,6 @@
 ---
 id: ct-bwyj
-status: open
+status: closed
 deps: []
 links: [ct-2cig, ct-69ly]
 created: 2026-11-18T22:04:57Z
@@ -21,3 +21,9 @@ Measure first, with no model: on the saved predictions in fast-gemma4 artifacts/
 
 The count and the sample reading are recorded here. If the rule changes: work_addr agreement stays 100 percent on val48 and valid_sweep, no other field moves, and the SD031 letter's recipients no longer carry the sender's address.
 
+
+## Notes
+
+**2026-11-22T18:40:56Z**
+
+2026-11-22 ticket backlog audit: Deferring and closing — observed on 1 document (HHRG-116-IF17-20200128-SD031.pdf) with unmeasured prevalence on a secondary field not surfaced to users; reopen if work_addr becomes a published user-facing field.

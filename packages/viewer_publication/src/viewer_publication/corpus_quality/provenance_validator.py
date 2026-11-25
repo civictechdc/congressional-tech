@@ -46,10 +46,38 @@ from viewer_publication.corpus_quality.core import (
     resolve_docmeta_paths,
     unwrap_archive_url,
 )
-from viewer_publication.docmeta_v6_1 import (
-    REQUIRED_ALIAS_COLUMNS,
-    REQUIRED_DIRECT_COLUMNS,
-)
+REQUIRED_DIRECT_COLUMNS = frozenset({
+    "link_key",
+    "doc_key",
+    "saved_body",
+    "package_id",
+    "disposition",
+    "v6_route",
+    "filename",
+    "effective_format",
+    "primary_kind",
+    "status",
+    "congress",
+    "chamber",
+    "committees",
+    "docmeta_json",
+    "strict_v4_valid",
+})
+REQUIRED_ALIAS_COLUMNS = frozenset({
+    "link_key",
+    "doc_key",
+    "saved_body",
+    "package_id",
+    "disposition",
+    "sub_disposition",
+    "v6_route",
+    "filename",
+    "effective_format",
+    "canonical_link_key",
+    "canonical_doc_key",
+    "canonical_partition_bucket",
+    "canonical_v6_route",
+})
 
 # Canonical unambiguous congressional committee/commission web hosts -> 6-char system code
 CONGRESSIONAL_HOST_TO_SYSTEM_CODE: dict[str, str] = {

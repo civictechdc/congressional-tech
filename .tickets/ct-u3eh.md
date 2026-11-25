@@ -1,8 +1,8 @@
 ---
 id: ct-u3eh
-status: open
+status: closed
 deps: [ct-flq8, ct-2uc9]
-links: [ct-2cig, ct-jmwq, ct-2uc9, ct-flq8]
+links: [ct-2cig, ct-jmwq, ct-2uc9, ct-flq8, ct-o7j0]
 created: 2026-11-18T22:04:50Z
 type: task
 priority: 2
@@ -17,3 +17,13 @@ Filed 2026-11-18 from /Users/mikewolfd/Work/congressional-tech/.cache/archive-re
 
 1. The owner sign-off is recorded on the review ticket. 2. Training pairs come from the sealed V6.5 file and pass prompt_parity_check.py (0 prompts with a thinking marker). 3. The new model is scored against v64a35 on the same sets with the fixed scorer (ct-2cig) and the result recorded; adoption is the owner call.
 
+
+## Notes
+
+**2026-11-22T18:41:11Z**
+
+2026-11-22 V6.5 training & eval readiness: training_pairs.py now supports --strip-known and selective --cap-class KIND=N (resolving uniform --class-cap); pythonic_v5/v6, parquet_runner_v6, and eval_blind auto-detect strict_text_only / known_mode=none and support val48_v65/docs8_v65 (100.0 oracle on 165 heldout + blind sets); parse_gold_rows defaults augment_personas=False on split SSOT and R5 hyphen line-wrap bug is fixed. Retraining remains held pending ct-flq8 owner sign-off.
+
+**2026-11-22T19:53:35Z**
+
+2026-11-22 Horizon 0 audit & owner decision A2: Superseded by DocMeta V7 Core Reset (ct-o7j0) per docs/plans/docmeta-v7-consulting-plan-20261122.md. V6.5 SSOT (sha256 72f9d446..., 3,733 rows) stays preserved as raw/document seed input, but V6.5 training is halted because read-only audit found: 8.29% ungrounded personas (31.0% in hearing_transcript across 126 docs), 11.98% verbatim_title substring misses, 68.5% heldout_v6_4 / 50.0% blind_val48 House-event overlap with train, +36.3 to +68.9 pp v6_4_old-vs-v6_5_gapfill criteria drift, 8.52% (307/3603) Cleanlab label issues (22.9% in blind_val48), and structurally broken flat classes (multi_doc_packet F1=0.000, slides_or_visual F1=0.065, usable error_or_non_document).

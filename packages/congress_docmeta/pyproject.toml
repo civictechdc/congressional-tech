@@ -7,15 +7,13 @@ requires-python = ">=3.12"
 dependencies = [
     "pyarrow>=15",
     "jsonschema>=4.18,<5",
-    # address_reader/ is a copy of Keeplist's reader; these pins are the revision it was measured on.
-    # Required, not optional: without them rule R8 would write no work addresses and raise nothing.
-    "usaddress==0.5.14",
-    "pycountry==26.2.16",
-    "msgspec-schemaorg==0.2.1",
-    "msgspec==0.21.1",
+    "pydantic>=2,<3",
+    "PyYAML>=6,<7",
+    "duckdb>=1",
+    "numpy>=1.26",
+    "viewer-publication",
 ]
-# fast-gemma4 and fast-decision-models (Apple Silicon checkouts) are deliberately not listed:
-# neither enters uv.lock. Modules that generate or run ANE/MLX validators import them lazily; see README.md.
+# MLX / Apple Silicon student dependencies remain external to uv.lock (separate training runtime).
 
 [build-system]
 requires = ["setuptools>=61"]
@@ -26,11 +24,5 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 congress_docmeta = [
-    "*.json",
-    "gold_v65/*.json",
-    "gold_v65/*.jsonl",
-    "gold_v65/viewer/*.html",
-    "gold_v65/viewer/*.js",
-    "gold_v65/viewer/*.css",
-    "gold_v65/viewer/*.md",
+    "v7/*.yaml",
 ]

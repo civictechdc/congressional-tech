@@ -1,8 +1,8 @@
 ---
 id: ct-flq8
-status: open
+status: closed
 deps: []
-links: [ct-u3eh, ct-2cig, ct-jmwq, ct-2uc9]
+links: [ct-u3eh, ct-2cig, ct-jmwq, ct-2uc9, ct-o7j0]
 created: 2026-11-18T22:04:50Z
 type: task
 priority: 2
@@ -27,3 +27,13 @@ Filed 2026-11-18 from /Users/mikewolfd/Work/congressional-tech/.cache/archive-re
 - Remaining open items before closing `ct-flq8` / lifting training hold (`ct-u3eh`): owner hand-review verdicts in `viewer/review_notes.jsonl` for the `90` held + `24` not_applied rulings (and other open `needs_owner` findings), plus the noted open items (`56` blind-set docs uncleaned, `>10`-person test coverage, `dd85ac39a196cbaa` source page check).
 
 
+
+## Notes
+
+**2026-11-22T18:41:11Z**
+
+2026-11-22 V6.5 root-behavior fixes & hosted review desk: Added members_present (mp, max 64) and staff_present (sp, max 32) across schema/wire/grammar/prompts/validators; backfilled all 140 queue-hydrated attendance docs, removed Present/Staff-Present persona leaks & 6 single-date duplicates, re-sealed SSOT (sha256 72f9d446dbe3850078c27757efdb1eecfeff6e14257a1ba29c044af39b28093a, 3,733 rows, blocking_errors=0), generated V6.5-aligned blind eval sets (eval_val48_v65_gold.json, eval_docs8_v65_gold.json, closing the uncleaned blind-set gap), and deployed the interactive review desk at https://docmeta-v65-review.mdeeb.workers.dev for time-boxed owner sign-off.
+
+**2026-11-22T19:53:35Z**
+
+2026-11-22 Horizon 0 audit & owner decision A2: Superseded by DocMeta V7 Core Reset (ct-o7j0) per docs/plans/docmeta-v7-consulting-plan-20261122.md. V6.5 SSOT (sha256 72f9d446..., 3,733 rows) stays preserved as raw/document seed input, but V6.5 training is halted because read-only audit found: 8.29% ungrounded personas (31.0% in hearing_transcript across 126 docs), 11.98% verbatim_title substring misses, 68.5% heldout_v6_4 / 50.0% blind_val48 House-event overlap with train, +36.3 to +68.9 pp v6_4_old-vs-v6_5_gapfill criteria drift, 8.52% (307/3603) Cleanlab label issues (22.9% in blind_val48), and structurally broken flat classes (multi_doc_packet F1=0.000, slides_or_visual F1=0.065, usable error_or_non_document).

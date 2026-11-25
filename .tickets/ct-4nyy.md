@@ -5,10 +5,10 @@ deps: [ct-jo8n]
 links: [ct-3li2, ct-f11a, ct-jo8n, ct-d8cf, ct-a1aa, ct-a3le, ct-mi03]
 created: 2026-10-20T22:15:53Z
 type: feature
-priority: 2
+priority: 4
 assignee: mikewolfd
 parent: ct-d8cf
-tags: [docspec, application-adoption, efficiency]
+tags: [docspec, application-adoption, efficiency, parked]
 ---
 
 # Export only the news content the selected release allows
@@ -81,3 +81,7 @@ validated 2026-11-11, left open: parked News Lake work, nothing changed since th
 **2026-11-17T09:17:02Z**
 
 17 November manual current-code audit: KEEP OPEN, PARKED. storage/docspec/export.py:84 derives expiry only from capture rows present in the read, so subset exports can omit needed evidence. Native kind_arrow_schema("capture").field("retain_until").type is string; schema.py:280 compares it with a string instant. export.py:196 overwrites fixed destination names. Existing small acceptance criteria still apply: pinned capture evidence, chronological boundary handling and release-specific immutable output. No duplicate export ticket or implementation was created. Audit evidence: <main checkout>/.cache/archive-release/ticket-state-review-20261117/review.md.
+
+**2026-11-22T18:41:11Z**
+
+2026-11-22 ticket backlog audit: Parked at P4 — News Lake has no active product consumer or scheduled export; deprioritized until a live consumer exists.

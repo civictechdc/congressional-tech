@@ -1,6 +1,6 @@
 ---
 id: ct-69ly
-status: open
+status: closed
 deps: []
 links: [ct-2cig, ct-bwyj]
 created: 2026-11-18T22:04:57Z
@@ -21,3 +21,9 @@ Owner decision needed before any gold edit (labels feed training): either fill g
 
 The owner's choice is recorded here. If gold is filled: the count of filled people, a read sample, and work_addr precision on val48 and valid_sweep re-measured with the same model. The 32 missed gold street addresses are classified by cause.
 
+
+## Notes
+
+**2026-11-22T18:40:56Z**
+
+2026-11-22 ticket backlog audit: Closing under Option B — eval_blind.py already excludes work_addr from headline_mean and reports recall and agreement separately, so gold does not need backfilling purely for a precision metric.
