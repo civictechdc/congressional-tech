@@ -83,7 +83,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p "$RUNNER_TEMP/archive-meetings"
-          .venv/bin/python -I -m congress_api.cli.fetch_meetings --since-days 7 \
+          .venv/bin/python -I -m congress_api.cli.fetch_meetings --since-days 7 --gpo-since-days 7 \
             --user-agent congressional-tech-research/1.0 --apply > "$RUNNER_TEMP/archive-meetings/summary.json"
       - name: Capture from the public release
         # Runs even when the meeting relist failed; the job still reports that failure.

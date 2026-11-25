@@ -254,6 +254,15 @@ def test_capture_policy_sql_and_wordpress_scope(tmp_path):
         ('https://www.appropriations.senate.gov/wp-json/wp/v2/meeting?per_page=100', 'senate/pages'),
         ('https://www.hsgac.senate.gov/wp-json/wp/v2/hearings_bmfwra?per_page=100', 'senate/pages'),
         ('https://www.hsgac.senate.gov/wp-json/wp/v2/hearings_invest?per_page=100', 'senate/pages'),
+        ('https://docs.house.gov/meetings/IF/IF00/20261010/118001/HMTG-119-IF00-20261010.xml', 'house/meeting-xml'),
+        ('https://docs.house.gov/meetings/IF/IF00/20261010/118001/HHRG-119-IF00-20261010.xml', 'house/meeting-xml'),
+        ('https://docs.house.gov/meetings/IF/IF00/20261010/118001/HMKP-119-IF00-20261010.xml', 'house/meeting-xml'),
+        ('https://docs.house.gov/meetings/IF/IF00/20261010/118001/HHRG-119-IF00-WList-20261010.xml', 'house/witness-xml'),
+        ('https://www-senate-gov-msl3archive.akamaized.net/jointeconomic/jec041813_1/master.m3u8', 'senate/players'),
+        ('https://www-senate-gov-msl3archive.akamaized.net/srs_srs/csce050613_1/playlist.m3u8?v=1', 'senate/players'),
+        ('https://www-senate-gov-msl3archive.akamaized.net/jointeconomic/jec041813_1/captions.vtt', 'senate/captions'),
+        ('https://www-senate-gov-msl3archive.akamaized.net/jointeconomic/jec041813_1/captions.srt?lang=en', 'senate/captions'),
+        ('https://www-senate-gov-msl3archive.akamaized.net/armedservices/armedA041823_1/master0.ts', None),
     ]
     for url, expected in cases:
         assert policy.pattern_family(url) == expected
@@ -402,21 +411,79 @@ def test_every_capture_family_is_one_the_nightly_ingests():
 
 def test_scheduled_meeting_relist_covers_each_chamber_and_every_congress_in_the_window(tmp_path, capsys):
     """capture-archive.yml relists the last week of meeting updates without a reviewed spec (ct-q4e2)."""
-    from congress_api.cli.fetch_meetings import main, recent_meeting_endpoints
+    from congress_api.cli.fetch_meetings import main, recent_gpo_since, recent_meeting_endpoints
     windows = recent_meeting_endpoints(7, now=datetime(2027, 1, 4, 3, 23, tzinfo=timezone.utc))
     assert {window['from_date_time'] for window in windows} == {'2026-12-28T03:23:00Z'}
     assert [window['endpoint'].rsplit('/', 2)[1:] for window in windows] == [
         [congress, chamber] for congress in ('119', '120') for chamber in ('house', 'senate', 'nochamber')]
     assert len(recent_meeting_endpoints(7, now=datetime(2026, 11, 9, tzinfo=timezone.utc))) == 3
+    assert recent_gpo_since(7, now=datetime(2027, 1, 4, 3, 23, tzinfo=timezone.utc)) == '2026-12-28T03:23:00Z'
     for value in (0, -1, True, '7'):
         with pytest.raises(ValueError, match='since-days'):
             recent_meeting_endpoints(value)
+        with pytest.raises(ValueError, match='gpo-since-days'):
+            recent_gpo_since(value)
     spec = tmp_path / 'spec.json'
     spec.write_text(json.dumps({'congress_endpoints': ['https://api.congress.gov/v3/committee-meeting/119/house']}))
-    planned = main(['--spec', str(spec), '--since-days', '7'])
+    planned = main(['--spec', str(spec), '--since-days', '7', '--gpo-since-days', '7'])
     assert planned['status'] == 'planned' and len(planned['congress_endpoints']) == 4
     assert all(item['from_date_time'] for item in planned['congress_endpoints'][1:])
+    assert isinstance(planned['gpo_since'], str) and planned['gpo_since'].endswith('Z')
     capsys.readouterr()
+
+
+@pytest.mark.parametrize(('case', 'should_fail'), [
+    ('healthy_stored', False),
+    ('healthy_unchanged', False),
+    ('window_incomplete', True),
+    ('detail_incomplete', True),
+    ('detail_bad_outcome', True),
+])
+def test_fetch_meetings_main_fails_closed_after_writing_summary(tmp_path, monkeypatch, capsys, case, should_fail):
+    from congress_api.cli import fetch_meetings
+
+    receipts = []
+
+    def fake_run(**kwargs):
+        receipts.append('receipts/congress/meetings/2026-11-25/r-1.jsonl.gz')
+        if case == 'healthy_stored':
+            windows = [{'endpoint': 'https://api.congress.gov/v3/committee-meeting/119/house', 'complete': True}]
+            details = [{'url': 'https://api.congress.gov/v3/committee-meeting/119/house/1', 'complete': True, 'outcome': 'stored'}]
+        elif case == 'healthy_unchanged':
+            windows = [{'endpoint': 'https://api.congress.gov/v3/committee-meeting/119/house', 'complete': True}]
+            details = [{'url': 'https://api.congress.gov/v3/committee-meeting/119/house/1', 'complete': True, 'outcome': 'unchanged'}]
+        elif case == 'window_incomplete':
+            windows = [{'endpoint': 'https://api.congress.gov/v3/committee-meeting/119/house', 'complete': False}]
+            details = []
+        elif case == 'detail_incomplete':
+            windows = [{'endpoint': 'https://api.congress.gov/v3/committee-meeting/119/house', 'complete': True}]
+            details = [{'url': 'https://api.congress.gov/v3/committee-meeting/119/house/1', 'complete': False, 'outcome': 'stored'}]
+        else:
+            windows = [{'endpoint': 'https://api.congress.gov/v3/committee-meeting/119/house', 'complete': True}]
+            details = [{'url': 'https://api.congress.gov/v3/committee-meeting/119/house/1', 'complete': True, 'outcome': 'failed'}]
+        return {
+            'run_id': 'r1',
+            'write_date': '2026-11-25',
+            'congress_windows': windows,
+            'congress_details': details,
+            'gpo_packages': [],
+            'house_meetings': [],
+            'house_xml_targets': [],
+            'senate_pages': [],
+            'receipt_keys': list(receipts),
+        }
+
+    monkeypatch.setattr(fetch_meetings, 'run_meeting_fetchers', fake_run)
+    argv = ['--local-store', str(tmp_path / 'raw'), '--fetcher-binary', str(tmp_path / 'missing-fetcher')]
+    if should_fail:
+        with pytest.raises(SystemExit) as exc:
+            fetch_meetings.main(argv)
+        assert exc.value.code == 1
+    else:
+        res = fetch_meetings.main(argv)
+        assert res['receipt_keys'] == receipts
+    printed = json.loads(capsys.readouterr().out)
+    assert printed['receipt_keys'] == receipts
 
 
 def test_b14_meeting_fetchers_and_url_state_capture_emit_stored_md5_and_suffix(tmp_path):

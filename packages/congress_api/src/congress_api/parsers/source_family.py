@@ -58,7 +58,7 @@ def family(source="", url="", pointer=(), media_type=""):
                 "house/witness-xml"
                 if "-wlist-" in upath
                 else "house/meeting-xml"
-                if "/hmtg-" in upath
+                if any(prefix in upath for prefix in ("/hmtg-", "/hhrg-", "/hmkp-"))
                 else "documents"
             )
         if "/committee/" in upath or "byevent.aspx" in upath:

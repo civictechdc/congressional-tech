@@ -6,6 +6,7 @@ or witness-list requests.
 
 `--since-days N` relists the Congress.gov committee-meeting endpoints (House, Senate
 and no-chamber) updated in the last N days, for each Congress the window touches.
+`--gpo-since-days N` relists GovInfo CHRG packages modified in the last N days.
 Scheduled capture runs it so new hearings reach raw without a reviewed spec (ct-q4e2).
 """
 import argparse
@@ -14,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
+import sys
 from tempfile import TemporaryDirectory
 from urllib.parse import urlsplit
 
@@ -47,6 +49,14 @@ def recent_meeting_endpoints(since_days, *, now=None):
     return [{'endpoint': f'https://api.congress.gov/v3/committee-meeting/{congress}/{chamber}',
              'from_date_time': since}
             for congress in congresses for chamber in MEETING_CHAMBERS]
+
+
+def recent_gpo_since(since_days, *, now=None):
+    """GovInfo CHRG collections start timestamp `since_days` ago in UTC."""
+    if type(since_days) is not int or since_days < 1:
+        raise ValueError('--gpo-since-days must be a positive integer')
+    now = now or datetime.now(timezone.utc)
+    return (now - timedelta(days=since_days)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
 def _house_xml_targets(targets):
@@ -226,6 +236,8 @@ def main(argv=None):
     parser.add_argument('--user-agent', help='Fixed User-Agent header for every source request')
     parser.add_argument('--since-days', type=int,
                         help='Also relist committee meetings updated in the last N days (current Congress)')
+    parser.add_argument('--gpo-since-days', type=int,
+                        help='Also relist GovInfo CHRG packages modified in the last N days')
     parser.add_argument('--apply', action='store_true')
     args = parser.parse_args(argv)
 
@@ -233,10 +245,13 @@ def main(argv=None):
     if args.since_days is not None:
         spec_data['congress_endpoints'] = [*spec_data.get('congress_endpoints', ()),
                                            *recent_meeting_endpoints(args.since_days)]
+    if args.gpo_since_days is not None:
+        spec_data['gpo_since'] = recent_gpo_since(args.gpo_since_days)
     if not args.apply and args.local_store is None:
         plan_report = {
             'status': 'planned',
             'scope': str(args.scope),
+            'gpo_since': spec_data.get('gpo_since'),
             'gpo_packages': list(spec_data.get('gpo_packages', ())) + list(args.gpo_package),
             'senate_urls': list(spec_data.get('senate_urls', ())) + list(args.senate_url),
             'congress_detail_urls': list(spec_data.get('congress_detail_urls', ())) + list(args.congress_detail_url),
@@ -303,6 +318,10 @@ def main(argv=None):
             user_agent=args.user_agent,
         )
     print(json.dumps(result, indent=2, sort_keys=True))
+    if (any(not w.get('complete') for w in result.get('congress_windows', ()))
+            or any(not d.get('complete') or d.get('outcome') not in ('stored', 'unchanged')
+                   for d in result.get('congress_details', ()))):
+        sys.exit(1)
     return result
 
 

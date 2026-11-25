@@ -24,3 +24,16 @@ def test_senate_html_path_wins_over_youtube_in_hearing_title():
 ])
 def test_genuine_youtube_routing_is_preserved(source, url, expected):
     assert family(source=source, url=url) == expected
+
+
+@pytest.mark.parametrize(("url", "expected"), [
+    ("https://docs.house.gov/meetings/IF/IF00/20261010/118001/HMTG-119-IF00-20261010.xml", "house/meeting-xml"),
+    ("https://docs.house.gov/meetings/IF/IF00/20261010/118001/HHRG-119-IF00-20261010.xml", "house/meeting-xml"),
+    ("https://docs.house.gov/meetings/IF/IF00/20261010/118001/HMKP-119-IF00-20261010.xml", "house/meeting-xml"),
+    ("https://docs.house.gov/meetings/IF/IF00/20261010/118001/HHRG-119-IF00-WList-20261010.xml", "house/witness-xml"),
+    ("https://docs.house.gov/meetings/IF/IF00/20261010/118001/HMKP-119-IF00-WList-20261010.xml", "house/witness-xml"),
+    ("https://docs.house.gov/meetings/IF/IF00/20261010/118001/HMTG-119-IF00-WList-20261010.xml", "house/witness-xml"),
+    ("https://docs.house.gov/meetings/IF/IF00/20261010/118001/OTHER-119-IF00-20261010.xml", "documents"),
+])
+def test_house_meeting_and_witness_xml_routing(url, expected):
+    assert family(url=url) == expected
