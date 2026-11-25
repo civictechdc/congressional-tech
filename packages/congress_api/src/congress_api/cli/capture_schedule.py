@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from congress_api.acquisition.capture_scheduler import CapturePolicy,load_release,plan_queue,reviewed_cutoffs,run_capture
+from congress_api.acquisition.capture_scheduler import CapturePolicy,default_request_headers,load_release,plan_queue,reviewed_cutoffs,run_capture
 from congress_api.retention.body_store import BodyStore,LocalAdapter,R2Adapter
 from congress_api.retention.writer_identity import writer_identity
 from docspec_client.client import NativeDatasets
@@ -127,11 +127,12 @@ def main(argv=None):
                     max_pool_connections=max(32,workers*2),
                     retries={'mode':'adaptive','max_attempts':10}),args.bucket))
             def headers(url):
+                base=default_request_headers(url)
                 if urlsplit(url).hostname in {'api.congress.gov','api.govinfo.gov'}:
                     key=os.environ.get('DATA_GOV_API_KEY')
                     if not key:raise ValueError('DATA_GOV_API_KEY is required for API capture')
-                    return {'X-Api-Key':key}
-                return {}
+                    return {**base,'X-Api-Key':key}
+                return base
             from congress_api.acquisition.admission import Admission
             admission_path=args.admission_db or args.work/'admission.sqlite'
             admission_path.parent.mkdir(parents=True,exist_ok=True)

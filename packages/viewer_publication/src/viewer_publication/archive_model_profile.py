@@ -16,7 +16,7 @@ from congress_api.retention.provenance import file_pin
 ROOT=Path(__file__).parents[4]
 PARSERS=('sniff','html','xml','json')
 # Derived readings parsers a release may pin for page metadata or retained feed links.
-OPTIONAL_PARSERS=('html_metadata','house_floor_feed','gpo_mods')
+OPTIONAL_PARSERS=('html_metadata','house_floor_feed','gpo_mods','wikidata_reconcile')
 MEETING_SOURCES=('congress_gov','house_xml')
 APPEARANCE_SOURCES=('house_xml','congress_gov','senate_page','mods')
 ENTITY_SOURCES={'meeting_records':MEETING_SOURCES,'appearance_records':APPEARANCE_SOURCES}
@@ -163,7 +163,8 @@ def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pin
                    lake_versions,writer_settings,snapshots,file_hashes=None,root=ROOT,
                    relationship_metadata_update=None,recovery_policy=None,
                    historical_recording_matcher=None,pdf_cover_evidence=None,refspec=None,
-                   include_org_entities=False,publish_org_entities=False):
+                   include_org_entities=False,publish_org_entities=False,
+                   include_wikidata_links=False):
     """Pin semantic definitions; retain exact physical selectors outside their digest."""
     require_entities=(isinstance(lake_versions,dict)
         and ('meeting_records' in lake_versions or 'appearance_records' in lake_versions))
@@ -188,6 +189,7 @@ def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pin
         profile['refspec']=_copy(refspec)
     if include_org_entities:profile['include_org_entities']=True
     if publish_org_entities:profile['publish_org_entities']=True
+    if include_wikidata_links:profile['include_wikidata_links']=True
     if relationship_metadata_update is not None:
         update=relationship_metadata_update
         digests={'base_release_id','registry_sha256','schema_sha256'}

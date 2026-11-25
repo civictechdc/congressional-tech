@@ -1,6 +1,6 @@
 -- Publish resolved organizations with display names, appearance counts, anchor IDs,
--- bag/string memberships, RefSpec federal agency names/parents (ct-w34j), and
--- Ban, Park & You (APSR 2023) taxonomy classification (ct-6him).
+-- bag/string memberships, RefSpec federal agency names/parents (ct-w34j),
+-- Wikidata display labels (ct-39u8), and Ban, Park & You (APSR 2023) taxonomy (ct-6him).
 WITH single_successors AS (
  SELECT original,min(successor) AS successor
  FROM refspec_current_successors
@@ -40,15 +40,24 @@ WITH single_successors AS (
 ), display_names AS (
  SELECT
   ad.group_key,
-  coalesce(rb.refspec_name,ad.raw_display_name) AS display_name,
-  CASE WHEN rb.anchor IS NOT NULL THEN true ELSE false END AS is_refspec,
-  rb.parent_anchor
- FROM refspec_by_anchor rb
+  coalesce(ad.refspec_name,wl.wikidata_label,ad.raw_display_name) AS display_name,
+  ad.is_refspec,
+  ad.parent_anchor
+ FROM org_wikidata_labels wl
  RIGHT JOIN (
-  SELECT a.group_key,a.anchor,rd.raw_display_name
-  FROM org_group_anchors a
-  JOIN raw_display_names rd ON rd.group_key=a.group_key
- ) ad ON rb.anchor=ad.anchor
+  SELECT
+   ad0.group_key,
+   ad0.raw_display_name,
+   CASE WHEN rb.anchor IS NOT NULL THEN true ELSE false END AS is_refspec,
+   rb.refspec_name,
+   rb.parent_anchor
+  FROM refspec_by_anchor rb
+  RIGHT JOIN (
+   SELECT a.group_key,a.anchor,rd.raw_display_name
+   FROM org_group_anchors a
+   JOIN raw_display_names rd ON rd.group_key=a.group_key
+  ) ad0 ON rb.anchor=ad0.anchor
+ ) ad ON wl.group_key=ad.group_key
 ), distinct_witnesses AS (
  SELECT DISTINCT group_key,witness_key
  FROM org_resolved_mentions
