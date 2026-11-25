@@ -102,6 +102,8 @@
       "size": 5285825
     }
   ],
+  "org_decision_files": [],
+  "publish_org_entities": true,
   "playlist_records": {
     "kind": "native_table",
     "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/playlist_records_mvp_20261105/metadata/00002-01a1c1f7-63d2-71b0-b04b-19a890cb6d87.gz.metadata.json",

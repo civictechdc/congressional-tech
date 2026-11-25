@@ -22,6 +22,8 @@ export function createArchiveClient(pointerUrl:string,rawBase:string,onReload:()
       request('witness',{witnessKey},signal),
     getPerson:(personKey:string,signal?:AbortSignal)=>
       request('person',{personKey},signal),
+    getOrganization:(orgId:string,signal?:AbortSignal)=>
+      request('organization',{orgId},signal),
     getMember:(bioguideId:string,signal?:AbortSignal)=>
       request('member',{bioguideId},signal),
     getSubject:(subjectKey:string,signal?:AbortSignal)=>

@@ -693,3 +693,125 @@ test('ct-n131: presentDocument exposes hearing print_number alongside Congress a
   assert.equal(presented.printNumber,'Serial No. 115-3, Part 1');
   assert.ok(presented.contextParts.includes('Serial No. 115-3, Part 1'));
 });
+
+test('ct-lvdf: organization lookup, appearances, external ids, witness/meeting org_links, org doc filter, and 1-hop redirect',async()=>{
+  const {createArchiveEntities}=await import('./archive-entities.ts');
+  const docs=[
+    {list_row:0,meeting_keys:['118001'],witness_keys:['wk-alice'],congress:118,committee_keys:['hsag00'],title:'Transit Research Testimony'},
+    {list_row:1,meeting_keys:['118002'],witness_keys:['wk-bob'],congress:118,committee_keys:['hsag00'],title:'Other Hearing'},
+  ];
+  const tables:Record<string,any[]>={
+    meetings:[
+      {event_id:'118001',congress:118,chamber:'house',meeting_date:'2024-03-10',title:'Transit Innovation Hearing',committee_keys:['hsag00'],witnesses:[{witness_key:'wk-alice',name:'Alice Smith',organization:'Transit Lab'}],list_rows:[0]},
+      {event_id:'118002',congress:118,chamber:'house',meeting_date:'2024-04-12',title:'Other Hearing',committee_keys:['hsag00'],witnesses:[{witness_key:'wk-bob',name:'Bob Jones',organization:'Independent'}],list_rows:[1]},
+    ],
+    witnesses:[
+      {witness_key:'wk-alice',name:'Alice Smith',organization:'Transit Lab',person_key:'pk-alice',appearances:[{event_id:'118001',meeting_date:'2024-03-10',congress:118,chamber:'house',committee_keys:['hsag00'],organization:'Transit Lab',position:'Director',list_rows:[0]}],list_rows:[0]},
+      {witness_key:'wk-bob',name:'Bob Jones',organization:'Independent',appearances:[{event_id:'118002',meeting_date:'2024-04-12',congress:118,chamber:'house',committee_keys:['hsag00'],organization:'Independent',list_rows:[1]}],list_rows:[1]},
+    ],
+    people:[
+      {person_key:'pk-alice',name:'Alice Smith',organizations:['Transit Lab'],witness_keys:['wk-alice'],hearing_count:1,appearance_count:1,list_rows:[0]},
+    ],
+    members:[],
+    committees:[{committee_key:'hsag00',system_code:'hsag00',current_name:'House Agriculture',chamber:'house'}],
+    organizations:[
+      {org_id:'e5b88f10d3d5a5ea',display_name:'Transit Lab',kind:'think_tank',taxonomy_parent:'research',taxonomy_category:'think_tank_and_university',parent_org_id:'1111222233334444',appearance_count:1,bag_keys:['bag1'],string_keys:['str1'],anchor:'wikidata:Q7834918',has_conflict:false},
+      {org_id:'1111222233334444',display_name:'National Policy Institute',kind:'think_tank',taxonomy_parent:'research',taxonomy_category:'think_tank_and_university',parent_org_id:null,appearance_count:0,bag_keys:['bagp'],string_keys:['strp'],anchor:'bag:bagp',has_conflict:false},
+    ],
+    organization_ids:[
+      {org_id:'e5b88f10d3d5a5ea',scheme:'wikidata',value:'Q7834918'},
+    ],
+    witness_organizations:[
+      {witness_key:'wk-alice',field:'organization',org_id:'e5b88f10d3d5a5ea',bag_key:'bag1',string_key:'str1',raw_text:'The Transit Lab, Inc.'},
+    ],
+    organization_redirects:[
+      {old_org_id:'0000aaaa1111bbbb',org_id:'e5b88f10d3d5a5ea',event:'split_from',release:'r2'},
+    ],
+  };
+  const colNames=['meeting_keys','witness_keys','congress','committee_keys'];
+  const reader=createArchiveEntities({
+    count:docs.length,
+    files:new Map(Object.keys(tables).map(n=>[n+'.parquet',{}])),
+    columns:new Map(colNames.map(c=>[c,{}])),
+    row:i=>docs[i],
+    value:(col,i)=>(docs[i] as any)?.[col]??null,
+    entity:async name=>tables[name]??[],
+    resolve:async()=>null,entry:async()=>null,versions:async()=>[],
+  });
+
+  const live=await reader.getOrganization('e5b88f10d3d5a5ea');
+  assert.equal(live?.display_name,'Transit Lab');
+  assert.equal(live?.redirected_from,null);
+  assert.equal(live?.parent_org?.display_name,'National Policy Institute');
+  assert.equal(live?.organization_ids.length,1);
+  assert.equal(live?.organization_ids[0].value,'Q7834918');
+  assert.equal(live?.appearances.length,1);
+  assert.equal(live?.appearances[0].witness_key,'wk-alice');
+  assert.equal(live?.appearances[0].raw_text,'The Transit Lab, Inc.');
+  assert.equal(live?.appearances[0].event_id,'118001');
+  assert.equal(live?.appearances[0].meeting_title,'Transit Innovation Hearing');
+  assert.equal(live?.appearances[0].meeting_date,'2024-03-10');
+  assert.deepEqual(live?.appearances[0].committee_keys,['hsag00']);
+  assert.equal(live?.documents.length,1);
+
+  const redirected=await reader.getOrganization('0000AAAA1111BBBB');
+  assert.equal(redirected?.org_id,'e5b88f10d3d5a5ea');
+  assert.equal(redirected?.redirected_from,'0000aaaa1111bbbb');
+  assert.equal(redirected?.appearances.length,1);
+
+  const listAll=await reader.listEntities('organizations',{q:'Q7834918'});
+  assert.deepEqual(listAll.rows.map((o:any)=>o.org_id),['e5b88f10d3d5a5ea']);
+
+  const witness=await reader.getWitness('wk-alice');
+  assert.equal(witness?.org_links?.[0]?.org_id,'e5b88f10d3d5a5ea');
+  const meeting=await reader.getMeeting('118001');
+  assert.equal(meeting?.witnesses?.[0]?.org_links?.[0]?.org_id,'e5b88f10d3d5a5ea');
+  const person=await reader.getPerson('pk-alice');
+  assert.equal(person?.org_links?.[0]?.org_id,'e5b88f10d3d5a5ea');
+
+  const prepared=await reader.prepareQuery({org:'e5b88f10d3d5a5ea'});
+  assert.deepEqual([...(prepared.allowedRows??[])],[0]);
+  const preparedRedir=await reader.prepareQuery({org:'0000aaaa1111bbbb'});
+  assert.deepEqual([...(preparedRedir.allowedRows??[])],[0]);
+
+  const legacyReader=createArchiveEntities({
+    count:docs.length,
+    files:new Map([['meetings.parquet',{}],['witnesses.parquet',{}],['members.parquet',{}],['committees.parquet',{}]]),
+    columns:new Map(colNames.map(c=>[c,{}])),
+    row:i=>docs[i],
+    value:(col,i)=>(docs[i] as any)?.[col]??null,
+    entity:async name=>tables[name]??[],
+    resolve:async()=>null,entry:async()=>null,versions:async()=>[],
+  });
+  assert.equal(await legacyReader.getOrganization('e5b88f10d3d5a5ea'),null);
+  assert.deepEqual((await legacyReader.listEntities('organizations')).rows,[]);
+
+  // Keyed reader path avoids full-table organizations / organization_ids / witness_organizations loads.
+  const eagerReads:string[]=[];
+  const keyedReader=createArchiveEntities({
+    count:docs.length,
+    files:new Map(Object.keys(tables).map(n=>[n+'.parquet',{}])),
+    columns:new Map(colNames.map(c=>[c,{}])),
+    row:i=>docs[i],
+    value:(col,i)=>(docs[i] as any)?.[col]??null,
+    entity:async name=>{
+      if(['organizations','organization_ids','witness_organizations'].includes(name)){
+        eagerReads.push(name);
+      }
+      return tables[name]??[];
+    },
+    orgRecord:async id=>tables.organizations.find(o=>o.org_id===id)??null,
+    orgRedirect:async id=>tables.organization_redirects.find(r=>r.old_org_id===id)??null,
+    orgChildren:async id=>tables.organizations.filter(o=>o.parent_org_id===id),
+    orgExternalIds:async id=>tables.organization_ids.filter(x=>x.org_id===id),
+    witnessOrgsByWitness:async wks=>tables.witness_organizations.filter(l=>wks.includes(l.witness_key)),
+    witnessOrgsByOrg:async id=>tables.witness_organizations.filter(l=>l.org_id===id),
+    resolve:async()=>null,entry:async()=>null,versions:async()=>[],
+  });
+  assert.equal((await keyedReader.getMeeting('118001'))?.witnesses?.[0]?.org_links?.[0]?.display_name,'Transit Lab');
+  assert.equal((await keyedReader.getWitness('wk-alice'))?.org_links?.[0]?.org_id,'e5b88f10d3d5a5ea');
+  assert.equal((await keyedReader.getPerson('pk-alice'))?.org_links?.[0]?.org_id,'e5b88f10d3d5a5ea');
+  assert.equal((await keyedReader.getOrganization('0000aaaa1111bbbb'))?.organization_ids?.[0]?.value,'Q7834918');
+  assert.deepEqual([...((await keyedReader.prepareQuery({org:'e5b88f10d3d5a5ea'})).allowedRows??[])],[0]);
+  assert.deepEqual(eagerReads,[]);
+});

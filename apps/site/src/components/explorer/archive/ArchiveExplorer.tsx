@@ -7,6 +7,7 @@ import {
   CommitteeDetail,
   HearingDetail,
   MemberDetail,
+  OrganizationDetail,
   PersonDetail,
   SubjectDetail,
   WitnessDetail,
@@ -17,6 +18,7 @@ import {
   ArchiveEntityRows,
   normalizeArchiveTab,
   tabTotalCount,
+  visibleArchiveTabs,
   type ArchiveTab,
 } from './ArchiveEntityBrowse.tsx';
 import {ArchiveFormatFilter,formatLabel} from './ArchiveFormats.tsx';
@@ -55,6 +57,7 @@ export type Navigation={
   subjectKind:string;
   witness:string;
   person:string;
+  org:string;
   member:string;
   format:string;
   sort:string;
@@ -73,6 +76,7 @@ const emptyNavigation:Navigation={
   subjectKind:'',
   witness:'',
   person:'',
+  org:'',
   member:'',
   format:'',
   sort:'',
@@ -93,6 +97,7 @@ export const readArchiveNavigation=(search:string=location.search):Navigation=>{
     subjectKind:q.get('subject_kind')||'',
     witness:q.get('witness')||q.get('witness_key')||'',
     person:q.get('person')||q.get('person_key')||'',
+    org:q.get('org')||q.get('org_id')||q.get('organization')||'',
     member:q.get('member')||q.get('bioguide_id')||'',
     format:q.get('format')||'',
     sort:q.get('sort')||'',
@@ -128,6 +133,7 @@ export default function ArchiveExplorer({pointerUrl,rawBase}:{pointerUrl:string;
         subject_kind:next.subjectKind,
         witness:next.witness,
         person:next.person,
+        org:next.org,
         member:next.member,
         format:next.format,
         sort:next.sort,
@@ -156,6 +162,8 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   const activeTab=nav.tab;
   const isDocTab=activeTab==='documents';
   const activeTabMeta=ARCHIVE_TABS.find(item=>item.key===nav.tab)??ARCHIVE_TABS[0];
+  const visibleTabs=visibleArchiveTabs(entityCounts);
+  const hasOrganizations=typeof entityCounts?.organizations==='number';
 
   const [rows,retryRows]=useRequest(async signal=>{
     if(!isDocTab)return null;
@@ -168,6 +176,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
       subject:nav.subject||undefined,
       witness:nav.witness||undefined,
       person:nav.person||undefined,
+      org:nav.org||undefined,
       member:nav.member||undefined,
       format:nav.format?[nav.format]:[],
       sort:effectiveSort,
@@ -192,6 +201,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     nav.subject,
     nav.witness,
     nav.person,
+    nav.org,
     nav.member,
     nav.format,
     effectiveSort,
@@ -205,18 +215,21 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
       ?'committees'
       :nav.tab==='witnesses'
         ?'witnesses'
-        :nav.tab==='members'
-          ?'members'
-          :nav.subjectKind==='bills'
-            ?'bills'
-            :nav.subjectKind==='nominations'
-              ?'nominations'
-              :'subjects';
+        :nav.tab==='organizations'
+          ?'organizations'
+          :nav.tab==='members'
+            ?'members'
+            :nav.subjectKind==='bills'
+              ?'bills'
+              :nav.subjectKind==='nominations'
+                ?'nominations'
+                :'subjects';
 
   const isInspectingEntity=!isDocTab&&(
     (nav.tab==='hearings'&&Boolean(nav.hearing))||
     (nav.tab==='committees'&&Boolean(nav.committee))||
     (nav.tab==='witnesses'&&(Boolean(nav.witness)||Boolean(nav.person)))||
+    (nav.tab==='organizations'&&Boolean(nav.org))||
     (nav.tab==='members'&&Boolean(nav.member))||
     (nav.tab==='subjects'&&Boolean(nav.subject))
   );
@@ -245,16 +258,17 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
 
   const [detail,retryDetail]=useRequest(signal=>selection!==null||nav.key?client.request('entry',nav.key?{key:nav.key}:{index:selection},signal):Promise.resolve(null),[client,nav.key,selection]);
   const [entityView,retryEntityView]=useRequest(async signal=>{
-    const [meeting,subject,witness,person,member,committee]=await Promise.all([
+    const [meeting,subject,witness,person,org,member,committee]=await Promise.all([
       nav.hearing?client.getMeeting(nav.hearing,signal):Promise.resolve(null),
       nav.subject?client.getSubject(nav.subject,signal).catch(()=>null):Promise.resolve(null),
       nav.witness?client.getWitness(nav.witness,signal).catch(()=>null):Promise.resolve(null),
       nav.person?client.getPerson(nav.person,signal).catch(()=>null):Promise.resolve(null),
+      nav.org?client.getOrganization(nav.org,signal).catch(()=>null):Promise.resolve(null),
       nav.member?client.getMember(nav.member,signal).catch(()=>null):Promise.resolve(null),
       nav.committee?client.getCommittee(nav.committee,{congress:nav.congress||undefined},signal).catch(()=>null):Promise.resolve(null),
     ]);
-    return {meeting,subject,witness,person,member,committee};
-  },[client,nav.hearing,nav.subject,nav.witness,nav.person,nav.member,nav.committee,nav.congress]);
+    return {meeting,subject,witness,person,org,member,committee};
+  },[client,nav.hearing,nav.subject,nav.witness,nav.person,nav.org,nav.member,nav.committee,nav.congress]);
 
   const [redirectNote,setRedirectNote]=useState('');
   useEffect(()=>{if(detail.status==='ready'&&detail.value&&detail.value.entry&&detail.value.entry.detail.link_key&&!nav.key){navigate({key:keyHex(detail.value.entry.detail.link_key)},true);setSelection(null);}},[detail]);
@@ -266,6 +280,17 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   useEffect(()=>{const witness=entityView.status==='ready'?entityView.value?.witness:null;if(witness?.redirected_from&&nav.witness.toLowerCase()===witness.redirected_from){setWitnessRedirect({from:witness.redirected_from,to:witness.witness_key});navigate({witness:witness.witness_key},true);}},[entityView]);
   const [personRedirect,setPersonRedirect]=useState<{from:string;to:string}|null>(null);
   useEffect(()=>{const person=entityView.status==='ready'?entityView.value?.person:null;if(person?.redirected_from&&nav.person.toLowerCase()===String(person.redirected_from).toLowerCase()){setPersonRedirect({from:person.redirected_from,to:person.person_key});navigate({person:person.person_key},true);}},[entityView]);
+  const [orgRedirect,setOrgRedirect]=useState<{from:string;to:string}|null>(null);
+  useEffect(()=>{if(!nav.org)setOrgRedirect(null);},[nav.org]);
+  useEffect(()=>{
+    const org=entityView.status==='ready'?entityView.value?.org:null;
+    if(org?.redirected_from&&nav.org.toLowerCase()===String(org.redirected_from).toLowerCase()){
+      setOrgRedirect({from:org.redirected_from,to:org.org_id});
+      navigate({org:org.org_id},true);
+    }else if(org&&!org.redirected_from&&orgRedirect&&String(org.org_id).toLowerCase()!==String(orgRedirect.to).toLowerCase()){
+      setOrgRedirect(null);
+    }
+  },[entityView,nav.org]);
   function witnessNotice(){
     const witness=entityView.status==='ready'?entityView.value?.witness:null;
     if(witness?.retired)return witness.retired.status==='ambiguous'
@@ -278,7 +303,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     if(typeof window!=='undefined'&&window.scrollY>200){
       workspaceRef.current?.scrollIntoView({block:'start'});
     }
-  },[selection,nav.key,nav.tab,nav.offset,nav.hearing,nav.committee,nav.witness,nav.member,nav.subject]);
+  },[selection,nav.key,nav.tab,nav.offset,nav.hearing,nav.committee,nav.witness,nav.org,nav.member,nav.subject]);
 
   const select=(index:number)=>{setSelection(index);navigate({key:''});setSavedError('');};
   const close=()=>{setSelection(null);navigate({key:''});};
@@ -289,17 +314,19 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   }
   const filter=(change:Partial<Navigation>)=>{setSelection(null);navigate({...change,key:'',offset:0});};
 
-  const inspectHearing=(hearing:string)=>filter({tab:'hearings',hearing,committee:'',subject:'',witness:'',person:'',member:''});
-  const inspectCommittee=(committee:string)=>filter({tab:'committees',committee,hearing:'',subject:'',witness:'',person:'',member:''});
-  const inspectWitness=(witness:string)=>filter({tab:'witnesses',witness,person:'',committee:'',hearing:'',subject:'',member:''});
-  const inspectPerson=(person:string)=>filter({tab:'witnesses',person,witness:'',committee:'',hearing:'',subject:'',member:''});
-  const inspectMember=(member:string)=>filter({tab:'members',member,committee:'',hearing:'',subject:'',witness:'',person:''});
-  const inspectSubject=(subject:string)=>filter({tab:'subjects',subject,committee:'',hearing:'',witness:'',person:'',member:''});
+  const inspectHearing=(hearing:string)=>filter({tab:'hearings',hearing,committee:'',subject:'',witness:'',person:'',org:'',member:''});
+  const inspectCommittee=(committee:string)=>filter({tab:'committees',committee,hearing:'',subject:'',witness:'',person:'',org:'',member:''});
+  const inspectWitness=(witness:string)=>filter({tab:'witnesses',witness,person:'',org:'',committee:'',hearing:'',subject:'',member:''});
+  const inspectPerson=(person:string)=>filter({tab:'witnesses',person,witness:'',org:'',committee:'',hearing:'',subject:'',member:''});
+  const inspectOrganization=(org:string)=>filter({tab:'organizations',org,committee:'',hearing:'',subject:'',witness:'',person:'',member:''});
+  const inspectMember=(member:string)=>filter({tab:'members',member,committee:'',hearing:'',subject:'',witness:'',person:'',org:''});
+  const inspectSubject=(subject:string)=>filter({tab:'subjects',subject,committee:'',hearing:'',witness:'',person:'',org:'',member:''});
 
   const clearInspectedEntity=()=>{
     if(nav.tab==='hearings')filter({hearing:''});
     else if(nav.tab==='committees')filter({committee:''});
     else if(nav.tab==='witnesses')filter({witness:'',person:''});
+    else if(nav.tab==='organizations')filter({org:''});
     else if(nav.tab==='members')filter({member:''});
     else if(nav.tab==='subjects')filter({subject:''});
   };
@@ -329,6 +356,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     nav.tab==='subjects'&&nav.subjectKind&&{label:nav.subjectKind==='bills'?'Legislation only':'Nominations only',clear:()=>filter({subjectKind:''})},
     isDocTab&&nav.witness&&{label:activeEntities?.witness?.name?`Witness: ${formatRankedName(activeEntities.witness.name,activeEntities.witness.rank)}`:`Witness ${nav.witness}`,clear:()=>filter({witness:''})},
     isDocTab&&nav.person&&{label:activeEntities?.person?.name?`Person: ${formatRankedName(activeEntities.person.name,activeEntities.person.rank)}`:`Person ${nav.person}`,clear:()=>filter({person:''})},
+    isDocTab&&nav.org&&{label:activeEntities?.org?.display_name?`Organization: ${activeEntities.org.display_name}`:`Organization ${nav.org}`,clear:()=>filter({org:''})},
     isDocTab&&nav.member&&{label:activeEntities?.member?.name?`Member: ${activeEntities.member.name}`:`Member ${nav.member}`,clear:()=>filter({member:''})},
     isDocTab&&nav.format&&{label:formatLabel(nav.format),clear:()=>filter({format:''})},
   ].filter(Boolean) as Array<{label:string;clear:()=>void}>;
@@ -338,12 +366,13 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     nav.tab==='hearings'?activeEntities.meeting:
     nav.tab==='committees'?activeEntities.committee:
     nav.tab==='witnesses'?(nav.person?activeEntities.person:activeEntities.witness):
+    nav.tab==='organizations'?activeEntities.org:
     nav.tab==='members'?activeEntities.member:
     activeEntities.subject;
 
   return <div ref={workspaceRef} className="explorer archive-workspace" data-archive-release={info.status==='ready'?info.value.releaseId:undefined} data-archive-ready={info.status==='ready'?'true':undefined}>
     <nav className="explorer-tabs" aria-label="Archive workspaces">
-      {ARCHIVE_TABS.map(tabItem=>{
+      {visibleTabs.map(tabItem=>{
         const count=tabTotalCount(tabItem.key,totalDocs,entityCounts);
         const active=nav.tab===tabItem.key;
         return <button
@@ -361,6 +390,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
               ...(tabItem.key==='hearings'?{hearing:''}:{}),
               ...(tabItem.key==='committees'?{committee:''}:{}),
               ...(tabItem.key==='witnesses'?{witness:'',person:''}:{}),
+              ...(tabItem.key==='organizations'?{org:''}:{}),
               ...(tabItem.key==='members'?{member:''}:{}),
               ...(tabItem.key==='subjects'?{subject:''}:{}),
             });
@@ -379,6 +409,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
           ...(nav.tab==='hearings'?{hearing:''}:{}),
           ...(nav.tab==='committees'?{committee:''}:{}),
           ...(nav.tab==='witnesses'?{witness:'',person:''}:{}),
+          ...(nav.tab==='organizations'?{org:''}:{}),
           ...(nav.tab==='members'?{member:''}:{}),
           ...(nav.tab==='subjects'?{subject:''}:{}),
         }:{}),
@@ -396,7 +427,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
       </label>
       <button className="explorer-button archive-search-button" type="submit">Search</button>
     </form>
-    {!isDetail&&!isInspectingEntity&&<div className="archive-filters">
+    {!isDetail&&!isInspectingEntity&&nav.tab!=='organizations'&&<div className="archive-filters">
       <label><span>Congress</span><select value={nav.congress} onChange={event=>filter({congress:event.target.value})}><option value="">All congresses</option>{congresses.map((item:any)=><option key={item.value} value={item.value}>{congressOptionLabel(item.value)} ({integer(Number(item.count))})</option>)}</select></label>
       {(nav.tab==='hearings'||nav.tab==='committees'||nav.tab==='members')&&<label><span>Chamber</span><select value={nav.chamber} onChange={event=>filter({chamber:event.target.value})}><option value="">All chambers</option><option value="house">House</option><option value="senate">Senate</option><option value="joint">Joint</option></select></label>}
       {nav.tab==='subjects'&&<label><span>Subject type</span><select value={nav.subjectKind} onChange={event=>filter({subjectKind:event.target.value})}><option value="">Bills &amp; nominations</option><option value="bills">Bills &amp; resolutions</option><option value="nominations">Presidential nominations</option></select></label>}
@@ -412,7 +443,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     </div>}
     {!isDetail&&!isInspectingEntity&&activeFilters.length>0&&<div className="archive-active-filters" aria-label="Active filters">
       {activeFilters.map((item,i)=><button key={i} type="button" className="archive-filter-pill" onClick={item.clear}>{item.label} <span aria-hidden="true">×</span></button>)}
-      <button type="button" className="explorer-text-button" onClick={()=>filter({text:'',congress:'',chamber:'',committee:'',kind:'',hearing:'',subject:'',subjectKind:'',witness:'',person:'',member:'',format:''})}>Clear filters</button>
+      <button type="button" className="explorer-text-button" onClick={()=>filter({text:'',congress:'',chamber:'',committee:'',kind:'',hearing:'',subject:'',subjectKind:'',witness:'',person:'',org:'',member:'',format:''})}>Clear filters</button>
     </div>}
     {info.status!=='ready'&&<RequestMessage state={info} retry={retryInfo} noun="the archive"/>}
     {savedError&&<p role="alert" className="explorer-alert">{savedError}</p>}
@@ -428,6 +459,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
         onWitness={inspectWitness}
         onMember={inspectMember}
         onPerson={inspectPerson}
+        onOrganization={inspectOrganization}
         onInspect={()=>inspectHearing(nav.hearing)}
         onClose={()=>filter({hearing:''})}
       />}
@@ -453,6 +485,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
         onCommittee={inspectCommittee}
         onMember={inspectMember}
         onPerson={inspectPerson}
+        onOrganization={inspectOrganization}
         onInspect={()=>inspectWitness(nav.witness)}
         onClose={()=>filter({witness:''})}
       />}
@@ -466,8 +499,21 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
         onCommittee={inspectCommittee}
         onMember={inspectMember}
         onPerson={inspectPerson}
+        onOrganization={inspectOrganization}
         onInspect={()=>inspectPerson(nav.person)}
         onClose={()=>filter({person:''})}
+      />}
+      {nav.org&&activeEntities.org&&<OrganizationDetail
+        organization={orgRedirect&&nav.org===orgRedirect.to?{...activeEntities.org,redirectedFrom:orgRedirect.from}:activeEntities.org}
+        committeesCatalog={committeesCatalog}
+        compact
+        onSelect={select}
+        onHearing={inspectHearing}
+        onWitness={inspectWitness}
+        onCommittee={inspectCommittee}
+        onOrganization={inspectOrganization}
+        onInspect={()=>inspectOrganization(nav.org)}
+        onClose={()=>filter({org:''})}
       />}
       {nav.member&&activeEntities.member&&<MemberDetail
         member={activeEntities.member}
@@ -480,7 +526,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
         onInspect={()=>inspectMember(nav.member)}
         onClose={()=>filter({member:''})}
       />}
-      {nav.committee&&!nav.hearing&&!nav.subject&&!nav.witness&&!nav.person&&!nav.member&&activeEntities.committee&&<CommitteeDetail
+      {nav.committee&&!nav.hearing&&!nav.subject&&!nav.witness&&!nav.person&&!nav.member&&!nav.org&&activeEntities.committee&&<CommitteeDetail
         committee={activeEntities.committee}
         committeesCatalog={committeesCatalog}
         compact
@@ -516,6 +562,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
                 onWitness={inspectWitness}
                 onMember={inspectMember}
                 onPerson={inspectPerson}
+                onOrganization={inspectOrganization}
                 onFilterDocuments={()=>filter({tab:'documents',hearing:nav.hearing})}
               />}
               {nav.tab==='committees'&&activeEntities?.committee&&<CommitteeDetail
@@ -536,6 +583,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
                 onCommittee={inspectCommittee}
                 onMember={inspectMember}
                 onPerson={inspectPerson}
+                onOrganization={inspectOrganization}
                 onFilterDocuments={()=>filter({tab:'documents',witness:nav.witness})}
               />}
               {nav.tab==='witnesses'&&nav.person&&activeEntities?.person&&<PersonDetail
@@ -547,7 +595,18 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
                 onCommittee={inspectCommittee}
                 onMember={inspectMember}
                 onPerson={inspectPerson}
+                onOrganization={inspectOrganization}
                 onFilterDocuments={()=>filter({tab:'documents',person:nav.person})}
+              />}
+              {nav.tab==='organizations'&&nav.org&&activeEntities?.org&&<OrganizationDetail
+                organization={orgRedirect&&nav.org===orgRedirect.to?{...activeEntities.org,redirectedFrom:orgRedirect.from}:activeEntities.org}
+                committeesCatalog={committeesCatalog}
+                onSelect={select}
+                onHearing={inspectHearing}
+                onWitness={inspectWitness}
+                onCommittee={inspectCommittee}
+                onOrganization={inspectOrganization}
+                onFilterDocuments={()=>filter({tab:'documents',org:nav.org})}
               />}
               {nav.tab==='members'&&activeEntities?.member&&<MemberDetail
                 member={activeEntities.member}
@@ -572,7 +631,9 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
           )}
         </div>
       ):(
-        entityRows.status==='ready'&&entityRows.value?<section aria-label={`${activeTabMeta.label} results`} data-archive-entity-tab={nav.tab}><div className="archive-results-bar"><p className="archive-total" data-archive-entity-total>{entityRows.value.total===1?`1 ${activeTabMeta.singular}`:`${integer(entityRows.value.total)} ${activeTabMeta.noun}`}</p></div><ArchiveEntityRows tab={activeTab} rows={entityRows.value.rows} committeesCatalog={committeesCatalog} onInspectHearing={inspectHearing} onInspectCommittee={inspectCommittee} onInspectWitness={inspectWitness} onInspectMember={inspectMember} onInspectSubject={inspectSubject}/>{entityRows.value.total>0&&<nav className="explorer-pagination" aria-label={`${activeTabMeta.label} pages`}><button type="button" className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{entityRows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+entityRows.value.rows.length,entityRows.value.total))} of {integer(entityRows.value.total)}</span><button type="button" className="explorer-button" disabled={entityRows.value.next===null} onClick={()=>navigate({offset:entityRows.value.next})}>Next</button></nav>}</section>:<RequestMessage state={entityRows.status==='ready'?missingResults:entityRows} retry={retryEntityRows} noun={`${activeTabMeta.noun}`}/>
+        nav.tab==='organizations'&&info.status==='ready'&&!hasOrganizations
+          ?<p className="explorer-muted">Organizations are not published in this release.</p>
+          :entityRows.status==='ready'&&entityRows.value?<section aria-label={`${activeTabMeta.label} results`} data-archive-entity-tab={nav.tab}><div className="archive-results-bar"><p className="archive-total" data-archive-entity-total>{entityRows.value.total===1?`1 ${activeTabMeta.singular}`:`${integer(entityRows.value.total)} ${activeTabMeta.noun}`}</p></div><ArchiveEntityRows tab={activeTab} rows={entityRows.value.rows} committeesCatalog={committeesCatalog} onInspectHearing={inspectHearing} onInspectCommittee={inspectCommittee} onInspectWitness={inspectWitness} onInspectOrganization={inspectOrganization} onInspectMember={inspectMember} onInspectSubject={inspectSubject}/>{entityRows.value.total>0&&<nav className="explorer-pagination" aria-label={`${activeTabMeta.label} pages`}><button type="button" className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{entityRows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+entityRows.value.rows.length,entityRows.value.total))} of {integer(entityRows.value.total)}</span><button type="button" className="explorer-button" disabled={entityRows.value.next===null} onClick={()=>navigate({offset:entityRows.value.next})}>Next</button></nav>}</section>:<RequestMessage state={entityRows.status==='ready'?missingResults:entityRows} retry={retryEntityRows} noun={`${activeTabMeta.noun}`}/>
       )}
   </div>;
 }

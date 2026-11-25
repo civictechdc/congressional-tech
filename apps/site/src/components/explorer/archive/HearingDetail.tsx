@@ -60,6 +60,7 @@ export function HearingDetail({
   onWitness,
   onMember,
   onPerson,
+  onOrganization,
   onFilterDocuments,
   onInspect,
   onClose,
@@ -75,6 +76,7 @@ export function HearingDetail({
   onWitness?:(key:string)=>void;
   onMember?:(bioguideId:string)=>void;
   onPerson?:(personKey:string)=>void;
+  onOrganization?:(orgId:string)=>void;
   onFilterDocuments?:()=>void;
   onInspect?:()=>void;
   onClose?:()=>void;
@@ -298,6 +300,7 @@ export function HearingDetail({
           const docs:any[]=Array.isArray(w.documents)?w.documents:[];
           const named=witnessMember(w);
           const wUnlisted=unlistedText(w);
+          const wOrgLinks:any[]=Array.isArray(w.org_links)?[...new Map(w.org_links.filter((l:any)=>l?.org_id).map((l:any)=>[String(l.org_id),l])).values()]:[];
           return <li key={`${wKey}-${i}`} className="archive-witness-item">
             <div className="archive-witness-header">
               {w.panel!=null&&<span className="archive-witness-panel">Panel {String(w.panel)}: </span>}
@@ -308,6 +311,12 @@ export function HearingDetail({
                 <span aria-hidden="true"> · </span>
                 <button type="button" className="archive-measure-pill" onClick={()=>onPerson(String(w.person_key))}>All appearances</button>
               </>}
+              {wOrgLinks.length>0&&onOrganization&&wOrgLinks.map((link:any)=><span key={link.org_id}>
+                <span aria-hidden="true"> · </span>
+                <button type="button" className="archive-measure-pill" onClick={()=>onOrganization(String(link.org_id))}>
+                  {link.display_name||link.raw_text||link.org_id}
+                </button>
+              </span>)}
               {named&&onMember&&<>
                 <span aria-hidden="true"> · </span>
                 <button type="button" className="archive-measure-pill" onClick={()=>onMember(named.bioguide_id)}>

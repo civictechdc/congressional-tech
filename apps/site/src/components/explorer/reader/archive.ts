@@ -325,6 +325,49 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       decision_id:item.decision_id??null,last_release_id:item.last_release_id??null,
       candidates:Array.isArray(item.candidate_keys)?item.candidate_keys.map(String):[]};
   };
+  const normalizeOrgId=(key: string)=>{
+    const clean=String(key??'').trim();
+    return /^[0-9a-f]{16}$/i.test(clean)?clean.toLowerCase():clean;
+  };
+  const orgRecord=async(key: string)=>{
+    const norm=normalizeOrgId(key);
+    if(!norm||!files.has('organizations.parquet'))return null;
+    const rows=await read('organizations.parquet',undefined,undefined,{org_id:{$eq:norm}});
+    if(rows.length>1)throw new Error('Organization key is not unique.');
+    return rows[0]??null;
+  };
+  const orgRedirect=async(key: string)=>{
+    const norm=normalizeOrgId(key);
+    if(!norm||!files.has('organization_redirects.parquet'))return null;
+    const rows=await read('organization_redirects.parquet',undefined,undefined,{old_org_id:{$eq:norm}});
+    if(!rows.length)return null;
+    rows.sort((a:any,b:any)=>String(b.release??'').localeCompare(String(a.release??'')));
+    const [item]=rows;
+    return {old_org_id:norm,org_id:item.org_id?normalizeOrgId(String(item.org_id)):null,
+      event:item.event?String(item.event):null,release:item.release?String(item.release):null};
+  };
+  const orgChildren=async(parentId: string)=>{
+    const norm=normalizeOrgId(parentId);
+    if(!norm||!files.has('organizations.parquet'))return [];
+    return read('organizations.parquet',undefined,undefined,{parent_org_id:{$eq:norm}});
+  };
+  const orgExternalIds=async(orgId: string)=>{
+    const norm=normalizeOrgId(orgId);
+    if(!norm||!files.has('organization_ids.parquet'))return [];
+    return read('organization_ids.parquet',undefined,undefined,{org_id:{$eq:norm}});
+  };
+  const witnessOrgsByWitness=async(witnessKeys: string[])=>{
+    if(!files.has('witness_organizations.parquet'))return [];
+    const keys=[...new Set(witnessKeys.map(k=>String(k??'').trim().toLowerCase()).filter(Boolean))];
+    if(!keys.length)return [];
+    const filter=keys.length===1?{witness_key:{$eq:keys[0]}}:{witness_key:{$in:keys}};
+    return read('witness_organizations.parquet',undefined,undefined,filter);
+  };
+  const witnessOrgsByOrg=async(orgId: string)=>{
+    const norm=normalizeOrgId(orgId);
+    if(!norm||!files.has('witness_organizations.parquet'))return [];
+    return read('witness_organizations.parquet',undefined,undefined,{org_id:{$eq:norm}});
+  };
   // One answer per public key: a live row, a redirect to the successor's row, a removal
   // notice, or null for a key this archive never published.
   const locate=async(key: string)=>{
@@ -354,7 +397,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       return rows.filter(item=>item.video_key!=null).map(item=>({video_key:String(item.video_key),duration_seconds:item.duration_seconds??null}));
     }finally{tables.delete('videos.parquet');}
   };
-  const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions,witnessKeyMap,personRecord,personAlias,meetingCoverage,videoDurations,
+  const entityStore=createArchiveEntities({count,files,columns,value,row,entity,resolve,entry,versions,witnessKeyMap,personRecord,personAlias,orgRecord,orgRedirect,orgChildren,orgExternalIds,witnessOrgsByWitness,witnessOrgsByOrg,meetingCoverage,videoDurations,
     entityHasColumn:async(name,column)=>(await table(name+'.parquet',true)).names.includes(column)});
 
   const schema=async()=>JSON.parse(new TextDecoder().decode(await verified('schema.json')));
@@ -480,6 +523,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     meetings:()=>entity('meetings'),
     witnesses:()=>entity('witnesses'),
     people:()=>entity('people'),
+    organizations:()=>entity('organizations'),
     recordings:()=>entity('recordings'),
     committees:()=>entity('committees'),
     members:()=>entity('members'),
@@ -491,6 +535,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     getCommittee:entityStore.getCommittee,
     getWitness:entityStore.getWitness,
     getPerson:entityStore.getPerson,
+    getOrganization:entityStore.getOrganization,
     getMember:entityStore.getMember,
     getBill:entityStore.getBill,
     getNomination:entityStore.getNomination,

@@ -311,7 +311,9 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 base_release,prior,retired,history=held_base()
                 prepared=prepare_model_inputs(**arguments,parser_versions=model_spec['parser_versions'],
                     catalog_version=model_spec['catalog_version'],engine=engine,scratch=stage['scratch'],
-                    prior_links=prior,base_retired=retired,carried_html_metadata=carried_html_metadata)
+                    prior_links=prior,base_retired=retired,carried_html_metadata=carried_html_metadata,
+                    include_org_entities=bool(model_spec.get('include_org_entities') or model_spec.get('publish_org_entities')),
+                    publish_org_entities=bool(model_spec.get('publish_org_entities')))
                 profile=prepared['profile']
                 if model_spec.get('text_index'):
                     from viewer_publication.archive_text_index import semantic_policy
@@ -440,7 +442,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
         if base_release is not None:
             base_rec=dict(release_id=pointer['release_id'],link_history=list(link_history),
                 prior_links=file_pin(prior))
-            for name in ('prior_witnesses','base_witness_key_map','prior_people','base_person_aliases'):
+            for name in ('prior_witnesses','base_witness_key_map','prior_people','base_person_aliases',
+                         'prior_organizations','prior_organization_redirects','prior_witness_organizations'):
                 sibling=Path(prior).with_name(f'{name}.parquet')
                 if sibling.is_file():
                     base_rec[name]=file_pin(sibling)

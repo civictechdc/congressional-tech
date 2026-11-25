@@ -3417,6 +3417,236 @@
         "member_key remains authoritative when bioguide_id is missing; vote totals do not imply recorded individual ballots."
       ],
       "description": "Explore individual recorded member ballots cast in House and Senate roll-call votes."
+    },
+    {
+      "name": "organizations.parquet",
+      "columns": [
+        {
+          "name": "org_id",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Published organization identifier: lowercase 16-hex SHA-256 prefix over \"org-v1\" plus the winning anchor (fr_agency:<id>, wikidata:<Q>, decision:<id>, bag:<bag_key>, or witness:<witness_key>)"
+        },
+        {
+          "name": "display_name",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Canonical display name for the organization (winning anchor label when supplied, else most frequent verbatim affiliation string with lexicographic tie-break)"
+        },
+        {
+          "name": "kind",
+          "type": "dict",
+          "nullable": true,
+          "meaning": "Organization kind derived from Ban, Park & You (APSR 2023) classification when matched; null when unclassified"
+        },
+        {
+          "name": "taxonomy_parent",
+          "type": "dict",
+          "nullable": true,
+          "meaning": "Ban, Park & You (APSR 2023, doi:10.1017/S0003055422000405) 9-parent witness organization category; null when unclassified"
+        },
+        {
+          "name": "taxonomy_category",
+          "type": "dict",
+          "nullable": true,
+          "meaning": "Ban, Park & You (APSR 2023, doi:10.1017/S0003055422000405) 18-child witness organization category; null when unclassified"
+        },
+        {
+          "name": "parent_org_id",
+          "type": "string",
+          "nullable": true,
+          "meaning": "Parent organization org_id when established by an authoritative registry; null otherwise"
+        },
+        {
+          "name": "appearance_count",
+          "type": "int64",
+          "nullable": false,
+          "meaning": "Count of distinct witness_key appearances linked to this organization"
+        },
+        {
+          "name": "bag_keys",
+          "type": "list<string>",
+          "nullable": false,
+          "meaning": "Sorted normalized token-bag keys grouped into this organization"
+        },
+        {
+          "name": "string_keys",
+          "type": "list<string>",
+          "nullable": false,
+          "meaning": "Sorted normalized L2 string keys grouped into this organization"
+        },
+        {
+          "name": "anchor",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Winning anchor string used to derive org_id"
+        },
+        {
+          "name": "has_conflict",
+          "type": "boolean",
+          "nullable": false,
+          "meaning": "True when active org_decisions contain a same/different contradiction touching this component, keeping it unmerged"
+        }
+      ],
+      "gaps": [
+        "Identical generic sub-unit names without distinguishing registry or decision anchors share a token-bag group; parent_org_id is populated only where an authoritative registry establishes hierarchy"
+      ],
+      "purpose": "Resolved witness organizations",
+      "row_meaning": "One resolved organization entity grouped by normalized token-bag key, registry anchor, or reviewed org decision",
+      "identity": {
+        "fields": [
+          "org_id"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "bag_keys[]": "Normalized token-bag keys belonging to this organization; provenance keys, not foreign keys.",
+        "string_keys[]": "Normalized L2 affiliation string keys belonging to this organization; provenance keys, not foreign keys."
+      },
+      "nullability": "All identity, display, grouping, and count columns are required; kind, taxonomy_parent, taxonomy_category, and parent_org_id are nullable.",
+      "description": "Explore organizations resolved from witness affiliation and on-behalf-of strings, with Ban-Park-You categories and appearance counts."
+    },
+    {
+      "name": "organization_ids.parquet",
+      "columns": [
+        {
+          "name": "org_id",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Published organization identifier in organizations.parquet"
+        },
+        {
+          "name": "scheme",
+          "type": "dict",
+          "nullable": false,
+          "meaning": "Identifier scheme (bag, decision, wikidata, fr_agency, or witness)"
+        },
+        {
+          "name": "value",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Identifier value within the scheme"
+        }
+      ],
+      "gaps": [],
+      "purpose": "External and provenance identifiers for organizations",
+      "row_meaning": "One (org_id, scheme, value) identifier binding for a published organization",
+      "identity": {
+        "fields": [
+          "org_id",
+          "scheme",
+          "value"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {},
+      "nullability": "All columns are required.",
+      "description": "Look up external registry, Wikidata, decision, and token-bag identifiers associated with published organizations."
+    },
+    {
+      "name": "witness_organizations.parquet",
+      "columns": [
+        {
+          "name": "witness_key",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Witness appearance identifier in witnesses.parquet"
+        },
+        {
+          "name": "field",
+          "type": "dict",
+          "nullable": false,
+          "meaning": "Source affiliation field on the witness appearance (organization or on_behalf_of)"
+        },
+        {
+          "name": "org_id",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Resolved organization identifier in organizations.parquet"
+        },
+        {
+          "name": "bag_key",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Normalized token-bag key for this stated affiliation"
+        },
+        {
+          "name": "string_key",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Normalized L2 string key for this stated affiliation"
+        },
+        {
+          "name": "raw_text",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Verbatim organization or on_behalf_of text from the witness appearance row"
+        }
+      ],
+      "gaps": [],
+      "purpose": "Links between witness appearances and organizations",
+      "row_meaning": "One affiliation link between a witness appearance field and its resolved organization",
+      "identity": {
+        "fields": [
+          "witness_key",
+          "field"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {},
+      "nullability": "All columns are required.",
+      "description": "Join witness appearances (organization and on_behalf_of fields) to resolved organizations while preserving verbatim text."
+    },
+    {
+      "name": "organization_redirects.parquet",
+      "columns": [
+        {
+          "name": "old_org_id",
+          "type": "string",
+          "nullable": false,
+          "meaning": "A previously published org_id redirected or restored by anchor or normalization updates"
+        },
+        {
+          "name": "org_id",
+          "type": "string",
+          "nullable": false,
+          "meaning": "Current live organizations.org_id that old_org_id resolves to in one hop"
+        },
+        {
+          "name": "event",
+          "type": "dict",
+          "nullable": false,
+          "meaning": "Redirect cause: merged, split_from, or restored"
+        },
+        {
+          "name": "release",
+          "type": "dict",
+          "nullable": false,
+          "meaning": "Release label or identifier in which this redirect event took effect"
+        }
+      ],
+      "gaps": [],
+      "purpose": "One-hop redirects for retired organization identifiers",
+      "row_meaning": "One prior org_id mapped directly to its current live org_id",
+      "identity": {
+        "fields": [
+          "old_org_id"
+        ],
+        "scope": "published identifier",
+        "validation": "native publication key checks",
+        "kind": "primary_key"
+      },
+      "notes": {
+        "old_org_id": "Every redirect target org_id is live in organizations.parquet, resolving historical IDs in a single hop."
+      },
+      "nullability": "All columns are required.",
+      "description": "Resolve retired organization identifiers to their current live organization in one hop."
     }
   ],
   "relationships_version": 1,
@@ -5041,6 +5271,111 @@
       "resolution": "required",
       "match": "equal",
       "scope": "selected release"
+    },
+    {
+      "id": "witness_organization_links",
+      "source": {
+        "table": "witness_organizations",
+        "fields": [
+          "witness_key"
+        ]
+      },
+      "target": {
+        "table": "witnesses",
+        "fields": [
+          "witness_key"
+        ]
+      },
+      "meaning": "Witness appearance row stating this organization or on-behalf-of affiliation.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "witness_organization_org",
+      "source": {
+        "table": "witness_organizations",
+        "fields": [
+          "org_id"
+        ]
+      },
+      "target": {
+        "table": "organizations",
+        "fields": [
+          "org_id"
+        ]
+      },
+      "meaning": "Resolved organization entity for this witness appearance affiliation.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "organization_external_ids",
+      "source": {
+        "table": "organization_ids",
+        "fields": [
+          "org_id"
+        ]
+      },
+      "target": {
+        "table": "organizations",
+        "fields": [
+          "org_id"
+        ]
+      },
+      "meaning": "Published organization owning this scheme/value identifier.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "organization_redirect_target",
+      "source": {
+        "table": "organization_redirects",
+        "fields": [
+          "org_id"
+        ]
+      },
+      "target": {
+        "table": "organizations",
+        "fields": [
+          "org_id"
+        ]
+      },
+      "meaning": "Live organization row a retired org_id resolves to in one hop.",
+      "cardinality": "many-to-one",
+      "nullable": false,
+      "resolution": "required",
+      "match": "equal",
+      "scope": "selected release"
+    },
+    {
+      "id": "organization_parent",
+      "source": {
+        "table": "organizations",
+        "fields": [
+          "parent_org_id"
+        ]
+      },
+      "target": {
+        "table": "organizations",
+        "fields": [
+          "org_id"
+        ]
+      },
+      "meaning": "Parent organization when established by an authoritative registry.",
+      "cardinality": "many-to-one",
+      "nullable": true,
+      "resolution": "unresolved_allowed",
+      "match": "equal",
+      "scope": "selected release"
     }
   ],
   "recipes": [
@@ -5584,6 +5919,32 @@
       "notes": [
         "Used by run_research_query with additional exact association filters and release-bound paging.",
         "since inclusive, until exclusive; null bounds are open. Missing values remain unknown."
+      ]
+    },
+    {
+      "id": "organization_appearances",
+      "title": "Appearances by organization",
+      "dialect": "duckdb",
+      "requires": [
+        "organizations",
+        "witness_organizations",
+        "witnesses"
+      ],
+      "relationships": [
+        "witness_organization_org",
+        "witness_organization_links"
+      ],
+      "parameters": [
+        {
+          "name": "org_id",
+          "example": "e5b88f10d3d5a5ea"
+        }
+      ],
+      "sql": "SELECT o.org_id,o.display_name,wo.field,wo.raw_text,w.witness_key,w.name,w.position,w.occasion,w.event_id,w.package_id\nFROM organizations o JOIN witness_organizations wo USING (org_id) JOIN witnesses w USING (witness_key)\nWHERE o.org_id=? AND w.superseded_by IS NULL ORDER BY w.event_id NULLS LAST,w.package_id,w.witness_key,wo.field LIMIT 100",
+      "result_row": "One canonical witness appearance linked to this organization",
+      "notes": [
+        "Follows witness_organizations.org_id and witness_organizations.witness_key; superseded source rows are excluded.",
+        "Check organization_redirects when looking up a retired org_id."
       ]
     }
   ],

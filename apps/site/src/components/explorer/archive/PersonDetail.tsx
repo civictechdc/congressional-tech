@@ -39,6 +39,7 @@ export function PersonDetail({
   onCommittee,
   onMember,
   onPerson,
+  onOrganization,
   onFilterDocuments,
   onInspect,
   onClose,
@@ -53,6 +54,7 @@ export function PersonDetail({
   onCommittee?:(key:string)=>void;
   onMember?:(bioguideId:string)=>void;
   onPerson?:(personKey:string)=>void;
+  onOrganization?:(orgId:string)=>void;
   onFilterDocuments?:()=>void;
   onInspect?:()=>void;
   onClose?:()=>void;
@@ -87,6 +89,7 @@ export function PersonDetail({
   const organizations:string[]=Array.isArray(person.organizations)&&person.organizations.length
     ?person.organizations
     :person.organization?[String(person.organization)]:[];
+  const orgLinks:any[]=Array.isArray(person.org_links)?[...new Map(person.org_links.filter((l:any)=>l?.org_id).map((l:any)=>[String(l.org_id),l])).values()]:[];
   const positions:string[]=Array.isArray(person.positions)?person.positions:[];
   const appearances:any[]=Array.isArray(person.appearances)?person.appearances:[];
   const documents:any[]=Array.isArray(person.documents)?person.documents:[];
@@ -110,7 +113,16 @@ export function PersonDetail({
       {alternateNames.length>0&&<p className="archive-entity-meta"><strong>Recorded names:</strong> {alternateNames.join(' · ')}</p>}
       {ranks.length>1&&<p className="archive-entity-meta"><strong>Recorded ranks:</strong> {ranks.join(' · ')}</p>}
       {person.credentials&&<p className="archive-entity-meta"><strong>Credentials:</strong> {person.credentials}</p>}
-      {organizations.length>0&&<p className="archive-entity-meta"><strong>Organizations:</strong> {organizations.join(' · ')}</p>}
+      {(orgLinks.length>0||organizations.length>0)&&<p className="archive-entity-meta">
+        <strong>Organizations:</strong>{' '}
+        {orgLinks.length>0&&onOrganization
+          ?<span className="archive-pill-list">
+              {orgLinks.map((link:any)=><button key={link.org_id} type="button" className="archive-measure-pill" onClick={()=>onOrganization(String(link.org_id))}>
+                {link.display_name||link.raw_text||link.org_id}
+              </button>)}
+            </span>
+          :organizations.join(' · ')}
+      </p>}
       {positions.length>0&&<p className="archive-entity-meta"><strong>Positions:</strong> {positions.join(' · ')}</p>}
       {(person.first_seen_date||person.last_seen_date)&&<p className="archive-entity-meta">
         <strong>Appearances recorded:</strong>{' '}

@@ -22,6 +22,7 @@ export function WitnessDetail({
   onCommittee,
   onMember,
   onPerson,
+  onOrganization,
   onFilterDocuments,
   onInspect,
   onClose,
@@ -35,6 +36,7 @@ export function WitnessDetail({
   onCommittee?:(key:string)=>void;
   onMember?:(bioguideId:string)=>void;
   onPerson?:(personKey:string)=>void;
+  onOrganization?:(orgId:string)=>void;
   onFilterDocuments?:()=>void;
   onInspect?:()=>void;
   onClose?:()=>void;
@@ -42,6 +44,8 @@ export function WitnessDetail({
 }){
   if(!witness)return null;
   const organizations:string[]=Array.isArray(witness.organizations)?witness.organizations:witness.organization?[witness.organization]:[];
+  const orgLinks:any[]=Array.isArray(witness.org_links)?witness.org_links:[];
+  const uniqueOrgLinks=[...new Map(orgLinks.filter(l=>l?.org_id).map(l=>[String(l.org_id),l])).values()];
   const positions:string[]=Array.isArray(witness.positions)?witness.positions:witness.position?[witness.position]:[];
   const appearances:any[]=Array.isArray(witness.appearances)?witness.appearances:[];
   const documents:any[]=Array.isArray(witness.documents)?witness.documents:[];
@@ -64,7 +68,16 @@ export function WitnessDetail({
       <h2>{witnessLabel(witness)}</h2>
       {witnessUnlisted&&<p className="archive-source-meta">{witnessUnlisted}</p>}
       {witness.credentials&&<p className="archive-entity-meta"><strong>Credentials:</strong> {witness.credentials}</p>}
-      {organizations.length>0&&<p className="archive-entity-meta"><strong>Organizations:</strong> {organizations.join(' · ')}</p>}
+      {(uniqueOrgLinks.length>0||organizations.length>0)&&<p className="archive-entity-meta">
+        <strong>Organizations:</strong>{' '}
+        {uniqueOrgLinks.length>0&&onOrganization
+          ?<span className="archive-pill-list">
+              {uniqueOrgLinks.map((link:any)=><button key={link.org_id} type="button" className="archive-measure-pill" onClick={()=>onOrganization(String(link.org_id))}>
+                {link.display_name||link.raw_text||link.org_id}
+              </button>)}
+            </span>
+          :organizations.join(' · ')}
+      </p>}
       {positions.length>0&&<p className="archive-entity-meta"><strong>Positions:</strong> {positions.join(' · ')}</p>}
       {named&&<p className="archive-entity-meta">
         <strong>Member of Congress:</strong>{' '}
