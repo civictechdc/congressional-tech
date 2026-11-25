@@ -35,7 +35,7 @@ ENTITY_TABLES=('meeting_records','appearance_records')
 # channels, recording_matches and committee_records. All three inputs or none.
 EXPLORER_TABLES=('video_records','committee_records')
 OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES,'playlist_records','transcript_headings')
-OPTIONAL={'engine_config',*OPTIONAL_TABLES,'spicy_regs','recovery_requirements','text_index','historical_recording_matcher','pdf_cover_evidence','body_qualifications'}
+OPTIONAL={'engine_config',*OPTIONAL_TABLES,'spicy_regs','refspec','recovery_requirements','text_index','historical_recording_matcher','pdf_cover_evidence','body_qualifications'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants',
             'recording_decision_files':'recording_decisions','qualification_files':'qualifications'}
@@ -137,6 +137,9 @@ def validate_spec(value,*,base):
         result['spicy_regs']=dict(value['spicy_regs'],path=_local(value['spicy_regs']['path'],base))
     elif any(value.get(name) is not None for name in OPTIONAL_TABLES):
         raise ValueError('Entity inputs require pinned spicy-regs generations')
+    if value.get('refspec') is not None:
+        _pin(value['refspec'],{'path','sha256','size'})
+        result['refspec']=dict(value['refspec'],path=_local(value['refspec']['path'],base))
     explorer=[value.get(name) is not None for name in EXPLORER_TABLES]+[bool(value.get('recording_decision_files'))]
     if any(explorer) and not (all(explorer) and all(value.get(name) is not None for name in ENTITY_TABLES)):
         raise ValueError('Explorer tables require video_records, committee_records and recording decisions together, with the entity tables')
@@ -203,6 +206,28 @@ def _spicy_arguments(pin,hold):
     return dict(generations=generations,tables={name:dict(kind='parquet',path=hold(table)) for name,table in tables.items()})
 
 
+def _refspec_tables(text,base):
+    from viewer_publication.refspec_inputs import refspec_tables_from_manifest
+    manifest,tables=refspec_tables_from_manifest(text,base)
+    return manifest,tables
+
+
+def _refspec_arguments(pin,hold):
+    """Verify and hold the pinned RefSpec manifest, view-manifest, and tables."""
+    from viewer_publication.refspec_inputs import fetch_pinned,refspec_profile_pin
+    held_manifest=hold(pin)
+    manifest,tables=_refspec_tables(Path(held_manifest).read_text(),Path(pin['path']).parent)
+    # Run full row/view-manifest consistency check before holding individual tables.
+    fetch_pinned(pin['path'],expected_sha256=pin['sha256'],expected_size=pin['size'],offline=True)
+    held_tables={
+        name:dict(kind='parquet',path=hold(table))
+        for name,table in tables.items() if not name.startswith('_')
+    }
+    if '_view_manifest' in tables:
+        hold(tables['_view_manifest'])
+    return dict(tables=held_tables,pin=refspec_profile_pin(dict(pin,path=held_manifest)))
+
+
 class CheckedInputs(dict):
     """check_inputs' result: {path: VerifiedFile} for every pinned local input of one spec.
 
@@ -245,6 +270,16 @@ def check_inputs(spec):
     if spicy is not None and check('spicy_regs',spicy):
         for name,table in _spicy_tables(Path(spicy['path']).read_text(),Path(spicy['path']).parent)[1].items():
             check('spicy_regs '+name,table)
+    refspec_pin=spec.get('refspec')
+    if refspec_pin is not None and check('refspec',refspec_pin):
+        _manifest,ref_tables=_refspec_tables(Path(refspec_pin['path']).read_text(),Path(refspec_pin['path']).parent)
+        for name,table in ref_tables.items():
+            check('refspec '+name,table)
+        from viewer_publication.refspec_inputs import fetch_pinned
+        try:
+            fetch_pinned(refspec_pin['path'],expected_sha256=refspec_pin['sha256'],expected_size=refspec_pin['size'],offline=True)
+        except Exception as error:
+            problems.append(f'Pinned model input changed: {refspec_pin["path"]} (refspec): {error}')
     if problems:raise ValueError(f'{len(problems)} pinned model inputs missing, unreadable or changed: '+'; '.join(problems))
     return checked
 
@@ -345,6 +380,8 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
             arguments['body_qualifications']=dict(value,path=hold(value))
         if spec.get('spicy_regs') is not None:
             arguments['spicy_regs']=_spicy_arguments(spec['spicy_regs'],hold)
+        if spec.get('refspec') is not None:
+            arguments['refspec']=_refspec_arguments(spec['refspec'],hold)
         for _source,verified in retained.values():verified.require(verified.path)
         yield arguments
         for _source,verified in retained.values():verified.require(verified.path)

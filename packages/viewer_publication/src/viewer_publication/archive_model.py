@@ -1631,9 +1631,10 @@ ORG_WITNESS_ORGS_FIELDS=dict(witness_key='Utf8',field='Utf8',org_id='Utf8',
     bag_key='Utf8',string_key='Utf8',raw_text='Utf8')
 
 
-def org_entity_inputs(scratch,*,org_decision_files=(),prior_org_release=None,release_label='current',root=ROOT):
-    """Prepare native engine inputs for Phase 1 organization entity resolution (ct-6him)."""
+def org_entity_inputs(scratch,*,org_decision_files=(),prior_org_release=None,release_label='current',refspec=None,root=ROOT):
+    """Prepare native engine inputs for organization entity resolution (ct-6him, ct-w34j)."""
     from congress_api.retention.provenance import field
+    from viewer_publication.refspec_inputs import refspec_model_inputs
     work=Path(scratch)/'org_entities'
     work.mkdir(parents=True,exist_ok=True)
     taxonomy_raw=json.loads((Path(root)/'model/registries/ban-park-you-org-taxonomy.json').read_text())['categories']
@@ -1642,6 +1643,8 @@ def org_entity_inputs(scratch,*,org_decision_files=(),prior_org_release=None,rel
         json_input(work,'ban_park_you_org_taxonomy',taxonomy_rows,**ORG_TAXONOMY_FIELDS),
         json_input(work,'org_release_meta',[dict(release=str(release_label))],release='Utf8'),
     ]
+    refspec_inputs,_pin=refspec_model_inputs(refspec,work)
+    inputs += refspec_inputs
     if org_decision_files:
         normalized_files=[
             dict(entry) if isinstance(entry,dict)
@@ -1688,6 +1691,278 @@ def org_entity_steps(*,root=ROOT):
     sql_dir=Path(root)/'model/sql'
     return [
         dict(name='org_strings',sql=(sql_dir/'org-strings.sql').read_text(),materialize=True),
+        dict(name='org_registry_resolved_orgs',sql=r"""WITH successor_counts AS (
+ SELECT original,min(successor) AS successor,count(*) AS cnt
+ FROM refspec_current_successors
+ GROUP BY original
+), single_successors AS (
+ SELECT original,successor
+ FROM successor_counts
+ WHERE cnt=1
+)
+SELECT
+ o.resource_iri AS orig_iri,
+ o.fr_id AS orig_fr_id,
+ o.name AS orig_name,
+ trim(regexp_replace(
+  regexp_replace(
+   regexp_replace(
+    regexp_replace(
+     regexp_replace(lower(o.name),'&',' and ','g'),
+     '\([^)]*\)',' ','g'
+    ),
+    '[^a-z0-9]+',' ','g'
+   ),
+   '\b(the|u s|us|united states|of america)\b',' ','g'
+  ),
+  '\s+',' ','g'
+ )) AS orig_norm_key,
+ o.short_name AS orig_short_name,
+ CASE WHEN o.short_name IS NOT NULL AND o.short_name=upper(o.short_name) THEN o.short_name ELSE NULL END AS orig_upper_short,
+ coalesce(s.successor,o.resource_iri) AS resolved_iri,
+ t.fr_id,
+ t.name,
+ t.parent
+FROM refspec_organizations o
+LEFT JOIN single_successors s ON o.resource_iri=s.original
+JOIN refspec_organizations t ON t.resource_iri=coalesce(s.successor,o.resource_iri)""",materialize=True),
+        dict(name='org_registry_raw_keys',sql=r"""WITH fr_expanded AS (
+ SELECT
+  'fr_agency:'||cast(fr_id AS VARCHAR) AS anchor,
+  fr_id,
+  resolved_iri AS fr_resource,
+  'same' AS fr_relation,
+  'fr:'||cast(orig_fr_id AS VARCHAR) AS evidence_id,
+  name AS canonical_name,
+  parent AS parent_fr_iri,
+  unnest(make_array(
+   named_struct(
+    'match_key',orig_norm_key,
+    'key_kind','name',
+    'raw_acronym',cast(NULL AS VARCHAR),
+    'key_priority',1
+   ),
+   CASE WHEN regexp_like(
+    orig_norm_key,
+    '^.+? (department|office|bureau|division|institute|center|centers|council|board|commission|service|agency|administration|authority|foundation|corps|force|guard)$'
+   ) THEN named_struct(
+    'match_key',regexp_replace(
+     orig_norm_key,
+     '^(.+?) (department|office|bureau|division|institute|center|centers|council|board|commission|service|agency|administration|authority|foundation|corps|force|guard)$',
+     '\2 of \1'
+    ),
+    'key_kind','inverted_name',
+    'raw_acronym',cast(NULL AS VARCHAR),
+    'key_priority',2
+   ) END,
+   CASE WHEN orig_short_name IS NOT NULL AND length(trim(orig_short_name))>0 THEN named_struct(
+    'match_key',trim(regexp_replace(
+     regexp_replace(
+      regexp_replace(
+       regexp_replace(
+        regexp_replace(lower(orig_short_name),'&',' and ','g'),
+        '\([^)]*\)',' ','g'
+       ),
+       '[^a-z0-9]+',' ','g'
+      ),
+      '\b(the|u s|us|united states|of america)\b',' ','g'
+     ),
+     '\s+',' ','g'
+    )),
+    'key_kind','short_name',
+    'raw_acronym',orig_upper_short,
+    'key_priority',4
+   ) END
+  )) AS kv
+ FROM org_registry_resolved_orgs
+)
+SELECT
+ kv['match_key'] AS match_key,
+ kv['key_kind'] AS key_kind,
+ kv['raw_acronym'] AS raw_acronym,
+ anchor,fr_id,fr_resource,fr_relation,evidence_id,canonical_name,parent_fr_iri,
+ kv['key_priority'] AS key_priority
+FROM fr_expanded
+WHERE kv IS NOT NULL AND length(kv['match_key'])>0
+UNION ALL
+SELECT
+ trim(regexp_replace(
+  regexp_replace(
+   regexp_replace(
+    regexp_replace(
+     regexp_replace(lower(a.name_key),'&',' and ','g'),
+     '\([^)]*\)',' ','g'
+    ),
+    '[^a-z0-9]+',' ','g'
+   ),
+   '\b(the|u s|us|united states|of america)\b',' ','g'
+  ),
+  '\s+',' ','g'
+ )) AS match_key,
+ 'alias' AS key_kind,
+ cast(NULL AS VARCHAR) AS raw_acronym,
+ coalesce('fr_agency:'||cast(r.fr_id AS VARCHAR),'refspec_target:'||a.target) AS anchor,
+ r.fr_id,
+ r.resolved_iri AS fr_resource,
+ coalesce(a.fr_relation,'same') AS fr_relation,
+ a.alias_id AS evidence_id,
+ coalesce(r.name,initcap(a.name_key)) AS canonical_name,
+ r.parent AS parent_fr_iri,
+ 3 AS key_priority
+FROM refspec_aliases a
+LEFT JOIN org_registry_resolved_orgs r ON r.orig_iri=a.fr_resource
+WHERE coalesce(r.resolved_iri,a.target) IS NOT NULL""",materialize=True),
+        dict(name='org_registry_keys',sql="""WITH filtered AS (
+ SELECT *
+ FROM org_registry_raw_keys
+ WHERE length(match_key)>0
+  AND (key_kind<>'short_name' OR (length(match_key)>=3 AND match_key NOT IN ('usa','ihs','hope','cia')))
+), grouped AS (
+ SELECT
+  match_key,
+  min(anchor) AS min_anchor,
+  max(anchor) AS max_anchor,
+  (array_agg(key_kind ORDER BY key_priority ASC,coalesce(fr_id,999999999) ASC,evidence_id ASC))[1] AS key_kind,
+  (array_agg(raw_acronym ORDER BY key_priority ASC,coalesce(fr_id,999999999) ASC,evidence_id ASC))[1] AS raw_acronym,
+  (array_agg(anchor ORDER BY key_priority ASC,coalesce(fr_id,999999999) ASC,evidence_id ASC))[1] AS anchor,
+  (array_agg(fr_id ORDER BY key_priority ASC,coalesce(fr_id,999999999) ASC,evidence_id ASC))[1] AS fr_id,
+  (array_agg(fr_resource ORDER BY key_priority ASC,coalesce(fr_id,999999999) ASC,evidence_id ASC))[1] AS fr_resource,
+  (array_agg(fr_relation ORDER BY key_priority ASC,coalesce(fr_id,999999999) ASC,evidence_id ASC))[1] AS fr_relation,
+  (array_agg(evidence_id ORDER BY key_priority ASC,coalesce(fr_id,999999999) ASC,evidence_id ASC))[1] AS evidence_id,
+  (array_agg(canonical_name ORDER BY key_priority ASC,coalesce(fr_id,999999999) ASC,evidence_id ASC))[1] AS canonical_name,
+  (array_agg(parent_fr_iri ORDER BY key_priority ASC,coalesce(fr_id,999999999) ASC,evidence_id ASC))[1] AS parent_fr_iri,
+  (array_agg(key_priority ORDER BY key_priority ASC,coalesce(fr_id,999999999) ASC,evidence_id ASC))[1] AS key_priority
+ FROM filtered
+ GROUP BY match_key
+)
+SELECT
+ match_key,key_kind,raw_acronym,anchor,fr_id,fr_resource,
+ fr_relation,evidence_id,canonical_name,parent_fr_iri,key_priority
+FROM grouped
+WHERE min_anchor=max_anchor""",materialize=True),
+        dict(name='org_registry_segments',sql=r"""WITH raw_text_pieces AS (
+ SELECT
+  os.string_key,
+  os.bag_key,
+  trim(regexp_replace(raw_text,'\([^)]*\)',' ','g')) AS cleaned_text
+ FROM (
+  SELECT string_key,bag_key,unnest(raw_texts) AS raw_text
+  FROM org_strings
+ ) os
+ WHERE raw_text IS NOT NULL AND length(trim(raw_text))>0
+), clause_pieces AS (
+ SELECT
+  string_key,
+  bag_key,
+  trim(regexp_replace(
+   clause,
+   '(?:,\s*(?:and\s+)?|\s+and\s+)former(?:ly)?\b.*$',
+   '',
+   'i'
+  )) AS active_clause
+ FROM (
+  SELECT
+   string_key,
+   bag_key,
+   trim(unnest(string_to_array(
+    regexp_replace(
+     regexp_replace(cleaned_text,'\s+accompanied by\s+',';','gi'),
+     ':',
+     ';',
+     'g'
+    ),
+    ';'
+   ))) AS clause
+  FROM raw_text_pieces
+ ) c
+ WHERE length(trim(clause))>0
+  AND NOT regexp_like(trim(clause),'^(?:and\s+)?former(?:ly)?\b','i')
+), split_pieces AS (
+ SELECT DISTINCT
+  string_key,
+  bag_key,
+  trim(unnest(array_append(string_to_array(active_clause,','),active_clause))) AS raw_seg
+ FROM clause_pieces
+ WHERE length(active_clause)>0
+), normalized_segments AS (
+ SELECT
+  string_key,
+  bag_key,
+  raw_seg,
+  trim(regexp_replace(
+   regexp_replace(
+    regexp_replace(
+     regexp_replace(
+      regexp_replace(lower(raw_seg),'&',' and ','g'),
+      '\([^)]*\)',' ','g'
+     ),
+     '[^a-z0-9]+',' ','g'
+    ),
+    '\b(the|u s|us|united states|of america)\b',' ','g'
+   ),
+   '\s+',' ','g'
+  )) AS norm_key,
+  trim(regexp_replace(
+   regexp_replace(
+    raw_seg,
+    '^(?:the\s+|u\.?s\.?\s+|united states(?:\s+of america)?\s+)+',
+    '',
+    'gi'
+   ),
+   '[.\s]+$',
+   ''
+  )) AS raw_acronym_candidate,
+  (
+   (
+    regexp_like(
+     regexp_replace(lower(trim(raw_seg)),'^the\s+',''),
+     '^(state|commonwealth|county|town|village|borough|parish) of [a-z]+|^city of [a-z]+'
+    )
+    AND NOT regexp_like(regexp_replace(lower(trim(raw_seg)),'^the\s+',''),'^(city|district) of washington|^district of columbia')
+   )
+   OR regexp_like(
+    lower(trim(raw_seg)),
+    '\b(alabama|alaska|arizona|arkansas|california|colorado|connecticut|delaware|florida|georgia|hawaii|idaho|illinois|indiana|iowa|kansas|kentucky|louisiana|maine|maryland|massachusetts|michigan|minnesota|mississippi|missouri|montana|nebraska|nevada|new hampshire|new jersey|new mexico|new york|north carolina|north dakota|ohio|oklahoma|oregon|pennsylvania|rhode island|south carolina|south dakota|tennessee|texas|utah|vermont|virginia|washington|west virginia|wisconsin|wyoming)\s+(environmental protection agency|epa|department|agency|bureau|commission|board|authority)\b'
+   )
+  ) AS is_nonfederal_seg
+ FROM split_pieces
+ WHERE raw_seg IS NOT NULL AND length(trim(raw_seg))>0
+), flagged AS (
+ SELECT
+  string_key,bag_key,raw_seg,norm_key,raw_acronym_candidate,
+  bool_or(is_nonfederal_seg) OVER (PARTITION BY string_key) AS has_nonfederal
+ FROM normalized_segments
+)
+SELECT string_key,bag_key,raw_seg,norm_key,raw_acronym_candidate
+FROM flagged
+WHERE NOT has_nonfederal AND length(norm_key)>0""",materialize=True),
+        dict(name='org_registry_matches',sql=(sql_dir/'org-registry-matches.sql').read_text(),materialize=True),
+        dict(name='org_bag_registry_matches',sql="""WITH bag_anchor_stats AS (
+ SELECT
+  m.bag_key,
+  m.anchor,
+  min(m.fr_id) AS fr_id,
+  min(m.fr_resource) AS fr_resource,
+  min(CASE WHEN m.fr_relation='same' THEN 0 ELSE 1 END) AS rel_rank,
+  min(m.evidence_id) AS evidence_id,
+  min(m.canonical_name) AS canonical_name,
+  min(m.parent_fr_iri) AS parent_fr_iri,
+  sum(s.appearance_count) AS total_apps
+ FROM org_registry_matches m
+ JOIN org_strings s ON s.string_key=m.string_key
+ GROUP BY m.bag_key,m.anchor
+), ranked AS (
+ SELECT
+  bag_key,anchor,fr_id,fr_resource,evidence_id,canonical_name,parent_fr_iri,
+  row_number() OVER (
+   PARTITION BY bag_key
+   ORDER BY rel_rank ASC,total_apps DESC,coalesce(fr_id,999999999) ASC,anchor ASC
+  ) AS rn
+ FROM bag_anchor_stats
+)
+SELECT bag_key,anchor,fr_id,fr_resource,evidence_id,canonical_name,parent_fr_iri
+FROM ranked
+WHERE rn=1""",materialize=True),
         dict(name='org_raw_strings',sql="""SELECT DISTINCT string_key,l2_text,bag_key,unnest(raw_texts) AS raw_text
 FROM org_strings""",materialize=True),
         dict(name='org_witness_mentions',sql="""WITH mentions AS (
@@ -1814,6 +2089,9 @@ SELECT org_node,bag_node FROM prior_mapped""",materialize=True),
  SELECT pm.org_node AS left_node,pm.bag_node AS right_node
  FROM active_org_nodes a
  JOIN org_prior_anchor_map pm ON pm.org_node=a.object_node
+), registry_edges AS (
+ SELECT 'b:'||bag_key AS left_node,'r:'||anchor AS right_node
+ FROM org_bag_registry_matches
 )
 SELECT left_node,right_node FROM bag_loops
 UNION ALL
@@ -1821,7 +2099,9 @@ SELECT left_node,right_node FROM witness_loops
 UNION ALL
 SELECT left_node,right_node FROM same_edges
 UNION ALL
-SELECT left_node,right_node FROM org_target_edges""",materialize=True),
+SELECT left_node,right_node FROM org_target_edges
+UNION ALL
+SELECT left_node,right_node FROM registry_edges""",materialize=True),
         dict(name='org_components',components=dict(
             sql='SELECT left_node,right_node FROM org_edges',
             left='left_node',
@@ -1927,12 +2207,23 @@ FROM joined""",materialize=True),
   AND d.resolution_status IN ('live','remapped')
   AND d.subject_node IS NOT NULL
   AND d.object_node IS NOT NULL
+), registry_comp_anchors AS (
+ SELECT DISTINCT
+  c.component AS group_key,
+  m.anchor,
+  1 AS tier
+ FROM org_bag_registry_matches m
+ JOIN org_components c ON c.node='r:'||m.anchor
+), comp_anchors AS (
+ SELECT group_key,anchor,tier FROM registry_comp_anchors
+ UNION ALL
+ SELECT group_key,anchor,tier FROM clean_comp_decisions
 ), all_candidates AS (
  SELECT na.group_key,na.anchor,na.tier,na.has_conflict FROM node_anchors na
  UNION ALL
- SELECT cd.group_key,cd.anchor,cd.tier,false AS has_conflict
- FROM group_base gb
- JOIN clean_comp_decisions cd ON cd.group_key=gb.group_key
+ SELECT ca.group_key,ca.anchor,ca.tier,false AS has_conflict
+ FROM comp_anchors ca
+ JOIN group_base gb ON gb.group_key=ca.group_key
  WHERE NOT gb.has_conflict
 ), ranked AS (
  SELECT
@@ -1953,17 +2244,27 @@ WHERE rn=1""",materialize=True),
  SELECT o.org_id,'bag' AS scheme,unnest(o.bag_keys) AS value
  FROM organizations o
  WHERE o.bag_keys IS NOT NULL
+), bag_ev AS (
+ SELECT org_id,scheme,value,'bag:'||value AS evidence
+ FROM bag_ids
+), registry_evidence AS (
+ SELECT anchor,min('refspec:'||evidence_id) AS evidence
+ FROM org_bag_registry_matches
+ GROUP BY anchor
 ), anchor_ids AS (
  SELECT
-  org_id,
-  split_part(anchor,':',1) AS scheme,
-  substr(anchor,length(split_part(anchor,':',1))+2) AS value
- FROM organizations
+  o.org_id,
+  split_part(o.anchor,':',1) AS scheme,
+  substr(o.anchor,length(split_part(o.anchor,':',1))+2) AS value,
+  coalesce(re.evidence,o.anchor) AS evidence
+ FROM organizations o
+ LEFT JOIN registry_evidence re ON re.anchor=o.anchor
 ), decision_ids AS (
  SELECT DISTINCT
   ga.org_id,
   CASE WHEN d.object LIKE 'wikidata:%' THEN 'wikidata' ELSE 'decision' END AS scheme,
-  CASE WHEN d.object LIKE 'wikidata:%' THEN d.object_key ELSE d.id END AS value
+  CASE WHEN d.object LIKE 'wikidata:%' THEN d.object_key ELSE d.id END AS value,
+  'decision:'||d.id AS evidence
  FROM org_group_anchors ga
  JOIN org_components c_sub ON c_sub.component=ga.group_key
  JOIN org_decisions_current d ON d.subject_node=c_sub.node
@@ -1971,16 +2272,54 @@ WHERE rn=1""",materialize=True),
  WHERE NOT ga.has_conflict
   AND d.verdict='same'
   AND d.resolution_status IN ('live','remapped')
+), all_ids AS (
+ SELECT org_id,scheme,value,evidence FROM bag_ev
+ UNION ALL
+ SELECT org_id,scheme,value,evidence FROM anchor_ids
+ UNION ALL
+ SELECT org_id,scheme,value,evidence FROM decision_ids
 )
-SELECT org_id,scheme,value FROM bag_ids
-UNION
-SELECT org_id,scheme,value FROM anchor_ids
-UNION
-SELECT org_id,scheme,value FROM decision_ids""",materialize=True),
-        dict(name='witness_organizations',sql="""SELECT
- m.witness_key,m.field,a.org_id,m.bag_key,m.string_key,m.raw_text
-FROM org_group_anchors a
-JOIN org_resolved_mentions m ON m.group_key=a.group_key""",materialize=True),
+SELECT org_id,scheme,value,min(evidence) AS evidence
+FROM all_ids
+GROUP BY org_id,scheme,value""",materialize=True),
+        dict(name='witness_organizations',sql="""WITH anchored_mentions AS (
+ SELECT
+  m.witness_key,m.field,a.org_id,a.anchor,a.has_conflict,
+  m.bag_key,m.string_key,m.raw_text
+ FROM org_group_anchors a
+ JOIN org_resolved_mentions m ON m.group_key=a.group_key
+), with_str_match AS (
+ SELECT
+  am.*,
+  rm.string_key AS matched_string_key,
+  rm.anchor AS str_anchor,
+  rm.evidence_id AS str_evidence_id
+ FROM org_registry_matches rm
+ RIGHT JOIN anchored_mentions am ON rm.string_key=am.string_key
+)
+SELECT
+ ws.witness_key,
+ ws.field,
+ ws.org_id,
+ ws.bag_key,
+ ws.string_key,
+ ws.raw_text,
+ CASE
+  WHEN NOT ws.has_conflict AND ws.matched_string_key IS NOT NULL AND ws.str_anchor=ws.anchor THEN 'registry'
+  WHEN NOT ws.has_conflict AND brm.bag_key IS NOT NULL AND brm.anchor=ws.anchor THEN 'token_bag'
+  WHEN ws.anchor LIKE 'wikidata:%' OR ws.anchor LIKE 'decision:%' THEN 'decision'
+  WHEN ws.anchor LIKE 'witness:%' THEN 'witness'
+  ELSE 'token_bag'
+ END AS method,
+ 1.0 AS score,
+ CASE
+  WHEN NOT ws.has_conflict AND ws.matched_string_key IS NOT NULL AND ws.str_anchor=ws.anchor THEN 'refspec:'||ws.str_evidence_id
+  WHEN NOT ws.has_conflict AND brm.bag_key IS NOT NULL AND brm.anchor=ws.anchor THEN 'bag:'||ws.bag_key||'->'||brm.evidence_id
+  WHEN ws.anchor LIKE 'wikidata:%' OR ws.anchor LIKE 'decision:%' OR ws.anchor LIKE 'witness:%' THEN ws.anchor
+  ELSE 'bag:'||ws.bag_key
+ END AS evidence
+FROM org_bag_registry_matches brm
+RIGHT JOIN with_str_match ws ON brm.bag_key=ws.bag_key""",materialize=True),
         dict(name='org_priors_fresh',sql="""WITH live_orgs AS (
  SELECT org_id FROM organizations
 ), gone_orgs AS (
@@ -2176,15 +2515,16 @@ FROM org_fuzzy_block_stats b"""),
  (SELECT count(*) FROM organizations o JOIN organization_redirects r ON o.org_id=r.old_org_id WHERE r.event<>'restored') AS non_one_hop_redirects,
  (SELECT count(*) FROM (SELECT old_org_id FROM organization_redirects GROUP BY old_org_id HAVING count(*)>1)) AS duplicate_redirect_old_org_ids,
  (SELECT count(*) FROM organizations WHERE has_conflict AND cardinality(bag_keys)>1) AS conflicted_orgs_still_merged,
- (SELECT count(*) FROM (SELECT string_key FROM org_strings GROUP BY string_key HAVING count(*)>1)) AS duplicate_org_strings"""),
+ (SELECT count(*) FROM (SELECT string_key FROM org_strings GROUP BY string_key HAVING count(*)>1)) AS duplicate_org_strings,
+ (SELECT count(*) FROM org_decisions WHERE subject LIKE 'fr_agency:%' OR subject LIKE 'agency_alias:%' OR subject LIKE 'refspec%' OR object LIKE 'fr_agency:%' OR object LIKE 'agency_alias:%' OR object LIKE 'refspec%') AS rejected_org_decision_agency_aliases"""),
     ]
     return meta,diag
 
 
 def build_org_entities(*,appearance_records_resolved,engine,output,scratch,
                        witness_key_map=None,org_decision_files=(),
-                       prior_org_release=None,release_label='current',root=ROOT):
-    """Run standalone Phase 1 organization resolution over `appearance_records_resolved`."""
+                       prior_org_release=None,release_label='current',refspec=None,root=ROOT):
+    """Run standalone organization entity resolution over `appearance_records_resolved`."""
     from congress_api.retention.provenance import run_job
     from viewer_publication.archive_model_lifetimes import retire_relations
     scratch=Path(scratch).resolve()
@@ -2201,7 +2541,7 @@ def build_org_entities(*,appearance_records_resolved,engine,output,scratch,
     else:
         inputs.append(json_input(scratch,'witness_key_map',[],old_key='Utf8',witness_key='Utf8',status='Utf8'))
     inputs += org_entity_inputs(scratch,org_decision_files=org_decision_files,
-        prior_org_release=prior_org_release,release_label=release_label,root=root)
+        prior_org_release=prior_org_release,release_label=release_label,refspec=refspec,root=root)
     steps=org_entity_steps(root=root)
     outputs=org_entity_outputs(output)
     meta,diag=org_entity_queries()
@@ -2279,7 +2619,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
                          transcript_headings=None,
                          historical_recording_matcher=None,pdf_cover_evidence=None,body_qualifications=None,prior_links=None,base_retired=None,base_release_id=None,
                          carried_html_metadata=0,include_org_entities=False,org_decision_files=(),
-                         prior_org_release=None,org_release_label='current',root=ROOT,registry=None):
+                         prior_org_release=None,org_release_label='current',refspec=None,root=ROOT,registry=None):
     """Freeze current input selectors and the shared prefix in fresh private scratch.
 
     `registry` names a compatible-versions file other than the checked-in one (tests only).
@@ -2348,9 +2688,11 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
     qual_input,qual_step=model_qualification_input(qual_sources or None,scratch/'qualifications')
     inputs.append(qual_input)
     prelude.append(qual_step)
+    from viewer_publication.refspec_inputs import refspec_profile_pin
+    refspec_pin=refspec_profile_pin(refspec)
     if include_org_entities:
         inputs += org_entity_inputs(scratch,org_decision_files=org_decision_files,
-            prior_org_release=prior_org_release,release_label=org_release_label,root=root)
+            prior_org_release=prior_org_release,release_label=org_release_label,refspec=refspec,root=root)
     prelude[0:0]=compatible_versions.selected_readings_steps(entries,parsers=pins)
     inputs += provenance
     recovery_policy=None
@@ -2463,7 +2805,7 @@ def prepare_model_inputs(*,captures,readings,filename_readings,parser_versions,c
             ranged=_settings('ranged',['list_row']),lookup=_settings('lookup',['link_key']),
             auxiliary_row_group_rows=AUXILIARY_ROW_GROUP_ROWS),root=root,
         recovery_policy=recovery_policy,historical_recording_matcher=historical_recording_matcher,
-        pdf_cover_evidence=pdf_cover_evidence)
+        pdf_cover_evidence=pdf_cover_evidence,refspec=refspec_pin)
     (scratch/'profile.json').write_text(json.dumps(model_profile,ensure_ascii=False,sort_keys=True,separators=(',',':'))+'\n')
     return dict(inputs=inputs,prelude=prelude,steps=admission_steps(prelude=prelude,root=root),
         profile=model_profile,capture_profile=capture_profile,scratch=scratch,evidence=evidence,
@@ -2484,7 +2826,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
                   transcript_headings=None,
                   historical_recording_matcher=None,pdf_cover_evidence=None,body_qualifications=None,prior_links=None,base_retired=None,base_release_id=None,
                   carried_html_metadata=0,include_org_entities=False,org_decision_files=(),
-                  prior_org_release=None,org_release_label='current',root=ROOT,registry=None):
+                  prior_org_release=None,org_release_label='current',refspec=None,root=ROOT,registry=None):
     """Prepare inputs once and run the document model's maintained full job."""
     prepared=prepare_model_inputs(captures=captures,readings=readings,filename_readings=filename_readings,
         parser_versions=parser_versions,catalog_version=catalog_version,engine=engine,scratch=scratch,
@@ -2498,7 +2840,7 @@ def build_release(*,captures,readings,filename_readings,parser_versions,catalog_
         prior_links=prior_links,base_retired=base_retired,base_release_id=base_release_id,
         carried_html_metadata=carried_html_metadata,include_org_entities=include_org_entities,
         org_decision_files=org_decision_files,prior_org_release=prior_org_release,
-        org_release_label=org_release_label,root=root,registry=registry)
+        org_release_label=org_release_label,refspec=refspec,root=root,registry=registry)
     return build_prepared_release(prepared,engine=engine,output=output,root=root)
 
 
