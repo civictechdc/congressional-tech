@@ -52,12 +52,26 @@ def reading_row(body: bytes) -> dict:
                 return _error(f'Query {query_key!r} candidate {qid} has invalid score')
             name = cand.get('name')
             desc = cand.get('description')
+            raw_types = cand.get('type')
+            if raw_types is None:
+                types = []
+            elif not isinstance(raw_types, list):
+                return _error(f'Query {query_key!r} candidate {qid} has invalid type list')
+            else:
+                types = []
+                for item in raw_types:
+                    if not isinstance(item, dict):
+                        return _error(f'Query {query_key!r} candidate {qid} has invalid type entry')
+                    tid = item.get('id')
+                    if isinstance(tid, str) and _QID_RE.fullmatch(tid) is not None and tid not in types:
+                        types.append(tid)
             candidates.append(dict(
                 id=qid,
                 name=name.strip() if isinstance(name, str) and name.strip() else None,
                 description=desc.strip() if isinstance(desc, str) and desc.strip() else None,
                 score=float(score),
                 match=bool(cand.get('match', False)),
+                types=types,
             ))
         fields.append(dict(
             field=f'query:{query_key}',

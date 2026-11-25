@@ -116,6 +116,7 @@ def completed_daily_inputs(template,production,records):
         value['org_decision_files']=[]
         value.pop('include_org_entities',None)
         value.pop('publish_org_entities',None)
+        value.pop('include_wikidata_links',None)
     return validate_model_spec(value,base=Path.cwd()),list(keys)
 
 

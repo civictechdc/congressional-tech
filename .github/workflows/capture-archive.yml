@@ -99,6 +99,7 @@ jobs:
           BYTE_BUDGET: ${{ vars.ARCHIVE_CAPTURE_BYTE_BUDGET }}
           SPOOL_BUDGET: ${{ vars.ARCHIVE_CAPTURE_SPOOL_BUDGET }}
           REVIEWED_CUTOFF_URLS: ${{ vars.ARCHIVE_CAPTURE_CUTOFF_URLS }}
+          RECONCILE_REQUESTS_PATH: ${{ vars.ARCHIVE_CAPTURE_RECONCILE_REQUESTS }}
         run: |
           set -euo pipefail
           for value in "$REQUEST_BUDGET" "$BYTE_BUDGET" "$SPOOL_BUDGET"; do
@@ -109,6 +110,9 @@ jobs:
             cutoff_file="$RUNNER_TEMP/archive-capture-cutoff-urls.json"
             printf '%s\n' "$REVIEWED_CUTOFF_URLS" > "$cutoff_file"
             set -- --cutoff-urls "$cutoff_file"
+          fi
+          if [[ -n "${RECONCILE_REQUESTS_PATH:-}" ]]; then
+            set -- "$@" --reconcile-requests "$RECONCILE_REQUESTS_PATH"
           fi
           .venv/bin/python -I -m congress_api.cli.capture_schedule \
             --pointer "$ARCHIVE_POINTER" --request-budget "$REQUEST_BUDGET" \

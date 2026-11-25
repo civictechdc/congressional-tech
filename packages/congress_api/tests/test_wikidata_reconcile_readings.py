@@ -28,13 +28,16 @@ def test_wikidata_reconcile_reading_row_extracts_queries_and_rejects_invalid():
     assert list(fields.keys()) == ['query:b001']
     assert fields['query:b001'][0]['id'] == 'Q464135'
     assert fields['query:b001'][0]['score'] == 100.0
+    assert fields['query:b001'][0]['types'] == ['Q163740']
+    assert fields['query:b001'][1]['types'] == []
 
     multi = reading_row(json.dumps({
         'b222': {'result': []},
-        'b111': {'result': [dict(id='Q49108', name='MIT', description='university', score=98.5, match=True)]},
+        'b111': {'result': [dict(id='Q49108', name='MIT', description='university', score=98.5, match=True, type=[dict(id='Q3918', name='university')])]},
     }).encode('utf-8'))
     assert multi['status'] == 'completed'
     assert [f['field'] for f in multi['fields']] == ['query:b111', 'query:b222']
+    assert json.loads(multi['fields'][0]['value'])[0]['types'] == ['Q3918']
     assert json.loads(multi['fields'][1]['value']) == []
 
     for bad in (
@@ -47,6 +50,8 @@ def test_wikidata_reconcile_reading_row_extracts_queries_and_rejects_invalid():
         b'{"b1": {"result": [{"id": "Q123", "score": NaN}]}}',
         b'{"b1": {"result": [{"id": "P123", "score": 95.0}]}}',
         b'{"b1": {"result": [{"id": "Q123", "score": true}]}}',
+        b'{"b1": {"result": [{"id": "Q123", "score": 95.0, "type": "bad"}]}}',
+        b'{"b1": {"result": [{"id": "Q123", "score": 95.0, "type": ["bad"]}]}}',
     ):
         refused = reading_row(bad)
         assert refused['status'] == 'error'
@@ -163,3 +168,59 @@ def test_wikidata_reconcile_capture_scope_recheck_and_headers():
         'Accept': 'application/json',
     }
     assert default_request_headers('https://docs.house.gov/meetings/') == {}
+
+
+def test_capture_schedule_accepts_reconcile_requests_seed(tmp_path):
+    import pyarrow as pa
+    from congress_api.cli import capture_schedule
+    from congress_api.lake.daily import derived_parsers
+    from congress_api.models.archive_profile import build_capture_profile
+
+    assert derived_parsers({'derived_parsers': ['wikidata_reconcile']}) == ['wikidata_reconcile']
+
+    rel = tmp_path / 'release'
+    rel.mkdir()
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    pq.write_table(pa.Table.from_pylist([], schema=pa.schema([
+        ('requested_url', pa.string()), ('attempts', pa.int32()),
+        ('last_attempt', pa.timestamp('us', tz='UTC')), ('last_status', pa.int16()),
+        ('last_outcome', pa.string()), ('last_good_at', pa.timestamp('us', tz='UTC')),
+        ('next_attempt_at', pa.timestamp('us', tz='UTC')),
+    ])), rel / 'url_state.parquet')
+    (rel / 'capture_scope.json').write_text((ROOT / 'model/registries/capture-scope.json').read_text())
+    profile = build_capture_profile(
+        engine_revision=engine.source_revision,
+        url_normalized_sql=(ROOT / 'model/sql/url-normalized.sql').read_text(),
+        url_keys_sql=(ROOT / 'model/sql/url-keys.sql').read_text(),
+        url_rules=json.loads((ROOT / 'model/registries/url-rules.json').read_text()),
+    )
+    (rel / 'capture_profile.json').write_text(json.dumps(profile))
+    pq.write_table(pa.Table.from_pylist([], schema=pa.schema([
+        ('canonical_url', pa.string()), ('variant_url', pa.string()),
+    ])), rel / 'url_variants.parquet')
+    files = []
+    for name in ['url_state.parquet', 'capture_scope.json', 'capture_profile.json', 'url_variants.parquet']:
+        data = (rel / name).read_bytes()
+        files.append(dict(name=name, sha256=hashlib.sha256(data).hexdigest(), size=len(data),
+                          rows=pq.read_metadata(rel / name).num_rows if name.endswith('parquet') else None))
+    rid = hashlib.sha256(json.dumps([1, [[f[k] for k in ('name', 'sha256', 'size', 'rows')] for f in files]],
+                                    separators=(',', ':')).encode()).hexdigest()
+    (rel / 'manifest.json').write_text(json.dumps(dict(schema_version=1, release_id=rid, files=files)))
+
+    req_url = 'https://wikidata-reconciliation.wmcloud.org/en/api?queries=%7B%22b111%22%3A%7B%22limit%22%3A5%2C%22query%22%3A%22mit%22%7D%7D'
+    req_path = tmp_path / 'org_reconcile_requests.parquet'
+    pq.write_table(pa.table({'batch_id': [0], 'request_url': [req_url]}), req_path)
+
+    work = tmp_path / 'capture-work'
+    capture_schedule.main([
+        '--release-root', str(rel),
+        '--reconcile-requests', str(req_path),
+        '--request-budget', '10',
+        '--byte-budget', '1048576',
+        '--spool-budget', '1048576',
+        '--work', str(work),
+        '--engine-config', os.environ['DOCSPEC_JOB_CONFIG'],
+    ])
+    queue = pq.read_table(work / 'plan/queue.parquet').to_pylist()
+    assert [r['requested_url'] for r in queue] == [req_url]
+    assert queue[0]['family'] == 'wikidata/reconcile'

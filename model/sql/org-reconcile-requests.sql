@@ -42,8 +42,12 @@ WITH reconcile_url_fetches AS (
   bag_key,
   appearance_count,
   trim(regexp_replace(
-   trim(coalesce(nullif(trim(l2_text),''),trim(display_text),'')),
-   '^(?:(?:director|deputy|assistant|associate|chief|chair(?:man|woman|person)?|president|vice president|ceo|cfo|coo|counsel|office of|division(?: of)?|branch(?: of)?|section(?: of)?|bureau of|program(?: of)?|department(?: of)?|subcommittee(?: on)?|committee(?: on)?|on behalf of|board of directors|governmental affairs|government relations|public policy|regulatory affairs|external affairs)[^,]*,\s*)+',
+   trim(regexp_replace(
+    trim(coalesce(nullif(trim(l2_text),''),trim(display_text),'')),
+    '^(?:(?:director|deputy|assistant|associate|chief|chair(?:man|woman|person)?|president|vice president|ceo|cfo|coo|counsel|office of|division(?: of)?|branch(?: of)?|section(?: of)?|bureau of|program(?: of)?|department(?: of)?|subcommittee(?: on)?|committee(?: on)?|on behalf of|board of directors|governmental affairs|government relations|public policy|regulatory affairs|external affairs)[^,]*,\s*)+',
+    ''
+   )),
+   '\s+(?:and|of|for|the|in|on|at|to)$',
    ''
   )) AS query_text
  FROM candidate_bags
@@ -55,6 +59,8 @@ WITH reconcile_url_fetches AS (
   row_number() OVER (ORDER BY appearance_count DESC,bag_key ASC) AS rn
  FROM queries_prepared
  WHERE nullif(query_text,'') IS NOT NULL
+  AND length(regexp_replace(query_text,'[^a-z0-9]','','g'))>=3
+  AND NOT regexp_like(query_text,'^(?:prepared|prepared statement|written statement|statement|testimony|submitted|for the record|none|n a|na|self|retired|private citizen|individual|independent|witness|member|chairman|president|director|professor|attorney|counsel)$')
 ), batched AS (
  SELECT
   cast((rn-1)/10 AS BIGINT) AS batch_id,

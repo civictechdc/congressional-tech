@@ -214,9 +214,9 @@ def _final_provenance(initial,raw_store,imported,identities,*,acknowledgements=N
 def derived_parsers(spec):
     """Derived readings passes a run asks for; default none, so a first run never demands a backfill."""
     value=spec.get('derived_parsers',[])
-    # The scoped daily path below implements HTML metadata and GPO MODS admission.
+    # The scoped daily path below implements HTML metadata, GPO MODS, and Wikidata reconciliation admission.
     # Other derived readers run explicitly until their daily baseline is qualified.
-    supported=('html_metadata','gpo_mods')
+    supported=('html_metadata','gpo_mods','wikidata_reconcile')
     if (not isinstance(value,list) or any(not isinstance(p,str) or p not in supported for p in value)
             or len(set(value))!=len(value)):
         raise ValueError('derived_parsers must list distinct supported daily parsers: '+', '.join(supported))
@@ -700,7 +700,7 @@ def _scope_html_inputs(scope, heads, *, engine, work, allow_empty=False, parser=
     inputs = [tables.table_input('scope_keys', scope),
               tables.table_input('captures', heads['captures']),
               tables.table_input('readings', heads['readings'])]
-    extra_cols = ',c.complete,c.http_status,c.url,c.requested_url' if parser != 'html_metadata' else ''
+    extra_cols = ',c.complete,c.http_status,c.url,c.requested_url,c.family' if parser != 'html_metadata' else ''
     parser_sql = "'" + parser.replace("'", "''") + "'"
     steps = [
         dict(name='candidate_shas', materialize=True,
