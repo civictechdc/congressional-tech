@@ -34,3 +34,7 @@ The organization plan and the review of sample witness appearances are complete.
 **2026-11-25T12:01:56Z**
 
 2026-11-25: Phase 1 (ct-6him) merged in PR #240 (6374ea1f) and closed, unblocking ct-w34j (Phase 2 RefSpec agencies) and ct-39u8 (Phase 3 Wikidata). Minor note from pre-merge review: witness-level org_decisions currently apply to field_rank=1 (organization); consider witness:<wk>:<field> support for on_behalf_of in Phase 2/3 if needed.
+
+**2026-11-25T22:23:00Z**
+
+2026-11-25 P3 follow-ups: `ct-aory` shipped RefSpec 1.4 (`Formspec-Labs/RefSpec#2` + PR #251 `586cbd43`, lifting `house_xml` federal coverage to `90.31%`) and closed. `ct-39u8` merged live-probe refinements, capture/qualification wiring, and AC #3 fresh 150-link hand audit (`0–1/150` wrong <= `3/150`) in PR #252 (`73575906`); `ct-39u8` and `ct-lwxs` remain open solely for live R2 `wikidata/reconcile` capture + `include_wikidata_links=True` activation.
