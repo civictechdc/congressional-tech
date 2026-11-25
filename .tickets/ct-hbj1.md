@@ -18,3 +18,9 @@ Stream all 328K+ archive documents through the unified p12_clean_plus_p3_bidi_cl
 
 1) 100% of 328K+ archive documents swept locally with SHA-256 deduplication and Two-Channel Context formatting. 2) Emitted docmeta_v7 release sidecar passes release_contract.validate_release_sidecar_table(table) == [] with zero doc: fabricated keys or zeroed digests, accompanied by MLCommons Croissant JSON-LD and W3C DCAT-3 manifests.
 
+
+## Notes
+
+**2026-11-25T12:01:56Z**
+
+2026-11-25: Upstream prerequisites ct-f2ai (9K window + OCR overlay) and ct-ogcq (8,510 WARC/ARC envelope cleanup) are merged on main (PR #240, 6374ea1f). Blocked solely on ct-pqi5.

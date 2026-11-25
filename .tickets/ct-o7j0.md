@@ -35,3 +35,7 @@ V7.3a.1 sealed strictly (9/9 gates passing, MANIFEST.json 2026-11-24T15:38:38Z):
 **2026-11-24T18:01:03Z**
 
 Greenfield fat-cut done (2026-11-24): removed 82 legacy V4-V6.5 / docmeta_v6_1 files cleanly (~10 MB -> 2.6 MB active V7 source+tests); 237/237 affected tests + doctor + inventory pass.
+
+**2026-11-25T12:01:56Z**
+
+2026-11-25: PR #240 (6374ea1f, 12/12 CI green) merged ct-mqf8, ct-02x5, ct-so28, ct-o7ew, ct-f2ai, V4-V6.5/docmeta_v6_1 retirement, and scripts/view_docmeta_v7_3.py into main. Next critical path: ct-pqi5 -> ct-hbj1 -> ct-rlw5.

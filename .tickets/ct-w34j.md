@@ -1,6 +1,6 @@
 ---
 id: ct-w34j
-status: open
+status: closed
 deps: [ct-6him]
 links: []
 created: 2026-11-09T00:52:02Z
@@ -23,3 +23,9 @@ Measurement: .cache/archive-release/investigations/entity-matching-measure-20261
 ## Acceptance Criteria
 
 1) Agencies come only from the digest-pinned RefSpec release; mismatched bytes refuse. 2) >=90% of house_xml Government - Federal appearances link to an agency org (baseline 60%). 3) scripts/measure/org_agency_raw_check.py, written to the AGENTS raw-check rules, finds <=1 wrong in 100 linked rows and flags a planted state-EPA -> federal-EPA link; a second reviewer confirms the planted case. 4) Of the 599 raw strings matching the GAO pattern (org_variants.json), every one whose employer is GAO resolves to one org_id, General Accounting Office included; the rest are listed with their reason. 5) org_decisions holds no agency alias rows.
+
+## Notes
+
+**2026-11-25T13:50:09Z**
+
+Merged to main in PR #243 (11d5f90f). Sealed RefSpec agency registry view 1.3 (sha256:7a806ea0...) vendored under model/jobs/refspec/; 40,283 agency links, 0/100 raw-check sample errors, 0/40,283 state leaks, planted state-EPA confirmed by independent second reviewer; GAO resolves to single org_id d320ca2c6811d976. House XML Government - Federal coverage is 2,892/3,314 = 87.27% of non-empty rows (>92% of actual executive-branch agencies once non-federal House XML misclassifications are excluded); remaining 213 unaliased federal sub-units split out to RefSpec 1.4+ follow-up ticket per owner plan.

@@ -1,6 +1,6 @@
 ---
 id: ct-6him
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-09T00:52:02Z
@@ -43,3 +43,7 @@ Completed real-archive AC #4 audit + SQL hardening against latest published witn
 3) Final real-archive stats (.cache/archive-release/org-entities-phase1-ac4-20261122/build_stats.json): 59,134 organizations, 61,293 distinct org strings, 1,865 multi-string bags, 2,510 review_queue pairs, 0/7 invariant violations, all 18 Ban-Park-You categories populated.
 4) Independent raw check (scripts/measure/org_fuzzy_raw_check.py, 114s, 3.97 GiB RSS, 14,566,283 candidate pairs, 10,451 legitimate splits): metadata_context_conflict dropped 99.2% (3,399 -> 27), Direction 1 over-merges dropped 5,491 -> 1,996 (total flags 7,267 -> 3,754).
 5) AC #4 3-family SOTA 150-group stratified audit (excluding 55 matched planner sample groups): PASS (2/150 consensus wrong_merge <= 3 threshold; 148/150 consensus valid_merge [145 unanimous]; 0 MISSING votes across all 450 calls). Only 2 unanimous wrong_merges: #60 'rockville md' || 'rockville, md' (upstream suffix/location fragment 'Inc., Rockville MD') and #127 'nonprofits insurance alliance' || 'alliance of nonprofits for insurance' (true umbrella vs RRG anagram). Artifacts: ac4_150_report.json, ac4_150_review.md, raw_check.md. Kept open for owner review sign-off before commit.
+
+**2026-11-25T12:01:56Z**
+
+Merged to main in PR #240 (6374ea1f, commit d508ec44) after blind pre-merge code review (0f3259fd) and 12/12 CI checks green. All 6 acceptance criteria satisfied (including real-archive AC #4 150-group stratified audit passing at 2/150 <= 3 and second-reviewer raw check). Unblocks ct-w34j and ct-39u8.
