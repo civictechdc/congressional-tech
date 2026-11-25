@@ -105,6 +105,7 @@ def build_targets(
     WITH ocr_un AS (
         SELECT
             lower(hex(d.saved_body)) AS sha,
+            coalesce(d.saved_suffix, '.gz') AS saved_suffix,
             lower(hex(d.link_key)) AS link_key_hex,
             det.doc_key,
             det.filename,
@@ -121,6 +122,7 @@ def build_targets(
     lq_short AS (
         SELECT
             lower(hex(d.saved_body)) AS sha,
+            coalesce(d.saved_suffix, '.gz') AS saved_suffix,
             lower(hex(d.link_key)) AS link_key_hex,
             q.doc_key,
             q.filename,
@@ -137,6 +139,7 @@ def build_targets(
     sentinels AS (
         SELECT
             lower(hex(d.saved_body)) AS sha,
+            coalesce(d.saved_suffix, '.gz') AS saved_suffix,
             lower(hex(d.link_key)) AS link_key_hex,
             det.doc_key,
             det.filename,
@@ -149,7 +152,7 @@ def build_targets(
         LEFT JOIN read_parquet('{lq_q}') q ON q.link_key = det.link_key
         WHERE substr(det.doc_key, 1, 12) IN ({sentinel_sql_list})
     )
-    SELECT sha, link_key_hex, doc_key, filename, saved_bytes, orig_status, orig_chars, cohort
+    SELECT sha, saved_suffix, link_key_hex, doc_key, filename, saved_bytes, orig_status, orig_chars, cohort
     FROM (
         SELECT * FROM ocr_un
         UNION ALL
@@ -162,12 +165,13 @@ def build_targets(
     con.close()
 
     by_sha: dict[str, dict[str, Any]] = {}
-    for sha, lk_hex, dk, fname, sbytes, orig_st, orig_ch, cohort in raw_rows:
+    for sha, saved_suffix, lk_hex, dk, fname, sbytes, orig_st, orig_ch, cohort in raw_rows:
         rec = by_sha.get(sha)
         is_sent = str(dk).startswith(SENTINEL_PREFIXES) or cohort == "sentinel"
         if rec is None:
             by_sha[sha] = {
                 "saved_body_hex": sha,
+                "saved_suffix": str(saved_suffix if saved_suffix is not None else ".gz"),
                 "saved_bytes": int(sbytes),
                 "doc_key": str(dk),
                 "doc_keys": [str(dk)],
@@ -232,57 +236,66 @@ def stream_download_verified_pdf(
     dst_path: Path,
     *,
     origin: str = DEFAULT_ORIGIN,
+    saved_suffix: str | None = None,
     timeout_s: float = 60.0,
     retries: int = 2,
     opener: Callable[..., Any] | None = None,
 ) -> tuple[str, int, str | None]:
-    """Stream `.gz` body from R2, gunzip directly to `dst_path`, and verify SHA-256."""
+    """Stream body from R2 (`<sha>.gz` or suffix-less `<sha>`), gunzip if gzipped, and verify SHA-256."""
     open_fn = opener or urllib.request.urlopen
-    url = f"{origin.rstrip('/')}/bodies/sha256/{sha_hex[:2]}/{sha_hex}.gz"
+    suffix_candidates = (saved_suffix,) if saved_suffix is not None else (".gz", "")
     last_err: str | None = None
 
-    for attempt in range(retries + 1):
-        dst_path.unlink(missing_ok=True)
-        decomp = zlib.decompressobj(16 + zlib.MAX_WBITS)
-        hasher = hashlib.sha256()
-        total_out = 0
-        try:
-            req = urllib.request.Request(url, headers={"User-Agent": "docmeta-ct-o7ew-rescue/1.0"})
-            with open_fn(req, timeout=timeout_s) as resp, dst_path.open("wb") as out_fh:
-                while raw := resp.read(CHUNK_BYTES):
-                    dec = decomp.decompress(raw)
-                    if dec:
-                        hasher.update(dec)
-                        out_fh.write(dec)
-                        total_out += len(dec)
-                tail = decomp.flush()
-                if tail:
-                    hasher.update(tail)
-                    out_fh.write(tail)
-                    total_out += len(tail)
-        except urllib.error.HTTPError as exc:
+    for suffix_idx, suffix in enumerate(suffix_candidates):
+        url = f"{origin.rstrip('/')}/bodies/sha256/{sha_hex[:2]}/{sha_hex}{suffix}"
+        for attempt in range(retries + 1):
             dst_path.unlink(missing_ok=True)
-            last_err = f"http_{exc.code}"
-            if exc.code in (403, 404, 410) or attempt >= retries:
-                return "fetch_error", 0, last_err
-            time.sleep(1.0 * (attempt + 1))
-            continue
-        except zlib.error as exc:
-            dst_path.unlink(missing_ok=True)
-            return "fetch_error", 0, f"zlib_error:{exc}"
-        except Exception as exc:
-            dst_path.unlink(missing_ok=True)
-            last_err = f"{type(exc).__name__}:{exc}"
-            if attempt >= retries:
-                return "fetch_error", 0, last_err
-            time.sleep(1.0 * (attempt + 1))
-            continue
+            hasher = hashlib.sha256()
+            total_out = 0
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "docmeta-ct-o7ew-rescue/1.0"})
+                with open_fn(req, timeout=timeout_s) as resp, dst_path.open("wb") as out_fh:
+                    headers = getattr(resp, "headers", None)
+                    content_encoding = str(headers.get("Content-Encoding") or "").lower() if headers is not None else ""
+                    use_gzip = (suffix == ".gz") or ("gzip" in content_encoding)
+                    decomp = zlib.decompressobj(16 + zlib.MAX_WBITS) if use_gzip else None
+                    while raw := resp.read(CHUNK_BYTES):
+                        out_bytes = decomp.decompress(raw) if decomp is not None else raw
+                        if out_bytes:
+                            hasher.update(out_bytes)
+                            out_fh.write(out_bytes)
+                            total_out += len(out_bytes)
+                    if decomp is not None:
+                        tail = decomp.flush()
+                        if tail:
+                            hasher.update(tail)
+                            out_fh.write(tail)
+                            total_out += len(tail)
+            except urllib.error.HTTPError as exc:
+                dst_path.unlink(missing_ok=True)
+                last_err = f"http_{exc.code}"
+                if exc.code == 404 and suffix_idx + 1 < len(suffix_candidates):
+                    break
+                if exc.code in (403, 404, 410) or attempt >= retries:
+                    return "fetch_error", 0, last_err
+                time.sleep(1.0 * (attempt + 1))
+                continue
+            except zlib.error as exc:
+                dst_path.unlink(missing_ok=True)
+                return "fetch_error", 0, f"zlib_error:{exc}"
+            except Exception as exc:
+                dst_path.unlink(missing_ok=True)
+                last_err = f"{type(exc).__name__}:{exc}"
+                if attempt >= retries:
+                    return "fetch_error", 0, last_err
+                time.sleep(1.0 * (attempt + 1))
+                continue
 
-        actual_sha = hasher.hexdigest()
-        if actual_sha != sha_hex:
-            dst_path.unlink(missing_ok=True)
-            return "sha_mismatch", total_out, f"expected={sha_hex},got={actual_sha}"
-        return "ok", total_out, None
+            actual_sha = hasher.hexdigest()
+            if actual_sha != sha_hex:
+                dst_path.unlink(missing_ok=True)
+                return "sha_mismatch", total_out, f"expected={sha_hex},got={actual_sha}"
+            return "ok", total_out, None
 
     dst_path.unlink(missing_ok=True)
     return "fetch_error", 0, last_err or "unknown_fetch_error"
@@ -420,6 +433,7 @@ def run_ocr(
     limit: int | None = None,
     sentinels_only: bool = False,
     resume: bool = True,
+    retry_fetch_errors: bool = False,
     local_cache_dir: Path | None = None,
     origin: str = DEFAULT_ORIGIN,
 ) -> dict[str, Any]:
@@ -434,11 +448,16 @@ def run_ocr(
 
     all_targets = _read_jsonl(targets_path)
     out_jsonl = out_dir / "rescued_pages.jsonl"
-    done_shas: set[str] = set()
+    latest_status_by_sha: dict[str, str] = {}
     if resume and out_jsonl.is_file():
         for row in _read_jsonl(out_jsonl):
             if row.get("saved_body_hex"):
-                done_shas.add(str(row["saved_body_hex"]))
+                latest_status_by_sha[str(row["saved_body_hex"])] = str(row.get("rescued_status") or "")
+    done_shas: set[str] = {
+        sha
+        for sha, st in latest_status_by_sha.items()
+        if not (retry_fetch_errors and st == "fetch_error")
+    }
 
     pending = [
         t
@@ -471,7 +490,12 @@ def run_ocr(
         if cached is not None and cached.is_file():
             return cached, False, "ok", cached.stat().st_size, None
         dst = tmp_dir / f"{sha}.pdf"
-        st, n_b, err = stream_download_verified_pdf(sha, dst, origin=origin)
+        st, n_b, err = stream_download_verified_pdf(
+            sha,
+            dst,
+            origin=origin,
+            saved_suffix=item.get("saved_suffix"),
+        )
         return dst, True, st, n_b, err
 
     try:
@@ -789,6 +813,7 @@ def _build_parser() -> argparse.ArgumentParser:
     ro.add_argument("--sentinels-only", action="store_true")
     ro.add_argument("--resume", action="store_true", default=True)
     ro.add_argument("--no-resume", dest="resume", action="store_false")
+    ro.add_argument("--retry-fetch-errors", action="store_true")
     ro.add_argument("--local-cache-dir", type=Path, default=None)
     ro.add_argument("--origin", type=str, default=DEFAULT_ORIGIN)
 
@@ -815,6 +840,7 @@ def main(argv: list[str] | None = None) -> int:
             limit=args.limit,
             sentinels_only=args.sentinels_only,
             resume=args.resume,
+            retry_fetch_errors=args.retry_fetch_errors,
             local_cache_dir=args.local_cache_dir,
             origin=args.origin,
         )
