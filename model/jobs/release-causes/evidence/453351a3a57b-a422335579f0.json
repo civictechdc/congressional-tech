@@ -1,0 +1,2349 @@
+{
+ "version": 1,
+ "base_release_id": "453351a3a57bdd28031a43de218832f5cd8b89c30048bc04354aaba37b337c47",
+ "candidate_release_id": "a422335579f0df176199c406f7f5b56e7d7278e61faaea4069baee1c530e8228",
+ "workflow_run": "45676780819",
+ "daily_new_receipts": 1988,
+ "stopped_for": [
+  "link rule: 21 live link keys answer another file (070e44c26c7408f6, 0ed4cd413c88e740, 27cab99c114a8240, 414e54054de990d5, 45ccb0665c9d2af3, 486f378f5572e432, 4c5269d1eb0aa695, 70198f458d09fe85, 73c06b52626048ff, 85d6f86996ed8b3b, 8885a56a2d66814d, 8d908e1ea02f1023, 9812255055323044, a2b84ffe8d91a278, a7dadecb94195673, b5c820062dc79553, bb8b1e04d8e7ac5c, c45b6d88630827e8, cac18a9f82f6cbae, d0d10906d0686f76, e9225d6a2e7ac34b)",
+  "link rule: 22 live lookup keys answer another file (009aac47c039024b, 014869cafbe598da, 108ba4a4ec028530, 14df2208e3676ed0, 17e1585f4fc6b42c, 21d16baf91fdd73d, 262b8eb3b20056d0, 2c3070da8d1a0927, 611b20a996cca1e5, 6c5dee75a739e7fd, 83031ef9de862f5d, 8a2b309f0ff2f4f9, 92ef0ebb0fe1e11a, 9945c64b10746a59, a0f91ccda8deacbd, b437fb8261af7d61, b930e9617384fed9, be807d86154f2021, c58af437a34435fe, dfdeaee34404e78e, e83795e6345c4606, fdc3ef99b7fbb1e3)",
+  "link rule: 1 live addresses answer another file (https://transportation.house.gov/calendar/eventsingle.aspx?EventID=404905)",
+  "cause record: bound to candidate 7e08390c3470, actual a422335579f0"
+ ],
+ "automatic_reasons": [
+  "data-only night: the link rule failed (live keys would open another file, and they were not examined)",
+  "data-only night: the candidate differs from the live release in profile.file_hashes.model/registries/ban-park-you-org-taxonomy.json, unprofiled_inputs.job_pins.daily",
+  "data-only night: capture_scope.json|changed file without a comparison|unexplained (0) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: detail.parquet|merged rows|previous rows now share one document (-48) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: detail.parquet|removed rows|no surviving link key (-8490) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: detail.parquet|changed version_keys|value differs on matched key (7605) is more than the 6581 rows this night may add or change (the lesser of 2% of 329077 and 5 for each of its 1988 new receipts)",
+  "data-only night: links.parquet|removed keys|no evidence given (-8510) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: list.parquet|merged rows|previous rows now share one document (-48) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: list.parquet|removed rows|no surviving link key (-8490) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: list.parquet|changed version_keys|value differs on matched key (7605) is more than the 6581 rows this night may add or change (the lesser of 2% of 329077 and 5 for each of its 1988 new receipts)",
+  "data-only night: meetings.parquet|added keys|unexplained (1) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: organization_ids.parquet|file added|file absent from the base release (59433) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: organizations.parquet|file added|file absent from the base release (52433) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: retired_links.parquet|added keys|no evidence given (8510) is more than the 710 rows this night may add or change (the lesser of 2% of 35514 and 5 for each of its 1988 new receipts)",
+  "data-only night: schema.json|changed file without a comparison|unexplained (0) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: sources.parquet|URLs gone|no live row has this address (-849) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: sources.parquet|same-URL rows removed|every such row sat on a removed document (-7661) removes more than the 1480 rows one unattended night may",
+  "data-only night: urls.parquet|keys gone|every row for the key was removed (-834) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: urls.parquet|keys with fewer rows|fewer documents answer the key (-8965) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: witness_organizations.parquet|file added|file absent from the base release (154841) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: organization_ids.parquet moves 59433 rows across its groups, more than the 50 this night may (the lesser of 6% of the file and 15 for each of its 1988 new receipts)",
+  "data-only night: organizations.parquet moves 52433 rows across its groups, more than the 50 this night may (the lesser of 6% of the file and 15 for each of its 1988 new receipts)",
+  "data-only night: retired_links.parquet moves 8510 rows across its groups, more than the 2130 this night may (the lesser of 6% of the file and 15 for each of its 1988 new receipts)",
+  "data-only night: witness_organizations.parquet moves 154841 rows across its groups, more than the 50 this night may (the lesser of 6% of the file and 15 for each of its 1988 new receipts)",
+  "data-only night: detail.parquet:version_keys.list.item lost 15322 of its 15356 values, more than the 5% one unattended night may",
+  "data-only night: list.parquet:version_keys.list.item lost 15322 of its 15356 values, more than the 5% one unattended night may",
+  "automatic causes: 72 differences are not additions the traced proof reads, so it ran no check"
+ ],
+ "failing_groups": [
+  {
+   "id": "capture_scope.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "status": "unexplained"
+  },
+  {
+   "id": "detail.parquet|merged rows|previous rows now share one document",
+   "count": -48,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|removed rows|no surviving link key",
+   "count": -8490,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 211,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed chambers|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed committee_keys|value differs on matched key",
+   "count": 31,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed date_kind|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed document_date_source|value differs on matched key",
+   "count": 5,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed first_captured|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed format|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed in_archive_since|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed link_key|value differs on matched key",
+   "count": 21,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed meeting_keys|value differs on matched key",
+   "count": 5,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed saved_body|value differs on matched key",
+   "count": 21,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed saved_bytes|value differs on matched key",
+   "count": 21,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed saved_kind|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed saved_media_type|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 26,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 107,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 107,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed version_keys|value differs on matched key",
+   "count": 7605,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed witness_keys|value differs on matched key",
+   "count": 5,
+   "status": "unverified"
+  },
+  {
+   "id": "links.parquet|removed keys|no evidence given",
+   "count": -8510,
+   "status": "unverified"
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 212,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|merged rows|previous rows now share one document",
+   "count": -48,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|removed rows|no surviving link key",
+   "count": -8490,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 211,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed chambers|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed committee_keys|value differs on matched key",
+   "count": 31,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed date_kind|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed first_captured|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed format|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed meeting_keys|value differs on matched key",
+   "count": 5,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed saved_kind|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 107,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed version_keys|value differs on matched key",
+   "count": 7605,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed witness_keys|value differs on matched key",
+   "count": 5,
+   "status": "unverified"
+  },
+  {
+   "id": "meeting_coverage.parquet|added keys|no evidence given",
+   "count": 5,
+   "status": "unverified"
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 28,
+   "status": "unverified"
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 43,
+   "status": "unverified"
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 34,
+   "status": "unverified"
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 34,
+   "status": "unverified"
+  },
+  {
+   "id": "meetings.parquet|added keys|unexplained",
+   "count": 1,
+   "status": "unexplained"
+  },
+  {
+   "id": "meetings.parquet|changed outcome|value differs on matched key",
+   "count": 3,
+   "status": "unverified"
+  },
+  {
+   "id": "meetings.parquet|changed outcome_basis|value differs on matched key",
+   "count": 3,
+   "status": "unverified"
+  },
+  {
+   "id": "meetings.parquet|changed outcome_reason|value differs on matched key",
+   "count": 3,
+   "status": "unverified"
+  },
+  {
+   "id": "meetings.parquet|changed outcome_source_reference|value differs on matched key",
+   "count": 3,
+   "status": "unverified"
+  },
+  {
+   "id": "meetings.parquet|changed transcripts|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "organization_ids.parquet|file added|file absent from the base release",
+   "count": 59433,
+   "status": "unverified"
+  },
+  {
+   "id": "organizations.parquet|file added|file absent from the base release",
+   "count": 52433,
+   "status": "unverified"
+  },
+  {
+   "id": "people.parquet|changed appearance_count|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "people.parquet|changed hearing_count|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "people.parquet|changed last_seen_date|value differs on matched key",
+   "count": 1,
+   "status": "unverified"
+  },
+  {
+   "id": "people.parquet|changed name_variants|value differs on matched key",
+   "count": 1,
+   "status": "unverified"
+  },
+  {
+   "id": "people.parquet|changed witness_keys|value differs on matched key",
+   "count": 6,
+   "status": "unverified"
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 39,
+   "status": "unverified"
+  },
+  {
+   "id": "recording_matches.parquet|changed note|value differs on matched key",
+   "count": 31,
+   "status": "unverified"
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 35,
+   "status": "unverified"
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 32,
+   "status": "unverified"
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 23,
+   "status": "unverified"
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 2,
+   "status": "unverified"
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "status": "unexplained"
+  },
+  {
+   "id": "retired_links.parquet|added keys|no evidence given",
+   "count": 8510,
+   "status": "unverified"
+  },
+  {
+   "id": "schema.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "status": "unexplained"
+  },
+  {
+   "id": "sources.parquet|URLs gone|no live row has this address",
+   "count": -849,
+   "status": "unverified"
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 217,
+   "status": "unverified"
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 1168,
+   "status": "unverified"
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 1168,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|removed URLs|unexplained",
+   "count": -6,
+   "status": "unexplained"
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 828,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 22,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 1966,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed capture_reason|value differs on matched key",
+   "count": 2,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 1966,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 1617,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 1924,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 1893,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 1898,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 1972,
+   "status": "unverified"
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 53,
+   "status": "unverified"
+  },
+  {
+   "id": "urls.parquet|keys gone|every row for the key was removed",
+   "count": -834,
+   "status": "unverified"
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 313,
+   "status": "unverified"
+  },
+  {
+   "id": "urls.parquet|keys with fewer rows|fewer documents answer the key",
+   "count": -8965,
+   "status": "unverified"
+  },
+  {
+   "id": "witness_organizations.parquet|file added|file absent from the base release",
+   "count": 154841,
+   "status": "unverified"
+  },
+  {
+   "id": "witnesses.parquet|changed event_id|value differs on matched key",
+   "count": 10,
+   "status": "unverified"
+  },
+  {
+   "id": "witnesses.parquet|changed occasion|value differs on matched key",
+   "count": 10,
+   "status": "unverified"
+  },
+  {
+   "id": "witnesses.parquet|changed person_key|value differs on matched key",
+   "count": 1,
+   "status": "unverified"
+  },
+  {
+   "id": "witnesses.parquet|changed superseded_by|value differs on matched key",
+   "count": 10,
+   "status": "unverified"
+  }
+ ],
+ "link_rule": {
+  "missing": 0,
+  "missing_keys": [],
+  "dangling": 0,
+  "dangling_keys": [],
+  "published_and_retired": 0,
+  "published_and_retired_keys": [],
+  "changed": 21,
+  "changed_keys": [
+   "070e44c26c7408f6",
+   "0ed4cd413c88e740",
+   "27cab99c114a8240",
+   "414e54054de990d5",
+   "45ccb0665c9d2af3",
+   "486f378f5572e432",
+   "4c5269d1eb0aa695",
+   "70198f458d09fe85",
+   "73c06b52626048ff",
+   "85d6f86996ed8b3b",
+   "8885a56a2d66814d",
+   "8d908e1ea02f1023",
+   "9812255055323044",
+   "a2b84ffe8d91a278",
+   "a7dadecb94195673",
+   "b5c820062dc79553",
+   "bb8b1e04d8e7ac5c",
+   "c45b6d88630827e8",
+   "cac18a9f82f6cbae",
+   "d0d10906d0686f76",
+   "e9225d6a2e7ac34b"
+  ],
+  "changed_answers": [
+   {
+    "key": "070e44c26c7408f6",
+    "live_row": 290216,
+    "live_file": "dawson-church-phd",
+    "live_body": "44a06788023f6ac3e93808528e91b5dd9a32d31b555249a56a5b71c1b9a74068",
+    "candidate_row": 285259,
+    "candidate_file": "dawson-church-phd",
+    "candidate_body": "e9e2d85ac3fdb5d00590e0084a29517f32f27653cff739b606e5585cb36bb964"
+   },
+   {
+    "key": "0ed4cd413c88e740",
+    "live_row": 283742,
+    "live_file": "armando-gonzalez",
+    "live_body": "47c82b07fd9936a924b6632b1d77579b45a772e3f99b81bd119e06699b2a2052",
+    "candidate_row": 279212,
+    "candidate_file": "armando-gonzalez",
+    "candidate_body": "7277f53d8d60c00ed86597524f71940d781dd16c7360b857df6e78ee38a9ac6a"
+   },
+   {
+    "key": "27cab99c114a8240",
+    "live_row": 290146,
+    "live_file": "david-k-rehbein",
+    "live_body": "dd1f3841c41e4f7262e74bd3cc9fc3c8ebc5454ec12c18496f6f616893db5c7b",
+    "candidate_row": 285205,
+    "candidate_file": "david-k-rehbein",
+    "candidate_body": "006d0ae9589a1a9f2cb7c58e5317133a9b341ce98187d92ebfddaf8df2ea460e"
+   },
+   {
+    "key": "414e54054de990d5",
+    "live_row": 310942,
+    "live_file": "jimmie-l-foster",
+    "live_body": "8c7d4e25a4e29a6802776134d6558fa673e01cc1ef8ffad064e9cfd17c5ebf8d",
+    "candidate_row": 304634,
+    "candidate_file": "jimmie-l-foster",
+    "candidate_body": "70df4ecbd997c45fa736c1afc10e0c8a9a357fae0de3a2448e20bd5b39965247"
+   },
+   {
+    "key": "45ccb0665c9d2af3",
+    "live_row": 283145,
+    "live_file": "alan-ross",
+    "live_body": "1c432ed9cfeff47f847b8d6c6bbcb65c2f9c9be4a4d6e8e2b636652cfd5e8061",
+    "candidate_row": 278680,
+    "candidate_file": "alan-ross",
+    "candidate_body": "ba0c086c1765632238941c7acdbbc0d56b3a74ea6617348e0fc6f7b5187ed963"
+   },
+   {
+    "key": "486f378f5572e432",
+    "live_row": 311701,
+    "live_file": "katherine-m-helmick-ms-cnrn-crnp",
+    "live_body": "d49ae5affdeb48e3b2baf11335ac9ea81170f5d89d0b6f424f42bf6888c47801",
+    "candidate_row": 305158,
+    "candidate_file": "katherine-m-helmick-ms-cnrn-crnp",
+    "candidate_body": "ef0c7189720c068fc70084968094d5d358a7e354824a22cf848538cddaa15460"
+   },
+   {
+    "key": "4c5269d1eb0aa695",
+    "live_row": 289566,
+    "live_file": "craig-t-love-phd",
+    "live_body": "1abdf310973c7258ba5eaf891c80d1a83baa3da5f57a4ce10157a0a7185f6815",
+    "candidate_row": 284676,
+    "candidate_file": "craig-t-love-phd",
+    "candidate_body": "685dc2520562782fefc4361018c32759a812b488d659a73e7c7a9dd961cf641a"
+   },
+   {
+    "key": "70198f458d09fe85",
+    "live_row": 298016,
+    "live_file": "gerald-grant-md",
+    "live_body": "e6d41de333a07bb22e57a6037008ea678096ff658a10587cbf565ab2ea24fba8",
+    "candidate_row": 292811,
+    "candidate_file": "gerald-grant-md",
+    "candidate_body": "0c6e1db5a631fb98b5d7b7959dd9d539d0a51c728e24cbaff2fcd183a611f570"
+   },
+   {
+    "key": "73c06b52626048ff",
+    "live_row": 312797,
+    "live_file": "lieutenant-colonel-christopher-robinson-usaf-bsc-phd-mph",
+    "live_body": "2b556e55aa8bf7419bd0abf81b8cd7f4ca40efff02a33de9542b8970e260c88c",
+    "candidate_row": 306113,
+    "candidate_file": "lieutenant-colonel-christopher-robinson-usaf-bsc-phd-mph",
+    "candidate_body": "ef0c7189720c068fc70084968094d5d358a7e354824a22cf848538cddaa15460"
+   },
+   {
+    "key": "85d6f86996ed8b3b",
+    "live_row": 292938,
+    "live_file": "eugene-lipov-md-daba-faba",
+    "live_body": "b2ba130d94cce4871bedd9423458a6c1697e87cb3e5b36f88708b095a191b05a",
+    "candidate_row": 287821,
+    "candidate_file": "eugene-lipov-md-daba-faba",
+    "candidate_body": "d01e2617d0415f8db3b46809b665dc2e3a493b0420ab23e00ffd87f2f8dbcf9d"
+   },
+   {
+    "key": "8885a56a2d66814d",
+    "live_row": 318797,
+    "live_file": "patrick-elliott-do-facs",
+    "live_body": "2bb46351f18b38d33cbe1d4ff6011cfe00553ccd9164851db7693c4dcc0d2478",
+    "candidate_row": 311475,
+    "candidate_file": "patrick-elliott-do-facs",
+    "candidate_body": "93afd668247e79022b3345317c658c616c21d90ddce9e826cc6ff28e59f1ec98"
+   },
+   {
+    "key": "8d908e1ea02f1023",
+    "live_row": 318826,
+    "live_file": "paul-d-sexton-mba",
+    "live_body": "cd711ab5a3b6a3c644f17f1fccf71fdca7fbdcf51f63d402094312fecacaac2f",
+    "candidate_row": 311496,
+    "candidate_file": "paul-d-sexton-mba",
+    "candidate_body": "0564fcc838c6487b1847006109ee978edfc0107757f2c20cd7249fd2ac9d2014"
+   },
+   {
+    "key": "9812255055323044",
+    "live_row": 284060,
+    "live_file": "barbara-rothbaum-phd-abpp",
+    "live_body": "2cdd0807401431ef62a07f3d961329a0d760c5c6fe934ede628f2685b0404372",
+    "candidate_row": 279506,
+    "candidate_file": "barbara-rothbaum-phd-abpp",
+    "candidate_body": "d714ceb7e498e77ce53b53084c5fa70bde215f1a7f6d98cafa209e9bdd913430"
+   },
+   {
+    "key": "a2b84ffe8d91a278",
+    "live_row": 322798,
+    "live_file": "second-lieutenant-olli-toukolehto",
+    "live_body": "5c46093c4ae7192e0e723b9e52555c3b87644075754d00fde3d0a2112ed1684b",
+    "candidate_row": 314931,
+    "candidate_file": "second-lieutenant-olli-toukolehto",
+    "candidate_body": "e9e2d85ac3fdb5d00590e0084a29517f32f27653cff739b606e5585cb36bb964"
+   },
+   {
+    "key": "a7dadecb94195673",
+    "live_row": 290130,
+    "live_file": "david-feinstein-phd",
+    "live_body": "59fab2fe903070b03ede31564488eee94e69135d9905739ee3a1e18448f17acc",
+    "candidate_row": 285195,
+    "candidate_file": "david-feinstein-phd",
+    "candidate_body": "7ca1d5be05c42977c4f2094dbd8c11c529254cfb7a0927c391b26b0cbfa01733"
+   },
+   {
+    "key": "b5c820062dc79553",
+    "live_row": 327088,
+    "live_file": "troy-lisa-holbrook-ms-phd",
+    "live_body": "b39dcf60d40a12e331c2c8ec52d79fe61906de1bc853dbb4e7bae6b404086609",
+    "candidate_row": 318897,
+    "candidate_file": "troy-lisa-holbrook-ms-phd",
+    "candidate_body": "15ada0d4961d448abd9975ccca5440808216066415960ff361b0f28181d54f20"
+   },
+   {
+    "key": "bb8b1e04d8e7ac5c",
+    "live_row": 287722,
+    "live_file": "carey-d-balaban-phd",
+    "live_body": "0d4042c217c09f4de230905bceaddaee16397958b6e4a1b01add03d96334543d",
+    "candidate_row": 283032,
+    "candidate_file": "carey-d-balaban-phd",
+    "candidate_body": "d196acb9e9a84271563b14a87a6774db6ab5dee2f8df4acb83f49555af6e31d0"
+   },
+   {
+    "key": "c45b6d88630827e8",
+    "live_row": 317136,
+    "live_file": "norman-salem-jr-phd",
+    "live_body": "3f337f10bce164ebc3b29052102eb51ac051287c6d16b2abdfc1fa86f52ebea8",
+    "candidate_row": 309955,
+    "candidate_file": "norman-salem-jr-phd",
+    "candidate_body": "a7a7c2ce873a2883d176e384f0cd681669da8beb53e3241e65fe4fee0250e314"
+   },
+   {
+    "key": "cac18a9f82f6cbae",
+    "live_row": 295270,
+    "live_file": "eventsingle.aspx",
+    "live_body": "cac18a9f82f6cbae79db1703e20d69bdbb8d6b73961d9cae32f8bd1c5f79a3d3",
+    "candidate_row": 290115,
+    "candidate_file": "eventsingle.aspx",
+    "candidate_body": "3edd479ac8481bc156f08d9bea4718dfa4601a98f4ce17c3e8250afa408aba15"
+   },
+   {
+    "key": "d0d10906d0686f76",
+    "live_row": 318831,
+    "live_file": "paul-harch-md",
+    "live_body": "1b9b0e5857090f5e6a260533ff643260bbca004500c3f334e92145b1e9d0cdc5",
+    "candidate_row": 311498,
+    "candidate_file": "paul-harch-md",
+    "candidate_body": "a3fcaa8f86b9980f6536d0b0474b1014c6c27c1c3219de1ffd3f65c7ba19acf4"
+   },
+   {
+    "key": "e9225d6a2e7ac34b",
+    "live_row": 288372,
+    "live_file": "charles-e-levy-md",
+    "live_body": "9818f6703288538f9ed6773e400595c29b7bee3a22ec14244f885a7e5fd3d9ef",
+    "candidate_row": 283608,
+    "candidate_file": "charles-e-levy-md",
+    "candidate_body": "898c5ccbca005d583c230653f296b3e0cb56a832625c4cb68cfb1a7d6a124ff0"
+   }
+  ],
+  "lookup_changed": 22,
+  "lookup_changed_keys": [
+   "009aac47c039024b",
+   "014869cafbe598da",
+   "108ba4a4ec028530",
+   "14df2208e3676ed0",
+   "17e1585f4fc6b42c",
+   "21d16baf91fdd73d",
+   "262b8eb3b20056d0",
+   "2c3070da8d1a0927",
+   "611b20a996cca1e5",
+   "6c5dee75a739e7fd",
+   "83031ef9de862f5d",
+   "8a2b309f0ff2f4f9",
+   "92ef0ebb0fe1e11a",
+   "9945c64b10746a59",
+   "a0f91ccda8deacbd",
+   "b437fb8261af7d61",
+   "b930e9617384fed9",
+   "be807d86154f2021",
+   "c58af437a34435fe",
+   "dfdeaee34404e78e",
+   "e83795e6345c4606",
+   "fdc3ef99b7fbb1e3"
+  ],
+  "lookup_changed_answers": [
+   {
+    "key": "009aac47c039024b",
+    "live_row": 290130,
+    "live_file": "david-feinstein-phd",
+    "live_body": "59fab2fe903070b03ede31564488eee94e69135d9905739ee3a1e18448f17acc",
+    "candidate_rows": [
+     285195
+    ],
+    "candidate_files": [
+     "david-feinstein-phd"
+    ],
+    "candidate_bodies": [
+     "7ca1d5be05c42977c4f2094dbd8c11c529254cfb7a0927c391b26b0cbfa01733"
+    ]
+   },
+   {
+    "key": "014869cafbe598da",
+    "live_row": 283145,
+    "live_file": "alan-ross",
+    "live_body": "1c432ed9cfeff47f847b8d6c6bbcb65c2f9c9be4a4d6e8e2b636652cfd5e8061",
+    "candidate_rows": [
+     278680
+    ],
+    "candidate_files": [
+     "alan-ross"
+    ],
+    "candidate_bodies": [
+     "ba0c086c1765632238941c7acdbbc0d56b3a74ea6617348e0fc6f7b5187ed963"
+    ]
+   },
+   {
+    "key": "108ba4a4ec028530",
+    "live_row": 318797,
+    "live_file": "patrick-elliott-do-facs",
+    "live_body": "2bb46351f18b38d33cbe1d4ff6011cfe00553ccd9164851db7693c4dcc0d2478",
+    "candidate_rows": [
+     311475
+    ],
+    "candidate_files": [
+     "patrick-elliott-do-facs"
+    ],
+    "candidate_bodies": [
+     "93afd668247e79022b3345317c658c616c21d90ddce9e826cc6ff28e59f1ec98"
+    ]
+   },
+   {
+    "key": "14df2208e3676ed0",
+    "live_row": 310942,
+    "live_file": "jimmie-l-foster",
+    "live_body": "8c7d4e25a4e29a6802776134d6558fa673e01cc1ef8ffad064e9cfd17c5ebf8d",
+    "candidate_rows": [
+     304634
+    ],
+    "candidate_files": [
+     "jimmie-l-foster"
+    ],
+    "candidate_bodies": [
+     "70df4ecbd997c45fa736c1afc10e0c8a9a357fae0de3a2448e20bd5b39965247"
+    ]
+   },
+   {
+    "key": "17e1585f4fc6b42c",
+    "live_row": 289566,
+    "live_file": "craig-t-love-phd",
+    "live_body": "1abdf310973c7258ba5eaf891c80d1a83baa3da5f57a4ce10157a0a7185f6815",
+    "candidate_rows": [
+     284676
+    ],
+    "candidate_files": [
+     "craig-t-love-phd"
+    ],
+    "candidate_bodies": [
+     "685dc2520562782fefc4361018c32759a812b488d659a73e7c7a9dd961cf641a"
+    ]
+   },
+   {
+    "key": "21d16baf91fdd73d",
+    "live_row": 317136,
+    "live_file": "norman-salem-jr-phd",
+    "live_body": "3f337f10bce164ebc3b29052102eb51ac051287c6d16b2abdfc1fa86f52ebea8",
+    "candidate_rows": [
+     309955
+    ],
+    "candidate_files": [
+     "norman-salem-jr-phd"
+    ],
+    "candidate_bodies": [
+     "a7a7c2ce873a2883d176e384f0cd681669da8beb53e3241e65fe4fee0250e314"
+    ]
+   },
+   {
+    "key": "262b8eb3b20056d0",
+    "live_row": 283742,
+    "live_file": "armando-gonzalez",
+    "live_body": "47c82b07fd9936a924b6632b1d77579b45a772e3f99b81bd119e06699b2a2052",
+    "candidate_rows": [
+     279212
+    ],
+    "candidate_files": [
+     "armando-gonzalez"
+    ],
+    "candidate_bodies": [
+     "7277f53d8d60c00ed86597524f71940d781dd16c7360b857df6e78ee38a9ac6a"
+    ]
+   },
+   {
+    "key": "2c3070da8d1a0927",
+    "live_row": 298016,
+    "live_file": "gerald-grant-md",
+    "live_body": "e6d41de333a07bb22e57a6037008ea678096ff658a10587cbf565ab2ea24fba8",
+    "candidate_rows": [
+     292811
+    ],
+    "candidate_files": [
+     "gerald-grant-md"
+    ],
+    "candidate_bodies": [
+     "0c6e1db5a631fb98b5d7b7959dd9d539d0a51c728e24cbaff2fcd183a611f570"
+    ]
+   },
+   {
+    "key": "611b20a996cca1e5",
+    "live_row": 288372,
+    "live_file": "charles-e-levy-md",
+    "live_body": "9818f6703288538f9ed6773e400595c29b7bee3a22ec14244f885a7e5fd3d9ef",
+    "candidate_rows": [
+     283608
+    ],
+    "candidate_files": [
+     "charles-e-levy-md"
+    ],
+    "candidate_bodies": [
+     "898c5ccbca005d583c230653f296b3e0cb56a832625c4cb68cfb1a7d6a124ff0"
+    ]
+   },
+   {
+    "key": "6c5dee75a739e7fd",
+    "live_row": 318826,
+    "live_file": "paul-d-sexton-mba",
+    "live_body": "cd711ab5a3b6a3c644f17f1fccf71fdca7fbdcf51f63d402094312fecacaac2f",
+    "candidate_rows": [
+     311496
+    ],
+    "candidate_files": [
+     "paul-d-sexton-mba"
+    ],
+    "candidate_bodies": [
+     "0564fcc838c6487b1847006109ee978edfc0107757f2c20cd7249fd2ac9d2014"
+    ]
+   },
+   {
+    "key": "83031ef9de862f5d",
+    "live_row": 311701,
+    "live_file": "katherine-m-helmick-ms-cnrn-crnp",
+    "live_body": "d49ae5affdeb48e3b2baf11335ac9ea81170f5d89d0b6f424f42bf6888c47801",
+    "candidate_rows": [
+     305158
+    ],
+    "candidate_files": [
+     "katherine-m-helmick-ms-cnrn-crnp"
+    ],
+    "candidate_bodies": [
+     "ef0c7189720c068fc70084968094d5d358a7e354824a22cf848538cddaa15460"
+    ]
+   },
+   {
+    "key": "8a2b309f0ff2f4f9",
+    "live_row": 327088,
+    "live_file": "troy-lisa-holbrook-ms-phd",
+    "live_body": "b39dcf60d40a12e331c2c8ec52d79fe61906de1bc853dbb4e7bae6b404086609",
+    "candidate_rows": [
+     318897
+    ],
+    "candidate_files": [
+     "troy-lisa-holbrook-ms-phd"
+    ],
+    "candidate_bodies": [
+     "15ada0d4961d448abd9975ccca5440808216066415960ff361b0f28181d54f20"
+    ]
+   },
+   {
+    "key": "92ef0ebb0fe1e11a",
+    "live_row": 290146,
+    "live_file": "david-k-rehbein",
+    "live_body": "dd1f3841c41e4f7262e74bd3cc9fc3c8ebc5454ec12c18496f6f616893db5c7b",
+    "candidate_rows": [
+     285205
+    ],
+    "candidate_files": [
+     "david-k-rehbein"
+    ],
+    "candidate_bodies": [
+     "006d0ae9589a1a9f2cb7c58e5317133a9b341ce98187d92ebfddaf8df2ea460e"
+    ]
+   },
+   {
+    "key": "9945c64b10746a59",
+    "live_row": 295270,
+    "live_file": "eventsingle.aspx",
+    "live_body": "cac18a9f82f6cbae79db1703e20d69bdbb8d6b73961d9cae32f8bd1c5f79a3d3",
+    "candidate_rows": [
+     290115
+    ],
+    "candidate_files": [
+     "eventsingle.aspx"
+    ],
+    "candidate_bodies": [
+     "3edd479ac8481bc156f08d9bea4718dfa4601a98f4ce17c3e8250afa408aba15"
+    ]
+   },
+   {
+    "key": "a0f91ccda8deacbd",
+    "live_row": 290216,
+    "live_file": "dawson-church-phd",
+    "live_body": "44a06788023f6ac3e93808528e91b5dd9a32d31b555249a56a5b71c1b9a74068",
+    "candidate_rows": [
+     285259
+    ],
+    "candidate_files": [
+     "dawson-church-phd"
+    ],
+    "candidate_bodies": [
+     "e9e2d85ac3fdb5d00590e0084a29517f32f27653cff739b606e5585cb36bb964"
+    ]
+   },
+   {
+    "key": "b437fb8261af7d61",
+    "live_row": 284060,
+    "live_file": "barbara-rothbaum-phd-abpp",
+    "live_body": "2cdd0807401431ef62a07f3d961329a0d760c5c6fe934ede628f2685b0404372",
+    "candidate_rows": [
+     279506
+    ],
+    "candidate_files": [
+     "barbara-rothbaum-phd-abpp"
+    ],
+    "candidate_bodies": [
+     "d714ceb7e498e77ce53b53084c5fa70bde215f1a7f6d98cafa209e9bdd913430"
+    ]
+   },
+   {
+    "key": "b930e9617384fed9",
+    "live_row": 287722,
+    "live_file": "carey-d-balaban-phd",
+    "live_body": "0d4042c217c09f4de230905bceaddaee16397958b6e4a1b01add03d96334543d",
+    "candidate_rows": [
+     283032
+    ],
+    "candidate_files": [
+     "carey-d-balaban-phd"
+    ],
+    "candidate_bodies": [
+     "d196acb9e9a84271563b14a87a6774db6ab5dee2f8df4acb83f49555af6e31d0"
+    ]
+   },
+   {
+    "key": "be807d86154f2021",
+    "live_row": 312797,
+    "live_file": "lieutenant-colonel-christopher-robinson-usaf-bsc-phd-mph",
+    "live_body": "2b556e55aa8bf7419bd0abf81b8cd7f4ca40efff02a33de9542b8970e260c88c",
+    "candidate_rows": [
+     306113
+    ],
+    "candidate_files": [
+     "lieutenant-colonel-christopher-robinson-usaf-bsc-phd-mph"
+    ],
+    "candidate_bodies": [
+     "ef0c7189720c068fc70084968094d5d358a7e354824a22cf848538cddaa15460"
+    ]
+   },
+   {
+    "key": "c58af437a34435fe",
+    "live_row": 295270,
+    "live_file": "eventsingle.aspx",
+    "live_body": "cac18a9f82f6cbae79db1703e20d69bdbb8d6b73961d9cae32f8bd1c5f79a3d3",
+    "candidate_rows": [
+     290115
+    ],
+    "candidate_files": [
+     "eventsingle.aspx"
+    ],
+    "candidate_bodies": [
+     "3edd479ac8481bc156f08d9bea4718dfa4601a98f4ce17c3e8250afa408aba15"
+    ]
+   },
+   {
+    "key": "dfdeaee34404e78e",
+    "live_row": 318831,
+    "live_file": "paul-harch-md",
+    "live_body": "1b9b0e5857090f5e6a260533ff643260bbca004500c3f334e92145b1e9d0cdc5",
+    "candidate_rows": [
+     311498
+    ],
+    "candidate_files": [
+     "paul-harch-md"
+    ],
+    "candidate_bodies": [
+     "a3fcaa8f86b9980f6536d0b0474b1014c6c27c1c3219de1ffd3f65c7ba19acf4"
+    ]
+   },
+   {
+    "key": "e83795e6345c4606",
+    "live_row": 292938,
+    "live_file": "eugene-lipov-md-daba-faba",
+    "live_body": "b2ba130d94cce4871bedd9423458a6c1697e87cb3e5b36f88708b095a191b05a",
+    "candidate_rows": [
+     287821
+    ],
+    "candidate_files": [
+     "eugene-lipov-md-daba-faba"
+    ],
+    "candidate_bodies": [
+     "d01e2617d0415f8db3b46809b665dc2e3a493b0420ab23e00ffd87f2f8dbcf9d"
+    ]
+   },
+   {
+    "key": "fdc3ef99b7fbb1e3",
+    "live_row": 322798,
+    "live_file": "second-lieutenant-olli-toukolehto",
+    "live_body": "5c46093c4ae7192e0e723b9e52555c3b87644075754d00fde3d0a2112ed1684b",
+    "candidate_rows": [
+     314931
+    ],
+    "candidate_files": [
+     "second-lieutenant-olli-toukolehto"
+    ],
+    "candidate_bodies": [
+     "e9e2d85ac3fdb5d00590e0084a29517f32f27653cff739b606e5585cb36bb964"
+    ]
+   }
+  ],
+  "address_changed": 1,
+  "address_changed_keys": [
+   "https://transportation.house.gov/calendar/eventsingle.aspx?EventID=404905"
+  ],
+  "address_changed_answers": [
+   {
+    "key": "https://transportation.house.gov/calendar/eventsingle.aspx?EventID=404905",
+    "live_row": 295270,
+    "live_file": "eventsingle.aspx",
+    "live_body": "cac18a9f82f6cbae79db1703e20d69bdbb8d6b73961d9cae32f8bd1c5f79a3d3",
+    "candidate_rows": [
+     290115
+    ],
+    "candidate_files": [
+     "eventsingle.aspx"
+    ],
+    "candidate_bodies": [
+     "3edd479ac8481bc156f08d9bea4718dfa4601a98f4ce17c3e8250afa408aba15"
+    ]
+   }
+  ],
+  "demoted": 0,
+  "demoted_keys": [],
+  "unchecked": [],
+  "demoted_answers": [],
+  "ok": false
+ },
+ "samples": {
+  "version": 1,
+  "base_release": "453351a3a57bdd28031a43de218832f5cd8b89c30048bc04354aaba37b337c47",
+  "candidate_release": "a422335579f0df176199c406f7f5b56e7d7278e61faaea4069baee1c530e8228",
+  "max_per_group": 5,
+  "tables": {
+   "detail.parquet": {
+    "removed": [
+     {
+      "link_key": "0001bca03ce7309f",
+      "title": null,
+      "filename": "james-l-hoff-dba",
+      "document_kind": "[]"
+     },
+     {
+      "link_key": "0013b5a771987954",
+      "title": null,
+      "filename": "fc-34act.htm",
+      "document_kind": "[]"
+     },
+     {
+      "link_key": "0017946a955a634a",
+      "title": null,
+      "filename": "Pages_from_Michael_Petit_Witness_Disclosure_.pdf",
+      "document_kind": "[\"testimony-disclosure\"]"
+     },
+     {
+      "link_key": "00193faf3a8a9cb4",
+      "title": null,
+      "filename": "prepared-statement-patrick-k-hallinan-superintendent-arlington-national-cemetery",
+      "document_kind": "[\"statement\"]"
+     },
+     {
+      "link_key": "00228b0b139ad89f",
+      "title": null,
+      "filename": "Pages_from_Lorenzen_TIT_52313.pdf",
+      "document_kind": "[]"
+     }
+    ],
+    "added": [
+     {
+      "link_key": "008686f515173a9c",
+      "title": "\u201cPractical Steps Toward a Carbon-Free Maritime Industry: Updates on Fuels, Ports, and Technology\u201d | The House Committ...",
+      "filename": "practical-steps-toward-a-carbon-free-maritime-industry_updates-on-fuels-ports-and-technology",
+      "document_kind": "[]"
+     },
+     {
+      "link_key": "024452cf0fc6db14",
+      "title": "Seapower and Expeditionary Forces Subcommittee Hearing on an Update on the Expeditionary Fighting Vehicle Program. | ...",
+      "filename": "eventsingle.aspx",
+      "document_kind": "[]"
+     },
+     {
+      "link_key": "041e701b765d831b",
+      "title": "\u201cThe Water Resources Development Act of 2020: Status of Essential Provisions\u201d | The House Committee on Transportation...",
+      "filename": "the-water-resources-development-act-of-2020-status-of-essential-provisions",
+      "document_kind": "[]"
+     },
+     {
+      "link_key": "04ce846bd0c5317d",
+      "title": "Legislative Hearing on: H.R. 1182, the Veteran Deportation Prevention and Reform Act; H.R 1183, the Honoring the Oath...",
+      "filename": "ByEvent.aspx",
+      "document_kind": "[]"
+     },
+     {
+      "link_key": "070e44c26c7408f6",
+      "title": null,
+      "filename": "dawson-church-phd",
+      "document_kind": "[]"
+     }
+    ],
+    "changed_columns": {
+     "chambers": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": []
+     },
+     "committee_keys": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 11,
+      "samples": [
+       {
+        "key": "3775218c97a7b7c5",
+        "before": "[\"hspw12\"]",
+        "after": "[\"hspw00\", \"hspw12\"]"
+       },
+       {
+        "key": "7749ebed635d2346",
+        "before": "[\"hspw12\"]",
+        "after": "[\"hspw00\", \"hspw12\"]"
+       },
+       {
+        "key": "79f0608c4d2e5c44",
+        "before": "[\"hspw12\"]",
+        "after": "[\"hspw00\", \"hspw12\"]"
+       },
+       {
+        "key": "8c2f56c24d8cd910",
+        "before": "[\"hspw12\"]",
+        "after": "[\"hspw00\", \"hspw12\"]"
+       },
+       {
+        "key": "9081a82ec901f37d",
+        "before": "[\"hsfa00\"]",
+        "after": "[\"hsfa00\", \"hsfa19\"]"
+       }
+      ]
+     },
+     "date_kind": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": []
+     },
+     "document_date_source": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 5,
+      "samples": [
+       {
+        "key": "9081a82ec901f37d",
+        "before": "content",
+        "after": "meeting"
+       },
+       {
+        "key": "99674c5d7c07ebff",
+        "before": "content",
+        "after": "meeting"
+       },
+       {
+        "key": "a7e07527ae510019",
+        "before": "content",
+        "after": "meeting"
+       },
+       {
+        "key": "b4bfc2a855530325",
+        "before": "content",
+        "after": "meeting"
+       },
+       {
+        "key": "c9fb6a0eba2d79dd",
+        "before": "content",
+        "after": "meeting"
+       }
+      ]
+     },
+     "first_captured": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": []
+     },
+     "format": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": []
+     },
+     "in_archive_since": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": []
+     },
+     "meeting_keys": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 5,
+      "samples": [
+       {
+        "key": "9081a82ec901f37d",
+        "before": "[]",
+        "after": "[\"118680\"]"
+       },
+       {
+        "key": "99674c5d7c07ebff",
+        "before": "[]",
+        "after": "[\"118734\"]"
+       },
+       {
+        "key": "a7e07527ae510019",
+        "before": "[]",
+        "after": "[\"118681\"]"
+       },
+       {
+        "key": "b4bfc2a855530325",
+        "before": "[]",
+        "after": "[\"118734\"]"
+       },
+       {
+        "key": "c9fb6a0eba2d79dd",
+        "before": "[]",
+        "after": "[\"118680\"]"
+       }
+      ]
+     },
+     "saved_body": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": []
+     },
+     "saved_bytes": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": []
+     },
+     "saved_kind": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": []
+     },
+     "saved_media_type": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": []
+     },
+     "src_len": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 6,
+      "samples": [
+       {
+        "key": "3775218c97a7b7c5",
+        "before": "2",
+        "after": "3"
+       },
+       {
+        "key": "7749ebed635d2346",
+        "before": "2",
+        "after": "3"
+       },
+       {
+        "key": "79f0608c4d2e5c44",
+        "before": "2",
+        "after": "3"
+       },
+       {
+        "key": "8c2f56c24d8cd910",
+        "before": "2",
+        "after": "3"
+       },
+       {
+        "key": "c75fa3f876bb016d",
+        "before": "2",
+        "after": "3"
+       }
+      ]
+     },
+     "title": {
+      "none_to_val": 107,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": [
+       {
+        "key": "01af60b0bf8ecd9e",
+        "before": null,
+        "after": "Higher Education and Workforce Development Subcommittee Chairman Burgess Owens (R-UT)"
+       },
+       {
+        "key": "02df2a10ef380cee",
+        "before": null,
+        "after": "Dr. Shaun Harper"
+       },
+       {
+        "key": "06f718217cb53689",
+        "before": null,
+        "after": "No. 1 en bloc"
+       },
+       {
+        "key": "09e4899010effd41",
+        "before": null,
+        "after": "H.R. 1331"
+       },
+       {
+        "key": "0a4920ccc62dab12",
+        "before": null,
+        "after": "Mr. Scott Davis"
+       }
+      ]
+     },
+     "title_source": {
+      "none_to_val": 107,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": [
+       {
+        "key": "01af60b0bf8ecd9e",
+        "before": null,
+        "after": "link_text"
+       },
+       {
+        "key": "02df2a10ef380cee",
+        "before": null,
+        "after": "copy_link_text"
+       },
+       {
+        "key": "06f718217cb53689",
+        "before": null,
+        "after": "link_text"
+       },
+       {
+        "key": "09e4899010effd41",
+        "before": null,
+        "after": "copy_link_text"
+       },
+       {
+        "key": "0a4920ccc62dab12",
+        "before": null,
+        "after": "copy_link_text"
+       }
+      ]
+     },
+     "version_keys": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 7653,
+      "samples": [
+       {
+        "key": "0006ff0ccd7fdf22",
+        "before": "[\"38751795de88f5bf\"]",
+        "after": "[]"
+       },
+       {
+        "key": "000f5dfd63f0468a",
+        "before": "[\"fc09cd2851d254dc\"]",
+        "after": "[]"
+       },
+       {
+        "key": "000fb6440ed5b40f",
+        "before": "[\"fc75dd91f2e37af1\"]",
+        "after": "[]"
+       },
+       {
+        "key": "00244bcbdb758d91",
+        "before": "[\"9c11ebf4e197275f\"]",
+        "after": "[]"
+       },
+       {
+        "key": "003614d6d7e7f709",
+        "before": "[\"7de240077325d1ee\"]",
+        "after": "[]"
+       }
+      ]
+     },
+     "witness_keys": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 5,
+      "samples": [
+       {
+        "key": "9081a82ec901f37d",
+        "before": "[\"43ae69cbe302e24c\", \"b3feca7abce8b2b9\", \"b58c24b0157ecb04\"]",
+        "after": "[\"380669a8b49e1290\", \"3f8f4d444b5f73bc\", \"8080727efb1119eb\"]"
+       },
+       {
+        "key": "99674c5d7c07ebff",
+        "before": "[\"1f3ab7205c2c693e\", \"c9b28a79300854ed\", \"cd25692fc519704a\"]",
+        "after": "[\"8bac3dca6f067c64\", \"8ca1e2c128e271fa\", \"f9239956161eda69\"]"
+       },
+       {
+        "key": "a7e07527ae510019",
+        "before": "[\"05e4b835c9ca1ff8\", \"3a6088175c35ebce\", \"7effd12d3864260f\", \"a4235a3045ff70d6\"]",
+        "after": "[\"2b326299621c526f\", \"708b5b4b1e642f9c\", \"cf692dbbce8c3d45\", \"dde4a90405560448\"]"
+       },
+       {
+        "key": "b4bfc2a855530325",
+        "before": "[\"1f3ab7205c2c693e\", \"c9b28a79300854ed\", \"cd25692fc519704a\"]",
+        "after": "[\"8bac3dca6f067c64\", \"8ca1e2c128e271fa\", \"f9239956161eda69\"]"
+       },
+       {
+        "key": "c9fb6a0eba2d79dd",
+        "before": "[\"43ae69cbe302e24c\", \"b3feca7abce8b2b9\", \"b58c24b0157ecb04\"]",
+        "after": "[\"380669a8b49e1290\", \"3f8f4d444b5f73bc\", \"8080727efb1119eb\"]"
+       }
+      ]
+     }
+    }
+   },
+   "links.parquet": {
+    "removed": [
+     {
+      "link_key": "0001bca03ce7309f"
+     },
+     {
+      "link_key": "0013b5a771987954"
+     },
+     {
+      "link_key": "0017946a955a634a"
+     },
+     {
+      "link_key": "00193faf3a8a9cb4"
+     },
+     {
+      "link_key": "00228b0b139ad89f"
+     }
+    ],
+    "added": [
+     {
+      "link_key": "008686f515173a9c"
+     },
+     {
+      "link_key": "024452cf0fc6db14"
+     },
+     {
+      "link_key": "041e701b765d831b"
+     },
+     {
+      "link_key": "04ce846bd0c5317d"
+     },
+     {
+      "link_key": "0ab65d65d5458656"
+     }
+    ]
+   },
+   "list.parquet": {
+    "skipped": "release-local list_row identity"
+   },
+   "meeting_coverage.parquet": {
+    "added": [
+     {
+      "event_id": "119610",
+      "aspect": "captions"
+     },
+     {
+      "event_id": "119610",
+      "aspect": "documents"
+     },
+     {
+      "event_id": "119610",
+      "aspect": "recording"
+     },
+     {
+      "event_id": "119610",
+      "aspect": "transcript"
+     },
+     {
+      "event_id": "119610",
+      "aspect": "witnesses"
+     }
+    ],
+    "changed_columns": {
+     "basis": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 28,
+      "samples": [
+       {
+        "key": "event_id=105294, aspect=recording",
+        "before": "none",
+        "after": "recording_matches"
+       },
+       {
+        "key": "event_id=108798, aspect=recording",
+        "before": "none",
+        "after": "recording_matches"
+       },
+       {
+        "key": "event_id=111328, aspect=recording",
+        "before": "none",
+        "after": "recording_matches"
+       },
+       {
+        "key": "event_id=112559, aspect=recording",
+        "before": "none",
+        "after": "recording_matches"
+       },
+       {
+        "key": "event_id=112573, aspect=recording",
+        "before": "none",
+        "after": "recording_matches"
+       }
+      ]
+     },
+     "count": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 44,
+      "samples": [
+       {
+        "key": "event_id=103138, aspect=documents",
+        "before": "9",
+        "after": "8"
+       },
+       {
+        "key": "event_id=103157, aspect=documents",
+        "before": "9",
+        "after": "8"
+       },
+       {
+        "key": "event_id=103158, aspect=documents",
+        "before": "8",
+        "after": "7"
+       },
+       {
+        "key": "event_id=105294, aspect=recording",
+        "before": "0",
+        "after": "3"
+       },
+       {
+        "key": "event_id=105322, aspect=recording",
+        "before": "1",
+        "after": "2"
+       }
+      ]
+     },
+     "reason": {
+      "none_to_val": 3,
+      "val_to_none": 31,
+      "val_to_val": 0,
+      "samples": [
+       {
+        "key": "event_id=104596, aspect=recording",
+        "before": "video_text_only",
+        "after": null
+       },
+       {
+        "key": "event_id=105294, aspect=captions",
+        "before": "recording_link_pending",
+        "after": null
+       },
+       {
+        "key": "event_id=105322, aspect=recording",
+        "before": "video_text_only",
+        "after": null
+       },
+       {
+        "key": "event_id=105379, aspect=recording",
+        "before": "video_text_only",
+        "after": null
+       },
+       {
+        "key": "event_id=108798, aspect=captions",
+        "before": "recording_link_pending",
+        "after": null
+       }
+      ]
+     },
+     "state": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 35,
+      "samples": [
+       {
+        "key": "event_id=104596, aspect=recording",
+        "before": "claimed",
+        "after": "present"
+       },
+       {
+        "key": "event_id=105294, aspect=recording",
+        "before": "unknown",
+        "after": "present"
+       },
+       {
+        "key": "event_id=105322, aspect=recording",
+        "before": "claimed",
+        "after": "present"
+       },
+       {
+        "key": "event_id=105379, aspect=recording",
+        "before": "claimed",
+        "after": "present"
+       },
+       {
+        "key": "event_id=108798, aspect=recording",
+        "before": "unknown",
+        "after": "present"
+       }
+      ]
+     }
+    }
+   },
+   "meetings.parquet": {
+    "added": [
+     {
+      "event_id": "119610",
+      "title": "\"Defend, Detect, Disclose: Responding to AI-Enabled Cyber Incidents\"",
+      "meeting_date": "2026-12-02"
+     },
+     {
+      "event_id": "119614",
+      "title": "\u201cBehind the Walls: Understanding the Homeland Security Value of Correctional Intelligence\u201d",
+      "meeting_date": "2026-12-02"
+     },
+     {
+      "event_id": "119615",
+      "title": "Oversight of Prudential Regulators",
+      "meeting_date": "2026-12-01"
+     },
+     {
+      "event_id": "119616",
+      "title": "The Future of Financial Services: Opportunities, Challenges, and the Path Forward",
+      "meeting_date": "2026-12-02"
+     },
+     {
+      "event_id": "119617",
+      "title": "\"Beyond the Content: Small Businesses in America's Creator Economy.\"",
+      "meeting_date": "2026-12-01"
+     }
+    ],
+    "changed_columns": {
+     "outcome": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 3,
+      "samples": [
+       {
+        "key": "118680",
+        "before": "unknown",
+        "after": "held"
+       },
+       {
+        "key": "118681",
+        "before": "unknown",
+        "after": "held"
+       },
+       {
+        "key": "118734",
+        "before": "unknown",
+        "after": "held"
+       }
+      ]
+     },
+     "outcome_basis": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 3,
+      "samples": [
+       {
+        "key": "118680",
+        "before": "no_outcome_evidence",
+        "after": "printed_hearing"
+       },
+       {
+        "key": "118681",
+        "before": "no_outcome_evidence",
+        "after": "printed_hearing"
+       },
+       {
+        "key": "118734",
+        "before": "no_outcome_evidence",
+        "after": "printed_hearing"
+       }
+      ]
+     },
+     "outcome_reason": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 3,
+      "samples": [
+       {
+        "key": "118680",
+        "before": "A schedule, witness list or recording link alone does not establish that the meeting took place.",
+        "after": "A published hearing print identifies this event on its meeting date."
+       },
+       {
+        "key": "118681",
+        "before": "A schedule, witness list or recording link alone does not establish that the meeting took place.",
+        "after": "A published hearing print identifies this event on its meeting date."
+       },
+       {
+        "key": "118734",
+        "before": "A schedule, witness list or recording link alone does not establish that the meeting took place.",
+        "after": "A published hearing print identifies this event on its meeting date."
+       }
+      ]
+     },
+     "outcome_source_reference": {
+      "none_to_val": 3,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": [
+       {
+        "key": "118680",
+        "before": null,
+        "after": "CHRG-119hhrg64098"
+       },
+       {
+        "key": "118681",
+        "before": null,
+        "after": "CHRG-119hhrg64043"
+       },
+       {
+        "key": "118734",
+        "before": null,
+        "after": "CHRG-119hhrg64229"
+       }
+      ]
+     },
+     "transcripts": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 10373,
+      "samples": [
+       {
+        "key": "100031",
+        "before": "[{\"source\": \"printed_hearing\", \"package_id\": \"CHRG-112hhrg72212\", \"list_row\": 86662, \"formats\": [\"pdf\", \"html\"], \"vid...",
+        "after": "[{\"source\": \"printed_hearing\", \"package_id\": \"CHRG-112hhrg72212\", \"list_row\": 84875, \"formats\": [\"pdf\", \"html\"], \"vid..."
+       },
+       {
+        "key": "100032",
+        "before": "[{\"source\": \"printed_hearing\", \"package_id\": \"CHRG-112hhrg76510\", \"list_row\": 87465, \"formats\": [\"pdf\", \"html\"], \"vid...",
+        "after": "[{\"source\": \"printed_hearing\", \"package_id\": \"CHRG-112hhrg76510\", \"list_row\": 85678, \"formats\": [\"pdf\", \"html\"], \"vid..."
+       },
+       {
+        "key": "100035",
+        "before": "[{\"source\": \"printed_hearing\", \"package_id\": \"CHRG-112hhrg72217\", \"list_row\": 86667, \"formats\": [\"pdf\", \"html\"], \"vid...",
+        "after": "[{\"source\": \"printed_hearing\", \"package_id\": \"CHRG-112hhrg72217\", \"list_row\": 84880, \"formats\": [\"pdf\", \"html\"], \"vid..."
+       },
+       {
+        "key": "100037",
+        "before": "[{\"source\": \"printed_hearing\", \"package_id\": \"CHRG-112hhrg72223\", \"list_row\": 86673, \"formats\": [\"pdf\", \"html\"], \"vid...",
+        "after": "[{\"source\": \"printed_hearing\", \"package_id\": \"CHRG-112hhrg72223\", \"list_row\": 84886, \"formats\": [\"pdf\", \"html\"], \"vid..."
+       },
+       {
+        "key": "100038",
+        "before": "[{\"source\": \"printed_hearing\", \"package_id\": \"CHRG-112hhrg76599\", \"list_row\": 87474, \"formats\": [\"pdf\", \"html\"], \"vid...",
+        "after": "[{\"source\": \"printed_hearing\", \"package_id\": \"CHRG-112hhrg76599\", \"list_row\": 85687, \"formats\": [\"pdf\", \"html\"], \"vid..."
+       }
+      ]
+     }
+    }
+   },
+   "people.parquet": {
+    "removed": [
+     {
+      "person_key": "2088857f96baa9f6",
+      "name": "Oge Onubogu"
+     },
+     {
+      "person_key": "8c272d5aaa0540f0",
+      "name": "Kevin Wolf"
+     },
+     {
+      "person_key": "a74a00ca5aedb016",
+      "name": "Nina Shea"
+     },
+     {
+      "person_key": "d3d1bb66dbd76d5b",
+      "name": "Jacob McGee"
+     }
+    ],
+    "added": [
+     {
+      "person_key": "4dabb3ff3c81729e",
+      "name": "Johnathan Gould"
+     },
+     {
+      "person_key": "5bf39b3b2e468c6a",
+      "name": "Jim Johnson"
+     },
+     {
+      "person_key": "7c35830d8edeee4d",
+      "name": "Tom Feltner"
+     },
+     {
+      "person_key": "7f6267c8c8f3085e",
+      "name": "Alexis Goldstein"
+     },
+     {
+      "person_key": "a607488dd9d9b438",
+      "name": "Demetria McCain"
+     }
+    ],
+    "changed_columns": {
+     "appearance_count": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 11,
+      "samples": [
+       {
+        "key": "0cdb94c62df7d6d2",
+        "before": "2",
+        "after": "1"
+       },
+       {
+        "key": "2982e80c57ec99c1",
+        "before": "3",
+        "after": "2"
+       },
+       {
+        "key": "335019fb43a2056d",
+        "before": "1",
+        "after": "2"
+       },
+       {
+        "key": "45ea1757d20be68b",
+        "before": "2",
+        "after": "3"
+       },
+       {
+        "key": "610b198e0bfd09d4",
+        "before": "2",
+        "after": "1"
+       }
+      ]
+     },
+     "hearing_count": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 11,
+      "samples": [
+       {
+        "key": "0cdb94c62df7d6d2",
+        "before": "2",
+        "after": "1"
+       },
+       {
+        "key": "2982e80c57ec99c1",
+        "before": "3",
+        "after": "2"
+       },
+       {
+        "key": "335019fb43a2056d",
+        "before": "1",
+        "after": "2"
+       },
+       {
+        "key": "45ea1757d20be68b",
+        "before": "2",
+        "after": "3"
+       },
+       {
+        "key": "610b198e0bfd09d4",
+        "before": "2",
+        "after": "1"
+       }
+      ]
+     },
+     "last_seen_date": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 6,
+      "samples": [
+       {
+        "key": "2982e80c57ec99c1",
+        "before": "2025-11-20",
+        "after": "2025-07-30"
+       },
+       {
+        "key": "335019fb43a2056d",
+        "before": "2026-05-20",
+        "after": "2026-12-02"
+       },
+       {
+        "key": "45ea1757d20be68b",
+        "before": "2024-05-09",
+        "after": "2026-07-15"
+       },
+       {
+        "key": "62289839c78c4f93",
+        "before": "2026-06-04",
+        "after": "2026-12-01"
+       },
+       {
+        "key": "b6246ad69ee9c276",
+        "before": "2026-06-04",
+        "after": "2026-12-01"
+       }
+      ]
+     },
+     "name_variants": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 1,
+      "samples": [
+       {
+        "key": "610b198e0bfd09d4",
+        "before": "[\"Chris McGuire\", \"Chris Mcguire\"]",
+        "after": "[\"Chris McGuire\"]"
+       }
+      ]
+     },
+     "witness_keys": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 11,
+      "samples": [
+       {
+        "key": "0cdb94c62df7d6d2",
+        "before": "[\"8bac3dca6f067c64\", \"c9b28a79300854ed\"]",
+        "after": "[\"8bac3dca6f067c64\"]"
+       },
+       {
+        "key": "2982e80c57ec99c1",
+        "before": "[\"080a3eabc3f44168\", \"3a6088175c35ebce\", \"a226d4dfafcb2d29\"]",
+        "after": "[\"080a3eabc3f44168\", \"a226d4dfafcb2d29\"]"
+       },
+       {
+        "key": "335019fb43a2056d",
+        "before": "[\"f65a4cf09d12879d\"]",
+        "after": "[\"00e20af8ce3c9f88\", \"f65a4cf09d12879d\"]"
+       },
+       {
+        "key": "45ea1757d20be68b",
+        "before": "[\"1a63908ef98f3457\", \"5c9d4e6391f2538a\"]",
+        "after": "[\"1a63908ef98f3457\", \"5c9d4e6391f2538a\", \"b16e7d55e60f19b2\"]"
+       },
+       {
+        "key": "610b198e0bfd09d4",
+        "before": "[\"3f8f4d444b5f73bc\", \"b58c24b0157ecb04\"]",
+        "after": "[\"3f8f4d444b5f73bc\"]"
+       }
+      ]
+     }
+    }
+   },
+   "recording_matches.parquet": {
+    "added": [
+     {
+      "match_id": "04c8e181e8d7c55b41164a52efcbe206c7e0cfec7993819e4289ca0b86301d1c",
+      "url": null,
+      "video_key": "youtube:F6WT1D1gjjM",
+      "event_id": "119594"
+     },
+     {
+      "match_id": "05f74776edb6941080b259052c1d24c7d79f004a112353c21cbb8913708c9ad8",
+      "url": "https://www.congress.gov/event/119th-Congress/senate-event/338903",
+      "video_key": null,
+      "event_id": "338903"
+     },
+     {
+      "match_id": "08048c13664a4db355fe1eee0ff5ce847be5ad86f5587a92c6411e7ff4b1481c",
+      "url": null,
+      "video_key": "youtube:Tr8qjTaL2Nc",
+      "event_id": "114047"
+     },
+     {
+      "match_id": "156fddeec714985cf5e2d9d35c9de5134f368111ca4c8f2074ff6dcea570949b",
+      "url": null,
+      "video_key": "youtube:w7OC1VMeHY8",
+      "event_id": "114087"
+     },
+     {
+      "match_id": "2d68c99229850a016acfff88986a0597180e0cc536fc91dbac338963dd815f21",
+      "url": null,
+      "video_key": "youtube:w2ZpnqNCtr8",
+      "event_id": "113968"
+     }
+    ],
+    "changed_columns": {
+     "note": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 31,
+      "samples": [
+       {
+        "key": "05d0ed252c0a70a3460717ee1542c43a5eaa7b623065f66197a5f7bf2777d7ac",
+        "before": "house_doc_link",
+        "after": "house_doc_link [via committee_page:bf17627b6512351c676d90f12f0dde5b082ce8dda443e81a0a08295960d1aea7]"
+       },
+       {
+        "key": "06d0d1d322cc7df797016de4133cd108e1ec22add191390949f35f6d3c843742",
+        "before": "house_doc_link",
+        "after": "house_doc_link [via committee_page:a90bb07f2f018fd46fbb840a5ff6fc72281cb1bcf180b675ac93434cc4fffe25]"
+       },
+       {
+        "key": "096661d7b7217bfea1916e02b768d2c640903eed16dd6ecc4def7565402ce8a3",
+        "before": "house_doc_link",
+        "after": "house_doc_link [via committee_page:dc1f28cedb54cbe78f156ccfce82569eb32a92cdbb46ef91b6fd7d1dddc9bd41]"
+       },
+       {
+        "key": "225150e3e0623f755e3a11e38c78467b64d0ef710d81179c4c5f1642eb364b32",
+        "before": "house_doc_link",
+        "after": "house_doc_link [via committee_page:d05e12afeba79174684ffa017df1b1493dc600a4d72cfc96c8297a447d596009]"
+       },
+       {
+        "key": "3d4a8b008a790f0f4f2b278530dbe532887ef144e45d2bcc486ac3c5b7781eb0",
+        "before": "house_doc_link",
+        "after": "house_doc_link [via committee_page:241035f0378215ce502b3757569f96aca0f7a930ae28e9144db1c7d7f3205ed6]"
+       }
+      ]
+     },
+     "source_ref": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 35,
+      "samples": [
+       {
+        "key": "05d0ed252c0a70a3460717ee1542c43a5eaa7b623065f66197a5f7bf2777d7ac",
+        "before": "committee_page:bf17627b6512351c676d90f12f0dde5b082ce8dda443e81a0a08295960d1aea7",
+        "after": "committee_page:9011cd6f5427b9d84d83d8b8e20ed33f4ef2b9590fa864744c71ed76fdd2e1e7"
+       },
+       {
+        "key": "06d0d1d322cc7df797016de4133cd108e1ec22add191390949f35f6d3c843742",
+        "before": "committee_page:a90bb07f2f018fd46fbb840a5ff6fc72281cb1bcf180b675ac93434cc4fffe25",
+        "after": "committee_page:96538ec8ddc74256e11f58fa890f0112d9d5c5927adb27c00b7ef06fb9d57dde"
+       },
+       {
+        "key": "096661d7b7217bfea1916e02b768d2c640903eed16dd6ecc4def7565402ce8a3",
+        "before": "committee_page:dc1f28cedb54cbe78f156ccfce82569eb32a92cdbb46ef91b6fd7d1dddc9bd41",
+        "after": "committee_page:3497acbe303a9b8a11f5076c7ea9bc2dd761c1f1379272237bdbe027852f4c3c"
+       },
+       {
+        "key": "225150e3e0623f755e3a11e38c78467b64d0ef710d81179c4c5f1642eb364b32",
+        "before": "committee_page:d05e12afeba79174684ffa017df1b1493dc600a4d72cfc96c8297a447d596009",
+        "after": "committee_page:68cc586617ccde478a5c65f0109fce9bcec8c5010ad7ee01876c741b28c69316"
+       },
+       {
+        "key": "24275f5de9ff97f92c57702e60b967ce32cec9aaf6279a0f075f5a3d9ad33882",
+        "before": "committee_page:f1df67f2e45b7a539ac6c7bbe46f9e163dcd095736a12d260abc3022e2e06a80",
+        "after": "committee_page:f05a559d28d24a63df701aef38e6b2dc342e1c819dd91463ed38ec1e40a9efd0"
+       }
+      ]
+     }
+    }
+   },
+   "recordings.parquet": {
+    "added": [
+     {
+      "video_key": "senate:commerce120226"
+     },
+     {
+      "video_key": "senate:csce120326"
+     },
+     {
+      "video_key": "senate:epw112013"
+     },
+     {
+      "video_key": "senate:govtaff120126"
+     },
+     {
+      "video_key": "youtube:-NLPm8FyAXA"
+     }
+    ],
+    "changed_columns": {
+     "event_ids": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 2,
+      "samples": [
+       {
+        "key": "youtube:9N9tWPEyih0",
+        "before": "[]",
+        "after": "[114137]"
+       },
+       {
+        "key": "youtube:Fy-NaJkap70",
+        "before": "[111329]",
+        "after": "[111328, 111329]"
+       }
+      ]
+     }
+    }
+   },
+   "recoveries.parquet": {
+    "skipped": "release-local list_row identity"
+   },
+   "retired_links.parquet": {
+    "added": [
+     {
+      "link_key": "0001bca03ce7309f"
+     },
+     {
+      "link_key": "0013b5a771987954"
+     },
+     {
+      "link_key": "0017946a955a634a"
+     },
+     {
+      "link_key": "00193faf3a8a9cb4"
+     },
+     {
+      "link_key": "00228b0b139ad89f"
+     }
+    ]
+   },
+   "sources.parquet": {
+    "skipped": "release-local list_row identity"
+   },
+   "url_state.parquet": {
+    "removed": [
+     {
+      "requested_url": "https://democrats-transportation.house.gov/download/04/26/2022/smith-testimony&download=1"
+     },
+     {
+      "requested_url": "https://democrats-transportation.house.gov/download/booker-testimony&download=1"
+     },
+     {
+      "requested_url": "https://democrats-transportation.house.gov/download/karst-testimony&download=1"
+     },
+     {
+      "requested_url": "https://democrats-transportation.house.gov/download/kupcak-testimony&download=1"
+     },
+     {
+      "requested_url": "https://democrats-transportation.house.gov/download/lew-testimony&download=1"
+     }
+    ],
+    "added_skipped": "skipped sampling on 1225394 rows (> 500000)"
+   },
+   "urls.parquet": {
+    "skipped": "release-local list_row identity"
+   },
+   "witnesses.parquet": {
+    "added": [
+     {
+      "witness_key": "00e20af8ce3c9f88",
+      "name": "Erica Khalili",
+      "event_id": "119616"
+     },
+     {
+      "witness_key": "1d0b6c822b8792d7",
+      "name": "John Crews",
+      "event_id": "119615"
+     },
+     {
+      "witness_key": "3adef4f9bda78fd2",
+      "name": "Erik Syvertsen",
+      "event_id": "119616"
+     },
+     {
+      "witness_key": "3eb33194924f3775",
+      "name": "Jim Johnson",
+      "event_id": "119616"
+     },
+     {
+      "witness_key": "40d00ee53a011835",
+      "name": "Alexis Goldstein",
+      "event_id": "119453"
+     }
+    ],
+    "changed_columns": {
+     "event_id": {
+      "none_to_val": 10,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": [
+       {
+        "key": "05e4b835c9ca1ff8",
+        "before": null,
+        "after": "118681"
+       },
+       {
+        "key": "1f3ab7205c2c693e",
+        "before": null,
+        "after": "118734"
+       },
+       {
+        "key": "3a6088175c35ebce",
+        "before": null,
+        "after": "118681"
+       },
+       {
+        "key": "43ae69cbe302e24c",
+        "before": null,
+        "after": "118680"
+       },
+       {
+        "key": "7effd12d3864260f",
+        "before": null,
+        "after": "118681"
+       }
+      ]
+     },
+     "occasion": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 10,
+      "samples": [
+       {
+        "key": "05e4b835c9ca1ff8",
+        "before": "package:CHRG-119hhrg64043",
+        "after": "meeting:118681"
+       },
+       {
+        "key": "1f3ab7205c2c693e",
+        "before": "package:CHRG-119hhrg64229",
+        "after": "meeting:118734"
+       },
+       {
+        "key": "3a6088175c35ebce",
+        "before": "package:CHRG-119hhrg64043",
+        "after": "meeting:118681"
+       },
+       {
+        "key": "43ae69cbe302e24c",
+        "before": "package:CHRG-119hhrg64098",
+        "after": "meeting:118680"
+       },
+       {
+        "key": "7effd12d3864260f",
+        "before": "package:CHRG-119hhrg64043",
+        "after": "meeting:118681"
+       }
+      ]
+     },
+     "person_key": {
+      "none_to_val": 0,
+      "val_to_none": 0,
+      "val_to_val": 5,
+      "samples": [
+       {
+        "key": "05e4b835c9ca1ff8",
+        "before": "2088857f96baa9f6",
+        "after": "1d7a7bec3fa103cc"
+       },
+       {
+        "key": "3a6088175c35ebce",
+        "before": "2982e80c57ec99c1",
+        "after": "d2de8afeac600474"
+       },
+       {
+        "key": "7effd12d3864260f",
+        "before": "a74a00ca5aedb016",
+        "after": "de19fc67ad0775c4"
+       },
+       {
+        "key": "a4235a3045ff70d6",
+        "before": "d3d1bb66dbd76d5b",
+        "after": "19c897a3d4494cfc"
+       },
+       {
+        "key": "b3feca7abce8b2b9",
+        "before": "8c272d5aaa0540f0",
+        "after": "bdf469db99aa31e3"
+       }
+      ]
+     },
+     "superseded_by": {
+      "none_to_val": 10,
+      "val_to_none": 0,
+      "val_to_val": 0,
+      "samples": [
+       {
+        "key": "05e4b835c9ca1ff8",
+        "before": null,
+        "after": "708b5b4b1e642f9c"
+       },
+       {
+        "key": "1f3ab7205c2c693e",
+        "before": null,
+        "after": "8ca1e2c128e271fa"
+       },
+       {
+        "key": "3a6088175c35ebce",
+        "before": null,
+        "after": "dde4a90405560448"
+       },
+       {
+        "key": "43ae69cbe302e24c",
+        "before": null,
+        "after": "380669a8b49e1290"
+       },
+       {
+        "key": "7effd12d3864260f",
+        "before": null,
+        "after": "2b326299621c526f"
+       }
+      ]
+     }
+    }
+   }
+  }
+ }
+}
