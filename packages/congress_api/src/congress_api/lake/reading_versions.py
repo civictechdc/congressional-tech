@@ -7,6 +7,7 @@ READING_VERSIONS = {
     'house_floor_feed': 'b08fb4d8577bb72a97a0b6624eac8d1d21cee01a2db42184e8f7d38c80423a8f',
     'html_metadata': 'c226ccd99877c497474ffee673baa301f37bc14972b9b9f391af594da9b2b7be',
     'gpo_mods': 'ac383d286e4213e9c8d3e4b90f4c056120db2448309f341c728b7689f0745c07',
+    'wikidata_reconcile': '9abf330199a7abca10ca8c6831a2950418b170e473e3a059a4b749389abddbd4',
     'readings': '7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed',
     # Body-text parsers (data model §6.6), declared 2026-11-08: each ID is the SHA-256 of its
     # declaration below, computed once and never recomputed; warc's names the IDs it routes to.
@@ -37,6 +38,7 @@ MIGRATION_BUNDLE_INPUTS = 'eb1390f56e0216d7ed9ea94db85264a51a2dfd63c1831bc87e2f2
 HOUSE_FLOOR_DECLARATION = 'house_floor_feed 2026-11-13: spicy-docs house-floor-feed/002; complete Atom entries with exact original byte spans and hashes, literal publisher metadata and link occurrences; weekly-page HTML base unless explicit xml:base; preserve repeated IDs and weekly URLs; schedule/discovery only, no prose or legislative actions; a separate extra-leading-slash target repair requires the exact absolute URL elsewhere in the same feed, with raw spellings and repair reason retained; malformed input refuses whole; 64 MiB decoded bound'
 HTML_METADATA_DECLARATION = 'html_metadata 2026-11-16: extruct json-ld/opengraph/dublincore/microdata/microformat/rdfa with canonical RDFa blank-node coloring, per-format 10s deadline, comment-tolerant HTML5 prefix and bare-UUID route detection, RDFa content:encoded main-content selection preserving multi-line preformatted transcripts while stripping nested CMS navigation/header/footer/share chrome and retroactive live-CMS Congress banners when page dates/years establish an earlier Congress'
 GPO_MODS_DECLARATION = 'gpo_mods 2026-11-20: congress_api.parsers.gpo.parse_mods_document over GovInfo MODS XML; root accessId and preferredCitation plus constituent granule accessId and preferredCitation or root preferredCitation with constituent titleInfo partName/partNumber; normalized whitespace; non-MODS or malformed XML refuses whole; 24 MiB page-parse bound'
+WIKIDATA_RECONCILE_DECLARATION = 'wikidata_reconcile 2026-11-25: congress_api.parsers.wikidata_reconcile.reading_row over retained W3C Wikidata reconciliation JSON responses; validates non-empty object mapping query keys to result arrays of finite-scored Q[0-9]+ candidates, emits deterministic sorted query:<key> JSON array fields; non-UTF-8, non-JSON, non-finite numbers or malformed candidate objects refuse whole; 24 MiB page-parse bound'
 
 # Opt-in reviewed repairs do not replace the ordinary body-text declarations above.
 MARKUP_RECOVERY_BASE_VERSIONS = {

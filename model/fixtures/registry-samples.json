@@ -9320,6 +9320,17 @@
       "source": "Source family helper and acquisition/refresh.py retained7/28/365day policy"
     },
     {
+      "id": "recheck-intervals:wikidata/reconcile-None",
+      "registry": "recheck-intervals",
+      "entry": "wikidata/reconcile-None",
+      "value": {
+        "family": "wikidata/reconcile",
+        "age": 0
+      },
+      "expected": 3153600000,
+      "source": "ct-39u8 wikidata/reconcile policy: one-shot campaign capture with no automatic recheck (100-year interval)"
+    },
+    {
       "id": "negative-shape-1116",
       "registry": "file-shapes",
       "entry": null,

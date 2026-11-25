@@ -79,6 +79,7 @@
     "senate/captions",
     "senate/pages",
     "senate/players",
+    "wikidata/reconcile",
     "youtube/api",
     "youtube/captions",
     "youtube/watch-pages"

@@ -33,8 +33,18 @@ from congress_api.retention.receipt_writer import ReceiptWriter
 from congress_api.retention.receipt_privacy import credential_parameters
 
 PAGE_BYTES = 8 << 20
+WIKIDATA_RECONCILE_HOST = 'wikidata-reconciliation.wmcloud.org'
+WIKIDATA_RECONCILE_USER_AGENT = 'congressional-tech-reconcile/1.0 (anonymous)'
 PACING = dict(default_gap_seconds=0.2,provider_gap_seconds=0,
-              hosts={'docs.house.gov':dict(gap_seconds=1.2,backoffs={'403':60})})
+              hosts={'docs.house.gov':dict(gap_seconds=1.2,backoffs={'403':60}),
+                     WIKIDATA_RECONCILE_HOST:dict(gap_seconds=0.25,backoffs={'429':20,'503':20})})
+
+
+def default_request_headers(url):
+    """Return fixed anonymous headers for hosts that require explicit client identification."""
+    if urlsplit(url).hostname == WIKIDATA_RECONCILE_HOST:
+        return {'User-Agent': WIKIDATA_RECONCILE_USER_AGENT, 'Accept': 'application/json'}
+    return {}
 
 
 def _literal(value):
@@ -792,6 +802,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
             raise ValueError('Shared bounded discovery worker is unavailable') from None
         worker_factory=ParserWorker
     as_of=_utc(as_of);cutoff_urls=reviewed_cutoffs(cutoff_urls)
+    headers=headers or default_request_headers
     work=Path(work);work.mkdir(parents=True,exist_ok=True)
     from congress_api.acquisition.admission import Admission
     for adapter,cost in ((provider,provider_cost),(firecrawl,firecrawl_cost)):

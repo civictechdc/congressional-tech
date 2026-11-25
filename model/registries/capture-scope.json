@@ -126,6 +126,15 @@
       "exclusions": [
         "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/(?:oembed|yoast|popup-maker|wp/v2/wp_pattern_category)(?:/|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
       ]
+    },
+    {
+      "family": "wikidata/reconcile",
+      "patterns": [
+        "^https://wikidata-reconciliation\\.wmcloud\\.org/en/api\\?queries=[^#]+$"
+      ],
+      "exclusions": [
+        "(?i)(?:/(?:month|day|today)(?:/|$)|/feed/?(?:[?#]|$)|/wp-json/(?:oembed|yoast|popup-maker|wp/v2/wp_pattern_category)(?:/|$)|[?&](?:eventDate|tribe-bar-date)=|\\.(?:css|js|map|png|jpe?g|gif|svg|ico|woff2?|webp|mp4|m4v|webm|mov|mp3|m4a|aac|ts|m4s)(?:[?#]|$))"
+      ]
     }
   ]
 }

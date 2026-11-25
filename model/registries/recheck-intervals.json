@@ -550,5 +550,13 @@
     "max_age_days": 31,
     "interval_seconds": 604800,
     "sample_id": "recheck-intervals:youtube/watch-pages-None"
+  },
+  {
+    "id": "wikidata/reconcile-None",
+    "family": "wikidata/reconcile",
+    "min_age_days": null,
+    "max_age_days": null,
+    "interval_seconds": 3153600000,
+    "sample_id": "recheck-intervals:wikidata/reconcile-None"
   }
 ]
