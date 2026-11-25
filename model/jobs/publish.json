@@ -73,8 +73,8 @@
     }
   },
   "release_causes": {
-    "path": "release-causes/7d16a4d5b931-453351a3a57b.json",
-    "sha256": "6de72ae90449c3d25fcd73cbdce8dbbbc12e1ec434a50cdc4925a7495f0fc04a",
-    "size": 90833
+    "path": "release-causes/453351a3a57b-75a8d85b1f60.json",
+    "sha256": "151a9a0731d40061a7dfa4bcbd985b4d18ac4cbd72e4e3c48977e93f430925c4",
+    "size": 59081
   }
 }

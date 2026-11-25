@@ -1,0 +1,689 @@
+{
+ "version": 1,
+ "base_release_id": "453351a3a57bdd28031a43de218832f5cd8b89c30048bc04354aaba37b337c47",
+ "candidate_release_id": "75a8d85b1f6062d4207b739c09d446f0c6a9cafc5dfa7732e9ed93d15bef2260",
+ "stopped_for": [
+  "data-only night: the link rule failed (live keys would open another file, and they were not examined)",
+  "data-only night: the candidate differs from the live release in profile.file_hashes.model/registries/ban-park-you-org-taxonomy.json",
+  "data-only night: the candidate read no receipt the live release did not, so nothing explains a difference",
+  "data-only night: detail.parquet|merged rows|previous rows now share one document (-48) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: detail.parquet|removed rows|no surviving link key (-8490) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: detail.parquet|changed version_keys|value differs on matched key (7605) is more than the 50 rows this night may add or change (the lesser of 2% of 329077 and 5 for each of its 0 new receipts)",
+  "data-only night: links.parquet|removed keys|no evidence given (-8510) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: list.parquet|merged rows|previous rows now share one document (-48) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: list.parquet|removed rows|no surviving link key (-8490) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: list.parquet|changed version_keys|value differs on matched key (7605) is more than the 50 rows this night may add or change (the lesser of 2% of 329077 and 5 for each of its 0 new receipts)",
+  "data-only night: retired_links.parquet|added keys|no evidence given (8510) is more than the 50 rows this night may add or change (the lesser of 2% of 35514 and 5 for each of its 0 new receipts)",
+  "data-only night: sources.parquet|URLs gone|no live row has this address (-849) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: sources.parquet|same-URL rows removed|every such row sat on a removed document (-7661) removes more than the 1480 rows one unattended night may",
+  "data-only night: urls.parquet|keys gone|every row for the key was removed (-834) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: urls.parquet|keys with fewer rows|fewer documents answer the key (-8965) is not a difference new receipts alone explain; it needs a cause record",
+  "data-only night: detail.parquet moves 16383 rows across its groups, more than the 50 this night may (the lesser of 6% of the file and 15 for each of its 0 new receipts)",
+  "data-only night: links.parquet moves 8510 rows across its groups, more than the 50 this night may (the lesser of 6% of the file and 15 for each of its 0 new receipts)",
+  "data-only night: list.parquet moves 16263 rows across its groups, more than the 50 this night may (the lesser of 6% of the file and 15 for each of its 0 new receipts)",
+  "data-only night: retired_links.parquet moves 8510 rows across its groups, more than the 50 this night may (the lesser of 6% of the file and 15 for each of its 0 new receipts)",
+  "data-only night: sources.parquet moves 8510 rows across its groups, more than the 50 this night may (the lesser of 6% of the file and 15 for each of its 0 new receipts)",
+  "data-only night: urls.parquet moves 9799 rows across its groups, more than the 50 this night may (the lesser of 6% of the file and 15 for each of its 0 new receipts)",
+  "data-only night: detail.parquet:version_keys.list.item lost 15322 of its 15356 values, more than the 5% one unattended night may",
+  "data-only night: list.parquet:version_keys.list.item lost 15322 of its 15356 values, more than the 5% one unattended night may",
+  "automatic causes: 31 differences are not additions the traced proof reads, so it ran no check"
+ ],
+ "failing_groups": [
+  {
+   "id": "detail.parquet|merged rows|previous rows now share one document",
+   "count": -48,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|removed rows|no surviving link key",
+   "count": -8490,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed chambers|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed committee_keys|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed date_kind|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed first_captured|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed format|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed in_archive_since|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed link_key|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed saved_body|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed saved_bytes|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed saved_kind|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed saved_media_type|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "detail.parquet|changed version_keys|value differs on matched key",
+   "count": 7605,
+   "status": "unverified"
+  },
+  {
+   "id": "links.parquet|removed keys|no evidence given",
+   "count": -8510,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|merged rows|previous rows now share one document",
+   "count": -48,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|removed rows|no surviving link key",
+   "count": -8490,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed chambers|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed committee_keys|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed date_kind|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed first_captured|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed format|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed saved_kind|value differs on matched key",
+   "count": 20,
+   "status": "unverified"
+  },
+  {
+   "id": "list.parquet|changed version_keys|value differs on matched key",
+   "count": 7605,
+   "status": "unverified"
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 7,
+   "status": "unverified"
+  },
+  {
+   "id": "meetings.parquet|changed transcripts|value differs on matched key",
+   "count": 3,
+   "status": "unverified"
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "status": "unexplained"
+  },
+  {
+   "id": "retired_links.parquet|added keys|no evidence given",
+   "count": 8510,
+   "status": "unverified"
+  },
+  {
+   "id": "sources.parquet|URLs gone|no live row has this address",
+   "count": -849,
+   "status": "unverified"
+  },
+  {
+   "id": "urls.parquet|keys gone|every row for the key was removed",
+   "count": -834,
+   "status": "unverified"
+  },
+  {
+   "id": "urls.parquet|keys with fewer rows|fewer documents answer the key",
+   "count": -8965,
+   "status": "unverified"
+  }
+ ],
+ "link_rule": {
+  "missing": 0,
+  "dangling": 0,
+  "published_and_retired": 0,
+  "changed": 20,
+  "changed_answers": [
+   {
+    "key": "070e44c26c7408f6",
+    "live_row": 290216,
+    "live_file": "dawson-church-phd",
+    "live_body": "44a06788023f6ac3e93808528e91b5dd9a32d31b555249a56a5b71c1b9a74068",
+    "candidate_row": 285206,
+    "candidate_file": "dawson-church-phd",
+    "candidate_body": "e9e2d85ac3fdb5d00590e0084a29517f32f27653cff739b606e5585cb36bb964"
+   },
+   {
+    "key": "0ed4cd413c88e740",
+    "live_row": 283742,
+    "live_file": "armando-gonzalez",
+    "live_body": "47c82b07fd9936a924b6632b1d77579b45a772e3f99b81bd119e06699b2a2052",
+    "candidate_row": 279165,
+    "candidate_file": "armando-gonzalez",
+    "candidate_body": "7277f53d8d60c00ed86597524f71940d781dd16c7360b857df6e78ee38a9ac6a"
+   },
+   {
+    "key": "27cab99c114a8240",
+    "live_row": 290146,
+    "live_file": "david-k-rehbein",
+    "live_body": "dd1f3841c41e4f7262e74bd3cc9fc3c8ebc5454ec12c18496f6f616893db5c7b",
+    "candidate_row": 285152,
+    "candidate_file": "david-k-rehbein",
+    "candidate_body": "006d0ae9589a1a9f2cb7c58e5317133a9b341ce98187d92ebfddaf8df2ea460e"
+   },
+   {
+    "key": "414e54054de990d5",
+    "live_row": 310942,
+    "live_file": "jimmie-l-foster",
+    "live_body": "8c7d4e25a4e29a6802776134d6558fa673e01cc1ef8ffad064e9cfd17c5ebf8d",
+    "candidate_row": 304458,
+    "candidate_file": "jimmie-l-foster",
+    "candidate_body": "70df4ecbd997c45fa736c1afc10e0c8a9a357fae0de3a2448e20bd5b39965247"
+   },
+   {
+    "key": "45ccb0665c9d2af3",
+    "live_row": 283145,
+    "live_file": "alan-ross",
+    "live_body": "1c432ed9cfeff47f847b8d6c6bbcb65c2f9c9be4a4d6e8e2b636652cfd5e8061",
+    "candidate_row": 278633,
+    "candidate_file": "alan-ross",
+    "candidate_body": "ba0c086c1765632238941c7acdbbc0d56b3a74ea6617348e0fc6f7b5187ed963"
+   },
+   {
+    "key": "486f378f5572e432",
+    "live_row": 311701,
+    "live_file": "katherine-m-helmick-ms-cnrn-crnp",
+    "live_body": "d49ae5affdeb48e3b2baf11335ac9ea81170f5d89d0b6f424f42bf6888c47801",
+    "candidate_row": 304982,
+    "candidate_file": "katherine-m-helmick-ms-cnrn-crnp",
+    "candidate_body": "ef0c7189720c068fc70084968094d5d358a7e354824a22cf848538cddaa15460"
+   },
+   {
+    "key": "4c5269d1eb0aa695",
+    "live_row": 289566,
+    "live_file": "craig-t-love-phd",
+    "live_body": "1abdf310973c7258ba5eaf891c80d1a83baa3da5f57a4ce10157a0a7185f6815",
+    "candidate_row": 284625,
+    "candidate_file": "craig-t-love-phd",
+    "candidate_body": "685dc2520562782fefc4361018c32759a812b488d659a73e7c7a9dd961cf641a"
+   },
+   {
+    "key": "70198f458d09fe85",
+    "live_row": 298016,
+    "live_file": "gerald-grant-md",
+    "live_body": "e6d41de333a07bb22e57a6037008ea678096ff658a10587cbf565ab2ea24fba8",
+    "candidate_row": 292660,
+    "candidate_file": "gerald-grant-md",
+    "candidate_body": "0c6e1db5a631fb98b5d7b7959dd9d539d0a51c728e24cbaff2fcd183a611f570"
+   },
+   {
+    "key": "73c06b52626048ff",
+    "live_row": 312797,
+    "live_file": "lieutenant-colonel-christopher-robinson-usaf-bsc-phd-mph",
+    "live_body": "2b556e55aa8bf7419bd0abf81b8cd7f4ca40efff02a33de9542b8970e260c88c",
+    "candidate_row": 305936,
+    "candidate_file": "lieutenant-colonel-christopher-robinson-usaf-bsc-phd-mph",
+    "candidate_body": "ef0c7189720c068fc70084968094d5d358a7e354824a22cf848538cddaa15460"
+   },
+   {
+    "key": "85d6f86996ed8b3b",
+    "live_row": 292938,
+    "live_file": "eugene-lipov-md-daba-faba",
+    "live_body": "b2ba130d94cce4871bedd9423458a6c1697e87cb3e5b36f88708b095a191b05a",
+    "candidate_row": 287762,
+    "candidate_file": "eugene-lipov-md-daba-faba",
+    "candidate_body": "d01e2617d0415f8db3b46809b665dc2e3a493b0420ab23e00ffd87f2f8dbcf9d"
+   },
+   {
+    "key": "8885a56a2d66814d",
+    "live_row": 318797,
+    "live_file": "patrick-elliott-do-facs",
+    "live_body": "2bb46351f18b38d33cbe1d4ff6011cfe00553ccd9164851db7693c4dcc0d2478",
+    "candidate_row": 311291,
+    "candidate_file": "patrick-elliott-do-facs",
+    "candidate_body": "93afd668247e79022b3345317c658c616c21d90ddce9e826cc6ff28e59f1ec98"
+   },
+   {
+    "key": "8d908e1ea02f1023",
+    "live_row": 318826,
+    "live_file": "paul-d-sexton-mba",
+    "live_body": "cd711ab5a3b6a3c644f17f1fccf71fdca7fbdcf51f63d402094312fecacaac2f",
+    "candidate_row": 311312,
+    "candidate_file": "paul-d-sexton-mba",
+    "candidate_body": "0564fcc838c6487b1847006109ee978edfc0107757f2c20cd7249fd2ac9d2014"
+   },
+   {
+    "key": "9812255055323044",
+    "live_row": 284060,
+    "live_file": "barbara-rothbaum-phd-abpp",
+    "live_body": "2cdd0807401431ef62a07f3d961329a0d760c5c6fe934ede628f2685b0404372",
+    "candidate_row": 279459,
+    "candidate_file": "barbara-rothbaum-phd-abpp",
+    "candidate_body": "d714ceb7e498e77ce53b53084c5fa70bde215f1a7f6d98cafa209e9bdd913430"
+   },
+   {
+    "key": "a2b84ffe8d91a278",
+    "live_row": 322798,
+    "live_file": "second-lieutenant-olli-toukolehto",
+    "live_body": "5c46093c4ae7192e0e723b9e52555c3b87644075754d00fde3d0a2112ed1684b",
+    "candidate_row": 314740,
+    "candidate_file": "second-lieutenant-olli-toukolehto",
+    "candidate_body": "e9e2d85ac3fdb5d00590e0084a29517f32f27653cff739b606e5585cb36bb964"
+   },
+   {
+    "key": "a7dadecb94195673",
+    "live_row": 290130,
+    "live_file": "david-feinstein-phd",
+    "live_body": "59fab2fe903070b03ede31564488eee94e69135d9905739ee3a1e18448f17acc",
+    "candidate_row": 285142,
+    "candidate_file": "david-feinstein-phd",
+    "candidate_body": "7ca1d5be05c42977c4f2094dbd8c11c529254cfb7a0927c391b26b0cbfa01733"
+   },
+   {
+    "key": "b5c820062dc79553",
+    "live_row": 327088,
+    "live_file": "troy-lisa-holbrook-ms-phd",
+    "live_body": "b39dcf60d40a12e331c2c8ec52d79fe61906de1bc853dbb4e7bae6b404086609",
+    "candidate_row": 318694,
+    "candidate_file": "troy-lisa-holbrook-ms-phd",
+    "candidate_body": "15ada0d4961d448abd9975ccca5440808216066415960ff361b0f28181d54f20"
+   },
+   {
+    "key": "bb8b1e04d8e7ac5c",
+    "live_row": 287722,
+    "live_file": "carey-d-balaban-phd",
+    "live_body": "0d4042c217c09f4de230905bceaddaee16397958b6e4a1b01add03d96334543d",
+    "candidate_row": 282983,
+    "candidate_file": "carey-d-balaban-phd",
+    "candidate_body": "d196acb9e9a84271563b14a87a6774db6ab5dee2f8df4acb83f49555af6e31d0"
+   },
+   {
+    "key": "c45b6d88630827e8",
+    "live_row": 317136,
+    "live_file": "norman-salem-jr-phd",
+    "live_body": "3f337f10bce164ebc3b29052102eb51ac051287c6d16b2abdfc1fa86f52ebea8",
+    "candidate_row": 309772,
+    "candidate_file": "norman-salem-jr-phd",
+    "candidate_body": "a7a7c2ce873a2883d176e384f0cd681669da8beb53e3241e65fe4fee0250e314"
+   },
+   {
+    "key": "d0d10906d0686f76",
+    "live_row": 318831,
+    "live_file": "paul-harch-md",
+    "live_body": "1b9b0e5857090f5e6a260533ff643260bbca004500c3f334e92145b1e9d0cdc5",
+    "candidate_row": 311314,
+    "candidate_file": "paul-harch-md",
+    "candidate_body": "a3fcaa8f86b9980f6536d0b0474b1014c6c27c1c3219de1ffd3f65c7ba19acf4"
+   },
+   {
+    "key": "e9225d6a2e7ac34b",
+    "live_row": 288372,
+    "live_file": "charles-e-levy-md",
+    "live_body": "9818f6703288538f9ed6773e400595c29b7bee3a22ec14244f885a7e5fd3d9ef",
+    "candidate_row": 283559,
+    "candidate_file": "charles-e-levy-md",
+    "candidate_body": "898c5ccbca005d583c230653f296b3e0cb56a832625c4cb68cfb1a7d6a124ff0"
+   }
+  ],
+  "lookup_changed": 20,
+  "lookup_changed_answers": [
+   {
+    "key": "009aac47c039024b",
+    "live_row": 290130,
+    "live_file": "david-feinstein-phd",
+    "live_body": "59fab2fe903070b03ede31564488eee94e69135d9905739ee3a1e18448f17acc",
+    "candidate_rows": [
+     285142
+    ],
+    "candidate_files": [
+     "david-feinstein-phd"
+    ],
+    "candidate_bodies": [
+     "7ca1d5be05c42977c4f2094dbd8c11c529254cfb7a0927c391b26b0cbfa01733"
+    ]
+   },
+   {
+    "key": "014869cafbe598da",
+    "live_row": 283145,
+    "live_file": "alan-ross",
+    "live_body": "1c432ed9cfeff47f847b8d6c6bbcb65c2f9c9be4a4d6e8e2b636652cfd5e8061",
+    "candidate_rows": [
+     278633
+    ],
+    "candidate_files": [
+     "alan-ross"
+    ],
+    "candidate_bodies": [
+     "ba0c086c1765632238941c7acdbbc0d56b3a74ea6617348e0fc6f7b5187ed963"
+    ]
+   },
+   {
+    "key": "108ba4a4ec028530",
+    "live_row": 318797,
+    "live_file": "patrick-elliott-do-facs",
+    "live_body": "2bb46351f18b38d33cbe1d4ff6011cfe00553ccd9164851db7693c4dcc0d2478",
+    "candidate_rows": [
+     311291
+    ],
+    "candidate_files": [
+     "patrick-elliott-do-facs"
+    ],
+    "candidate_bodies": [
+     "93afd668247e79022b3345317c658c616c21d90ddce9e826cc6ff28e59f1ec98"
+    ]
+   },
+   {
+    "key": "14df2208e3676ed0",
+    "live_row": 310942,
+    "live_file": "jimmie-l-foster",
+    "live_body": "8c7d4e25a4e29a6802776134d6558fa673e01cc1ef8ffad064e9cfd17c5ebf8d",
+    "candidate_rows": [
+     304458
+    ],
+    "candidate_files": [
+     "jimmie-l-foster"
+    ],
+    "candidate_bodies": [
+     "70df4ecbd997c45fa736c1afc10e0c8a9a357fae0de3a2448e20bd5b39965247"
+    ]
+   },
+   {
+    "key": "17e1585f4fc6b42c",
+    "live_row": 289566,
+    "live_file": "craig-t-love-phd",
+    "live_body": "1abdf310973c7258ba5eaf891c80d1a83baa3da5f57a4ce10157a0a7185f6815",
+    "candidate_rows": [
+     284625
+    ],
+    "candidate_files": [
+     "craig-t-love-phd"
+    ],
+    "candidate_bodies": [
+     "685dc2520562782fefc4361018c32759a812b488d659a73e7c7a9dd961cf641a"
+    ]
+   },
+   {
+    "key": "21d16baf91fdd73d",
+    "live_row": 317136,
+    "live_file": "norman-salem-jr-phd",
+    "live_body": "3f337f10bce164ebc3b29052102eb51ac051287c6d16b2abdfc1fa86f52ebea8",
+    "candidate_rows": [
+     309772
+    ],
+    "candidate_files": [
+     "norman-salem-jr-phd"
+    ],
+    "candidate_bodies": [
+     "a7a7c2ce873a2883d176e384f0cd681669da8beb53e3241e65fe4fee0250e314"
+    ]
+   },
+   {
+    "key": "262b8eb3b20056d0",
+    "live_row": 283742,
+    "live_file": "armando-gonzalez",
+    "live_body": "47c82b07fd9936a924b6632b1d77579b45a772e3f99b81bd119e06699b2a2052",
+    "candidate_rows": [
+     279165
+    ],
+    "candidate_files": [
+     "armando-gonzalez"
+    ],
+    "candidate_bodies": [
+     "7277f53d8d60c00ed86597524f71940d781dd16c7360b857df6e78ee38a9ac6a"
+    ]
+   },
+   {
+    "key": "2c3070da8d1a0927",
+    "live_row": 298016,
+    "live_file": "gerald-grant-md",
+    "live_body": "e6d41de333a07bb22e57a6037008ea678096ff658a10587cbf565ab2ea24fba8",
+    "candidate_rows": [
+     292660
+    ],
+    "candidate_files": [
+     "gerald-grant-md"
+    ],
+    "candidate_bodies": [
+     "0c6e1db5a631fb98b5d7b7959dd9d539d0a51c728e24cbaff2fcd183a611f570"
+    ]
+   },
+   {
+    "key": "611b20a996cca1e5",
+    "live_row": 288372,
+    "live_file": "charles-e-levy-md",
+    "live_body": "9818f6703288538f9ed6773e400595c29b7bee3a22ec14244f885a7e5fd3d9ef",
+    "candidate_rows": [
+     283559
+    ],
+    "candidate_files": [
+     "charles-e-levy-md"
+    ],
+    "candidate_bodies": [
+     "898c5ccbca005d583c230653f296b3e0cb56a832625c4cb68cfb1a7d6a124ff0"
+    ]
+   },
+   {
+    "key": "6c5dee75a739e7fd",
+    "live_row": 318826,
+    "live_file": "paul-d-sexton-mba",
+    "live_body": "cd711ab5a3b6a3c644f17f1fccf71fdca7fbdcf51f63d402094312fecacaac2f",
+    "candidate_rows": [
+     311312
+    ],
+    "candidate_files": [
+     "paul-d-sexton-mba"
+    ],
+    "candidate_bodies": [
+     "0564fcc838c6487b1847006109ee978edfc0107757f2c20cd7249fd2ac9d2014"
+    ]
+   },
+   {
+    "key": "83031ef9de862f5d",
+    "live_row": 311701,
+    "live_file": "katherine-m-helmick-ms-cnrn-crnp",
+    "live_body": "d49ae5affdeb48e3b2baf11335ac9ea81170f5d89d0b6f424f42bf6888c47801",
+    "candidate_rows": [
+     304982
+    ],
+    "candidate_files": [
+     "katherine-m-helmick-ms-cnrn-crnp"
+    ],
+    "candidate_bodies": [
+     "ef0c7189720c068fc70084968094d5d358a7e354824a22cf848538cddaa15460"
+    ]
+   },
+   {
+    "key": "8a2b309f0ff2f4f9",
+    "live_row": 327088,
+    "live_file": "troy-lisa-holbrook-ms-phd",
+    "live_body": "b39dcf60d40a12e331c2c8ec52d79fe61906de1bc853dbb4e7bae6b404086609",
+    "candidate_rows": [
+     318694
+    ],
+    "candidate_files": [
+     "troy-lisa-holbrook-ms-phd"
+    ],
+    "candidate_bodies": [
+     "15ada0d4961d448abd9975ccca5440808216066415960ff361b0f28181d54f20"
+    ]
+   },
+   {
+    "key": "92ef0ebb0fe1e11a",
+    "live_row": 290146,
+    "live_file": "david-k-rehbein",
+    "live_body": "dd1f3841c41e4f7262e74bd3cc9fc3c8ebc5454ec12c18496f6f616893db5c7b",
+    "candidate_rows": [
+     285152
+    ],
+    "candidate_files": [
+     "david-k-rehbein"
+    ],
+    "candidate_bodies": [
+     "006d0ae9589a1a9f2cb7c58e5317133a9b341ce98187d92ebfddaf8df2ea460e"
+    ]
+   },
+   {
+    "key": "a0f91ccda8deacbd",
+    "live_row": 290216,
+    "live_file": "dawson-church-phd",
+    "live_body": "44a06788023f6ac3e93808528e91b5dd9a32d31b555249a56a5b71c1b9a74068",
+    "candidate_rows": [
+     285206
+    ],
+    "candidate_files": [
+     "dawson-church-phd"
+    ],
+    "candidate_bodies": [
+     "e9e2d85ac3fdb5d00590e0084a29517f32f27653cff739b606e5585cb36bb964"
+    ]
+   },
+   {
+    "key": "b437fb8261af7d61",
+    "live_row": 284060,
+    "live_file": "barbara-rothbaum-phd-abpp",
+    "live_body": "2cdd0807401431ef62a07f3d961329a0d760c5c6fe934ede628f2685b0404372",
+    "candidate_rows": [
+     279459
+    ],
+    "candidate_files": [
+     "barbara-rothbaum-phd-abpp"
+    ],
+    "candidate_bodies": [
+     "d714ceb7e498e77ce53b53084c5fa70bde215f1a7f6d98cafa209e9bdd913430"
+    ]
+   },
+   {
+    "key": "b930e9617384fed9",
+    "live_row": 287722,
+    "live_file": "carey-d-balaban-phd",
+    "live_body": "0d4042c217c09f4de230905bceaddaee16397958b6e4a1b01add03d96334543d",
+    "candidate_rows": [
+     282983
+    ],
+    "candidate_files": [
+     "carey-d-balaban-phd"
+    ],
+    "candidate_bodies": [
+     "d196acb9e9a84271563b14a87a6774db6ab5dee2f8df4acb83f49555af6e31d0"
+    ]
+   },
+   {
+    "key": "be807d86154f2021",
+    "live_row": 312797,
+    "live_file": "lieutenant-colonel-christopher-robinson-usaf-bsc-phd-mph",
+    "live_body": "2b556e55aa8bf7419bd0abf81b8cd7f4ca40efff02a33de9542b8970e260c88c",
+    "candidate_rows": [
+     305936
+    ],
+    "candidate_files": [
+     "lieutenant-colonel-christopher-robinson-usaf-bsc-phd-mph"
+    ],
+    "candidate_bodies": [
+     "ef0c7189720c068fc70084968094d5d358a7e354824a22cf848538cddaa15460"
+    ]
+   },
+   {
+    "key": "dfdeaee34404e78e",
+    "live_row": 318831,
+    "live_file": "paul-harch-md",
+    "live_body": "1b9b0e5857090f5e6a260533ff643260bbca004500c3f334e92145b1e9d0cdc5",
+    "candidate_rows": [
+     311314
+    ],
+    "candidate_files": [
+     "paul-harch-md"
+    ],
+    "candidate_bodies": [
+     "a3fcaa8f86b9980f6536d0b0474b1014c6c27c1c3219de1ffd3f65c7ba19acf4"
+    ]
+   },
+   {
+    "key": "e83795e6345c4606",
+    "live_row": 292938,
+    "live_file": "eugene-lipov-md-daba-faba",
+    "live_body": "b2ba130d94cce4871bedd9423458a6c1697e87cb3e5b36f88708b095a191b05a",
+    "candidate_rows": [
+     287762
+    ],
+    "candidate_files": [
+     "eugene-lipov-md-daba-faba"
+    ],
+    "candidate_bodies": [
+     "d01e2617d0415f8db3b46809b665dc2e3a493b0420ab23e00ffd87f2f8dbcf9d"
+    ]
+   },
+   {
+    "key": "fdc3ef99b7fbb1e3",
+    "live_row": 322798,
+    "live_file": "second-lieutenant-olli-toukolehto",
+    "live_body": "5c46093c4ae7192e0e723b9e52555c3b87644075754d00fde3d0a2112ed1684b",
+    "candidate_rows": [
+     314740
+    ],
+    "candidate_files": [
+     "second-lieutenant-olli-toukolehto"
+    ],
+    "candidate_bodies": [
+     "e9e2d85ac3fdb5d00590e0084a29517f32f27653cff739b606e5585cb36bb964"
+    ]
+   }
+  ],
+  "address_changed": 0,
+  "address_changed_answers": [],
+  "demoted": 0,
+  "demoted_answers": [],
+  "ok": false
+ }
+}
