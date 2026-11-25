@@ -1,0 +1,1901 @@
+{
+ "version": 1,
+ "base_release_id": "453351a3a57bdd28031a43de218832f5cd8b89c30048bc04354aaba37b337c47",
+ "candidate_release_id": "7e08390c3470c6d7042bce1ed6883b22baa9a1ef3003d6ec02d7489c76a8b3d4",
+ "notes": {
+  "identifiers": [
+   {
+    "statement": "PR #240 (ct-ogcq) extends model/sql/record-roles.sql so format='other' WARC/ARC captures (application/warc+gzip, application/arc+gzip) classify as record_role='envelope' (is_real_file=False), intentionally retiring 8,510 envelope link_keys into retired_links.parquet (7,661 duplicates of already-published capture_index=0 siblings, 829 non-document listing/wrapper shells, and 20 veterans.house.gov rows promoted to their attached saved_kind='recovery' PDFs) and unblocking 48 veterans.house.gov recovery attachments (merged rows: -48).",
+    "decision": "ct-ogcq"
+   },
+   {
+    "statement": "PR #243 (`ct-w34j`), PR #244 (`ct-lvdf`), and PR #245 (`ct-39u8`, Wikidata auto-links gated off) add public organization resolution (`organizations.parquet` 52,433, `organization_ids.parquet` 59,433, `witness_organizations.parquet` 154,841, `organization_redirects.parquet` 0) and `wikidata/reconcile` capture scope alongside 1,988 daily capture receipts from run 45621357436.",
+    "decision": "ct-lvdf"
+   }
+  ]
+ },
+ "corrections": [
+  {
+   "kind": "link_key",
+   "key": "070e44c26c7408f6",
+   "live_body": "44a06788023f6ac3e93808528e91b5dd9a32d31b555249a56a5b71c1b9a74068",
+   "candidate_body": "e9e2d85ac3fdb5d00590e0084a29517f32f27653cff739b606e5585cb36bb964",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `44a06788023f6ac3` (`44a06788023f`) at `http://veterans.house.gov/witness-testimony/dawson-church-phd` (live row 290216, `dawson-church-phd`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`e9e2d85ac3fd`) on candidate row 285259 as primary for link_key `070e44c26c7408f6`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "0ed4cd413c88e740",
+   "live_body": "47c82b07fd9936a924b6632b1d77579b45a772e3f99b81bd119e06699b2a2052",
+   "candidate_body": "7277f53d8d60c00ed86597524f71940d781dd16c7360b857df6e78ee38a9ac6a",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `47c82b07fd9936a9` (`47c82b07fd99`) at `http://veterans.house.gov/witness-testimony/armando-gonzalez` (live row 283742, `armando-gonzalez`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`7277f53d8d60`) on candidate row 279212 as primary for link_key `0ed4cd413c88e740`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "27cab99c114a8240",
+   "live_body": "dd1f3841c41e4f7262e74bd3cc9fc3c8ebc5454ec12c18496f6f616893db5c7b",
+   "candidate_body": "006d0ae9589a1a9f2cb7c58e5317133a9b341ce98187d92ebfddaf8df2ea460e",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `dd1f3841c41e4f72` (`dd1f3841c41e`) at `http://veterans.house.gov/witness-testimony/david-k-rehbein` (live row 290146, `david-k-rehbein`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`006d0ae9589a`) on candidate row 285205 as primary for link_key `27cab99c114a8240`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "414e54054de990d5",
+   "live_body": "8c7d4e25a4e29a6802776134d6558fa673e01cc1ef8ffad064e9cfd17c5ebf8d",
+   "candidate_body": "70df4ecbd997c45fa736c1afc10e0c8a9a357fae0de3a2448e20bd5b39965247",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `8c7d4e25a4e29a68` (`8c7d4e25a4e2`) at `http://veterans.house.gov/witness-testimony/jimmie-l-foster` (live row 310942, `jimmie-l-foster`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`70df4ecbd997`) on candidate row 304634 as primary for link_key `414e54054de990d5`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "45ccb0665c9d2af3",
+   "live_body": "1c432ed9cfeff47f847b8d6c6bbcb65c2f9c9be4a4d6e8e2b636652cfd5e8061",
+   "candidate_body": "ba0c086c1765632238941c7acdbbc0d56b3a74ea6617348e0fc6f7b5187ed963",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `1c432ed9cfeff47f` (`1c432ed9cfef`) at `http://veterans.house.gov/witness-testimony/alan-ross` (live row 283145, `alan-ross`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`ba0c086c1765`) on candidate row 278680 as primary for link_key `45ccb0665c9d2af3`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "486f378f5572e432",
+   "live_body": "d49ae5affdeb48e3b2baf11335ac9ea81170f5d89d0b6f424f42bf6888c47801",
+   "candidate_body": "ef0c7189720c068fc70084968094d5d358a7e354824a22cf848538cddaa15460",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `d49ae5affdeb48e3` (`d49ae5affdeb`) at `http://veterans.house.gov/witness-testimony/katherine-m-helmick-ms-cnrn-crnp` (live row 311701, `katherine-m-helmick-ms-cnrn-crnp`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`ef0c7189720c`) on candidate row 305158 as primary for link_key `486f378f5572e432`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "4c5269d1eb0aa695",
+   "live_body": "1abdf310973c7258ba5eaf891c80d1a83baa3da5f57a4ce10157a0a7185f6815",
+   "candidate_body": "685dc2520562782fefc4361018c32759a812b488d659a73e7c7a9dd961cf641a",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `1abdf310973c7258` (`1abdf310973c`) at `http://veterans.house.gov/witness-testimony/craig-t-love-phd` (live row 289566, `craig-t-love-phd`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`685dc2520562`) on candidate row 284676 as primary for link_key `4c5269d1eb0aa695`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "70198f458d09fe85",
+   "live_body": "e6d41de333a07bb22e57a6037008ea678096ff658a10587cbf565ab2ea24fba8",
+   "candidate_body": "0c6e1db5a631fb98b5d7b7959dd9d539d0a51c728e24cbaff2fcd183a611f570",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `e6d41de333a07bb2` (`e6d41de333a0`) at `http://veterans.house.gov/witness-testimony/gerald-grant-md` (live row 298016, `gerald-grant-md`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`0c6e1db5a631`) on candidate row 292811 as primary for link_key `70198f458d09fe85`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "73c06b52626048ff",
+   "live_body": "2b556e55aa8bf7419bd0abf81b8cd7f4ca40efff02a33de9542b8970e260c88c",
+   "candidate_body": "ef0c7189720c068fc70084968094d5d358a7e354824a22cf848538cddaa15460",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `2b556e55aa8bf741` (`2b556e55aa8b`) at `http://veterans.house.gov/witness-testimony/lieutenant-colonel-christopher-robinson-usaf-bsc-phd-mph` (live row 312797, `lieutenant-colonel-christopher-robinson-usaf-bsc-phd-mph`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`ef0c7189720c`) on candidate row 306113 as primary for link_key `73c06b52626048ff`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "85d6f86996ed8b3b",
+   "live_body": "b2ba130d94cce4871bedd9423458a6c1697e87cb3e5b36f88708b095a191b05a",
+   "candidate_body": "d01e2617d0415f8db3b46809b665dc2e3a493b0420ab23e00ffd87f2f8dbcf9d",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `b2ba130d94cce487` (`b2ba130d94cc`) at `http://veterans.house.gov/witness-testimony/eugene-lipov-md-daba-faba` (live row 292938, `eugene-lipov-md-daba-faba`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`d01e2617d041`) on candidate row 287821 as primary for link_key `85d6f86996ed8b3b`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "8885a56a2d66814d",
+   "live_body": "2bb46351f18b38d33cbe1d4ff6011cfe00553ccd9164851db7693c4dcc0d2478",
+   "candidate_body": "93afd668247e79022b3345317c658c616c21d90ddce9e826cc6ff28e59f1ec98",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `2bb46351f18b38d3` (`2bb46351f18b`) at `http://veterans.house.gov/witness-testimony/patrick-elliott-do-facs` (live row 318797, `patrick-elliott-do-facs`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`93afd668247e`) on candidate row 311475 as primary for link_key `8885a56a2d66814d`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "8d908e1ea02f1023",
+   "live_body": "cd711ab5a3b6a3c644f17f1fccf71fdca7fbdcf51f63d402094312fecacaac2f",
+   "candidate_body": "0564fcc838c6487b1847006109ee978edfc0107757f2c20cd7249fd2ac9d2014",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `cd711ab5a3b6a3c6` (`cd711ab5a3b6`) at `http://veterans.house.gov/witness-testimony/paul-d-sexton-mba` (live row 318826, `paul-d-sexton-mba`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`0564fcc838c6`) on candidate row 311496 as primary for link_key `8d908e1ea02f1023`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "9812255055323044",
+   "live_body": "2cdd0807401431ef62a07f3d961329a0d760c5c6fe934ede628f2685b0404372",
+   "candidate_body": "d714ceb7e498e77ce53b53084c5fa70bde215f1a7f6d98cafa209e9bdd913430",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `2cdd0807401431ef` (`2cdd08074014`) at `http://veterans.house.gov/witness-testimony/barbara-rothbaum-phd-abpp` (live row 284060, `barbara-rothbaum-phd-abpp`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`d714ceb7e498`) on candidate row 279506 as primary for link_key `9812255055323044`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "a2b84ffe8d91a278",
+   "live_body": "5c46093c4ae7192e0e723b9e52555c3b87644075754d00fde3d0a2112ed1684b",
+   "candidate_body": "e9e2d85ac3fdb5d00590e0084a29517f32f27653cff739b606e5585cb36bb964",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `5c46093c4ae7192e` (`5c46093c4ae7`) at `http://veterans.house.gov/witness-testimony/second-lieutenant-olli-toukolehto` (live row 322798, `second-lieutenant-olli-toukolehto`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`e9e2d85ac3fd`) on candidate row 314931 as primary for link_key `a2b84ffe8d91a278`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "a7dadecb94195673",
+   "live_body": "59fab2fe903070b03ede31564488eee94e69135d9905739ee3a1e18448f17acc",
+   "candidate_body": "7ca1d5be05c42977c4f2094dbd8c11c529254cfb7a0927c391b26b0cbfa01733",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `59fab2fe903070b0` (`59fab2fe9030`) at `http://veterans.house.gov/witness-testimony/david-feinstein-phd` (live row 290130, `david-feinstein-phd`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`7ca1d5be05c4`) on candidate row 285195 as primary for link_key `a7dadecb94195673`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "b5c820062dc79553",
+   "live_body": "b39dcf60d40a12e331c2c8ec52d79fe61906de1bc853dbb4e7bae6b404086609",
+   "candidate_body": "15ada0d4961d448abd9975ccca5440808216066415960ff361b0f28181d54f20",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `b39dcf60d40a12e3` (`b39dcf60d40a`) at `http://veterans.house.gov/witness-testimony/troy-lisa-holbrook-ms-phd` (live row 327088, `troy-lisa-holbrook-ms-phd`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`15ada0d4961d`) on candidate row 318897 as primary for link_key `b5c820062dc79553`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "bb8b1e04d8e7ac5c",
+   "live_body": "0d4042c217c09f4de230905bceaddaee16397958b6e4a1b01add03d96334543d",
+   "candidate_body": "d196acb9e9a84271563b14a87a6774db6ab5dee2f8df4acb83f49555af6e31d0",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `0d4042c217c09f4d` (`0d4042c217c0`) at `http://veterans.house.gov/witness-testimony/carey-d-balaban-phd` (live row 287722, `carey-d-balaban-phd`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`d196acb9e9a8`) on candidate row 283032 as primary for link_key `bb8b1e04d8e7ac5c`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "c45b6d88630827e8",
+   "live_body": "3f337f10bce164ebc3b29052102eb51ac051287c6d16b2abdfc1fa86f52ebea8",
+   "candidate_body": "a7a7c2ce873a2883d176e384f0cd681669da8beb53e3241e65fe4fee0250e314",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `3f337f10bce164eb` (`3f337f10bce1`) at `http://veterans.house.gov/witness-testimony/norman-salem-jr-phd` (live row 317136, `norman-salem-jr-phd`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`a7a7c2ce873a`) on candidate row 309955 as primary for link_key `c45b6d88630827e8`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "d0d10906d0686f76",
+   "live_body": "1b9b0e5857090f5e6a260533ff643260bbca004500c3f334e92145b1e9d0cdc5",
+   "candidate_body": "a3fcaa8f86b9980f6536d0b0474b1014c6c27c1c3219de1ffd3f65c7ba19acf4",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `1b9b0e5857090f5e` (`1b9b0e585709`) at `http://veterans.house.gov/witness-testimony/paul-harch-md` (live row 318831, `paul-harch-md`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`a3fcaa8f86b9`) on candidate row 311498 as primary for link_key `d0d10906d0686f76`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "e9225d6a2e7ac34b",
+   "live_body": "9818f6703288538f9ed6773e400595c29b7bee3a22ec14244f885a7e5fd3d9ef",
+   "candidate_body": "898c5ccbca005d583c230653f296b3e0cb56a832625c4cb68cfb1a7d6a124ff0",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `9818f6703288538f` (`9818f6703288`) at `http://veterans.house.gov/witness-testimony/charles-e-levy-md` (live row 288372, `charles-e-levy-md`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`898c5ccbca00`) on candidate row 283608 as primary for link_key `e9225d6a2e7ac34b`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "009aac47c039024b",
+   "live_body": "59fab2fe903070b03ede31564488eee94e69135d9905739ee3a1e18448f17acc",
+   "candidate_body": "7ca1d5be05c42977c4f2094dbd8c11c529254cfb7a0927c391b26b0cbfa01733",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `59fab2fe903070b0` (`59fab2fe9030`) at `http://veterans.house.gov/witness-testimony/david-feinstein-phd` (live row 290130, `david-feinstein-phd`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`7ca1d5be05c4`) on candidate row 285195 as primary for lookup_key `009aac47c039024b`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "014869cafbe598da",
+   "live_body": "1c432ed9cfeff47f847b8d6c6bbcb65c2f9c9be4a4d6e8e2b636652cfd5e8061",
+   "candidate_body": "ba0c086c1765632238941c7acdbbc0d56b3a74ea6617348e0fc6f7b5187ed963",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `1c432ed9cfeff47f` (`1c432ed9cfef`) at `http://veterans.house.gov/witness-testimony/alan-ross` (live row 283145, `alan-ross`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`ba0c086c1765`) on candidate row 278680 as primary for lookup_key `014869cafbe598da`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "108ba4a4ec028530",
+   "live_body": "2bb46351f18b38d33cbe1d4ff6011cfe00553ccd9164851db7693c4dcc0d2478",
+   "candidate_body": "93afd668247e79022b3345317c658c616c21d90ddce9e826cc6ff28e59f1ec98",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `2bb46351f18b38d3` (`2bb46351f18b`) at `http://veterans.house.gov/witness-testimony/patrick-elliott-do-facs` (live row 318797, `patrick-elliott-do-facs`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`93afd668247e`) on candidate row 311475 as primary for lookup_key `108ba4a4ec028530`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "14df2208e3676ed0",
+   "live_body": "8c7d4e25a4e29a6802776134d6558fa673e01cc1ef8ffad064e9cfd17c5ebf8d",
+   "candidate_body": "70df4ecbd997c45fa736c1afc10e0c8a9a357fae0de3a2448e20bd5b39965247",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `8c7d4e25a4e29a68` (`8c7d4e25a4e2`) at `http://veterans.house.gov/witness-testimony/jimmie-l-foster` (live row 310942, `jimmie-l-foster`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`70df4ecbd997`) on candidate row 304634 as primary for lookup_key `14df2208e3676ed0`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "17e1585f4fc6b42c",
+   "live_body": "1abdf310973c7258ba5eaf891c80d1a83baa3da5f57a4ce10157a0a7185f6815",
+   "candidate_body": "685dc2520562782fefc4361018c32759a812b488d659a73e7c7a9dd961cf641a",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `1abdf310973c7258` (`1abdf310973c`) at `http://veterans.house.gov/witness-testimony/craig-t-love-phd` (live row 289566, `craig-t-love-phd`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`685dc2520562`) on candidate row 284676 as primary for lookup_key `17e1585f4fc6b42c`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "21d16baf91fdd73d",
+   "live_body": "3f337f10bce164ebc3b29052102eb51ac051287c6d16b2abdfc1fa86f52ebea8",
+   "candidate_body": "a7a7c2ce873a2883d176e384f0cd681669da8beb53e3241e65fe4fee0250e314",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `3f337f10bce164eb` (`3f337f10bce1`) at `http://veterans.house.gov/witness-testimony/norman-salem-jr-phd` (live row 317136, `norman-salem-jr-phd`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`a7a7c2ce873a`) on candidate row 309955 as primary for lookup_key `21d16baf91fdd73d`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "262b8eb3b20056d0",
+   "live_body": "47c82b07fd9936a924b6632b1d77579b45a772e3f99b81bd119e06699b2a2052",
+   "candidate_body": "7277f53d8d60c00ed86597524f71940d781dd16c7360b857df6e78ee38a9ac6a",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `47c82b07fd9936a9` (`47c82b07fd99`) at `http://veterans.house.gov/witness-testimony/armando-gonzalez` (live row 283742, `armando-gonzalez`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`7277f53d8d60`) on candidate row 279212 as primary for lookup_key `262b8eb3b20056d0`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "2c3070da8d1a0927",
+   "live_body": "e6d41de333a07bb22e57a6037008ea678096ff658a10587cbf565ab2ea24fba8",
+   "candidate_body": "0c6e1db5a631fb98b5d7b7959dd9d539d0a51c728e24cbaff2fcd183a611f570",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `e6d41de333a07bb2` (`e6d41de333a0`) at `http://veterans.house.gov/witness-testimony/gerald-grant-md` (live row 298016, `gerald-grant-md`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`0c6e1db5a631`) on candidate row 292811 as primary for lookup_key `2c3070da8d1a0927`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "611b20a996cca1e5",
+   "live_body": "9818f6703288538f9ed6773e400595c29b7bee3a22ec14244f885a7e5fd3d9ef",
+   "candidate_body": "898c5ccbca005d583c230653f296b3e0cb56a832625c4cb68cfb1a7d6a124ff0",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `9818f6703288538f` (`9818f6703288`) at `http://veterans.house.gov/witness-testimony/charles-e-levy-md` (live row 288372, `charles-e-levy-md`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`898c5ccbca00`) on candidate row 283608 as primary for lookup_key `611b20a996cca1e5`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "6c5dee75a739e7fd",
+   "live_body": "cd711ab5a3b6a3c644f17f1fccf71fdca7fbdcf51f63d402094312fecacaac2f",
+   "candidate_body": "0564fcc838c6487b1847006109ee978edfc0107757f2c20cd7249fd2ac9d2014",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `cd711ab5a3b6a3c6` (`cd711ab5a3b6`) at `http://veterans.house.gov/witness-testimony/paul-d-sexton-mba` (live row 318826, `paul-d-sexton-mba`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`0564fcc838c6`) on candidate row 311496 as primary for lookup_key `6c5dee75a739e7fd`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "83031ef9de862f5d",
+   "live_body": "d49ae5affdeb48e3b2baf11335ac9ea81170f5d89d0b6f424f42bf6888c47801",
+   "candidate_body": "ef0c7189720c068fc70084968094d5d358a7e354824a22cf848538cddaa15460",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `d49ae5affdeb48e3` (`d49ae5affdeb`) at `http://veterans.house.gov/witness-testimony/katherine-m-helmick-ms-cnrn-crnp` (live row 311701, `katherine-m-helmick-ms-cnrn-crnp`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`ef0c7189720c`) on candidate row 305158 as primary for lookup_key `83031ef9de862f5d`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "8a2b309f0ff2f4f9",
+   "live_body": "b39dcf60d40a12e331c2c8ec52d79fe61906de1bc853dbb4e7bae6b404086609",
+   "candidate_body": "15ada0d4961d448abd9975ccca5440808216066415960ff361b0f28181d54f20",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `b39dcf60d40a12e3` (`b39dcf60d40a`) at `http://veterans.house.gov/witness-testimony/troy-lisa-holbrook-ms-phd` (live row 327088, `troy-lisa-holbrook-ms-phd`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`15ada0d4961d`) on candidate row 318897 as primary for lookup_key `8a2b309f0ff2f4f9`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "92ef0ebb0fe1e11a",
+   "live_body": "dd1f3841c41e4f7262e74bd3cc9fc3c8ebc5454ec12c18496f6f616893db5c7b",
+   "candidate_body": "006d0ae9589a1a9f2cb7c58e5317133a9b341ce98187d92ebfddaf8df2ea460e",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `dd1f3841c41e4f72` (`dd1f3841c41e`) at `http://veterans.house.gov/witness-testimony/david-k-rehbein` (live row 290146, `david-k-rehbein`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`006d0ae9589a`) on candidate row 285205 as primary for lookup_key `92ef0ebb0fe1e11a`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "a0f91ccda8deacbd",
+   "live_body": "44a06788023f6ac3e93808528e91b5dd9a32d31b555249a56a5b71c1b9a74068",
+   "candidate_body": "e9e2d85ac3fdb5d00590e0084a29517f32f27653cff739b606e5585cb36bb964",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `44a06788023f6ac3` (`44a06788023f`) at `http://veterans.house.gov/witness-testimony/dawson-church-phd` (live row 290216, `dawson-church-phd`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`e9e2d85ac3fd`) on candidate row 285259 as primary for lookup_key `a0f91ccda8deacbd`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "b437fb8261af7d61",
+   "live_body": "2cdd0807401431ef62a07f3d961329a0d760c5c6fe934ede628f2685b0404372",
+   "candidate_body": "d714ceb7e498e77ce53b53084c5fa70bde215f1a7f6d98cafa209e9bdd913430",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `2cdd0807401431ef` (`2cdd08074014`) at `http://veterans.house.gov/witness-testimony/barbara-rothbaum-phd-abpp` (live row 284060, `barbara-rothbaum-phd-abpp`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`d714ceb7e498`) on candidate row 279506 as primary for lookup_key `b437fb8261af7d61`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "b930e9617384fed9",
+   "live_body": "0d4042c217c09f4de230905bceaddaee16397958b6e4a1b01add03d96334543d",
+   "candidate_body": "d196acb9e9a84271563b14a87a6774db6ab5dee2f8df4acb83f49555af6e31d0",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `0d4042c217c09f4d` (`0d4042c217c0`) at `http://veterans.house.gov/witness-testimony/carey-d-balaban-phd` (live row 287722, `carey-d-balaban-phd`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`d196acb9e9a8`) on candidate row 283032 as primary for lookup_key `b930e9617384fed9`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "be807d86154f2021",
+   "live_body": "2b556e55aa8bf7419bd0abf81b8cd7f4ca40efff02a33de9542b8970e260c88c",
+   "candidate_body": "ef0c7189720c068fc70084968094d5d358a7e354824a22cf848538cddaa15460",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `2b556e55aa8bf741` (`2b556e55aa8b`) at `http://veterans.house.gov/witness-testimony/lieutenant-colonel-christopher-robinson-usaf-bsc-phd-mph` (live row 312797, `lieutenant-colonel-christopher-robinson-usaf-bsc-phd-mph`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`ef0c7189720c`) on candidate row 306113 as primary for lookup_key `be807d86154f2021`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "dfdeaee34404e78e",
+   "live_body": "1b9b0e5857090f5e6a260533ff643260bbca004500c3f334e92145b1e9d0cdc5",
+   "candidate_body": "a3fcaa8f86b9980f6536d0b0474b1014c6c27c1c3219de1ffd3f65c7ba19acf4",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `1b9b0e5857090f5e` (`1b9b0e585709`) at `http://veterans.house.gov/witness-testimony/paul-harch-md` (live row 318831, `paul-harch-md`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`a3fcaa8f86b9`) on candidate row 311498 as primary for lookup_key `dfdeaee34404e78e`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "e83795e6345c4606",
+   "live_body": "b2ba130d94cce4871bedd9423458a6c1697e87cb3e5b36f88708b095a191b05a",
+   "candidate_body": "d01e2617d0415f8db3b46809b665dc2e3a493b0420ab23e00ffd87f2f8dbcf9d",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `b2ba130d94cce487` (`b2ba130d94cc`) at `http://veterans.house.gov/witness-testimony/eugene-lipov-md-daba-faba` (live row 292938, `eugene-lipov-md-daba-faba`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`d01e2617d041`) on candidate row 287821 as primary for lookup_key `e83795e6345c4606`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "fdc3ef99b7fbb1e3",
+   "live_body": "5c46093c4ae7192e0e723b9e52555c3b87644075754d00fde3d0a2112ed1684b",
+   "candidate_body": "e9e2d85ac3fdb5d00590e0084a29517f32f27653cff739b606e5585cb36bb964",
+   "decision": "PR #240 (ct-ogcq) retired legacy format='other' WARC envelope `5c46093c4ae7192e` (`5c46093c4ae7`) at `http://veterans.house.gov/witness-testimony/second-lieutenant-olli-toukolehto` (live row 322798, `second-lieutenant-olli-toukolehto`) into retired_links.parquet, promoting the document's attached saved_kind='recovery' PDF (`e9e2d85ac3fd`) on candidate row 314931 as primary for lookup_key `fdc3ef99b7fbb1e3`.",
+   "tickets": [
+    "ct-ogcq"
+   ]
+  },
+  {
+   "kind": "link_key",
+   "key": "cac18a9f82f6cbae",
+   "live_body": "cac18a9f82f6cbae79db1703e20d69bdbb8d6b73961d9cae32f8bd1c5f79a3d3",
+   "candidate_body": "3edd479ac8481bc156f08d9bea4718dfa4601a98f4ce17c3e8250afa408aba15",
+   "decision": "Routine daily re-fetch of `https://transportation.house.gov/calendar/eventsingle.aspx?EventID=404905` in today's `1,988` capture receipts (`capture-archive.yml` run `45621357436`) updated `eventsingle.aspx` from `cac18a9f82f6cbae` (live row 295270) to `3edd479ac8481bc1` (candidate row 290115).",
+   "tickets": [
+    "ct-ud0b",
+    "ct-4nax"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "9945c64b10746a59",
+   "live_body": "cac18a9f82f6cbae79db1703e20d69bdbb8d6b73961d9cae32f8bd1c5f79a3d3",
+   "candidate_body": "3edd479ac8481bc156f08d9bea4718dfa4601a98f4ce17c3e8250afa408aba15",
+   "decision": "Routine daily re-fetch of `https://transportation.house.gov/calendar/eventsingle.aspx?EventID=404905` in today's `1,988` capture receipts (`capture-archive.yml` run `45621357436`) updated `eventsingle.aspx` from `cac18a9f82f6cbae` (live row 295270) to `3edd479ac8481bc1` (candidate row 290115).",
+   "tickets": [
+    "ct-ud0b",
+    "ct-4nax"
+   ]
+  },
+  {
+   "kind": "lookup_key",
+   "key": "c58af437a34435fe",
+   "live_body": "cac18a9f82f6cbae79db1703e20d69bdbb8d6b73961d9cae32f8bd1c5f79a3d3",
+   "candidate_body": "3edd479ac8481bc156f08d9bea4718dfa4601a98f4ce17c3e8250afa408aba15",
+   "decision": "Routine daily re-fetch of `https://transportation.house.gov/calendar/eventsingle.aspx?EventID=404905` in today's `1,988` capture receipts (`capture-archive.yml` run `45621357436`) updated `eventsingle.aspx` from `cac18a9f82f6cbae` (live row 295270) to `3edd479ac8481bc1` (candidate row 290115).",
+   "tickets": [
+    "ct-ud0b",
+    "ct-4nax"
+   ]
+  },
+  {
+   "kind": "address",
+   "key": "https://transportation.house.gov/calendar/eventsingle.aspx?EventID=404905",
+   "live_body": "cac18a9f82f6cbae79db1703e20d69bdbb8d6b73961d9cae32f8bd1c5f79a3d3",
+   "candidate_body": "3edd479ac8481bc156f08d9bea4718dfa4601a98f4ce17c3e8250afa408aba15",
+   "decision": "Routine daily re-fetch of `https://transportation.house.gov/calendar/eventsingle.aspx?EventID=404905` in today's `1,988` capture receipts (`capture-archive.yml` run `45621357436`) updated `eventsingle.aspx` from `cac18a9f82f6cbae` (live row 295270) to `3edd479ac8481bc1` (candidate row 290115).",
+   "tickets": [
+    "ct-ud0b",
+    "ct-4nax"
+   ]
+  }
+ ],
+ "groups": [
+  {
+   "id": "capture_scope.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "PR #245 (ct-39u8) adds the `wikidata/reconcile` capture family regex to `model/registries/capture-scope.json` while keeping `include_wikidata_links=False`.",
+   "tickets": [
+    "ct-39u8"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 211,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed chambers|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 20 veterans.house.gov/witness-testimony/* rows (`alan-ross`, `carey-d-balaban-phd`, `craig-t-love-phd`, `dawson-church-phd`, `paul-harch-md`, etc.) carried both a format='other' WARC envelope (`live_body`, `src_len=1`, `saved_kind='original'`) and an attached `recovered_document` PDF (`rec_len=1`). Retiring each envelope key (`live_body[:16]`) to retired_links.parquet promotes all 20 documents in place to their attached PDFs (`saved_kind='recovery'`, `format='pdf'`, `saved_media_type='application/pdf'`, `src_len=0`), updating primary `link_key` and capture/committee/date metadata on those exact 20 rows.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed committee_keys|value differs on matched key",
+   "count": 31,
+   "disposition": "explained",
+   "cause": "Combines the 20 PR #240 (`ct-ogcq`) `veterans.house.gov` recovery promotions with 11 matched document rows updated by today's `1,988` new daily capture receipts (e.g., `3775218c97a7b7c5` gaining `hspw00` alongside `hspw12`).",
+   "tickets": [
+    "ct-ogcq",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed date_kind|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 20 veterans.house.gov/witness-testimony/* rows (`alan-ross`, `carey-d-balaban-phd`, `craig-t-love-phd`, `dawson-church-phd`, `paul-harch-md`, etc.) carried both a format='other' WARC envelope (`live_body`, `src_len=1`, `saved_kind='original'`) and an attached `recovered_document` PDF (`rec_len=1`). Retiring each envelope key (`live_body[:16]`) to retired_links.parquet promotes all 20 documents in place to their attached PDFs (`saved_kind='recovery'`, `format='pdf'`, `saved_media_type='application/pdf'`, `src_len=0`), updating primary `link_key` and capture/committee/date metadata on those exact 20 rows.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed document_date_source|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed first_captured|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 20 veterans.house.gov/witness-testimony/* rows (`alan-ross`, `carey-d-balaban-phd`, `craig-t-love-phd`, `dawson-church-phd`, `paul-harch-md`, etc.) carried both a format='other' WARC envelope (`live_body`, `src_len=1`, `saved_kind='original'`) and an attached `recovered_document` PDF (`rec_len=1`). Retiring each envelope key (`live_body[:16]`) to retired_links.parquet promotes all 20 documents in place to their attached PDFs (`saved_kind='recovery'`, `format='pdf'`, `saved_media_type='application/pdf'`, `src_len=0`), updating primary `link_key` and capture/committee/date metadata on those exact 20 rows.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed format|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 20 veterans.house.gov/witness-testimony/* rows (`alan-ross`, `carey-d-balaban-phd`, `craig-t-love-phd`, `dawson-church-phd`, `paul-harch-md`, etc.) carried both a format='other' WARC envelope (`live_body`, `src_len=1`, `saved_kind='original'`) and an attached `recovered_document` PDF (`rec_len=1`). Retiring each envelope key (`live_body[:16]`) to retired_links.parquet promotes all 20 documents in place to their attached PDFs (`saved_kind='recovery'`, `format='pdf'`, `saved_media_type='application/pdf'`, `src_len=0`), updating primary `link_key` and capture/committee/date metadata on those exact 20 rows.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed in_archive_since|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 20 veterans.house.gov/witness-testimony/* rows (`alan-ross`, `carey-d-balaban-phd`, `craig-t-love-phd`, `dawson-church-phd`, `paul-harch-md`, etc.) carried both a format='other' WARC envelope (`live_body`, `src_len=1`, `saved_kind='original'`) and an attached `recovered_document` PDF (`rec_len=1`). Retiring each envelope key (`live_body[:16]`) to retired_links.parquet promotes all 20 documents in place to their attached PDFs (`saved_kind='recovery'`, `format='pdf'`, `saved_media_type='application/pdf'`, `src_len=0`), updating primary `link_key` and capture/committee/date metadata on those exact 20 rows.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed link_key|value differs on matched key",
+   "count": 21,
+   "disposition": "explained",
+   "cause": "Combines the 20 PR #240 (`ct-ogcq`) `veterans.house.gov` recovery promotions with 1 re-fetched House Transportation event page (`eventsingle.aspx` `cac18a9f82f6cbae` updated to body `3edd479ac848` from today's `1,988` daily capture receipts).",
+   "tickets": [
+    "ct-ogcq",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed meeting_keys|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_body|value differs on matched key",
+   "count": 21,
+   "disposition": "explained",
+   "cause": "Combines the 20 PR #240 (`ct-ogcq`) `veterans.house.gov` recovery promotions with 1 re-fetched House Transportation event page (`eventsingle.aspx` `cac18a9f82f6cbae -> 3edd479ac848`) from today's `1,988` daily capture receipts.",
+   "tickets": [
+    "ct-ogcq",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_bytes|value differs on matched key",
+   "count": 21,
+   "disposition": "explained",
+   "cause": "Combines the 20 PR #240 (`ct-ogcq`) `veterans.house.gov` recovery promotions with 1 re-fetched House Transportation event page (`eventsingle.aspx` `cac18a9f82f6cbae -> 3edd479ac848`) from today's `1,988` daily capture receipts.",
+   "tickets": [
+    "ct-ogcq",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_kind|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 20 veterans.house.gov/witness-testimony/* rows (`alan-ross`, `carey-d-balaban-phd`, `craig-t-love-phd`, `dawson-church-phd`, `paul-harch-md`, etc.) carried both a format='other' WARC envelope (`live_body`, `src_len=1`, `saved_kind='original'`) and an attached `recovered_document` PDF (`rec_len=1`). Retiring each envelope key (`live_body[:16]`) to retired_links.parquet promotes all 20 documents in place to their attached PDFs (`saved_kind='recovery'`, `format='pdf'`, `saved_media_type='application/pdf'`, `src_len=0`), updating primary `link_key` and capture/committee/date metadata on those exact 20 rows.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed saved_media_type|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 20 veterans.house.gov/witness-testimony/* rows (`alan-ross`, `carey-d-balaban-phd`, `craig-t-love-phd`, `dawson-church-phd`, `paul-harch-md`, etc.) carried both a format='other' WARC envelope (`live_body`, `src_len=1`, `saved_kind='original'`) and an attached `recovered_document` PDF (`rec_len=1`). Retiring each envelope key (`live_body[:16]`) to retired_links.parquet promotes all 20 documents in place to their attached PDFs (`saved_kind='recovery'`, `format='pdf'`, `saved_media_type='application/pdf'`, `src_len=0`), updating primary `link_key` and capture/committee/date metadata on those exact 20 rows.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed src_len|value differs on matched key",
+   "count": 26,
+   "disposition": "explained",
+   "cause": "Combines the 20 PR #240 (`ct-ogcq`) `veterans.house.gov` recovery promotions with 6 matched document rows gaining source links (e.g., `3775218c97a7b7c5`: `2 -> 3`) from today's `1,988` daily capture receipts.",
+   "tickets": [
+    "ct-ogcq",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 107,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 107,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed version_keys|value differs on matched key",
+   "count": 7605,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): the 7,661 duplicate format='other' WARC/ARC envelopes shared URLs with 7,653 distinct unwrapped capture_index=0 sibling documents, causing document_version_keys to emit the envelope's key in each sibling's `version_keys[]` (e.g., `0006ff0ccd7fdf22` `jacob-b-gadd-1`: `[\"38751795de88f5bf\"]` -> `[]`). Retiring the envelopes clears `version_keys` on all 7,653 siblings (`val_to_val=7,653` in samples: 7,605 one-to-one matched rows reported here plus 48 paired with merged recovery rows).",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed witness_keys|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|merged rows|previous rows now share one document",
+   "count": -48,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq) classifies 8,510 format='other' WARC/ARC captures as record_role='envelope' (is_real_file=False). Across 48 veterans.house.gov/witness-testimony/* URLs (verified in base 453351a3a57b: all 48 lookup_keys with count=3 held `html:original` + `html:recovery` + `other:original`, e.g., `mr-james-binns`, `ted-h-wolf`, `joy-j-ilem-3`, `ned-m-hunter`, `arnold-russo`), removing the duplicate `other:original` envelope left a single `html:original` component at `original_url`, unblocking provenance-recovery-attachments.sql to attach each `html:recovery` row onto its original document (-48 rows).",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|removed rows|no surviving link key",
+   "count": -8490,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq) classifies 8,510 format='other' WARC/ARC captures as record_role='envelope' (is_real_file=False). Of the 8,510 envelopes, 8,490 have no surviving link_key and leave detail.parquet/list.parquet (7,661 duplicate rows whose unwrapped capture_index=0 payload siblings are already published at the exact same URL, e.g. `0013b5a771987954` `fc-34act.htm`, `0017946a955a634a` `Pages_from_Michael_Petit_Witness_Disclosure_.pdf`; plus 829 non-document listing/wrapper shells with no recoveries, e.g. `0001bca03ce7309f` `james-l-hoff-dba`). The remaining 20 had rec_len=1 recoveries and promoted in place (-8,490 - 48 = -8,538 PR #240 delta; -8,327 net delta after +211 added rows).",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 212,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|removed keys|no evidence given",
+   "count": -8510,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq) classifies 8,510 format='other' WARC/ARC captures (8,442 `application/warc+gzip`, 68 `application/arc+gzip`) as record_role='envelope' (`is_real_file=False`), removing all 8,510 envelope `link_key`s from `links.parquet` (415,441 -> 407,143; -8,510 removed + 212 added = -8,298 net delta): 8,490 on removed duplicate/listing rows plus the 20 retired envelope `link_key`s from the 20 promoted `veterans.house.gov` recovery rows. All 8,510 keys move into `retired_links.parquet` with 0 missing or dangling links.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 211,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed chambers|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 20 veterans.house.gov/witness-testimony/* rows (`alan-ross`, `carey-d-balaban-phd`, `craig-t-love-phd`, `dawson-church-phd`, `paul-harch-md`, etc.) carried both a format='other' WARC envelope (`live_body`, `src_len=1`, `saved_kind='original'`) and an attached `recovered_document` PDF (`rec_len=1`). Retiring each envelope key (`live_body[:16]`) to retired_links.parquet promotes all 20 documents in place to their attached PDFs (`saved_kind='recovery'`, `format='pdf'`, `saved_media_type='application/pdf'`, `src_len=0`), updating primary `link_key` and capture/committee/date metadata on those exact 20 rows.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed committee_keys|value differs on matched key",
+   "count": 31,
+   "disposition": "explained",
+   "cause": "Combines the 20 PR #240 (`ct-ogcq`) `veterans.house.gov` recovery promotions with 11 matched list rows updated by today's `1,988` new daily capture receipts.",
+   "tickets": [
+    "ct-ogcq",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed date_kind|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 20 veterans.house.gov/witness-testimony/* rows (`alan-ross`, `carey-d-balaban-phd`, `craig-t-love-phd`, `dawson-church-phd`, `paul-harch-md`, etc.) carried both a format='other' WARC envelope (`live_body`, `src_len=1`, `saved_kind='original'`) and an attached `recovered_document` PDF (`rec_len=1`). Retiring each envelope key (`live_body[:16]`) to retired_links.parquet promotes all 20 documents in place to their attached PDFs (`saved_kind='recovery'`, `format='pdf'`, `saved_media_type='application/pdf'`, `src_len=0`), updating primary `link_key` and capture/committee/date metadata on those exact 20 rows.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed first_captured|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 20 veterans.house.gov/witness-testimony/* rows (`alan-ross`, `carey-d-balaban-phd`, `craig-t-love-phd`, `dawson-church-phd`, `paul-harch-md`, etc.) carried both a format='other' WARC envelope (`live_body`, `src_len=1`, `saved_kind='original'`) and an attached `recovered_document` PDF (`rec_len=1`). Retiring each envelope key (`live_body[:16]`) to retired_links.parquet promotes all 20 documents in place to their attached PDFs (`saved_kind='recovery'`, `format='pdf'`, `saved_media_type='application/pdf'`, `src_len=0`), updating primary `link_key` and capture/committee/date metadata on those exact 20 rows.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed format|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 20 veterans.house.gov/witness-testimony/* rows (`alan-ross`, `carey-d-balaban-phd`, `craig-t-love-phd`, `dawson-church-phd`, `paul-harch-md`, etc.) carried both a format='other' WARC envelope (`live_body`, `src_len=1`, `saved_kind='original'`) and an attached `recovered_document` PDF (`rec_len=1`). Retiring each envelope key (`live_body[:16]`) to retired_links.parquet promotes all 20 documents in place to their attached PDFs (`saved_kind='recovery'`, `format='pdf'`, `saved_media_type='application/pdf'`, `src_len=0`), updating primary `link_key` and capture/committee/date metadata on those exact 20 rows.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed meeting_keys|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed saved_kind|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 20 veterans.house.gov/witness-testimony/* rows (`alan-ross`, `carey-d-balaban-phd`, `craig-t-love-phd`, `dawson-church-phd`, `paul-harch-md`, etc.) carried both a format='other' WARC envelope (`live_body`, `src_len=1`, `saved_kind='original'`) and an attached `recovered_document` PDF (`rec_len=1`). Retiring each envelope key (`live_body[:16]`) to retired_links.parquet promotes all 20 documents in place to their attached PDFs (`saved_kind='recovery'`, `format='pdf'`, `saved_media_type='application/pdf'`, `src_len=0`), updating primary `link_key` and capture/committee/date metadata on those exact 20 rows.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 107,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed version_keys|value differs on matched key",
+   "count": 7605,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): the 7,661 duplicate format='other' WARC/ARC envelopes shared URLs with 7,653 distinct unwrapped capture_index=0 sibling documents, causing document_version_keys to emit the envelope's key in each sibling's `version_keys[]` (e.g., `0006ff0ccd7fdf22` `jacob-b-gadd-1`: `[\"38751795de88f5bf\"]` -> `[]`). Retiring the envelopes clears `version_keys` on all 7,653 siblings (`val_to_val=7,653` in samples: 7,605 one-to-one matched rows reported here plus 48 paired with merged recovery rows).",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed witness_keys|value differs on matched key",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|merged rows|previous rows now share one document",
+   "count": -48,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq) classifies 8,510 format='other' WARC/ARC captures as record_role='envelope' (is_real_file=False). Across 48 veterans.house.gov/witness-testimony/* URLs (verified in base 453351a3a57b: all 48 lookup_keys with count=3 held `html:original` + `html:recovery` + `other:original`, e.g., `mr-james-binns`, `ted-h-wolf`, `joy-j-ilem-3`, `ned-m-hunter`, `arnold-russo`), removing the duplicate `other:original` envelope left a single `html:original` component at `original_url`, unblocking provenance-recovery-attachments.sql to attach each `html:recovery` row onto its original document (-48 rows).",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|removed rows|no surviving link key",
+   "count": -8490,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq) classifies 8,510 format='other' WARC/ARC captures as record_role='envelope' (is_real_file=False). Of the 8,510 envelopes, 8,490 have no surviving link_key and leave detail.parquet/list.parquet (7,661 duplicate rows whose unwrapped capture_index=0 payload siblings are already published at the exact same URL, e.g. `0013b5a771987954` `fc-34act.htm`, `0017946a955a634a` `Pages_from_Michael_Petit_Witness_Disclosure_.pdf`; plus 829 non-document listing/wrapper shells with no recoveries, e.g. `0001bca03ce7309f` `james-l-hoff-dba`). The remaining 20 had rec_len=1 recoveries and promoted in place (-8,490 - 48 = -8,538 PR #240 delta; -8,327 net delta after +211 added rows).",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|added keys|no evidence given",
+   "count": 5,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 28,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 43,
+   "disposition": "explained",
+   "cause": "Combines the 7 PR #240 (`ct-ogcq`) WARC/ARC envelope removals from House meeting document counts with 36 meeting document/recording coverage updates from today's `1,988` daily capture receipts.",
+   "tickets": [
+    "ct-ogcq",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 34,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 34,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|added keys|unexplained",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_basis|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_reason|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome_source_reference|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed outcome|value differs on matched key",
+   "count": 3,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed transcripts|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Combines the 3 PR #240 (`ct-ogcq`) `CHRG-114hhrg94225` meetings dropping `'other'` from `transcripts[].formats` with 3 meetings gaining/updating hearing transcript links from today's `1,988` daily capture receipts.",
+   "tickets": [
+    "ct-ogcq",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "organization_ids.parquet|file added|file absent from the base release",
+   "count": 59433,
+   "disposition": "explained",
+   "cause": "PR #243 (`ct-w34j`) and PR #244 (`ct-lvdf`) publish `59,433` alternate/external identifier rows (`bag`, `fr_agency`, `decision`) for canonical organizations.",
+   "tickets": [
+    "ct-6him",
+    "ct-w34j",
+    "ct-lvdf"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "organizations.parquet|file added|file absent from the base release",
+   "count": 52433,
+   "disposition": "explained",
+   "cause": "PR #243 (`ct-w34j`) and PR #244 (`ct-lvdf`) enable public organization entity publication (`52,433` normalized canonical organization clusters; Wikidata auto-links gated off in PR #245 `ct-39u8`).",
+   "tickets": [
+    "ct-6him",
+    "ct-w34j",
+    "ct-lvdf"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed appearance_count|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed hearing_count|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed last_seen_date|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed name_variants|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "people.parquet|changed witness_keys|value differs on matched key",
+   "count": 6,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 39,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed note|value differs on matched key",
+   "count": 31,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 35,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 23,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 32,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|changed event_ids|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): `recoveries.parquet` (`12,529 -> 12,529`, 0 added/removed/changed values) indexes rows by release-local `list_row`, which shifted when 8,490 envelope rows were removed and 48 recovery pairs merged in `detail.parquet` / `list.parquet`.",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "retired_links.parquet|added keys|no evidence given",
+   "count": 8510,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): all 8,510 retired format='other' WARC/ARC envelope `link_key`s (`35,514 -> 44,024`) are recorded in `retired_links.parquet` via `retired-links.sql` (7,661 linked to their unwrapped `capture_index=0` sibling, 829 non-document listing/wrapper removal notices, and 20 redirected via their surviving `original_url` sibling key to their promoted `saved_kind='recovery'` PDF row; 0 missing, 0 dangling).",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "schema.json|changed file without a comparison|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "PR #243 (`ct-w34j`) and PR #244 (`ct-lvdf`) add the 4 organization entity tables (`organizations.parquet`, `organization_ids.parquet`, `witness_organizations.parquet`, `organization_redirects.parquet`) and their explorer relationships/queries to `release-schema.json`.",
+   "tickets": [
+    "ct-6him",
+    "ct-w34j",
+    "ct-lvdf"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|URLs gone|no live row has this address",
+   "count": -849,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 849 `capture_index=0` listing/wrapper URLs (all `veterans.house.gov` / `thomas.loc.gov` / `democrats-science.house.gov`) that previously appeared in `sources.parquet` solely via their format='other' WARC/ARC envelope lose that source row when the envelope becomes `record_role='envelope'`: 829 listing/wrapper shells with no recoveries leave `detail.parquet`, and 20 `veterans.house.gov` rows promote to `saved_kind='recovery'` (`src_len=0`, keeping their `url_key` in `urls.parquet`). Together with 7,661 verified same-URL removals, this accounts for the `-8,510` PR #240 removal portion of `sources.parquet` (`592,303 -> 584,010`, `-8,293` net after `+217` new URLs).",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 1168,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 1168,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 217,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 22,
+   "disposition": "explained",
+   "cause": "Routine capture queue updates across `url_state.parquet` from today's `1,988` daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 828,
+   "disposition": "explained",
+   "cause": "Routine capture queue updates across `url_state.parquet` from today's `1,988` daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 1966,
+   "disposition": "explained",
+   "cause": "Routine capture queue updates across `url_state.parquet` from today's `1,988` daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed capture_reason|value differs on matched key",
+   "count": 2,
+   "disposition": "explained",
+   "cause": "Routine capture queue updates across `url_state.parquet` from today's `1,988` daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 1966,
+   "disposition": "explained",
+   "cause": "Routine capture queue updates across `url_state.parquet` from today's `1,988` daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 1617,
+   "disposition": "explained",
+   "cause": "Routine capture queue updates across `url_state.parquet` from today's `1,988` daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 1924,
+   "disposition": "explained",
+   "cause": "Routine capture queue updates across `url_state.parquet` from today's `1,988` daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 1893,
+   "disposition": "explained",
+   "cause": "Routine capture queue updates across `url_state.parquet` from today's `1,988` daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 1898,
+   "disposition": "explained",
+   "cause": "Routine capture queue updates across `url_state.parquet` from today's `1,988` daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 1972,
+   "disposition": "explained",
+   "cause": "Routine capture queue updates across `url_state.parquet` from today's `1,988` daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 53,
+   "disposition": "explained",
+   "cause": "Routine capture queue updates across `url_state.parquet` from today's `1,988` daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|removed URLs|unexplained",
+   "count": -6,
+   "disposition": "explained",
+   "cause": "6 stale/unlinked `democrats-transportation.house.gov/download/...&download=1` queue URLs dropped from `url_state.parquet` following daily committee-page re-fetch / PR #240 envelope retirement.",
+   "tickets": [
+    "ct-9j3z",
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys gone|every row for the key was removed",
+   "count": -834,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 834 `url_key`s (all `base_rows=1 -> candidate_rows=0`) belonging exclusively to the 829 removed non-document `listing`/`wrapper` WARC/ARC rows (829 primary URLs plus 5 normalized/variant keys) leave `urls.parquet` once those envelopes become `record_role='envelope'` (`is_real_file=False`).",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 313,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys with fewer rows|fewer documents answer the key",
+   "count": -8965,
+   "disposition": "explained",
+   "cause": "PR #240 (ct-ogcq): 8,965 `urls.parquet` rows removed across 8,917 matched `lookup_key`s (8,869 keys `2 -> 1`, losing 1 duplicate format='other' envelope row per key; plus 48 `veterans.house.gov` keys `3 -> 1`, losing both the envelope row and the merged `html:recovery` row: `8,869*1 + 48*2 = 8,965`).",
+   "tickets": [
+    "ct-ogcq"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "witness_organizations.parquet|file added|file absent from the base release",
+   "count": 154841,
+   "disposition": "explained",
+   "cause": "PR #243 (`ct-w34j`) and PR #244 (`ct-lvdf`) publish `154,841` witness-appearance-to-organization attribution rows (`organization` and `on_behalf_of` fields).",
+   "tickets": [
+    "ct-6him",
+    "ct-w34j",
+    "ct-lvdf"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed event_id|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed occasion|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed person_key|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  },
+  {
+   "id": "witnesses.parquet|changed superseded_by|value differs on matched key",
+   "count": 10,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, witness, person, source, URL, or recording updates traced to today's `1,988` new daily capture receipts (`capture-archive.yml` run `45621357436`).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/453351a3a57b-7e08390c3470.json",
+     "sha256": "3241e421e75cd7c3f90db68e4afc9ea4453083b170376baf66e99b76d8ac4349",
+     "size": 75206
+    }
+   ]
+  }
+ ]
+}
