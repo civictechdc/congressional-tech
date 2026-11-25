@@ -5,6 +5,10 @@ WITH remaining AS (
  SELECT d.id,d.subject,d.verdict,d.object,d.note,d.reviewer,d.decided_at,d.supersedes
  FROM org_decisions d
  WHERE d.verdict<>'withdraw'
+  AND NOT (
+   d.subject LIKE 'fr_agency:%' OR d.subject LIKE 'agency_alias:%' OR d.subject LIKE 'refspec%'
+   OR d.object LIKE 'fr_agency:%' OR d.object LIKE 'agency_alias:%' OR d.object LIKE 'refspec%'
+  )
   AND NOT EXISTS (SELECT 1 FROM org_decisions s WHERE s.supersedes=d.id)
 ), parsed AS (
  SELECT r.*,

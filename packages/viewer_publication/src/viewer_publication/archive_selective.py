@@ -94,12 +94,13 @@ def validate_selective(value,*,base,catalog_root,tables):
         result['body_fallback']=dict(gpo_mods={name:_local(fallback['gpo_mods'][name],base) for name in ('receipts','root')})
     model=value['model']
     if (not isinstance(model,dict) or {'template','engine_config'}-model.keys()
-            or model.keys()-{'template','engine_config','spicy_regs','ledger','ledger_base'}):
+            or model.keys()-{'template','engine_config','spicy_regs','refspec','ledger','ledger_base'}):
         raise ValueError('Selective model requires its template and runtime; the job owns work/model-{output,scratch}')
     if 'ledger' in model and 'ledger_base' in model:
         raise ValueError('Selective model takes ledger or ledger_base, not both')
     result['model']=dict(model,**{name:_local(model[name],base) for name in ('template','engine_config')})
     if model.get('spicy_regs') is not None:result['model']['spicy_regs']=pinned(model['spicy_regs'])
+    if model.get('refspec') is not None:result['model']['refspec']=pinned(model['refspec'])
     for name in ('ledger','ledger_base'):
         if name in model:result['model'][name]=_local(model[name],base)
     check_ledger(ready=result['model'].get('ledger'),base=result['model'].get('ledger_base'))
@@ -466,6 +467,7 @@ def _model_value(run):
         parser_versions=current_parser_versions(versioned_tables))
     for name,pin in run.state['pins'].items():value[name]=dict(kind='native_table',**pin)
     if 'spicy_regs' in model:value['spicy_regs']=model['spicy_regs']
+    if 'refspec' in model:value['refspec']=model['refspec']
     for field,kind in PROVENANCE.items():
         if kind in run.selective['provenance']:value[field]=[{k:row[k] for k in ('key','path','sha256','size')} for row in run.selective['provenance'][kind]]
     return value
