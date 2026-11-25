@@ -1,9 +1,10 @@
 {
   "source": "refspec",
-  "schema_version": "1.3",
+  "schema_version": "1.4",
   "release": {
     "agencyProjectionDigest": "sha256:0dd32dd5320a0d1553f10818a7a31e95e2c3b9b6567df224dd359a8038e14db4",
     "candidatesDigests": {
+      "plans/agency-registry-alias-batch-2-candidates.json": "sha256:0cb4bfbf239d4b2f8bb555f944484b4c47ad18d9df1dd6a1d505ff442953766d",
       "plans/agency-registry-alias-batch-candidates.json": "sha256:f27a8b66b414ed8c75153340997623b589c5fe1820d75e60ec73953d361c0b82",
       "plans/agency-registry-batch-1-candidates.json": "sha256:7fe88a9167a9363f5c2bfdcd3911953b7323abe1564d40586991c9612f95f4bc",
       "plans/agency-registry-succession-batch-candidates.json": "sha256:4d29ffd7c936159dbff13d9b228845e50d134a567a8ff6b60a3d9e2f7f7921cc"
@@ -12,13 +13,13 @@
     "frRosterReleaseDigest": "sha256:0ab874f045462fa665b9a2ef48aa34f373570dc710bcc8fb1b63db0ad8c7b5e6",
     "key": "agency-registry-2026-09-26",
     "nameKeyVersion": "1",
-    "sourceReleaseDigest": "sha256:6c621150c112581100b981337e12e159e1d8da8a5855a1d13f8c0e653c530638"
+    "sourceReleaseDigest": "sha256:2ae595b91e4c722da61b5fd90b435d0e0b534a4b9321723be7817c8f52007801"
   },
   "name_key_version": "1",
   "view_manifest": {
     "path": "agency-registry-view/view-manifest.json",
-    "sha256": "7a806ea060c0c7a0ee37a991f443edc1a1f9ba74a1f5e1007db1e4e28cb23b7d",
-    "size": 4446
+    "sha256": "c89935debe320e35aaf748ea0519457c1618b49e13d79ddb33cbc30051b5a118",
+    "size": 4578
   },
   "tables": {
     "projection_unresolved": {
@@ -35,9 +36,9 @@
     },
     "aliases": {
       "path": "agency-registry-view/tables/agency-registry-aliases.parquet",
-      "sha256": "a9882a059ac62373b8fa5a6fa8cf6c81d5107f938c7a233b7036303f7d82594f",
-      "size": 27125,
-      "rows": 63
+      "sha256": "74bba3bdccaf3e2b6111b8320d695f74c777d3a405de73e04a0475c28df834a9",
+      "size": 50011,
+      "rows": 157
     },
     "bridges": {
       "path": "agency-registry-view/tables/agency-registry-bridges.parquet",

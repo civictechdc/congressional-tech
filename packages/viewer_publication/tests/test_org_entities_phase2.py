@@ -79,10 +79,10 @@ def _write_appearances(path: pathlib.Path, rows: list[dict]) -> pathlib.Path:
 
 
 def test_refspec_pin_verification_and_tamper_refusal(tmp_path: pathlib.Path):
-    """AC #1: checked-in RefSpec 1.3 tables verify cleanly; mismatched bytes/sha256/size refuse."""
+    """AC #1: checked-in RefSpec 1.4 tables verify cleanly; mismatched bytes/sha256/size refuse."""
     tables = refspec_inputs.fetch_pinned()
     assert pq.read_metadata(tables['organizations']).num_rows == 472
-    assert pq.read_metadata(tables['aliases']).num_rows == 63
+    assert pq.read_metadata(tables['aliases']).num_rows == 157
     assert pq.read_metadata(tables['current_successors']).num_rows == 15
 
     # Checked-in job specs validate end-to-end with RefSpec pin.
@@ -200,9 +200,9 @@ def test_archive_model_job_profile_and_selective_refspec_wiring(tmp_path: pathli
         )
         ref_prof = prepared['profile']['profile'].get('refspec')
         assert ref_prof is not None
-        assert ref_prof['schema_version'] == '1.3'
+        assert ref_prof['schema_version'] == '1.4'
         assert ref_prof['release_key'] == 'agency-registry-2026-09-26'
-        assert ref_prof['view_manifest_sha256'] == '7a806ea060c0c7a0ee37a991f443edc1a1f9ba74a1f5e1007db1e4e28cb23b7d'
+        assert ref_prof['view_manifest_sha256'] == 'c89935debe320e35aaf748ea0519457c1618b49e13d79ddb33cbc30051b5a118'
 
     # 3. archive_selective forwards model.refspec cleanly
     sel_dir = tmp_path / 'sel'
