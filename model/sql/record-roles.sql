@@ -15,7 +15,12 @@ WITH roles AS (
             -- (senate/players MP2T samples once their stated 200 is read; none listed in v21).
             WHEN c.format = 'other' AND (coalesce(sg.segment, false)
                  OR split_part(lower(c.media_type), '/', 1) IN ('video', 'audio')) THEN 'media'
-            WHEN c.format = 'warc' THEN 'envelope'
+            -- Sniff returns 'other' when an original WARC/ARC envelope wraps binary or non-UTF-8 HTTP
+            -- bytes within its 8 KiB prefix; recognize those envelopes by media_type as well (ct-ogcq).
+            WHEN c.format = 'warc'
+                 OR (c.format = 'other' AND lower(trim(split_part(c.media_type, ';', 1)))
+                     IN ('application/warc+gzip', 'application/arc+gzip', 'application/warc', 'application/arc'))
+                 THEN 'envelope'
             WHEN c.format = 'pdf' AND c.intact IS NOT TRUE
                  AND c.intact_basis <> 'unchecked' THEN 'damaged'
             -- JSON here is an API page or a provider's envelope, never a document: all 345 once listed
