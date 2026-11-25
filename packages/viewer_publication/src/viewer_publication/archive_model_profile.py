@@ -120,7 +120,7 @@ def _definition_hashes(root):
             'archive_model.py', 'archive_model_profile.py', 'archive_format.py', 'archive_schema.py',
             'archive_model_lifetimes.py', 'legislative_data.py', 'archive_annotations.py',
             'archive_provenance.py', 'archive_reviews.py', 'archive_url_state.py', 'archive_text_index.py',
-            'lookup_aliases.py', 'meeting_detail_observations.py', 'historical_recording_matcher.py', 'docmeta_v6_1.py',
+            'lookup_aliases.py', 'meeting_detail_observations.py', 'historical_recording_matcher.py',
         )),
         Path('packages/congress_api/src/congress_api/models/archive_profile.py'),
         Path('packages/house-naming/src/house_naming/bill_codes.py'),
@@ -161,8 +161,8 @@ def runtime_pins(engine):
 
 def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pins,
                    lake_versions,writer_settings,snapshots,file_hashes=None,root=ROOT,
-                   relationship_metadata_update=None,recovery_policy=None,historical_recording_matcher=None,
-                   docmeta_v6_1=None,pdf_cover_evidence=None):
+                   relationship_metadata_update=None,recovery_policy=None,
+                   historical_recording_matcher=None,pdf_cover_evidence=None):
     """Pin semantic definitions; retain exact physical selectors outside their digest."""
     require_entities=(isinstance(lake_versions,dict)
         and ('meeting_records' in lake_versions or 'appearance_records' in lake_versions))
@@ -181,9 +181,6 @@ def profile_record(*,parser_versions,catalog_version,engine_revision,runtime_pin
     if recovery_policy is not None:profile['recovery_policy']=_copy(recovery_policy)
     if historical_recording_matcher is not None:
         profile['historical_recording_matcher']={key:historical_recording_matcher[key] for key in ('sha256','size')}
-    if docmeta_v6_1 is not None:
-        from viewer_publication.docmeta_v6_1 import docmeta_profile_entry
-        profile['docmeta_v6_1']=docmeta_profile_entry(docmeta_v6_1)
     if pdf_cover_evidence is not None:
         profile['pdf_cover_evidence']={key:pdf_cover_evidence[key] for key in ('sha256','size','selection_sha256')}
     if relationship_metadata_update is not None:

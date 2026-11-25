@@ -35,7 +35,7 @@ ENTITY_TABLES=('meeting_records','appearance_records')
 # channels, recording_matches and committee_records. All three inputs or none.
 EXPLORER_TABLES=('video_records','committee_records')
 OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES,'playlist_records','transcript_headings')
-OPTIONAL={'engine_config',*OPTIONAL_TABLES,'spicy_regs','recovery_requirements','text_index','historical_recording_matcher','docmeta_v6_1','pdf_cover_evidence','body_qualifications'}
+OPTIONAL={'engine_config',*OPTIONAL_TABLES,'spicy_regs','recovery_requirements','text_index','historical_recording_matcher','pdf_cover_evidence','body_qualifications'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants',
             'recording_decision_files':'recording_decisions','qualification_files':'qualifications'}
@@ -119,9 +119,6 @@ def validate_spec(value,*,base):
         if not isinstance(requirement['acceptance_policy'],str) or not requirement['acceptance_policy'].strip():
             raise ValueError('Recovery requirements need a policy version')
         result['recovery_requirements']=dict(requirement,path=_local(requirement['path'],base))
-    if value.get('docmeta_v6_1') is not None:
-        from viewer_publication.docmeta_v6_1 import validate_docmeta_spec
-        result['docmeta_v6_1']=validate_docmeta_spec(value['docmeta_v6_1'],pin_fn=_pin,local_fn=_local,base=base)
     if value.get('pdf_cover_evidence') is not None:
         cover=value['pdf_cover_evidence']
         _pin(cover,{'path','sha256','size','selection_sha256'})
@@ -244,9 +241,6 @@ def check_inputs(spec):
         if spec.get(name) is not None and spec[name]['kind']=='parquet':check(name,spec[name])
     for name in ('historical_recording_matcher','recovery_requirements','pdf_cover_evidence','body_qualifications'):
         if spec.get(name) is not None:check(name,spec[name])
-    if spec.get('docmeta_v6_1') is not None:
-        from viewer_publication.docmeta_v6_1 import iter_docmeta_pins
-        for label,pin in iter_docmeta_pins(spec['docmeta_v6_1']):check(label,pin)
     spicy=spec.get('spicy_regs')
     if spicy is not None and check('spicy_regs',spicy):
         for name,table in _spicy_tables(Path(spicy['path']).read_text(),Path(spicy['path']).parent)[1].items():
@@ -349,13 +343,6 @@ def model_arguments(spec, *, provenance_etags=None,verified_files=None,allow_exi
         if spec.get('body_qualifications') is not None:
             value=spec['body_qualifications']
             arguments['body_qualifications']=dict(value,path=hold(value))
-        if spec.get('docmeta_v6_1') is not None:
-            from viewer_publication.docmeta_v6_1 import ALL_PARTS
-            dm=dict(spec['docmeta_v6_1'])
-            for part in ALL_PARTS:
-                if dm.get(part) is not None:
-                    dm[part]=dict(dm[part],path=hold(dm[part]))
-            arguments['docmeta_v6_1']=dm
         if spec.get('spicy_regs') is not None:
             arguments['spicy_regs']=_spicy_arguments(spec['spicy_regs'],hold)
         for _source,verified in retained.values():verified.require(verified.path)
@@ -535,8 +522,6 @@ def main(argv=None):
                 verified_inputs=dict(files=len(files),bytes=sum(identity['bytes'] for identity in files.values())))
             if spec.get('historical_recording_matcher'):
                 result['inputs']['historical_recording_matcher']=spec['historical_recording_matcher']
-            if spec.get('docmeta_v6_1'):
-                result['inputs']['docmeta_v6_1']=spec['docmeta_v6_1']
             if spec.get('pdf_cover_evidence'):
                 result['inputs']['pdf_cover_evidence']=spec['pdf_cover_evidence']
             if spec.get('body_qualifications'):

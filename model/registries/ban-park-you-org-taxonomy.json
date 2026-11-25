@@ -1,0 +1,274 @@
+{
+  "version": 1,
+  "source": {
+    "citation": "Ban, Pamela, Ju Yeon Park, and Hye Young You. 2023. \"How Are Politicians Informed? Witnesses and Information Provision in Congress.\" American Political Science Review.",
+    "doi": "10.1017/S0003055422000405",
+    "table": "Table 1",
+    "parent_count": 9,
+    "child_count": 18
+  },
+  "parent_categories": [
+    {
+      "id": "business",
+      "label": "Business",
+      "description": "Commercial enterprises, agricultural business groups, and industry trade associations.",
+      "children": ["agriculture", "corporation", "trade_association"]
+    },
+    {
+      "id": "bureaucrat",
+      "label": "Bureaucrat",
+      "description": "Federal executive-branch officials, departments, and independent regulatory agencies.",
+      "children": ["bureaucrat"]
+    },
+    {
+      "id": "congressional",
+      "label": "Congressional",
+      "description": "Legislative-branch support offices, commissions, and congressional bodies.",
+      "children": ["congressional"]
+    },
+    {
+      "id": "local_gov",
+      "label": "Local Gov.",
+      "description": "State, county, municipal, and public K-12 educational authorities.",
+      "children": ["state_and_local_government", "k12_educational"]
+    },
+    {
+      "id": "research",
+      "label": "Research",
+      "description": "Policy think tanks, academic institutions, and research organizations.",
+      "children": ["think_tank_and_university"]
+    },
+    {
+      "id": "membership_assoc",
+      "label": "Membership Assoc.",
+      "description": "Member-based civic, veterans, and citizen membership associations.",
+      "children": ["membership_association"]
+    },
+    {
+      "id": "nonprofit",
+      "label": "Nonprofit",
+      "description": "Nonprofit, charitable, and public-interest advocacy organizations.",
+      "children": ["nonprofit"]
+    },
+    {
+      "id": "labor",
+      "label": "Labor",
+      "description": "Labor unions and worker federations.",
+      "children": ["labor_union"]
+    },
+    {
+      "id": "other",
+      "label": "Other",
+      "description": "Judicial, legal/lobbying, health care, Native American, religious, citizen, and international entities.",
+      "children": [
+        "judicial",
+        "lawyers_and_lobbyists",
+        "health_care",
+        "native_american",
+        "religious",
+        "citizen",
+        "international"
+      ]
+    }
+  ],
+  "categories": [
+    {
+      "id": "congressional",
+      "label": "Congressional",
+      "parent_id": "congressional",
+      "parent_label": "Congressional",
+      "example": "Congressional Budget Office",
+      "org_kind": "congressional",
+      "sublabels": ["Congressional Support Agency", "Legislative Branch"],
+      "priority": 10,
+      "pattern": "(?i)\\b(?:congressional\\s+(?:budget|research)\\s+office|government\\s+accountability\\s+office|general\\s+accounting\\s+office|library\\s+of\\s+congress|architect\\s+of\\s+the\\s+capitol|u\\.?s\\.?\\s+house\\s+of\\s+representatives|united\\s+states\\s+senate)\\b"
+    },
+    {
+      "id": "judicial",
+      "label": "Judicial",
+      "parent_id": "other",
+      "parent_label": "Other",
+      "example": "District Court",
+      "org_kind": "judicial",
+      "sublabels": ["Court", "Judicial Branch"],
+      "priority": 20,
+      "pattern": "(?i)\\b(?:supreme\\s+court|district\\s+court|circuit\\s+court|court\\s+of\\s+appeals|judicial\\s+conference|administrative\\s+office\\s+of\\s+the\\s+u\\.?s\\.?\\s+courts)\\b"
+    },
+    {
+      "id": "native_american",
+      "label": "Native American",
+      "parent_id": "other",
+      "parent_label": "Other",
+      "example": "National Congress of American Indians",
+      "org_kind": "tribal_or_native_american",
+      "sublabels": ["Tribal Government", "Native American Organization"],
+      "priority": 30,
+      "pattern": "(?i)\\b(?:indian\\s+tribes?|tribal\\s+council|navajo\\s+nation|cherokee\\s+nation|affiliated\\s+tribes|national\\s+congress\\s+of\\s+american\\s+indians)\\b"
+    },
+    {
+      "id": "labor_union",
+      "label": "Labor Union",
+      "parent_id": "labor",
+      "parent_label": "Labor",
+      "example": "AFL-CIO",
+      "org_kind": "labor_union",
+      "sublabels": ["Labor Union", "Labor Federation"],
+      "priority": 40,
+      "pattern": "(?i)\\b(?:labor\\s+union|afl[\\s-]+cio|afscme|seiu|teamsters|united\\s+auto\\s+workers|uaw|united\\s+steelworkers|federation\\s+of\\s+labor|brotherhood\\s+of|international\\s+union)\\b"
+    },
+    {
+      "id": "k12_educational",
+      "label": "(K–12) Educational",
+      "parent_id": "local_gov",
+      "parent_label": "Local Gov.",
+      "example": "Superintendent",
+      "org_kind": "k12_educational",
+      "sublabels": ["School District", "K-12 Education"],
+      "priority": 50,
+      "pattern": "(?i)\\b(?:school\\s+district|public\\s+schools|board\\s+of\\s+education|high\\s+school|elementary\\s+school)\\b"
+    },
+    {
+      "id": "state_and_local_government",
+      "label": "State and Local Government",
+      "parent_id": "local_gov",
+      "parent_label": "Local Gov.",
+      "example": "Mayor",
+      "org_kind": "state_local_government",
+      "sublabels": ["State/Local Government", "Municipal Authority"],
+      "priority": 60,
+      "pattern": "(?i)\\b(?:state\\s+of\\s+[a-z]+|city\\s+of\\s+[a-z]+|county\\s+of\\s+[a-z]+|[a-z]+\\s+county|port\\s+authority|housing\\s+authority|governor'?s?\\s+office|attorney\\s+general)\\b"
+    },
+    {
+      "id": "bureaucrat",
+      "label": "Bureaucrat",
+      "parent_id": "bureaucrat",
+      "parent_label": "Bureaucrat",
+      "example": "Department of Defense",
+      "org_kind": "federal_agency",
+      "sublabels": ["Federal Bureaucrat", "Federal Executive Agency"],
+      "priority": 70,
+      "pattern": "(?i)\\b(?:(?:u\\.?s\\.?\\s+)?department\\s+of\\s+(?:defense|energy|education|agriculture|veterans\\s+affairs|homeland\\s+security|state|justice|treasury|interior|commerce|labor|transportation|housing\\s+and\\s+urban\\s+development|health\\s+and\\s+human\\s+services)|environmental\\s+protection\\s+agency|food\\s+and\\s+drug\\s+administration|federal\\s+(?:aviation|bureau\\s+of\\s+investigation|emergency\\s+management|reserve|trade\\s+commission|communications\\s+commission)|securities\\s+and\\s+exchange\\s+commission|nasa|noaa|office\\s+of\\s+management\\s+and\\s+budget)\\b"
+    },
+    {
+      "id": "international",
+      "label": "International",
+      "parent_id": "other",
+      "parent_label": "Other",
+      "example": "World Bank",
+      "org_kind": "international",
+      "sublabels": ["International Organization", "Multilateral Institution"],
+      "priority": 80,
+      "pattern": "(?i)\\b(?:world\\s+bank|international\\s+monetary\\s+fund|united\\s+nations|world\\s+health\\s+organization|world\\s+trade\\s+organization|nato)\\b"
+    },
+    {
+      "id": "think_tank_and_university",
+      "label": "Think Tank and University",
+      "parent_id": "research",
+      "parent_label": "Research",
+      "example": "MIT",
+      "org_kind": "research_or_university",
+      "sublabels": ["Think Tank", "University"],
+      "priority": 90,
+      "pattern": "(?i)\\b(?:university|college|school\\s+of\\s+(?:law|medicine|public\\s+health|business|government)|institute\\s+of\\s+technology|brookings\\s+institution|heritage\\s+foundation|rand\\s+corporation|cato\\s+institute|american\\s+enterprise\\s+institute|urban\\s+institute|aspen\\s+institute|hudson\\s+institute|think\\s+tank)\\b"
+    },
+    {
+      "id": "lawyers_and_lobbyists",
+      "label": "Lawyers and Lobbyists",
+      "parent_id": "other",
+      "parent_label": "Other",
+      "example": "American Bar Association",
+      "org_kind": "law_or_lobbying_firm",
+      "sublabels": ["Law/Lobbying Firm", "Legal Association"],
+      "priority": 100,
+      "pattern": "(?i)(?:\\b(?:llp|pllc|law\\s+firm|law\\s+group|bar\\s+association|attorneys?\\s+at\\s+law|legal\\s+services)\\b|,\\s*p\\.?a\\.?\\b)"
+    },
+    {
+      "id": "health_care",
+      "label": "Health Care",
+      "parent_id": "other",
+      "parent_label": "Other",
+      "example": "American Hospital Association",
+      "org_kind": "health_care",
+      "sublabels": ["Hospital", "Health Care Provider"],
+      "priority": 110,
+      "pattern": "(?i)\\b(?:hospital|medical\\s+center|health\\s+system|clinic|american\\s+medical\\s+association|american\\s+hospital\\s+association)\\b"
+    },
+    {
+      "id": "religious",
+      "label": "Religious",
+      "parent_id": "other",
+      "parent_label": "Other",
+      "example": "US Catholic Conference",
+      "org_kind": "religious",
+      "sublabels": ["Religious Organization"],
+      "priority": 120,
+      "pattern": "(?i)\\b(?:church|archdiocese|diocese|catholic\\s+conference|council\\s+of\\s+churches|baptist|lutheran|methodist|synagogue|mosque|interfaith)\\b"
+    },
+    {
+      "id": "agriculture",
+      "label": "Agriculture",
+      "parent_id": "business",
+      "parent_label": "Business",
+      "example": "American Farm Bureau",
+      "org_kind": "agriculture",
+      "sublabels": ["Agricultural Producer", "Farm Organization"],
+      "priority": 130,
+      "pattern": "(?i)\\b(?:farm\\s+bureau|cattlemen|corn\\s+growers|soybean|wheat\\s+growers|dairy\\s+producers|agricultural\\s+(?:council|producers))\\b"
+    },
+    {
+      "id": "trade_association",
+      "label": "Trade Association",
+      "parent_id": "business",
+      "parent_label": "Business",
+      "example": "Chamber of Commerce",
+      "org_kind": "trade_association",
+      "sublabels": ["Trade Association", "Industry Coalition"],
+      "priority": 140,
+      "pattern": "(?i)\\b(?:chamber\\s+of\\s+commerce|trade\\s+association|manufacturers?\\s+association|dealers\\s+association|bankers\\s+association|insurers\\s+association|industry\\s+association|national\\s+association\\s+of)\\b"
+    },
+    {
+      "id": "nonprofit",
+      "label": "Nonprofit",
+      "parent_id": "nonprofit",
+      "parent_label": "Nonprofit",
+      "example": "Environmental Defense Fund",
+      "org_kind": "nonprofit_advocacy",
+      "sublabels": ["Nonprofit/Advocacy", "Public Interest Advocacy"],
+      "priority": 150,
+      "pattern": "(?i)\\b(?:defense\\s+fund|nature\\s+conservancy|sierra\\s+club|planned\\s+parenthood|american\\s+civil\\s+liberties|aclu|endowment|foundation|nonprofit|charity|charities|red\\s+cross)\\b"
+    },
+    {
+      "id": "membership_association",
+      "label": "Membership Association",
+      "parent_id": "membership_assoc",
+      "parent_label": "Membership Assoc.",
+      "example": "Veterans of Foreign Wars",
+      "org_kind": "membership_association",
+      "sublabels": ["Membership Association", "Veterans Organization"],
+      "priority": 160,
+      "pattern": "(?i)\\b(?:veterans\\s+of\\s+foreign\\s+wars|american\\s+legion|paralyzed\\s+veterans|disabled\\s+american\\s+veterans|aarp|civic\\s+league|membership\\s+association)\\b"
+    },
+    {
+      "id": "corporation",
+      "label": "Corporation",
+      "parent_id": "business",
+      "parent_label": "Business",
+      "example": "Ford Motor Co.",
+      "org_kind": "corporation",
+      "sublabels": ["Corporation", "Private Firm"],
+      "priority": 170,
+      "pattern": "(?i)\\b(?:inc\\.?|llc|corp\\.?|corporation|company|co\\.?|ltd\\.?|incorporated|bank|airlines|railroad|motors|pharmaceuticals|technologies|holdings)\\b"
+    },
+    {
+      "id": "citizen",
+      "label": "Citizen",
+      "parent_id": "other",
+      "parent_label": "Other",
+      "example": "Resident",
+      "org_kind": "citizen",
+      "sublabels": ["Individual Citizen", "Resident"],
+      "priority": 180,
+      "pattern": "(?i)\\b(?:private\\s+citizen|resident|self[\\s-]+employed)\\b"
+    }
+  ]
+}
