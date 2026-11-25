@@ -730,3 +730,33 @@ def test_retire_build_cli_plans_and_retires_model_only_build_folder(tmp_path,cap
     assert retired['status']=='retired' and retired['release_id']=='cd'*16
     assert not (arm/'archive-release').exists() and not (arm/'archive-model').exists() and not (arm/'workspace').exists()
     assert (arm/'model-spec.json').is_file() and (arm/'runtime.json').is_file() and (arm/'retired-build-digests.json').is_file()
+
+
+def test_include_wikidata_links_validation_and_passthrough(tmp_path,monkeypatch):
+    """include_wikidata_links validates bool + entity tables and forwards to build_release (ct-39u8)."""
+    from archive_job_fixture import real_model_spec,spicy_pin
+    from viewer_publication import archive_model as model
+    from viewer_publication.archive_model_job import execute,validate_spec
+
+    bad_bool=spec(tmp_path)
+    bad_bool['include_wikidata_links']='yes'
+    with pytest.raises(ValueError,match='include_wikidata_links must be a boolean'):
+        validate_spec(bad_bool,base=tmp_path)
+
+    missing_entities=spec(tmp_path)
+    missing_entities['include_wikidata_links']=True
+    with pytest.raises(ValueError,match='Organization entity tables require'):
+        validate_spec(missing_entities,base=tmp_path)
+
+    value,_,_=real_model_spec(tmp_path,entities=True)
+    value['spicy_regs']=spicy_pin(tmp_path)
+    value['include_wikidata_links']=True
+    validated=validate_spec(value,base=tmp_path)
+    captured={}
+    def fake_build(**kwargs):
+        captured.update(kwargs)
+        return dict(release_id='cd'*32,files=[dict(name='list.parquet',rows=1)])
+    monkeypatch.setattr(model,'build_release',fake_build)
+    execute(validated)
+    assert captured['include_wikidata_links'] is True
+    assert captured['include_org_entities'] is True

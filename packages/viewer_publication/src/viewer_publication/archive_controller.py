@@ -312,8 +312,9 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 prepared=prepare_model_inputs(**arguments,parser_versions=model_spec['parser_versions'],
                     catalog_version=model_spec['catalog_version'],engine=engine,scratch=stage['scratch'],
                     prior_links=prior,base_retired=retired,carried_html_metadata=carried_html_metadata,
-                    include_org_entities=bool(model_spec.get('include_org_entities') or model_spec.get('publish_org_entities')),
-                    publish_org_entities=bool(model_spec.get('publish_org_entities')))
+                    include_org_entities=bool(model_spec.get('include_org_entities') or model_spec.get('publish_org_entities') or model_spec.get('include_wikidata_links')),
+                    publish_org_entities=bool(model_spec.get('publish_org_entities')),
+                    include_wikidata_links=bool(model_spec.get('include_wikidata_links')))
                 profile=prepared['profile']
                 if model_spec.get('text_index'):
                     from viewer_publication.archive_text_index import semantic_policy

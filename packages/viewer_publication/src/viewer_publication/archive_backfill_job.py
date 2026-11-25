@@ -11,7 +11,7 @@ from congress_api.lake.daily import ALL_TABLE_NAMES,DAILY_CAPTURE_RECORDS
 from viewer_publication.archive_model_job import _local,provenance_record_kind
 
 FIELDS={'version','bucket','catalog_root','work','tables','batch_size','max_batches'}
-OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through','producers','derived_parsers','derived_scopes','qualify_html_metadata','qualify_gpo_mods'}
+OPTIONAL={'engine_config','decided_at','max_work_items','body_inventory','receipt_inventory','local_root','selective','resume','through','producers','derived_parsers','derived_scopes','qualify_html_metadata','qualify_gpo_mods','qualify_wikidata_reconcile'}
 FILENAME_PRIOR_VERSION = '6528235b033633460b3a2f008adb4dba66f2fcfb82c0640caf90203e5e86f4f1'
 FILENAME_ACT_CITATION_VERSION = 'c65e505ef8eb085e38072297aad395ca532fdc76a348a72b86f88c7734a83b09'
 
@@ -166,6 +166,12 @@ def load_spec(path):
         if value['qualify_gpo_mods'] and ('selective' in value or value.get('qualify_html_metadata') or (catalog_root is None and 'producers' not in value)):
             raise ValueError('GPO MODS R2 qualification requires R2 producer anchors and cannot combine with selective')
         result['qualify_gpo_mods']=value['qualify_gpo_mods']
+    if 'qualify_wikidata_reconcile' in value:
+        if type(value['qualify_wikidata_reconcile']) is not bool:
+            raise ValueError('Backfill qualify_wikidata_reconcile must be boolean')
+        if value['qualify_wikidata_reconcile'] and ('selective' in value or value.get('qualify_html_metadata') or value.get('qualify_gpo_mods') or (catalog_root is None and 'producers' not in value)):
+            raise ValueError('Wikidata reconciliation R2 qualification requires R2 producer anchors and cannot combine with selective')
+        result['qualify_wikidata_reconcile']=value['qualify_wikidata_reconcile']
     return result
 
 
@@ -207,8 +213,9 @@ def plan(spec, *, runtime_factory=None):
     if 'selective' in spec:
         planned.update(where=spec['selective']['where'],base=spec['selective']['base'],resume=spec['resume'])
         return planned
-    if spec.get('qualify_html_metadata'):
-        planned['qualify_html_metadata']=True
+    for flag in ('qualify_html_metadata', 'qualify_gpo_mods', 'qualify_wikidata_reconcile'):
+        if spec.get(flag):
+            planned[flag]=True
     from tempfile import TemporaryDirectory
     from congress_api.lake.daily import inspect_targets, writer_field_paths
     from docspec_client.client import NativeDatasets, choose_runtime
@@ -474,7 +481,10 @@ def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factor
             proof_model, engine=engine, work=work / 'gate5-proof', records=records, ledger=ledger,
         )
 
-    flag_key = 'qualify_gpo_mods' if parser == 'gpo_mods' else 'qualify_html_metadata'
+    flag_key = {
+        'gpo_mods': 'qualify_gpo_mods',
+        'wikidata_reconcile': 'qualify_wikidata_reconcile',
+    }.get(parser, 'qualify_html_metadata')
     report = dict(
         status='executed',
         executed=True,
@@ -518,6 +528,8 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,producer=None,activ
         return _execute_qualify_html_metadata(spec, runtime_factory=runtime_factory, storage_factory=storage_factory)
     if spec.get('qualify_gpo_mods'):
         return _execute_qualify_html_metadata(spec, runtime_factory=runtime_factory, storage_factory=storage_factory, parser='gpo_mods')
+    if spec.get('qualify_wikidata_reconcile'):
+        return _execute_qualify_html_metadata(spec, runtime_factory=runtime_factory, storage_factory=storage_factory, parser='wikidata_reconcile')
     work=Path(spec['work'])
     if work.exists() or work.is_symlink():
         raise ValueError('Backfill work directory must be fresh')

@@ -796,3 +796,34 @@ def test_backfill_plan_reports_target_schemas_and_record_counts_and_execute_refu
         archive_backfill_job.execute(archive_backfill_job.load_spec(spec_path), storage_factory=forbidden_storage)
     assert not (tmp_path / 'backfill-work').exists()
 
+
+def test_backfill_qualify_wikidata_reconcile_validation_and_plan(tmp_path):
+    """qualify_wikidata_reconcile validates boolean + exclusivity and surfaces in plan()."""
+    from congress_api.lake.daily import ALL_TABLE_NAMES
+    from viewer_publication import archive_backfill_job
+
+    base = dict(
+        version=1,
+        bucket='archive-fixture',
+        catalog_root=str(tmp_path / 'catalog'),
+        work=str(tmp_path / 'work'),
+        tables={name: {'namespace': ['congress'], 'name': name} for name in ALL_TABLE_NAMES},
+        batch_size=1,
+        max_batches=1,
+    )
+    bad = tmp_path / 'bad.json'
+    bad.write_text(json.dumps(dict(base, qualify_wikidata_reconcile='yes')))
+    with pytest.raises(ValueError, match='Backfill qualify_wikidata_reconcile must be boolean'):
+        archive_backfill_job.load_spec(bad)
+
+    conflict = tmp_path / 'conflict.json'
+    conflict.write_text(json.dumps(dict(base, qualify_gpo_mods=True, qualify_wikidata_reconcile=True)))
+    with pytest.raises(ValueError, match='Wikidata reconciliation R2 qualification requires'):
+        archive_backfill_job.load_spec(conflict)
+
+    ok = tmp_path / 'ok.json'
+    ok.write_text(json.dumps(dict(base, qualify_wikidata_reconcile=True)))
+    loaded = archive_backfill_job.load_spec(ok)
+    planned = archive_backfill_job.plan(loaded)
+    assert planned['qualify_wikidata_reconcile'] is True
+

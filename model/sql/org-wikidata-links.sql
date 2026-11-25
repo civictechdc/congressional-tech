@@ -29,6 +29,7 @@ WITH bag_receipts AS (
   w.candidate_description,
   w.score,
   w.api_match,
+  w.cand_types,
   w.receipt_sha,
   w.receipt_key,
   w.retrieved_at,
@@ -50,6 +51,7 @@ WITH bag_receipts AS (
   c.candidate_description,
   c.score,
   c.api_match,
+  c.cand_types,
   c.receipt_sha,
   c.receipt_key,
   c.retrieved_at
@@ -64,7 +66,26 @@ WITH bag_receipts AS (
 ), scored AS (
  SELECT
   wt.*,
-  cast(sum(CASE WHEN wt.score=wt.top_score THEN 1 ELSE 0 END) OVER (PARTITION BY wt.bag_key) AS BIGINT) AS top_count
+  cast(sum(CASE WHEN wt.score=wt.top_score THEN 1 ELSE 0 END) OVER (PARTITION BY wt.bag_key) AS BIGINT) AS top_count,
+  (
+   coalesce(cardinality(wt.cand_types),0)>0
+   AND NOT array_has_any(wt.cand_types,make_array(
+    'Q5','Q3947','Q3257686','Q11862829','Q210588','Q3055347','Q4167410','Q13442814',
+    'Q571','Q7725634','Q11424','Q482994','Q7366','Q1357601','Q4164871'
+   ))
+   AND NOT (
+    array_has_any(wt.cand_types,make_array('Q515','Q1093829','Q486972','Q532','Q3957','Q1549591'))
+    AND NOT array_has_any(wt.cand_types,make_array('Q43229','Q327333','Q106514250','Q2659904','Q7210356','Q2221906'))
+    AND NOT regexp_like(coalesce(wt.l2_text,''),'^(?:city|town|village)\s+of\s+')
+   )
+   AND NOT array_has_any(
+    array_except(
+     string_to_array(trim(regexp_replace(replace(lower(coalesce(wt.candidate_name,'')),'u.k.','uk'),'[^a-z0-9]+',' ','g')),' '),
+     string_to_array(trim(regexp_replace(replace(lower(coalesce(wt.display_text,'')||' '||coalesce(wt.l2_text,'')),'u.k.','uk'),'[^a-z0-9]+',' ','g')),' ')
+    ),
+    make_array('uk','canada','australia','india','ireland','germany','france','japan','china','mexico','brazil','europe')
+   )
+  ) AS auto_eligible
  FROM with_top wt
 ), bag_wd_decisions AS (
  SELECT
@@ -90,6 +111,7 @@ SELECT
  s.candidate_description,
  s.score,
  s.api_match,
+ s.cand_types,
  s.top_score,
  s.top_count,
  s.receipt_sha,
@@ -100,7 +122,7 @@ SELECT
  coalesce(d.has_unsure,false) AS decided_unsure,
  CASE
   WHEN coalesce(d.blocked_by_different,false) THEN 'blocked_different'
-  WHEN s.score=s.top_score AND s.top_count=1 AND s.top_score>=90.0 THEN 'auto_accept'
+  WHEN s.score=s.top_score AND s.top_count=1 AND s.top_score>=90.0 AND s.auto_eligible THEN 'auto_accept'
   WHEN coalesce(d.has_same,false) OR coalesce(d.has_unsure,false) THEN 'decided'
   WHEN s.score>=80.0 THEN 'review'
   ELSE 'below_threshold'

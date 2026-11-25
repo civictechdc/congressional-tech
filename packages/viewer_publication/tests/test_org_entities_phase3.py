@@ -97,9 +97,9 @@ def _write_reconcile_tables(
     return cap_path, read_path
 
 
-def _wd_cand(qid: str, name: str, score: float, desc: str = 'organization', match: bool = False) -> str:
+def _wd_cand(qid: str, name: str, score: float, desc: str = 'organization', match: bool = False, types: tuple[str, ...] = ('Q43229',)) -> str:
     return json.dumps(
-        dict(id=qid, name=name, description=desc, score=score, match=match, type=[]),
+        dict(id=qid, name=name, description=desc, score=score, match=match, types=list(types)),
         ensure_ascii=False,
         separators=(',', ':'),
     )
@@ -587,3 +587,82 @@ def test_full_build_release_includes_phase3_org_tables(tmp_path):
     batches = pq.read_table(org_dir / 'org_reconcile_requests.parquet').to_pylist()
     assert len(batches) == 1
     assert batches[0]['batch_size'] == 1
+
+
+def test_wikidata_query_exclusions_and_type_country_guards(tmp_path):
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    rows = [
+        dict(witness_key='7000000000000001', organization='Prepared statement of', on_behalf_of=None),
+        dict(witness_key='7000000000000002', organization='P.A', on_behalf_of=None),
+        dict(witness_key='7000000000000003', organization='Glass Lewis & Co', on_behalf_of=None),
+        dict(witness_key='7000000000000004', organization='Bay Bank', on_behalf_of=None),
+        dict(witness_key='7000000000000005', organization='Palo, IA', on_behalf_of=None),
+        dict(witness_key='7000000000000006', organization='Toyota Motor Manufacturing, Indiana, Inc.', on_behalf_of=None),
+        dict(witness_key='7000000000000007', organization='Untyped Example Org', on_behalf_of=None),
+        dict(witness_key='7000000000000008', organization='City of Schenectady', on_behalf_of=None),
+    ]
+    app_path = _write_resolved_appearances(tmp_path / 'appearances.parquet', rows)
+    probe = build_org_entities(
+        appearance_records_resolved=app_path,
+        engine=engine,
+        output=tmp_path / 'probe-out',
+        scratch=tmp_path / 'probe-scratch',
+    )
+    bags = {
+        raw: r['bag_key']
+        for r in pq.read_table(probe['outputs']['org_strings.parquet']).to_pylist()
+        for raw in r['raw_texts']
+    }
+    req_batches = pq.read_table(probe['outputs']['org_reconcile_requests.parquet']).to_pylist()
+    requested = {}
+    for b in req_batches:
+        for bk, obj in json.loads(b['queries_json']).items():
+            requested[bk] = obj['query']
+    assert bags['Prepared statement of'] not in requested
+    assert bags['P.A'] not in requested
+    assert requested[bags['Glass Lewis & Co']] == 'glass lewis'
+
+    body_sha = hashlib.sha256(b'wd-guard-1').digest()
+    from datetime import datetime, timezone
+    ts = datetime(2026, 11, 25, 3, 0, tzinfo=timezone.utc)
+    cap_path, read_path = _write_reconcile_tables(
+        tmp_path,
+        captures_rows=[dict(
+            family='wikidata/reconcile',
+            mode='fetch',
+            outcome='stored',
+            sha256=body_sha,
+            receipt_key='receipts/wikidata/reconcile/2026-11-25/guard.jsonl.gz',
+            retrieved_at=ts,
+            requested_url='https://wikidata-reconciliation.wmcloud.org/en/api?queries=%7B%7D',
+        )],
+        readings_rows=[dict(
+            body_sha=body_sha,
+            parser='wikidata_reconcile',
+            status='completed',
+            fields=[
+                dict(field=f"query:{bags['Glass Lewis & Co']}", value='[' + _wd_cand('Q112829332', 'Arnold Lewis Glass', 91.0, '1951-', False, types=('Q5',)) + ']'),
+                dict(field=f"query:{bags['Bay Bank']}", value='[' + _wd_cand('Q4855904', 'Bank Bay', 100.0, 'human settlement in Alberta, Canada', True, types=('Q3257686',)) + ']'),
+                dict(field=f"query:{bags['Palo, IA']}", value='[' + _wd_cand('Q1926239', 'Palo', 100.0, 'city in Iowa', True, types=('Q1093829',)) + ']'),
+                dict(field=f"query:{bags['Toyota Motor Manufacturing, Indiana, Inc.']}", value='[' + _wd_cand('Q2447176', 'Toyota Motor Manufacturing UK', 95.0, 'Toyota subsidiary in the UK', False, types=('Q21980538',)) + ']'),
+                dict(field=f"query:{bags['Untyped Example Org']}", value='[' + _wd_cand('Q999002', 'Untyped Example Org', 100.0, 'something', True, types=()) + ']'),
+                dict(field=f"query:{bags['City of Schenectady']}", value='[' + _wd_cand('Q489999', 'Schenectady', 100.0, 'city in New York', True, types=('Q1093829',)) + ']'),
+            ],
+        )],
+    )
+    res = build_org_entities(
+        appearance_records_resolved=app_path,
+        engine=engine,
+        output=tmp_path / 'out',
+        scratch=tmp_path / 'scratch',
+        captures=cap_path,
+        selected_readings=read_path,
+        include_wikidata_links=True,
+    )
+    links = {(r['bag_key'], r['qid']): r['link_status'] for r in pq.read_table(res['outputs']['org_wikidata_links.parquet']).to_pylist()}
+    assert links[(bags['Glass Lewis & Co'], 'Q112829332')] == 'review'
+    assert links[(bags['Bay Bank'], 'Q4855904')] == 'review'
+    assert links[(bags['Palo, IA'], 'Q1926239')] == 'review'
+    assert links[(bags['Toyota Motor Manufacturing, Indiana, Inc.'], 'Q2447176')] == 'review'
+    assert links[(bags['Untyped Example Org'], 'Q999002')] == 'review'
+    assert links[(bags['City of Schenectady'], 'Q489999')] == 'auto_accept'

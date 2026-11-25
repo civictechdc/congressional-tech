@@ -177,9 +177,9 @@
       "memory_bytes": 1073741824,
       "timeout_seconds": 15
     },
-    "sample_sha256": "5860faf3fa9e408b9e4eb5575f28d2372a4792a040a60f8ef641d1c22da138cd",
-    "version": "9abf330199a7abca10ca8c6831a2950418b170e473e3a059a4b749389abddbd4",
-    "workspace_sha256": "a7b05524a28dd3eab0ea2860eefed9c1a08fb87827f9130106f851f84f7eaf6a"
+    "sample_sha256": "710bed0228ae29dfc18f30d8b89db2898fd0a45388899f8bc73e3fc043eb0631",
+    "version": "817a4f79b7e35cabf59a96d291d5e53683c0dd3baf58f47e60dd78f5c8293e03",
+    "workspace_sha256": "413bd10901b59d7e10f29724d787c817dbcdfc6928529f4091cc84ee14beec68"
   },
   "xml": {
     "limits": {

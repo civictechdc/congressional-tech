@@ -74,6 +74,11 @@ SELECT
  json_get_str(cand,'description') AS candidate_description,
  cast(json_get_float(cand,'score') AS DOUBLE) AS score,
  coalesce(json_get_bool(cand,'match'),false) AS api_match,
+ CASE
+  WHEN coalesce(cardinality(json_get_array(cand,'types')),0)>0
+  THEN string_to_array(replace(array_to_string(json_get_array(cand,'types'),','),'"',''),',')
+  ELSE arrow_cast(array_slice(make_array(cast(NULL AS VARCHAR)),1,0),'List(Utf8)')
+ END AS cand_types,
  receipt_sha,
  receipt_key,
  retrieved_at

@@ -35,7 +35,7 @@ ENTITY_TABLES=('meeting_records','appearance_records')
 # channels, recording_matches and committee_records. All three inputs or none.
 EXPLORER_TABLES=('video_records','committee_records')
 OPTIONAL_TABLES=(*ENTITY_TABLES,*EXPLORER_TABLES,'playlist_records','transcript_headings')
-OPTIONAL={'engine_config',*OPTIONAL_TABLES,'spicy_regs','refspec','recovery_requirements','text_index','historical_recording_matcher','pdf_cover_evidence','body_qualifications','include_org_entities','publish_org_entities'}
+OPTIONAL={'engine_config',*OPTIONAL_TABLES,'spicy_regs','refspec','recovery_requirements','text_index','historical_recording_matcher','pdf_cover_evidence','body_qualifications','include_org_entities','publish_org_entities','include_wikidata_links'}
 PROVENANCE={'recovery_files':'recoveries','review_files':'reviews','verification_files':'verification',
             'unreadable_files':'unreadable','variant_files':'url_variants',
             'recording_decision_files':'recording_decisions','qualification_files':'qualifications',
@@ -144,10 +144,10 @@ def validate_spec(value,*,base):
     explorer=[value.get(name) is not None for name in EXPLORER_TABLES]+[bool(value.get('recording_decision_files'))]
     if any(explorer) and not (all(explorer) and all(value.get(name) is not None for name in ENTITY_TABLES)):
         raise ValueError('Explorer tables require video_records, committee_records and recording decisions together, with the entity tables')
-    for org_flag in ('include_org_entities','publish_org_entities'):
+    for org_flag in ('include_org_entities','publish_org_entities','include_wikidata_links'):
         if value.get(org_flag) is not None and type(value[org_flag]) is not bool:
             raise ValueError(f'{org_flag} must be a boolean')
-    if (value.get('include_org_entities') or value.get('publish_org_entities') or value.get('org_decision_files')) and not all(value.get(name) is not None for name in ENTITY_TABLES):
+    if (value.get('include_org_entities') or value.get('publish_org_entities') or value.get('include_wikidata_links') or value.get('org_decision_files')) and not all(value.get(name) is not None for name in ENTITY_TABLES):
         raise ValueError('Organization entity tables require meeting_records and appearance_records')
     for name in ['output','scratch']:result[name]=_local(value[name],base)
     if 'engine_config' in value:result['engine_config']=_local(value['engine_config'],base)
@@ -492,8 +492,9 @@ def execute(spec,*,prior_links=None,base_retired=None,verified_files=None):
                 catalog_version=spec['catalog_version'],engine=engine,
                 output=Path(spec['output']),scratch=Path(spec['scratch']),
                 prior_links=prior_links,base_retired=base_retired,
-                include_org_entities=bool(spec.get('include_org_entities') or spec.get('publish_org_entities')),
-                publish_org_entities=bool(spec.get('publish_org_entities')))
+                include_org_entities=bool(spec.get('include_org_entities') or spec.get('publish_org_entities') or spec.get('include_wikidata_links')),
+                publish_org_entities=bool(spec.get('publish_org_entities')),
+                include_wikidata_links=bool(spec.get('include_wikidata_links')))
     if spec.get('text_index'):
         from viewer_publication.archive_text_index import finish_text_index
         manifest=finish_text_index(spec,spec['output'])
