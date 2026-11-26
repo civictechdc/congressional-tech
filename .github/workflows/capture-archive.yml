@@ -3,7 +3,20 @@ name: Capture archive sources
 on:
   schedule:
     - cron: '23 3 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      reconcile_requests:
+        description: Repository-relative path to org_reconcile_requests Parquet/JSON seed file
+        type: string
+        default: ''
+      reconcile_slice:
+        description: Optional 0-based START:END batch slice for reconcile campaign
+        type: string
+        default: ''
+      reconcile_only:
+        description: Restrict queue selection to wikidata/reconcile when running reconcile slice
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -99,7 +112,9 @@ jobs:
           BYTE_BUDGET: ${{ vars.ARCHIVE_CAPTURE_BYTE_BUDGET }}
           SPOOL_BUDGET: ${{ vars.ARCHIVE_CAPTURE_SPOOL_BUDGET }}
           REVIEWED_CUTOFF_URLS: ${{ vars.ARCHIVE_CAPTURE_CUTOFF_URLS }}
-          RECONCILE_REQUESTS_PATH: ${{ vars.ARCHIVE_CAPTURE_RECONCILE_REQUESTS }}
+          RECONCILE_REQUESTS_PATH: ${{ inputs.reconcile_requests || vars.ARCHIVE_CAPTURE_RECONCILE_REQUESTS }}
+          RECONCILE_SLICE: ${{ inputs.reconcile_slice }}
+          RECONCILE_ONLY: ${{ inputs.reconcile_only }}
         run: |
           set -euo pipefail
           for value in "$REQUEST_BUDGET" "$BYTE_BUDGET" "$SPOOL_BUDGET"; do
@@ -113,6 +128,12 @@ jobs:
           fi
           if [[ -n "${RECONCILE_REQUESTS_PATH:-}" ]]; then
             set -- "$@" --reconcile-requests "$RECONCILE_REQUESTS_PATH"
+          fi
+          if [[ -n "${RECONCILE_SLICE:-}" ]]; then
+            set -- "$@" --reconcile-slice "$RECONCILE_SLICE"
+          fi
+          if [[ "${RECONCILE_ONLY:-}" == "true" ]]; then
+            set -- "$@" --reconcile-only
           fi
           .venv/bin/python -I -m congress_api.cli.capture_schedule \
             --pointer "$ARCHIVE_POINTER" --request-budget "$REQUEST_BUDGET" \

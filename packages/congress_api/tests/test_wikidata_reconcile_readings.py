@@ -224,3 +224,93 @@ def test_capture_schedule_accepts_reconcile_requests_seed(tmp_path):
     queue = pq.read_table(work / 'plan/queue.parquet').to_pylist()
     assert [r['requested_url'] for r in queue] == [req_url]
     assert queue[0]['family'] == 'wikidata/reconcile'
+
+
+def test_capture_schedule_reconcile_slice_and_only_family(tmp_path):
+    from datetime import datetime, timezone
+    import pyarrow as pa
+    import pytest
+    from congress_api.cli import capture_schedule
+    from congress_api.models.archive_profile import build_capture_profile
+
+    rel = tmp_path / 'release'
+    rel.mkdir()
+    engine = NativeDatasets.from_config(os.environ['DOCSPEC_JOB_CONFIG'])
+    pq.write_table(pa.Table.from_pylist([
+        dict(
+            requested_url='https://admin-intelligence.house.gov/event/0001/',
+            attempts=0,
+            last_attempt=None,
+            last_status=None,
+            last_outcome=None,
+            last_good_at=None,
+            next_attempt_at=datetime(2026, 11, 25, tzinfo=timezone.utc),
+        ),
+    ], schema=pa.schema([
+        ('requested_url', pa.string()), ('attempts', pa.int32()),
+        ('last_attempt', pa.timestamp('us', tz='UTC')), ('last_status', pa.int16()),
+        ('last_outcome', pa.string()), ('last_good_at', pa.timestamp('us', tz='UTC')),
+        ('next_attempt_at', pa.timestamp('us', tz='UTC')),
+    ])), rel / 'url_state.parquet')
+    (rel / 'capture_scope.json').write_text((ROOT / 'model/registries/capture-scope.json').read_text())
+    profile = build_capture_profile(
+        engine_revision=engine.source_revision,
+        url_normalized_sql=(ROOT / 'model/sql/url-normalized.sql').read_text(),
+        url_keys_sql=(ROOT / 'model/sql/url-keys.sql').read_text(),
+        url_rules=json.loads((ROOT / 'model/registries/url-rules.json').read_text()),
+    )
+    (rel / 'capture_profile.json').write_text(json.dumps(profile))
+    pq.write_table(pa.Table.from_pylist([], schema=pa.schema([
+        ('canonical_url', pa.string()), ('variant_url', pa.string()),
+    ])), rel / 'url_variants.parquet')
+    files = []
+    for name in ['url_state.parquet', 'capture_scope.json', 'capture_profile.json', 'url_variants.parquet']:
+        data = (rel / name).read_bytes()
+        files.append(dict(name=name, sha256=hashlib.sha256(data).hexdigest(), size=len(data),
+                          rows=pq.read_metadata(rel / name).num_rows if name.endswith('parquet') else None))
+    rid = hashlib.sha256(json.dumps([1, [[f[k] for k in ('name', 'sha256', 'size', 'rows')] for f in files]],
+                                    separators=(',', ':')).encode()).hexdigest()
+    (rel / 'manifest.json').write_text(json.dumps(dict(schema_version=1, release_id=rid, files=files)))
+
+    urls = [
+        'https://wikidata-reconciliation.wmcloud.org/en/api?queries=%7B%22b001%22%3A%7B%22limit%22%3A5%2C%22query%22%3A%22alpha%22%7D%7D',
+        'https://wikidata-reconciliation.wmcloud.org/en/api?queries=%7B%22b002%22%3A%7B%22limit%22%3A5%2C%22query%22%3A%22beta%22%7D%7D',
+    ]
+    req_path = tmp_path / 'org_reconcile_requests.parquet'
+    pq.write_table(pa.table({'request_url': urls}), req_path)
+
+    work = tmp_path / 'capture-slice'
+    capture_schedule.main([
+        '--release-root', str(rel),
+        '--reconcile-requests', str(req_path),
+        '--reconcile-slice', '1:2',
+        '--reconcile-only',
+        '--request-budget', '10',
+        '--byte-budget', '1048576',
+        '--spool-budget', '1048576',
+        '--work', str(work),
+        '--engine-config', os.environ['DOCSPEC_JOB_CONFIG'],
+    ])
+    queue = pq.read_table(work / 'plan/queue.parquet').to_pylist()
+    assert [r['requested_url'] for r in queue] == [urls[1]]
+    assert [r['family'] for r in queue] == ['wikidata/reconcile']
+    summary = json.loads((work / 'summary.json').read_text())
+    assert summary['only_family'] == 'wikidata/reconcile'
+
+    for bad_args in (
+        ['--reconcile-only'],
+        ['--reconcile-slice', '0:1'],
+        ['--reconcile-requests', str(req_path), '--reconcile-slice', 'bad'],
+        ['--reconcile-requests', str(req_path), '--reconcile-slice', '2:2'],
+        ['--reconcile-requests', str(req_path), '--reconcile-slice', '5:10'],
+    ):
+        with pytest.raises((SystemExit, ValueError)):
+            capture_schedule.main([
+                '--release-root', str(rel),
+                *bad_args,
+                '--request-budget', '10',
+                '--byte-budget', '1048576',
+                '--spool-budget', '1048576',
+                '--work', str(tmp_path / 'bad-work'),
+                '--engine-config', os.environ['DOCSPEC_JOB_CONFIG'],
+            ])

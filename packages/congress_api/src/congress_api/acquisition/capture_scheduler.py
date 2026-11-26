@@ -470,10 +470,12 @@ def cutoff_report(release,*,urls,attempted,engine,work,as_of,stop_reason,discove
 
 def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
                seed_files=(),discovery_files=(),attempted=None,cutoff_urls=(),_keyed_states_cache=None,campaign=None,
-               reviewed_only=False):
+               reviewed_only=False,only_family=None):
     """Use shared URL keys; reviewed_only explicitly limits history and work to the named cutoffs."""
     _require_capture_authority(release)
     _positive(request_budget,'request budget');as_of=_utc(as_of)
+    if only_family is not None and (not isinstance(only_family,str) or not only_family.strip()):
+        raise ValueError('only_family must be a non-empty family name')
     cutoff_urls=reviewed_cutoffs(cutoff_urls)
     _reviewed_mode(reviewed_only,cutoff_urls,_keyed_states_cache)
     binding,definition_sha256,profile=_url_binding(release,engine)
@@ -646,7 +648,7 @@ def plan_queue(release,*,engine,work,as_of,request_budget,seed_inventories=(),
             LEFT ANTI JOIN keyed_attempts a ON c.url_key=a.url_key
             LEFT ANTI JOIN done_keys dk ON c.url_key=dk.url_key
             LEFT ANTI JOIN done_urls du ON c.requested_url=du.url"""),
-        dict(name='eligible',sql=f"SELECT * FROM scoped WHERE family IS NOT NULL AND (next_attempt_at IS NULL OR next_attempt_at<=to_timestamp({_literal(as_of)})){campaign_filter}"),
+        dict(name='eligible',sql=f"SELECT * FROM scoped WHERE family IS NOT NULL AND (next_attempt_at IS NULL OR next_attempt_at<=to_timestamp({_literal(as_of)})){campaign_filter}" + (f" AND family={_literal(only_family)}" if only_family is not None else '')),
         dict(name='due_keys',sql="""SELECT * FROM (SELECT *,row_number() OVER(PARTITION BY url_key
             ORDER BY priority,next_attempt_at NULLS FIRST,requested_url) AS ordinal FROM eligible) WHERE ordinal=1"""),
         # A repaired address can serve more than one key; request it once.
@@ -783,11 +785,13 @@ def read_discovery_payload(payload):
 def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_budget,
                 store,identity,direct,provider=None,resolve=resolve_host,pace=None,
                 archive_limits=None,seed_inventories=(),cutoff_urls=(),
-                discover=None,max_discovery_jobs=8,headers=None,worker_factory=None,workers=1,campaign=None,
+                discover=None,max_discovery_jobs=8,headers=None,worker_factory=None,workers=1,campaign=None,only_family=None,
                 admission=None,provider_cost=None,firecrawl=None,firecrawl_cost=None,max_entity_bytes=16<<20,
                 qualify=None,qualification_cache=None,qualifications=None,qualification_store=None):
     """Bounded raw writer. No state/index or table writes occur here."""
     _require_capture_authority(release)
+    if only_family is not None and (not isinstance(only_family,str) or not only_family.strip()):
+        raise ValueError('only_family must be a non-empty family name')
     for name,value in [('request budget',request_budget),('byte budget',byte_budget),('spool budget',spool_budget),('discovery jobs',max_discovery_jobs),('workers',workers)]:
         _positive(value,name)
     if type(max_entity_bytes) is not int or not 0<max_entity_bytes<=16<<20:
@@ -932,7 +936,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
     from congress_api.acquisition.capture_journal import DurableCapture,durable_json
     binding=dict(release_id=release['release_id'],as_of=as_of,identity=identity,
                  budgets=stats['budgets'],campaign_id=getattr(campaign,'campaign_id',None),campaign_sha256=getattr(campaign,'descriptor_sha256',None),
-                 provider_cost=provider_cost,firecrawl_cost=firecrawl_cost,
+                 only_family=only_family,provider_cost=provider_cost,firecrawl_cost=firecrawl_cost,
                  admission_path=str(Path(admission.path).resolve()),spend_cap=admission.spend_cap,
                  store_destination=str(getattr(store.adapter,'root',getattr(store.adapter,'bucket','unknown'))),
                  archive_limits=vars(archive_limits),workers=workers,max_entity_bytes=max_entity_bytes)
@@ -1024,7 +1028,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
     keyed_states_cache=plan_work/'plan-0/keyed_states.parquet'
     plan=plan_queue(release,engine=engine,work=plan_work/'plan-0',as_of=as_of,
         request_budget=request_budget,seed_inventories=seed_inventories,cutoff_urls=cutoff_urls,
-        _keyed_states_cache=keyed_states_cache,campaign=campaign,attempted=attempted if attempted.exists() else None,discovery_files=discovered)
+        _keyed_states_cache=keyed_states_cache,campaign=campaign,only_family=only_family,attempted=attempted if attempted.exists() else None,discovery_files=discovered)
     stats['initial_counts']=plan['counts'];seed_files=plan['seed_files']
     def pending_rows(selected_plan):
         retained=[];urls=set()
@@ -1249,7 +1253,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                         plan=plan_queue(release,engine=engine,work=plan_work/f'plan-{generation}',as_of=as_of,
                             request_budget=request_budget,seed_files=seed_files,
                             discovery_files=discovered,attempted=attempted,cutoff_urls=cutoff_urls,
-                            _keyed_states_cache=keyed_states_cache,campaign=campaign)
+                            _keyed_states_cache=keyed_states_cache,campaign=campaign,only_family=only_family)
                         pending=pending_rows(plan);exhausted=False
                 else:
                     future=pool.submit(_capture_one,row,url,family,limit,generation<max_discovery_jobs)
@@ -1278,7 +1282,7 @@ def _run_capture(release,*,engine,work,as_of,request_budget,byte_budget,spool_bu
                 plan=plan_queue(release,engine=engine,work=plan_work/f'plan-{generation}',as_of=as_of,
                     request_budget=request_budget,seed_files=seed_files,
                     discovery_files=discovered,attempted=attempted,cutoff_urls=cutoff_urls,
-                    _keyed_states_cache=keyed_states_cache,campaign=campaign)
+                    _keyed_states_cache=keyed_states_cache,campaign=campaign,only_family=only_family)
                 pending=pending_rows(plan);exhausted=False
         return stats
     except AdmissionDenied as error:

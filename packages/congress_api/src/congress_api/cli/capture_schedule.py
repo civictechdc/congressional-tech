@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 from urllib.parse import urlsplit
 
 from congress_api.acquisition.capture_scheduler import CapturePolicy,default_request_headers,load_release,plan_queue,reviewed_cutoffs,run_capture
@@ -24,11 +25,24 @@ def _default_fetcher_binary():
     return DEFAULT_FETCHER_BINARY if DEFAULT_FETCHER_BINARY.is_file() else None
 
 
-def _reconcile_seed_inventory(path: Path, dest: Path) -> tuple[Path, str]:
+def _parse_reconcile_slice(slice_spec: str) -> tuple[int, int]:
+    """Parse a 0-based START:END half-open slice specification."""
+    match = re.fullmatch(r'(\d+):(\d+)', slice_spec.strip())
+    if match is None:
+        raise ValueError('Invalid --reconcile-slice format; expected START:END with 0 <= START < END')
+    start, end = int(match.group(1)), int(match.group(2))
+    if not (0 <= start < end):
+        raise ValueError('Invalid --reconcile-slice bounds; expected 0 <= START < END')
+    return start, end
+
+
+def _reconcile_seed_inventory(path: Path, dest: Path, *, slice_spec: str | None = None) -> tuple[Path, str]:
     """Read org_reconcile_requests.parquet (or JSON) and write a bounded seed inventory."""
     import pyarrow.parquet as pq
     raw_bytes = path.read_bytes()
-    digest = hashlib.sha256(raw_bytes).hexdigest()
+    bounds = _parse_reconcile_slice(slice_spec) if slice_spec is not None else None
+    hash_suffix = f'|slice={bounds[0]}:{bounds[1]}'.encode('utf-8') if bounds is not None else b''
+    digest = hashlib.sha256(raw_bytes + hash_suffix).hexdigest()
     if path.suffix.lower() == '.parquet':
         table = pq.read_table(path, columns=['request_url'])
         urls = table.column('request_url').to_pylist()
@@ -37,6 +51,11 @@ def _reconcile_seed_inventory(path: Path, dest: Path) -> tuple[Path, str]:
         if not isinstance(payload, list):
             raise ValueError('Reconcile requests JSON must be a list of objects or URLs')
         urls = [row['request_url'] if isinstance(row, dict) else row for row in payload]
+    if bounds is not None:
+        total = len(urls)
+        urls = urls[bounds[0]:bounds[1]]
+        if not urls:
+            raise ValueError(f'Reconcile slice {slice_spec} selected 0 URLs (total={total})')
     with gzip.open(dest, 'wt', encoding='utf-8') as out:
         for index, url in enumerate(urls):
             if not isinstance(url, str) or not url.startswith('https://wikidata-reconciliation.wmcloud.org/en/api?queries='):
@@ -56,6 +75,8 @@ def main(argv=None):
     parser.add_argument('--work',type=Path,required=True)
     parser.add_argument('--cutoff-urls',type=Path,help='Owner-reviewed exact URL list; no raw index')
     parser.add_argument('--reconcile-requests',type=Path,help='Parquet or JSON batch request table (org_reconcile_requests) to seed wikidata/reconcile')
+    parser.add_argument('--reconcile-slice',help='Optional 0-based START:END slice of --reconcile-requests rows')
+    parser.add_argument('--reconcile-only',action='store_true',help="Restrict queue selection to family 'wikidata/reconcile'")
     parser.add_argument('--campaign',type=Path,help='Pinned recovery campaign descriptor')
     parser.add_argument('--admission-db',type=Path,help='Shared campaign request/spend ledger; caps must agree')
     parser.add_argument('--spend-cap-micros',type=int,help='Maximum provider spend in microdollars')
@@ -85,6 +106,8 @@ def main(argv=None):
         parser.error('Configured Firecrawl capture requires FIRECRAWL_API_KEY')
     if args.work.resolve().is_relative_to(ROOT):
         parser.error('Keep capture work outside the clean writer checkout')
+    if (args.reconcile_slice is not None or args.reconcile_only) and args.reconcile_requests is None:
+        parser.error('--reconcile-slice and --reconcile-only require --reconcile-requests')
     cutoffs=json.loads(args.cutoff_urls.read_text()) if args.cutoff_urls else []
     if not isinstance(cutoffs,list):
         raise ValueError('Cutoff input must be an owner-reviewed URL list')
@@ -93,10 +116,12 @@ def main(argv=None):
     reconcile_sha256=None
     if args.reconcile_requests is not None:
         args.work.mkdir(parents=True,exist_ok=True)
-        seed_path,reconcile_sha256=_reconcile_seed_inventory(args.reconcile_requests,args.work/'reconcile-seeds.jsonl.gz')
+        seed_path,reconcile_sha256=_reconcile_seed_inventory(
+            args.reconcile_requests,args.work/'reconcile-seeds.jsonl.gz',slice_spec=args.reconcile_slice)
         reconcile_seed=(seed_path,)
     else:
         reconcile_seed=()
+    only_family='wikidata/reconcile' if args.reconcile_only else None
     identity=writer_identity(ROOT,'capture-scheduler') if args.apply else None
     args.work.mkdir(parents=True,exist_ok=True)
     from congress_api.acquisition.capture_journal import durable_json
@@ -125,9 +150,10 @@ def main(argv=None):
     campaign=load_campaign(args.campaign) if args.campaign else None
     if not args.apply:
         result=plan_queue(release,engine=engine,work=args.work/'plan',as_of=args.as_of,
-            request_budget=args.request_budget,seed_inventories=reconcile_seed,cutoff_urls=cutoffs,campaign=campaign)
+            request_budget=args.request_budget,seed_inventories=reconcile_seed,cutoff_urls=cutoffs,
+            campaign=campaign,only_family=only_family)
         result.update(apply=False,reviewed_cutoff_urls=cutoffs,reconcile_requests_sha256=reconcile_sha256,
-            budgets=dict(requests=args.request_budget,bytes=args.byte_budget,spool=args.spool_budget))
+            only_family=only_family,budgets=dict(requests=args.request_budget,bytes=args.byte_budget,spool=args.spool_budget))
     else:
         CapturePolicy(release['scope']).require_capture()
         import requests
@@ -176,7 +202,7 @@ def main(argv=None):
                 request_budget=args.request_budget,byte_budget=args.byte_budget,spool_budget=args.spool_budget,
                 store=store,identity=identity,direct=DirectAdapter(session),provider=provider,
                 seed_inventories=reconcile_seed,cutoff_urls=cutoffs,max_discovery_jobs=args.max_discovery_jobs,headers=headers,workers=workers,campaign=campaign,
-                admission=admission,provider_cost=args.zyte_cost_bound_micros,firecrawl=firecrawl,firecrawl_cost=args.firecrawl_cost_bound_micros,
+                only_family=only_family,admission=admission,provider_cost=args.zyte_cost_bound_micros,firecrawl=firecrawl,firecrawl_cost=args.firecrawl_cost_bound_micros,
                 qualification_cache=args.qualification_cache,qualifications=args.qualifications,qualification_store=store)
     (args.work/'summary.json').write_text(json.dumps(result,ensure_ascii=False,indent=2)+'\n')
     print(json.dumps(result,ensure_ascii=False,indent=2))

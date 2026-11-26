@@ -160,6 +160,19 @@ def test_capture_shell_passes_budgets_and_only_existing_weekly_seeds(tmp_path):
         '--request-budget', '19', '--byte-budget', '2048', '--spool-budget', '1024',
         '--work', str(tmp_path / 'archive-capture'), '--apply']
     (tmp_path / 'invocation.json').unlink()
+    reconcile_env = dict(env, RECONCILE_REQUESTS_PATH='model/jobs/inputs/seeds.parquet', RECONCILE_SLICE='0:1750', RECONCILE_ONLY='true')
+    result = subprocess.run(['bash', '-eo', 'pipefail', '-c', step['run']], cwd=tmp_path,
+                            env=reconcile_env, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert json.loads((tmp_path / 'invocation.json').read_text()) == [
+        '-I', '-m', 'congress_api.cli.capture_schedule', '--pointer', env['ARCHIVE_POINTER'],
+        '--request-budget', '19', '--byte-budget', '2048', '--spool-budget', '1024',
+        '--work', str(tmp_path / 'archive-capture'),
+        '--reconcile-requests', 'model/jobs/inputs/seeds.parquet',
+        '--reconcile-slice', '0:1750',
+        '--reconcile-only',
+        '--apply']
+    (tmp_path / 'invocation.json').unlink()
     env['REQUEST_BUDGET'] = '0'
     result = subprocess.run(['bash', '-eo', 'pipefail', '-c', step['run']], cwd=tmp_path,
                             env=env, capture_output=True, text=True, timeout=10)
