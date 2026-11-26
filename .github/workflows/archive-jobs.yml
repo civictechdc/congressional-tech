@@ -137,6 +137,7 @@ jobs:
           DOCSPEC_ENGINE_CREDENTIALS: ${{ secrets.DOCSPEC_ENGINE_CREDENTIALS }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          ARCHIVE_STAGE_ONLY: 'true'
         run: .venv/bin/python -I .github/scripts/run-archive-job.py publish --keep-candidate
       # Saved whenever a completed model exists, above all when the gates stopped the run. The key is
       # the checkpoint's content, so a resumed run saves nothing new. GitHub evicts an entry unused
@@ -153,7 +154,7 @@ jobs:
             output/archive-release
             output/archive-model/result.json
             output/archive-model/evidence/recording_video_links.parquet
-      - name: Publish incremental body_text and derived/body_text/current.json
+      - name: Stage incremental body_text export before pointer flip
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -169,7 +170,19 @@ jobs:
             -- .venv/bin/python -I -m viewer_publication.body_text_publish \
               --work "$RUNNER_TEMP/body-text-publish" \
               --release-dir output/archive-release \
+              --prefer-staged \
+              --stage-only \
               --parser-workers 3
+      - name: Sync SpicyEngine and commit archive and body_text pointers
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          SPICYENGINE_ORIGIN: ${{ vars.SPICYENGINE_ORIGIN || 'https://spicyengine.45.55.61.191.sslip.io' }}
+          SPICYENGINE_SYNC_URL: ${{ vars.SPICYENGINE_SYNC_URL }}
+          SPICYENGINE_SYNC_TOKEN: ${{ secrets.SPICYENGINE_SYNC_TOKEN }}
+          SPICYENGINE_SYNC_DISABLED: ${{ vars.SPICYENGINE_SYNC_DISABLED }}
+        run: .venv/bin/python -I .github/scripts/run-archive-job.py publish --commit-staged
       - name: Retain run evidence (access follows repository)
         if: ${{ always() && steps.publisher_binding.outputs.publisher_work != '' }}
         uses: actions/upload-artifact@v7

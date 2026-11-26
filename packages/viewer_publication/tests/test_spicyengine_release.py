@@ -152,3 +152,47 @@ def test_transfer_resumes_a_pinned_partial(tmp_path, monkeypatch):
     monkeypatch.setattr(release, "open_object", resume)
     release.download("unused", "object", target, sha256(payload).hexdigest(), len(payload))
     assert offsets == [8] and target.read_bytes() == payload
+
+
+def test_staged_resolution_prefers_active_staged_and_rejects_mismatch(tmp_path):
+    origin_root = tmp_path / "origin"
+    archive = origin_root / "viewer-publications"
+    text_dir = origin_root / "derived" / "body_text"
+    archive.mkdir(parents=True)
+    text_dir.mkdir(parents=True)
+
+    r_old = "a" * 64
+    r_new = "b" * 64
+    sha_old = "1" * 64
+    sha_new = "2" * 64
+    (archive / "manifest.json").write_text(json.dumps({"release_id": r_old}))
+    (text_dir / "current.json").write_text(json.dumps({
+        "release_id": r_old, "sha256": sha_old, "key": f"derived/body_text/{sha_old}.parquet",
+    }))
+
+    origin = origin_root.as_uri()
+    # Without staged files, prefer_staged falls back cleanly to live pointers.
+    assert release.resolve(origin, prefer_staged=True)["release_id"] == r_old
+
+    # Once staged archive points to r_new without staged body_text yet, prefer_staged refuses (keeps old live online).
+    (archive / "staged.json").write_text(json.dumps({"release_id": r_new, "previous_release_id": r_old}))
+    with pytest.raises(ValueError, match="same immutable release"):
+        release.resolve(origin, prefer_staged=True)
+
+    # Matching staged pointers resolve r_new while default resolve() still resolves r_old.
+    (text_dir / "staged.json").write_text(json.dumps({
+        "release_id": r_new, "sha256": sha_new, "key": f"derived/body_text/{sha_new}.parquet",
+    }))
+    assert release.resolve(origin)["release_id"] == r_old
+    assert release.resolve(origin, staged=True)["release_id"] == r_new
+    assert release.resolve(origin, prefer_staged=True)["release_id"] == r_new
+    assert release.resolve(origin, prefer_staged=True, expected_release_id=r_new)["release_id"] == r_new
+    with pytest.raises(ValueError, match="differs from expected"):
+        release.resolve(origin, prefer_staged=True, expected_release_id=r_old)
+
+    # A stale staged pointer whose previous_release_id no longer matches live falls back to live.
+    (archive / "manifest.json").write_text(json.dumps({"release_id": "c" * 64}))
+    (text_dir / "current.json").write_text(json.dumps({
+        "release_id": "c" * 64, "sha256": sha_new, "key": f"derived/body_text/{sha_new}.parquet",
+    }))
+    assert release.resolve(origin, prefer_staged=True)["release_id"] == "c" * 64

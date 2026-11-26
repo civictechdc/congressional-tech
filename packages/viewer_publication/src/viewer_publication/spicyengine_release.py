@@ -11,6 +11,7 @@ from contextlib import closing
 from hashlib import file_digest, sha256
 from importlib.resources import files
 from pathlib import Path
+from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 import duckdb
@@ -21,6 +22,8 @@ from viewer_publication.archive_format import release_identity
 
 ORIGIN = "https://congressional-data.spicygov.ai"
 RECIPE = "search-v2"
+STAGED_ARCHIVE_KEY = "viewer-publications/staged.json"
+STAGED_TEXT_KEY = "derived/body_text/staged.json"
 FIELDS = {
     "title": "title", "text": ["body"], "url": "source_url", "identifiers": "identifiers",
     "page_offsets": {"body": "page_offsets"},
@@ -86,13 +89,65 @@ def fetch_json(origin, key):
         return json.load(response)
 
 
+def fetch_optional_json(origin, key):
+    try:
+        return fetch_json(origin, key)
+    except HTTPError as error:
+        if error.code == 404:
+            return None
+        raise
+    except URLError as error:
+        if isinstance(error.reason, FileNotFoundError):
+            return None
+        raise
+    except FileNotFoundError:
+        return None
+
+
 def save(path, value):
     write_atomic_bytes(path, (json.dumps(value, sort_keys=True) + "\n").encode(), fsync_dir=True)
 
 
-def resolve(origin, saved=None):
+def resolve(origin, saved=None, *, staged=False, prefer_staged=False, expected_release_id=None):
+    if saved and (staged or prefer_staged):
+        raise ValueError("Cannot combine saved pin.json with staged resolution")
     if saved:
         pin = json.loads(saved.read_text())
+    elif staged:
+        archive = fetch_json(origin, STAGED_ARCHIVE_KEY)
+        text = fetch_json(origin, STAGED_TEXT_KEY)
+        pin = {"release_id": archive["release_id"], "text": text}
+    elif prefer_staged:
+        live_archive = fetch_optional_json(origin, "viewer-publications/manifest.json")
+        staged_archive = fetch_optional_json(origin, STAGED_ARCHIVE_KEY)
+        staged_id = staged_archive.get("release_id") if isinstance(staged_archive, dict) else None
+        live_id = live_archive.get("release_id") if isinstance(live_archive, dict) else None
+        active_staged = (
+            isinstance(staged_id, str)
+            and re.fullmatch("[0-9a-f]{64}", staged_id) is not None
+            and (
+                live_archive is None
+                or (
+                    staged_id != live_id
+                    and staged_archive.get("previous_release_id") in (None, live_id)
+                )
+            )
+        )
+        if active_staged:
+            staged_text = fetch_optional_json(origin, STAGED_TEXT_KEY)
+            if isinstance(staged_text, dict) and staged_text.get("release_id") == staged_id:
+                text = staged_text
+            else:
+                current_text = fetch_optional_json(origin, "derived/body_text/current.json")
+                if isinstance(current_text, dict) and current_text.get("release_id") == staged_id:
+                    text = current_text
+                else:
+                    raise ValueError("Archive and body-text pointers must identify the same immutable release")
+            pin = {"release_id": staged_id, "text": text}
+        else:
+            archive = live_archive if live_archive is not None else fetch_json(origin, "viewer-publications/manifest.json")
+            text = fetch_json(origin, "derived/body_text/current.json")
+            pin = {"release_id": archive["release_id"], "text": text}
     else:
         archive = fetch_json(origin, "viewer-publications/manifest.json")
         text = fetch_json(origin, "derived/body_text/current.json")
@@ -102,6 +157,8 @@ def resolve(origin, saved=None):
             or not re.fullmatch("[0-9a-f]{64}", text["sha256"])
             or text["key"] != f"derived/body_text/{text['sha256']}.parquet"):
         raise ValueError("Archive and body-text pointers must identify the same immutable release")
+    if expected_release_id is not None and release != expected_release_id:
+        raise ValueError(f"Resolved release {release} differs from expected {expected_release_id}")
     return pin
 
 
@@ -280,12 +337,14 @@ def filter_vocabulary(committees):
     return {**committees, "facet_labels": labels, "facet_help": help_text}
 
 
-def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_query=None):
+def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_query=None,
+           staged=False, prefer_staged=False, expected_release_id=None):
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     with (root / ".release.lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
-        pin = resolve(origin, saved)
+        pin = resolve(origin, saved, staged=staged, prefer_staged=prefer_staged,
+                      expected_release_id=expected_release_id)
         release = pin["release_id"]
         version = Path(release) / pin["text"]["sha256"]
         legacy = root / "search-v1" / version
@@ -336,8 +395,13 @@ def main():
     parser.add_argument("--source-dir", type=Path, help="Reuse matching local detail, sources and body_text Parquet")
     parser.add_argument("--engine", help="Installed spicyengine executable; omit to prepare only")
     parser.add_argument("--check-query", help="Search to verify before activating a new index")
+    parser.add_argument("--staged", action="store_true", help="Resolve staged candidate pointers ahead of the live flip")
+    parser.add_argument("--prefer-staged", action="store_true", help="Prefer active staged candidate pointers, else live")
+    parser.add_argument("--release-id", help="Require this exact 64-hex release ID")
     args = parser.parse_args()
-    print(update(args.root, saved=args.pin, local=args.source_dir, engine=args.engine, check_query=args.check_query))
+    print(update(args.root, saved=args.pin, local=args.source_dir, engine=args.engine,
+                 check_query=args.check_query, staged=args.staged, prefer_staged=args.prefer_staged,
+                 expected_release_id=args.release_id))
 
 
 if __name__ == "__main__":

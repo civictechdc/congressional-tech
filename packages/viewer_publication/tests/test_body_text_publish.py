@@ -479,3 +479,79 @@ def test_upload_part_retries_transient_503_without_retrying_conditional_mutation
     with pytest.raises(ClientError):
         client.put_object(Key='derived/body_text/current.json')
     assert calls[-1] == ('put_object', 'derived/body_text/current.json')
+
+
+def test_staged_body_text_promotion_and_verification(tmp_path):
+    from test_body_text_export import Bucket
+
+    class OptionalGetBucket(Bucket):
+        def get_object(self, Bucket, Key):
+            if Key not in self.objects:
+                error = RuntimeError('not found')
+                error.response = {'Error': {'Code': '404'}}
+                raise error
+            return super().get_object(Bucket=Bucket, Key=Key)
+
+    bucket = OptionalGetBucket()
+    r_old = 'a' * 64
+    r_new = 'b' * 64
+    old_parquet = b'PAR1-old-body-text-PAR1'
+    old_sha = sha256(old_parquet).hexdigest()
+    old_key = f'derived/body_text/{old_sha}.parquet'
+    old_detail = {'sha256': '1' * 64, 'size': 100}
+    old_ptr = {
+        'version': 1, 'release_id': r_old, 'sha256': old_sha, 'bytes': len(old_parquet),
+        'key': old_key, 'detail': old_detail,
+    }
+    bucket._store(old_key, old_parquet, md5(old_parquet).hexdigest())
+    bucket._store('derived/body_text/current.json', json.dumps(old_ptr).encode(), 'etag-old')
+    bucket._store('viewer-publications/manifest.json', json.dumps({'release_id': r_old}).encode(), 'm-old')
+
+    new_parquet = b'PAR1-new-body-text-PAR1'
+    new_sha = sha256(new_parquet).hexdigest()
+    new_key = f'derived/body_text/{new_sha}.parquet'
+    new_detail = {'sha256': '2' * 64, 'size': 200}
+    new_ptr = {
+        'version': 1, 'release_id': r_new, 'sha256': new_sha, 'bytes': len(new_parquet),
+        'key': new_key, 'detail': new_detail,
+    }
+    bucket._store(new_key, new_parquet, md5(new_parquet).hexdigest())
+    bucket._store(body_text_publish.STAGED_POINTER_KEY, json.dumps(new_ptr).encode(), 's-new')
+    bucket._store(body_text_publish.STAGED_RELEASE_POINTER_KEY, json.dumps({'release_id': r_new}).encode(), 'sr-new')
+
+    assert body_text_publish.resolve_target_release(bucket, bucket='archive', prefer_staged=True) == r_new
+    assert body_text_publish.resolve_target_release(bucket, bucket='archive', prefer_staged=False) == r_old
+    assert body_text_publish.resolve_target_release(bucket, bucket='archive', release_id=r_new) == r_new
+
+    verified, _ = body_text_publish.verify_body_text_pointer(
+        bucket, bucket='archive', release_id=r_new, detail_entry=new_detail,
+        pointer_key=body_text_publish.STAGED_POINTER_KEY,
+    )
+    assert verified['key'] == new_key
+
+    with pytest.raises(ValueError, match='names release'):
+        body_text_publish.verify_body_text_pointer(
+            bucket, bucket='archive', release_id=r_old, detail_entry=new_detail,
+            pointer_key=body_text_publish.STAGED_POINTER_KEY,
+        )
+    with pytest.raises(ValueError, match='detail pin disagrees'):
+        body_text_publish.verify_body_text_pointer(
+            bucket, bucket='archive', release_id=r_new, detail_entry=old_detail,
+            pointer_key=body_text_publish.STAGED_POINTER_KEY,
+        )
+
+    # Promoting updates current.json, retires old parquet, and removes staged.json.
+    promoted = body_text_publish.promote_staged_body_text(
+        bucket, bucket='archive', release_id=r_new, detail_entry=new_detail,
+    )
+    assert promoted['status'] == 'promoted' and promoted['retired'] == [old_key]
+    assert json.loads(bucket.objects['derived/body_text/current.json']['body']) == new_ptr
+    assert old_key not in bucket.objects
+    assert new_key in bucket.objects
+    assert body_text_publish.STAGED_POINTER_KEY not in bucket.objects
+
+    # Repeat promotion is idempotent.
+    again = body_text_publish.promote_staged_body_text(
+        bucket, bucket='archive', release_id=r_new, detail_entry=new_detail,
+    )
+    assert again['status'] == 'already_current'

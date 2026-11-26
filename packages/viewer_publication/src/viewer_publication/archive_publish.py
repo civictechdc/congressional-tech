@@ -5,14 +5,17 @@ to the caller. This module accepts pinned actual model artifacts, never a passed
 flag or an injectable model-policy implementation. Reader probes are external.
 """
 from base64 import b64decode
+from datetime import datetime,timezone
 import fcntl
 from hashlib import md5,sha256
 from io import BytesIO
 import json
 from pathlib import Path
 import re
+import time
 from time import perf_counter
 from urllib.parse import urlsplit
+from urllib.request import Request,urlopen
 
 from congress_api.retention.derived_files import copy_checked
 from congress_shared.custody import custody_identity,write_atomic_bytes
@@ -27,6 +30,7 @@ from viewer_publication.receipt_pins import (PREFIX,receipt_list,read_receipt_li
     write_input_receipts,kept_receipt_keys)
 
 POINTER='viewer-publications/manifest.json'
+STAGED_POINTER='viewer-publications/staged.json'
 STATUS='viewer-publications/status.json'
 SPICY_PINS='viewer-publications/pins/spicy-generations.json'
 IMMUTABLE='public,max-age=31536000,immutable'
@@ -393,6 +397,146 @@ def matching_live_input(store,*,release_id,digest):
     return record
 
 
+def write_staged_pointer(client,*,bucket,release_id,previous_release_id=None,detail_entry=None):
+    """Write the staged release pointer ahead of the live manifest pointer flip."""
+    require_publication_client(client)
+    _sha(release_id)
+    if previous_release_id is not None:
+        _sha(previous_release_id)
+    payload=dict(
+        release_id=release_id,
+        previous_release_id=previous_release_id,
+        staged_at=datetime.now(timezone.utc).isoformat().replace('+00:00','Z'),
+    )
+    if isinstance(detail_entry,dict) and 'sha256' in detail_entry and 'size' in detail_entry:
+        payload['detail']={'sha256':_sha(detail_entry['sha256']),'size':int(detail_entry['size'])}
+    raw=_encoded(payload)
+    client.put_object(Bucket=bucket,Key=STAGED_POINTER,Body=raw,ContentLength=len(raw),
+        ContentType='application/json',CacheControl='no-store')
+    return payload
+
+
+def read_staged_pointer(client,*,bucket):
+    """Read the staged release pointer if present, else None."""
+    require_publication_client(client)
+    try:
+        raw,_=_read(client,bucket,STAGED_POINTER)
+    except Exception as error:
+        if _status_code(error)==404:
+            return None
+        code=((getattr(error,'response',None) or {}).get('Error') or {}).get('Code')
+        if code in {'404','NoSuchKey','NotFound'}:
+            return None
+        raise
+    value=json.loads(raw)
+    if not isinstance(value,dict) or 'release_id' not in value:
+        raise ValueError('Invalid staged archive pointer shape')
+    _sha(value['release_id'])
+    if value.get('previous_release_id') is not None:
+        _sha(value['previous_release_id'])
+    return value
+
+
+def clear_staged_pointer(client,*,bucket):
+    """Remove the staged release pointer once promoted (best-effort if supported)."""
+    if not callable(getattr(client,'delete_object',None)):
+        return False
+    try:
+        client.delete_object(Bucket=bucket,Key=STAGED_POINTER)
+        return True
+    except Exception as error:
+        if _status_code(error)==404:
+            return False
+        code=((getattr(error,'response',None) or {}).get('Error') or {}).get('Code')
+        if code in {'404','NoSuchKey','NotFound'}:
+            return False
+        raise
+
+
+def _validate_http_url(url,*,allow_loopback_http=True):
+    parsed=urlsplit(url)
+    loopback=parsed.hostname in {'localhost','127.0.0.1','::1'}
+    if (parsed.scheme not in ('https','http')
+            or (parsed.scheme=='http' and not (allow_loopback_http and loopback))
+            or not parsed.hostname or parsed.username is not None or parsed.password is not None
+            or parsed.query or parsed.fragment):
+        raise ValueError(f'Invalid SpicyEngine URL: {url!r}')
+    return url
+
+
+def check_spicyengine_health(origin,*,expected_release_id,timeout=15.0,fetcher=None):
+    """Query `{origin}/v1/health` and check whether it serves `expected_release_id`."""
+    _sha(expected_release_id)
+    _validate_http_url(origin)
+    health_url=origin.rstrip('/')+'/v1/health'
+    if fetcher is not None:
+        payload=fetcher(health_url,timeout)
+    else:
+        req=Request(health_url,headers={'User-Agent':'congressional-tech-release-gate/1','Accept':'application/json'})
+        with urlopen(req,timeout=timeout) as response:
+            payload=json.load(response)
+    if not isinstance(payload,dict):
+        raise ValueError('SpicyEngine health response must be a JSON object')
+    observed=payload.get('release_id')
+    serenedb=payload.get('serenedb')
+    connected=True if not isinstance(serenedb,dict) else (serenedb.get('connected') is not False)
+    return (observed==expected_release_id and connected),observed,payload
+
+
+def trigger_spicyengine_sync(sync_url,*,release_id,token=None,timeout=30.0,opener=None):
+    """Notify an external SpicyEngine sync hook that `release_id` is staged."""
+    _sha(release_id)
+    _validate_http_url(sync_url)
+    headers={
+        'User-Agent':'congressional-tech-release-gate/1',
+        'Content-Type':'application/json',
+        'Accept':'application/json',
+    }
+    if token:
+        headers['Authorization']=f'Bearer {token}'
+    body=_encoded({'release_id':release_id})
+    req=Request(sync_url,data=body,headers=headers,method='POST')
+    if opener is not None:
+        return opener(req,timeout)
+    with urlopen(req,timeout=timeout) as response:
+        return response.status
+
+
+def wait_for_spicyengine_sync(origin,*,expected_release_id,trigger=None,timeout_seconds=1200.0,
+                              poll_interval=5.0,clock=None,sleep=None,fetcher=None):
+    """Ensure SpicyEngine serves `expected_release_id` before flipping the public pointer."""
+    _sha(expected_release_id)
+    if timeout_seconds<0 or poll_interval<0:
+        raise ValueError('SpicyEngine sync timeout and poll interval must be non-negative')
+    clock=clock or time.monotonic
+    sleep=sleep or time.sleep
+    deadline=clock()+timeout_seconds
+    last_observed=None
+    last_error=None
+    triggered=False
+    while True:
+        try:
+            matched,observed,payload=check_spicyengine_health(
+                origin,expected_release_id=expected_release_id,fetcher=fetcher)
+            last_observed=observed
+            last_error=None
+            if matched:
+                return payload
+        except Exception as error:
+            last_error=f'{type(error).__name__}: {error}'
+        if trigger is not None and not triggered:
+            triggered=True
+            trigger(expected_release_id)
+            continue
+        now=clock()
+        if now>=deadline:
+            raise RuntimeError(
+                f'SpicyEngine at {origin} did not serve release {expected_release_id} '
+                f'within {timeout_seconds}s (observed={last_observed!r}, error={last_error!r})'
+            )
+        sleep(min(poll_interval,max(0.0,deadline-now)))
+
+
 def write_status(client,*,bucket,status,comparison_acceptance=None):
     """Conditionally write the fixed no-store control object, without retry."""
     require_publication_client(client)
@@ -480,7 +624,8 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
                       input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None,asset_journal=None,
                       base_release=None,release_causes=None,link_history_dirs=(),first_release=False,automatic_captures=None,
-                      automatic_qualifications=(),automatic_unreadable=(),selected_pointer_reconciled=False,receipt_client=None):
+                      automatic_qualifications=(),automatic_unreadable=(),selected_pointer_reconciled=False,receipt_client=None,
+                      stage_only=False,pre_flip_sync=None):
     """Upload a pinned model candidate and use the existing reader gates and CAS.
 
     The caller owns actual model planning, completeness and early skip. This stage
@@ -619,14 +764,89 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
             status['durations']['upload']=perf_counter()-begin
             return canary(release_id=release_id,public_origin=public_origin.rstrip('/'),manifest=manifest)
         begin=perf_counter()
+        if stage_only:
+            canary_receipt=uploaded_canary()
+            validate_receipt(canary_receipt,release_id=release_id,name='canary',manifest_origin=manifest.get('origin'))
+            require_comparison(comparison_acceptance)
+            detail_entry=next((f for f in manifest['files'] if f['name']=='detail.parquet'),None)
+            write_staged_pointer(client,bucket=bucket,release_id=release_id,previous_release_id=live,detail_entry=detail_entry)
+            status['durations']['stage']=perf_counter()-begin
+            status.update(status='staged',live_release=live,live_release_basis='staged_before_flip')
+            return dict(status,staged=dict(
+                release_id=release_id,
+                previous_release_id=live,
+                expected_etag=expected_etag,
+                contract_receipt=contract_receipt,
+                canary_receipt=canary_receipt,
+                manifest=manifest,
+            ))
         transfer=gate_and_flip(client,bucket=bucket,release_id=release_id,previous_release_id=live,expected_etag=expected_etag,
-            contract=lambda:contract_receipt,canary=uploaded_canary,manifest_origin=manifest.get('origin'),comparison_acceptance=comparison_acceptance)
+            contract=lambda:contract_receipt,canary=uploaded_canary,manifest_origin=manifest.get('origin'),comparison_acceptance=comparison_acceptance,
+            before_flip=pre_flip_sync)
         if not isinstance(transfer.etag,str) or not transfer.etag.strip():
             status.update(live_release=None,live_release_basis='unacknowledged_pointer_write')
             raise ValueError('Publication requires an acknowledged pointer ETag')
+        clear_staged_pointer(client,bucket=bucket)
         status['durations']['gates_and_flip']=perf_counter()-begin
         status.update(status='published',live_release=release_id,live_release_basis=(
             'selected_pointer_reconciled' if transfer.reconciled else 'conditional_flip_acknowledged'))
+        return dict(status)
+    except BaseException as error:
+        failure=error;status['error_type']=type(error).__name__
+        raise
+    finally:
+        status['durations']['total']=perf_counter()-started
+        try:write_status(client,bucket=bucket,status=status,comparison_acceptance=comparison_acceptance)
+        except BaseException:
+            if failure is None:raise
+            failure.add_note('Archive status update also failed')
+
+
+def commit_staged_release(*,client,bucket,release_id,previous_release_id,expected_etag,
+                          contract_receipt,canary_receipt,manifest,pre_flip_sync=None,comparison_acceptance=None):
+    """Commit the conditional live pointer for a release already uploaded and canary-checked."""
+    require_publication_client(client)
+    require_comparison(comparison_acceptance)
+    _sha(release_id)
+    if previous_release_id is not None:
+        _sha(previous_release_id)
+    remote_raw,_=_read(client,bucket,PREFIX+release_id+'/manifest.json')
+    remote_manifest=json.loads(remote_raw)
+    if remote_manifest.get('release_id')!=release_id or release_identity(remote_manifest['schema_version'],remote_manifest['files'])!=release_id:
+        raise ValueError('Staged remote archive manifest differs from expected release_id')
+    status=dict(
+        status='failed',
+        release_id=release_id,
+        live_release=previous_release_id,
+        live_release_basis='staged_before_flip',
+        rows={item['name']:item['rows'] for item in manifest['files']},
+        bytes=sum(item['size'] for item in manifest['files']),
+        durations={},
+    )
+    started=perf_counter();failure=None
+    try:
+        transfer=gate_and_flip(
+            client,
+            bucket=bucket,
+            release_id=release_id,
+            previous_release_id=previous_release_id,
+            expected_etag=expected_etag,
+            contract=lambda:contract_receipt,
+            canary=lambda:canary_receipt,
+            manifest_origin=manifest.get('origin'),
+            comparison_acceptance=comparison_acceptance,
+            before_flip=pre_flip_sync,
+        )
+        if not isinstance(transfer.etag,str) or not transfer.etag.strip():
+            status.update(live_release=None,live_release_basis='unacknowledged_pointer_write')
+            raise ValueError('Publication requires an acknowledged pointer ETag')
+        clear_staged_pointer(client,bucket=bucket)
+        status.update(
+            status='published',
+            live_release=release_id,
+            live_release_basis='selected_pointer_reconciled' if transfer.reconciled else 'conditional_flip_acknowledged',
+            pointer_etag=transfer.etag,
+        )
         return dict(status)
     except BaseException as error:
         failure=error;status['error_type']=type(error).__name__

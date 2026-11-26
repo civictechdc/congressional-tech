@@ -1,5 +1,8 @@
 const RELEASE_ID = /^[0-9a-f]{64}$/;
 const HOLD_MS = 60_000;
+export const SPICYENGINE_MISMATCH = "SpicyEngine is not serving the archive release selected by Congress Explorer.";
+
+export type PointerResolver = (options?: { refresh?: boolean }) => Promise<string>;
 
 /**
  * Follow the archive's moving pointer to the immutable manifest it selects now.
@@ -7,17 +10,18 @@ const HOLD_MS = 60_000;
  * Containers never see the pointer: each is named after, and started with, one immutable
  * release manifest, so replicas of a release agree and a new release starts new containers.
  * Isolates re-read the pointer at most once a minute, so they can disagree for that long after
- * a flip. When the pointer cannot be read, the last release this isolate resolved keeps serving.
+ * a flip unless a release-mismatch response triggers an immediate refresh. When the pointer
+ * cannot be read, the last release this isolate resolved keeps serving.
  */
 export function followPointer(
   pointer: string,
   fetcher: (url: string) => Promise<Response> = (url) => fetch(url),
   clock: () => number = Date.now,
-): () => Promise<string> {
+): PointerResolver {
   let held: { publication: string; at: number } | undefined;
-  return async () => {
+  return async (options?: { refresh?: boolean }) => {
     const now = clock();
-    if (held && now - held.at < HOLD_MS) return held.publication;
+    if (!options?.refresh && held && now - held.at < HOLD_MS) return held.publication;
     try {
       const response = await fetcher(pointer);
       if (!response.ok) throw new Error(`Archive pointer answered ${response.status}`);
@@ -33,4 +37,26 @@ export function followPointer(
     }
     return held.publication;
   };
+}
+
+/**
+ * Forward an MCP request to the container for the cached release, refreshing the
+ * 60-second pointer cache once if SpicyEngine already moved to a newer release.
+ */
+export async function forwardWithReleaseSync(
+  request: Request,
+  resolvePublication: PointerResolver,
+  forwardToContainer: (request: Request, selected: string) => Promise<Response>,
+): Promise<Response> {
+  const selected = await resolvePublication();
+  const canRetryPost = request.method === "POST" && new URL(request.url).pathname === "/mcp";
+  const firstAttempt = canRetryPost ? request.clone() : request;
+  const response = await forwardToContainer(firstAttempt, selected);
+  if (!canRetryPost || response.status !== 200) return response;
+  const bodyText = await response.clone().text();
+  if (!bodyText.includes(SPICYENGINE_MISMATCH)) return response;
+  const refreshed = await resolvePublication({ refresh: true });
+  if (refreshed === selected) return response;
+  await response.body?.cancel();
+  return forwardToContainer(request, refreshed);
 }

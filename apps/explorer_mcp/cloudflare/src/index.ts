@@ -1,6 +1,6 @@
 import { Container, getContainer } from "@cloudflare/containers";
 import { handleRequest } from "./gateway.ts";
-import { followPointer } from "./publication.ts";
+import { followPointer, forwardWithReleaseSync, type PointerResolver } from "./publication.ts";
 
 // Set by this Worker on every forwarded request; a caller's own copy is overwritten.
 const PUBLICATION_HEADER = "X-Congress-Publication";
@@ -30,19 +30,20 @@ export class CongressExplorer extends Container<Env> {
   }
 }
 
-let publication: (() => Promise<string>) | undefined;
+let publication: PointerResolver | undefined;
 
 export default {
   async fetch(request, env): Promise<Response> {
     publication ??= followPointer(env.ARCHIVE_POINTER);
     return handleRequest(request, { MCP_RATE_LIMITER: env.MCP_RATE_LIMITER, publication }, async (boundedRequest) => {
-      const selected = await publication!();
-      // A release change must not reach a still-running replica of the old data.
-      const slot = crypto.getRandomValues(new Uint8Array(1))[0] % 2;
-      const container = getContainer(env.CONGRESS, `${selected}:${slot}`);
-      const pinned = new Request(boundedRequest);
-      pinned.headers.set(PUBLICATION_HEADER, selected);
-      return container.fetch(pinned);
+      return forwardWithReleaseSync(boundedRequest, publication!, async (attempt, selected) => {
+        // A release change must not reach a still-running replica of the old data.
+        const slot = crypto.getRandomValues(new Uint8Array(1))[0] % 2;
+        const container = getContainer(env.CONGRESS, `${selected}:${slot}`);
+        const pinned = new Request(attempt);
+        pinned.headers.set(PUBLICATION_HEADER, selected);
+        return container.fetch(pinned);
+      });
     });
   },
 } satisfies ExportedHandler<Env>;

@@ -217,7 +217,7 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
                 resume=False,release_causes=None,link_history=(),first_release=False,automatic_causes=False,
                 daily_summary_sha256=None,check_current_daily=None,receipt_client=None,engine_runtime=None,
                 unprofiled_inputs=None,
-                carried_html_metadata=0):
+                carried_html_metadata=0,stage_only=False,pre_flip_sync=None):
     """Prepare once, admit before a skip, otherwise export once and publish.
 
     SQL, graphs, grouping and file writing use the maintained native model.
@@ -477,7 +477,8 @@ def run_publish(model_spec,*,client,engine,bucket,work,receipt_keys,provenance,r
             automatic_qualifications=automatic_qualifications if automatic_causes else (),
             automatic_unreadable=automatic_unreadable if automatic_causes else (),receipt_client=receipt_client,
             contract=lambda **context:contract(**context,probe_selectors=probe_selectors),
-            canary=lambda **context:canary(**context,probe_selectors=probe_selectors))
+            canary=lambda **context:canary(**context,probe_selectors=probe_selectors),
+            stage_only=stage_only,pre_flip_sync=pre_flip_sync)
     except BaseException as error:
         failure=error;status['error_type']=type(error).__name__
         raise

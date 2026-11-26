@@ -1,8 +1,8 @@
 [Unit]
-Description=Check for a complete congressional search release every 15 minutes
+Description=Check for a staged or complete congressional search release every minute
 
 [Timer]
-OnCalendar=*:0/15
+OnCalendar=*:*:00
 Persistent=true
 
 [Install]
