@@ -21,7 +21,7 @@ from congress_shared.custody import write_atomic_bytes
 from viewer_publication.archive_format import release_identity
 
 ORIGIN = "https://congressional-data.spicygov.ai"
-RECIPE = "search-v2"
+RECIPE = "search-v3"
 STAGED_ARCHIVE_KEY = "viewer-publications/staged.json"
 STAGED_TEXT_KEY = "derived/body_text/staged.json"
 FIELDS = {
@@ -34,23 +34,122 @@ FIELDS = {
                "page_offsets": "Page offsets (UTF-8 bytes)", "saved_body_sha256": "Archived file SHA-256",
                "text_sha256": "Selected text SHA-256", "member_path": "File inside source archive"},
 }
-DOCUMENTS = """CREATE TEMPORARY TABLE documents AS
-WITH sources AS (
-    SELECT file_row_number - ordinal AS src_start,
-           max(url) FILTER (WHERE ordinal=0) AS publisher_url,
-           max(link_text) FILTER (WHERE ordinal=0) AS link_text,
-           max(member_path) FILTER (WHERE ordinal=0) AS member_path,
-           arg_min(listed_on, ordinal) FILTER (WHERE listed_on <> url AND
-               regexp_matches(listed_on, '^https?://', 'i')) AS listed_on,
-           arg_min(url, ordinal) FILTER (WHERE is_saved AND nullif(member_path,'') IS NULL AND
-               regexp_matches(url, '^https?://', 'i') AND
-               NOT regexp_matches(url, '[.](zip|gz)([?#].*)?$', 'i')) AS direct_file
-    FROM read_parquet(?, file_row_number=true) GROUP BY 1
+_MACHINE_LISTED_ON_RE = (
+    r"(?i)(?:^https?://api\."
+    r"|^https?://(?:www\.)?govinfo\.gov/metadata/pkg/[^/?#]+/mods\.xml(?:[?#].*)?$"
+    r"|/wp-json(?:/|[?#]|$))"
+)
+_CONGRESS_MEETING_API_RE = (
+    r"(?i)^https?://api\.congress\.gov/v3/committee-meeting/([0-9]+)/(house|senate)/([0-9]+)(?:/|[?#].*)?$"
+)
+_GOVINFO_METADATA_API_RE = (
+    r"(?i)^https?://(?:api\.govinfo\.gov/packages|www\.govinfo\.gov/metadata/pkg)/"
+    r"([^/?#]+)/(?:mods|mods\.xml|summary)(?:[?#].*)?$"
+)
+_CONGRESS_HEARING_API_RE = r"(?i)^https?://api\.congress\.gov/v3/hearing/"
+_NON_TITLE_TEXT_RE = (
+    r"(?i)(?:^(?:zip|pdf|html?|xml|docx?|txt|text|json|csv|xlsx?|pptx?|rtf|mp3|mp4)[.!:]*$"
+    r"|^(?:(?:please\s+)?click\s+here\b.*|here|link|document|file|download(?:\s+.*)?"
+    r"|(?:view|open)(?:\s+(?:witness\s+)?(?:testimony|statement|document|pdf|file|results|text)\b.*)?"
+    r"|read\s+more|more|email|print|share|website|webpage|untitled|attachment|hearings?"
+    r"|printable\s+(?:pdf|version)(?:\s+of\s+this\s+(?:document|page))?)[.!:]*$"
+    r"|^[\s\W\d_]*(?:(?:zip|pdf|html?|xml|docx?|txt|text|json|csv|xlsx?|pptx?|rtf|mp3|mp4"
+    r"|download|view|open|click|here|[kmg]i?b|bytes?)\b[\s\W\d_]*)+$"
+    r"|^(?:[^A-Za-z]*|(?:nos?|number)[.]?[^A-Za-z]*[0-9][^A-Za-z]*|_[0-9]+(?:\s*\([^)]*\)?[,;.!:]*)?)$"
+    r"|^(?:(?:H\.?\s?R\.?|S\.|H\.?\s?Res\.?|S\.?\s?Res\.?|H\.?\s?J\.?\s?Res\.?|S\.?\s?J\.?\s?Res\.?"
+    r"|H\.?\s?Con\.?\s?Res\.?|S\.?\s?Con\.?\s?Res\.?)\s*|S\s+)_+(?:\.[A-Za-z0-9]{2,5})?[,;.!:]*$"
+    r"|^(?:witness\s+(?:statement|testimony|biography)|(?:prepared|written)\s+statement"
+    r"|testimony|biography|truth\s+in\s+testimony(?:\s+form|\s+disclosure(?:\s+form)?)?)$"
+    r"|^\S+\.(?:pdf|docx?|xlsx?|pptx?|zip|xml|txt|csv|rtf|html?)$"
+    r"|^https?://)"
+)
+_CONGRESS_EVENT_URL_SQL = f"""'https://www.congress.gov/event/' ||
+    regexp_extract(listed_on, '{_CONGRESS_MEETING_API_RE}', 1) ||
+    CASE WHEN try_cast(regexp_extract(listed_on, '{_CONGRESS_MEETING_API_RE}', 1) AS INTEGER) % 100 IN (11, 12, 13) THEN 'th'
+         WHEN try_cast(regexp_extract(listed_on, '{_CONGRESS_MEETING_API_RE}', 1) AS INTEGER) % 10 = 1 THEN 'st'
+         WHEN try_cast(regexp_extract(listed_on, '{_CONGRESS_MEETING_API_RE}', 1) AS INTEGER) % 10 = 2 THEN 'nd'
+         WHEN try_cast(regexp_extract(listed_on, '{_CONGRESS_MEETING_API_RE}', 1) AS INTEGER) % 10 = 3 THEN 'rd'
+         ELSE 'th' END ||
+    '-congress/' || lower(regexp_extract(listed_on, '{_CONGRESS_MEETING_API_RE}', 2)) ||
+    '-event/' || regexp_extract(listed_on, '{_CONGRESS_MEETING_API_RE}', 3)"""
+MEETING_REF_TITLES = f"""CREATE TEMPORARY TABLE meeting_ref_titles AS
+WITH refs AS (
+    SELECT unnest(document_references) AS r FROM read_parquet(?)
+),
+cleaned AS (
+    SELECT r.url, r.ordinal,
+           nullif(trim(regexp_replace(
+               coalesce(nullif(trim(r.name), ''), nullif(trim(r.description), '')),
+               '\\s+', ' ', 'g'
+           )), '') AS raw_title
+    FROM refs
+    WHERE r.url IS NOT NULL
+)
+SELECT url,
+       arg_min(raw_title, ordinal) FILTER (
+           WHERE raw_title IS NOT NULL
+             AND length(raw_title) >= 4
+             AND NOT regexp_matches(raw_title, '{_NON_TITLE_TEXT_RE}')
+       ) AS ref_title
+FROM cleaned
+GROUP BY url
+HAVING ref_title IS NOT NULL
+"""
+EMPTY_MEETING_REF_TITLES = (
+    "CREATE TEMPORARY TABLE meeting_ref_titles (url VARCHAR, ref_title VARCHAR)"
+)
+DOCUMENTS = f"""CREATE TEMPORARY TABLE documents AS
+WITH raw_sources AS (
+    SELECT file_row_number - ordinal AS src_start, ordinal, url, member_path, is_saved, listed_on, link_text,
+           nullif(trim(regexp_replace(link_text, '\\s+', ' ', 'g')), '') AS clean_link_text,
+           CASE
+               WHEN listed_on IS NULL OR listed_on = url OR NOT regexp_matches(listed_on, '^https?://', 'i') THEN NULL
+               WHEN NOT regexp_matches(listed_on, '{_MACHINE_LISTED_ON_RE}') THEN listed_on
+           END AS human_listed_on,
+           CASE
+               WHEN listed_on IS NULL OR listed_on = url OR NOT regexp_matches(listed_on, '^https?://', 'i') THEN NULL
+               WHEN regexp_matches(listed_on, '{_CONGRESS_MEETING_API_RE}') THEN {_CONGRESS_EVENT_URL_SQL}
+               WHEN regexp_matches(listed_on, '{_GOVINFO_METADATA_API_RE}')
+                    THEN 'https://www.govinfo.gov/app/details/' || regexp_extract(listed_on, '{_GOVINFO_METADATA_API_RE}', 1)
+           END AS mapped_listed_on,
+           regexp_matches(coalesce(listed_on, ''), '{_CONGRESS_HEARING_API_RE}') AS has_hearing_api_listed_on
+    FROM read_parquet(?, file_row_number=true)
+),
+sources AS (
+    SELECT s.src_start,
+           max(s.url) FILTER (WHERE s.ordinal=0) AS publisher_url,
+           max(s.link_text) FILTER (WHERE s.ordinal=0) AS link_text,
+           arg_min(s.clean_link_text, s.ordinal) FILTER (
+               WHERE s.clean_link_text IS NOT NULL
+                 AND length(s.clean_link_text) >= 4
+                 AND NOT regexp_matches(s.clean_link_text, '{_NON_TITLE_TEXT_RE}')
+           ) AS usable_link_text,
+           max(s.member_path) FILTER (WHERE s.ordinal=0) AS member_path,
+           arg_min(s.human_listed_on, s.ordinal) FILTER (WHERE s.human_listed_on IS NOT NULL) AS human_listed_on,
+           arg_min(s.mapped_listed_on, s.ordinal) FILTER (
+               WHERE s.mapped_listed_on IS NOT NULL AND s.mapped_listed_on <> s.url
+           ) AS mapped_listed_on,
+           bool_or(s.has_hearing_api_listed_on) AS has_hearing_api_listed_on,
+           arg_min(m.ref_title, s.ordinal) FILTER (WHERE m.ref_title IS NOT NULL) AS meeting_ref_title,
+           arg_min(s.url, s.ordinal) FILTER (WHERE s.is_saved AND nullif(s.member_path,'') IS NULL AND
+               regexp_matches(s.url, '^https?://', 'i') AND
+               NOT regexp_matches(s.url, '[.](zip|gz)([?#].*)?$', 'i')) AS direct_file
+    FROM raw_sources s
+    LEFT JOIN meeting_ref_titles m ON m.url = s.url
+    GROUP BY s.src_start
 )
 SELECT d.link_key, d.saved_body, d.saved_suffix, d.title AS archive_title, d.filename, d.package_id,
            substr(coalesce(lower(hex(d.saved_body)), lower(hex(d.link_key))), 1, 2) AS shard,
            d.format, d.document_date, d.document_date_status, d.congress, d.chambers, d.committee_keys,
-           d.document_kind, d.document_family, s.publisher_url, s.link_text, s.member_path, s.listed_on,
+           d.document_kind, d.document_family, s.publisher_url, s.link_text, s.usable_link_text,
+           s.meeting_ref_title, s.member_path,
+           coalesce(
+               CASE WHEN s.human_listed_on IS DISTINCT FROM s.publisher_url THEN s.human_listed_on END,
+               CASE WHEN s.mapped_listed_on IS DISTINCT FROM s.publisher_url THEN s.mapped_listed_on END,
+               CASE WHEN s.has_hearing_api_listed_on AND nullif(d.package_id, '') IS NOT NULL
+                    AND ('https://www.govinfo.gov/app/details/' || d.package_id) IS DISTINCT FROM s.publisher_url
+                    THEN 'https://www.govinfo.gov/app/details/' || d.package_id END
+           ) AS listed_on,
            CASE WHEN d.format='pdf' THEN coalesce(s.direct_file,
                 CASE WHEN d.saved_suffix IN ('', '.pdf') THEN ? || '/bodies/sha256/' ||
                     left(lower(hex(d.saved_body)),2) || '/' || lower(hex(d.saved_body)) || d.saved_suffix END)
@@ -58,10 +157,12 @@ SELECT d.link_key, d.saved_body, d.saved_suffix, d.title AS archive_title, d.fil
     FROM read_parquet(?) AS d
     LEFT JOIN sources s ON s.src_start = CASE WHEN d.src_len > 0 THEN d.src_start END
     WHERE d.hidden IS NOT TRUE
+      AND coalesce(d.format, '') <> 'zip'
 """
 PARTITION = """SELECT 'archive-documents'::VARCHAR AS source_id, lower(hex(d.link_key)) AS member_key,
-       coalesce(nullif(d.archive_title, ''), nullif(d.filename, ''), nullif(d.link_text, ''),
-                nullif(d.package_id, ''), lower(hex(d.link_key))) AS title,
+       coalesce(nullif(d.archive_title, ''), nullif(d.meeting_ref_title, ''), nullif(d.usable_link_text, ''),
+                nullif(d.filename, ''), nullif(d.link_text, ''), nullif(d.package_id, ''),
+                lower(hex(d.link_key))) AS title,
        b.text AS body,
        coalesce(d.publisher_url, 'https://congressional-data.spicygov.ai/bodies/sha256/' ||
                 left(lower(hex(d.saved_body)), 2) || '/' || lower(hex(d.saved_body)) || d.saved_suffix) AS source_url,
@@ -207,13 +308,14 @@ def source_files(origin, work, pin, local):
     if text["detail"] != {k: entries["detail.parquet"][k] for k in ("sha256", "size")}:
         raise ValueError("Text export and archive detail pins disagree")
     names = ["detail.parquet", "sources.parquet"]
-    if "committees.parquet" in entries:
-        names.append("committees.parquet")
+    for optional in ("committees.parquet", "meetings.parquet"):
+        if optional in entries:
+            names.append(optional)
     inputs = {name: (f"{prefix}/{name}", entries[name]["sha256"], entries[name]["size"]) for name in names}
     inputs["body_text.parquet"] = (text["key"], text["sha256"], text["bytes"])
     def locate(name):
-        if name == "committees.parquet" and name not in inputs:
-            return None  # Older archive releases can omit the committee directory.
+        if name in ("committees.parquet", "meetings.parquet") and name not in inputs:
+            return None  # Older archive releases can omit optional directory or meeting tables.
         key, digest, size = inputs[name]
         target = work / "downloads" / name
         existing = local / name if local else None
@@ -231,12 +333,21 @@ def source_files(origin, work, pin, local):
     return locate
 
 
+def load_documents(db, locate, *, include_meetings=True):
+    meetings = locate("meetings.parquet") if include_meetings else None
+    if meetings is not None:
+        db.execute(MEETING_REF_TITLES, [meetings])
+    else:
+        db.execute(EMPTY_MEETING_REF_TITLES)
+    db.execute(DOCUMENTS, [locate("sources.parquet"), ORIGIN, locate("detail.parquet")])
+
+
 def prepare_documents(work, locate):
     body = None
     output = work / "prepared"
     output.mkdir(exist_ok=True)
     with closing(duckdb.connect(config={"threads": 1, "preserve_insertion_order": False})) as db:
-        db.execute(DOCUMENTS, [locate("sources.parquet"), ORIGIN, locate("detail.parquet")])
+        load_documents(db, locate, include_meetings=True)
         counts = dict(db.execute("SELECT shard, count(*) FROM documents GROUP BY shard").fetchall())
         total = sum(counts.values())
         if total != db.execute("SELECT count(DISTINCT link_key) FROM documents").fetchone()[0]:
@@ -365,7 +476,7 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
                 locate = source_files(origin, work, pin, local)
                 temporary = links.with_suffix(".partial")
                 with closing(duckdb.connect(config={"threads": 1})) as db:
-                    db.execute(DOCUMENTS, [locate("sources.parquet"), ORIGIN, locate("detail.parquet")])
+                    load_documents(db, locate, include_meetings=False)
                     db.sql("""SELECT 'archive-documents:' || lower(hex(link_key)) AS id, listed_on, pdf_url
                               FROM documents WHERE listed_on IS NOT NULL OR pdf_url IS NOT NULL
                               ORDER BY id""").write_parquet(str(temporary), compression="zstd", row_group_size=2048)
@@ -374,7 +485,7 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
                 temporary.replace(links)
             definition.update(fields=FIELDS, source_links=str(links))
         # Once preparation commits, only the search partitions are needed locally.
-        for name in ("body_text.parquet", "detail.parquet", "sources.parquet", "committees.parquet"):
+        for name in ("body_text.parquet", "detail.parquet", "sources.parquet", "committees.parquet", "meetings.parquet"):
             (work / "downloads" / name).unlink(missing_ok=True)
         manifest = work / "dataset.json"
         if not manifest.exists() or json.loads(manifest.read_text()) != definition:

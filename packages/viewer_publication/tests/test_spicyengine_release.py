@@ -196,3 +196,190 @@ def test_staged_resolution_prefers_active_staged_and_rejects_mismatch(tmp_path):
         "release_id": "c" * 64, "sha256": sha_new, "key": f"derived/body_text/{sha_new}.parquet",
     }))
     assert release.resolve(origin, prefer_staged=True)["release_id"] == "c" * 64
+
+
+def test_listed_on_normalization_zip_exclusion_and_title_fallbacks(tmp_path):
+    archive = tmp_path / "origin" / "viewer-publications"
+    stage = archive / "releases" / "staging"
+    stage.mkdir(parents=True)
+    text_dir = tmp_path / "origin" / "derived" / "body_text"
+    text_dir.mkdir(parents=True)
+    body_key = bytes.fromhex("cd" * 32)
+    base = dict(saved_body=body_key, hidden=False, saved_suffix=".gz", title=None, filename="doc.pdf",
+                package_id=None, format="pdf", document_date=date(2026, 11, 20), document_date_status="accepted",
+                congress=115, chambers=["house"], committee_keys=["hshm00"], document_kind=["committee-transcript"],
+                document_family=["transcript"])
+
+    sources_rows = []
+    docs = []
+
+    def add_doc(key, doc_overrides, src_rows):
+        start = len(sources_rows)
+        for ordinal, row in enumerate(src_rows):
+            sources_rows.append(dict(ordinal=ordinal, member_path=None, is_saved=True, link_text="", listed_on=None) | row)
+        docs.append(base | {"link_key": key, "src_start": start, "src_len": len(src_rows)} | doc_overrides)
+
+    # 1. Card #9: api.congress.gov committee-meeting JSON URL -> deterministic human event URL
+    add_doc(b"card0009", {"filename": "HHRG-115-HM11-Transcript-20180109.pdf"}, [
+        dict(url="https://www.congress.gov/115/meeting/house/106754/documents/HHRG-115-HM11-Transcript-20180109.pdf",
+             listed_on="https://api.congress.gov/v3/committee-meeting/115/house/106754?format=json"),
+    ])
+    # 2. English ordinal suffixes for congress numbers (101st, 102nd, 103rd, 112th)
+    add_doc(b"ord101st", {"filename": "s101.pdf"}, [
+        dict(url="https://www.congress.gov/101/meeting/senate/99999/documents/s101.pdf",
+             listed_on="https://api.congress.gov/v3/committee-meeting/101/senate/99999?format=json"),
+    ])
+    add_doc(b"ord102nd", {"filename": "h102.pdf"}, [
+        dict(url="https://www.congress.gov/102/meeting/house/88888/documents/h102.pdf",
+             listed_on="https://api.congress.gov/v3/committee-meeting/102/house/88888"),
+    ])
+    add_doc(b"ord103rd", {"filename": "h103.pdf"}, [
+        dict(url="https://www.congress.gov/103/meeting/house/77777/documents/h103.pdf",
+             listed_on="https://api.congress.gov/v3/committee-meeting/103/house/77777?format=json"),
+    ])
+    add_doc(b"ord112th", {"filename": "h112.pdf"}, [
+        dict(url="https://www.congress.gov/112/meeting/house/100033/documents/h112.pdf",
+             listed_on="https://api.congress.gov/v3/committee-meeting/112/house/100033?format=json"),
+    ])
+    # 3. Card #19: ordinal=0 is api.govinfo.gov/packages/.../mods, ordinal=1 is human GovInfo details URL
+    add_doc(b"card0019", {"title": "EXAMINING TRADE ENFORCEMENT", "filename": "CHRG-118shrg64101.pdf",
+                          "package_id": "CHRG-118shrg64101", "congress": 118}, [
+        dict(url="https://www.govinfo.gov/content/pkg/CHRG-118shrg64101/pdf/CHRG-118shrg64101.pdf",
+             listed_on="https://api.govinfo.gov/packages/CHRG-118shrg64101/mods"),
+        dict(url="https://www.govinfo.gov/content/pkg/CHRG-118shrg64101.zip",
+             listed_on="https://www.govinfo.gov/app/details/CHRG-118shrg64101",
+             link_text="ZIP", member_path="CHRG-118shrg64101/html/CHRG-118shrg64101.htm"),
+    ])
+    # 4. Native higher-ordinal committee web page beats ordinal-0 api.congress.gov URL
+    add_doc(b"humanalt", {"filename": "stmt.pdf"}, [
+        dict(url="https://www.congress.gov/115/meeting/house/106754/documents/stmt.pdf",
+             listed_on="https://api.congress.gov/v3/committee-meeting/115/house/106754?format=json"),
+        dict(url="https://agriculture.house.gov/uploadedfiles/stmt.pdf",
+             listed_on="https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=2403", is_saved=False),
+    ])
+    # 5. GovInfo API mods and metadata mods.xml with no human sibling -> deterministic GovInfo details URL
+    add_doc(b"govimods", {"title": "Committee Report", "filename": "CRPT-108hrpt155.pdf", "package_id": "CRPT-108hrpt155"}, [
+        dict(url="https://www.govinfo.gov/content/pkg/CRPT-108hrpt155/pdf/CRPT-108hrpt155.pdf",
+             listed_on="https://api.govinfo.gov/packages/CRPT-108hrpt155/mods"),
+    ])
+    add_doc(b"modsxml0", {"title": "Senate Hearing", "filename": "CHRG-118shrg57030.pdf", "package_id": "CHRG-118shrg57030"}, [
+        dict(url="https://www.govinfo.gov/content/pkg/CHRG-118shrg57030/pdf/CHRG-118shrg57030.pdf",
+             listed_on="https://www.govinfo.gov/metadata/pkg/CHRG-118shrg57030/mods.xml"),
+    ])
+    # 6. Congress.gov hearing API: maps via package_id when present, suppressed when package_id is NULL
+    add_doc(b"hrgapipk", {"title": "House Hearing", "filename": "CHRG-114hhrg20543.pdf", "package_id": "CHRG-114hhrg20543"}, [
+        dict(url="https://congress.gov/114/chrg/CHRG-114hhrg20543/CHRG-114hhrg20543.pdf",
+             listed_on="https://api.congress.gov/v3/hearing/114/house/20543?format=json"),
+    ])
+    add_doc(b"hrgapino", {"filename": "CHRG-117hhrg44535-add10.htm", "format": "html"}, [
+        dict(url="https://www.congress.gov/117/chrg/CHRG-117hhrg44535-add10/generated/CHRG-117hhrg44535-add10.htm",
+             listed_on="https://api.congress.gov/v3/hearing/117/house/10?format=json"),
+    ])
+    # 7. Unmappable machine URLs (nochamber, /wp-json/, self-linking summary API) -> suppressed to None
+    add_doc(b"nochambr", {"filename": "HHRG-114-HM09-20151117-SD001.pdf"}, [
+        dict(url="https://www.congress.gov/114/meeting/house/104064/documents/HHRG-114-HM09-20151117-SD001.pdf",
+             listed_on="https://api.congress.gov/v3/committee-meeting/114/nochamber/104064?format=json"),
+    ])
+    add_doc(b"wpjson00", {"filename": "commerce-testimony.pdf"}, [
+        dict(url="https://www.commerce.senate.gov/services/files/testimony.pdf",
+             listed_on="https://www.commerce.senate.gov/wp-json/wp/v2/meeting/43032"),
+    ])
+    add_doc(b"selflink", {"title": "Details Page", "filename": "CHRG-118shrg64101.htm", "package_id": "CHRG-118shrg64101"}, [
+        dict(url="https://www.govinfo.gov/app/details/CHRG-118shrg64101",
+             listed_on="https://api.govinfo.gov/packages/CHRG-118shrg64101/summary"),
+    ])
+    # 8. Orphaned raw .zip container (CHRG-106hhrg69534.zip) excluded while titled sibling PDF & extracted zip member stay
+    add_doc(b"ziporphn", {"format": "zip", "filename": "CHRG-106hhrg69534.zip", "congress": 106, "saved_body": None}, [
+        dict(url="https://www.govinfo.gov/content/pkg/CHRG-106hhrg69534.zip",
+             listed_on="https://www.govinfo.gov/app/details/CHRG-106hhrg69534", link_text="ZIP"),
+    ])
+    add_doc(b"zipsib00", {"title": "GAO ASSESSMENT OF HAITI", "filename": "CHRG-106hhrg69534.pdf",
+                          "package_id": "CHRG-106hhrg69534", "congress": 106}, [
+        dict(url="https://www.govinfo.gov/content/pkg/CHRG-106hhrg69534/pdf/CHRG-106hhrg69534.pdf"),
+    ])
+    add_doc(b"zipmembr", {"title": "IMPROVING SECURITY", "filename": "CHRG-107hhrg82954.pdf",
+                          "package_id": "CHRG-107hhrg82954", "congress": 107}, [
+        dict(url="https://www.govinfo.gov/content/pkg/CHRG-107hhrg82954.zip",
+             listed_on="https://www.govinfo.gov/app/details/CHRG-107hhrg82954",
+             link_text="ZIP", member_path="CHRG-107hhrg82954/pdf/CHRG-107hhrg82954.pdf"),
+    ])
+    # 9. Untitled title fallback priority: meeting_ref_title > usable link_text > filename (generic link words skipped)
+    add_doc(b"mreftitl", {"filename": "HHRG-113-AP19-20130418-SD001.pdf"}, [
+        dict(url="https://docs.house.gov/meetings/AP/AP19/20130418/100700/HHRG-113-AP19-20130418-SD001.pdf",
+             link_text="Download Testimony"),
+    ])
+    add_doc(b"goodltxt", {"filename": "01-15-25_hearing_memo.pdf"}, [
+        dict(url="https://committee.house.gov/files/01-15-25_hearing_memo.pdf",
+             link_text="Rural Broadband Oversight Memorandum"),
+    ])
+    add_doc(b"badltxt0", {"filename": "01-15-25_rcs_opening_statement.pdf"}, [
+        dict(url="https://committee.house.gov/files/01-15-25_rcs_opening_statement.pdf",
+             link_text="please click here"),
+    ])
+    add_doc(b"lbltxt00", {"filename": "041415_HoltzEakin_Testimony.pdf"}, [
+        dict(url="https://committee.house.gov/files/041415_HoltzEakin_Testimony.pdf",
+             link_text="Witness Testimony"),
+    ])
+    add_doc(b"archwins", {"title": "Authoritative Archive Title", "filename": "override.pdf"}, [
+        dict(url="https://docs.house.gov/meetings/AP/AP19/20130418/100700/HHRG-113-AP19-20130418-SD001.pdf",
+             link_text="Secondary Link Text"),
+    ])
+
+    pq.write_table(pa.Table.from_pylist(docs), stage / "detail.parquet")
+    pq.write_table(pa.Table.from_pylist(sources_rows), stage / "sources.parquet")
+    pq.write_table(pa.Table.from_pylist([
+        dict(event_id=100700, document_references=[
+            dict(ordinal=0, url="https://docs.house.gov/meetings/AP/AP19/20130418/100700/HHRG-113-AP19-20130418-SD001.pdf",
+                 name="  Opening Statement of Chairman Hal Rogers  ", description=None),
+            dict(ordinal=1, url="https://committee.house.gov/files/041415_HoltzEakin_Testimony.pdf",
+                 name="Witness Testimony", description=None),
+        ]),
+    ]), stage / "meetings.parquet")
+
+    files = []
+    for f in sorted(stage.glob("*.parquet")):
+        raw = f.read_bytes()
+        files.append(dict(name=f.name, sha256=sha256(raw).hexdigest(), size=len(raw), rows=pq.read_metadata(f).num_rows))
+    release_id = release_identity(1, files)
+    (stage / "manifest.json").write_text(json.dumps(dict(schema_version=1, files=files, release_id=release_id)))
+    stage.rename(stage.with_name(release_id))
+    (archive / "manifest.json").write_text(json.dumps({"release_id": release_id}))
+
+    body = text_dir / "body.parquet"
+    pq.write_table(pa.Table.from_pylist([dict(saved_body=body_key, text="evidence", page_offsets=[0], text_sha256=b"Y" * 32)]), body)
+    digest = sha256(body.read_bytes()).hexdigest()
+    detail_entry = next(f for f in files if f["name"] == "detail.parquet")
+    pointer = dict(release_id=release_id, sha256=digest, bytes=body.stat().st_size,
+                   key=f"derived/body_text/{digest}.parquet", detail={k: detail_entry[k] for k in ("sha256", "size")})
+    body.rename(text_dir / f"{digest}.parquet")
+    (text_dir / "current.json").write_text(json.dumps(pointer))
+
+    work = release.update(tmp_path / "local", origin=(tmp_path / "origin").as_uri())
+    assert work.parent.parent.name == "search-v3"
+    rows = {r["member_key"]: r for r in pq.read_table(work / "prepared").to_pylist()}
+
+    assert b"ziporphn".hex() not in rows
+    assert b"zipsib00".hex() in rows and rows[b"zipsib00".hex()]["title"] == "GAO ASSESSMENT OF HAITI"
+    assert b"zipmembr".hex() in rows and rows[b"zipmembr".hex()]["title"] == "IMPROVING SECURITY"
+
+    assert rows[b"card0009".hex()]["listed_on"] == "https://www.congress.gov/event/115th-congress/house-event/106754"
+    assert rows[b"ord101st".hex()]["listed_on"] == "https://www.congress.gov/event/101st-congress/senate-event/99999"
+    assert rows[b"ord102nd".hex()]["listed_on"] == "https://www.congress.gov/event/102nd-congress/house-event/88888"
+    assert rows[b"ord103rd".hex()]["listed_on"] == "https://www.congress.gov/event/103rd-congress/house-event/77777"
+    assert rows[b"ord112th".hex()]["listed_on"] == "https://www.congress.gov/event/112th-congress/house-event/100033"
+    assert rows[b"card0019".hex()]["listed_on"] == "https://www.govinfo.gov/app/details/CHRG-118shrg64101"
+    assert rows[b"humanalt".hex()]["listed_on"] == "https://agriculture.house.gov/calendar/eventsingle.aspx?EventID=2403"
+    assert rows[b"govimods".hex()]["listed_on"] == "https://www.govinfo.gov/app/details/CRPT-108hrpt155"
+    assert rows[b"modsxml0".hex()]["listed_on"] == "https://www.govinfo.gov/app/details/CHRG-118shrg57030"
+    assert rows[b"hrgapipk".hex()]["listed_on"] == "https://www.govinfo.gov/app/details/CHRG-114hhrg20543"
+    assert rows[b"hrgapino".hex()]["listed_on"] is None
+    assert rows[b"nochambr".hex()]["listed_on"] is None
+    assert rows[b"wpjson00".hex()]["listed_on"] is None
+    assert rows[b"selflink".hex()]["listed_on"] is None
+
+    assert rows[b"mreftitl".hex()]["title"] == "Opening Statement of Chairman Hal Rogers"
+    assert rows[b"goodltxt".hex()]["title"] == "Rural Broadband Oversight Memorandum"
+    assert rows[b"badltxt0".hex()]["title"] == "01-15-25_rcs_opening_statement.pdf"
+    assert rows[b"lbltxt00".hex()]["title"] == "041415_HoltzEakin_Testimony.pdf"
+    assert rows[b"archwins".hex()]["title"] == "Authoritative Archive Title"
+    assert not list((work / "downloads").glob("*.parquet"))
