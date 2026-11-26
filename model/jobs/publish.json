@@ -2,13 +2,13 @@
   "version": 1,
   "model_spec": {
     "path": "publish-model.json",
-    "sha256": "3cc2f87dd64e0c741071ac976c249bc2de8f67de8689714df0d959c1fdf4af6f",
-    "size": 6692
+    "sha256": "71fb194596877b9815c7dad2bccb95182d8a670dc2dcd7617dd794bf63e387a7",
+    "size": 6820
   },
   "daily": {
     "path": "publish-daily.json",
-    "sha256": "6af6c38675d317087edbdc40c3b2f7adadbcd7ec6f9d8fcba1772d8acfe86750",
-    "size": 3981
+    "sha256": "9813caae6392f52ad0753e372a836aaf283586417ecd69004919fb06361f060e",
+    "size": 4976
   },
   "bucket": "congressional-tech-raw",
   "work": "../../output/archive-publish",

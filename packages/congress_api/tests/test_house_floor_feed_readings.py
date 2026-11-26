@@ -95,7 +95,7 @@ def test_corroborated_link_repair_keeps_literal_and_reason():
 def test_new_feed_reader_preserves_existing_daily_baseline_and_requires_explicit_run():
     from congress_api.lake.daily import derived_parsers, derived_scopes
     spec = json.loads((ROOT / 'model/jobs/publish-daily.json').read_text())
-    assert set(derived_scopes(spec)) == {'html_metadata', 'gpo_mods'}
+    assert set(derived_scopes(spec)) == {'html_metadata', 'gpo_mods', 'wikidata_reconcile'}
     with pytest.raises(ValueError, match='supported daily parsers'):
         derived_parsers(dict(spec, derived_parsers=['house_floor_feed']))
 

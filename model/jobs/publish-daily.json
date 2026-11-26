@@ -92,7 +92,8 @@
   },
   "derived_parsers": [
     "html_metadata",
-    "gpo_mods"
+    "gpo_mods",
+    "wikidata_reconcile"
   ],
   "derived_scopes": {
     "html_metadata": {
@@ -121,6 +122,23 @@
       },
       "versions": {
         "gpo_mods": "ac383d286e4213e9c8d3e4b90f4c056120db2448309f341c728b7689f0745c07",
+        "html": "61d7904883f042f48d3732d0518adaa5cf5084790ebc9d5411aad7a6ab605969",
+        "json": "f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93",
+        "readings": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed",
+        "sniff": "01bf09000fce8229a468583c23f869fc639c56e3e87a1ca447dd66c5f99bff6b",
+        "xml": "c9d955b28b401a3fe56386a4a221b3f2147baa0f1da503c7c6a224f4808d085f"
+      },
+      "max_stored_bytes": 67108864
+    },
+    "wikidata_reconcile": {
+      "captures": {
+        "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures_df55_20261113/metadata/00022-01a2165d-6853-74a0-9b03-b46bcc4b55f1.gz.metadata.json",
+        "schema_id": 0,
+        "snapshot": 17380364443906228,
+        "table_uuid": "01a1d311-21a3-7110-8a99-a7632a7b93c9"
+      },
+      "versions": {
+        "wikidata_reconcile": "817a4f79b7e35cabf59a96d291d5e53683c0dd3baf58f47e60dd78f5c8293e03",
         "html": "61d7904883f042f48d3732d0518adaa5cf5084790ebc9d5411aad7a6ab605969",
         "json": "f8d98b4305d8b85bdb6323b91ca56c9c01e0ffd3234ed89d9d90afadc37cae93",
         "readings": "7b006df14ea065d7bab8c15a319c9201c57d4547c174d722651a33107dbd73ed",

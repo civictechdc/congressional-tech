@@ -89,7 +89,8 @@
     "transcript_headings": {
       "gpo_html": "1f2ecd58a4b4d538d1e0d16a6c143dcdb477999bc911e08db3ca64497df83725"
     },
-    "gpo_mods": "ac383d286e4213e9c8d3e4b90f4c056120db2448309f341c728b7689f0745c07"
+    "gpo_mods": "ac383d286e4213e9c8d3e4b90f4c056120db2448309f341c728b7689f0745c07",
+    "wikidata_reconcile": "817a4f79b7e35cabf59a96d291d5e53683c0dd3baf58f47e60dd78f5c8293e03"
   },
   "catalog_version": "6a435cb66adfd42ed40151b8565f1118b3dbd07f4d905023489c6a9223b9ec44",
   "output": "../../output/archive-release",
@@ -104,6 +105,7 @@
   ],
   "org_decision_files": [],
   "publish_org_entities": true,
+  "include_wikidata_links": true,
   "playlist_records": {
     "kind": "native_table",
     "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/playlist_records_mvp_20261105/metadata/00002-01a1c1f7-63d2-71b0-b04b-19a890cb6d87.gz.metadata.json",
