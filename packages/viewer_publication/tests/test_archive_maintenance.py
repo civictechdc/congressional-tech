@@ -827,3 +827,90 @@ def test_backfill_qualify_wikidata_reconcile_validation_and_plan(tmp_path):
     planned = archive_backfill_job.plan(loaded)
     assert planned['qualify_wikidata_reconcile'] is True
 
+
+def test_execute_qualify_wikidata_reconcile_ingests_receipts_before_qualifying(tmp_path, monkeypatch):
+    """_execute_qualify_html_metadata(..., parser='wikidata_reconcile') ingests wikidata/reconcile receipts first."""
+    from archive_job_fixture import constructed_runtime
+    from congress_api.lake import daily, readings, tables as lake_tables
+    from congress_api.lake.daily import ALL_TABLE_NAMES
+    from congress_api.retention import provenance_inventory
+    from viewer_publication import archive_backfill_job, archive_model_profile, producer_proof
+
+    calls = []
+    anchor = tmp_path / 'anchor.json'
+    anchor.write_text('{}')
+    pin = dict(path=str(anchor), sha256=hashlib.sha256(b'{}').hexdigest(), size=2)
+    stub_runtime = str(constructed_runtime(tmp_path / 'stub-engine'))
+    spec = dict(
+        version=1,
+        bucket='archive-fixture',
+        catalog_root=None,
+        work=str(tmp_path / 'backfill-work'),
+        tables={name: {'namespace': ['congress'], 'name': name} for name in ALL_TABLE_NAMES},
+        batch_size=5000,
+        max_batches=20,
+        engine_config=stub_runtime,
+        producers={'captures': pin, 'readings': pin},
+        qualify_wikidata_reconcile=True,
+    )
+    spec_path = tmp_path / 'backfill.json'
+    spec_path.write_text(json.dumps(spec))
+
+    class OkRuntime:
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            pass
+        def verify_runtime(self):
+            return dict(verified=True)
+
+    client = RecordingS3(fixture()[0])
+    head_pin = dict(metadata_location='s3://archive-fixture/head.metadata.json', schema_id=0, snapshot=9, table_uuid='u')
+
+    monkeypatch.setattr(provenance_inventory, 'provenance_inventory',
+                        lambda *_a, **_k: SimpleNamespace(metadata=lambda: [], qualify=lambda _keys: []))
+    monkeypatch.setattr(provenance_inventory, 'unreadable_inventory',
+                        lambda *_a, **_k: SimpleNamespace(files=lambda: []))
+
+    def fake_produce_daily(daily_spec, *, engine, raw_store, producer_records):
+        calls.append(('produce_daily', daily_spec['receipt_families'], daily_spec['max_work_items']))
+        assert daily_spec['receipt_families'] == ['wikidata/reconcile']
+        assert daily_spec['max_work_items'] == 100000
+        return dict(status='completed', discovered_receipts=1, new_receipt_keys=['receipts/wikidata/reconcile/2026-11-25/r.jsonl.gz'])
+
+    monkeypatch.setattr(daily, 'produce_daily', fake_produce_daily)
+    monkeypatch.setattr(daily, 'verify_target_schemas', lambda *a, **k: None)
+    monkeypatch.setattr(lake_tables, 'resolve_tables', lambda **k: {name: head_pin for name in k['tables']})
+
+    empty_wl = tmp_path / 'empty-wl.parquet'
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+    pq.write_table(pa.table({'body_sha': pa.array([], type=pa.binary(32))}), empty_wl)
+
+    def fake_plan(**k):
+        calls.append(('readings_plan', k['parser']))
+        return dict(work_items=0, work_list=str(empty_wl))
+
+    monkeypatch.setattr(readings, 'plan', fake_plan)
+    monkeypatch.setattr(archive_model_profile, 'current_parser_versions', lambda parsers: {p: 'v1' for p in parsers})
+    monkeypatch.setattr(producer_proof, 'find_records', lambda *a, **k: {})
+    monkeypatch.setattr(producer_proof, 'require_producers', lambda *a, **k: {'readings__parser_version_null': 0})
+
+    report = archive_backfill_job.execute(
+        archive_backfill_job.load_spec(spec_path),
+        runtime_factory=lambda _: OkRuntime(),
+        storage_factory=lambda **_: client,
+    )
+    assert report['status'] == 'executed'
+    assert report['qualify_wikidata_reconcile'] is True
+    assert report['ingest_receipts'] == dict(
+        status='completed',
+        discovered_receipts=1,
+        new_receipt_keys=['receipts/wikidata/reconcile/2026-11-25/r.jsonl.gz'],
+    )
+    assert calls == [
+        ('produce_daily', ['wikidata/reconcile'], 100000),
+        ('readings_plan', 'wikidata_reconcile'),
+        ('readings_plan', 'wikidata_reconcile'),
+    ]
+

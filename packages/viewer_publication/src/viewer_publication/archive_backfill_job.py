@@ -369,7 +369,7 @@ def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factor
     from congress_api.lake.producer_records import ProducerRecords
     from congress_api.retention.body_store import BodyStore, R2Adapter
     from congress_api.retention.provenance import file_pin
-    from congress_api.retention.provenance_inventory import unreadable_inventory
+    from congress_api.retention.provenance_inventory import provenance_inventory, unreadable_inventory
     from congress_api.retention.r2 import configure_read_retries
     from congress_shared.storage import connect_r2
     from docspec_client.client import NativeDatasets, choose_runtime, runtime_record
@@ -384,6 +384,7 @@ def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factor
     engine_config, choice = choose_runtime(spec.get('engine_config'), job_fallback=True)
     if not isinstance(engine_config, str) or not engine_config.strip():
         raise ValueError('Backfill execution requires an explicit engine_config or DOCSPEC_RUNTIME_CONFIG')
+    work.mkdir(parents=True, exist_ok=False)
     runtime_factory = runtime_factory or NativeDatasets.from_config
     from viewer_publication.client import idle_evicting
     storage_factory = idle_evicting(storage_factory or connect_r2)
@@ -403,6 +404,36 @@ def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factor
             anchors[name] = Path(pin['path']).read_bytes()
             identity.require(pin['path'])
         ledger = ProducerRecords(anchors, client=write_client, bucket=spec['bucket'])
+        ingest_report = None
+        if parser == 'wikidata_reconcile':
+            ingest_prov = provenance_inventory(raw_store, work=work / 'ingest-provenance')
+            decision_kinds = ('recoveries', 'reviews', 'unreadable')
+            ingest_records = ingest_prov.qualify(
+                row['key'] for row in ingest_prov.metadata()
+                if provenance_record_kind(row['key']) in decision_kinds
+            )
+            ingest_provenance = {
+                kind: [row for row in ingest_records if provenance_record_kind(row['key']) == kind]
+                for kind in decision_kinds
+            }
+            ingest_daily_spec = dict(
+                work=str(work / 'ingest-daily'),
+                decided_at=decided_at,
+                catalog_root=spec['catalog_root'],
+                tables=spec['tables'],
+                receipt_inventory=[],
+                receipt_families=['wikidata/reconcile'],
+                max_work_items=spec.get('max_work_items', spec['batch_size'] * spec['max_batches']),
+                provenance=ingest_provenance,
+            )
+            ingest_out = daily.produce_daily(ingest_daily_spec, engine=engine, raw_store=raw_store, producer_records=ledger)
+            if ingest_out.get('status') != 'completed':
+                raise ValueError('wikidata/reconcile receipt ingest did not complete: ' + str(ingest_out.get('status')))
+            ingest_report = dict(
+                status=ingest_out['status'],
+                discovered_receipts=ingest_out.get('discovered_receipts', 0),
+                new_receipt_keys=list(ingest_out.get('new_receipt_keys') or []),
+            )
         unreadable_snapshot = unreadable_inventory(raw_store, work=work / 'unreadable-inventory')
         tables_spec = {'captures': spec['tables']['captures'], 'readings': spec['tables']['readings']}
         heads = lake_tables.resolve_tables(
@@ -499,6 +530,8 @@ def _execute_qualify_html_metadata(spec, *, runtime_factory=None, storage_factor
         gate5_report=gate5_report,
         engine_runtime=ran,
     )
+    if ingest_report is not None:
+        report['ingest_receipts'] = ingest_report
     (work / 'backfill-report.json').write_text(_dumps(report) + '\n', encoding='utf-8')
     return report
 
