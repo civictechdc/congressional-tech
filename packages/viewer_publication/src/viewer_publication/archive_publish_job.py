@@ -521,7 +521,8 @@ def require_end_to_end(runner=None):
         raise ValueError('Publication requires the end-to-end gate (DOCSPEC_JOB_CONFIG local-only)') from error
 
 
-def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None,end_to_end_runner=None):
+def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None,end_to_end_runner=None,
+            stage_only=False,pre_flip_sync=None):
     """Refuse local problems, qualify a remote runtime, then connect the SDK."""
     spec['_model_identity'].require(spec['model_spec']['path'])
     acceptance=None
@@ -689,11 +690,176 @@ def execute(spec,*,runtime_factory=None,storage_factory=None,process_runner=None
                     measured_release_id=measured_release_id,comparison_acceptance=acceptance,resume=resume,
                     release_causes=causes,link_history=spec.get('link_history',[]),
                     first_release=spec.get('first_release',False),automatic_causes=spec.get('automatic_causes',False),
-                    carried_html_metadata=carried_html_metadata,**options)
+                    carried_html_metadata=carried_html_metadata,stage_only=stage_only,pre_flip_sync=pre_flip_sync,**options)
             result=(publish_kept_candidate(publish,work=spec['work'],model=selected_model,engine=engine)
                     if spec.get('_keep_candidate') else publish(spec.get('resume',False)))
             spec['_model_identity'].require(spec['model_spec']['path']);require_configuration()
             return dict(result,daily=daily['daily']) if daily is not None else result
+
+
+def _staged_publication_path(spec):
+    return Path(spec['work']) / 'staged-publication.json'
+
+
+def commit_staged(
+    spec,
+    *,
+    storage_factory=None,
+    spicyengine_origin=None,
+    spicyengine_sync_url=None,
+    spicyengine_sync_token=None,
+    spicyengine_timeout=1200.0,
+    skip_body_text_check=False,
+    health_fetcher=None,
+    sync_trigger=None,
+    clock=None,
+    sleep=None,
+):
+    """Verify staged body_text + SpicyEngine sync and commit the live manifest/body_text pointers."""
+    from congress_api.retention.r2 import configure_read_retries
+    from congress_shared.storage import connect_r2
+    from viewer_publication import body_text_export, body_text_publish
+    from viewer_publication.archive_publish import (
+        commit_staged_release,
+        trigger_spicyengine_sync,
+        wait_for_spicyengine_sync,
+    )
+    from viewer_publication.client import idle_evicting
+
+    staged_path = _staged_publication_path(spec)
+    if not staged_path.is_file() or staged_path.is_symlink():
+        raise ValueError(f'Missing staged publication state: {staged_path}')
+    staged = json.loads(staged_path.read_text())
+    if not isinstance(staged, dict) or staged.get('bucket') != spec['bucket']:
+        raise ValueError('Staged publication state differs from publish spec bucket')
+
+    acceptance = None
+    if 'comparison_acceptance' in spec:
+        selected = spec['comparison_acceptance']
+        acceptance = ComparisonAcceptance(
+            selected['receipt'],
+            expected_mapping_digest=selected['mapping_digest'],
+            capture_pin={k: v for k, v in spec['_model']['captures'].items() if k != 'kind'},
+        )
+        require_comparison(acceptance, captures=spec['_model']['captures'])
+
+    endpoint = None
+    engine_config = spec['_model'].get('engine_config') or os.environ.get('DOCSPEC_RUNTIME_CONFIG')
+    if engine_config and Path(engine_config).is_file():
+        _, _, endpoint, _ = publication_configuration(engine_config, bucket=spec['bucket'])
+
+    factory = idle_evicting(storage_factory or connect_r2)
+    client_kwargs = dict(bucket=spec['bucket'], retries={'total_max_attempts': 1})
+    if endpoint is not None:
+        client_kwargs['endpoint_url'] = endpoint
+    client = configure_read_retries(factory(**client_kwargs))
+
+    status = staged.get('status')
+    release_id = staged.get('release_id')
+    trigger = sync_trigger
+    if trigger is None and spicyengine_sync_url:
+        trigger = lambda rid: trigger_spicyengine_sync(
+            spicyengine_sync_url, release_id=rid, token=spicyengine_sync_token
+        )
+
+    if status == 'staged':
+        manifest = staged['manifest']
+        detail_entry = next((f for f in manifest['files'] if f['name'] == 'detail.parquet'), None)
+        definition = body_text_export.load_definition()
+
+        def ensure_synced():
+            if not skip_body_text_check:
+                staged_bt, _ = body_text_publish._read_optional_pointer(
+                    client, bucket=spec['bucket'], key=body_text_publish.STAGED_POINTER_KEY
+                )
+                target_bt_key = (
+                    body_text_publish.STAGED_POINTER_KEY
+                    if staged_bt is not None
+                    else definition['pointer']
+                )
+                body_text_publish.verify_body_text_pointer(
+                    client,
+                    bucket=spec['bucket'],
+                    release_id=release_id,
+                    detail_entry=detail_entry,
+                    pointer_key=target_bt_key,
+                    definition=definition,
+                )
+            if spicyengine_origin:
+                wait_for_spicyengine_sync(
+                    spicyengine_origin,
+                    expected_release_id=release_id,
+                    trigger=trigger,
+                    timeout_seconds=spicyengine_timeout,
+                    fetcher=health_fetcher,
+                    clock=clock,
+                    sleep=sleep,
+                )
+
+        committed = commit_staged_release(
+            client=client,
+            bucket=spec['bucket'],
+            release_id=release_id,
+            previous_release_id=staged.get('previous_release_id'),
+            expected_etag=staged.get('expected_etag'),
+            contract_receipt=staged['contract_receipt'],
+            canary_receipt=staged['canary_receipt'],
+            manifest=manifest,
+            pre_flip_sync=ensure_synced,
+            comparison_acceptance=acceptance,
+        )
+        promoted = None
+        if not skip_body_text_check:
+            promoted = body_text_publish.promote_staged_body_text(
+                client,
+                bucket=spec['bucket'],
+                release_id=release_id,
+                detail_entry=detail_entry,
+                definition=definition,
+            )
+        return dict(committed, body_text=promoted)
+
+    if status in ('input_unchanged', 'release_unchanged'):
+        if not skip_body_text_check:
+            staged_bt, _ = body_text_publish._read_optional_pointer(
+                client, bucket=spec['bucket'], key=body_text_publish.STAGED_POINTER_KEY
+            )
+            if isinstance(staged_bt, dict) and staged_bt.get('release_id') == release_id:
+                definition = body_text_export.load_definition()
+                release_raw = client.get_object(
+                    Bucket=spec['bucket'], Key=f'viewer-publications/releases/{release_id}/manifest.json'
+                )['Body'].read()
+                release_manifest = json.loads(release_raw)
+                detail_entry = next((f for f in release_manifest['files'] if f['name'] == 'detail.parquet'), None)
+                body_text_publish.verify_body_text_pointer(
+                    client,
+                    bucket=spec['bucket'],
+                    release_id=release_id,
+                    detail_entry=detail_entry,
+                    pointer_key=body_text_publish.STAGED_POINTER_KEY,
+                    definition=definition,
+                )
+                if spicyengine_origin:
+                    wait_for_spicyengine_sync(
+                        spicyengine_origin,
+                        expected_release_id=release_id,
+                        trigger=trigger,
+                        timeout_seconds=spicyengine_timeout,
+                        fetcher=health_fetcher,
+                        clock=clock,
+                        sleep=sleep,
+                    )
+                promoted = body_text_publish.promote_staged_body_text(
+                    client,
+                    bucket=spec['bucket'],
+                    release_id=release_id,
+                    detail_entry=detail_entry,
+                    definition=definition,
+                )
+                return dict(status='body_text_promoted', release_id=release_id, body_text=promoted)
+        return dict(status=status, release_id=release_id)
+
+    raise ValueError(f'Unknown staged publication status: {status!r}')
 
 
 def main(argv=None):
@@ -701,19 +867,28 @@ def main(argv=None):
     parser.add_argument('--spec',type=Path,required=True)
     mode=parser.add_mutually_exclusive_group();mode.add_argument('--plan',action='store_true');mode.add_argument('--execute',action='store_true')
     mode.add_argument('--check-binding', action='store_true', help='Plan with the cause evidence available in this Git checkout')
+    mode.add_argument('--commit-staged', action='store_true', help='Verify body_text/SpicyEngine sync and commit a staged release')
     parser.add_argument('--nightly-work',type=Path,help='Use the scheduled Mac candidate directory')
     parser.add_argument('--keep-candidate',action='store_true',
         help='Resume a candidate an earlier hosted run left in the work directories when it is this run\'s; otherwise delete it and build fresh')
+    parser.add_argument('--stage-only',action='store_true',help='Upload and canary the release without flipping the live manifest pointer')
+    parser.add_argument('--spicyengine-origin',default=os.environ.get('SPICYENGINE_ORIGIN'))
+    parser.add_argument('--spicyengine-sync-url',default=os.environ.get('SPICYENGINE_SYNC_URL'))
+    parser.add_argument('--spicyengine-sync-timeout',type=float,default=float(os.environ.get('SPICYENGINE_SYNC_TIMEOUT', '1200')))
+    parser.add_argument('--skip-body-text-check',action='store_true')
     args=parser.parse_args(argv)
     if args.nightly_work is not None and not args.execute:
         parser.error('--nightly-work requires --execute')
     if args.keep_candidate and (not args.execute or args.nightly_work is not None):
         parser.error('--keep-candidate requires --execute without --nightly-work')
+    if args.stage_only and not args.execute:
+        parser.error('--stage-only requires --execute')
+    stage_only = args.stage_only or (args.execute and os.environ.get('ARCHIVE_STAGE_ONLY') == 'true')
     from viewer_publication.archive_controller import PublicationInputsChanged,_save_continuation
     try:
         spec=load_spec(args.spec)
         if spec.get('status')=='blocked':print(json.dumps(spec,sort_keys=True));return 2
-        if not args.execute and 'release_causes' in spec:
+        if not args.execute and not args.commit_staged and 'release_causes' in spec:
             from viewer_publication.release_gate import load_causes
             # The binding runner plans from the checkout root. Standalone plans and
             # publication with the original run artifacts still check every file.
@@ -725,9 +900,36 @@ def main(argv=None):
         if args.keep_candidate:
             if spec.get('resume'):raise ValueError('A declared resume and a kept candidate are separate paths')
             spec=dict(spec,_keep_candidate=True)
-        result=execute(spec) if args.execute else dict(status='planned',executed=False,
-            model_spec=spec['model_spec'],bucket=spec['bucket'],work=spec['work'],public_origin=spec['public_origin'],
-            targets=spec['targets'],site_dist=spec['site_dist'])
+        if args.commit_staged:
+            disabled = os.environ.get('SPICYENGINE_SYNC_DISABLED') == 'true'
+            origin = None if disabled else (args.spicyengine_origin or None)
+            sync_url = None if disabled else (args.spicyengine_sync_url or None)
+            result = commit_staged(
+                spec,
+                spicyengine_origin=origin,
+                spicyengine_sync_url=sync_url,
+                spicyengine_sync_token=os.environ.get('SPICYENGINE_SYNC_TOKEN') or None,
+                spicyengine_timeout=args.spicyengine_sync_timeout,
+                skip_body_text_check=args.skip_body_text_check,
+            )
+            print(json.dumps(result, sort_keys=True))
+            return 0
+        result = (
+            (execute(spec, stage_only=True) if stage_only else execute(spec))
+            if args.execute
+            else dict(status='planned', executed=False, model_spec=spec['model_spec'], bucket=spec['bucket'],
+                      work=spec['work'], public_origin=spec['public_origin'], targets=spec['targets'],
+                      site_dist=spec['site_dist'])
+        )
+        if args.execute and stage_only:
+            work_dir = Path(spec['work'])
+            work_dir.mkdir(parents=True, exist_ok=True)
+            if result.get('status') == 'staged':
+                staged_payload = dict(status='staged', bucket=spec['bucket'], **result['staged'])
+                _save_continuation(_staged_publication_path(spec), staged_payload)
+            elif result.get('status') in ('input_unchanged', 'release_unchanged'):
+                staged_payload = dict(status=result['status'], bucket=spec['bucket'], release_id=result['release_id'])
+                _save_continuation(_staged_publication_path(spec), staged_payload)
         if not args.execute and spec.get('_model',{}).get('text_index'):
             result['text_index']=spec['_model']['text_index']
         if not args.execute and 'daily' in spec:result['daily']=spec['daily']
@@ -740,6 +942,8 @@ def main(argv=None):
         parser.error('\n'.join([str(error),*getattr(error,'__notes__',())]))
     daily=result.get('daily') if args.execute else None
     stopped=isinstance(daily,dict) and daily.get('status')!='completed'
+    if stage_only and isinstance(result, dict) and 'staged' in result:
+        result = {k: v for k, v in result.items() if k != 'staged'}
     print(json.dumps(result,sort_keys=True));return 2 if stopped else 0
 
 

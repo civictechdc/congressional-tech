@@ -11,5 +11,5 @@ PYTHONPATH=/opt/spicyengine/congress-current
 set +a
 runuser -u spicyengine -g spicyengine -G docker -- /opt/spicyengine/congress-prepare/bin/python \
     -m viewer_publication.spicyengine_release --root /srv/spicyengine/input/releases \
-    --engine /opt/spicyengine/current/venv/bin/spicyengine --check-query "$SPICYENGINE_READY_QUERY" "$@"
+    --engine /opt/spicyengine/current/venv/bin/spicyengine --prefer-staged --check-query "$SPICYENGINE_READY_QUERY" "$@"
 systemctl start spicyengine.service

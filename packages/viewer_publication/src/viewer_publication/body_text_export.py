@@ -219,13 +219,15 @@ def export(*, engine, work, body_text, detail, readings_table=None, unreadable_f
     return pointer
 
 
-def publish(client, *, bucket, export_path, pointer, expected_pointer_etag, journal, pointer_key=None):
+def publish(client, *, bucket, export_path, pointer, expected_pointer_etag, journal, pointer_key=None, retire=True):
     """Upload the export create-only by bounded multipart, then move the pointer conditionally.
 
     The Parquet goes to its content-named key through ``archive_multipart.transfer`` (8 MiB
     parts, ``If-None-Match: *`` on completion); a key that already exists must already hold
     these bytes. The pointer is a compare-and-swap: ``If-Match`` its current ETag, or
-    ``If-None-Match: *`` when none exists. ``journal`` receives each upload stage.
+    ``If-None-Match: *`` when none exists. ``journal`` receives each upload stage. When
+    ``retire`` is false (staging ahead of the release pointer flip), older exports under
+    the prefix stay intact until promotion.
     """
     from viewer_publication import archive_multipart
     from viewer_publication.archive_publish import IMMUTABLE
@@ -246,7 +248,7 @@ def publish(client, *, bucket, export_path, pointer, expected_pointer_etag, jour
     pointer_key = pointer_key or definition['pointer']
     published = publish_manifest_pointer(client, bucket=bucket, pointer=pointer,
         key=pointer_key, expected_etag=expected_pointer_etag)
-    retired = retire_unnamed(client, bucket=bucket, prefix=definition['prefix'], pointer_key=pointer_key)
+    retired = retire_unnamed(client, bucket=bucket, prefix=definition['prefix'], pointer_key=pointer_key) if retire else []
     return dict(export=outcome, pointer=published, retired=retired)
 
 

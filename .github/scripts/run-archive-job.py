@@ -147,6 +147,10 @@ def main():
     parser.add_argument('--check-disk', action='store_true', help='Report disk admission without launching the owner')
     parser.add_argument('--keep-candidate', action='store_true',
                         help='Resume the publish candidate an earlier hosted run kept, when it is this run\'s (ct-31qi)')
+    parser.add_argument('--stage-only', action='store_true',
+                        help='Stage a candidate release without flipping the live manifest pointer')
+    parser.add_argument('--commit-staged', action='store_true',
+                        help='Verify staged body_text and SpicyEngine sync, then commit the live manifest pointer')
     args = parser.parse_args()
     if args.check_disk and args.check_binding:
         parser.error('--check-disk and --check-binding are separate checks')
@@ -154,6 +158,10 @@ def main():
         parser.error('--nightly-work requires a publish execution')
     if args.keep_candidate and (args.operation != 'publish' or args.check_binding or args.nightly_work is not None):
         parser.error('--keep-candidate requires a hosted publish execution')
+    if (args.stage_only or args.commit_staged) and (args.operation != 'publish' or args.check_binding or args.check_disk):
+        parser.error('--stage-only and --commit-staged require a publish execution')
+    if args.stage_only and args.commit_staged:
+        parser.error('--stage-only and --commit-staged are mutually exclusive')
     if args.github_output is not None and (not args.check_binding or args.operation != 'publish'):
         parser.error('--github-output requires publish --check-binding')
     binding = json.loads((ROOT / '.github/archive-jobs.json').read_text())[args.operation]
@@ -172,8 +180,14 @@ def main():
         return 2
     if args.check_binding:
         return check_publisher_plan(command, args.github_output) if args.operation == 'publish' else 0
+    if args.commit_staged:
+        raise_file_limit()
+        commit_cmd = [sys.executable, '-I', '-m', binding['module'], '--spec', str(spec), '--commit-staged']
+        return subprocess.run(commit_cmd, cwd=ROOT).returncode
     if args.nightly_work is not None:
         command.extend(['--nightly-work', str(args.nightly_work.resolve())])
+    if args.stage_only:
+        command.append('--stage-only')
     if args.keep_candidate:
         command.append('--keep-candidate')
     temp = os.environ.get('RUNNER_TEMP') or tempfile.gettempdir()

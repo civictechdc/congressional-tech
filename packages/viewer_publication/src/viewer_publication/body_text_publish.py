@@ -19,6 +19,7 @@ from hashlib import sha256
 import json
 import os
 from pathlib import Path
+import re
 import time
 
 from congress_api.lake import body_text, body_text_selection
@@ -38,6 +39,9 @@ DEFAULT_LIMITS_DOC = ROOT / 'model/jobs/inputs/body-text-selection-v14/LIMITS.md
 DEFAULT_DAILY_SPEC = ROOT / 'model/jobs/publish-daily.json'
 DEFAULT_PUBLISH_SPEC = ROOT / 'model/jobs/publish.json'
 RELEASE_POINTER_KEY = 'viewer-publications/manifest.json'
+STAGED_RELEASE_POINTER_KEY = 'viewer-publications/staged.json'
+STAGED_POINTER_KEY = 'derived/body_text/staged.json'
+_HEX64 = re.compile('[0-9a-f]{64}')
 BODY_TEXT_TABLES = {
     'body_text': {'namespace': ['archive_r1b'], 'name': 'body_text'},
     'readings': {'namespace': ['archive_r1b'], 'name': 'body_text_readings'},
@@ -99,8 +103,10 @@ def _read_optional_pointer(client, *, bucket: str, key: str):
     try:
         return _get_json(client, bucket=bucket, key=key)
     except Exception as error:
-        code = ((getattr(error, 'response', None) or {}).get('Error') or {}).get('Code')
-        if code in {'404', 'NoSuchKey', 'NotFound'}:
+        resp = getattr(error, 'response', None) or {}
+        code = (resp.get('Error') or {}).get('Code')
+        status = (resp.get('ResponseMetadata') or {}).get('HTTPStatusCode')
+        if code in {'404', 'NoSuchKey', 'NotFound'} or status == 404:
             return None, None
         raise
 
@@ -129,6 +135,95 @@ def _ensure_detail_parquet(client, *, bucket: str, release_id: str, detail_entry
         target.unlink(missing_ok=True)
         raise ValueError(f'Downloaded {key} failed byte/SHA-256 verification')
     return target
+
+
+def _validate_release_id(release_id: str) -> str:
+    if not isinstance(release_id, str) or _HEX64.fullmatch(release_id) is None:
+        raise ValueError(f'Expected 64-char hex release_id, got {release_id!r}')
+    return release_id
+
+
+def resolve_target_release(client, *, bucket: str, release_id: str | None = None,
+                           prefer_staged: bool = False) -> str:
+    """Select the target release_id from an explicit pin, staged pointer, or live manifest."""
+    if release_id is not None:
+        return _validate_release_id(release_id)
+    if prefer_staged:
+        staged_pointer, _ = _read_optional_pointer(client, bucket=bucket, key=STAGED_RELEASE_POINTER_KEY)
+        if isinstance(staged_pointer, dict) and isinstance(staged_pointer.get('release_id'), str):
+            return _validate_release_id(staged_pointer['release_id'])
+    live_pointer, _ = _get_json(client, bucket=bucket, key=RELEASE_POINTER_KEY)
+    return _validate_release_id(live_pointer['release_id'])
+
+
+def verify_body_text_pointer(client, *, bucket: str, release_id: str, detail_entry: dict | None = None,
+                             pointer_key: str | None = None, definition: dict | None = None) -> tuple[dict, str | None]:
+    """Verify a body_text pointer exists, matches `release_id`/`detail`, and backs its Parquet."""
+    _validate_release_id(release_id)
+    definition = body_text_export.load_definition() if definition is None else definition
+    target_key = pointer_key or definition['pointer']
+    pointer, etag = _read_optional_pointer(client, bucket=bucket, key=target_key)
+    if not isinstance(pointer, dict):
+        raise ValueError(f'Missing body_text pointer at {target_key} for release {release_id}')
+    if pointer.get('release_id') != release_id:
+        raise ValueError(
+            f'Body-text pointer {target_key} names release {pointer.get("release_id")!r}, expected {release_id}'
+        )
+    if detail_entry is not None:
+        expected_detail = {'sha256': detail_entry['sha256'], 'size': detail_entry['size']}
+        if pointer.get('detail') != expected_detail:
+            raise ValueError(f'Body-text pointer {target_key} detail pin disagrees with release {release_id}')
+    digest = pointer.get('sha256')
+    key = pointer.get('key')
+    expected_bytes = pointer.get('bytes')
+    if (not isinstance(digest, str) or _HEX64.fullmatch(digest) is None
+            or key != definition['prefix'] + digest + '.parquet'
+            or type(expected_bytes) is not int or expected_bytes < 0):
+        raise ValueError(f'Invalid body_text pointer metadata in {target_key}')
+    head = client.head_object(Bucket=bucket, Key=key)
+    if head.get('ContentLength') != expected_bytes:
+        raise ValueError(f'Body-text export {key} size differs from pointer {target_key}')
+    return pointer, etag
+
+
+def promote_staged_body_text(client, *, bucket: str, release_id: str, detail_entry: dict | None = None,
+                             definition: dict | None = None, staged_key: str = STAGED_POINTER_KEY) -> dict:
+    """Promote `derived/body_text/staged.json` to `current.json` and retire superseded exports."""
+    from viewer_publication.client import publish_manifest_pointer
+
+    _validate_release_id(release_id)
+    definition = body_text_export.load_definition() if definition is None else definition
+    live_key = definition['pointer']
+    current_pointer, expected_etag = _read_optional_pointer(client, bucket=bucket, key=live_key)
+    staged_pointer, _ = _read_optional_pointer(client, bucket=bucket, key=staged_key)
+    if staged_pointer is None:
+        live_pointer, _ = verify_body_text_pointer(
+            client, bucket=bucket, release_id=release_id, detail_entry=detail_entry,
+            pointer_key=live_key, definition=definition,
+        )
+        return dict(status='already_current', release_id=release_id, pointer=live_pointer)
+    staged_pointer, _ = verify_body_text_pointer(
+        client, bucket=bucket, release_id=release_id, detail_entry=detail_entry,
+        pointer_key=staged_key, definition=definition,
+    )
+    if current_pointer == staged_pointer:
+        if callable(getattr(client, 'delete_object', None)):
+            try:
+                client.delete_object(Bucket=bucket, Key=staged_key)
+            except Exception:
+                pass
+        return dict(status='already_current', release_id=release_id, pointer=current_pointer)
+    published = publish_manifest_pointer(
+        client, bucket=bucket, pointer=staged_pointer, key=live_key, expected_etag=expected_etag,
+    )
+    retired = body_text_export.retire_unnamed(client, bucket=bucket, prefix=definition['prefix'], pointer_key=live_key)
+    if callable(getattr(client, 'delete_object', None)):
+        try:
+            client.delete_object(Bucket=bucket, Key=staged_key)
+        except Exception:
+            pass
+    return dict(status='promoted', release_id=release_id, pointer=staged_pointer,
+                pointer_etag=published.etag, retired=retired)
 
 
 def _export_is_current(client, *, bucket: str, current_pointer: dict | None, release_id: str,
@@ -162,6 +257,9 @@ def sync_and_publish(
     publish_spec_path: Path = DEFAULT_PUBLISH_SPEC,
     body_text_tables: dict = BODY_TEXT_TABLES,
     release_dir: Path | None = None,
+    release_id: str | None = None,
+    prefer_staged: bool = False,
+    stage_only: bool = False,
     parser_workers: int = 3,
     max_batches: int | None = None,
     keep_export: bool = False,
@@ -273,8 +371,9 @@ def sync_and_publish(
         )
         unreadable_files = unreadable_inventory(raw_store, work=work / 'unreadable-final').files()
 
-        live_pointer, _ = _get_json(read_client, bucket=bucket, key=RELEASE_POINTER_KEY)
-        release_id = live_pointer['release_id']
+        release_id = resolve_target_release(
+            read_client, bucket=bucket, release_id=release_id, prefer_staged=prefer_staged,
+        )
         release_manifest, _ = _get_json(
             read_client,
             bucket=bucket,
@@ -282,8 +381,9 @@ def sync_and_publish(
         )
         detail_entry = next(f for f in release_manifest['files'] if f['name'] == 'detail.parquet')
 
+        target_pointer_key = STAGED_POINTER_KEY if stage_only else definition['pointer']
         current_bt_pointer, expected_etag = _read_optional_pointer(
-            write_client, bucket=bucket, key=definition['pointer']
+            write_client, bucket=bucket, key=target_pointer_key
         )
         if _export_is_current(
             read_client,
@@ -299,6 +399,7 @@ def sync_and_publish(
                 status='already_current',
                 release_id=release_id,
                 pointer=current_bt_pointer,
+                pointer_key=target_pointer_key,
                 producer=dict(
                     work_items=producer_report['work_items'],
                     applied=producer_report['applied'],
@@ -307,6 +408,40 @@ def sync_and_publish(
             )
             durable_json(work / 'summary.json', summary)
             return summary
+
+        if stage_only:
+            live_bt_pointer, _ = _read_optional_pointer(
+                read_client, bucket=bucket, key=definition['pointer']
+            )
+            if _export_is_current(
+                read_client,
+                bucket=bucket,
+                current_pointer=live_bt_pointer,
+                release_id=release_id,
+                detail_pin=detail_entry,
+                body_text_pin=post_heads['body_text'],
+                selection_sha256=selection_sha256,
+                incremental_versions=inc_versions,
+            ):
+                from viewer_publication.client import publish_manifest_pointer
+                staged_transfer = publish_manifest_pointer(
+                    write_client, bucket=bucket, pointer=live_bt_pointer,
+                    key=STAGED_POINTER_KEY, expected_etag=expected_etag,
+                )
+                summary = dict(
+                    status='staged',
+                    release_id=release_id,
+                    pointer=live_bt_pointer,
+                    pointer_key=STAGED_POINTER_KEY,
+                    published=dict(export='already_exists', pointer_etag=staged_transfer.etag, retired=[]),
+                    producer=dict(
+                        work_items=producer_report['work_items'],
+                        applied=producer_report['applied'],
+                        batches=len(producer_report['batches']),
+                    ),
+                )
+                durable_json(work / 'summary.json', summary)
+                return summary
 
         detail_path = _ensure_detail_parquet(
             read_client,
@@ -339,14 +474,17 @@ def sync_and_publish(
             pointer=pointer,
             expected_pointer_etag=expected_etag,
             journal=lambda stage: durable_json(export_work / 'upload-journal.json', stage),
+            pointer_key=target_pointer_key,
+            retire=not stage_only,
         )
         if not keep_export:
             (export_work / 'export.parquet').unlink(missing_ok=True)
 
         summary = dict(
-            status='published',
+            status='staged' if stage_only else 'published',
             release_id=release_id,
             pointer=pointer,
+            pointer_key=target_pointer_key,
             published=dict(
                 export=published['export'],
                 pointer_etag=published['pointer'].etag,
@@ -365,17 +503,33 @@ def sync_and_publish(
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--work', required=True, type=Path)
+    parser.add_argument('--work', type=Path)
     parser.add_argument('--engine-config', default=os.environ.get('DOCSPEC_RUNTIME_CONFIG'))
     parser.add_argument('--selection', type=Path, default=DEFAULT_SELECTION)
     parser.add_argument('--daily-spec', type=Path, default=DEFAULT_DAILY_SPEC)
     parser.add_argument('--publish-spec', type=Path, default=DEFAULT_PUBLISH_SPEC)
     parser.add_argument('--release-dir', type=Path)
+    parser.add_argument('--release-id')
+    parser.add_argument('--prefer-staged', action='store_true')
+    parser.add_argument('--stage-only', action='store_true')
+    parser.add_argument('--promote-release', help='Promote derived/body_text/staged.json to current.json for this release_id')
     parser.add_argument('--parser-workers', type=int, default=3)
     parser.add_argument('--max-batches', type=int)
     parser.add_argument('--keep-export', action='store_true')
     parser.add_argument('--decided-at')
     args = parser.parse_args(argv)
+    if args.promote_release:
+        from congress_shared.storage import connect_r2
+        from congress_api.retention.r2 import configure_read_retries
+        definition = body_text_export.load_definition()
+        bucket = definition['bucket']
+        client = configure_read_retries(connect_r2(bucket=bucket, connect_timeout=15, read_timeout=180,
+                                                   retries={'total_max_attempts': 1}))
+        result = promote_staged_body_text(client, bucket=bucket, release_id=args.promote_release, definition=definition)
+        print(json.dumps(result, default=str, sort_keys=True))
+        return 0
+    if not args.work:
+        parser.error('--work is required unless --promote-release is specified')
     if not args.engine_config:
         parser.error('An explicit remote DocSpec runtime (--engine-config or DOCSPEC_RUNTIME_CONFIG) is required')
     result = sync_and_publish(
@@ -385,6 +539,9 @@ def main(argv=None) -> int:
         daily_spec_path=args.daily_spec,
         publish_spec_path=args.publish_spec,
         release_dir=args.release_dir,
+        release_id=args.release_id,
+        prefer_staged=args.prefer_staged,
+        stage_only=args.stage_only,
         parser_workers=args.parser_workers,
         max_batches=args.max_batches,
         keep_export=args.keep_export,

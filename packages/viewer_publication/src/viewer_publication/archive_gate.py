@@ -21,7 +21,7 @@ def validate_receipt(receipt, *, release_id, name, manifest_origin=None):
         raise ValueError(f'Archive {name} requires measured-target qualification')
 
 
-def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_etag, canary, contract,manifest_origin=None,comparison_acceptance=None):
+def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_etag, canary, contract,manifest_origin=None,comparison_acceptance=None,before_flip=None):
     """Callbacks run the shipped reader checks; any refusal prevents the flip.
 
     The caller pins the outgoing pointer and its ETag before preparation. Reusing
@@ -41,6 +41,8 @@ def gate_and_flip(client, *, bucket, release_id, previous_release_id, expected_e
         validate_receipt(check(), release_id=release_id, name=name,manifest_origin=manifest_origin)
         require_comparison(comparison_acceptance)
     require_comparison(comparison_acceptance)
+    if before_flip is not None:
+        before_flip()
     # This is the selection boundary, after candidate checks and immutable uploads.
     # A model-build timestamp would describe preparation, not publication.
     pointer={'release_id': release_id, 'previous_release_id': previous_release_id,

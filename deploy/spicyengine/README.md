@@ -18,9 +18,12 @@ the host to reproduce the selection after an upstream pointer change.
 
 After the first successful publication, enable regular updates with
 `sudo systemctl enable --now spicyengine-update.timer`. The timer checks every
-15 minutes using the same publisher and release lock. If the archive and text
-pointers disagree, the current index stays online and the next run retries.
-Inspect the latest attempt with `journalctl -u spicyengine-update.service`.
+minute with `--prefer-staged` using the same publisher and release lock, so it
+prepares and indexes a staged candidate release ahead of the live
+`viewer-publications/manifest.json` flip (and falls back to the live pointers
+otherwise). If the archive and text pointers disagree, the current index stays
+online and the next run retries. Inspect the latest attempt with
+`journalctl -u spicyengine-update.service`.
 Stop the timer before deliberately holding the host on an earlier pin.
 An exact release match is required for Congress Explorer’s hosted search tools.
 
