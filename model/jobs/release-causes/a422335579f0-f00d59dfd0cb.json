@@ -1,0 +1,792 @@
+{
+ "version": 1,
+ "base_release_id": "a422335579f0df176199c406f7f5b56e7d7278e61faaea4069baee1c530e8228",
+ "candidate_release_id": "f00d59dfd0cb94a41d1f45043a6d8b117186df028bf2ff686b0bb179ea708fec",
+ "notes": {
+  "identifiers": [
+   {
+    "statement": "PR #251 (`ct-aory`, RefSpec 1.4+), PR #252, PR #254, and PR #256 (`ct-39u8`, `include_wikidata_links=true` over 5,188 captured and qualified `wikidata/reconcile` batches) go live together: `organizations.parquet` 52,433 -> 50,409 (-11,154 retired `bag:` orgs, +9,130 anchored orgs), `organization_ids.parquet` 59,433 -> 68,563, `organization_redirects.parquet` 0 -> 11,154 1-hop redirects, `witness_organizations.parquet` 154,841 -> 154,841 (44,707 `org_id`s updated to RefSpec/Wikidata anchors), alongside 2,227 daily capture receipts.",
+    "decision": "ct-39u8"
+   }
+  ]
+ },
+ "corrections": [],
+ "groups": [
+  {
+   "id": "detail.parquet|added rows|no surviving link key",
+   "count": 185,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title|value differs on matched key",
+   "count": 176,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "detail.parquet|changed title_source|value differs on matched key",
+   "count": 176,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "links.parquet|added keys|no evidence given",
+   "count": 185,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|added rows|no surviving link key",
+   "count": 185,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "list.parquet|changed title|value differs on matched key",
+   "count": 176,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+   "count": 22,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-zdj8",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+   "count": 24,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-zdj8",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+   "count": 26,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-zdj8",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+   "count": 25,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-zdj8",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "meetings.parquet|changed publisher_status_observations|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "organization_ids.parquet|removed keys|no evidence given",
+   "count": -11158,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "organization_ids.parquet|added keys|no evidence given",
+   "count": 20288,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "organization_ids.parquet|changed evidence|value differs on matched key",
+   "count": 22,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "organization_redirects.parquet|added keys|no evidence given",
+   "count": 11154,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "organizations.parquet|removed keys|no evidence given",
+   "count": -11154,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "organizations.parquet|added keys|no evidence given",
+   "count": 9130,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "organizations.parquet|changed appearance_count|value differs on matched key",
+   "count": 27,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "organizations.parquet|changed bag_keys|value differs on matched key",
+   "count": 27,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "organizations.parquet|changed string_keys|value differs on matched key",
+   "count": 27,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|added keys|no evidence given",
+   "count": 28,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-zdj8",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed note|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-zdj8",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+   "count": 20,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-zdj8",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "recording_matches.parquet|changed status|value differs on matched key",
+   "count": 1,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-zdj8",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|with event_ids; source not traced",
+   "count": 25,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-zdj8",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+   "count": 19,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-zdj8",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+   "count": 0,
+   "disposition": "explained",
+   "cause": "RefSpec 1.4 (`ct-aory`), Wikidata anchoring (`ct-39u8`), and `185` new `detail.parquet`/`list.parquet` document rows shifted release-local `list_row` indices in `recoveries.parquet` (0 added, removed, or changed recovery values).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|new URLs|no previous row has this address",
+   "count": 185,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed link_text|value differs on matched key",
+   "count": 1044,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "sources.parquet|changed listed_on|value differs on matched key",
+   "count": 1044,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|new attempts",
+   "count": 5206,
+   "disposition": "explained",
+   "cause": "New `url_state.parquet` attempts/queues and capture metadata updates traced to the `5,188` `wikidata/reconcile` campaign receipts (runs `45735328040`, `45743514372`, `45751284191`) plus daily capture receipts (run `45749342153`).",
+   "tickets": [
+    "ct-39u8",
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+   "count": 581,
+   "disposition": "explained",
+   "cause": "New `url_state.parquet` attempts/queues and capture metadata updates traced to the `5,188` `wikidata/reconcile` campaign receipts (runs `45735328040`, `45743514372`, `45751284191`) plus daily capture receipts (run `45749342153`).",
+   "tickets": [
+    "ct-39u8",
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed attempts|value differs on matched key",
+   "count": 1984,
+   "disposition": "explained",
+   "cause": "New `url_state.parquet` attempts/queues and capture metadata updates traced to the `5,188` `wikidata/reconcile` campaign receipts (runs `45735328040`, `45743514372`, `45751284191`) plus daily capture receipts (run `45749342153`).",
+   "tickets": [
+    "ct-39u8",
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+   "count": 1984,
+   "disposition": "explained",
+   "cause": "New `url_state.parquet` attempts/queues and capture metadata updates traced to the `5,188` `wikidata/reconcile` campaign receipts (runs `45735328040`, `45743514372`, `45751284191`) plus daily capture receipts (run `45749342153`).",
+   "tickets": [
+    "ct-39u8",
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+   "count": 1793,
+   "disposition": "explained",
+   "cause": "New `url_state.parquet` attempts/queues and capture metadata updates traced to the `5,188` `wikidata/reconcile` campaign receipts (runs `45735328040`, `45743514372`, `45751284191`) plus daily capture receipts (run `45749342153`).",
+   "tickets": [
+    "ct-39u8",
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+   "count": 1936,
+   "disposition": "explained",
+   "cause": "New `url_state.parquet` attempts/queues and capture metadata updates traced to the `5,188` `wikidata/reconcile` campaign receipts (runs `45735328040`, `45743514372`, `45751284191`) plus daily capture receipts (run `45749342153`).",
+   "tickets": [
+    "ct-39u8",
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed last_status|value differs on matched key",
+   "count": 1913,
+   "disposition": "explained",
+   "cause": "New `url_state.parquet` attempts/queues and capture metadata updates traced to the `5,188` `wikidata/reconcile` campaign receipts (runs `45735328040`, `45743514372`, `45751284191`) plus daily capture receipts (run `45749342153`).",
+   "tickets": [
+    "ct-39u8",
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed linked_from|value differs on matched key",
+   "count": 1913,
+   "disposition": "explained",
+   "cause": "New `url_state.parquet` attempts/queues and capture metadata updates traced to the `5,188` `wikidata/reconcile` campaign receipts (runs `45735328040`, `45743514372`, `45751284191`) plus daily capture receipts (run `45749342153`).",
+   "tickets": [
+    "ct-39u8",
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+   "count": 1984,
+   "disposition": "explained",
+   "cause": "New `url_state.parquet` attempts/queues and capture metadata updates traced to the `5,188` `wikidata/reconcile` campaign receipts (runs `45735328040`, `45743514372`, `45751284191`) plus daily capture receipts (run `45749342153`).",
+   "tickets": [
+    "ct-39u8",
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+   "count": 29,
+   "disposition": "explained",
+   "cause": "New `url_state.parquet` attempts/queues and capture metadata updates traced to the `5,188` `wikidata/reconcile` campaign receipts (runs `45735328040`, `45743514372`, `45751284191`) plus daily capture receipts (run `45749342153`).",
+   "tickets": [
+    "ct-39u8",
+    "ct-9j3z",
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "urls.parquet|keys new|key absent from the previous release",
+   "count": 271,
+   "disposition": "explained",
+   "cause": "Routine document, meeting, recording, source, URL, or capture-state updates traced to new daily capture receipts ingested alongside the campaign (`capture-archive.yml` run `45749342153`; `2,227` new receipt keys in Pass 1 `daily-summary.json` after `5,188` `wikidata/reconcile` campaign receipts).",
+   "tickets": [
+    "ct-ud0b"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "witness_organizations.parquet|changed evidence|value differs on matched key",
+   "count": 44728,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "witness_organizations.parquet|changed method|value differs on matched key",
+   "count": 44653,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "witness_organizations.parquet|changed org_id|value differs on matched key",
+   "count": 44707,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  },
+  {
+   "id": "witness_organizations.parquet|changed score|value differs on matched key",
+   "count": 43969,
+   "disposition": "explained",
+   "cause": "Combined live rollout of RefSpec 1.4+ (`ct-aory`, PR #251: 94 verified federal sub-unit aliases) and Wikidata organization anchoring (`ct-39u8`, PR #252 & PR #256: 5,188/5,188 `wikidata/reconcile` batches captured and qualified, `include_wikidata_links=true`), retiring 11,154 `bag:` IDs into 1-hop `organization_redirects.parquet` entries while preserving every published `org_id`.",
+   "tickets": [
+    "ct-aory",
+    "ct-39u8",
+    "ct-lwxs"
+   ],
+   "evidence": [
+    {
+     "path": "model/jobs/release-causes/evidence/a422335579f0-f00d59dfd0cb.json",
+     "sha256": "87e0876f3dcbe91e1d0b0733445049a0690c2e87b3aaf03ef4ed528830e77674",
+     "size": 91641
+    }
+   ]
+  }
+ ]
+}
