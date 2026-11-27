@@ -621,11 +621,39 @@ def _candidate(release,manifest_pin,result_pin,*,input_record,receipt_keys):
     return manifest,raw,release_id,result
 
 
+def _invoke_post_flip_sidecar(post_flip_sidecar,status:dict,*,client,bucket:str,release_id:str,manifest:dict,pointer_etag:str|None)->None:
+    """Invoke optional additive post-flip sidecar hook without failing or reverting live release."""
+    import inspect
+    try:
+        sig=inspect.signature(post_flip_sidecar)
+        params=sig.parameters
+        available={'client':client,'bucket':bucket,'release_id':release_id,'manifest':manifest,'status':status,'pointer_etag':pointer_etag}
+        if any(p.kind==inspect.Parameter.VAR_KEYWORD for p in params.values()):
+            result=post_flip_sidecar(**available)
+        else:
+            kw={name:available[name] for name,p in params.items()
+                if name in available and p.kind in {inspect.Parameter.POSITIONAL_OR_KEYWORD,inspect.Parameter.KEYWORD_ONLY}}
+            pos=[p for p in params.values() if p.kind in {inspect.Parameter.POSITIONAL_ONLY,inspect.Parameter.POSITIONAL_OR_KEYWORD}]
+            if kw:
+                result=post_flip_sidecar(**kw)
+            elif len(pos)==1 and not any(p.kind==inspect.Parameter.KEYWORD_ONLY and p.default is inspect.Parameter.empty for p in params.values()):
+                result=post_flip_sidecar(status)
+            else:
+                result=post_flip_sidecar()
+        if isinstance(result,dict):
+            merged={'status':result.get('status') or 'published'}
+            merged.update({k:v for k,v in result.items() if k!='status'})
+            status['ddk_sidecar']=merged
+        else:
+            status['ddk_sidecar']={'status':'published'}
+    except Exception as error:
+        status['ddk_sidecar']={'status':'failed','error_type':type(error).__name__,'error':str(error)}
+
 def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pin,
                       input_record,receipt_keys,pointer,expected_etag,public_origin,contract,canary,measured_release_id=None,comparison_acceptance=None,asset_journal=None,
                       base_release=None,release_causes=None,link_history_dirs=(),first_release=False,automatic_captures=None,
                       automatic_qualifications=(),automatic_unreadable=(),selected_pointer_reconciled=False,receipt_client=None,
-                      stage_only=False,pre_flip_sync=None):
+                      stage_only=False,pre_flip_sync=None,post_flip_sidecar=None):
     """Upload a pinned model candidate and use the existing reader gates and CAS.
 
     The caller owns actual model planning, completeness and early skip. This stage
@@ -790,6 +818,11 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
         status['durations']['gates_and_flip']=perf_counter()-begin
         status.update(status='published',live_release=release_id,live_release_basis=(
             'selected_pointer_reconciled' if transfer.reconciled else 'conditional_flip_acknowledged'))
+        if post_flip_sidecar is not None:
+            _invoke_post_flip_sidecar(
+                post_flip_sidecar,status,client=client,bucket=bucket,release_id=release_id,
+                manifest=manifest,pointer_etag=transfer.etag,
+            )
         return dict(status)
     except BaseException as error:
         failure=error;status['error_type']=type(error).__name__
@@ -803,7 +836,8 @@ def publish_candidate(*,client,engine,bucket,work,release,manifest_pin,result_pi
 
 
 def commit_staged_release(*,client,bucket,release_id,previous_release_id,expected_etag,
-                          contract_receipt,canary_receipt,manifest,pre_flip_sync=None,comparison_acceptance=None):
+                          contract_receipt,canary_receipt,manifest,pre_flip_sync=None,comparison_acceptance=None,
+                          post_flip_sidecar=None):
     """Commit the conditional live pointer for a release already uploaded and canary-checked."""
     require_publication_client(client)
     require_comparison(comparison_acceptance)
@@ -847,6 +881,11 @@ def commit_staged_release(*,client,bucket,release_id,previous_release_id,expecte
             live_release_basis='selected_pointer_reconciled' if transfer.reconciled else 'conditional_flip_acknowledged',
             pointer_etag=transfer.etag,
         )
+        if post_flip_sidecar is not None:
+            _invoke_post_flip_sidecar(
+                post_flip_sidecar,status,client=client,bucket=bucket,release_id=release_id,
+                manifest=manifest,pointer_etag=transfer.etag,
+            )
         return dict(status)
     except BaseException as error:
         failure=error;status['error_type']=type(error).__name__
