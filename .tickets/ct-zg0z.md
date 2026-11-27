@@ -1,6 +1,6 @@
 ---
 id: ct-zg0z
-status: open
+status: closed
 deps: [ct-bol5, ct-jeku]
 links: [ct-0a35]
 created: 2026-11-25T20:29:35Z
