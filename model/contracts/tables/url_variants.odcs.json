@@ -1,0 +1,137 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:url_variants",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: url_variants",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Active capture URL aliases",
+    "usage": "Inspect canonical and alternate web-address pairs used by the capture policy."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "url_variants",
+      "name": "url_variants",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "url_variants.parquet",
+      "businessName": "Active capture URL aliases",
+      "dataGranularityDescription": "One canonical/variant URL pair used by capture policy",
+      "description": "Inspect canonical and alternate web-address pairs used by the capture policy.",
+      "properties": [
+        {
+          "name": "canonical_url",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Active canonical URL for capture joins",
+          "primaryKey": true,
+          "primaryKeyPosition": 1,
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Capture-profile aliases only. Do not use this table to reproduce the fixed public URL lookup hash."
+            }
+          ]
+        },
+        {
+          "name": "variant_url",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Active alternate URL for capture joins",
+          "primaryKey": true,
+          "primaryKeyPosition": 2
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "canonical_url",
+              "variant_url"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "capture_canonical_address",
+              "source": {
+                "table": "url_variants",
+                "fields": [
+                  "canonical_url"
+                ]
+              },
+              "target": {
+                "external": "web URL"
+              },
+              "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "capture_variant_address",
+              "source": {
+                "table": "url_variants",
+                "fields": [
+                  "variant_url"
+                ]
+              },
+              "target": {
+                "external": "web URL"
+              },
+              "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

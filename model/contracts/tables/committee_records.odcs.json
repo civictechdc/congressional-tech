@@ -1,0 +1,320 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:committee_records",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: committee_records",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Amendment and vote documents House meeting XML lists",
+    "usage": "Find amendment and vote document links listed in House meeting records. A vote document link is not a ballot or a vote tally."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "committee_records",
+      "name": "committee_records",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "committee_records.parquet",
+      "businessName": "Amendment and vote documents House meeting XML lists",
+      "dataGranularityDescription": "One document link in a meeting record; a vote row is a document link, not a ballot or tally",
+      "description": "Find amendment and vote document links listed in House meeting records. A vote document link is not a ballot or a vote tally.",
+      "properties": [
+        {
+          "name": "record_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Hex SHA-256 of the compact JSON [record_sha hex, ordinal as text]",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "event_id",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "BIGINT",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:event-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "representationNote",
+              "value": "64-bit integer event ID."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:event-id"
+            }
+          ],
+          "required": true,
+          "description": "Meeting event ID"
+        },
+        {
+          "name": "kind",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "amendment or vote"
+        },
+        {
+          "name": "bill",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Bill as stated"
+        },
+        {
+          "name": "number",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Amendment or vote number as stated"
+        },
+        {
+          "name": "sponsor_bioguide",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            },
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:bioguide-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:bioguide-id"
+            }
+          ],
+          "required": false,
+          "description": "Sponsor as stated"
+        },
+        {
+          "name": "amendment_type",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Amendment type as stated"
+        },
+        {
+          "name": "enbloc",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "En bloc number as stated"
+        },
+        {
+          "name": "source_description",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Description as stated"
+        },
+        {
+          "name": "url",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Document URL, null when the record states none"
+        },
+        {
+          "name": "record_sha",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[32]",
+          "required": true,
+          "description": "SHA-256 of the House XML body"
+        },
+        {
+          "name": "ordinal",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": true,
+          "description": "Position in that record, so duplicate links stay distinct"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "record_key"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "committee_record_meeting",
+              "source": {
+                "table": "committee_records",
+                "fields": [
+                  "event_id"
+                ]
+              },
+              "target": {
+                "table": "meetings",
+                "fields": [
+                  "event_id"
+                ]
+              },
+              "meaning": "The meeting whose record lists the document.",
+              "cardinality": "many-to-one",
+              "nullable": false,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "committee_record_sponsor",
+              "source": {
+                "table": "committee_records",
+                "fields": [
+                  "sponsor_bioguide"
+                ]
+              },
+              "target": {
+                "table": "members",
+                "fields": [
+                  "bioguide_id"
+                ]
+              },
+              "meaning": "The sponsor as stated.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "committee_record_meeting",
+          "type": "foreignKey",
+          "from": "committee_records.event_id",
+          "to": "meetings.event_id",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "required"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": false
+            }
+          ]
+        },
+        {
+          "id": "committee_record_sponsor",
+          "type": "foreignKey",
+          "from": "committee_records.sponsor_bioguide",
+          "to": "members.bioguide_id",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

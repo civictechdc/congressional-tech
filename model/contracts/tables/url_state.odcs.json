@@ -1,0 +1,211 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:url_state",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: url_state",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Capture scheduling state",
+    "usage": "Inspect the recorded capture state for each requested web address, including requests without a successful capture."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "url_state",
+      "name": "url_state",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "url_state.parquet",
+      "businessName": "Capture scheduling state",
+      "dataGranularityDescription": "One exact requested URL, including requests without a successful capture",
+      "description": "Inspect the recorded capture state for each requested web address, including requests without a successful capture.",
+      "properties": [
+        {
+          "name": "requested_url",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Exact address scheduled for capture",
+          "primaryKey": true,
+          "primaryKeyPosition": 1,
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Exact scheduled address. Missing success is not missing publication; this is operational capture state, not an entity or document catalogue."
+            }
+          ]
+        },
+        {
+          "name": "attempts",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": true,
+          "description": "Number of fetch lines for the address"
+        },
+        {
+          "name": "last_attempt",
+          "logicalType": "timestamp",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+            "timezone": true,
+            "defaultTimezone": "UTC"
+          },
+          "physicalType": "TIMESTAMPTZ",
+          "required": false,
+          "description": "Latest attempt time"
+        },
+        {
+          "name": "last_status",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i16"
+          },
+          "physicalType": "SMALLINT",
+          "required": false,
+          "description": "Latest attempt HTTP status"
+        },
+        {
+          "name": "last_outcome",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Latest attempt outcome"
+        },
+        {
+          "name": "last_good_at",
+          "logicalType": "timestamp",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+            "timezone": true,
+            "defaultTimezone": "UTC"
+          },
+          "physicalType": "TIMESTAMPTZ",
+          "required": false,
+          "description": "Latest good fetch time"
+        },
+        {
+          "name": "next_attempt_at",
+          "logicalType": "timestamp",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+            "timezone": true,
+            "defaultTimezone": "UTC"
+          },
+          "physicalType": "TIMESTAMPTZ",
+          "required": false,
+          "description": "Next scheduled fetch time"
+        },
+        {
+          "name": "recheck_meeting_date",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Meeting date the recheck band was aged against: the address's earliest linked meeting, else the date in its docs.house.gov /meetings/ path; null when neither is known (the family's shortest band applies) and on a queued row"
+        },
+        {
+          "name": "linked_from",
+          "logicalType": "array",
+          "physicalType": "fixed[8][]",
+          "items": {
+            "logicalType": "string",
+            "logicalTypeOptions": {
+              "format": "binary"
+            },
+            "physicalType": "fixed[8]",
+            "description": "Eight-byte page key (first 8 bytes of the linking page body's SHA-256) for a read page that links to this queued address."
+          },
+          "required": true,
+          "description": "Every read page that links a queued address, as page keys (the first 8 bytes of the page body's SHA-256, the link-key form) in key order; empty on an address with attempts",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "A page key resolves in links.parquet only when the page is itself a listed document; wrapper and listing pages are kept as evidence, not listed. Published, with recheck_meeting_date, so the release gate can trace a scheduling change to the receipts that caused it (ct-9j3z)."
+            }
+          ]
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "requested_url"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes data model §7.7."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "capture_request_address",
+              "source": {
+                "table": "url_state",
+                "fields": [
+                  "requested_url"
+                ]
+              },
+              "target": {
+                "external": "web URL"
+              },
+              "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,255 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:caption_resources",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: caption_resources",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Archived caption roots and ordered playlist resources",
+    "usage": "Inspect archived caption playlists and declared child caption segments for meeting recordings, including missing child segments."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "caption_resources",
+      "name": "caption_resources",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "caption_resources.parquet",
+      "businessName": "Archived caption roots and ordered playlist resources",
+      "dataGranularityDescription": "One selected caption root or declared child, including a missing child",
+      "description": "Inspect archived caption playlists and declared child caption segments for meeting recordings, including missing child segments.",
+      "properties": [
+        {
+          "name": "video_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:congressional-tech:concept:video-key"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:congressional-tech:concept:video-key"
+            }
+          ],
+          "required": true,
+          "description": "Recording whose selected caption track owns this resource",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "track_body",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[32]",
+          "required": true,
+          "description": "Selected caption track root body digest",
+          "primaryKey": true,
+          "primaryKeyPosition": 2
+        },
+        {
+          "name": "ordinal",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "BIGINT",
+          "required": true,
+          "description": "Zero for the root; one-based playlist declaration order for each segment",
+          "primaryKey": true,
+          "primaryKeyPosition": 3
+        },
+        {
+          "name": "source_url",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Original root fetch address or child URI resolved in that root context; never an archive fetch target"
+        },
+        {
+          "name": "declared_uri",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal child URI in the retained playlist; null for a root"
+        },
+        {
+          "name": "body",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[32]",
+          "required": false,
+          "description": "Retained resource body digest; null when the declared resource is missing"
+        },
+        {
+          "name": "suffix",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Content-addressed archive storage suffix"
+        },
+        {
+          "name": "format",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Retained resource format"
+        },
+        {
+          "name": "parser_version",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Pinned playlist reading that declared the ordered child resources; null for direct caption files"
+        },
+        {
+          "name": "status",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "retained or missing; missing declarations remain rows"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "video_key",
+              "track_body",
+              "ordinal"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Root identity and source URL are required. Missing children have null body/suffix/format. Declared URI is null only for roots; direct caption files have no playlist parser version."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "Only selected retained caption roots and their direct subtitle media-playlist segments; unsupported HLS features remain explicit at read time.",
+            "Retained does not mean the body was verified by this reader, nor does a live playlist snapshot establish a complete hearing."
+          ]
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "caption_resource_recording",
+              "source": {
+                "table": "caption_resources",
+                "fields": [
+                  "video_key"
+                ]
+              },
+              "target": {
+                "table": "recordings",
+                "fields": [
+                  "video_key"
+                ]
+              },
+              "meaning": "The recording that owns the selected root and its ordered archived children.",
+              "cardinality": "many-to-one",
+              "nullable": false,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "caption_resource_recording",
+          "type": "foreignKey",
+          "from": "caption_resources.video_key",
+          "to": "recordings.video_key",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "required"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

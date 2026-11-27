@@ -1,0 +1,369 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:organizations",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: organizations",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Resolved witness organizations",
+    "usage": "Explore organizations resolved from witness affiliation and on-behalf-of strings, with Ban-Park-You categories and appearance counts."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    },
+    {
+      "vendor": "refspec",
+      "property": "agencyRegistryPin",
+      "value": {
+        "releaseKey": "agency-registry-2026-09-26",
+        "schemaVersion": "1.4",
+        "viewId": "urn:ref:agency-registry-view:b23e3bb6b673608095358cb947b70a97c67a25c43642319fa892046ebb052ca3",
+        "viewDigest": "c89935debe320e35aaf748ea0519457c1618b49e13d79ddb33cbc30051b5a118",
+        "agencyProjectionDigest": "0dd32dd5320a0d1553f10818a7a31e95e2c3b9b6567df224dd359a8038e14db4",
+        "frRosterReleaseDigest": "0ab874f045462fa665b9a2ef48aa34f373570dc710bcc8fb1b63db0ad8c7b5e6",
+        "sourceReleaseDigest": "2ae595b91e4c722da61b5fd90b435d0e0b534a4b9321723be7817c8f52007801",
+        "decisionRecord": "docs/decisions.md#ref-072",
+        "tables": {
+          "aliases": {
+            "path": "agency-registry-view/tables/agency-registry-aliases.parquet",
+            "sha256": "74bba3bdccaf3e2b6111b8320d695f74c777d3a405de73e04a0475c28df834a9",
+            "size": 50011,
+            "rows": 157
+          },
+          "bridges": {
+            "path": "agency-registry-view/tables/agency-registry-bridges.parquet",
+            "sha256": "2e33905b475c6a1adf27960ecf170a1b4c82df2baf20ac13df9307bb687dd898",
+            "size": 10541,
+            "rows": 13
+          },
+          "current_successors": {
+            "path": "agency-registry-view/tables/agency-registry-current-successors.parquet",
+            "sha256": "857abd0ca7c42a50bab7225d1036df2e498d91e1840a2007440fd10acdf97160",
+            "size": 1126,
+            "rows": 15
+          },
+          "events": {
+            "path": "agency-registry-view/tables/agency-registry-events.parquet",
+            "sha256": "fce2b80a184fd0de98e2d15ba2d3a68d47f84eb9b9ba1c2678bc8787af3e0c07",
+            "size": 22251,
+            "rows": 15
+          },
+          "non_emissions": {
+            "path": "agency-registry-view/tables/agency-registry-non-emissions.parquet",
+            "sha256": "7819b99bd132cd48a08f4c918e8faf20ae78cac8c0ec9ad41a6cb6327b8f2f3e",
+            "size": 10995,
+            "rows": 11
+          },
+          "organizations": {
+            "path": "agency-registry-view/tables/agency-registry-organizations.parquet",
+            "sha256": "426f3082277f07f8b75d3e154d3065d6f478f09de789393ecdcd647116d76177",
+            "size": 21892,
+            "rows": 472
+          },
+          "projection": {
+            "path": "agency-registry-view/tables/agency-projection.parquet",
+            "sha256": "9b0296b69a8d009199607929841fe8dc9a20f528319988e8d70eaaeab88c5303",
+            "size": 66304,
+            "rows": 321
+          },
+          "projection_unresolved": {
+            "path": "agency-registry-view/tables/agency-projection-unresolved.parquet",
+            "sha256": "7aa01a441ba254575aac427d72f0c593ace5a1f3d177b6bc8f927c1967a43ca6",
+            "size": 6631,
+            "rows": 10
+          }
+        }
+      }
+    }
+  ],
+  "schema": [
+    {
+      "id": "organizations",
+      "name": "organizations",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "organizations.parquet",
+      "businessName": "Resolved witness organizations",
+      "dataGranularityDescription": "One resolved organization entity grouped by normalized token-bag key, registry anchor, or reviewed org decision",
+      "description": "Explore organizations resolved from witness affiliation and on-behalf-of strings, with Ban-Park-You categories and appearance counts.",
+      "properties": [
+        {
+          "name": "org_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:entity:concept:org-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "representationNote",
+              "value": "Archive org_id linked to RefSpec agencies via anchor and organization_ids."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:entity:concept:org-id"
+            }
+          ],
+          "required": true,
+          "description": "Published organization identifier: lowercase 16-hex SHA-256 prefix over \"org-v1\" plus the winning anchor (fr_agency:<id>, wikidata:<Q>, decision:<id>, bag:<bag_key>, or witness:<witness_key>)",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "display_name",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Canonical display name for the organization (winning anchor label when supplied, else most frequent verbatim affiliation string with lexicographic tie-break)"
+        },
+        {
+          "name": "kind",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Organization kind derived from Ban, Park & You (APSR 2023) classification when matched; null when unclassified"
+        },
+        {
+          "name": "taxonomy_parent",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Ban, Park & You (APSR 2023, doi:10.1017/S0003055422000405) 9-parent witness organization category; null when unclassified"
+        },
+        {
+          "name": "taxonomy_category",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Ban, Park & You (APSR 2023, doi:10.1017/S0003055422000405) 18-child witness organization category; null when unclassified"
+        },
+        {
+          "name": "parent_org_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:entity:concept:org-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "representationNote",
+              "value": "Archive org_id of resolved RefSpec parent agency."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:entity:concept:org-id"
+            }
+          ],
+          "required": false,
+          "description": "Parent organization org_id when established by an authoritative registry; null otherwise"
+        },
+        {
+          "name": "appearance_count",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "BIGINT",
+          "required": true,
+          "description": "Count of distinct witness_key appearances linked to this organization"
+        },
+        {
+          "name": "bag_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "description": "Normalized token-bag keys belonging to this organization; provenance keys, not foreign keys."
+          },
+          "required": true,
+          "description": "Sorted normalized token-bag keys grouped into this organization"
+        },
+        {
+          "name": "string_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "description": "Normalized L2 affiliation string keys belonging to this organization; provenance keys, not foreign keys."
+          },
+          "required": true,
+          "description": "Sorted normalized L2 string keys grouped into this organization"
+        },
+        {
+          "name": "anchor",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:refspec:agency-registry:anchor"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:refspec:agency-registry:anchor"
+            }
+          ],
+          "required": true,
+          "description": "Winning anchor string used to derive org_id"
+        },
+        {
+          "name": "has_conflict",
+          "logicalType": "boolean",
+          "physicalType": "BOOLEAN",
+          "required": true,
+          "description": "True when active org_decisions contain a same/different contradiction touching this component, keeping it unmerged"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "org_id"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "All identity, display, grouping, and count columns are required; kind, taxonomy_parent, taxonomy_category, and parent_org_id are nullable."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "Identical generic sub-unit names without distinguishing registry or decision anchors share a token-bag group; parent_org_id is populated only where an authoritative registry establishes hierarchy"
+          ]
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "organization_parent",
+              "source": {
+                "table": "organizations",
+                "fields": [
+                  "parent_org_id"
+                ]
+              },
+              "target": {
+                "table": "organizations",
+                "fields": [
+                  "org_id"
+                ]
+              },
+              "meaning": "Parent organization when established by an authoritative registry.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "organization_parent",
+          "type": "foreignKey",
+          "from": "organizations.parent_org_id",
+          "to": "organizations.org_id",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

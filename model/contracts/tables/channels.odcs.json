@@ -1,0 +1,233 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:channels",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: channels",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Curated committee YouTube channel directory",
+    "usage": "Find the curated YouTube channel handles for congressional committees."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "channels",
+      "name": "channels",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "channels.parquet",
+      "businessName": "Curated committee YouTube channel directory",
+      "dataGranularityDescription": "One curated channel handle",
+      "description": "Find the curated YouTube channel handles for congressional committees.",
+      "properties": [
+        {
+          "name": "handle",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Channel handle",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "channel_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "YouTube channel ID"
+        },
+        {
+          "name": "system_code",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            },
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:committee-code"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:committee-code"
+            }
+          ],
+          "required": true,
+          "description": "Committee the directory maps it to"
+        },
+        {
+          "name": "committee_label",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Committee label in the directory"
+        },
+        {
+          "name": "role",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "primary, secondary or member"
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Channel's own title when cached"
+        },
+        {
+          "name": "custom_url",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Channel's custom URL when cached"
+        },
+        {
+          "name": "uploads_scan_complete",
+          "logicalType": "boolean",
+          "physicalType": "BOOLEAN",
+          "required": false,
+          "description": "Whether the cache scanned every upload"
+        },
+        {
+          "name": "mapping_basis",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "curated_directory: a curated mapping with no further evidence column"
+        },
+        {
+          "name": "record_sha",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[32]",
+          "required": false,
+          "description": "SHA-256 of the cache body, null with no cached channel row"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "handle"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "channel_committee",
+              "source": {
+                "table": "channels",
+                "fields": [
+                  "system_code"
+                ]
+              },
+              "target": {
+                "table": "committees",
+                "fields": [
+                  "system_code"
+                ]
+              },
+              "meaning": "The committee of a curated mapping.",
+              "cardinality": "many-to-one",
+              "nullable": false,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "channel_committee",
+          "type": "foreignKey",
+          "from": "channels.system_code",
+          "to": "committees.system_code",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

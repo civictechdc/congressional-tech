@@ -1,0 +1,141 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:links",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: links",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Public document link lookup",
+    "usage": "Resolve a stable public document link key to a document entry in this release."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "links",
+      "name": "links",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "links.parquet",
+      "businessName": "Public document link lookup",
+      "dataGranularityDescription": "One stable link key mapped to one release-local document row",
+      "description": "Resolve a stable public document link key to a document entry in this release.",
+      "properties": [
+        {
+          "name": "link_key",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[8]",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:congressional-tech:concept:link-key"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "First 8 body SHA-256 bytes, or first 8 SHA-256 bytes of url: plus exact original URL for recovery links. Binary key; hex is a display encoding."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:congressional-tech:concept:link-key"
+            }
+          ],
+          "required": true,
+          "description": "Stable public body or original-link key",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "list_row",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": true,
+          "description": "Zero-based row in list.parquet"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "link_key"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Both columns are required by data model §8.1."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "links_document",
+              "source": {
+                "table": "links",
+                "fields": [
+                  "list_row"
+                ]
+              },
+              "target": {
+                "table": "list",
+                "fields": [
+                  "list_row"
+                ]
+              },
+              "meaning": "Release-local document row.",
+              "cardinality": "many-to-one",
+              "nullable": false,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,340 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:member_votes",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: member_votes",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Individual recorded member ballots",
+    "usage": "Explore individual recorded member ballots cast in House and Senate roll-call votes."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    },
+    {
+      "vendor": "spicy-regs",
+      "property": "sourceGenerations",
+      "value": {
+        "roll-call-votes": "1b86d720096977c373640c6dbb1dee216feb14b254d046183abce00d3d593072"
+      }
+    }
+  ],
+  "schema": [
+    {
+      "id": "member_votes",
+      "name": "member_votes",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "member_votes.parquet",
+      "businessName": "Individual recorded member ballots",
+      "dataGranularityDescription": "One retained upstream row; no filter to local bill profiles",
+      "description": "Explore individual recorded member ballots cast in House and Senate roll-call votes.",
+      "properties": [
+        {
+          "name": "vote_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:roll-call-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:roll-call-id"
+            }
+          ],
+          "required": true,
+          "description": "Literal selected upstream member_votes.vote_id",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "congress",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream member_votes.congress"
+        },
+        {
+          "name": "chamber",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream member_votes.chamber"
+        },
+        {
+          "name": "session",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream member_votes.session"
+        },
+        {
+          "name": "roll_number",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream member_votes.roll_number"
+        },
+        {
+          "name": "member_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Literal selected upstream member_votes.member_key",
+          "primaryKey": true,
+          "primaryKeyPosition": 2
+        },
+        {
+          "name": "bioguide_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:bioguide-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:bioguide-id"
+            }
+          ],
+          "required": false,
+          "description": "Literal selected upstream member_votes.bioguide_id"
+        },
+        {
+          "name": "lis_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream member_votes.lis_id"
+        },
+        {
+          "name": "member_name",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream member_votes.member_name"
+        },
+        {
+          "name": "party",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream member_votes.party"
+        },
+        {
+          "name": "state",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream member_votes.state"
+        },
+        {
+          "name": "position",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream member_votes.position"
+        },
+        {
+          "name": "position_normalized",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream member_votes.position_normalized"
+        },
+        {
+          "name": "vote_date",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream member_votes.vote_date"
+        },
+        {
+          "name": "source_generation",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Exact selected SpicyRegs family generation digest"
+        },
+        {
+          "name": "source_reference",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Selected upstream Parquet path; identify a source row using this table primary key"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "spicy-regs"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "kind": "primary_key",
+            "fields": [
+              "vote_id",
+              "member_key"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Only source primary keys and release provenance are required; missing source values stay null."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "All rows of the selected upstream generation; publisher collection completeness is not established.",
+            "member_key remains authoritative when bioguide_id is missing; vote totals do not imply recorded individual ballots."
+          ]
+        },
+        {
+          "vendor": "spicy-regs",
+          "property": "sourceGenerations",
+          "value": {
+            "roll-call-votes": "1b86d720096977c373640c6dbb1dee216feb14b254d046183abce00d3d593072"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "ballot_roll_call",
+              "source": {
+                "table": "member_votes",
+                "fields": [
+                  "vote_id"
+                ]
+              },
+              "target": {
+                "table": "roll_call_votes",
+                "fields": [
+                  "vote_id"
+                ]
+              },
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "meaning": "Exact published source key; missing profile rows remain unresolved.",
+              "scope": "All selected detail rows, including subjects outside local profiles"
+            },
+            {
+              "id": "ballot_member",
+              "source": {
+                "table": "member_votes",
+                "fields": [
+                  "bioguide_id"
+                ]
+              },
+              "target": {
+                "table": "members",
+                "fields": [
+                  "bioguide_id"
+                ]
+              },
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "meaning": "Exact published source key; missing profile rows remain unresolved.",
+              "scope": "All selected detail rows, including subjects outside local profiles"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "ballot_roll_call",
+          "type": "foreignKey",
+          "from": "member_votes.vote_id",
+          "to": "roll_call_votes.vote_id",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "ballot_member",
+          "type": "foreignKey",
+          "from": "member_votes.bioguide_id",
+          "to": "members.bioguide_id",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

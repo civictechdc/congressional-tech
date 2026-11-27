@@ -1,0 +1,1128 @@
+{
+  "version": 1,
+  "apiVersion": "v3.2.0",
+  "sourceRegistry": "model/registries/release-schema.json",
+  "refspec": {
+    "releaseKey": "agency-registry-2026-09-26",
+    "schemaVersion": "1.4",
+    "viewId": "urn:ref:agency-registry-view:b23e3bb6b673608095358cb947b70a97c67a25c43642319fa892046ebb052ca3",
+    "viewDigest": "c89935debe320e35aaf748ea0519457c1618b49e13d79ddb33cbc30051b5a118",
+    "agencyProjectionDigest": "0dd32dd5320a0d1553f10818a7a31e95e2c3b9b6567df224dd359a8038e14db4",
+    "frRosterReleaseDigest": "0ab874f045462fa665b9a2ef48aa34f373570dc710bcc8fb1b63db0ad8c7b5e6",
+    "sourceReleaseDigest": "2ae595b91e4c722da61b5fd90b435d0e0b534a4b9321723be7817c8f52007801",
+    "decisionRecord": "docs/decisions.md#ref-072",
+    "tables": {
+      "aliases": {
+        "path": "agency-registry-view/tables/agency-registry-aliases.parquet",
+        "sha256": "74bba3bdccaf3e2b6111b8320d695f74c777d3a405de73e04a0475c28df834a9",
+        "size": 50011,
+        "rows": 157
+      },
+      "bridges": {
+        "path": "agency-registry-view/tables/agency-registry-bridges.parquet",
+        "sha256": "2e33905b475c6a1adf27960ecf170a1b4c82df2baf20ac13df9307bb687dd898",
+        "size": 10541,
+        "rows": 13
+      },
+      "current_successors": {
+        "path": "agency-registry-view/tables/agency-registry-current-successors.parquet",
+        "sha256": "857abd0ca7c42a50bab7225d1036df2e498d91e1840a2007440fd10acdf97160",
+        "size": 1126,
+        "rows": 15
+      },
+      "events": {
+        "path": "agency-registry-view/tables/agency-registry-events.parquet",
+        "sha256": "fce2b80a184fd0de98e2d15ba2d3a68d47f84eb9b9ba1c2678bc8787af3e0c07",
+        "size": 22251,
+        "rows": 15
+      },
+      "non_emissions": {
+        "path": "agency-registry-view/tables/agency-registry-non-emissions.parquet",
+        "sha256": "7819b99bd132cd48a08f4c918e8faf20ae78cac8c0ec9ad41a6cb6327b8f2f3e",
+        "size": 10995,
+        "rows": 11
+      },
+      "organizations": {
+        "path": "agency-registry-view/tables/agency-registry-organizations.parquet",
+        "sha256": "426f3082277f07f8b75d3e154d3065d6f478f09de789393ecdcd647116d76177",
+        "size": 21892,
+        "rows": 472
+      },
+      "projection": {
+        "path": "agency-registry-view/tables/agency-projection.parquet",
+        "sha256": "9b0296b69a8d009199607929841fe8dc9a20f528319988e8d70eaaeab88c5303",
+        "size": 66304,
+        "rows": 321
+      },
+      "projection_unresolved": {
+        "path": "agency-registry-view/tables/agency-projection-unresolved.parquet",
+        "sha256": "7aa01a441ba254575aac427d72f0c593ace5a1f3d177b6bc8f927c1967a43ca6",
+        "size": 6631,
+        "rows": 10
+      }
+    }
+  },
+  "spicyRegs": {
+    "version": 1,
+    "source": "https://pub-72e95c0c20a84508b42b03a6ff6d55f8.r2.dev",
+    "generations": {
+      "amendments": "31dd38b69cedbd295534fd8112ad9267e77f3e63ff0d0933fea2b74360182ade",
+      "bill-family": "082232ac08183e0fcd7a7af4be9c892c9cd4abcc516c76537f27fa11f8f2db8d",
+      "committee-rosters": "32ac9696f43b585ec5f1bc3f3fd001812cc181787571af551eed33544b472f17",
+      "members": "3cc904755362ac65b801fdbca37d9a80e3b6a84581bcc40c5b9a4178e204bc29",
+      "nominations": "8a7c0657f22d4be38169d8212cac6f9f2ca0d107defd0573d01c5ee62da7c44c",
+      "roll-call-votes": "1b86d720096977c373640c6dbb1dee216feb14b254d046183abce00d3d593072"
+    },
+    "tables": {
+      "spicy_amendments": {
+        "family": "amendments",
+        "path": "generations/amendments/31dd38b69cedbd295534fd8112ad9267e77f3e63ff0d0933fea2b74360182ade/amendments.parquet",
+        "sha256": "2e3d9f37d9f7a6a120e8fd3768886fa9511ad15cd67aca22d6bc8b9138a5c894",
+        "size": 325435,
+        "rows": 11904
+      },
+      "spicy_bill_actions": {
+        "family": "bill-family",
+        "path": "generations/bill-family/082232ac08183e0fcd7a7af4be9c892c9cd4abcc516c76537f27fa11f8f2db8d/bill_actions.parquet",
+        "sha256": "f512669f4c38a17fe62ab2bd9cd31fe6202f3fd17bf6a7ee07d8b3e7d3dd583b",
+        "size": 12982073,
+        "rows": 933856
+      },
+      "spicy_bill_committee_activities": {
+        "family": "bill-family",
+        "path": "generations/bill-family/082232ac08183e0fcd7a7af4be9c892c9cd4abcc516c76537f27fa11f8f2db8d/bill_committee_activities.parquet",
+        "sha256": "dd92349b8ae83ca4313fa9c11563002575fc5c72dea96abac20270cde28559f8",
+        "size": 3280930,
+        "rows": 341476
+      },
+      "spicy_bill_committees": {
+        "family": "bill-family",
+        "path": "generations/bill-family/082232ac08183e0fcd7a7af4be9c892c9cd4abcc516c76537f27fa11f8f2db8d/bill_committees.parquet",
+        "sha256": "087954023393965eabc07193de1b01bc6b0a56916441a6bce16440d7d6a13cfa",
+        "size": 2138507,
+        "rows": 287008
+      },
+      "spicy_bill_vote_references": {
+        "family": "bill-family",
+        "path": "generations/bill-family/082232ac08183e0fcd7a7af4be9c892c9cd4abcc516c76537f27fa11f8f2db8d/bill_vote_references.parquet",
+        "sha256": "1c2bc8f2a37082d219efc71208a22124619b77c8201de2551c781746dc46834a",
+        "size": 203566,
+        "rows": 19783
+      },
+      "spicy_cbo_cost_estimates": {
+        "family": "bill-family",
+        "path": "generations/bill-family/082232ac08183e0fcd7a7af4be9c892c9cd4abcc516c76537f27fa11f8f2db8d/cbo_cost_estimates.parquet",
+        "sha256": "3a2a8a17136921add63d0a3585de68a660ce1a785e778966b69cd36c5de8afe6",
+        "size": 983503,
+        "rows": 14855
+      },
+      "spicy_committee_assignments": {
+        "family": "committee-rosters",
+        "path": "generations/committee-rosters/32ac9696f43b585ec5f1bc3f3fd001812cc181787571af551eed33544b472f17/committee_assignments.parquet",
+        "sha256": "e72ac020787ed3984e17456d48860f605b83ea55437be08a193c3e9db517a9e5",
+        "size": 387314,
+        "rows": 25190
+      },
+      "spicy_committees": {
+        "family": "committee-rosters",
+        "path": "generations/committee-rosters/32ac9696f43b585ec5f1bc3f3fd001812cc181787571af551eed33544b472f17/committees.parquet",
+        "sha256": "75f27be725db2f4aeeab48c5b8d04bd2876a96877f65fe3c50445f1569abc577",
+        "size": 90551,
+        "rows": 817
+      },
+      "spicy_congress_bills": {
+        "family": "bill-family",
+        "path": "generations/bill-family/082232ac08183e0fcd7a7af4be9c892c9cd4abcc516c76537f27fa11f8f2db8d/congress_bills.parquet",
+        "sha256": "424e5d5a8f7f1de38dea38137504facc6483762cb2e00b1bbdf529d60611b692",
+        "size": 38451557,
+        "rows": 422200
+      },
+      "spicy_member_terms": {
+        "family": "members",
+        "path": "generations/members/3cc904755362ac65b801fdbca37d9a80e3b6a84581bcc40c5b9a4178e204bc29/member_terms.parquet",
+        "sha256": "c2a81463ce62c010210c26c77a0ce9b4ca0ea9123d25296aaa5a3954a3d5b421",
+        "size": 236134,
+        "rows": 45535
+      },
+      "spicy_member_votes": {
+        "family": "roll-call-votes",
+        "path": "generations/roll-call-votes/1b86d720096977c373640c6dbb1dee216feb14b254d046183abce00d3d593072/member_votes.parquet",
+        "sha256": "a61f8bbdd1e6a5475c72b2d23a67ee5f2ea51d4979262c51acea29d2d37103b1",
+        "size": 31494861,
+        "rows": 10569345
+      },
+      "spicy_members": {
+        "family": "members",
+        "path": "generations/members/3cc904755362ac65b801fdbca37d9a80e3b6a84581bcc40c5b9a4178e204bc29/members.parquet",
+        "sha256": "685bc3e72e24b58a5f4d081239d53c6a9238ef6c5c534aa2cfff20664908edac",
+        "size": 419004,
+        "rows": 12770
+      },
+      "spicy_nominations": {
+        "family": "nominations",
+        "path": "generations/nominations/8a7c0657f22d4be38169d8212cac6f9f2ca0d107defd0573d01c5ee62da7c44c/nominations.parquet",
+        "sha256": "3ec4be42807362d8b285907aaef5d0dd45336a0f8f18083014772c4f7a7938f1",
+        "size": 197403,
+        "rows": 4734
+      },
+      "spicy_roll_call_votes": {
+        "family": "roll-call-votes",
+        "path": "generations/roll-call-votes/1b86d720096977c373640c6dbb1dee216feb14b254d046183abce00d3d593072/roll_call_votes.parquet",
+        "sha256": "c71e04ac085b0259988173db7979e7ef0adaf8d9288da0eb06da797dcf5d765c",
+        "size": 1696853,
+        "rows": 30738
+      }
+    }
+  },
+  "concepts": {
+    "urn:congressional-tech:concept:link-key": {
+      "definitionName": "archive-link-key",
+      "conceptKind": "identifier",
+      "description": "Stable 8-byte public archive document key (first 8 SHA-256 bytes of body or url:<original_url>).",
+      "examples": [],
+      "bindings": [
+        {
+          "table": "detail",
+          "path": "link_key",
+          "logicalType": "string",
+          "physicalType": "fixed[8]",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "links",
+          "path": "link_key",
+          "logicalType": "string",
+          "physicalType": "fixed[8]",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "retired_links",
+          "path": "link_key",
+          "logicalType": "string",
+          "physicalType": "fixed[8]",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "retired_links",
+          "path": "successor_key",
+          "logicalType": "string",
+          "physicalType": "fixed[8]",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "retired_links",
+          "path": "address_versions[]",
+          "logicalType": "string",
+          "physicalType": "fixed[8]",
+          "required": false,
+          "primaryKey": false
+        }
+      ]
+    },
+    "urn:congressional-tech:concept:measure-key": {
+      "definitionName": "archive-measure-key",
+      "conceptKind": "identifier",
+      "description": "Polymorphic legislative measure key covering bill-id, nomination-id, and treaty keys.",
+      "examples": [
+        "119-hr-1",
+        "119-pn-12"
+      ],
+      "bindings": [
+        {
+          "table": "list",
+          "path": "measure_keys[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false,
+          "relatedConcepts": [
+            "urn:ddk:legislative:concept:bill-id",
+            "urn:congressional-tech:concept:nomination-id"
+          ]
+        },
+        {
+          "table": "detail",
+          "path": "measure_keys[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false,
+          "relatedConcepts": [
+            "urn:ddk:legislative:concept:bill-id",
+            "urn:congressional-tech:concept:nomination-id"
+          ]
+        },
+        {
+          "table": "meetings",
+          "path": "subject_keys[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false,
+          "relatedConcepts": [
+            "urn:ddk:legislative:concept:bill-id",
+            "urn:congressional-tech:concept:nomination-id"
+          ]
+        },
+        {
+          "table": "meetings",
+          "path": "unlisted_subjects[].subject_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false,
+          "relatedConcepts": [
+            "urn:ddk:legislative:concept:bill-id",
+            "urn:congressional-tech:concept:nomination-id"
+          ]
+        }
+      ]
+    },
+    "urn:congressional-tech:concept:nomination-id": {
+      "definitionName": "congress-nomination-id",
+      "conceptKind": "identifier",
+      "description": "Congress-scoped executive nomination identifier (e.g. 119-pn-12).",
+      "examples": [
+        "119-pn-12"
+      ],
+      "bindings": [
+        {
+          "table": "nominations",
+          "path": "nomination_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        }
+      ]
+    },
+    "urn:congressional-tech:concept:video-key": {
+      "definitionName": "archive-video-key",
+      "conceptKind": "identifier",
+      "description": "Provider-prefixed hearing recording key (e.g. youtube:<id>, senate:<id>, house:<id>).",
+      "examples": [],
+      "bindings": [
+        {
+          "table": "meetings",
+          "path": "transcripts[].video_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "meetings",
+          "path": "videos[].video_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "recordings",
+          "path": "video_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "caption_resources",
+          "path": "video_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "videos",
+          "path": "video_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "recording_matches",
+          "path": "video_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        }
+      ]
+    },
+    "urn:congressional-tech:concept:witness-key": {
+      "definitionName": "archive-witness-key",
+      "conceptKind": "identifier",
+      "description": "Stable 16-hex witness appearance identifier scoped to source, occasion, and occurrence.",
+      "examples": [],
+      "bindings": [
+        {
+          "table": "list",
+          "path": "witness_keys[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "detail",
+          "path": "witness_keys[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "witnesses",
+          "path": "witness_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "witnesses",
+          "path": "superseded_by",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "witness_key_map",
+          "path": "old_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "witness_key_map",
+          "path": "witness_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "witness_key_map",
+          "path": "candidate_keys[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "people",
+          "path": "witness_keys[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "witness_organizations",
+          "path": "witness_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        }
+      ]
+    },
+    "urn:ddk:entity:concept:org-id": {
+      "definitionName": "org-id",
+      "conceptKind": "identifier",
+      "description": "Cross-stack organization identifier. Archive organizations.org_id links to RefSpec via anchor/organization_ids.",
+      "examples": [
+        "org:environmental-protection-agency",
+        "org:3m-company"
+      ],
+      "bindings": [
+        {
+          "table": "organizations",
+          "path": "org_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true,
+          "representationNote": "Archive org_id linked to RefSpec agencies via anchor and organization_ids."
+        },
+        {
+          "table": "organizations",
+          "path": "parent_org_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false,
+          "representationNote": "Archive org_id of resolved RefSpec parent agency."
+        },
+        {
+          "table": "organization_ids",
+          "path": "org_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "witness_organizations",
+          "path": "org_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": false
+        },
+        {
+          "table": "organization_redirects",
+          "path": "old_org_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "organization_redirects",
+          "path": "org_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": false
+        }
+      ]
+    },
+    "urn:ddk:entity:concept:person-id": {
+      "definitionName": "person-id",
+      "conceptKind": "identifier",
+      "description": "Cross-stack person identifier. Archive people.person_key uses Bioguide ID for matched Members or 16-hex hash for non-Member witnesses.",
+      "examples": [
+        "person:nancy-pelosi",
+        "A000370"
+      ],
+      "bindings": [
+        {
+          "table": "witnesses",
+          "path": "person_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false,
+          "representationNote": "Archive person_key (Bioguide ID for matched Members, 16-hex hash otherwise)."
+        },
+        {
+          "table": "people",
+          "path": "person_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true,
+          "representationNote": "Archive person_key (Bioguide ID for matched Members, 16-hex hash otherwise)."
+        },
+        {
+          "table": "person_aliases",
+          "path": "old_person_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true,
+          "representationNote": "Archive person_key (Bioguide ID or 16-hex hash)."
+        },
+        {
+          "table": "person_aliases",
+          "path": "person_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false,
+          "representationNote": "Archive person_key (Bioguide ID or 16-hex hash)."
+        },
+        {
+          "table": "person_aliases",
+          "path": "candidate_keys[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false,
+          "representationNote": "Archive person_key (Bioguide ID or 16-hex hash)."
+        }
+      ]
+    },
+    "urn:ddk:fec:concept:candidate-id": {
+      "definitionName": "fec-candidate-id",
+      "conceptKind": "identifier",
+      "description": "FEC nine-character candidate identifier, e.g. P80001571, H8NY14149.",
+      "examples": [
+        "P80001571",
+        "H8NY14149",
+        "H8CA05035"
+      ],
+      "bindings": [
+        {
+          "table": "members",
+          "path": "cross_ids.fec[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        }
+      ]
+    },
+    "urn:ddk:gpo:concept:package-id": {
+      "definitionName": "govinfo-package-id",
+      "conceptKind": "identifier",
+      "description": "GovInfo package identifier, e.g. CHRG-119hhrg58102, BILLS-119hr1ih, PLAW-118publ50.",
+      "examples": [
+        "CHRG-119hhrg58102",
+        "BILLS-119hr1ih",
+        "PLAW-118publ50"
+      ],
+      "bindings": [
+        {
+          "table": "detail",
+          "path": "package_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "meetings",
+          "path": "transcripts[].package_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "witnesses",
+          "path": "package_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "nominations",
+          "path": "transcripts[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "recording_matches",
+          "path": "package_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "historical_recording_matches",
+          "path": "package_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": false
+        }
+      ]
+    },
+    "urn:ddk:legislative:concept:bill-id": {
+      "definitionName": "bill-id",
+      "conceptKind": "identifier",
+      "description": "Bill or resolution identifier in CongressKey form: congress-type-number, e.g. 119-hr-1.",
+      "examples": [
+        "119-hr-1",
+        "117-hr-5376",
+        "118-s-222"
+      ],
+      "bindings": [
+        {
+          "table": "bills",
+          "path": "bill_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "bills",
+          "path": "related_bills[].bill_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "bill_actions",
+          "path": "bill_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "roll_call_votes",
+          "path": "bill_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "roll_call_votes",
+          "path": "bill_references[].bill_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        }
+      ]
+    },
+    "urn:ddk:legislative:concept:bioguide-id": {
+      "definitionName": "bioguide-id",
+      "conceptKind": "identifier",
+      "description": "Biographical Directory of the United States Congress member identifier, e.g. P000197.",
+      "examples": [
+        "P000197",
+        "S000148",
+        "C001098"
+      ],
+      "bindings": [
+        {
+          "table": "list",
+          "path": "bioguide_ids[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "detail",
+          "path": "bioguide_ids[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "witnesses",
+          "path": "bioguide_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "witnesses",
+          "path": "matched_bioguide_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "people",
+          "path": "bioguide_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "members",
+          "path": "bioguide_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "rosters",
+          "path": "bioguide_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "bills",
+          "path": "sponsor_bioguide_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "bills",
+          "path": "amendments[].sponsor_bioguide_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "committee_records",
+          "path": "sponsor_bioguide",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "member_votes",
+          "path": "bioguide_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        }
+      ]
+    },
+    "urn:ddk:legislative:concept:committee-code": {
+      "definitionName": "house-committee-code",
+      "conceptKind": "identifier",
+      "description": "Normalized congressional committee system code (e.g. hsju00, hlig00, htzt00, ssev00).",
+      "examples": [
+        "hsju00",
+        "hlig00",
+        "htzt00",
+        "ssev00"
+      ],
+      "bindings": [
+        {
+          "table": "list",
+          "path": "committee_keys[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "detail",
+          "path": "committee_keys[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "meetings",
+          "path": "committees[].system_code",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "committees",
+          "path": "system_code",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "committees",
+          "path": "parent_system_code",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "rosters",
+          "path": "system_code",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "bills",
+          "path": "committees[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "bills",
+          "path": "committee_activities[].system_code",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "nominations",
+          "path": "committees[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "nominations",
+          "path": "committee_activities[].system_code",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "videos",
+          "path": "system_code",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "channels",
+          "path": "system_code",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": false
+        },
+        {
+          "table": "historical_recording_matches",
+          "path": "committee_code",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": false
+        }
+      ]
+    },
+    "urn:ddk:legislative:concept:event-id": {
+      "definitionName": "house-event-id",
+      "conceptKind": "identifier",
+      "description": "Congressional committee meeting event identifier (e.g. 118012).",
+      "examples": [
+        "118012",
+        "118001",
+        "326181"
+      ],
+      "bindings": [
+        {
+          "table": "list",
+          "path": "meeting_keys[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false,
+          "representationNote": "Decimal string event ID; joins meetings.event_id via integer cast."
+        },
+        {
+          "table": "detail",
+          "path": "meeting_keys[]",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false,
+          "representationNote": "Decimal string event ID; joins meetings.event_id via integer cast."
+        },
+        {
+          "table": "meetings",
+          "path": "event_id",
+          "logicalType": "integer",
+          "physicalType": "BIGINT",
+          "required": true,
+          "primaryKey": true,
+          "representationNote": "64-bit integer event ID."
+        },
+        {
+          "table": "meetings",
+          "path": "rescheduled_to",
+          "logicalType": "integer",
+          "physicalType": "BIGINT",
+          "required": false,
+          "primaryKey": false,
+          "representationNote": "64-bit integer event ID."
+        },
+        {
+          "table": "witnesses",
+          "path": "event_id",
+          "logicalType": "integer",
+          "physicalType": "BIGINT",
+          "required": false,
+          "primaryKey": false,
+          "representationNote": "64-bit integer event ID."
+        },
+        {
+          "table": "recordings",
+          "path": "event_ids[]",
+          "logicalType": "integer",
+          "physicalType": "BIGINT",
+          "required": false,
+          "primaryKey": false,
+          "representationNote": "64-bit integer event ID."
+        },
+        {
+          "table": "videos",
+          "path": "stated_event_ids[]",
+          "logicalType": "integer",
+          "physicalType": "BIGINT",
+          "required": false,
+          "primaryKey": false,
+          "representationNote": "64-bit integer event ID."
+        },
+        {
+          "table": "recording_matches",
+          "path": "event_id",
+          "logicalType": "integer",
+          "physicalType": "BIGINT",
+          "required": false,
+          "primaryKey": false,
+          "representationNote": "64-bit integer event ID."
+        },
+        {
+          "table": "recording_matches",
+          "path": "meeting_links[].event_id",
+          "logicalType": "integer",
+          "physicalType": "BIGINT",
+          "required": false,
+          "primaryKey": false,
+          "representationNote": "64-bit integer event ID."
+        },
+        {
+          "table": "committee_records",
+          "path": "event_id",
+          "logicalType": "integer",
+          "physicalType": "BIGINT",
+          "required": true,
+          "primaryKey": false,
+          "representationNote": "64-bit integer event ID."
+        },
+        {
+          "table": "meeting_coverage",
+          "path": "event_id",
+          "logicalType": "integer",
+          "physicalType": "BIGINT",
+          "required": true,
+          "primaryKey": true,
+          "representationNote": "64-bit integer event ID."
+        }
+      ]
+    },
+    "urn:ddk:legislative:concept:roll-call-id": {
+      "definitionName": "roll-call-id",
+      "conceptKind": "identifier",
+      "description": "Roll call vote identifier scoped by session: congress-chamber-session-roll, e.g. 119-house-1-12.",
+      "examples": [
+        "119-house-1-12",
+        "119-house-2-99",
+        "118-senate-1-450"
+      ],
+      "bindings": [
+        {
+          "table": "bills",
+          "path": "floor_votes[].vote_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "nominations",
+          "path": "floor_votes[].vote_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "primaryKey": false
+        },
+        {
+          "table": "roll_call_votes",
+          "path": "vote_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        },
+        {
+          "table": "member_votes",
+          "path": "vote_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": true
+        }
+      ]
+    },
+    "urn:refspec:agency-registry:anchor": {
+      "definitionName": "refspec-agency-anchor",
+      "conceptKind": "identifier",
+      "description": "RefSpec federal agency anchor emitted by organizations.sql (fr_agency:<fr_id> or refspec_target:urn:ref:*).",
+      "examples": [
+        "fr_agency:150",
+        "refspec_target:urn:ref:federal-hierarchy-org:500193110"
+      ],
+      "bindings": [
+        {
+          "table": "organizations",
+          "path": "anchor",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "primaryKey": false
+        }
+      ]
+    }
+  },
+  "parquetParityNotes": {
+    "verifiedReleaseId": "efd7973e200f05a15c5f9d732d343a3b2bab1ac88915d15b7053cba096d8943c",
+    "nullability": "release-schema.json declares logical write-time nullability enforced by archive_schema.publication_checks. DataFusion SQL exports emit Arrow Parquet fields with nullable=True on most projected expressions, while committees.is_current and selected literal/dictionary columns emit nullable=False. Physical Parquet parity therefore requires check_nullability=False.",
+    "columnOrderDiffersTables": [
+      "bills",
+      "meetings",
+      "nominations",
+      "roll_call_votes"
+    ],
+    "columnOrderNote": "These four tables are exported via SELECT * FROM *_export without an explicit column list in archive_format.py, so physical Parquet column order differs from release-schema.json (same column set).",
+    "captureProfileV2Extension": {
+      "table": "url_state",
+      "fields": [
+        "capture_disposition",
+        "capture_reason",
+        "capture_decision_id"
+      ],
+      "source": "model/registries/capture-eligibility-fields.json",
+      "note": "Appended dynamically at write time by archive_format.py when capture_profile.json version == 2."
+    },
+    "producerSqlDriftInLiveRelease": {
+      "organization_ids": {
+        "extraParquetColumns": [
+          "evidence"
+        ],
+        "note": "Emitted by archive_model.py organization_ids SQL, absent from release-schema.json."
+      },
+      "witness_organizations": {
+        "extraParquetColumns": [
+          "method",
+          "score",
+          "evidence"
+        ],
+        "note": "Emitted by archive_model.py witness_organizations SQL, absent from release-schema.json."
+      },
+      "roll_call_votes": {
+        "field": "documents[]",
+        "extraStructField": "nomination_id",
+        "note": "Present in SPICY_SCHEMAS spicy_roll_call_votes.documents, omitted in release-schema.json."
+      }
+    },
+    "arrowEncodingNuances": [
+      "Top-level dict columns read back as string in Parquet footers, while recording_matches.meeting_links[] preserves dictionary<values=string, indices=int32, ordered=0> on basis and scope.",
+      "List inner field names vary between item (archive-produced) and element (spicy-regs upstream); videos.stated_event_ids uses element: int64 not null.",
+      "meetings.congress_gov_detail_observation nested timestamps use timestamp[us, tz=+00:00] rather than timestamp[us, tz=UTC] (both UTC).",
+      "fixed[8] and fixed[32] map to ODCS logicalType=\"string\", logicalTypeOptions={\"format\": \"binary\"}, physicalType=\"fixed[N]\"."
+    ]
+  }
+}

@@ -1,0 +1,233 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:sources",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: sources",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Publisher addresses and listing context",
+    "usage": "Inspect source addresses and listing context captured for each document. Each source occurrence remains separate."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "sources",
+      "name": "sources",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "sources.parquet",
+      "businessName": "Publisher addresses and listing context",
+      "dataGranularityDescription": "One source address/context occurrence within a document",
+      "description": "Inspect source addresses and listing context captured for each document. Each source occurrence remains separate.",
+      "properties": [
+        {
+          "name": "list_row",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": true,
+          "description": "Zero-based row in list.parquet",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "ordinal",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": true,
+          "description": "Order within a document",
+          "primaryKey": true,
+          "primaryKeyPosition": 2
+        },
+        {
+          "name": "url",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Source address",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Required. A member of a ZIP keeps the ZIP URL here and its place in member_path; the ZIP itself is never a document when its contents were captured."
+            }
+          ]
+        },
+        {
+          "name": "member_path",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Path inside an archive container",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Path inside a captured archive container. Interpret together with the source URL; not a document key."
+            }
+          ]
+        },
+        {
+          "name": "is_saved",
+          "logicalType": "boolean",
+          "physicalType": "BOOLEAN",
+          "required": true,
+          "description": "Whether this source names the saved file"
+        },
+        {
+          "name": "first_seen",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "First observed date of this source"
+        },
+        {
+          "name": "listed_on",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Publisher page listing the source"
+        },
+        {
+          "name": "link_text",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Publisher link label"
+        },
+        {
+          "name": "doc_type",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Publisher document type"
+        },
+        {
+          "name": "posted",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Publisher link posting date"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "list_row",
+              "ordinal"
+            ],
+            "scope": "release",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes data model §8.1 (sources.parquet row)."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "sources_document",
+              "source": {
+                "table": "sources",
+                "fields": [
+                  "list_row"
+                ]
+              },
+              "target": {
+                "table": "list",
+                "fields": [
+                  "list_row"
+                ]
+              },
+              "meaning": "Release-local document row.",
+              "cardinality": "many-to-one",
+              "nullable": false,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "source_address",
+              "source": {
+                "table": "sources",
+                "fields": [
+                  "url"
+                ]
+              },
+              "target": {
+                "external": "web URL"
+              },
+              "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "source_listing_page",
+              "source": {
+                "table": "sources",
+                "fields": [
+                  "listed_on"
+                ]
+              },
+              "target": {
+                "external": "web URL"
+              },
+              "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

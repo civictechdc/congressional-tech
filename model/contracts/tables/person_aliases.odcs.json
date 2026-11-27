@@ -1,0 +1,286 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:person_aliases",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: person_aliases",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Retired person_key redirects and split notices",
+    "usage": "Look up retired person keys and their current successors or split candidates. Keys published in earlier releases carry forward here when groupings change."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "person_aliases",
+      "name": "person_aliases",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "person_aliases.parquet",
+      "businessName": "Retired person_key redirects and split notices",
+      "dataGranularityDescription": "One previously published person_key not in people.parquet, carried one hop per release",
+      "description": "Look up retired person keys and their current successors or split candidates. Keys published in earlier releases carry forward here when groupings change.",
+      "properties": [
+        {
+          "name": "old_person_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:entity:concept:person-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "representationNote",
+              "value": "Archive person_key (Bioguide ID or 16-hex hash)."
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Disjoint from people.person_key; a key published again leaves person_aliases. Any vanished prior person_key absent from both people and person_aliases refuses export (lost_person_keys)."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:entity:concept:person-id"
+            }
+          ],
+          "required": true,
+          "description": "A previously published person_key no longer present in people.parquet",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "person_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:entity:concept:person-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "representationNote",
+              "value": "Archive person_key (Bioguide ID or 16-hex hash)."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:entity:concept:person-id"
+            }
+          ],
+          "required": false,
+          "description": "Current people.person_key when status is unambiguous; null when status is ambiguous or unresolved"
+        },
+        {
+          "name": "status",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "unambiguous (one successor), ambiguous (split across candidate_keys, none chosen), or unresolved (no current person row)"
+        },
+        {
+          "name": "kind",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Transition kind: regrouped, merged, split, or hidden; null when status is unresolved"
+        },
+        {
+          "name": "decision_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Identifier of the reviewed decision in model/registries/person-decisions.json when applicable; null for rule-driven transitions"
+        },
+        {
+          "name": "last_release_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Release SHA-256 of the last published release in which old_person_key appeared in people.parquet"
+        },
+        {
+          "name": "candidate_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:ddk:entity:concept:person-id"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              },
+              {
+                "vendor": "congressional-tech",
+                "property": "representationNote",
+                "value": "Archive person_key (Bioguide ID or 16-hex hash)."
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:ddk:entity:concept:person-id"
+              }
+            ],
+            "description": "Current people.person_key values when status is ambiguous; empty otherwise."
+          },
+          "required": true,
+          "description": "Sorted current people.person_key values when status is ambiguous; empty otherwise"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "old_person_key"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "person_key is set exactly when status is unambiguous; kind is null exactly when status is unresolved; candidate_keys has two or more entries exactly when status is ambiguous."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "person_alias_target",
+              "source": {
+                "table": "person_aliases",
+                "fields": [
+                  "person_key"
+                ]
+              },
+              "target": {
+                "table": "people",
+                "fields": [
+                  "person_key"
+                ]
+              },
+              "meaning": "Current person row a retired person_key resolves to when status is unambiguous.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "person_alias_candidates",
+              "source": {
+                "table": "person_aliases",
+                "fields": [
+                  "candidate_keys[]"
+                ]
+              },
+              "target": {
+                "table": "people",
+                "fields": [
+                  "person_key"
+                ]
+              },
+              "meaning": "Candidate current person rows when a retired person_key split ambiguously.",
+              "cardinality": "many-to-many",
+              "nullable": false,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "person_alias_target",
+          "type": "foreignKey",
+          "from": "person_aliases.person_key",
+          "to": "people.person_key",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "required"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

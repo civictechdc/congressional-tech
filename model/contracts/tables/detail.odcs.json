@@ -1,0 +1,1130 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:detail",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: detail",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "The keyed document table: one row per document with its stable link_key, files and every list field; list is its no-ID browser projection",
+    "usage": "Explore document details, associated files and repeated information for each document edition. Stable link keys identify document entries."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "detail",
+      "name": "detail",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "detail.parquet",
+      "businessName": "The keyed document table: one row per document with its stable link_key, files and every list field; list is its no-ID browser projection",
+      "dataGranularityDescription": "One document edition, in exactly the same order as list",
+      "description": "Explore document details, associated files and repeated information for each document edition. Stable link keys identify document entries.",
+      "properties": [
+        {
+          "name": "link_key",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[8]",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:congressional-tech:concept:link-key"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:congressional-tech:concept:link-key"
+            }
+          ],
+          "required": true,
+          "description": "Stable public body or original-link key",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "saved_body",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[32]",
+          "required": false,
+          "description": "SHA-256 of the usable primary copy. Null when the retained copy was reviewed and withheld."
+        },
+        {
+          "name": "saved_suffix",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Physical object suffix of the usable primary copy, when available."
+        },
+        {
+          "name": "saved_media_type",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Media type of the usable primary copy, when available."
+        },
+        {
+          "name": "saved_bytes",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "BIGINT",
+          "required": false,
+          "description": "Size before storage compression of the usable primary copy, when available."
+        },
+        {
+          "name": "document_date_source",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Filename, content or meeting date basis"
+        },
+        {
+          "name": "title_source",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Which candidate gave the title: correction, page_title, page_heading (including a dead source page the document showed), link_text, other_format_page_title, other_format_page_heading, copy_link_text, recovered_copy, mods_title, or label_witness (a label with the witness name); null when untitled"
+        },
+        {
+          "name": "in_archive_since",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Earliest known archive import date"
+        },
+        {
+          "name": "removed_on",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Date the publisher removed the document"
+        },
+        {
+          "name": "review_note",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Review explanation"
+        },
+        {
+          "name": "review_decided_at",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Date of the applying review"
+        },
+        {
+          "name": "src_start",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": true,
+          "description": "First source row for this document",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Zero-based physical sources row offset; src_len is the contiguous row count."
+            }
+          ]
+        },
+        {
+          "name": "src_len",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": true,
+          "description": "Number of source rows for this document"
+        },
+        {
+          "name": "rec_start",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": true,
+          "description": "First recovery row for this document",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Zero-based physical recoveries row offset; rec_len is the contiguous row count."
+            }
+          ]
+        },
+        {
+          "name": "rec_len",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": true,
+          "description": "Number of recovery rows for this document"
+        },
+        {
+          "name": "alternates",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "format",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Format of this alternate document file."
+              },
+              {
+                "name": "body",
+                "logicalType": "string",
+                "logicalTypeOptions": {
+                  "format": "binary"
+                },
+                "physicalType": "fixed[32]",
+                "description": "SHA-256 digest of the alternate file body, stored as 32 bytes."
+              },
+              {
+                "name": "suffix",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Stored file suffix for this alternate body."
+              },
+              {
+                "name": "size",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i64"
+                },
+                "physicalType": "BIGINT",
+                "description": "Size of the alternate file body in bytes."
+              }
+            ],
+            "description": "Other formats of the same document; each has its own body and suffix."
+          },
+          "required": true,
+          "description": "One saved file per other format"
+        },
+        {
+          "name": "package_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:gpo:concept:package-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:gpo:concept:package-id"
+            }
+          ],
+          "required": false,
+          "description": "GovInfo package identifier"
+        },
+        {
+          "name": "facts",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "field",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Name of the extracted fact."
+              },
+              {
+                "name": "value",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Literal value of the extracted fact."
+              }
+            ],
+            "description": "Embedded selected filename field/value observations; not a generic entity join."
+          },
+          "required": true,
+          "description": "Selected filename facts, one value per entry"
+        },
+        {
+          "name": "description",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "The publisher's page summary as declared, never the title or the site's own description; NULL when none survives selection"
+        },
+        {
+          "name": "published_on",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "The page's declared publication date on its stated local date; a page date, never a hearing or document date"
+        },
+        {
+          "name": "modified_on",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "The page's declared modification date on its stated local date; never changes document_date, date_kind or first_captured"
+        },
+        {
+          "name": "publisher_labels",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              }
+            ],
+            "description": "Embedded declared section labels; not a key into another table."
+          },
+          "required": true,
+          "description": "The page's declared sections (article:section, articleSection) as stated"
+        },
+        {
+          "name": "page_metadata",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "field",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Kind of publisher-declared page metadata."
+              },
+              {
+                "name": "value",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Literal publisher-declared value."
+              },
+              {
+                "name": "format",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Metadata syntax or format used by the publisher."
+              },
+              {
+                "name": "path",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Source pointer for this metadata declaration."
+              },
+              {
+                "name": "date",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "DATE",
+                "description": "Parsed calendar date, when the declaration provides a recognized date."
+              },
+              {
+                "name": "precision",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Precision of the parsed publisher date."
+              },
+              {
+                "name": "resolved",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Declared address resolved against its capture context and base address, when available."
+              },
+              {
+                "name": "selected",
+                "logicalType": "boolean",
+                "physicalType": "BOOLEAN",
+                "description": "Whether this declaration supplies a selected description, publication date, modification date or publisher label."
+              },
+              {
+                "name": "context_url",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Captured page address used to resolve this declaration."
+              }
+            ],
+            "description": "Embedded declared values with their JSON Pointer path into the pinned html_metadata reading; path is evidence, not a key. Reproduce it from saved_body with the release pin."
+          },
+          "required": true,
+          "description": "Publisher declarations with literal value, selection status and JSON Pointer into the pinned reading. Distinct literals for a field show a conflict. Declared addresses carry each qualifying capture URL and resolution against that address. A missing context or a detail size limit leaves resolutions empty."
+        },
+        {
+          "name": "main_content",
+          "logicalType": "object",
+          "physicalType": "STRUCT",
+          "properties": [
+            {
+              "name": "outcome",
+              "logicalType": "string",
+              "physicalType": "VARCHAR",
+              "customProperties": [
+                {
+                  "vendor": "congressional-tech",
+                  "property": "archivePhysicalEncoding",
+                  "value": "dictionary"
+                }
+              ],
+              "description": "Recorded main-content result: marked, marked_no_content, fallback, failed, none, unreadable or unread."
+            },
+            {
+              "name": "selector",
+              "logicalType": "string",
+              "physicalType": "VARCHAR",
+              "description": "XPath or JSON Pointer identifying the selected content, when supplied by the reader."
+            },
+            {
+              "name": "text_sha256",
+              "logicalType": "string",
+              "physicalType": "VARCHAR",
+              "description": "SHA-256 digest of the selected text encoded as UTF-8, when supplied."
+            },
+            {
+              "name": "text_bytes",
+              "logicalType": "integer",
+              "logicalTypeOptions": {
+                "format": "i32"
+              },
+              "physicalType": "INTEGER",
+              "description": "Text byte count supplied by the HTML metadata reading."
+            },
+            {
+              "name": "snippet",
+              "logicalType": "string",
+              "physicalType": "VARCHAR",
+              "description": "Bounded text head retained for marked or marked_no_content readings."
+            },
+            {
+              "name": "reader_version",
+              "logicalType": "string",
+              "physicalType": "VARCHAR",
+              "description": "Parser version of the selected HTML metadata reading or unreadable decision."
+            },
+            {
+              "name": "reading_status",
+              "logicalType": "string",
+              "physicalType": "VARCHAR",
+              "description": "Status of the selected reading, or unreadable when supported by an unreadable decision."
+            },
+            {
+              "name": "reason",
+              "logicalType": "string",
+              "physicalType": "VARCHAR",
+              "description": "Reader result reason or qualified unreadable decision reason."
+            },
+            {
+              "name": "facts_limited",
+              "logicalType": "boolean",
+              "physicalType": "BOOLEAN",
+              "description": "Whether the reading recorded a detail-facts limit."
+            },
+            {
+              "name": "text_available",
+              "logicalType": "boolean",
+              "physicalType": "BOOLEAN",
+              "description": "Whether selected text was retained in the reading."
+            },
+            {
+              "name": "decision_id",
+              "logicalType": "string",
+              "physicalType": "VARCHAR",
+              "description": "Qualified unreadable decision identifier when there is no selected reading."
+            },
+            {
+              "name": "evidence_limited",
+              "logicalType": "boolean",
+              "physicalType": "BOOLEAN",
+              "description": "Whether metadata declarations or address contexts exceeded the retained evidence budget."
+            }
+          ],
+          "required": false,
+          "description": "Publisher-marked text preview and citation. Outcome distinguishes marked text, short marked text, fallback to the saved page, a failed reading, a recorded unreadable decision, exclusion, and an unattempted reading. The original body and reader version identify the source. The selector locates marked text. decision_id identifies a recorded unreadable decision. evidence_limited signals that the size limit omitted publisher evidence.",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Embedded reference to selected text. Verify selected_text with text_sha256 and find the marked element in saved_body with selector."
+            }
+          ]
+        },
+        {
+          "name": "selected_text",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Bounded plain text from the cited marked element. Load only on request. Its SHA-256 and length are in main_content. The original remains available for larger or unselected pages."
+        },
+        {
+          "name": "filename",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Displayed filename"
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Document or publisher title when known"
+        },
+        {
+          "name": "print_number",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Official hearing print number (such as S. Hrg. 117-336 or Serial No. 115-3) from GovInfo MODS preferredCitation or Content Details when known"
+        },
+        {
+          "name": "document_kind",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              }
+            ],
+            "description": "Same values as list.document_kind; see that field."
+          },
+          "required": true,
+          "description": "Document kinds"
+        },
+        {
+          "name": "document_family",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              }
+            ],
+            "description": "Same values as list.document_family; see that field."
+          },
+          "required": true,
+          "description": "Filename document families"
+        },
+        {
+          "name": "committee_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:ddk:legislative:concept:committee-code"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:ddk:legislative:concept:committee-code"
+              }
+            ],
+            "description": "Same values as list.committee_keys; see that field."
+          },
+          "required": true,
+          "description": "Congress.gov committee system codes"
+        },
+        {
+          "name": "chambers",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              }
+            ],
+            "description": "Same values as list.chambers; see that field."
+          },
+          "required": true,
+          "description": "Chambers associated with the document"
+        },
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i16"
+          },
+          "physicalType": "SMALLINT",
+          "required": false,
+          "description": "Congress number when unambiguous"
+        },
+        {
+          "name": "format",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "Original file format"
+        },
+        {
+          "name": "document_date",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Date of the document as read; document_date_status says whether it is accepted or suspect"
+        },
+        {
+          "name": "document_date_status",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "accepted, or suspect for a filename date more than 30 days after first_captured or outside the tagged Congress's years (one year of margin); document_date keeps the literal reading either way; null when undated"
+        },
+        {
+          "name": "first_captured",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "First good fetch date"
+        },
+        {
+          "name": "date_kind",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "Basis of the archive date"
+        },
+        {
+          "name": "saved_kind",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "Original file or recovery"
+        },
+        {
+          "name": "hidden",
+          "logicalType": "boolean",
+          "physicalType": "BOOLEAN",
+          "required": true,
+          "description": "Excluded from search by review; public links still resolve"
+        },
+        {
+          "name": "meeting_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:ddk:legislative:concept:event-id"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              },
+              {
+                "vendor": "congressional-tech",
+                "property": "representationNote",
+                "value": "Decimal string event ID; joins meetings.event_id via integer cast."
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:ddk:legislative:concept:event-id"
+              }
+            ],
+            "description": "Same values as list.meeting_keys; see that field."
+          },
+          "required": true,
+          "description": "Decimal event IDs"
+        },
+        {
+          "name": "measure_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:congressional-tech:concept:measure-key"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              },
+              {
+                "vendor": "congressional-tech",
+                "property": "relatedConcepts",
+                "value": [
+                  "urn:ddk:legislative:concept:bill-id",
+                  "urn:congressional-tech:concept:nomination-id"
+                ]
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:congressional-tech:concept:measure-key"
+              }
+            ],
+            "description": "Same values as list.measure_keys; see that field."
+          },
+          "required": true,
+          "description": "Bill and nomination identifiers"
+        },
+        {
+          "name": "bioguide_ids",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:ddk:legislative:concept:bioguide-id"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:ddk:legislative:concept:bioguide-id"
+              }
+            ],
+            "description": "Same values as list.bioguide_ids; see that field."
+          },
+          "required": true,
+          "description": "Member Bioguide identifiers"
+        },
+        {
+          "name": "witness_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:congressional-tech:concept:witness-key"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:congressional-tech:concept:witness-key"
+              }
+            ],
+            "description": "Same values as list.witness_keys; see that field."
+          },
+          "required": true,
+          "description": "Witness appearance identifiers"
+        },
+        {
+          "name": "version_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              }
+            ],
+            "description": "Same values as list.version_keys; see that field."
+          },
+          "required": true,
+          "description": "Hex endpoint keys shared by editions"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "link_key"
+            ],
+            "scope": "release; a recovery-only document's key can move in a later release only as the data model section 8.2 states",
+            "validation": "native publication key checks",
+            "kind": "primary_key",
+            "note": "list_row stays virtual: zero-based physical row position, continued across manifest shard row ranges; never reuse it across releases. Older releases carry only the detail columns; their rows pair with list by list_row."
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes data model §8.1 (list and detail bullets)."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "Date bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage"
+          ]
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "virtualColumns",
+          "value": [
+            {
+              "name": "list_row",
+              "type": "int64",
+              "meaning": "Zero-based release-local physical row position; readers add this column"
+            }
+          ]
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "document_public_link",
+              "source": {
+                "table": "detail",
+                "fields": [
+                  "link_key"
+                ]
+              },
+              "target": {
+                "table": "links",
+                "fields": [
+                  "link_key"
+                ]
+              },
+              "meaning": "Resolve the document’s primary public link to the canonical document row; the lookup key identifies one row even when several records reference the same body.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release; stable public link identifier"
+            },
+            {
+              "id": "document_body",
+              "source": {
+                "table": "detail",
+                "fields": [
+                  "saved_body",
+                  "saved_suffix"
+                ]
+              },
+              "target": {
+                "external": "archive body store"
+              },
+              "meaning": "Use lowercase hex SHA-256 and the recorded suffix: bodies/sha256/{first two hex characters}/{full hex digest}{suffix}. Binary hashes are not text keys. Files are fetched separately.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "alternate_bodies",
+              "source": {
+                "table": "detail",
+                "fields": [
+                  "alternates[].body",
+                  "alternates[].suffix"
+                ]
+              },
+              "target": {
+                "external": "archive body store"
+              },
+              "meaning": "Use lowercase hex SHA-256 and the recorded suffix: bodies/sha256/{first two hex characters}/{full hex digest}{suffix}. Binary hashes are not text keys. Files are fetched separately.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "document_package",
+              "source": {
+                "table": "detail",
+                "fields": [
+                  "package_id"
+                ]
+              },
+              "target": {
+                "external": "GovInfo packages"
+              },
+              "meaning": "Publisher package identity; it can exist without a retained local document.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "document_public_link",
+          "type": "foreignKey",
+          "from": "detail.link_key",
+          "to": "links.link_key",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "required"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

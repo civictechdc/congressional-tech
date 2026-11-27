@@ -1,0 +1,269 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:recordings",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: recordings",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Meeting recordings and captured tracks",
+    "usage": "Explore meeting recordings and captured tracks, identified by recording provider."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "recordings",
+      "name": "recordings",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "recordings.parquet",
+      "businessName": "Meeting recordings and captured tracks",
+      "dataGranularityDescription": "One provider-prefixed recording",
+      "description": "Explore meeting recordings and captured tracks, identified by recording provider.",
+      "properties": [
+        {
+          "name": "video_key",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:congressional-tech:concept:video-key"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:congressional-tech:concept:video-key"
+            }
+          ],
+          "required": true,
+          "description": "Provider-prefixed recording identifier",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "event_ids",
+          "logicalType": "array",
+          "physicalType": "BIGINT[]",
+          "items": {
+            "logicalType": "integer",
+            "logicalTypeOptions": {
+              "format": "i64"
+            },
+            "physicalType": "BIGINT",
+            "customProperties": [
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:ddk:legislative:concept:event-id"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              },
+              {
+                "vendor": "congressional-tech",
+                "property": "representationNote",
+                "value": "64-bit integer event ID."
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:ddk:legislative:concept:event-id"
+              }
+            ],
+            "description": "Meeting event identifier associated with this recording."
+          },
+          "required": true,
+          "description": "Sorted meeting event IDs associated with this recording"
+        },
+        {
+          "name": "tracks",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "body",
+                "logicalType": "string",
+                "logicalTypeOptions": {
+                  "format": "binary"
+                },
+                "physicalType": "fixed[32]",
+                "description": "SHA-256 digest of this captured track body, stored as 32 bytes."
+              },
+              {
+                "name": "suffix",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Stored file suffix of this track body."
+              },
+              {
+                "name": "format",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Format label of this track."
+              },
+              {
+                "name": "language",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Language of this track, when stated."
+              },
+              {
+                "name": "production",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Production label of this track, when stated."
+              }
+            ],
+            "description": "Embedded captured caption/subtitle/playlist files. Language and production describe each track; these are not document-list rows."
+          },
+          "required": true,
+          "description": "Captured caption, subtitle, and playlist tracks from their latest good fetch"
+        },
+        {
+          "name": "recording_scope",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "full, excerpt or unknown"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "video_key"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "recording_meetings",
+              "source": {
+                "table": "recordings",
+                "fields": [
+                  "event_ids[]"
+                ]
+              },
+              "target": {
+                "table": "meetings",
+                "fields": [
+                  "event_id"
+                ]
+              },
+              "meaning": "Meetings explicitly associated with one recording; not an inferred transcript identity.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "recording_tracks",
+              "source": {
+                "table": "recordings",
+                "fields": [
+                  "tracks[].body",
+                  "tracks[].suffix"
+                ]
+              },
+              "target": {
+                "external": "archive body store"
+              },
+              "meaning": "Use lowercase hex SHA-256 and the recorded suffix: bodies/sha256/{first two hex characters}/{full hex digest}{suffix}. Binary hashes are not text keys. Files are fetched separately.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

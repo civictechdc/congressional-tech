@@ -1,0 +1,128 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:urls",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: urls",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Normalized source address lookup",
+    "usage": "Find document entries through normalized source-address lookup keys. One address can identify several document editions."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "urls",
+      "name": "urls",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "urls.parquet",
+      "businessName": "Normalized source address lookup",
+      "dataGranularityDescription": "One lookup key and document row pair; an address can identify several editions",
+      "description": "Find document entries through normalized source-address lookup keys. One address can identify several document editions.",
+      "properties": [
+        {
+          "name": "lookup_key",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[8]",
+          "required": true,
+          "description": "Exact address or serialization fallback lookup key in separate hash namespaces",
+          "primaryKey": true,
+          "primaryKeyPosition": 1,
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Exact: first 8 SHA-256 bytes of lookup: plus fixed lookup_url(u): remove scheme, leading www, default port, fragment and one trailing path slash; lowercase host; preserve query bytes. Only after an exact miss, use lookup-alias:serialization-v1: plus that spelling with U+0020 serialized as %20 and valid percent triplets uppercased. Keep every matching edition. Both namespaces refuse different full hash inputs sharing eight bytes. This is not capture-profile url_key."
+            }
+          ]
+        },
+        {
+          "name": "list_row",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": true,
+          "description": "Zero-based row in list.parquet",
+          "primaryKey": true,
+          "primaryKeyPosition": 2
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "lookup_key",
+              "list_row"
+            ],
+            "scope": "release",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Both columns are required by data model §8.1."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "urls_document",
+              "source": {
+                "table": "urls",
+                "fields": [
+                  "list_row"
+                ]
+              },
+              "target": {
+                "table": "list",
+                "fields": [
+                  "list_row"
+                ]
+              },
+              "meaning": "Release-local document row.",
+              "cardinality": "many-to-one",
+              "nullable": false,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

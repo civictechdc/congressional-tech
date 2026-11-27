@@ -1,0 +1,263 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:bill_actions",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: bill_actions",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Recorded bill actions and derived stages",
+    "usage": "Explore recorded legislative actions and derived stages across upstream bills, without filtering to locally referenced bill profiles."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    },
+    {
+      "vendor": "spicy-regs",
+      "property": "sourceGenerations",
+      "value": {
+        "bill-family": "082232ac08183e0fcd7a7af4be9c892c9cd4abcc516c76537f27fa11f8f2db8d"
+      }
+    }
+  ],
+  "schema": [
+    {
+      "id": "bill_actions",
+      "name": "bill_actions",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "bill_actions.parquet",
+      "businessName": "Recorded bill actions and derived stages",
+      "dataGranularityDescription": "One retained upstream row; no filter to local bill profiles",
+      "description": "Explore recorded legislative actions and derived stages across upstream bills, without filtering to locally referenced bill profiles.",
+      "properties": [
+        {
+          "name": "bill_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:bill-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:bill-id"
+            }
+          ],
+          "required": true,
+          "description": "Literal selected upstream bill_actions.bill_id",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "action_index",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "BIGINT",
+          "required": true,
+          "description": "Literal selected upstream bill_actions.action_index",
+          "primaryKey": true,
+          "primaryKeyPosition": 2
+        },
+        {
+          "name": "action_date",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream bill_actions.action_date"
+        },
+        {
+          "name": "action_time",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream bill_actions.action_time"
+        },
+        {
+          "name": "action_text",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream bill_actions.action_text"
+        },
+        {
+          "name": "action_code",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream bill_actions.action_code"
+        },
+        {
+          "name": "action_type",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream bill_actions.action_type"
+        },
+        {
+          "name": "source_system_name",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream bill_actions.source_system_name"
+        },
+        {
+          "name": "recorded_vote_count",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "BIGINT",
+          "required": false,
+          "description": "Literal selected upstream bill_actions.recorded_vote_count"
+        },
+        {
+          "name": "is_latest_action",
+          "logicalType": "boolean",
+          "physicalType": "BOOLEAN",
+          "required": false,
+          "description": "Literal selected upstream bill_actions.is_latest_action"
+        },
+        {
+          "name": "stage",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal selected upstream bill_actions.stage"
+        },
+        {
+          "name": "source_generation",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Exact selected SpicyRegs family generation digest"
+        },
+        {
+          "name": "source_reference",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Selected upstream Parquet path; identify a source row using this table primary key"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "spicy-regs"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "kind": "primary_key",
+            "fields": [
+              "bill_id",
+              "action_index"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Only source primary keys and release provenance are required; missing source values stay null."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "All rows of the selected upstream generation; publisher collection completeness is not established.",
+            "Action dates and member vote dates preserve source spelling and precision; voice votes are actions, never individual ballots."
+          ]
+        },
+        {
+          "vendor": "spicy-regs",
+          "property": "sourceGenerations",
+          "value": {
+            "bill-family": "082232ac08183e0fcd7a7af4be9c892c9cd4abcc516c76537f27fa11f8f2db8d"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "bill_action_bill",
+              "source": {
+                "table": "bill_actions",
+                "fields": [
+                  "bill_id"
+                ]
+              },
+              "target": {
+                "table": "bills",
+                "fields": [
+                  "bill_id"
+                ]
+              },
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "meaning": "Exact published source key; missing profile rows remain unresolved.",
+              "scope": "All selected detail rows, including subjects outside local profiles"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "bill_action_bill",
+          "type": "foreignKey",
+          "from": "bill_actions.bill_id",
+          "to": "bills.bill_id",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

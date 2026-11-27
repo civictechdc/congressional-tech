@@ -1,0 +1,668 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:list",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: list",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Searchable documents",
+    "usage": "Browse and search document editions included in this release."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "list",
+      "name": "list",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "list.parquet",
+      "businessName": "Searchable documents",
+      "dataGranularityDescription": "One document edition in this release",
+      "description": "Browse and search document editions included in this release.",
+      "properties": [
+        {
+          "name": "filename",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Displayed filename"
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Document or publisher title when known"
+        },
+        {
+          "name": "print_number",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Official hearing print number (such as S. Hrg. 117-336 or Serial No. 115-3) from GovInfo MODS preferredCitation or Content Details when known"
+        },
+        {
+          "name": "document_kind",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              }
+            ],
+            "description": "Embedded classification values, not foreign keys. Words listed together under synonyms name one kind (the first is the House naming guide's word); filter them as one."
+          },
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archiveValueSynonyms",
+              "value": [
+                [
+                  "witness-statement",
+                  "testimony"
+                ],
+                [
+                  "committee-amendment",
+                  "amendment"
+                ],
+                [
+                  "witness-biography",
+                  "biography"
+                ],
+                [
+                  "member-statement",
+                  "opening-statement"
+                ],
+                [
+                  "committee-transcript",
+                  "transcript"
+                ]
+              ]
+            }
+          ],
+          "required": true,
+          "description": "Document kinds"
+        },
+        {
+          "name": "document_family",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              }
+            ],
+            "description": "Embedded filename classification values."
+          },
+          "required": true,
+          "description": "Filename document families"
+        },
+        {
+          "name": "committee_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:ddk:legislative:concept:committee-code"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:ddk:legislative:concept:committee-code"
+              }
+            ],
+            "description": "Congress.gov committee system code associated with this document."
+          },
+          "required": true,
+          "description": "Congress.gov committee system codes"
+        },
+        {
+          "name": "chambers",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              }
+            ],
+            "description": "Embedded chamber labels."
+          },
+          "required": true,
+          "description": "Chambers associated with the document"
+        },
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i16"
+          },
+          "physicalType": "SMALLINT",
+          "required": false,
+          "description": "Congress number when unambiguous"
+        },
+        {
+          "name": "format",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "Original file format"
+        },
+        {
+          "name": "document_date",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Date of the document as read; document_date_status says whether it is accepted or suspect"
+        },
+        {
+          "name": "document_date_status",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "accepted, or suspect for a filename date more than 30 days after first_captured or outside the tagged Congress's years (one year of margin); document_date keeps the literal reading either way; null when undated"
+        },
+        {
+          "name": "first_captured",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "First good fetch date"
+        },
+        {
+          "name": "date_kind",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "Basis of the archive date"
+        },
+        {
+          "name": "saved_kind",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "Original file or recovery"
+        },
+        {
+          "name": "hidden",
+          "logicalType": "boolean",
+          "physicalType": "BOOLEAN",
+          "required": true,
+          "description": "Excluded from search by review; public links still resolve"
+        },
+        {
+          "name": "meeting_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:ddk:legislative:concept:event-id"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              },
+              {
+                "vendor": "congressional-tech",
+                "property": "representationNote",
+                "value": "Decimal string event ID; joins meetings.event_id via integer cast."
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:ddk:legislative:concept:event-id"
+              }
+            ],
+            "description": "Decimal event identifier associated with this document."
+          },
+          "required": true,
+          "description": "Decimal event IDs"
+        },
+        {
+          "name": "measure_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:congressional-tech:concept:measure-key"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              },
+              {
+                "vendor": "congressional-tech",
+                "property": "relatedConcepts",
+                "value": [
+                  "urn:ddk:legislative:concept:bill-id",
+                  "urn:congressional-tech:concept:nomination-id"
+                ]
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:congressional-tech:concept:measure-key"
+              }
+            ],
+            "description": "Referenced bill or nomination identifier."
+          },
+          "required": true,
+          "description": "Bill and nomination identifiers"
+        },
+        {
+          "name": "bioguide_ids",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:ddk:legislative:concept:bioguide-id"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:ddk:legislative:concept:bioguide-id"
+              }
+            ],
+            "description": "Referenced member Bioguide identifier."
+          },
+          "required": true,
+          "description": "Member Bioguide identifiers"
+        },
+        {
+          "name": "witness_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:congressional-tech:concept:witness-key"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:congressional-tech:concept:witness-key"
+              }
+            ],
+            "description": "Referenced witness appearance identifier."
+          },
+          "required": true,
+          "description": "Witness appearance identifiers"
+        },
+        {
+          "name": "version_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              }
+            ],
+            "description": "Shared lowercase hexadecimal endpoint keys identify different editions, not alternate formats of one document. A document can have several keys."
+          },
+          "required": true,
+          "description": "Hex endpoint keys shared by editions"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "list_row"
+            ],
+            "scope": "release",
+            "validation": "shared ordered native export",
+            "kind": "row_position",
+            "note": "list_row is virtual: zero-based physical row position, continued across manifest shard row ranges. Never reuse it across releases."
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes data model §8.1 (list.parquet bullet): a type without \"nullable\" there is required."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "Date bounds span accepted document dates only and Congress bounds skip suspect-dated documents; document_dates counts accepted, suspect and undated documents. Bounds are observed values, not evidence of complete coverage"
+          ]
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "virtualColumns",
+          "value": [
+            {
+              "name": "list_row",
+              "type": "int64",
+              "meaning": "Zero-based release-local physical row position; readers add this column"
+            }
+          ]
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "document_detail",
+              "source": {
+                "table": "list",
+                "fields": [
+                  "list_row"
+                ]
+              },
+              "target": {
+                "table": "detail",
+                "fields": [
+                  "list_row"
+                ]
+              },
+              "meaning": "Same physical row position, including shard offsets.",
+              "cardinality": "one-to-one",
+              "nullable": false,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "document_meetings",
+              "source": {
+                "table": "list",
+                "fields": [
+                  "meeting_keys[]"
+                ]
+              },
+              "target": {
+                "table": "meetings",
+                "fields": [
+                  "event_id"
+                ]
+              },
+              "meaning": "Meetings explicitly associated with the document.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "required",
+              "match": "decimal_string_to_integer",
+              "scope": "selected release"
+            },
+            {
+              "id": "document_committees",
+              "source": {
+                "table": "list",
+                "fields": [
+                  "committee_keys[]"
+                ]
+              },
+              "target": {
+                "table": "committees",
+                "fields": [
+                  "system_code"
+                ]
+              },
+              "meaning": "Committee attribution; does not imply authorship.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "document_bills",
+              "source": {
+                "table": "list",
+                "fields": [
+                  "measure_keys[]"
+                ]
+              },
+              "target": {
+                "table": "bills",
+                "fields": [
+                  "bill_id"
+                ]
+              },
+              "meaning": "Exact typed measure identifiers; values for the other measure type do not match.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "document_nominations",
+              "source": {
+                "table": "list",
+                "fields": [
+                  "measure_keys[]"
+                ]
+              },
+              "target": {
+                "table": "nominations",
+                "fields": [
+                  "nomination_id"
+                ]
+              },
+              "meaning": "Exact typed measure identifiers; values for the other measure type do not match.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "document_members",
+              "source": {
+                "table": "list",
+                "fields": [
+                  "bioguide_ids[]"
+                ]
+              },
+              "target": {
+                "table": "members",
+                "fields": [
+                  "bioguide_id"
+                ]
+              },
+              "meaning": "Members explicitly associated with the document; no role inferred.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "witness_submitted_documents",
+              "source": {
+                "table": "list",
+                "fields": [
+                  "witness_keys[]"
+                ]
+              },
+              "target": {
+                "table": "witnesses",
+                "fields": [
+                  "witness_key"
+                ]
+              },
+              "meaning": "Documents attached from this witness appearance’s own document URLs; not every document from the meeting.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "document_editions",
+              "source": {
+                "table": "list",
+                "fields": [
+                  "version_keys[]"
+                ]
+              },
+              "target": {
+                "table": "list",
+                "fields": [
+                  "version_keys[]"
+                ]
+              },
+              "meaning": "Different document rows sharing a version endpoint key; exclude the same row and deduplicate when keys overlap.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "shared_list_value",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,802 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:bills",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: bills",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Referenced bills and embedded legislative facts",
+    "usage": "Explore bills referenced by documents, meetings and committee activities, plus substantive or enacted bills from the 113th Congress onward and directly related bills. The collection is limited to data retained by the upstream source."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    },
+    {
+      "vendor": "spicy-regs",
+      "property": "sourceGenerations",
+      "value": {
+        "bill-family": "082232ac08183e0fcd7a7af4be9c892c9cd4abcc516c76537f27fa11f8f2db8d",
+        "roll-call-votes": "1b86d720096977c373640c6dbb1dee216feb14b254d046183abce00d3d593072",
+        "amendments": "31dd38b69cedbd295534fd8112ad9267e77f3e63ff0d0933fea2b74360182ade"
+      }
+    }
+  ],
+  "schema": [
+    {
+      "id": "bills",
+      "name": "bills",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "bills.parquet",
+      "businessName": "Referenced bills and embedded legislative facts",
+      "dataGranularityDescription": "One bill referenced by documents, meetings, or committee activities, or a substantive/enacted bill (congress >= 113), plus 1-hop related bills of referenced bills; bounded by upstream retained data",
+      "description": "Explore bills referenced by documents, meetings and committee activities, plus substantive or enacted bills from the 113th Congress onward and directly related bills. The collection is limited to data retained by the upstream source.",
+      "properties": [
+        {
+          "name": "bill_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:bill-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:bill-id"
+            }
+          ],
+          "required": true,
+          "description": "Canonical bill identifier ({congress}-{type}-{number})",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Official or primary bill title"
+        },
+        {
+          "name": "short_title",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Short title when present"
+        },
+        {
+          "name": "sponsor_bioguide_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            },
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:bioguide-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:bioguide-id"
+            }
+          ],
+          "required": false,
+          "description": "Primary sponsor Bioguide identifier"
+        },
+        {
+          "name": "introduced",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Date the measure was introduced"
+        },
+        {
+          "name": "latest_action_date",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Date of the latest recorded action"
+        },
+        {
+          "name": "latest_action_text",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Text of the latest recorded action"
+        },
+        {
+          "name": "stage",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Lifecycle stage derived by spicy-regs"
+        },
+        {
+          "name": "policy_area",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "CRS policy area"
+        },
+        {
+          "name": "public_law_number",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Enacted Public Law number (e.g. 118-50) when enacted"
+        },
+        {
+          "name": "cosponsor_count",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": false,
+          "description": "Published cosponsor count"
+        },
+        {
+          "name": "related_bills",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "bill_id",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:ddk:legislative:concept:bill-id"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:ddk:legislative:concept:bill-id"
+                  }
+                ],
+                "description": "Identifier of the related bill."
+              },
+              {
+                "name": "title",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Title of the related bill."
+              },
+              {
+                "name": "relationship_types",
+                "logicalType": "array",
+                "physicalType": "VARCHAR[]",
+                "items": {
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "customProperties": [
+                    {
+                      "vendor": "congressional-tech",
+                      "property": "archivePhysicalEncoding",
+                      "value": "dictionary"
+                    }
+                  ],
+                  "description": "Embedded Congress.gov relationship labels, not foreign keys."
+                },
+                "description": "Recorded relationship types between this bill and the related bill."
+              }
+            ],
+            "description": "Embedded related, companion, and omnibus vehicle measures with canonical bill_id, title, and relationship_types."
+          },
+          "required": true,
+          "description": "Related, companion, and vehicle measures linked to this bill"
+        },
+        {
+          "name": "committees",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:ddk:legislative:concept:committee-code"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:ddk:legislative:concept:committee-code"
+              }
+            ],
+            "description": "Congress.gov system code of a committee associated with this measure."
+          },
+          "required": true,
+          "description": "Referred committee system codes"
+        },
+        {
+          "name": "cbo_estimates",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "publication_id",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Congressional Budget Office publication identifier for this estimate."
+              },
+              {
+                "name": "date",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "DATE",
+                "description": "Publication date of this estimate."
+              },
+              {
+                "name": "description",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Recorded description of this estimate."
+              }
+            ],
+            "description": "Embedded publication IDs, dates and descriptions, not full CBO estimate text."
+          },
+          "required": true,
+          "description": "CBO cost estimates associated with the bill"
+        },
+        {
+          "name": "floor_votes",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "vote_id",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:ddk:legislative:concept:roll-call-id"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:ddk:legislative:concept:roll-call-id"
+                  }
+                ],
+                "description": "Identifier of this floor vote."
+              },
+              {
+                "name": "basis",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Recorded basis for associating this floor vote with the bill."
+              },
+              {
+                "name": "chamber",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Chamber that held this vote."
+              },
+              {
+                "name": "date",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "DATE",
+                "description": "Calendar date of this vote."
+              },
+              {
+                "name": "question",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Question put to this vote."
+              },
+              {
+                "name": "result",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Recorded result of this vote."
+              },
+              {
+                "name": "yea",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i16"
+                },
+                "physicalType": "SMALLINT",
+                "description": "Recorded number of yea votes."
+              },
+              {
+                "name": "nay",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i16"
+                },
+                "physicalType": "SMALLINT",
+                "description": "Recorded number of nay votes."
+              }
+            ],
+            "description": "One embedded vote per vote_id per bill; basis distinguishes vote_record from bill_action. Counts are vote totals, not member positions."
+          },
+          "required": true,
+          "description": "Roll-call votes tied by vote record or bill action"
+        },
+        {
+          "name": "amendments",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "amendment_id",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Identifier of this amendment."
+              },
+              {
+                "name": "purpose",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Stated purpose of this amendment."
+              },
+              {
+                "name": "sponsor_bioguide_id",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:ddk:legislative:concept:bioguide-id"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:ddk:legislative:concept:bioguide-id"
+                  }
+                ],
+                "description": "Bioguide identifier of this amendment sponsor."
+              },
+              {
+                "name": "latest_action_date",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "DATE",
+                "description": "Date of the latest recorded amendment action."
+              },
+              {
+                "name": "latest_action_text",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Text of the latest recorded amendment action."
+              }
+            ],
+            "description": "Embedded direct/chained amendment summaries; 119th Congress coverage until upstream backfill."
+          },
+          "required": true,
+          "description": "Direct and chained amendments to the bill"
+        },
+        {
+          "name": "committee_activities",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "system_code",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:ddk:legislative:concept:committee-code"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:ddk:legislative:concept:committee-code"
+                  }
+                ],
+                "description": "Congress.gov system code of the committee performing this activity."
+              },
+              {
+                "name": "activity",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Recorded committee activity on this bill."
+              },
+              {
+                "name": "date",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "DATE",
+                "description": "Calendar date of this committee activity."
+              }
+            ],
+            "description": "Embedded committee events; several activities can refer to the same committee."
+          },
+          "required": true,
+          "description": "Committee referral, markup, and report activities"
+        },
+        {
+          "name": "subjects",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "description": "Published legislative subject labels, independent of policy_area; no title-keyword inference."
+          },
+          "required": false,
+          "description": "Published Congress.gov legislative subject labels; null means unavailable and empty means no labels supplied"
+        },
+        {
+          "name": "source_updated_at",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal Congress.gov update_date; a publisher update, not an action date"
+        },
+        {
+          "name": "source_update_including_text",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal Congress.gov update_date_including_text"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "spicy-regs"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "bill_id"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "Amendments cover the 119th Congress only until spicy-regs backfills"
+          ]
+        },
+        {
+          "vendor": "spicy-regs",
+          "property": "sourceGenerations",
+          "value": {
+            "bill-family": "082232ac08183e0fcd7a7af4be9c892c9cd4abcc516c76537f27fa11f8f2db8d",
+            "roll-call-votes": "1b86d720096977c373640c6dbb1dee216feb14b254d046183abce00d3d593072",
+            "amendments": "31dd38b69cedbd295534fd8112ad9267e77f3e63ff0d0933fea2b74360182ade"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "bill_sponsor",
+              "source": {
+                "table": "bills",
+                "fields": [
+                  "sponsor_bioguide_id"
+                ]
+              },
+              "target": {
+                "table": "members",
+                "fields": [
+                  "bioguide_id"
+                ]
+              },
+              "meaning": "Primary sponsor when supplied; null is allowed.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "amendment_sponsor",
+              "source": {
+                "table": "bills",
+                "fields": [
+                  "amendments[].sponsor_bioguide_id"
+                ]
+              },
+              "target": {
+                "table": "members",
+                "fields": [
+                  "bioguide_id"
+                ]
+              },
+              "meaning": "Sponsor of the nested amendment, not necessarily the bill sponsor.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "bill_activity_committee",
+              "source": {
+                "table": "bills",
+                "fields": [
+                  "committee_activities[].system_code"
+                ]
+              },
+              "target": {
+                "table": "committees",
+                "fields": [
+                  "system_code"
+                ]
+              },
+              "meaning": "Committee performing an embedded activity; repeated activities are meaningful.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "bills_committees",
+              "source": {
+                "table": "bills",
+                "fields": [
+                  "committees[]"
+                ]
+              },
+              "target": {
+                "table": "committees",
+                "fields": [
+                  "system_code"
+                ]
+              },
+              "meaning": "Published committee referrals.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "bills_votes",
+              "source": {
+                "table": "bills",
+                "fields": [
+                  "floor_votes[].vote_id"
+                ]
+              },
+              "target": {
+                "external": "spicy-regs roll-call-votes"
+              },
+              "meaning": "External vote identity; the local embedded record provides only the published summary.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "bill_cbo_publications",
+              "source": {
+                "table": "bills",
+                "fields": [
+                  "cbo_estimates[].publication_id"
+                ]
+              },
+              "target": {
+                "external": "CBO publications"
+              },
+              "meaning": "Published cost-estimate identifier; date and description remain embedded in the bill.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "bill_amendments",
+              "source": {
+                "table": "bills",
+                "fields": [
+                  "amendments[].amendment_id"
+                ]
+              },
+              "target": {
+                "external": "spicy-regs amendments"
+              },
+              "meaning": "Published amendment identifiers; purpose, sponsor and latest action remain embedded in the bill.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "bill_sponsor",
+          "type": "foreignKey",
+          "from": "bills.sponsor_bioguide_id",
+          "to": "members.bioguide_id",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

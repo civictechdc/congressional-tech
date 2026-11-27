@@ -1,0 +1,230 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:recoveries",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: recoveries",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Recovered document files",
+    "usage": "Inspect recovered files associated with document editions. Repeated file occurrences remain separate records."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "recoveries",
+      "name": "recoveries",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "recoveries.parquet",
+      "businessName": "Recovered document files",
+      "dataGranularityDescription": "One recovered file occurrence within a document",
+      "description": "Inspect recovered files associated with document editions. Repeated file occurrences remain separate records.",
+      "properties": [
+        {
+          "name": "list_row",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": true,
+          "description": "Zero-based row in list.parquet",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "ordinal",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "INTEGER",
+          "required": true,
+          "description": "Order within a document",
+          "primaryKey": true,
+          "primaryKeyPosition": 2
+        },
+        {
+          "name": "kind",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "Recovery display kind"
+        },
+        {
+          "name": "body",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[32]",
+          "required": true,
+          "description": "SHA-256 of original recovered bytes"
+        },
+        {
+          "name": "suffix",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "Physical recovered body suffix"
+        },
+        {
+          "name": "bytes",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "BIGINT",
+          "required": true,
+          "description": "Original recovered byte count"
+        },
+        {
+          "name": "imported_at",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Recovery import date; unknown when the input has no import record, as in the v5 seed"
+        },
+        {
+          "name": "recovered_url",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "Address where the recovered copy was found"
+        },
+        {
+          "name": "identity_note",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Authored explanation of how the recovery relates to the original; null when the decision recorded none (kind still states the relationship)"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "list_row",
+              "ordinal"
+            ],
+            "scope": "release",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes data model §8.1 (recoveries.parquet row)."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "recoveries_document",
+              "source": {
+                "table": "recoveries",
+                "fields": [
+                  "list_row"
+                ]
+              },
+              "target": {
+                "table": "list",
+                "fields": [
+                  "list_row"
+                ]
+              },
+              "meaning": "Release-local document row.",
+              "cardinality": "many-to-one",
+              "nullable": false,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "recovery_body",
+              "source": {
+                "table": "recoveries",
+                "fields": [
+                  "body",
+                  "suffix"
+                ]
+              },
+              "target": {
+                "external": "archive body store"
+              },
+              "meaning": "Use lowercase hex SHA-256 and the recorded suffix: bodies/sha256/{first two hex characters}/{full hex digest}{suffix}. Binary hashes are not text keys. Files are fetched separately.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "recovery_address",
+              "source": {
+                "table": "recoveries",
+                "fields": [
+                  "recovered_url"
+                ]
+              },
+              "target": {
+                "external": "web URL"
+              },
+              "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

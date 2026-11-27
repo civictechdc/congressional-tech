@@ -1,0 +1,1315 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:meetings",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: meetings",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Congressional meetings and hearings",
+    "usage": "Explore congressional meetings and hearings. Each record describes one event using the shared House and Senate event identifier system."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "meetings",
+      "name": "meetings",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "meetings.parquet",
+      "businessName": "Congressional meetings and hearings",
+      "dataGranularityDescription": "One event, shared House/Senate event ID namespace",
+      "description": "Explore congressional meetings and hearings. Each record describes one event using the shared House and Senate event identifier system.",
+      "properties": [
+        {
+          "name": "event_id",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "BIGINT",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:event-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "representationNote",
+              "value": "64-bit integer event ID."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:event-id"
+            }
+          ],
+          "required": true,
+          "description": "Congressional meeting event ID",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "chamber",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "House, Senate or joint"
+        },
+        {
+          "name": "chamber_basis",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": true,
+          "description": "source if the meeting record supplies a chamber, source_chamber_unknown if the meeting record has no supported chamber, or meeting_detail_missing if only a document references the event. Earlier releases omit this field."
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Document or publisher title when known"
+        },
+        {
+          "name": "meeting_date",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Meeting date"
+        },
+        {
+          "name": "meeting_type",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "As stated, with House XML codes (HHRG, HMKP, HMTG) on House rows; congress_gov_meeting_type carries the shared label."
+            }
+          ],
+          "required": false,
+          "description": "Publisher meeting category"
+        },
+        {
+          "name": "session",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i16"
+          },
+          "physicalType": "SMALLINT",
+          "required": false,
+          "description": "Congress session number"
+        },
+        {
+          "name": "status",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Selected publisher-reported meeting status; this does not itself prove a sitting"
+        },
+        {
+          "name": "sittings",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "start",
+                "logicalType": "timestamp",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+                  "timezone": true,
+                  "defaultTimezone": "UTC"
+                },
+                "physicalType": "TIMESTAMPTZ",
+                "description": "Start instant of this sitting, when stated."
+              },
+              {
+                "name": "end",
+                "logicalType": "timestamp",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+                  "timezone": true,
+                  "defaultTimezone": "UTC"
+                },
+                "physicalType": "TIMESTAMPTZ",
+                "description": "End instant of this sitting, when stated."
+              },
+              {
+                "name": "place",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Room, building and address joined with commas, when supplied."
+              },
+              {
+                "name": "room",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Room stated for this sitting."
+              },
+              {
+                "name": "building",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Building stated for this sitting."
+              },
+              {
+                "name": "address",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Address stated for this sitting."
+              }
+            ],
+            "description": "Embedded scheduled intervals and places. Congress.gov states instants and places, so its sitting is used when present; a House-only sitting's unzoned Eastern local time is converted to an instant. An explicit empty House state stays empty. Times retain published precision; do not invent a Congress from the session number."
+          },
+          "required": true,
+          "description": "Scheduled times and locations, as Congress.gov states them when it has a sitting"
+        },
+        {
+          "name": "committees",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "system_code",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:ddk:legislative:concept:committee-code"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:ddk:legislative:concept:committee-code"
+                  }
+                ],
+                "description": "Congress.gov system code of the participating committee."
+              },
+              {
+                "name": "role",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Recorded role of this committee in the meeting."
+              }
+            ],
+            "description": "Host/participant roles belong to this meeting-committee association."
+          },
+          "required": true,
+          "description": "Host committee codes and roles"
+        },
+        {
+          "name": "subject_keys",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:congressional-tech:concept:measure-key"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              },
+              {
+                "vendor": "congressional-tech",
+                "property": "relatedConcepts",
+                "value": [
+                  "urn:ddk:legislative:concept:bill-id",
+                  "urn:congressional-tech:concept:nomination-id"
+                ]
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:congressional-tech:concept:measure-key"
+              }
+            ],
+            "description": "Bill or nomination identifier associated with this meeting."
+          },
+          "required": true,
+          "description": "Bill, nomination and treaty subjects"
+        },
+        {
+          "name": "transcripts",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "source",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Transcript source: printed_hearing, committee_transcript or captions."
+              },
+              {
+                "name": "package_id",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:ddk:gpo:concept:package-id"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:ddk:gpo:concept:package-id"
+                  }
+                ],
+                "description": "GovInfo package identifier for a printed transcript, when applicable."
+              },
+              {
+                "name": "list_row",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i32"
+                },
+                "physicalType": "INTEGER",
+                "description": "Release-local document row for this transcript, when applicable."
+              },
+              {
+                "name": "formats",
+                "logicalType": "array",
+                "physicalType": "VARCHAR[]",
+                "items": {
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Available format label for this transcript."
+                },
+                "description": "Format names (pdf, html, ...) the package is retained in, in format-preference order; values, not keys."
+              },
+              {
+                "name": "video_key",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:congressional-tech:concept:video-key"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:congressional-tech:concept:video-key"
+                  }
+                ],
+                "description": "Provider-prefixed recording key for caption transcripts, when applicable."
+              },
+              {
+                "name": "language",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Language of this transcript or caption track, when stated."
+              },
+              {
+                "name": "production",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Recorded production label for this transcript or caption track."
+              }
+            ],
+            "description": "One entry per GovInfo package. list_row is the package's listed document whose saved format ranks first (then lowest row); formats are the distinct saved and alternate formats over all the package's listed documents, in format-preference order. A package listed as several documents (editions) keeps one entry."
+          },
+          "required": true,
+          "description": "Every transcript the archive holds for the meeting, labelled by source: printed_hearing (a GPO print whose own MODS records the meeting, one per package: package_id, list_row of its preferred-format document, formats), committee_transcript (the committee's own transcript file, H{HRG,MKP,MTG}-<congress>-<committee>-Transcript-<meeting date>.pdf, linked to the meeting; list_row, formats), captions (a retained complete caption body or subtitle media playlist of the meeting's recording, never a stream segment; formats, video_key, language, production)"
+        },
+        {
+          "name": "videos",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "name",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Recorded name of this meeting video."
+              },
+              {
+                "name": "url",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Recorded address of this meeting video."
+              },
+              {
+                "name": "video_key",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:congressional-tech:concept:video-key"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:congressional-tech:concept:video-key"
+                  }
+                ],
+                "description": "Provider-prefixed recording identifier, when resolved."
+              }
+            ],
+            "description": "Publisher recording links; video_key joins retained recordings when available."
+          },
+          "required": true,
+          "description": "Recorded meeting links"
+        },
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i16"
+          },
+          "physicalType": "SMALLINT",
+          "required": false,
+          "description": "Congress the publisher record states; null when no record states it, never inferred from documents"
+        },
+        {
+          "name": "congress_gov_updated",
+          "logicalType": "timestamp",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+            "timezone": true,
+            "defaultTimezone": "UTC"
+          },
+          "physicalType": "TIMESTAMPTZ",
+          "required": false,
+          "description": "Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time"
+        },
+        {
+          "name": "house_xml_updated",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "House XML update-date, literally as stated with no zone: a publisher record update, distinct from the hearing date and capture time"
+        },
+        {
+          "name": "congress_gov_meeting_type",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Congress.gov's type label (Hearing, Markup, Meeting)"
+        },
+        {
+          "name": "access",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "open, closed, partly_closed or unknown, as the publisher type or title states"
+        },
+        {
+          "name": "access_basis",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "The source and field that state access, such as congress_gov/title"
+        },
+        {
+          "name": "not_held",
+          "logicalType": "boolean",
+          "physicalType": "BOOLEAN",
+          "required": false,
+          "description": "Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; false where the meeting's own print was held that day under its title, or a curated read found the meeting's own recording of it on its date (status conflict, model/registries/meeting-status-conflicts.json); null with no record"
+        },
+        {
+          "name": "rescheduled_to",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "BIGINT",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:event-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "representationNote",
+              "value": "64-bit integer event ID."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:event-id"
+            }
+          ],
+          "required": false,
+          "description": "Later meeting of the same committees and title, parts included, within 60 days that is not itself not held: when this meeting is not held, or has no recording, transcript file or witnesses of its own and either the publisher states Rescheduled or only the later twin has a recording; a hearing never moves to a markup; derived"
+        },
+        {
+          "name": "rescheduled_basis",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "publisher_status or recording_on_later_twin"
+        },
+        {
+          "name": "document_references",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "collection",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Source collection name, meetingDocuments or witnessDocuments. Witness documents are linked to this event without a witness identity claim."
+              },
+              {
+                "name": "ordinal",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i32"
+                },
+                "physicalType": "INTEGER",
+                "description": "Zero-based occurrence within its source collection. Different references to the same URL keep their own values."
+              },
+              {
+                "name": "url",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Publisher link. Use the existing document address lookup to find saved copies."
+              },
+              {
+                "name": "role",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Publisher documentType. Null when omitted."
+              },
+              {
+                "name": "format",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Publisher format, independent of the format of the saved body. Null when omitted."
+              },
+              {
+                "name": "description",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Description stated for this document reference."
+              },
+              {
+                "name": "name",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Name stated for this document reference."
+              },
+              {
+                "name": "listing_status",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "listed when present on the current Congress.gov read; no_longer_listed when an earlier Congress.gov read of this meeting listed the URL and a later read omitted it (ct-960v)."
+              },
+              {
+                "name": "last_listed_on",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "DATE",
+                "description": "Latest Congress.gov read date on which this document link appeared."
+              },
+              {
+                "name": "unlisted_since",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "DATE",
+                "description": "First Congress.gov read date on which this previously listed document link was absent."
+              },
+              {
+                "name": "unlisted_by_record_sha",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Hexadecimal SHA-256 digest of the Congress.gov meeting body that first omitted this document link."
+              }
+            ],
+            "description": "One document reference stated in the meeting record."
+          },
+          "required": false,
+          "description": "Congress.gov document links in source collection order, plus earlier Congress.gov document links no longer listed on the current read (listing_status no_longer_listed). Null means the metadata is unavailable or unstated. An empty list means a supplied collection contained no links."
+        },
+        {
+          "name": "unlisted_subjects",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "subject_key",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:congressional-tech:concept:measure-key"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  },
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "relatedConcepts",
+                    "value": [
+                      "urn:ddk:legislative:concept:bill-id",
+                      "urn:congressional-tech:concept:nomination-id"
+                    ]
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:congressional-tech:concept:measure-key"
+                  }
+                ],
+                "description": "Bill or nomination identifier listed on an earlier Congress.gov read of this meeting and omitted from the current read."
+              },
+              {
+                "name": "last_listed_on",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "DATE",
+                "description": "Latest Congress.gov read date on which this subject appeared on the meeting."
+              },
+              {
+                "name": "unlisted_since",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "DATE",
+                "description": "First Congress.gov read date on which this previously listed subject was absent."
+              },
+              {
+                "name": "unlisted_by_record_sha",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Hexadecimal SHA-256 digest of the Congress.gov meeting body that first omitted this subject."
+              }
+            ],
+            "description": "Measures and nominations an earlier Congress.gov read of this meeting listed that are absent from the current subject_keys list (ct-960v)."
+          },
+          "required": true,
+          "description": "Bills and nominations that an earlier Congress.gov read of this meeting listed and the current read omits, with the date last seen listed and the date and SHA-256 of the read that stopped listing each"
+        },
+        {
+          "name": "publisher_status",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Selected publisher-reported status, independent of the outcome"
+        },
+        {
+          "name": "publisher_status_observations",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "source",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Publisher source family reporting this status observation (congress_gov or house_xml)."
+              },
+              {
+                "name": "status",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Normalized meeting status stated by this publisher observation."
+              },
+              {
+                "name": "meeting_date",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "DATE",
+                "description": "Meeting calendar date stated alongside this publisher status observation."
+              },
+              {
+                "name": "record_sha",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Hexadecimal SHA-256 digest of the raw publisher record stating this observation."
+              },
+              {
+                "name": "observed_at",
+                "logicalType": "timestamp",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+                  "timezone": true,
+                  "defaultTimezone": "UTC"
+                },
+                "physicalType": "TIMESTAMPTZ",
+                "description": "Capture or publisher timestamp associated with this status observation, when known."
+              }
+            ],
+            "description": "Retained source statuses include their own meeting date and raw record identity; a changed date must not transfer a cancellation to another sitting."
+          },
+          "required": false,
+          "description": "All retained publisher status observations, including conflicting statuses and dates; record_sha identifies raw evidence"
+        },
+        {
+          "name": "outcome",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "held, canceled or unknown on this event date; older releases omit outcome evidence"
+        },
+        {
+          "name": "outcome_basis",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "printed_hearing, committee_transcript, curated_source_review, publisher_cancellation or no_outcome_evidence"
+        },
+        {
+          "name": "outcome_source_reference",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Print package ID, transcript document link_key, event ID with curated review, or cancellation record_sha"
+        },
+        {
+          "name": "outcome_reason",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Evidence supporting outcome, or why the date-specific outcome remains unknown"
+        },
+        {
+          "name": "congress_gov_detail_observation",
+          "logicalType": "object",
+          "physicalType": "STRUCT",
+          "properties": [
+            {
+              "name": "state",
+              "logicalType": "string",
+              "physicalType": "VARCHAR",
+              "description": "Overall Congress.gov event-detail state: successful, failed, listing_only_in_scope or unknown."
+            },
+            {
+              "name": "coverage",
+              "logicalType": "string",
+              "physicalType": "VARCHAR",
+              "description": "Scope of evaluated Congress.gov detail inputs: selected_release_inputs or unknown."
+            },
+            {
+              "name": "successful_read",
+              "logicalType": "object",
+              "physicalType": "STRUCT",
+              "properties": [
+                {
+                  "name": "source_url",
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Captured Congress.gov address for this successful read evidence."
+                },
+                {
+                  "name": "retrieved_at",
+                  "logicalType": "timestamp",
+                  "logicalTypeOptions": {
+                    "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+                    "timezone": true,
+                    "defaultTimezone": "UTC"
+                  },
+                  "physicalType": "TIMESTAMPTZ",
+                  "description": "Capture timestamp of this successful read evidence, when recorded."
+                },
+                {
+                  "name": "receipt_key",
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Raw capture receipt key recording this successful read."
+                },
+                {
+                  "name": "receipt_line",
+                  "logicalType": "integer",
+                  "logicalTypeOptions": {
+                    "format": "i32"
+                  },
+                  "physicalType": "INTEGER",
+                  "description": "Zero-based line number inside the capture receipt for this successful read."
+                },
+                {
+                  "name": "capture_index",
+                  "logicalType": "integer",
+                  "logicalTypeOptions": {
+                    "format": "i32"
+                  },
+                  "physicalType": "INTEGER",
+                  "description": "Capture index within the receipt line for this successful read."
+                },
+                {
+                  "name": "body_sha256",
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Hexadecimal SHA-256 digest of the captured response body for this successful read."
+                },
+                {
+                  "name": "meeting_parser_version",
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Version of the meeting_records parser that read this successful read body."
+                },
+                {
+                  "name": "proof_parser_version",
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Version of the appearance_records detail reader qualifying this successful read body."
+                }
+              ],
+              "description": "One qualified successful receipt and its response digest, retrieval time and selected reader versions. Nullable; retained independently of later failures."
+            },
+            {
+              "name": "latest_attempt",
+              "logicalType": "object",
+              "physicalType": "STRUCT",
+              "properties": [
+                {
+                  "name": "evidence",
+                  "logicalType": "object",
+                  "physicalType": "STRUCT",
+                  "properties": [
+                    {
+                      "name": "source_url",
+                      "logicalType": "string",
+                      "physicalType": "VARCHAR",
+                      "description": "Captured Congress.gov address for this latest attempt.evidence evidence."
+                    },
+                    {
+                      "name": "retrieved_at",
+                      "logicalType": "timestamp",
+                      "logicalTypeOptions": {
+                        "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+                        "timezone": true,
+                        "defaultTimezone": "UTC"
+                      },
+                      "physicalType": "TIMESTAMPTZ",
+                      "description": "Capture timestamp of this latest attempt.evidence evidence, when recorded."
+                    },
+                    {
+                      "name": "receipt_key",
+                      "logicalType": "string",
+                      "physicalType": "VARCHAR",
+                      "description": "Raw capture receipt key recording this latest attempt.evidence."
+                    },
+                    {
+                      "name": "receipt_line",
+                      "logicalType": "integer",
+                      "logicalTypeOptions": {
+                        "format": "i32"
+                      },
+                      "physicalType": "INTEGER",
+                      "description": "Zero-based line number inside the capture receipt for this latest attempt.evidence."
+                    },
+                    {
+                      "name": "capture_index",
+                      "logicalType": "integer",
+                      "logicalTypeOptions": {
+                        "format": "i32"
+                      },
+                      "physicalType": "INTEGER",
+                      "description": "Capture index within the receipt line for this latest attempt.evidence."
+                    },
+                    {
+                      "name": "body_sha256",
+                      "logicalType": "string",
+                      "physicalType": "VARCHAR",
+                      "description": "Hexadecimal SHA-256 digest of the captured response body for this latest attempt.evidence."
+                    },
+                    {
+                      "name": "meeting_parser_version",
+                      "logicalType": "string",
+                      "physicalType": "VARCHAR",
+                      "description": "Version of the meeting_records parser that read this latest attempt.evidence body."
+                    },
+                    {
+                      "name": "proof_parser_version",
+                      "logicalType": "string",
+                      "physicalType": "VARCHAR",
+                      "description": "Version of the appearance_records detail reader qualifying this latest attempt.evidence body."
+                    }
+                  ],
+                  "description": "The attempt clock and locator are bound to the same capture. Receipt lines are one-based and capture indexes are zero-based; body digest and clocks may be null."
+                },
+                {
+                  "name": "state",
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Recorded state of the latest Congress.gov detail capture attempt."
+                },
+                {
+                  "name": "outcome",
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Capture outcome recorded on the latest Congress.gov detail attempt."
+                },
+                {
+                  "name": "http_status",
+                  "logicalType": "integer",
+                  "logicalTypeOptions": {
+                    "format": "i32"
+                  },
+                  "physicalType": "INTEGER",
+                  "description": "HTTP response status code recorded on the latest Congress.gov detail attempt, when present."
+                }
+              ],
+              "description": "One latest dated detail attempt and its raw outcome, HTTP status and qualification state. Undated attempts are signaled separately; ties use the receipt locator."
+            },
+            {
+              "name": "listing",
+              "logicalType": "object",
+              "physicalType": "STRUCT",
+              "properties": [
+                {
+                  "name": "source_url",
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Captured Congress.gov address for this listing evidence."
+                },
+                {
+                  "name": "retrieved_at",
+                  "logicalType": "timestamp",
+                  "logicalTypeOptions": {
+                    "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+                    "timezone": true,
+                    "defaultTimezone": "UTC"
+                  },
+                  "physicalType": "TIMESTAMPTZ",
+                  "description": "Capture timestamp of this listing evidence, when recorded."
+                },
+                {
+                  "name": "receipt_key",
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Raw capture receipt key recording this listing."
+                },
+                {
+                  "name": "receipt_line",
+                  "logicalType": "integer",
+                  "logicalTypeOptions": {
+                    "format": "i32"
+                  },
+                  "physicalType": "INTEGER",
+                  "description": "Zero-based line number inside the capture receipt for this listing."
+                },
+                {
+                  "name": "capture_index",
+                  "logicalType": "integer",
+                  "logicalTypeOptions": {
+                    "format": "i32"
+                  },
+                  "physicalType": "INTEGER",
+                  "description": "Capture index within the receipt line for this listing."
+                },
+                {
+                  "name": "body_sha256",
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Hexadecimal SHA-256 digest of the captured response body for this listing."
+                },
+                {
+                  "name": "meeting_parser_version",
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Version of the meeting_records parser that read this listing body."
+                },
+                {
+                  "name": "proof_parser_version",
+                  "logicalType": "string",
+                  "physicalType": "VARCHAR",
+                  "description": "Version of the appearance_records detail reader qualifying this listing body."
+                }
+              ],
+              "description": "A bound successful listing route whose selected response supplied this meeting. A listing-only claim is confined to selected release inputs."
+            },
+            {
+              "name": "has_undated_attempt",
+              "logicalType": "boolean",
+              "physicalType": "BOOLEAN",
+              "description": "Whether any Congress.gov detail attempt lacked a retrieval timestamp for chronological ordering."
+            }
+          ],
+          "required": true,
+          "description": "Event-specific Congress.gov detail evidence. successful means an exact requested and final Congress/chamber/event detail route, successful receipt, and same-body selected meeting identity and qualified detail-only appearance reader. failed means recorded failures without a success or uncertain detail response. listing_only_in_scope means a proven listing and no detail success, failure or uncertain detail response in selected release inputs. unknown preserves missing or unqualified evidence. coverage is selected_release_inputs or unknown; it never claims complete acquisition history. successful_read and latest_attempt keep their own receipt and retrieval time; a later failure does not erase success. Among dated observations the latest is selected, then receipt locator breaks ties; has_undated_attempt marks attempts that cannot be ordered by time. Missing retrieval times stay null. Publisher update time remains congress_gov_updated. SpicyRegs journal recorded_at is separate and is not supplied by archive captures.",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Evidence for the full Congress/chamber/event identity in selected release inputs only. Missing evidence stays unknown; this object does not certify complete acquisition history."
+            }
+          ]
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "event_id"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes data model §8.1 (meetings.parquet row); access fields, not_held and rescheduling are null with no record, as their meanings state. List columns are empty, never null, except document_references."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "meeting_bills",
+              "source": {
+                "table": "meetings",
+                "fields": [
+                  "subject_keys[]"
+                ]
+              },
+              "target": {
+                "table": "bills",
+                "fields": [
+                  "bill_id"
+                ]
+              },
+              "meaning": "Measures explicitly named as meeting subjects.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "meeting_nominations",
+              "source": {
+                "table": "meetings",
+                "fields": [
+                  "subject_keys[]"
+                ]
+              },
+              "target": {
+                "table": "nominations",
+                "fields": [
+                  "nomination_id"
+                ]
+              },
+              "meaning": "Measures explicitly named as meeting subjects.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "meeting_committees",
+              "source": {
+                "table": "meetings",
+                "fields": [
+                  "committees[].system_code"
+                ]
+              },
+              "target": {
+                "table": "committees",
+                "fields": [
+                  "system_code"
+                ]
+              },
+              "meaning": "Committee participation and its published role.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "meeting_transcript_documents",
+              "source": {
+                "table": "meetings",
+                "fields": [
+                  "transcripts[].list_row"
+                ]
+              },
+              "target": {
+                "table": "list",
+                "fields": [
+                  "list_row"
+                ]
+              },
+              "meaning": "Retained printed hearing document; accompanying package_id preserves the source reference.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "meeting_recordings",
+              "source": {
+                "table": "meetings",
+                "fields": [
+                  "videos[].video_key"
+                ]
+              },
+              "target": {
+                "table": "recordings",
+                "fields": [
+                  "video_key"
+                ]
+              },
+              "meaning": "Publisher video reference to a retained recording.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "meeting_transcript_packages",
+              "source": {
+                "table": "meetings",
+                "fields": [
+                  "transcripts[].package_id"
+                ]
+              },
+              "target": {
+                "external": "GovInfo packages"
+              },
+              "meaning": "Publisher package identity; it can exist without a retained local document.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "meeting_video_address",
+              "source": {
+                "table": "meetings",
+                "fields": [
+                  "videos[].url"
+                ]
+              },
+              "target": {
+                "external": "web URL"
+              },
+              "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "meeting_treaties",
+              "source": {
+                "table": "meetings",
+                "fields": [
+                  "subject_keys[]"
+                ]
+              },
+              "target": {
+                "external": "Congress.gov treaties"
+              },
+              "meaning": "Subject identifiers of the form {congress}-treaty-{number}; bill and nomination values in the same list use their separate relationships. No treaty entity table is published.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "typed treaty identifiers only"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,457 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:nominations",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: nominations",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Referenced nominations and embedded legislative facts",
+    "usage": "Explore referenced nominations and their legislative facts. Each record includes the nomination part when one is supplied; coverage is limited to retained upstream data."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    },
+    {
+      "vendor": "spicy-regs",
+      "property": "sourceGenerations",
+      "value": {
+        "nominations": "8a7c0657f22d4be38169d8212cac6f9f2ca0d107defd0573d01c5ee62da7c44c",
+        "roll-call-votes": "1b86d720096977c373640c6dbb1dee216feb14b254d046183abce00d3d593072"
+      }
+    }
+  ],
+  "schema": [
+    {
+      "id": "nominations",
+      "name": "nominations",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "nominations.parquet",
+      "businessName": "Referenced nominations and embedded legislative facts",
+      "dataGranularityDescription": "One nomination including its part when present, referenced by archive documents or meetings; bounded by upstream retained data",
+      "description": "Explore referenced nominations and their legislative facts. Each record includes the nomination part when one is supplied; coverage is limited to retained upstream data.",
+      "properties": [
+        {
+          "name": "nomination_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:congressional-tech:concept:nomination-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:congressional-tech:concept:nomination-id"
+            }
+          ],
+          "required": true,
+          "description": "Canonical nomination identifier ({congress}-pn-{number}[-{part}])",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "description",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Nomination description"
+        },
+        {
+          "name": "organization",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Executive or independent agency name"
+        },
+        {
+          "name": "received",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Date received in the Senate"
+        },
+        {
+          "name": "latest_action_date",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Date of latest action"
+        },
+        {
+          "name": "latest_action_text",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Text of latest action"
+        },
+        {
+          "name": "committees",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "congressional-tech",
+                "property": "archivePhysicalEncoding",
+                "value": "dictionary"
+              },
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:ddk:legislative:concept:committee-code"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:ddk:legislative:concept:committee-code"
+              }
+            ],
+            "description": "Congress.gov system code of a committee associated with this measure."
+          },
+          "required": true,
+          "description": "Referred Senate committee system codes"
+        },
+        {
+          "name": "committee_activities",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "system_code",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:ddk:legislative:concept:committee-code"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:ddk:legislative:concept:committee-code"
+                  }
+                ],
+                "description": "Congress.gov system code of the committee in this activity group."
+              },
+              {
+                "name": "activities",
+                "logicalType": "array",
+                "physicalType": "STRUCT[]",
+                "items": {
+                  "logicalType": "object",
+                  "physicalType": "STRUCT",
+                  "properties": [
+                    {
+                      "name": "name",
+                      "logicalType": "string",
+                      "physicalType": "VARCHAR",
+                      "description": "Name of this committee activity."
+                    },
+                    {
+                      "name": "date",
+                      "logicalType": "string",
+                      "physicalType": "VARCHAR",
+                      "description": "Exact source date or timestamp string, including offset and precision. Null when missing."
+                    }
+                  ],
+                  "description": "One activity stated for this committee in the retained source order."
+                },
+                "description": "Null when not supplied or unreadable, empty when the source supplied an empty list."
+              }
+            ],
+            "description": "One committee activity group in the retained nomination source order."
+          },
+          "required": false,
+          "description": "Committee groups and activity names and dates as supplied, in source order. Null means unavailable or unstated. An empty list means the source supplied no entries."
+        },
+        {
+          "name": "transcripts",
+          "logicalType": "array",
+          "physicalType": "VARCHAR[]",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "VARCHAR",
+            "customProperties": [
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:ddk:gpo:concept:package-id"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:ddk:gpo:concept:package-id"
+              }
+            ],
+            "description": "GovInfo CHRG package identifiers; a retained transcript can have multiple document formats or editions."
+          },
+          "required": true,
+          "description": "Printed hearing package IDs from nomination hearing references"
+        },
+        {
+          "name": "floor_votes",
+          "logicalType": "array",
+          "physicalType": "STRUCT[]",
+          "items": {
+            "logicalType": "object",
+            "physicalType": "STRUCT",
+            "properties": [
+              {
+                "name": "vote_id",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "customProperties": [
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:ddk:legislative:concept:roll-call-id"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:ddk:legislative:concept:roll-call-id"
+                  }
+                ],
+                "description": "Identifier of this floor vote."
+              },
+              {
+                "name": "date",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "DATE",
+                "description": "Calendar date of this vote."
+              },
+              {
+                "name": "question",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Question put to this vote."
+              },
+              {
+                "name": "result",
+                "logicalType": "string",
+                "physicalType": "VARCHAR",
+                "description": "Recorded result of this vote."
+              },
+              {
+                "name": "yea",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i16"
+                },
+                "physicalType": "SMALLINT",
+                "description": "Recorded number of yea votes."
+              },
+              {
+                "name": "nay",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i16"
+                },
+                "physicalType": "SMALLINT",
+                "description": "Recorded number of nay votes."
+              }
+            ],
+            "description": "Embedded Senate roll-call summaries; no individual member positions."
+          },
+          "required": true,
+          "description": "Senate roll-call votes on the nomination"
+        },
+        {
+          "name": "source_updated_at",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "Literal Congress.gov update_date; a publisher update, not the latest action date"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "spicy-regs"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "nomination_id"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes the phase-2 annex §3 file table, except description: upstream military promotion lists carry no description (in the pinned spicy-regs nominations generation, 1,349 of its 1,363 rows without one are military), so it is nullable, a legitimate upstream gap rather than a mapping loss."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "Nominations cover the 119th Congress only until spicy-regs backfills",
+            "Local nomination profiles include only nominations referenced by published archive documents or meetings; other retained upstream nominations are outside this collection"
+          ]
+        },
+        {
+          "vendor": "spicy-regs",
+          "property": "sourceGenerations",
+          "value": {
+            "nominations": "8a7c0657f22d4be38169d8212cac6f9f2ca0d107defd0573d01c5ee62da7c44c",
+            "roll-call-votes": "1b86d720096977c373640c6dbb1dee216feb14b254d046183abce00d3d593072"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "nominations_committees",
+              "source": {
+                "table": "nominations",
+                "fields": [
+                  "committees[]"
+                ]
+              },
+              "target": {
+                "table": "committees",
+                "fields": [
+                  "system_code"
+                ]
+              },
+              "meaning": "Published committee referrals.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "nominations_votes",
+              "source": {
+                "table": "nominations",
+                "fields": [
+                  "floor_votes[].vote_id"
+                ]
+              },
+              "target": {
+                "external": "spicy-regs roll-call-votes"
+              },
+              "meaning": "External vote identity; the local embedded record provides only the published summary.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "nomination_transcript_documents",
+              "source": {
+                "table": "nominations",
+                "fields": [
+                  "transcripts[]"
+                ]
+              },
+              "target": {
+                "table": "detail",
+                "fields": [
+                  "package_id"
+                ]
+              },
+              "meaning": "Printed hearing packages associated with this nomination; use exact package IDs.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "nomination_packages",
+              "source": {
+                "table": "nominations",
+                "fields": [
+                  "transcripts[]"
+                ]
+              },
+              "target": {
+                "external": "GovInfo packages"
+              },
+              "meaning": "Publisher package identity; it can exist without a retained local document.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

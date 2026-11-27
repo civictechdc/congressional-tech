@@ -1,0 +1,405 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:rosters",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: rosters",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Committee and subcommittee seats across published Congresses",
+    "usage": "Explore member assignments to congressional committees and subcommittees for the Congresses included in the retained source snapshot."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    },
+    {
+      "vendor": "spicy-regs",
+      "property": "sourceGenerations",
+      "value": {
+        "committee-rosters": "32ac9696f43b585ec5f1bc3f3fd001812cc181787571af551eed33544b472f17"
+      }
+    }
+  ],
+  "schema": [
+    {
+      "id": "rosters",
+      "name": "rosters",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "rosters.parquet",
+      "businessName": "Committee and subcommittee seats across published Congresses",
+      "dataGranularityDescription": "One member assignment to a committee or subcommittee in a Congress (keyed by congress, system_code, bioguide_id; only Congresses populated in the pinned upstream committee_assignments snapshot appear; congress_basis and edition_date say which source and date state it)",
+      "description": "Explore member assignments to congressional committees and subcommittees for the Congresses included in the retained source snapshot.",
+      "properties": [
+        {
+          "name": "congress",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i16"
+          },
+          "physicalType": "SMALLINT",
+          "required": true,
+          "description": "Congress number for the committee assignment",
+          "primaryKey": true,
+          "primaryKeyPosition": 1,
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Keyed by (congress, system_code, bioguide_id); populated from the pinned upstream committee_assignments snapshot, whose populated Congresses the coverage congress_start and congress_end bound. Earlier Congresses appear only after an upstream backfill is pinned."
+            }
+          ]
+        },
+        {
+          "name": "system_code",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            },
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:committee-code"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "hsba00-tf-terrorism-financing is directory-defined: that House Financial Services task force has no Congress.gov code; its committees row is synthesized with parent hsba00."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:committee-code"
+            }
+          ],
+          "required": true,
+          "description": "Lowercase committee or subcommittee system code",
+          "primaryKey": true,
+          "primaryKeyPosition": 2
+        },
+        {
+          "name": "bioguide_id",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            },
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:bioguide-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:bioguide-id"
+            }
+          ],
+          "required": true,
+          "description": "Assigned member Bioguide identifier",
+          "primaryKey": true,
+          "primaryKeyPosition": 3
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Chamber-file titles are verbatim (Chairman, Ranking Member); directory titles are normalized (Chair, Vice Chair, Ranking Member)."
+            }
+          ],
+          "required": false,
+          "description": "Committee leadership or seat position title"
+        },
+        {
+          "name": "rank",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i16"
+          },
+          "physicalType": "SMALLINT",
+          "required": false,
+          "description": "Numeric party rank on the committee when printed by the source"
+        },
+        {
+          "name": "party",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Preserves the supplied assignment party; missing or blank values stay null. Service-term party assertions do not establish party or caucus at a roster observation, and the input does not supply qualified dated affiliation history."
+            }
+          ],
+          "required": false,
+          "description": "Party caucus for the committee assignment"
+        },
+        {
+          "name": "congress_basis",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Earlier Congresses' seats come from one Congressional Directory edition per Congress (directory). A Congress whose edition serves no committee granules takes each committee from Internet Archive captures of the House file (file) and the Senate file (caller) when present, and falls back to a reviewed reading of the edition's PDF (directory-manual) for committees and subcommittees absent from those files. The current Congress comes from the current chamber files."
+            }
+          ],
+          "required": false,
+          "description": "Where the seat's Congress comes from: file (the House roster file states it), caller (the Senate file states none), directory (a Congressional Directory edition's package metadata) or directory-manual (a reviewed one-off reading of an edition's PDF)"
+        },
+        {
+          "name": "edition_date",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "DATE",
+          "required": false,
+          "description": "Snapshot date the roster describes: a directory edition's dateIssued, or an archived chamber file's Internet Archive capture date"
+        },
+        {
+          "name": "source_granule",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "The GovInfo directory granule (or, for a manual reading, package; for an archived chamber file, its Internet Archive URL) that states the seat"
+        },
+        {
+          "name": "source_line",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "The granule text line where the printed entry starts; for a manual reading, PDF page:line"
+        },
+        {
+          "name": "position_basis",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "For a directory seat with a title: printed, or inferred for a Ranking Member taken from print position (the first minority-column entry)"
+        },
+        {
+          "name": "printed_entry",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "required": false,
+          "description": "For a directory seat, the entry as printed (name and state), kept when a value was corrected"
+        },
+        {
+          "name": "entry_label",
+          "logicalType": "string",
+          "physicalType": "VARCHAR",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "For a directory seat: corrected (a printed name, state or column was corrected; printed_entry keeps it), after_departure (printed after the member left) or no_congress_gov_code (the body has no Congress.gov code)"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "spicy-regs"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "congress",
+              "system_code",
+              "bioguide_id"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "Committee seats cover only the Congresses populated in the pinned upstream committee_assignments snapshot; congress_start and congress_end bound the published Congresses, and any Congress without roster rows, including every Congress when both are null, is unavailable, not zero seats",
+            "A seat from a Congressional Directory edition (congress_basis directory or directory-manual) is one dated printed snapshot (edition_date): changes during that Congress are invisible, ex officio members appear only where printed, and a list printed after a member left keeps that member (entry_label after_departure)",
+            "A Ranking Member with position_basis inferred is the first minority-column entry of a list printing no minority leader, not a stated title",
+            "Printed directory entries that are not seats (vacancies, party organizations, unread lines) are not in this release; they are SpicyRegs committee_directory_entries rows"
+          ]
+        },
+        {
+          "vendor": "spicy-regs",
+          "property": "sourceGenerations",
+          "value": {
+            "committee-rosters": "32ac9696f43b585ec5f1bc3f3fd001812cc181787571af551eed33544b472f17"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "roster_committee",
+              "source": {
+                "table": "rosters",
+                "fields": [
+                  "system_code"
+                ]
+              },
+              "target": {
+                "table": "committees",
+                "fields": [
+                  "system_code"
+                ]
+              },
+              "meaning": "Committee or subcommittee assignment for the roster row's Congress.",
+              "cardinality": "many-to-one",
+              "nullable": false,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "rosters.congress (Congresses populated in the pinned committee_assignments snapshot)"
+            },
+            {
+              "id": "roster_member",
+              "source": {
+                "table": "rosters",
+                "fields": [
+                  "bioguide_id"
+                ]
+              },
+              "target": {
+                "table": "members",
+                "fields": [
+                  "bioguide_id"
+                ]
+              },
+              "meaning": "Assigned member for the roster row's Congress.",
+              "cardinality": "many-to-one",
+              "nullable": false,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "rosters.congress (Congresses populated in the pinned committee_assignments snapshot)"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "roster_committee",
+          "type": "foreignKey",
+          "from": "rosters.system_code",
+          "to": "committees.system_code",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": false
+            }
+          ]
+        },
+        {
+          "id": "roster_member",
+          "type": "foreignKey",
+          "from": "rosters.bioguide_id",
+          "to": "members.bioguide_id",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
