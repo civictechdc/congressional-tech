@@ -1,0 +1,335 @@
+{
+ "version": 1,
+ "publish_pass1_run_id": 45975937523,
+ "capture_campaign_runs": {
+  "slice_1": 45735328040,
+  "slice_2": 45743514372,
+  "slice_3": 45751284191,
+  "backfill_qualify": 45762372059,
+  "daily_cron": 45749342153,
+  "daily_cron_2": 45934598302,
+  "pr_260_capture_scope": 260
+ },
+ "base_release_id": "a422335579f0df176199c406f7f5b56e7d7278e61faaea4069baee1c530e8228",
+ "candidate_release_id": "efd7973e200f05a15c5f9d732d343a3b2bab1ac88915d15b7053cba096d8943c",
+ "daily_ingest": {
+  "status": "completed",
+  "total_new_receipts_since_previous": 1973,
+  "wikidata_reconcile_receipts": 0,
+  "other_daily_receipts": 1973,
+  "pins": {
+   "appearance_records": {
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/appearance_records_rank_20261112/metadata/00021-01a21c6a-dffd-7b10-9656-344121e55683.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 2006772819538132085,
+    "table_uuid": "01a1d14c-9b33-7950-9d0c-3e0a0bfcc881"
+   },
+   "captures": {
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/captures_df55_20261113/metadata/00024-01a21c67-b90f-71a3-b6f7-e94c03ec6572.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 4226670617912677513,
+    "table_uuid": "01a1d311-21a3-7110-8a99-a7632a7b93c9"
+   },
+   "committee_records": {
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/committee_records_bill_20261112/metadata/00007-01a2033d-2512-7b93-8c72-8b1d6bec0f2b.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 3557540558687669481,
+    "table_uuid": "01a1d14c-c68f-7701-93fb-65e6a799185e"
+   },
+   "filename_readings": {
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/filename_readings_20261112/metadata/00024-01a21c6a-11e3-7b61-ae7f-51216d1aeb64.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 5980750666729820374,
+    "table_uuid": "01a1d14c-e368-7b22-bd83-299b59435a37"
+   },
+   "meeting_records": {
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/meeting_records_mvp_20261105/metadata/00025-01a21c6a-889c-76e1-8016-6609965c0619.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 2029161616920811261,
+    "table_uuid": "01a1adb0-549d-7611-b73c-43123b27949b"
+   },
+   "playlist_records": {
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/playlist_records_mvp_20261105/metadata/00002-01a1c1f7-63d2-71b0-b04b-19a890cb6d87.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 3020372319786105918,
+    "table_uuid": "01a1adb1-19bb-7421-901b-f03c541a3c01"
+   },
+   "readings": {
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/readings_compact_20261112/metadata/00071-01a21c68-f482-7d71-a14e-b21b10ad33b0.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 3805401295353837226,
+    "table_uuid": "01a1cd80-8888-7632-9a00-2f51f88af451"
+   },
+   "transcript_headings": {
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/transcript_headings_20261112/metadata/00001-01a1d14d-6958-7470-ba18-1ad269b10f69.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 1521016025579643986,
+    "table_uuid": "01a1d14d-50bf-74f1-a086-1e145360b249"
+   },
+   "video_records": {
+    "metadata_location": "s3://congressional-tech-raw/__r2_data_catalog/ct-archive-v2/archive_r1b/video_records/metadata/00005-01a20e06-2524-75a2-b545-7db209176a8d.gz.metadata.json",
+    "schema_id": 0,
+    "snapshot": 5115288838210491360,
+    "table_uuid": "01a1a36c-dac3-70d3-94aa-f571c0017da8"
+   }
+  }
+ },
+ "release_gate_summary": {
+  "link_rule": {
+   "missing": 0,
+   "missing_keys": [],
+   "dangling": 0,
+   "dangling_keys": [],
+   "published_and_retired": 0,
+   "published_and_retired_keys": [],
+   "changed": 0,
+   "changed_keys": [],
+   "changed_answers": [],
+   "lookup_changed": 0,
+   "lookup_changed_keys": [],
+   "lookup_changed_answers": [],
+   "address_changed": 0,
+   "address_changed_keys": [],
+   "address_changed_answers": [],
+   "demoted": 0,
+   "demoted_keys": [],
+   "unchecked": [],
+   "demoted_answers": [],
+   "ok": true
+  },
+  "failing_count": 46,
+  "failing_groups": [
+   {
+    "id": "capture_scope.json|changed file without a comparison|unexplained",
+    "count": 0,
+    "status": "unexplained"
+   },
+   {
+    "id": "detail.parquet|added rows|no surviving link key",
+    "count": 185,
+    "status": "unverified"
+   },
+   {
+    "id": "detail.parquet|changed title|value differs on matched key",
+    "count": 176,
+    "status": "unverified"
+   },
+   {
+    "id": "detail.parquet|changed title_source|value differs on matched key",
+    "count": 176,
+    "status": "unverified"
+   },
+   {
+    "id": "links.parquet|added keys|no evidence given",
+    "count": 260,
+    "status": "unverified"
+   },
+   {
+    "id": "list.parquet|added rows|no surviving link key",
+    "count": 185,
+    "status": "unverified"
+   },
+   {
+    "id": "list.parquet|changed title|value differs on matched key",
+    "count": 176,
+    "status": "unverified"
+   },
+   {
+    "id": "meeting_coverage.parquet|changed basis|value differs on matched key",
+    "count": 22,
+    "status": "unverified"
+   },
+   {
+    "id": "meeting_coverage.parquet|changed count|value differs on matched key",
+    "count": 24,
+    "status": "unverified"
+   },
+   {
+    "id": "meeting_coverage.parquet|changed reason|value differs on matched key",
+    "count": 26,
+    "status": "unverified"
+   },
+   {
+    "id": "meeting_coverage.parquet|changed state|value differs on matched key",
+    "count": 25,
+    "status": "unverified"
+   },
+   {
+    "id": "meetings.parquet|changed publisher_status_observations|value differs on matched key",
+    "count": 1,
+    "status": "unverified"
+   },
+   {
+    "id": "organization_ids.parquet|removed keys|no evidence given",
+    "count": -11158,
+    "status": "unverified"
+   },
+   {
+    "id": "organization_ids.parquet|added keys|no evidence given",
+    "count": 20288,
+    "status": "unverified"
+   },
+   {
+    "id": "organization_ids.parquet|changed evidence|value differs on matched key",
+    "count": 22,
+    "status": "unverified"
+   },
+   {
+    "id": "organization_redirects.parquet|added keys|no evidence given",
+    "count": 11154,
+    "status": "unverified"
+   },
+   {
+    "id": "organizations.parquet|removed keys|no evidence given",
+    "count": -11154,
+    "status": "unverified"
+   },
+   {
+    "id": "organizations.parquet|added keys|no evidence given",
+    "count": 9130,
+    "status": "unverified"
+   },
+   {
+    "id": "organizations.parquet|changed appearance_count|value differs on matched key",
+    "count": 27,
+    "status": "unverified"
+   },
+   {
+    "id": "organizations.parquet|changed bag_keys|value differs on matched key",
+    "count": 27,
+    "status": "unverified"
+   },
+   {
+    "id": "organizations.parquet|changed string_keys|value differs on matched key",
+    "count": 27,
+    "status": "unverified"
+   },
+   {
+    "id": "recording_matches.parquet|added keys|no evidence given",
+    "count": 28,
+    "status": "unverified"
+   },
+   {
+    "id": "recording_matches.parquet|changed note|value differs on matched key",
+    "count": 23,
+    "status": "unverified"
+   },
+   {
+    "id": "recording_matches.parquet|changed source_ref|value differs on matched key",
+    "count": 23,
+    "status": "unverified"
+   },
+   {
+    "id": "recording_matches.parquet|changed status|value differs on matched key",
+    "count": 1,
+    "status": "unverified"
+   },
+   {
+    "id": "recordings.parquet|added keys|with event_ids; source not traced",
+    "count": 25,
+    "status": "unverified"
+   },
+   {
+    "id": "recordings.parquet|added keys|empty event_ids; source not traced",
+    "count": 19,
+    "status": "unverified"
+   },
+   {
+    "id": "recoveries.parquet|changed bytes, no key or value difference found|unexplained",
+    "count": 0,
+    "status": "unexplained"
+   },
+   {
+    "id": "sources.parquet|new URLs|no previous row has this address",
+    "count": 185,
+    "status": "unverified"
+   },
+   {
+    "id": "sources.parquet|changed link_text|value differs on matched key",
+    "count": 1044,
+    "status": "unverified"
+   },
+   {
+    "id": "sources.parquet|changed listed_on|value differs on matched key",
+    "count": 1044,
+    "status": "unverified"
+   },
+   {
+    "id": "url_state.parquet|added URLs|queued link with no attempts yet",
+    "count": 581,
+    "status": "unverified"
+   },
+   {
+    "id": "url_state.parquet|added URLs|new attempts",
+    "count": 5209,
+    "status": "unverified"
+   },
+   {
+    "id": "url_state.parquet|changed attempts|value differs on matched key",
+    "count": 1984,
+    "status": "unverified"
+   },
+   {
+    "id": "url_state.parquet|changed last_attempt|value differs on matched key",
+    "count": 1984,
+    "status": "unverified"
+   },
+   {
+    "id": "url_state.parquet|changed last_good_at|value differs on matched key",
+    "count": 1793,
+    "status": "unverified"
+   },
+   {
+    "id": "url_state.parquet|changed last_outcome|value differs on matched key",
+    "count": 1936,
+    "status": "unverified"
+   },
+   {
+    "id": "url_state.parquet|changed last_status|value differs on matched key",
+    "count": 1913,
+    "status": "unverified"
+   },
+   {
+    "id": "url_state.parquet|changed linked_from|value differs on matched key",
+    "count": 1913,
+    "status": "unverified"
+   },
+   {
+    "id": "url_state.parquet|changed next_attempt_at|value differs on matched key",
+    "count": 1984,
+    "status": "unverified"
+   },
+   {
+    "id": "url_state.parquet|changed recheck_meeting_date|value differs on matched key",
+    "count": 29,
+    "status": "unverified"
+   },
+   {
+    "id": "urls.parquet|keys new|key absent from the previous release",
+    "count": 271,
+    "status": "unverified"
+   },
+   {
+    "id": "witness_organizations.parquet|changed evidence|value differs on matched key",
+    "count": 44732,
+    "status": "unverified"
+   },
+   {
+    "id": "witness_organizations.parquet|changed method|value differs on matched key",
+    "count": 44653,
+    "status": "unverified"
+   },
+   {
+    "id": "witness_organizations.parquet|changed org_id|value differs on matched key",
+    "count": 44707,
+    "status": "unverified"
+   },
+   {
+    "id": "witness_organizations.parquet|changed score|value differs on matched key",
+    "count": 43969,
+    "status": "unverified"
+   }
+  ]
+ },
+ "refspec_and_wikidata_deltas": null
+}
