@@ -2,9 +2,11 @@ import taxonomy from '../../../../../../model/registries/ban-park-you-org-taxono
 import {
   committeeLabel,
   presentDocument,
+  spicyGovOrganizationUrl,
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
 import {PublicLink, day} from './ArchiveRows.tsx';
+import {CitableReceipt} from './CitableReceipt.tsx';
 
 const parentLabels = new Map<string, string>(
   (taxonomy.parent_categories ?? []).map((p: any) => [String(p.id), String(p.label)]),
@@ -43,6 +45,8 @@ function externalIdUrl(scheme: string, value: string): string | null {
 export function OrganizationDetail({
   organization,
   committeesCatalog,
+  rawBase,
+  releaseId,
   compact,
   onSelect,
   onHearing,
@@ -56,6 +60,8 @@ export function OrganizationDetail({
 }: {
   organization: any;
   committeesCatalog?: CommitteeCatalogInput;
+  rawBase?: string;
+  releaseId?: string;
   compact?: boolean;
   onSelect?: (row: number) => void;
   onHearing?: (key: string) => void;
@@ -84,6 +90,7 @@ export function OrganizationDetail({
   const documents: any[] = Array.isArray(organization.documents) ? organization.documents : [];
   const shownAppearances = compact ? appearances.slice(0, 5) : appearances;
   const taxonomyLabel = formatTaxonomy(organization);
+  const spicyGovUrl = spicyGovOrganizationUrl(organization);
 
   return <section className="archive-entity-card" aria-label="Organization details" data-archive-entity="organization">
     {redirectedFrom && <p role="status" className="archive-redirect-note">
@@ -93,6 +100,7 @@ export function OrganizationDetail({
       <div className="archive-entity-header-top">
         <p className="archive-detail-context">Witness Organization Profile</p>
         <div className="archive-pill-list">
+          {spicyGovUrl && <a className="archive-measure-pill" href={spicyGovUrl} target="_blank" rel="noreferrer">Explore on SpicyGov →</a>}
           {onInspect && <button type="button" className="archive-measure-pill" onClick={onInspect}>Open full profile →</button>}
           {onFilterDocuments && <button type="button" className="archive-measure-pill" onClick={onFilterDocuments}>Filter documents in Document Search</button>}
           {onClose && <button type="button" className="archive-measure-pill" onClick={onClose}>{closeLabel || 'Close organization profile'}</button>}
@@ -136,6 +144,7 @@ export function OrganizationDetail({
       <p className="archive-source-meta">
         Organization ID: <code>{organization.org_id}</code> · {Number(organization.appearance_count ?? appearances.length)} linked witness {Number(organization.appearance_count ?? appearances.length) === 1 ? 'appearance' : 'appearances'}
       </p>
+      {!compact && organization.org_id && <CitableReceipt kind="organization" releaseId={releaseId} rawBase={rawBase} orgId={String(organization.org_id)} />}
     </header>
 
     {appearances.length > 0 && <div className="archive-entity-section">

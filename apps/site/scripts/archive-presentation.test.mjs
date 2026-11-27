@@ -888,3 +888,114 @@ test('cat2-pkk1 and P0-3b UI: military rank/credentials, MODS witness stubs, par
   }));
   assert(hearingOrgHtml.includes('Transit Lab')&&hearingOrgHtml.includes('archive-measure-pill'),hearingOrgHtml);
 });
+
+test('Wave 2 renders citable receipt cards, cross-branch SpicyGov/DeltaTrack links, accountability view, and passage search boundaries',async()=>{
+  const relId='efd7973e200f05a15c5f9d732d343a3b2bab1ac88915d15b7053cba096d8943c';
+  const docHtml=render({
+    releaseId:relId,
+    document:{...row,measure_keys:['119-hr-475','119-pn-730-2']},
+    detail,
+    sources:[],
+    recoveries:[],
+  });
+  for(const expected of [
+    'Citable Receipt',
+    'Copy DuckDB SQL',
+    relId,
+    '1111111111111111',
+    'read_parquet(',
+    'Explore on SpicyGov →',
+    'Diff in DeltaTrack →',
+    'bill=119-hr-475',
+  ]){
+    assert(docHtml.includes(expected),`Missing in ArchiveDetail: ${expected}`);
+  }
+  assert(!docHtml.includes('bill=119-pn-730-2'),'Nominations must not emit DeltaTrack bill diff links');
+
+  const hearingHtml=renderToStaticMarkup(React.createElement(HearingDetail,{
+    releaseId:relId,
+    rawBase:'https://congressional-data.spicygov.ai/',
+    meeting:{event_id:'118001',congress:118,chamber:'house',title:'Oversight Hearing',committees:[],sittings:[],coverage:[],witnesses:[],subjects:[{subject_key:'119-hr-475',bill_id:'119-hr-475'}],transcripts:[],videos:[],documents:[]},
+  }));
+  for(const expected of ['Citable Receipt',relId,'118001','meetings.parquet','Explore on SpicyGov →','Diff in DeltaTrack →']){
+    assert(hearingHtml.includes(expected),`Missing in HearingDetail: ${expected}`);
+  }
+
+  const {OrganizationDetail}=await compile('OrganizationDetail.tsx');
+  const orgReceiptHtml=renderToStaticMarkup(React.createElement(OrganizationDetail,{
+    releaseId:relId,
+    rawBase:'https://congressional-data.spicygov.ai/',
+    organization:{org_id:'e5b88f10d3d5a5ea',display_name:'EPA',organization_ids:[{scheme:'wikidata',value:'Q460173'},{scheme:'fr_agency',value:'145'}],appearances:[],documents:[]},
+  }));
+  for(const expected of ['Citable Receipt',relId,'e5b88f10d3d5a5ea','organizations.parquet','Explore on SpicyGov →','wikidata=Q460173','fr_agency=145']){
+    assert(orgReceiptHtml.includes(expected),`Missing in OrganizationDetail: ${expected}`);
+  }
+
+  const {AccountabilityView}=await compile('AccountabilityView.tsx');
+  const accHtml=renderToStaticMarkup(React.createElement(AccountabilityView,{
+    data:{
+      availability:{retiredLinks:'ready',removedOn:'ready',recoveries:'ready'},
+      counts:{removedOn:1,hidden:0,retiredRedirected:1,retiredRemoved:1,recoveredOnly:1,withIdentityNote:1,multiEdition:1},
+      total:4,
+      rows:[
+        {churn_kind:'removed_on',list_row:0,document:row,removed_on:'2025-03-01',recoveries:[],edition_count:0},
+        {churn_kind:'retired_redirected',link_key:'aaaa1111bbbb2222',successor_key:'cccc3333dddd4444',last_release_id:'0'.repeat(64),last_filename:'Old.pdf',address_versions:[]},
+        {churn_kind:'recovered_only',list_row:1,document:{...row,list_row:1,saved_kind:'recovery'},recoveries:[{kind:'recovered_document',identity_note:'Authored provenance note'}],has_identity_note:true,edition_count:0},
+        {churn_kind:'multi_edition',list_row:2,document:{...row,list_row:2},version_keys:['ed-1','ed-2'],edition_count:2,recoveries:[]},
+      ],
+    },
+    kindFilter:'all',
+    onKindFilter:()=>{},
+    onSelect:()=>{},
+    onNavigateKey:()=>{},
+    offset:0,
+    pageSize:30,
+    onOffsetChange:()=>{},
+  }));
+  for(const expected of ['Removed from hearing page','Retired key (redirected to successor)','Has successor_key','Open successor (cccc3333dddd4444) →','Recovered-only document','Authored provenance note','2 linked editions','Atom churn feed']){
+    assert(accHtml.includes(expected),`Missing in AccountabilityView: ${expected}`);
+  }
+
+  const {GuidedRecipesBar,PassageResults,TopOrganizationsResults,normalizeSearchMode}=await compile('PassageSearchResults.tsx');
+  const {normalizeArchiveTab}=await compile('ArchiveEntityBrowse.tsx');
+  assert.equal(normalizeArchiveTab('accountability'),'accountability');
+  assert.equal(normalizeSearchMode('passages'),'passages');
+
+  const recipesHtml=renderToStaticMarkup(React.createElement(GuidedRecipesBar,{
+    mode:'passages',
+    currentQuery:'',
+    onSelectMode:()=>{},
+    onRunRecipe:()=>{},
+    onOpenAccountability:()=>{},
+  }));
+  for(const expected of ['Testimony mentioning…','Top testifying organizations on…','Removed or recovered committee documents']){
+    assert(recipesHtml.includes(expected),`Missing recipe: ${expected}`);
+  }
+
+  const zeroPassagesHtml=renderToStaticMarkup(React.createElement(PassageResults,{
+    data:{state:'ready',origin:'https://spicyengine.45.55.61.191.sslip.io',query:'unobtainium',mode:'hybrid',releaseId:relId,releaseMismatch:false,total:0,hasMore:false,tookMs:12,results:[]},
+    activeReleaseId:relId,
+    onOpenKey:()=>{},
+    onRetry:()=>{},
+    onSwitchToMetadata:()=>{},
+  }));
+  assert(zeroPassagesHtml.includes('No indexed passages matched'));
+  assert(zeroPassagesHtml.includes('Metadata &amp; URLs search'));
+
+  const unreachableHtml=renderToStaticMarkup(React.createElement(PassageResults,{
+    data:{state:'unavailable',origin:'https://spicyengine.45.55.61.191.sslip.io',query:'appropriations',mode:'hybrid',releaseId:null,releaseMismatch:false,total:0,hasMore:false,tookMs:null,results:[],reason:'Failed to fetch'},
+    activeReleaseId:relId,
+    onOpenKey:()=>{},
+    onRetry:()=>{},
+    onSwitchToMetadata:()=>{},
+  }));
+  assert(unreachableHtml.includes('currently unreachable from this browser'));
+  assert(unreachableHtml.includes('search_docs'));
+
+  const topOrgsHtml=renderToStaticMarkup(React.createElement(TopOrganizationsResults,{
+    data:{state:'ready',topic:'artificial intelligence',matchedDocuments:3,matchedHearings:2,totalOrgs:1,rows:[{org_id:'org-ai',display_name:'AI Policy Lab',taxonomy_parent:'research',taxonomy_category:'think_tank',matching_appearances:4,matching_hearings:2,sample_hearings:['AI Oversight Hearing']}]},
+    onInspectOrganization:()=>{},
+    onSwitchToMetadata:()=>{},
+  }));
+  assert(topOrgsHtml.includes('AI Policy Lab')&&topOrgsHtml.includes('4 matching appearances'));
+});

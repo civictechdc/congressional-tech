@@ -21,6 +21,15 @@ import {
   visibleArchiveTabs,
   type ArchiveTab,
 } from './ArchiveEntityBrowse.tsx';
+import {AccountabilityView, type AccountabilityKind} from './AccountabilityView.tsx';
+import {
+  GuidedRecipesBar,
+  PassageResults,
+  TopOrganizationsResults,
+  normalizeSearchMode,
+  type SearchMode,
+} from './PassageSearchResults.tsx';
+import {searchSpicyPassages} from './spicy-search.ts';
 import {ArchiveFormatFilter,formatLabel} from './ArchiveFormats.tsx';
 import {
   buildCommitteeGroups,
@@ -48,6 +57,8 @@ const missingResults={status:'error',message:''} as const;
 export type Navigation={
   tab:ArchiveTab;
   text:string;
+  mode:SearchMode;
+  churn:AccountabilityKind;
   congress:string;
   chamber:string;
   committee:string;
@@ -67,6 +78,8 @@ export type Navigation={
 const emptyNavigation:Navigation={
   tab:'documents',
   text:'',
+  mode:'metadata',
+  churn:'all',
   congress:'',
   chamber:'',
   committee:'',
@@ -88,6 +101,8 @@ export const readArchiveNavigation=(search:string=location.search):Navigation=>{
   return {
     tab:normalizeArchiveTab(q.get('tab')),
     text:q.get('q')||'',
+    mode:normalizeSearchMode(q.get('mode')),
+    churn:(q.get('churn') as AccountabilityKind)||'all',
     congress:q.get('congress')||'',
     chamber:q.get('chamber')||'',
     committee:q.get('committee')||q.get('committee_key')||'',
@@ -124,6 +139,8 @@ export default function ArchiveExplorer({pointerUrl,rawBase}:{pointerUrl:string;
       for(const [name,value] of Object.entries({
         tab:next.tab==='documents'?'':next.tab,
         q:next.text,
+        mode:next.mode==='metadata'?'':next.mode,
+        churn:next.churn==='all'?'':next.churn,
         congress:next.congress,
         chamber:next.chamber,
         committee:next.committee,
@@ -161,12 +178,13 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   const effectiveSort=nav.sort||'document_date';
   const activeTab=nav.tab;
   const isDocTab=activeTab==='documents';
+  const isAccountabilityTab=activeTab==='accountability';
   const activeTabMeta=ARCHIVE_TABS.find(item=>item.key===nav.tab)??ARCHIVE_TABS[0];
   const visibleTabs=visibleArchiveTabs(entityCounts);
   const hasOrganizations=typeof entityCounts?.organizations==='number';
 
   const [rows,retryRows]=useRequest(async signal=>{
-    if(!isDocTab)return null;
+    if(!isDocTab||nav.mode!=='metadata')return null;
     const committeeKeys=nav.committee?expandCommitteeKeys(nav.committee,committeeFacets,committeesCatalog):[];
     const filterArgs={
       congress:nav.congress?[Number(nav.congress)]:[],
@@ -193,6 +211,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   },[
     client,
     isDocTab,
+    nav.mode,
     nav.text,
     nav.congress,
     nav.committee,
@@ -208,6 +227,22 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     nav.offset,
     nav.committee?committeeFacets.length:0,
   ]);
+
+  const activeReleaseId=info.status==='ready'?info.value.releaseId:undefined;
+  const [passageRows,retryPassageRows]=useRequest(async signal=>{
+    if(!isDocTab||nav.mode!=='passages')return null;
+    return searchSpicyPassages(nav.text,{expectedReleaseId:activeReleaseId,limit:10,signal});
+  },[isDocTab,nav.mode,nav.text,activeReleaseId]);
+
+  const [topOrgs,retryTopOrgs]=useRequest(async signal=>{
+    if(!isDocTab||nav.mode!=='top_orgs')return null;
+    return client.topOrganizations({topic:nav.text,congress:nav.congress||undefined,limit:20},signal);
+  },[client,isDocTab,nav.mode,nav.text,nav.congress]);
+
+  const [accountabilityRows,retryAccountability]=useRequest(async signal=>{
+    if(!isAccountabilityTab)return null;
+    return client.accountability({kind:nav.churn||'all',q:nav.text||undefined,congress:nav.congress||undefined,offset:nav.offset,limit:pageSize},signal);
+  },[client,isAccountabilityTab,nav.churn,nav.text,nav.congress,nav.offset]);
 
   const entityBrowseKind=nav.tab==='hearings'
     ?'meetings'
@@ -225,7 +260,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
                 ?'nominations'
                 :'subjects';
 
-  const isInspectingEntity=!isDocTab&&(
+  const isInspectingEntity=!isDocTab&&!isAccountabilityTab&&(
     (nav.tab==='hearings'&&Boolean(nav.hearing))||
     (nav.tab==='committees'&&Boolean(nav.committee))||
     (nav.tab==='witnesses'&&(Boolean(nav.witness)||Boolean(nav.person)))||
@@ -235,7 +270,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   );
 
   const [entityRows,retryEntityRows]=useRequest(async signal=>{
-    if(isDocTab||isInspectingEntity)return null;
+    if(isDocTab||isAccountabilityTab||isInspectingEntity)return null;
     return client.listEntities(entityBrowseKind,{
       q:nav.text||undefined,
       congress:nav.congress||undefined,
@@ -386,6 +421,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
               tab:tabItem.key,
               key:'',
               offset:0,
+              ...(tabItem.key!=='documents'?{mode:'metadata'}:{}),
               ...(nav.tab==='committees'&&tabItem.key!=='committees'?{committee:''}:{}),
               ...(tabItem.key==='hearings'?{hearing:''}:{}),
               ...(tabItem.key==='committees'?{committee:''}:{}),
@@ -416,26 +452,33 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
       });
     }}>
       <label>
-        <span>{isDocTab?'Search documents, legislation, or paste a URL':`Search ${activeTabMeta.noun}`}</span>
+        <span>{isDocTab?(nav.mode==='passages'?'Search extracted document text (full-text & hybrid)':nav.mode==='top_orgs'?'Find top testifying organizations by topic':'Search documents, legislation, or paste a URL'):isAccountabilityTab?'Filter removed, retired, recovered, or multi-edition records':`Search ${activeTabMeta.noun}`}</span>
         <input
           type="search"
           name="q"
           defaultValue={nav.text}
-          key={`${nav.tab}:${nav.text}`}
-          placeholder={isDocTab?'Title, bill (e.g. H.R. 475), filename, or https:// address':`Filter ${activeTabMeta.noun} by name, title, or identifier`}
+          key={`${nav.tab}:${nav.mode}:${nav.text}`}
+          placeholder={isDocTab?(nav.mode==='passages'?'Keywords or quoted phrase in testimony & hearings (e.g. "supply chain")':nav.mode==='top_orgs'?'Topic or policy area (e.g. artificial intelligence, water infrastructure)':'Title, bill (e.g. H.R. 475), filename, or https:// address'):isAccountabilityTab?'Filter by filename, link_key, release ID, or identity note':`Filter ${activeTabMeta.noun} by name, title, or identifier`}
         />
       </label>
       <button className="explorer-button archive-search-button" type="submit">Search</button>
     </form>
-    {!isDetail&&!isInspectingEntity&&nav.tab!=='organizations'&&<div className="archive-filters">
+    {!isDetail&&isDocTab&&<GuidedRecipesBar
+      mode={nav.mode}
+      currentQuery={nav.text}
+      onSelectMode={mode=>filter({mode})}
+      onRunRecipe={(mode,topic)=>filter({mode,text:topic})}
+      onOpenAccountability={()=>filter({tab:'accountability',mode:'metadata',churn:'all'})}
+    />}
+    {!isDetail&&!isInspectingEntity&&nav.tab!=='organizations'&&(!isDocTab||nav.mode!=='passages')&&<div className="archive-filters">
       <label><span>Congress</span><select value={nav.congress} onChange={event=>filter({congress:event.target.value})}><option value="">All congresses</option>{congresses.map((item:any)=><option key={item.value} value={item.value}>{congressOptionLabel(item.value)} ({integer(Number(item.count))})</option>)}</select></label>
       {(nav.tab==='hearings'||nav.tab==='committees'||nav.tab==='members')&&<label><span>Chamber</span><select value={nav.chamber} onChange={event=>filter({chamber:event.target.value})}><option value="">All chambers</option><option value="house">House</option><option value="senate">Senate</option><option value="joint">Joint</option></select></label>}
       {nav.tab==='subjects'&&<label><span>Subject type</span><select value={nav.subjectKind} onChange={event=>filter({subjectKind:event.target.value})}><option value="">Bills &amp; nominations</option><option value="bills">Bills &amp; resolutions</option><option value="nominations">Presidential nominations</option></select></label>}
-      {nav.tab!=='committees'&&<label><span>Committee</span><select value={nav.committee} onChange={event=>filter({committee:event.target.value})}><option value="">All committees</option>
+      {!isAccountabilityTab&&(!isDocTab||nav.mode==='metadata')&&nav.tab!=='committees'&&<label><span>Committee</span><select value={nav.committee} onChange={event=>filter({committee:event.target.value})}><option value="">All committees</option>
         {committeeGroups.primary.length>0&&<optgroup label="Committees">{committeeGroups.primary.map(item=><option key={item.value} value={item.value}>{item.label} ({integer(item.count)})</option>)}</optgroup>}
         {committeeGroups.subItems.length>0&&<optgroup label="Subcommittees">{committeeGroups.subItems.map(item=><option key={item.value} value={item.value}>{item.label} ({integer(item.count)})</option>)}</optgroup>}
       </select></label>}
-      {isDocTab&&<>
+      {isDocTab&&nav.mode==='metadata'&&<>
         <label><span>Document type</span><select value={selectedKind} onChange={event=>filter({kind:event.target.value})}><option value="">All document types</option>{kinds.map((item:any)=><option key={item.value} value={item.value}>{documentKindLabel(item.value)} ({integer(Number(item.count))})</option>)}</select></label>
         <ArchiveFormatFilter options={formats} value={nav.format} onChange={format=>filter({format})}/>
         <label><span>Order</span><select value={effectiveSort} onChange={event=>filter({sort:event.target.value==='document_date'?'':event.target.value})}><option value="document_date">Document date, newest first</option><option value="first_captured">Capture date, newest first</option><option value="filename">Filename (A–Z)</option></select></label>
@@ -443,7 +486,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     </div>}
     {!isDetail&&!isInspectingEntity&&activeFilters.length>0&&<div className="archive-active-filters" aria-label="Active filters">
       {activeFilters.map((item,i)=><button key={i} type="button" className="archive-filter-pill" onClick={item.clear}>{item.label} <span aria-hidden="true">×</span></button>)}
-      <button type="button" className="explorer-text-button" onClick={()=>filter({text:'',congress:'',chamber:'',committee:'',kind:'',hearing:'',subject:'',subjectKind:'',witness:'',person:'',org:'',member:'',format:''})}>Clear filters</button>
+      <button type="button" className="explorer-text-button" onClick={()=>filter({text:'',churn:'all',congress:'',chamber:'',committee:'',kind:'',hearing:'',subject:'',subjectKind:'',witness:'',person:'',org:'',member:'',format:''})}>Clear filters</button>
     </div>}
     {info.status!=='ready'&&<RequestMessage state={info} retry={retryInfo} noun="the archive"/>}
     {savedError&&<p role="alert" className="explorer-alert">{savedError}</p>}
@@ -540,7 +583,33 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
       />}
     </>}
     {isDetail?<div className="archive-detail-view"><button type="button" className="explorer-button archive-back-button" onClick={close}>← Back to {isDocTab?'documents':activeTabMeta.noun}</button>{detail.status==='ready'&&detail.value?.removed?<RemovedDocumentNotice removed={detail.value.removed} onNavigate={key=>navigate({key})}/>:detail.status==='ready'?detail.value&&<>{redirectNote&&<p role="status" className="archive-redirect-note">{redirectNote}</p>}<ArchiveDetail entry={detail.value.entry} versions={detail.value.versions} meetings={detail.value.meetings} meetingDetails={detail.value.meetingDetails} relationStates={detail.value.relation_states} committees={detail.value.committees} subjects={detail.value.subjects} witnesses={detail.value.witnesses} members={detail.value.members} committeesCatalog={committeesCatalog} rawBase={rawBase} onSelectedText={(index,signal)=>client.request('selectedText',{index},signal)} onPageMetadata={(index,signal)=>client.request('pageMetadata',{index},signal)} onSelect={select} onHearing={hearing=>filter({hearing})} onMeasure={measure=>filter({subject:measure})} onSubject={subject=>filter({subject})} onCommittee={committee=>filter({committee})} onWitness={witness=>filter({witness})} onMember={member=>filter({member})} onOpenSaved={openSaved}/></>:<RequestMessage state={detail} retry={retryDetail} noun="this document"/>}</div>:
-      isDocTab?(
+      isAccountabilityTab?(
+        accountabilityRows.status==='ready'&&accountabilityRows.value?<AccountabilityView
+          data={accountabilityRows.value}
+          committeesCatalog={committeesCatalog}
+          kindFilter={nav.churn||'all'}
+          onKindFilter={churn=>filter({churn})}
+          onSelect={select}
+          onNavigateKey={key=>navigate({key})}
+          offset={nav.offset}
+          pageSize={pageSize}
+          onOffsetChange={offset=>navigate({offset})}
+        />:<RequestMessage state={accountabilityRows.status==='ready'?missingResults:accountabilityRows} retry={retryAccountability} noun="accountability records"/>
+      ):isDocTab&&nav.mode==='passages'?(
+        passageRows.status==='ready'&&passageRows.value?<PassageResults
+          data={passageRows.value}
+          activeReleaseId={activeReleaseId}
+          onOpenKey={key=>navigate({key})}
+          onRetry={retryPassageRows}
+          onSwitchToMetadata={()=>filter({mode:'metadata'})}
+        />:<RequestMessage state={passageRows.status==='ready'?missingResults:passageRows} retry={retryPassageRows} noun="passage search results"/>
+      ):isDocTab&&nav.mode==='top_orgs'?(
+        topOrgs.status==='ready'&&topOrgs.value?<TopOrganizationsResults
+          data={topOrgs.value}
+          onInspectOrganization={inspectOrganization}
+          onSwitchToMetadata={()=>filter({mode:'metadata'})}
+        />:<RequestMessage state={topOrgs.status==='ready'?missingResults:topOrgs} retry={retryTopOrgs} noun="top testifying organizations"/>
+      ):isDocTab?(
         rows.status==='ready'&&rows.value?<section aria-label="Document results" data-archive-query={rows.value.completedQuery}><div className="archive-results-bar"><p className="archive-total" data-archive-total>{rows.value.total===1?'1 document':`${integer(rows.value.total)} documents`}</p></div>{rows.value.total===0?<p className="explorer-muted">No matching documents found.</p>:<>
           <ArchiveRows rows={rows.value.rows} committeesCatalog={committeesCatalog} sort={effectiveSort} onSelect={select}/>
           <nav className="explorer-pagination" aria-label="Document pages"><button type="button" className="explorer-button" disabled={!nav.offset} onClick={()=>navigate({offset:Math.max(0,nav.offset-pageSize)})}>Previous</button><span>{rows.value.total?integer(nav.offset+1):0}–{integer(Math.min(nav.offset+rows.value.rows.length,rows.value.total))} of {integer(rows.value.total)}</span><button type="button" className="explorer-button" disabled={rows.value.next===null} onClick={()=>navigate({offset:rows.value.next})}>Next</button></nav>
@@ -556,6 +625,7 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
                 meeting={activeEntities.meeting}
                 committeesCatalog={committeesCatalog}
                 rawBase={rawBase}
+                releaseId={activeReleaseId}
                 onSelect={select}
                 onCommittee={inspectCommittee}
                 onSubject={inspectSubject}
@@ -601,6 +671,8 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
               {nav.tab==='organizations'&&nav.org&&activeEntities?.org&&<OrganizationDetail
                 organization={orgRedirect&&nav.org===orgRedirect.to?{...activeEntities.org,redirectedFrom:orgRedirect.from}:activeEntities.org}
                 committeesCatalog={committeesCatalog}
+                rawBase={rawBase}
+                releaseId={activeReleaseId}
                 onSelect={select}
                 onHearing={inspectHearing}
                 onWitness={inspectWitness}

@@ -220,6 +220,12 @@ class LegislativeReader:
 
     def run_research_query(self, query):
         query = ResearchQuery.model_validate(query).window()
+        if query.name == 'organization_dossier':
+            from .research_recipes import run_organization_dossier
+            return run_organization_dossier(self, query)
+        if query.name == 'accountability_documents':
+            from .research_recipes import run_accountability_documents
+            return run_accountability_documents(self, query)
         table = {'recent_bills':'bills','pending_nominations':'nominations','hearings_by_committee':'meetings','legislation_by_subject':'bills'}[query.name]
         coverage = self.research_coverage([table], query.since, query.until)
         if table not in self.schemas:

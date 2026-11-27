@@ -3,12 +3,14 @@ import {
   congressGovBillUrl,
   congressGovNominationUrl,
   congressLabel,
+  deltaTrackBillUrl,
   formatAmendmentId,
   formatBillStage,
   formatChamber,
   formatSubject,
   gpoBillUrl,
   presentDocument,
+  spicyGovBillUrl,
   spicyRegsUrl,
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
@@ -49,6 +51,8 @@ export function SubjectDetail({
   const congressUrl=isNom?congressGovNominationUrl(subject):congressGovBillUrl(subject);
   const gpoUrl=isNom?null:gpoBillUrl(subject);
   const regsUrl=spicyRegsUrl(label);
+  const spicyGovUrl=isNom?null:spicyGovBillUrl(subject);
+  const deltaTrackUrl=isNom?null:deltaTrackBillUrl(subject);
   const explicitCommittees:any[]=Array.isArray(subject.committees)?subject.committees:[];
   const rawCommitteeActivities:any[]=Array.isArray(subject.committee_activities)?subject.committee_activities:[];
   const nominationActivityGroups:any[]=isNom?rawCommitteeActivities.map((group:any)=>{
@@ -110,10 +114,12 @@ export function SubjectDetail({
           <strong>Organization:</strong> {subject.organization}
         </span>}
       </p>
-      {(congressUrl||gpoUrl||regsUrl)&&<div className="archive-pill-list">
+      {(congressUrl||gpoUrl||regsUrl||spicyGovUrl||deltaTrackUrl)&&<div className="archive-pill-list">
         {congressUrl&&<a className="archive-measure-pill" href={congressUrl} target="_blank" rel="noreferrer">Congress.gov</a>}
         {gpoUrl&&<a className="archive-measure-pill" href={gpoUrl} target="_blank" rel="noreferrer">GPO GovInfo</a>}
         {regsUrl&&<a className="archive-measure-pill" href={regsUrl} target="_blank" rel="noreferrer">spicy-regs</a>}
+        {spicyGovUrl&&<a className="archive-measure-pill" href={spicyGovUrl} target="_blank" rel="noreferrer">Explore on SpicyGov →</a>}
+        {deltaTrackUrl&&<a className="archive-measure-pill" href={deltaTrackUrl} target="_blank" rel="noreferrer">Diff in DeltaTrack →</a>}
       </div>}
       {(subject.latest_action_date||subject.latest_action_text)&&<p className="archive-source-meta">
         <strong>Latest action{subject.latest_action_date?` (${day(subject.latest_action_date)})`:''}:</strong> {subject.latest_action_text||'Recorded'}

@@ -439,13 +439,16 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     @mcp.tool(annotations=annotations)
     async def run_research_query(query: ResearchQuery) -> dict:
-        """Run recent_bills, pending_nominations, hearings_by_committee or legislation_by_subject.
+        """Run recent_bills, pending_nominations, hearings_by_committee, legislation_by_subject, organization_dossier, or accountability_documents.
 
         Dates filter introduced, received or meeting_date, since inclusive/until exclusive; order is newest
         date then canonical ID. committee is one exact published code or unambiguous name; subject is one
-        published subject label. Ambiguous input returns candidates. Pending means no terminal action recorded
-        in a known latest action in this snapshot; missing latest actions remain unknown. Source references,
-        missing fields and unavailable collection coverage are explicit. Continue with the returned cursor.
+        published subject label. organization_dossier resolves org_id (including 1-hop organization_redirects) with
+        external IDs, witness breakdown, and linked documents. accountability_documents surfaces removed_on, hidden,
+        retired_links (with/without successor_key), recovered-only (saved_kind='recovery'), and multi-edition records.
+        Ambiguous input returns candidates. Pending means no terminal action recorded in a known latest action in
+        this snapshot; missing latest actions remain unknown. Source references, missing fields and unavailable
+        collection coverage are explicit. Continue with the returned cursor.
         """
         return await call('run_research_query', query.model_dump())
 
