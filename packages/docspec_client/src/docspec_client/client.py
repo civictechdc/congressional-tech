@@ -86,7 +86,7 @@ def _cleanup_dataset_client(host: Host, responses: set[Any]) -> None:
 
 
 _VERIFIED_BINARY_CACHE: dict[tuple[str, int, int, int], tuple[str, bytes]] = {}
-_EXACT_INT_RE = re.compile(r'-?(?:0|[1-9]\d*)')
+_EXACT_INT_RE = re.compile(r'-?(?:0|[1-9][0-9]*)')
 
 
 def _decode_job_query_value(value: Any) -> Any:
@@ -101,9 +101,18 @@ def _decode_job_query_value(value: Any) -> Any:
             return {str(k): _decode_job_query_value(v) for k, v in value['$object']}
         if (len(value) == 3 and value.get('type') == 'binary'
                 and value.get('encoding') == 'base64' and isinstance(value.get('value'), str)):
-            return base64.b64decode(value['value']).hex()
+            return base64.b64decode(value['value'], validate=True).hex()
         return {k: _decode_job_query_value(v) for k, v in value.items()}
     return value
+
+
+def _decode_job_query_row(row: Any) -> Any:
+    """Decode a top-level query row without misclassifying 3-column rows as binary cells."""
+    if isinstance(row, dict):
+        if len(row) == 1 and '$object' in row and isinstance(row['$object'], list):
+            return {str(k): _decode_job_query_value(v) for k, v in row['$object']}
+        return {str(k): _decode_job_query_value(v) for k, v in row.items()}
+    return _decode_job_query_value(row)
 
 #: The runtime file's fields that name files, each resolved against the runtime file's own folder. The one list:
 #: from_config, and the pipeline's model-only build (which copies a runtime) and publisher (which reads its remote
@@ -558,7 +567,7 @@ class NativeDatasets:
         if isinstance(result, dict) and isinstance(result.get('queries'), list):
             for entry in result['queries']:
                 if isinstance(entry, dict) and isinstance(entry.get('data'), list):
-                    entry['data'] = [_decode_job_query_value(row) for row in entry['data']]
+                    entry['data'] = [_decode_job_query_row(row) for row in entry['data']]
         return result
 
     def create_file(self, spec: Path | str) -> dict[str, Any]:
