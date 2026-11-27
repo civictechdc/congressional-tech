@@ -225,7 +225,7 @@ jobs:
         run: |
           release=$(curl -fsS "$ARCHIVE_POINTER_URL" | jq -er .release_id)
           for attempt in $(seq 1 30); do
-            served=$(curl -sS -m 120 "$MCP_READY_URL" | jq -r '.release_id // empty' 2>/dev/null || true)
+            served=$(curl -fsS -m 120 "$MCP_READY_URL" | jq -r '.release_id // empty' 2>/dev/null || true)
             if [ "$served" = "$release" ]; then echo "Hosted MCP serves $release"; exit 0; fi
             sleep 10
           done

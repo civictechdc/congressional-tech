@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { followPointer, forwardWithReleaseSync, SPICYENGINE_MISMATCH } from "../src/publication.ts";
+import {
+  followPointer,
+  forwardWithReleaseSync,
+  releaseIdFromPublication,
+  selectContainerSlot,
+  SPICYENGINE_MISMATCH,
+  startingResponse,
+  startupOptionsForPath,
+} from "../src/publication.ts";
 
 const pointer = "https://archive.example/viewer-publications/manifest.json";
 const first = "a".repeat(64), second = "b".repeat(64);
@@ -94,4 +102,39 @@ test("does not loop when pointer refresh still matches the cached release", asyn
   assert.equal(calls, 1);
   assert.equal(read.length, 2);
   assert.deepEqual(await res.json(), { error: SPICYENGINE_MISMATCH });
+});
+
+test("readiness probes pin to container slot 0 while /mcp distributes across two slots", () => {
+  assert.equal(selectContainerSlot("/ready", () => 1), 0);
+  assert.equal(selectContainerSlot("/ready", () => 3), 0);
+  assert.equal(selectContainerSlot("/mcp", () => 0), 0);
+  assert.equal(selectContainerSlot("/mcp", () => 1), 1);
+  assert.equal(selectContainerSlot("/mcp", () => 5), 1);
+});
+
+test("readiness startup waits are bounded to 8s while /mcp keeps the 90s cold-start budget", () => {
+  const controller = new AbortController();
+  const ready = startupOptionsForPath("/ready", controller.signal);
+  const mcp = startupOptionsForPath("/mcp", controller.signal);
+  assert.equal(ready.instanceGetTimeoutMS, 8_000);
+  assert.equal(ready.portReadyTimeoutMS, 8_000);
+  assert.equal(ready.abort, controller.signal);
+  assert.equal(mcp.instanceGetTimeoutMS, 90_000);
+  assert.equal(mcp.portReadyTimeoutMS, 90_000);
+  assert.equal(mcp.abort, controller.signal);
+});
+
+test("startingResponse returns a retryable 503 with release_id when warming a known release", async () => {
+  assert.equal(releaseIdFromPublication(manifest(first)), first);
+  assert.equal(releaseIdFromPublication(pointer), null);
+
+  const warm = startingResponse(manifest(first));
+  assert.equal(warm.status, 503);
+  assert.equal(warm.headers.get("Retry-After"), "5");
+  assert.equal(warm.headers.get("Cache-Control"), "no-store");
+  assert.deepEqual(await warm.json(), { status: "starting", release_id: first });
+
+  const unknown = startingResponse(pointer);
+  assert.equal(unknown.status, 503);
+  assert.deepEqual(await unknown.json(), { status: "starting" });
 });

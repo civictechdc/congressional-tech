@@ -22,8 +22,12 @@ minute with `--prefer-staged` using the same publisher and release lock, so it
 prepares and indexes a staged candidate release ahead of the live
 `viewer-publications/manifest.json` flip (and falls back to the live pointers
 otherwise). If the archive and text pointers disagree, the current index stays
-online and the next run retries. Inspect the latest attempt with
-`journalctl -u spicyengine-update.service`.
+online and the next run retries. When live SpicyEngine has attached passage
+embeddings, `spicyengine-update` refuses a bare publish that would drop them
+unless you supply `--passages-manifest /path/to/manifest.json` (which validates
+the manifest against the target release before publishing and attaches passages
+with the new `config_version`) or explicitly pass `--allow-drop-passages`.
+Inspect the latest attempt with `journalctl -u spicyengine-update.service`.
 Stop the timer before deliberately holding the host on an earlier pin.
 An exact release match is required for Congress Explorer’s hosted search tools.
 

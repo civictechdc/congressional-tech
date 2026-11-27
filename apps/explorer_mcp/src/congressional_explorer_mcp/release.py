@@ -1,4 +1,5 @@
 """Acquire exact release files once; select atomically and serve without network."""
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
 import fcntl
 from hashlib import sha256, file_digest
@@ -15,6 +16,7 @@ from . import __version__
 
 PUBLICATION = 'https://congressional-data.spicygov.ai/viewer-publications/manifest.json'
 CONTROL_BYTES = 32 << 20
+DOWNLOAD_WORKERS = 6
 NAME = re.compile(r'(?:(?:[a-z_]+|(?:detail|sources)-[0-9]{5})\.(?:parquet|json)|search_index\.sqlite)')
 
 
@@ -227,12 +229,43 @@ def _prepare(root, publication, archive_origin):
             atomic_json(selected, value)
         return value
     files, controls = {}, {}
+    unique_items = []
+    seen_digests = set()
     for item in manifest['files']:
-        path = retain(beside(location, item['name']), item, objects,
-                      previous.get('files', {}).get(item['sha256'], {}).get('stamp'))
-        files[item['sha256']] = dict(path=str(path), stamp=stamp(path))
+        if item['sha256'] not in seen_digests:
+            seen_digests.add(item['sha256'])
+            unique_items.append(item)
+    previous_files = previous.get('files', {})
+    is_remote = str(location).startswith(('http://', 'https://'))
+    if is_remote and len(unique_items) > 1:
+        def fetch_item(item):
+            path = retain(beside(location, item['name']), item, objects,
+                          previous_files.get(item['sha256'], {}).get('stamp'))
+            return item['sha256'], path
+
+        workers = min(DOWNLOAD_WORKERS, len(unique_items))
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            futures = [pool.submit(fetch_item, item) for item in unique_items]
+            first_error = None
+            for future in as_completed(futures):
+                try:
+                    digest, path = future.result()
+                    files[digest] = dict(path=str(path), stamp=stamp(path))
+                except BaseException as error:
+                    if first_error is None:
+                        first_error = error
+                        for pending in futures:
+                            pending.cancel()
+            if first_error is not None:
+                raise first_error
+    else:
+        for item in unique_items:
+            path = retain(beside(location, item['name']), item, objects,
+                          previous_files.get(item['sha256'], {}).get('stamp'))
+            files[item['sha256']] = dict(path=str(path), stamp=stamp(path))
+    for item in manifest['files']:
         if item['name'].endswith('.json'):
-            controls[item['name'].removesuffix('.json')] = control(path)
+            controls[item['name'].removesuffix('.json')] = control(files[item['sha256']]['path'])
     tables = {name: [dict(path=files[i['sha256']]['path'], offset=(i.get('row_range') or [0])[0], rows=i['rows'])
                     for i in sorted(items, key=lambda i: (i.get('row_range') or [0])[0])]
               for name, items in groups.items()}
@@ -242,12 +275,15 @@ def _prepare(root, publication, archive_origin):
     # Footer counts detect unusable delivery. The producer owns semantic model
     # invariants; preparation does not rebuild or rescan those relationships.
     import duckdb
-    with duckdb.connect(config={'threads': 2, 'memory_limit': '512MB'}) as db:
-        for parts in tables.values():
-            for part in parts:
-                rows = db.execute('SELECT num_rows FROM parquet_file_metadata(?)', [part['path']]).fetchall()[0][0]
-                if rows != part['rows']:
-                    raise ExplorerError('Parquet row count differs from manifest')
+    all_parts = [part for parts in tables.values() for part in parts]
+    if all_parts:
+        with duckdb.connect(config={'threads': 2, 'memory_limit': '512MB'}) as db:
+            unique_paths = list(dict.fromkeys(part['path'] for part in all_parts))
+            counts = dict(db.execute('SELECT file_name, num_rows FROM parquet_file_metadata(?)',
+                                     [unique_paths]).fetchall())
+        for part in all_parts:
+            if counts.get(part['path']) != part['rows']:
+                raise ExplorerError('Parquet row count differs from manifest')
     atomic_json(selected, value)
     return value
 
