@@ -49,7 +49,7 @@
         {
           "name": "system_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -76,14 +76,14 @@
         {
           "name": "name",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Official committee name"
         },
         {
           "name": "chamber",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -97,7 +97,7 @@
         {
           "name": "committee_type",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -111,7 +111,7 @@
         {
           "name": "parent_system_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -141,15 +141,13 @@
         {
           "name": "names",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "name",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Committee name during this recorded period."
               },
               {
@@ -158,7 +156,7 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "Start date of this committee-name period."
               },
               {
@@ -167,7 +165,7 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "End date of this committee-name period."
               }
             ],
@@ -179,14 +177,14 @@
         {
           "name": "website",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Official committee website"
         },
         {
           "name": "is_current",
           "logicalType": "boolean",
-          "physicalType": "BOOLEAN",
+          "physicalType": "Boolean",
           "required": false,
           "description": "Current committee record"
         }

@@ -106,7 +106,7 @@
         {
           "name": "org_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -117,6 +117,11 @@
               "vendor": "ddk",
               "property": "conceptKind",
               "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "representationNote",
+              "value": "Archive org_id linked to RefSpec agencies via anchor and organization_ids."
             }
           ],
           "authoritativeDefinitions": [
@@ -133,7 +138,7 @@
         {
           "name": "scheme",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -149,7 +154,7 @@
         {
           "name": "value",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Identifier value within the scheme",
           "primaryKey": true,

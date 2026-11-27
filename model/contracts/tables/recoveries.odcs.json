@@ -45,7 +45,7 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": true,
           "description": "Zero-based row in list.parquet",
           "primaryKey": true,
@@ -57,7 +57,7 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": true,
           "description": "Order within a document",
           "primaryKey": true,
@@ -66,7 +66,7 @@
         {
           "name": "kind",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -90,7 +90,7 @@
         {
           "name": "suffix",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -107,7 +107,7 @@
           "logicalTypeOptions": {
             "format": "i64"
           },
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": true,
           "description": "Original recovered byte count"
         },
@@ -117,21 +117,21 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Recovery import date; unknown when the input has no import record, as in the v5 seed"
         },
         {
           "name": "recovered_url",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Address where the recovered copy was found"
         },
         {
           "name": "identity_note",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Authored explanation of how the recovery relates to the original; null when the decision recorded none (kind still states the relationship)"
         }

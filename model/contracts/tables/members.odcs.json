@@ -49,7 +49,7 @@
         {
           "name": "bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -76,22 +76,20 @@
         {
           "name": "name",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Member display name ({name_first} {name_last})"
         },
         {
           "name": "terms",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "chamber",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -104,7 +102,7 @@
               {
                 "name": "state",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -120,13 +118,13 @@
                 "logicalTypeOptions": {
                   "format": "i16"
                 },
-                "physicalType": "SMALLINT",
+                "physicalType": "Int16",
                 "description": "District represented during this term, when applicable."
               },
               {
                 "name": "party",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -142,7 +140,7 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "Start date of this term."
               },
               {
@@ -151,7 +149,7 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "End date of this term."
               }
             ],
@@ -163,45 +161,43 @@
         {
           "name": "cross_ids",
           "logicalType": "object",
-          "physicalType": "STRUCT",
           "properties": [
             {
               "name": "lis",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "Legislative Information System member identifier."
             },
             {
               "name": "opensecrets",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "OpenSecrets member identifier."
             },
             {
               "name": "govtrack",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "GovTrack member identifier."
             },
             {
               "name": "icpsr",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "Inter-university Consortium for Political and Social Research member identifier."
             },
             {
               "name": "wikidata",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "Wikidata entity identifier."
             },
             {
               "name": "fec",
               "logicalType": "array",
-              "physicalType": "VARCHAR[]",
               "items": {
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "ddk",

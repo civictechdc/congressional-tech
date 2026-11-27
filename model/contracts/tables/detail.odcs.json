@@ -82,7 +82,7 @@
         {
           "name": "saved_suffix",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -96,7 +96,7 @@
         {
           "name": "saved_media_type",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -113,14 +113,14 @@
           "logicalTypeOptions": {
             "format": "i64"
           },
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": false,
           "description": "Size before storage compression of the usable primary copy, when available."
         },
         {
           "name": "document_date_source",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -134,7 +134,7 @@
         {
           "name": "title_source",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -151,7 +151,7 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Earliest known archive import date"
         },
@@ -161,14 +161,14 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Date the publisher removed the document"
         },
         {
           "name": "review_note",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Review explanation"
         },
@@ -178,7 +178,7 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Date of the applying review"
         },
@@ -188,7 +188,7 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": true,
           "description": "First source row for this document",
           "customProperties": [
@@ -205,7 +205,7 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": true,
           "description": "Number of source rows for this document"
         },
@@ -215,7 +215,7 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": true,
           "description": "First recovery row for this document",
           "customProperties": [
@@ -232,22 +232,20 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": true,
           "description": "Number of recovery rows for this document"
         },
         {
           "name": "alternates",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "format",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -269,7 +267,7 @@
               {
                 "name": "suffix",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -285,7 +283,7 @@
                 "logicalTypeOptions": {
                   "format": "i64"
                 },
-                "physicalType": "BIGINT",
+                "physicalType": "Int64",
                 "description": "Size of the alternate file body in bytes."
               }
             ],
@@ -297,7 +295,7 @@
         {
           "name": "package_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -322,15 +320,13 @@
         {
           "name": "facts",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "field",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -343,7 +339,7 @@
               {
                 "name": "value",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Literal value of the extracted fact."
               }
             ],
@@ -355,7 +351,7 @@
         {
           "name": "description",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "The publisher's page summary as declared, never the title or the site's own description; NULL when none survives selection"
         },
@@ -365,7 +361,7 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "The page's declared publication date on its stated local date; a page date, never a hearing or document date"
         },
@@ -375,17 +371,16 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "The page's declared modification date on its stated local date; never changes document_date, date_kind or first_captured"
         },
         {
           "name": "publisher_labels",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -401,15 +396,13 @@
         {
           "name": "page_metadata",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "field",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -422,13 +415,13 @@
               {
                 "name": "value",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Literal publisher-declared value."
               },
               {
                 "name": "format",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -441,7 +434,7 @@
               {
                 "name": "path",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Source pointer for this metadata declaration."
               },
               {
@@ -450,13 +443,13 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "Parsed calendar date, when the declaration provides a recognized date."
               },
               {
                 "name": "precision",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -469,19 +462,19 @@
               {
                 "name": "resolved",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Declared address resolved against its capture context and base address, when available."
               },
               {
                 "name": "selected",
                 "logicalType": "boolean",
-                "physicalType": "BOOLEAN",
+                "physicalType": "Boolean",
                 "description": "Whether this declaration supplies a selected description, publication date, modification date or publisher label."
               },
               {
                 "name": "context_url",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Captured page address used to resolve this declaration."
               }
             ],
@@ -493,12 +486,11 @@
         {
           "name": "main_content",
           "logicalType": "object",
-          "physicalType": "STRUCT",
           "properties": [
             {
               "name": "outcome",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "customProperties": [
                 {
                   "vendor": "congressional-tech",
@@ -511,13 +503,13 @@
             {
               "name": "selector",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "XPath or JSON Pointer identifying the selected content, when supplied by the reader."
             },
             {
               "name": "text_sha256",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "SHA-256 digest of the selected text encoded as UTF-8, when supplied."
             },
             {
@@ -526,55 +518,55 @@
               "logicalTypeOptions": {
                 "format": "i32"
               },
-              "physicalType": "INTEGER",
+              "physicalType": "Int32",
               "description": "Text byte count supplied by the HTML metadata reading."
             },
             {
               "name": "snippet",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "Bounded text head retained for marked or marked_no_content readings."
             },
             {
               "name": "reader_version",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "Parser version of the selected HTML metadata reading or unreadable decision."
             },
             {
               "name": "reading_status",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "Status of the selected reading, or unreadable when supported by an unreadable decision."
             },
             {
               "name": "reason",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "Reader result reason or qualified unreadable decision reason."
             },
             {
               "name": "facts_limited",
               "logicalType": "boolean",
-              "physicalType": "BOOLEAN",
+              "physicalType": "Boolean",
               "description": "Whether the reading recorded a detail-facts limit."
             },
             {
               "name": "text_available",
               "logicalType": "boolean",
-              "physicalType": "BOOLEAN",
+              "physicalType": "Boolean",
               "description": "Whether selected text was retained in the reading."
             },
             {
               "name": "decision_id",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "Qualified unreadable decision identifier when there is no selected reading."
             },
             {
               "name": "evidence_limited",
               "logicalType": "boolean",
-              "physicalType": "BOOLEAN",
+              "physicalType": "Boolean",
               "description": "Whether metadata declarations or address contexts exceeded the retained evidence budget."
             }
           ],
@@ -591,38 +583,37 @@
         {
           "name": "selected_text",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Bounded plain text from the cited marked element. Load only on request. Its SHA-256 and length are in main_content. The original remains available for larger or unselected pages."
         },
         {
           "name": "filename",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Displayed filename"
         },
         {
           "name": "title",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Document or publisher title when known"
         },
         {
           "name": "print_number",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Official hearing print number (such as S. Hrg. 117-336 or Serial No. 115-3) from GovInfo MODS preferredCitation or Content Details when known"
         },
         {
           "name": "document_kind",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -638,10 +629,9 @@
         {
           "name": "document_family",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -657,10 +647,9 @@
         {
           "name": "committee_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -692,10 +681,9 @@
         {
           "name": "chambers",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -714,14 +702,14 @@
           "logicalTypeOptions": {
             "format": "i16"
           },
-          "physicalType": "SMALLINT",
+          "physicalType": "Int16",
           "required": false,
           "description": "Congress number when unambiguous"
         },
         {
           "name": "format",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -738,14 +726,14 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Date of the document as read; document_date_status says whether it is accepted or suspect"
         },
         {
           "name": "document_date_status",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -762,14 +750,14 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "First good fetch date"
         },
         {
           "name": "date_kind",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -783,7 +771,7 @@
         {
           "name": "saved_kind",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -797,17 +785,16 @@
         {
           "name": "hidden",
           "logicalType": "boolean",
-          "physicalType": "BOOLEAN",
+          "physicalType": "Boolean",
           "required": true,
           "description": "Excluded from search by review; public links still resolve"
         },
         {
           "name": "meeting_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -844,10 +831,9 @@
         {
           "name": "measure_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -887,10 +873,9 @@
         {
           "name": "bioguide_ids",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -922,10 +907,9 @@
         {
           "name": "witness_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -957,10 +941,9 @@
         {
           "name": "version_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",

@@ -42,7 +42,7 @@
         {
           "name": "original_url",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Original dead address whose wrong recovered copy was rejected",
           "primaryKey": true,
@@ -63,7 +63,7 @@
         {
           "name": "decision_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Permanent provenance recovery rejection record identifier"
         },
@@ -75,21 +75,20 @@
             "timezone": true,
             "defaultTimezone": "UTC"
           },
-          "physicalType": "TIMESTAMPTZ",
           "required": true,
           "description": "UTC timestamp when the rejection was recorded"
         },
         {
           "name": "recovered_url",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Address where the rejected copy was found, when recorded"
         },
         {
           "name": "identity_note",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Authored explanation of why the copy was rejected, when recorded"
         }

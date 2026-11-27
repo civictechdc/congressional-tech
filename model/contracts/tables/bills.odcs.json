@@ -51,7 +51,7 @@
         {
           "name": "bill_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -78,21 +78,21 @@
         {
           "name": "title",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Official or primary bill title"
         },
         {
           "name": "short_title",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Short title when present"
         },
         {
           "name": "sponsor_bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -125,7 +125,7 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Date the measure was introduced"
         },
@@ -135,21 +135,21 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Date of the latest recorded action"
         },
         {
           "name": "latest_action_text",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Text of the latest recorded action"
         },
         {
           "name": "stage",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -163,7 +163,7 @@
         {
           "name": "policy_area",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -177,7 +177,7 @@
         {
           "name": "public_law_number",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Enacted Public Law number (e.g. 118-50) when enacted"
         },
@@ -187,22 +187,20 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": false,
           "description": "Published cosponsor count"
         },
         {
           "name": "related_bills",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "bill_id",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "ddk",
@@ -226,16 +224,15 @@
               {
                 "name": "title",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Title of the related bill."
               },
               {
                 "name": "relationship_types",
                 "logicalType": "array",
-                "physicalType": "VARCHAR[]",
                 "items": {
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "customProperties": [
                     {
                       "vendor": "congressional-tech",
@@ -256,10 +253,9 @@
         {
           "name": "committees",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -291,15 +287,13 @@
         {
           "name": "cbo_estimates",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "publication_id",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Congressional Budget Office publication identifier for this estimate."
               },
               {
@@ -308,13 +302,13 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "Publication date of this estimate."
               },
               {
                 "name": "description",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Recorded description of this estimate."
               }
             ],
@@ -326,15 +320,13 @@
         {
           "name": "floor_votes",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "vote_id",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "ddk",
@@ -358,7 +350,7 @@
               {
                 "name": "basis",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -371,7 +363,7 @@
               {
                 "name": "chamber",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -387,19 +379,19 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "Calendar date of this vote."
               },
               {
                 "name": "question",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Question put to this vote."
               },
               {
                 "name": "result",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Recorded result of this vote."
               },
               {
@@ -408,7 +400,7 @@
                 "logicalTypeOptions": {
                   "format": "i16"
                 },
-                "physicalType": "SMALLINT",
+                "physicalType": "Int16",
                 "description": "Recorded number of yea votes."
               },
               {
@@ -417,7 +409,7 @@
                 "logicalTypeOptions": {
                   "format": "i16"
                 },
-                "physicalType": "SMALLINT",
+                "physicalType": "Int16",
                 "description": "Recorded number of nay votes."
               }
             ],
@@ -429,27 +421,25 @@
         {
           "name": "amendments",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "amendment_id",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Identifier of this amendment."
               },
               {
                 "name": "purpose",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Stated purpose of this amendment."
               },
               {
                 "name": "sponsor_bioguide_id",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -481,13 +471,13 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "Date of the latest recorded amendment action."
               },
               {
                 "name": "latest_action_text",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Text of the latest recorded amendment action."
               }
             ],
@@ -499,15 +489,13 @@
         {
           "name": "committee_activities",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "system_code",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -536,7 +524,7 @@
               {
                 "name": "activity",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -552,7 +540,7 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "Calendar date of this committee activity."
               }
             ],
@@ -564,10 +552,9 @@
         {
           "name": "subjects",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "description": "Published legislative subject labels, independent of policy_area; no title-keyword inference."
           },
           "required": false,
@@ -576,14 +563,14 @@
         {
           "name": "source_updated_at",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal Congress.gov update_date; a publisher update, not an action date"
         },
         {
           "name": "source_update_including_text",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal Congress.gov update_date_including_text"
         }

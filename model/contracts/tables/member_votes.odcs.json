@@ -49,7 +49,7 @@
         {
           "name": "vote_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -76,35 +76,35 @@
         {
           "name": "congress",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream member_votes.congress"
         },
         {
           "name": "chamber",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream member_votes.chamber"
         },
         {
           "name": "session",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream member_votes.session"
         },
         {
           "name": "roll_number",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream member_votes.roll_number"
         },
         {
           "name": "member_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Literal selected upstream member_votes.member_key",
           "primaryKey": true,
@@ -113,7 +113,7 @@
         {
           "name": "bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -138,63 +138,63 @@
         {
           "name": "lis_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream member_votes.lis_id"
         },
         {
           "name": "member_name",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream member_votes.member_name"
         },
         {
           "name": "party",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream member_votes.party"
         },
         {
           "name": "state",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream member_votes.state"
         },
         {
           "name": "position",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream member_votes.position"
         },
         {
           "name": "position_normalized",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream member_votes.position_normalized"
         },
         {
           "name": "vote_date",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream member_votes.vote_date"
         },
         {
           "name": "source_generation",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Exact selected SpicyRegs family generation digest"
         },
         {
           "name": "source_reference",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Selected upstream Parquet path; identify a source row using this table primary key"
         }

@@ -236,7 +236,7 @@
           "table": "list",
           "path": "measure_keys[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false,
           "relatedConcepts": [
@@ -248,7 +248,7 @@
           "table": "detail",
           "path": "measure_keys[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false,
           "relatedConcepts": [
@@ -260,7 +260,7 @@
           "table": "meetings",
           "path": "subject_keys[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false,
           "relatedConcepts": [
@@ -272,7 +272,7 @@
           "table": "meetings",
           "path": "unlisted_subjects[].subject_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false,
           "relatedConcepts": [
@@ -294,7 +294,7 @@
           "table": "nominations",
           "path": "nomination_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         }
@@ -310,7 +310,7 @@
           "table": "meetings",
           "path": "transcripts[].video_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -318,7 +318,7 @@
           "table": "meetings",
           "path": "videos[].video_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -326,7 +326,7 @@
           "table": "recordings",
           "path": "video_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         },
@@ -334,7 +334,7 @@
           "table": "caption_resources",
           "path": "video_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         },
@@ -342,7 +342,7 @@
           "table": "videos",
           "path": "video_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         },
@@ -350,7 +350,7 @@
           "table": "recording_matches",
           "path": "video_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         }
@@ -366,7 +366,7 @@
           "table": "list",
           "path": "witness_keys[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -374,7 +374,7 @@
           "table": "detail",
           "path": "witness_keys[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -382,7 +382,7 @@
           "table": "witnesses",
           "path": "witness_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         },
@@ -390,7 +390,7 @@
           "table": "witnesses",
           "path": "superseded_by",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -398,7 +398,7 @@
           "table": "witness_key_map",
           "path": "old_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         },
@@ -406,7 +406,7 @@
           "table": "witness_key_map",
           "path": "witness_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -414,7 +414,7 @@
           "table": "witness_key_map",
           "path": "candidate_keys[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -422,7 +422,7 @@
           "table": "people",
           "path": "witness_keys[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -430,7 +430,7 @@
           "table": "witness_organizations",
           "path": "witness_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         }
@@ -449,7 +449,7 @@
           "table": "organizations",
           "path": "org_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true,
           "representationNote": "Archive org_id linked to RefSpec agencies via anchor and organization_ids."
@@ -458,7 +458,7 @@
           "table": "organizations",
           "path": "parent_org_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false,
           "representationNote": "Archive org_id of resolved RefSpec parent agency."
@@ -467,33 +467,37 @@
           "table": "organization_ids",
           "path": "org_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
-          "primaryKey": true
+          "primaryKey": true,
+          "representationNote": "Archive org_id linked to RefSpec agencies via anchor and organization_ids."
         },
         {
           "table": "witness_organizations",
           "path": "org_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
-          "primaryKey": false
+          "primaryKey": false,
+          "representationNote": "Archive org_id linked to RefSpec agencies via anchor and organization_ids."
         },
         {
           "table": "organization_redirects",
           "path": "old_org_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
-          "primaryKey": true
+          "primaryKey": true,
+          "representationNote": "Retired archive org_id superseded by canonical org_id."
         },
         {
           "table": "organization_redirects",
           "path": "org_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
-          "primaryKey": false
+          "primaryKey": false,
+          "representationNote": "Archive org_id linked to RefSpec agencies via anchor and organization_ids."
         }
       ]
     },
@@ -502,15 +506,14 @@
       "conceptKind": "identifier",
       "description": "Cross-stack person identifier. Archive people.person_key uses Bioguide ID for matched Members or 16-hex hash for non-Member witnesses.",
       "examples": [
-        "person:nancy-pelosi",
-        "A000370"
+        "person:nancy-pelosi"
       ],
       "bindings": [
         {
           "table": "witnesses",
           "path": "person_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false,
           "representationNote": "Archive person_key (Bioguide ID for matched Members, 16-hex hash otherwise)."
@@ -519,7 +522,7 @@
           "table": "people",
           "path": "person_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true,
           "representationNote": "Archive person_key (Bioguide ID for matched Members, 16-hex hash otherwise)."
@@ -528,7 +531,7 @@
           "table": "person_aliases",
           "path": "old_person_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true,
           "representationNote": "Archive person_key (Bioguide ID or 16-hex hash)."
@@ -537,7 +540,7 @@
           "table": "person_aliases",
           "path": "person_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false,
           "representationNote": "Archive person_key (Bioguide ID or 16-hex hash)."
@@ -546,7 +549,7 @@
           "table": "person_aliases",
           "path": "candidate_keys[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false,
           "representationNote": "Archive person_key (Bioguide ID or 16-hex hash)."
@@ -567,7 +570,7 @@
           "table": "members",
           "path": "cross_ids.fec[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         }
@@ -587,7 +590,7 @@
           "table": "detail",
           "path": "package_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -595,7 +598,7 @@
           "table": "meetings",
           "path": "transcripts[].package_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -603,7 +606,7 @@
           "table": "witnesses",
           "path": "package_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -611,7 +614,7 @@
           "table": "nominations",
           "path": "transcripts[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -619,7 +622,7 @@
           "table": "recording_matches",
           "path": "package_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -627,7 +630,7 @@
           "table": "historical_recording_matches",
           "path": "package_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": false
         }
@@ -647,7 +650,7 @@
           "table": "bills",
           "path": "bill_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         },
@@ -655,7 +658,7 @@
           "table": "bills",
           "path": "related_bills[].bill_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -663,7 +666,7 @@
           "table": "bill_actions",
           "path": "bill_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         },
@@ -671,7 +674,7 @@
           "table": "roll_call_votes",
           "path": "bill_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -679,7 +682,7 @@
           "table": "roll_call_votes",
           "path": "bill_references[].bill_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         }
@@ -699,7 +702,7 @@
           "table": "list",
           "path": "bioguide_ids[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -707,7 +710,7 @@
           "table": "detail",
           "path": "bioguide_ids[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -715,7 +718,7 @@
           "table": "witnesses",
           "path": "bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -723,7 +726,7 @@
           "table": "witnesses",
           "path": "matched_bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -731,7 +734,7 @@
           "table": "people",
           "path": "bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -739,7 +742,7 @@
           "table": "members",
           "path": "bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         },
@@ -747,7 +750,7 @@
           "table": "rosters",
           "path": "bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         },
@@ -755,7 +758,7 @@
           "table": "bills",
           "path": "sponsor_bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -763,7 +766,7 @@
           "table": "bills",
           "path": "amendments[].sponsor_bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -771,7 +774,7 @@
           "table": "committee_records",
           "path": "sponsor_bioguide",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -779,7 +782,7 @@
           "table": "member_votes",
           "path": "bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         }
@@ -800,7 +803,7 @@
           "table": "list",
           "path": "committee_keys[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -808,7 +811,7 @@
           "table": "detail",
           "path": "committee_keys[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -816,7 +819,7 @@
           "table": "meetings",
           "path": "committees[].system_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -824,7 +827,7 @@
           "table": "committees",
           "path": "system_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         },
@@ -832,7 +835,7 @@
           "table": "committees",
           "path": "parent_system_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -840,7 +843,7 @@
           "table": "rosters",
           "path": "system_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         },
@@ -848,7 +851,7 @@
           "table": "bills",
           "path": "committees[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -856,7 +859,7 @@
           "table": "bills",
           "path": "committee_activities[].system_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -864,7 +867,7 @@
           "table": "nominations",
           "path": "committees[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -872,7 +875,7 @@
           "table": "nominations",
           "path": "committee_activities[].system_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -880,7 +883,7 @@
           "table": "videos",
           "path": "system_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -888,7 +891,7 @@
           "table": "channels",
           "path": "system_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": false
         },
@@ -896,7 +899,7 @@
           "table": "historical_recording_matches",
           "path": "committee_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": false
         }
@@ -916,7 +919,7 @@
           "table": "list",
           "path": "meeting_keys[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false,
           "representationNote": "Decimal string event ID; joins meetings.event_id via integer cast."
@@ -925,7 +928,7 @@
           "table": "detail",
           "path": "meeting_keys[]",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false,
           "representationNote": "Decimal string event ID; joins meetings.event_id via integer cast."
@@ -934,7 +937,7 @@
           "table": "meetings",
           "path": "event_id",
           "logicalType": "integer",
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": true,
           "primaryKey": true,
           "representationNote": "64-bit integer event ID."
@@ -943,7 +946,7 @@
           "table": "meetings",
           "path": "rescheduled_to",
           "logicalType": "integer",
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": false,
           "primaryKey": false,
           "representationNote": "64-bit integer event ID."
@@ -952,7 +955,7 @@
           "table": "witnesses",
           "path": "event_id",
           "logicalType": "integer",
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": false,
           "primaryKey": false,
           "representationNote": "64-bit integer event ID."
@@ -961,7 +964,7 @@
           "table": "recordings",
           "path": "event_ids[]",
           "logicalType": "integer",
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": false,
           "primaryKey": false,
           "representationNote": "64-bit integer event ID."
@@ -970,7 +973,7 @@
           "table": "videos",
           "path": "stated_event_ids[]",
           "logicalType": "integer",
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": false,
           "primaryKey": false,
           "representationNote": "64-bit integer event ID."
@@ -979,7 +982,7 @@
           "table": "recording_matches",
           "path": "event_id",
           "logicalType": "integer",
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": false,
           "primaryKey": false,
           "representationNote": "64-bit integer event ID."
@@ -988,7 +991,7 @@
           "table": "recording_matches",
           "path": "meeting_links[].event_id",
           "logicalType": "integer",
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": false,
           "primaryKey": false,
           "representationNote": "64-bit integer event ID."
@@ -997,7 +1000,7 @@
           "table": "committee_records",
           "path": "event_id",
           "logicalType": "integer",
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": true,
           "primaryKey": false,
           "representationNote": "64-bit integer event ID."
@@ -1006,7 +1009,7 @@
           "table": "meeting_coverage",
           "path": "event_id",
           "logicalType": "integer",
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": true,
           "primaryKey": true,
           "representationNote": "64-bit integer event ID."
@@ -1027,7 +1030,7 @@
           "table": "bills",
           "path": "floor_votes[].vote_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -1035,7 +1038,7 @@
           "table": "nominations",
           "path": "floor_votes[].vote_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "primaryKey": false
         },
@@ -1043,7 +1046,7 @@
           "table": "roll_call_votes",
           "path": "vote_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         },
@@ -1051,7 +1054,7 @@
           "table": "member_votes",
           "path": "vote_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": true
         }
@@ -1070,7 +1073,7 @@
           "table": "organizations",
           "path": "anchor",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "primaryKey": false
         }

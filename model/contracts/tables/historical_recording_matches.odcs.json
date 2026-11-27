@@ -42,7 +42,7 @@
         {
           "name": "package_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -67,21 +67,21 @@
         {
           "name": "congress",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Congress as supplied"
         },
         {
           "name": "chamber",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Chamber as supplied"
         },
         {
           "name": "committee_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -106,49 +106,49 @@
         {
           "name": "held_date",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Held date as supplied"
         },
         {
           "name": "hearing_dates",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Additional hearing dates as supplied"
         },
         {
           "name": "record_type",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Publication record type as supplied"
         },
         {
           "name": "status",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Original matcher status; a negative status does not establish checked absence"
         },
         {
           "name": "video_ids",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Original video identifiers or URLs in their supplied order and spacing"
         },
         {
           "name": "channels",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Original channel text"
         },
         {
           "name": "method",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Original package-level method text, which can name several methods"
         },
@@ -158,42 +158,42 @@
           "logicalTypeOptions": {
             "format": "i16"
           },
-          "physicalType": "SMALLINT",
+          "physicalType": "Int16",
           "required": false,
           "description": "Original aggregate package score; null means blank. Zero is a supplied score"
         },
         {
           "name": "video_minutes",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Original duration text"
         },
         {
           "name": "flags",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Original flags text"
         },
         {
           "name": "source",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Original matcher or research source label"
         },
         {
           "name": "note",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Original note text"
         },
         {
           "name": "source_snapshot_sha256",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "SHA-256 of the exact input CSV",
           "primaryKey": true,
@@ -205,7 +205,7 @@
           "logicalTypeOptions": {
             "format": "i64"
           },
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": true,
           "description": "One-based CSV data record ordinal, excluding the header",
           "primaryKey": true,

@@ -106,7 +106,7 @@
         {
           "name": "witness_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -133,7 +133,7 @@
         {
           "name": "field",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -149,7 +149,7 @@
         {
           "name": "org_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -160,6 +160,11 @@
               "vendor": "ddk",
               "property": "conceptKind",
               "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "representationNote",
+              "value": "Archive org_id linked to RefSpec agencies via anchor and organization_ids."
             }
           ],
           "authoritativeDefinitions": [
@@ -174,21 +179,21 @@
         {
           "name": "bag_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Normalized token-bag key for this stated affiliation"
         },
         {
           "name": "string_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Normalized L2 string key for this stated affiliation"
         },
         {
           "name": "raw_text",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Verbatim organization or on_behalf_of text from the witness appearance row"
         }

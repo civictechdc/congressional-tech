@@ -52,7 +52,7 @@
           "logicalTypeOptions": {
             "format": "i16"
           },
-          "physicalType": "SMALLINT",
+          "physicalType": "Int16",
           "required": true,
           "description": "Congress number for the committee assignment",
           "primaryKey": true,
@@ -68,7 +68,7 @@
         {
           "name": "system_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -105,7 +105,7 @@
         {
           "name": "bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -137,7 +137,7 @@
         {
           "name": "title",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -159,14 +159,14 @@
           "logicalTypeOptions": {
             "format": "i16"
           },
-          "physicalType": "SMALLINT",
+          "physicalType": "Int16",
           "required": false,
           "description": "Numeric party rank on the committee when printed by the source"
         },
         {
           "name": "party",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -185,7 +185,7 @@
         {
           "name": "congress_basis",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -207,28 +207,28 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Snapshot date the roster describes: a directory edition's dateIssued, or an archived chamber file's Internet Archive capture date"
         },
         {
           "name": "source_granule",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "The GovInfo directory granule (or, for a manual reading, package; for an archived chamber file, its Internet Archive URL) that states the seat"
         },
         {
           "name": "source_line",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "The granule text line where the printed entry starts; for a manual reading, PDF page:line"
         },
         {
           "name": "position_basis",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -242,14 +242,14 @@
         {
           "name": "printed_entry",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "For a directory seat, the entry as printed (name and state), kept when a value was corrected"
         },
         {
           "name": "entry_label",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",

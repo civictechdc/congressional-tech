@@ -42,7 +42,7 @@
         {
           "name": "record_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Hex SHA-256 of the compact JSON [record_sha hex, ordinal as text]",
           "primaryKey": true,
@@ -54,7 +54,7 @@
           "logicalTypeOptions": {
             "format": "i64"
           },
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -84,7 +84,7 @@
         {
           "name": "kind",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -98,21 +98,21 @@
         {
           "name": "bill",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Bill as stated"
         },
         {
           "name": "number",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Amendment or vote number as stated"
         },
         {
           "name": "sponsor_bioguide",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -142,7 +142,7 @@
         {
           "name": "amendment_type",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -156,21 +156,21 @@
         {
           "name": "enbloc",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "En bloc number as stated"
         },
         {
           "name": "source_description",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Description as stated"
         },
         {
           "name": "url",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Document URL, null when the record states none"
         },
@@ -190,7 +190,7 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": true,
           "description": "Position in that record, so duplicate links stay distinct"
         }

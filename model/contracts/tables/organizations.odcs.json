@@ -106,7 +106,7 @@
         {
           "name": "org_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -138,14 +138,14 @@
         {
           "name": "display_name",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Canonical display name for the organization (winning anchor label when supplied, else most frequent verbatim affiliation string with lexicographic tie-break)"
         },
         {
           "name": "kind",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -159,7 +159,7 @@
         {
           "name": "taxonomy_parent",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -173,7 +173,7 @@
         {
           "name": "taxonomy_category",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -187,7 +187,7 @@
         {
           "name": "parent_org_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -220,17 +220,16 @@
           "logicalTypeOptions": {
             "format": "i64"
           },
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": true,
           "description": "Count of distinct witness_key appearances linked to this organization"
         },
         {
           "name": "bag_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "description": "Normalized token-bag keys belonging to this organization; provenance keys, not foreign keys."
           },
           "required": true,
@@ -239,10 +238,9 @@
         {
           "name": "string_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "description": "Normalized L2 affiliation string keys belonging to this organization; provenance keys, not foreign keys."
           },
           "required": true,
@@ -251,7 +249,7 @@
         {
           "name": "anchor",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -276,7 +274,7 @@
         {
           "name": "has_conflict",
           "logicalType": "boolean",
-          "physicalType": "BOOLEAN",
+          "physicalType": "Boolean",
           "required": true,
           "description": "True when active org_decisions contain a same/different contradiction touching this component, keeping it unmerged"
         }

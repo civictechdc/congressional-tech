@@ -9,11 +9,17 @@ from __future__ import annotations
 
 import argparse
 from copy import deepcopy
+import io
+import ipaddress
 import json
 from pathlib import Path
 import re
+import socket
 import sys
 from typing import Any
+import urllib.error
+import urllib.parse
+import urllib.request
 
 from viewer_publication.archive_schema import _parts, build_schema, field_types
 
@@ -33,6 +39,8 @@ LIVE_VERIFY_USER_AGENT = 'congressional-tech-verify/1.0'
 
 _SIMPLE_SHORTHAND_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_\-]*(\.[A-Za-z_][A-Za-z0-9_\-]*)+$')
 _FIXED_TYPE_RE = re.compile(r'^fixed\[([1-9][0-9]*)\]$')
+_HEX64_RE = re.compile(r'^[0-9a-f]{64}$')
+_SAFE_PARQUET_FILENAME_RE = re.compile(r'^[a-z0-9_]+\.parquet$')
 
 # Canonical spicy-regs family provenance per published table (mirrors archive_format.SPICY_PRODUCER_FAMILIES).
 SPICY_PRODUCER_TABLES: dict[str, tuple[str, ...]] = {
@@ -100,7 +108,7 @@ CANONICAL_CONCEPTS: dict[str, dict[str, Any]] = {
         'definitionName': 'person-id',
         'conceptKind': 'identifier',
         'description': 'Cross-stack person identifier. Archive people.person_key uses Bioguide ID for matched Members or 16-hex hash for non-Member witnesses.',
-        'examples': ['person:nancy-pelosi', 'A000370'],
+        'examples': ['person:nancy-pelosi'],
     },
     'urn:refspec:agency-registry:anchor': {
         'definitionName': 'refspec-agency-anchor',
@@ -336,15 +344,27 @@ TABLE_FIELD_URN_BINDINGS: dict[str, dict[str, tuple[str, dict[str, Any]]]] = {
         'anchor': ('urn:refspec:agency-registry:anchor', {}),
     },
     'organization_ids': {
-        'org_id': ('urn:ddk:entity:concept:org-id', {}),
+        'org_id': (
+            'urn:ddk:entity:concept:org-id',
+            {'representationNote': 'Archive org_id linked to RefSpec agencies via anchor and organization_ids.'},
+        ),
     },
     'witness_organizations': {
         'witness_key': ('urn:congressional-tech:concept:witness-key', {}),
-        'org_id': ('urn:ddk:entity:concept:org-id', {}),
+        'org_id': (
+            'urn:ddk:entity:concept:org-id',
+            {'representationNote': 'Archive org_id linked to RefSpec agencies via anchor and organization_ids.'},
+        ),
     },
     'organization_redirects': {
-        'old_org_id': ('urn:ddk:entity:concept:org-id', {}),
-        'org_id': ('urn:ddk:entity:concept:org-id', {}),
+        'old_org_id': (
+            'urn:ddk:entity:concept:org-id',
+            {'representationNote': 'Retired archive org_id superseded by canonical org_id.'},
+        ),
+        'org_id': (
+            'urn:ddk:entity:concept:org-id',
+            {'representationNote': 'Archive org_id linked to RefSpec agencies via anchor and organization_ids.'},
+        ),
     },
 }
 
@@ -482,7 +502,7 @@ def _type_to_odcs(
     node: dict[str, Any]
 
     if kind in ('string', 'dict'):
-        node = {'logicalType': 'string', 'physicalType': 'VARCHAR'}
+        node = {'logicalType': 'string', 'physicalType': 'Utf8'}
         if kind == 'dict':
             custom_props.append({
                 'vendor': 'congressional-tech',
@@ -490,19 +510,19 @@ def _type_to_odcs(
                 'value': 'dictionary',
             })
     elif kind in ('bool', 'boolean'):
-        node = {'logicalType': 'boolean', 'physicalType': 'BOOLEAN'}
+        node = {'logicalType': 'boolean', 'physicalType': 'Boolean'}
     elif kind == 'int16':
-        node = {'logicalType': 'integer', 'logicalTypeOptions': {'format': 'i16'}, 'physicalType': 'SMALLINT'}
+        node = {'logicalType': 'integer', 'logicalTypeOptions': {'format': 'i16'}, 'physicalType': 'Int16'}
     elif kind == 'int32':
-        node = {'logicalType': 'integer', 'logicalTypeOptions': {'format': 'i32'}, 'physicalType': 'INTEGER'}
+        node = {'logicalType': 'integer', 'logicalTypeOptions': {'format': 'i32'}, 'physicalType': 'Int32'}
     elif kind == 'int64':
-        node = {'logicalType': 'integer', 'logicalTypeOptions': {'format': 'i64'}, 'physicalType': 'BIGINT'}
+        node = {'logicalType': 'integer', 'logicalTypeOptions': {'format': 'i64'}, 'physicalType': 'Int64'}
     elif kind in ('float32', 'float'):
-        node = {'logicalType': 'number', 'logicalTypeOptions': {'format': 'f32'}, 'physicalType': 'FLOAT'}
+        node = {'logicalType': 'number', 'logicalTypeOptions': {'format': 'f32'}, 'physicalType': 'Float32'}
     elif kind in ('float64', 'double'):
-        node = {'logicalType': 'number', 'logicalTypeOptions': {'format': 'f64'}, 'physicalType': 'DOUBLE'}
+        node = {'logicalType': 'number', 'logicalTypeOptions': {'format': 'f64'}, 'physicalType': 'Float64'}
     elif kind == 'date32':
-        node = {'logicalType': 'date', 'logicalTypeOptions': {'format': 'yyyy-MM-dd'}, 'physicalType': 'DATE'}
+        node = {'logicalType': 'date', 'logicalTypeOptions': {'format': 'yyyy-MM-dd'}, 'physicalType': 'Date32'}
     elif kind in ('timestamp', 'timestamp<microsecond,UTC>'):
         node = {
             'logicalType': 'timestamp',
@@ -511,7 +531,6 @@ def _type_to_odcs(
                 'timezone': True,
                 'defaultTimezone': 'UTC',
             },
-            'physicalType': 'TIMESTAMPTZ',
         }
     elif (match := _FIXED_TYPE_RE.fullmatch(kind)) is not None:
         node = {
@@ -526,7 +545,6 @@ def _type_to_odcs(
             item_node['description'] = notes[item_path]
         node = {
             'logicalType': 'array',
-            'physicalType': f"{item_node['physicalType']}[]",
             'items': item_node,
         }
     elif kind.startswith('struct<') and kind.endswith('>'):
@@ -541,7 +559,6 @@ def _type_to_odcs(
             children.append(child_prop)
         node = {
             'logicalType': 'object',
-            'physicalType': 'STRUCT',
             'properties': children,
         }
     else:
@@ -690,6 +707,13 @@ def _collect_urn_bindings(
 ) -> list[dict[str, Any]]:
     bindings: list[dict[str, Any]] = []
 
+    def walk_array_items(items: dict[str, Any], item_path: str) -> None:
+        _record(items, item_path)
+        if items.get('logicalType') == 'object' and items.get('properties'):
+            walk(items['properties'], item_path)
+        elif items.get('logicalType') == 'array' and isinstance(items.get('items'), dict):
+            walk_array_items(items['items'], f'{item_path}[]')
+
     def walk(props: list[dict[str, Any]], prefix: str) -> None:
         for prop in props:
             path = f"{prefix}.{prop['name']}" if prefix else prop['name']
@@ -697,11 +721,7 @@ def _collect_urn_bindings(
             if prop.get('logicalType') == 'object' and prop.get('properties'):
                 walk(prop['properties'], path)
             elif prop.get('logicalType') == 'array' and isinstance(prop.get('items'), dict):
-                item_path = f'{path}[]'
-                items = prop['items']
-                _record(items, item_path)
-                if items.get('logicalType') == 'object' and items.get('properties'):
-                    walk(items['properties'], item_path)
+                walk_array_items(prop['items'], f'{path}[]')
 
     def _record(node: dict[str, Any], path: str) -> None:
         concept = None
@@ -870,6 +890,19 @@ def export_odcs_contracts(
     }
 
 
+def _collect_property_paths(props: list[dict[str, Any]], prefix: str = '') -> set[str]:
+    paths: set[str] = set()
+    for prop in props:
+        name = prop.get('name')
+        if not isinstance(name, str) or not name:
+            continue
+        path = f'{prefix}.{name}' if prefix else name
+        paths.add(path)
+        if prop.get('logicalType') == 'object' and isinstance(prop.get('properties'), list):
+            paths.update(_collect_property_paths(prop['properties'], path))
+    return paths
+
+
 def validate_odcs_contract(contract: dict[str, Any], *, expected_tables: set[str] | None = None) -> list[str]:
     """Validate structural ODCS v3.2.0 conformance and cross-table binding invariants offline."""
     errors: list[str] = []
@@ -890,6 +923,7 @@ def validate_odcs_contract(contract: dict[str, Any], *, expected_tables: set[str
         errors.append(f'Unexpected top-level ODCS keys: {extra_top}')
 
     seen_tables: set[str] = set()
+    schema_paths: dict[str, set[str]] = {}
     allowed_logical = {'string', 'date', 'timestamp', 'time', 'number', 'integer', 'object', 'array', 'boolean', 'map', 'vector'}
     for obj in contract.get('schema', []):
         name = obj.get('name')
@@ -906,6 +940,12 @@ def validate_odcs_contract(contract: dict[str, Any], *, expected_tables: set[str
             errors.append(f'SchemaObject {name!r} must have non-empty properties')
             continue
         _validate_properties(props, f'{name}', allowed_logical, errors, require_names=True)
+        schema_paths[name] = _collect_property_paths(props)
+
+    for obj in contract.get('schema', []):
+        name = obj.get('name')
+        if not isinstance(name, str) or not name:
+            continue
         for rel in obj.get('relationships', []):
             for endpoint_key in ('from', 'to'):
                 val = rel.get(endpoint_key)
@@ -913,6 +953,21 @@ def validate_odcs_contract(contract: dict[str, Any], *, expected_tables: set[str
                 for ref in refs:
                     if not isinstance(ref, str) or not _SIMPLE_SHORTHAND_RE.fullmatch(ref):
                         errors.append(f'Invalid relationship shorthand reference {ref!r} on {name}')
+                        continue
+                    ref_table, ref_col = ref.split('.', 1)
+                    if endpoint_key == 'from' and ref_table != name:
+                        errors.append(
+                            f'Relationship from reference {ref!r} on {name} must start with {name!r}'
+                        )
+                    elif ref_table in schema_paths:
+                        if ref_col not in schema_paths[ref_table]:
+                            errors.append(
+                                f'Relationship {endpoint_key} reference {ref!r} on {name} does not match a declared property on {ref_table}'
+                            )
+                    elif len(schema_paths) > 1 or endpoint_key == 'from':
+                        errors.append(
+                            f'Relationship {endpoint_key} reference {ref!r} on {name} targets undeclared table {ref_table!r}'
+                        )
 
     if expected_tables is not None:
         missing = sorted(expected_tables - seen_tables)
@@ -1155,23 +1210,80 @@ def check_drift(output_dir: Path = CONTRACTS_DIR, *, root: Path = ROOT) -> list[
     return errors
 
 
+def _is_disallowed_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    return (
+        ip_obj.is_private
+        or ip_obj.is_loopback
+        or ip_obj.is_link_local
+        or ip_obj.is_multicast
+        or ip_obj.is_reserved
+        or ip_obj.is_unspecified
+    )
+
+
+def _validate_release_url(release_id_or_url: str) -> str:
+    """Validate and normalize a release SHA-256 ID or public HTTPS release URL."""
+    raw = release_id_or_url.strip()
+    if _HEX64_RE.fullmatch(raw):
+        return f'https://congressional-data.spicygov.ai/viewer-publications/releases/{raw}'
+    if '?' in raw or '#' in raw:
+        raise ValueError(f'Release URL must not include query or fragment: {release_id_or_url!r}')
+    parsed = urllib.parse.urlsplit(raw)
+    if parsed.scheme != 'https':
+        raise ValueError(f'Release target must be a 64-char hex ID or https:// URL: {release_id_or_url!r}')
+    if parsed.username is not None or parsed.password is not None or '@' in parsed.netloc:
+        raise ValueError(f'Release URL must not contain credentials: {release_id_or_url!r}')
+    hostname = parsed.hostname
+    if not hostname:
+        raise ValueError(f'Release URL missing valid hostname: {release_id_or_url!r}')
+    if parsed.query or parsed.fragment:
+        raise ValueError(f'Release URL must not include query or fragment: {release_id_or_url!r}')
+
+    host_clean = hostname.strip('[]')
+    try:
+        ip_literal = ipaddress.ip_address(host_clean)
+    except ValueError:
+        ip_literal = None
+    if ip_literal is not None:
+        if _is_disallowed_ip(ip_literal):
+            raise ValueError(f'Release URL resolves to disallowed IP {ip_literal}: {release_id_or_url!r}')
+    else:
+        port = parsed.port or 443
+        addr_infos = socket.getaddrinfo(hostname, port, type=socket.SOCK_STREAM)
+        if not addr_infos:
+            raise ValueError(f'Release URL host did not resolve: {hostname!r}')
+        for info in addr_infos:
+            ip_str = info[4][0].split('%', 1)[0]
+            ip_obj = ipaddress.ip_address(ip_str)
+            if _is_disallowed_ip(ip_obj):
+                raise ValueError(f'Release URL host {hostname!r} resolved to disallowed IP {ip_obj}')
+
+    return raw.rstrip('/')
+
+
+class _NoRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str) -> None:
+        raise urllib.error.HTTPError(req.full_url, code, f'HTTP redirect refused ({code} -> {newurl})', headers, fp)
+
+
 def verify_live_release_parity(release_id_or_url: str, *, root: Path = ROOT) -> dict[str, Any]:
     """Read Parquet footers via HTTP Range from a published release and compare against exported ODCS contracts."""
-    import io
-    import urllib.request
     import pyarrow.parquet as pq
 
-    if release_id_or_url.startswith('https://'):
-        base_url = release_id_or_url.rstrip('/')
-    else:
-        base_url = f'https://congressional-data.spicygov.ai/viewer-publications/releases/{release_id_or_url}'
+    base_url = _validate_release_url(release_id_or_url)
+    opener = urllib.request.build_opener(_NoRedirectHandler())
 
     def _get(url: str, byte_range: str | None = None) -> bytes:
         headers = {'User-Agent': LIVE_VERIFY_USER_AGENT}
         if byte_range is not None:
             headers['Range'] = byte_range
         req = urllib.request.Request(url, headers=headers)
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with opener.open(req, timeout=30) as resp:
+            status = getattr(resp, 'status', None)
+            if byte_range is not None and status != 206:
+                raise ValueError(f'Expected HTTP 206 for Range request on {url}, got {status!r}')
+            if byte_range is None and status not in (None, 200):
+                raise ValueError(f'Expected HTTP 200 for {url}, got {status!r}')
             return resp.read()
 
     class _HttpRangeFile(io.RawIOBase):
@@ -1190,20 +1302,29 @@ def verify_live_release_parity(release_id_or_url: str, *, root: Path = ROOT) -> 
 
         def seek(self, offset: int, whence: int = io.SEEK_SET) -> int:
             if whence == io.SEEK_SET:
-                self.pos = offset
+                target = offset
             elif whence == io.SEEK_CUR:
-                self.pos += offset
+                target = self.pos + offset
             elif whence == io.SEEK_END:
-                self.pos = self.size + offset
+                target = self.size + offset
+            else:
+                raise ValueError(f'Unsupported whence {whence!r}')
+            if target < 0:
+                raise ValueError(f'Negative seek position {target}')
+            self.pos = target
             return self.pos
 
         def tell(self) -> int:
             return self.pos
 
         def read(self, n: int = -1) -> bytes:
+            if n == 0 or self.pos >= self.size:
+                return b''
             if n < 0:
                 n = self.size - self.pos
             end = min(self.size, self.pos + n)
+            if end <= self.pos:
+                return b''
             if self.pos >= self.tail_start:
                 chunk = self.tail[self.pos - self.tail_start : end - self.tail_start]
             else:
@@ -1212,7 +1333,10 @@ def verify_live_release_parity(release_id_or_url: str, *, root: Path = ROOT) -> 
             return chunk
 
     manifest = json.loads(_get(f'{base_url}/manifest.json').decode('utf-8'))
-    has_v2_profile = any(f['name'] == 'capture_profile.json' for f in manifest['files'])
+    files = manifest.get('files')
+    if not isinstance(files, list):
+        raise ValueError('Remote manifest.json missing files list')
+    has_v2_profile = any(isinstance(f, dict) and f.get('name') == 'capture_profile.json' for f in files)
     if has_v2_profile:
         cap_profile = json.loads(_get(f'{base_url}/capture_profile.json').decode('utf-8'))
         include_cap = cap_profile.get('version') == 2
@@ -1221,14 +1345,31 @@ def verify_live_release_parity(release_id_or_url: str, *, root: Path = ROOT) -> 
 
     exported = export_odcs_contracts(root=root, include_capture_eligibility=include_cap)
     by_name = {obj['name']: obj for obj in exported['bundle_contract']['schema']}
-    results: dict[str, Any] = {'release_url': base_url, 'capture_profile_v2': include_cap, 'tables': {}}
+    results: dict[str, Any] = {
+        'release_url': base_url,
+        'capture_profile_v2': include_cap,
+        'unexpectedTables': [],
+        'tables': {},
+    }
 
-    for entry in manifest['files']:
-        fname = entry['name']
+    for entry in files:
+        if not isinstance(entry, dict):
+            raise ValueError(f'Invalid manifest file entry: {entry!r}')
+        fname = entry.get('name')
+        if not isinstance(fname, str):
+            raise ValueError(f'Manifest entry missing string name: {entry!r}')
         if not fname.endswith('.parquet'):
             continue
+        if not _SAFE_PARQUET_FILENAME_RE.fullmatch(fname):
+            raise ValueError(f'Unsafe manifest parquet filename: {fname!r}')
+        size = entry.get('size')
+        if not isinstance(size, int) or isinstance(size, bool) or size < 0:
+            raise ValueError(f'Invalid manifest parquet size for {fname!r}: {size!r}')
         tname = fname.removesuffix('.parquet')
-        actual = pq.read_schema(_HttpRangeFile(f'{base_url}/{fname}', entry['size']))
+        if tname not in by_name:
+            results['unexpectedTables'].append(tname)
+            continue
+        actual = pq.read_schema(_HttpRangeFile(f'{base_url}/{fname}', size))
         obj = by_name[tname]
         strict_issues = compare_parquet_schema_parity(obj, actual, check_order=True, check_nullability=False, normalize_arrow_encodings=False)
         norm_issues = compare_parquet_schema_parity(obj, actual, check_order=False, check_nullability=False, normalize_arrow_encodings=True)
@@ -1257,7 +1398,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.verify_live:
         report = verify_live_release_parity(args.verify_live)
         print(json.dumps(report, indent=2))
-        return 0
+        has_issues = bool(report.get('unexpectedTables')) or any(
+            t.get('normalizedUnorderedIssues') for t in report.get('tables', {}).values()
+        )
+        return 1 if has_issues else 0
     if args.check:
         errors = check_drift(args.output_dir)
         if errors:

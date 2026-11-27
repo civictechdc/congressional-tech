@@ -105,21 +105,20 @@
         {
           "name": "last_release_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "The latest release that published the key"
         },
         {
           "name": "last_filename",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "The filename the key resolved to in that release"
         },
         {
           "name": "address_versions",
           "logicalType": "array",
-          "physicalType": "fixed[8][]",
           "items": {
             "logicalType": "string",
             "logicalTypeOptions": {

@@ -42,7 +42,7 @@
         {
           "name": "witness_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -69,7 +69,7 @@
         {
           "name": "occasion",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -88,7 +88,7 @@
         {
           "name": "source",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -112,14 +112,14 @@
         {
           "name": "source_locator",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Deterministic occurrence locator within the retained source record"
         },
         {
           "name": "context_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Lowercase hex SHA-256 of compact JSON [source_url, member_path] for the bound capture context"
         },
@@ -129,7 +129,7 @@
           "logicalTypeOptions": {
             "format": "i64"
           },
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -159,7 +159,7 @@
         {
           "name": "package_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -184,63 +184,63 @@
         {
           "name": "page_url",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Senate hearing page URL when occasion is a page"
         },
         {
           "name": "name",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Display name of the witness"
         },
         {
           "name": "rank",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Military rank of the witness when stated (e.g. Lt. Gen., Rear Adm.); extracted from the witness heading rather than left in name (owner decision 2026-11-10, ct-17op)"
         },
         {
           "name": "credentials",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Academic, professional, or service credentials of the witness when stated (e.g. M.D., M.P.H., Ph.D., USAF (Ret.)); extracted rather than dropped or left in name (owner decision 2026-11-10, ct-17op)"
         },
         {
           "name": "position",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Witness title or position"
         },
         {
           "name": "organization",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Witness organization or affiliation"
         },
         {
           "name": "on_behalf_of",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Represented entity when distinct from organization"
         },
         {
           "name": "location",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Witness locality or state"
         },
         {
           "name": "panel",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Panel heading or label"
         },
@@ -250,7 +250,7 @@
           "logicalTypeOptions": {
             "format": "i16"
           },
-          "physicalType": "SMALLINT",
+          "physicalType": "Int16",
           "required": false,
           "description": "1-based panel order within the occasion"
         },
@@ -260,14 +260,14 @@
           "logicalTypeOptions": {
             "format": "i16"
           },
-          "physicalType": "SMALLINT",
+          "physicalType": "Int16",
           "required": false,
           "description": "1-based witness display order within the occasion or panel"
         },
         {
           "name": "witness_type",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -286,14 +286,14 @@
         {
           "name": "testified",
           "logicalType": "boolean",
-          "physicalType": "BOOLEAN",
+          "physicalType": "Boolean",
           "required": false,
           "description": "Whether the witness testified"
         },
         {
           "name": "bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -323,7 +323,7 @@
         {
           "name": "superseded_by",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -348,7 +348,7 @@
         {
           "name": "matched_bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -378,7 +378,7 @@
         {
           "name": "match_basis",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -392,7 +392,7 @@
         {
           "name": "person_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -422,7 +422,7 @@
         {
           "name": "listing_status",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -439,7 +439,7 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Date of the latest Congress.gov read that still listed a no_longer_listed witness; null when listing_status is listed"
         },
@@ -449,14 +449,14 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Date of the earliest subsequent Congress.gov read that stopped listing a no_longer_listed witness; null when listing_status is listed"
         },
         {
           "name": "unlisted_by_record_sha",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Lowercase SHA-256 of the earliest subsequent Congress.gov read that stopped listing a no_longer_listed witness; null when listing_status is listed"
         }

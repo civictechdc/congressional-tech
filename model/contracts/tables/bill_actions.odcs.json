@@ -49,7 +49,7 @@
         {
           "name": "bill_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -79,7 +79,7 @@
           "logicalTypeOptions": {
             "format": "i64"
           },
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": true,
           "description": "Literal selected upstream bill_actions.action_index",
           "primaryKey": true,
@@ -88,42 +88,42 @@
         {
           "name": "action_date",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream bill_actions.action_date"
         },
         {
           "name": "action_time",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream bill_actions.action_time"
         },
         {
           "name": "action_text",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream bill_actions.action_text"
         },
         {
           "name": "action_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream bill_actions.action_code"
         },
         {
           "name": "action_type",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream bill_actions.action_type"
         },
         {
           "name": "source_system_name",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream bill_actions.source_system_name"
         },
@@ -133,35 +133,35 @@
           "logicalTypeOptions": {
             "format": "i64"
           },
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": false,
           "description": "Literal selected upstream bill_actions.recorded_vote_count"
         },
         {
           "name": "is_latest_action",
           "logicalType": "boolean",
-          "physicalType": "BOOLEAN",
+          "physicalType": "Boolean",
           "required": false,
           "description": "Literal selected upstream bill_actions.is_latest_action"
         },
         {
           "name": "stage",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal selected upstream bill_actions.stage"
         },
         {
           "name": "source_generation",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Exact selected SpicyRegs family generation digest"
         },
         {
           "name": "source_reference",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Selected upstream Parquet path; identify a source row using this table primary key"
         }

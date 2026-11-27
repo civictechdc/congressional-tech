@@ -42,31 +42,30 @@
         {
           "name": "filename",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Displayed filename"
         },
         {
           "name": "title",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Document or publisher title when known"
         },
         {
           "name": "print_number",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Official hearing print number (such as S. Hrg. 117-336 or Serial No. 115-3) from GovInfo MODS preferredCitation or Content Details when known"
         },
         {
           "name": "document_kind",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -110,10 +109,9 @@
         {
           "name": "document_family",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -129,10 +127,9 @@
         {
           "name": "committee_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -164,10 +161,9 @@
         {
           "name": "chambers",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -186,14 +182,14 @@
           "logicalTypeOptions": {
             "format": "i16"
           },
-          "physicalType": "SMALLINT",
+          "physicalType": "Int16",
           "required": false,
           "description": "Congress number when unambiguous"
         },
         {
           "name": "format",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -210,14 +206,14 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Date of the document as read; document_date_status says whether it is accepted or suspect"
         },
         {
           "name": "document_date_status",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -234,14 +230,14 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "First good fetch date"
         },
         {
           "name": "date_kind",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -255,7 +251,7 @@
         {
           "name": "saved_kind",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -269,17 +265,16 @@
         {
           "name": "hidden",
           "logicalType": "boolean",
-          "physicalType": "BOOLEAN",
+          "physicalType": "Boolean",
           "required": true,
           "description": "Excluded from search by review; public links still resolve"
         },
         {
           "name": "meeting_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -316,10 +311,9 @@
         {
           "name": "measure_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -359,10 +353,9 @@
         {
           "name": "bioguide_ids",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -394,10 +387,9 @@
         {
           "name": "witness_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -429,10 +421,9 @@
         {
           "name": "version_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",

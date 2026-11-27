@@ -42,7 +42,7 @@
         {
           "name": "requested_url",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Exact address scheduled for capture",
           "primaryKey": true,
@@ -61,7 +61,7 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": true,
           "description": "Number of fetch lines for the address"
         },
@@ -73,7 +73,6 @@
             "timezone": true,
             "defaultTimezone": "UTC"
           },
-          "physicalType": "TIMESTAMPTZ",
           "required": false,
           "description": "Latest attempt time"
         },
@@ -83,14 +82,14 @@
           "logicalTypeOptions": {
             "format": "i16"
           },
-          "physicalType": "SMALLINT",
+          "physicalType": "Int16",
           "required": false,
           "description": "Latest attempt HTTP status"
         },
         {
           "name": "last_outcome",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -109,7 +108,6 @@
             "timezone": true,
             "defaultTimezone": "UTC"
           },
-          "physicalType": "TIMESTAMPTZ",
           "required": false,
           "description": "Latest good fetch time"
         },
@@ -121,7 +119,6 @@
             "timezone": true,
             "defaultTimezone": "UTC"
           },
-          "physicalType": "TIMESTAMPTZ",
           "required": false,
           "description": "Next scheduled fetch time"
         },
@@ -131,14 +128,13 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Meeting date the recheck band was aged against: the address's earliest linked meeting, else the date in its docs.house.gov /meetings/ path; null when neither is known (the family's shortest band applies) and on a queued row"
         },
         {
           "name": "linked_from",
           "logicalType": "array",
-          "physicalType": "fixed[8][]",
           "items": {
             "logicalType": "string",
             "logicalTypeOptions": {

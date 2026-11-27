@@ -6,6 +6,7 @@ from datetime import date, datetime, timezone
 import json
 from pathlib import Path
 import shutil
+from typing import Any
 
 import pyarrow as pa
 import pyarrow.parquet as pq
@@ -259,3 +260,318 @@ def test_archive_schema_remains_single_owner_without_model_hash_churn():
     assert 'packages/viewer_publication/src/viewer_publication/archive_schema.py' in hashes
     assert 'packages/viewer_publication/src/viewer_publication/archive_odcs.py' not in hashes
     assert not any(k.startswith('model/contracts/') for k in hashes)
+
+
+def test_odcs_arrow_physical_types_and_float_round_trip():
+    import importlib.util
+
+    allowed_scalar_physical = {'Utf8', 'Boolean', 'Int16', 'Int32', 'Int64', 'Float32', 'Float64', 'Date32'}
+    exported = archive_odcs.export_odcs_contracts()
+
+    def _check_node(node: dict[str, Any], path: str) -> None:
+        lt = node['logicalType']
+        phys = node.get('physicalType')
+        if lt in {'timestamp', 'array', 'object'}:
+            assert phys is None, f'{path}: {lt} must omit physicalType, got {phys!r}'
+        elif lt == 'string' and (node.get('logicalTypeOptions') or {}).get('format') == 'binary':
+            assert isinstance(phys, str) and phys.startswith('fixed['), f'{path}: {phys!r}'
+        else:
+            assert phys in allowed_scalar_physical, f'{path}: unexpected physicalType {phys!r}'
+        if lt == 'object':
+            for child in node['properties']:
+                _check_node(child, f"{path}.{child['name']}")
+        elif lt == 'array':
+            _check_node(node['items'], f'{path}[]')
+
+    for obj in exported['bundle_contract']['schema']:
+        for prop in obj['properties']:
+            _check_node(prop, f"{obj['name']}.{prop['name']}")
+
+    # Explicit float32 / float64 round-trip via _type_to_odcs & odcs_property_to_pyarrow
+    for kind, expected_phys, expected_fmt, expected_pa in [
+        ('float32', 'Float32', 'f32', pa.float32()),
+        ('float', 'Float32', 'f32', pa.float32()),
+        ('float64', 'Float64', 'f64', pa.float64()),
+        ('double', 'Float64', 'f64', pa.float64()),
+    ]:
+        prop = archive_odcs._type_to_odcs(kind, table_name='t', field_path='col', notes={})
+        assert prop['logicalType'] == 'number'
+        assert prop['physicalType'] == expected_phys
+        assert prop['logicalTypeOptions'] == {'format': expected_fmt}
+        assert archive_odcs.odcs_property_to_pyarrow(prop, pa) == expected_pa
+
+    if importlib.util.find_spec('ddk') is not None:
+        from ddk.arrow_mapping import EXACT_PROFILE, map_declaration, pyarrow_schema
+        from ddk.arrow_observation import observe_declaration
+        from ddk.documents import validate_document
+        from ddk.publication import verify_parquet_schema_parity
+
+        validate_document(exported['bundle_contract'], kind='DataContract')
+        for obj in exported['bundle_contract']['schema']:
+            mapped = map_declaration(obj, profile=EXACT_PROFILE)
+            unsupported = [c for c in mapped.coverage if c.get('status') == 'unsupported']
+            assert unsupported == [], (obj['name'], unsupported)
+            canonical_pa = pyarrow_schema(mapped.schema, pa)
+            observed = observe_declaration(canonical_pa, obj, pa, profile=EXACT_PROFILE)
+            assert observed.status in {'passed', 'unknown'}, (obj['name'], observed)
+            pa_schema = archive_odcs.odcs_object_to_arrow_schema(obj, pa)
+            parity = verify_parquet_schema_parity(
+                pa_schema,
+                exported['bundle_contract'],
+                table_name=obj['name'],
+                normalize_arrow_encodings=True,
+            )
+            assert parity['status'] == 'passed', (obj['name'], parity)
+
+
+def test_export_include_capture_eligibility_extends_url_state():
+    base = archive_odcs.export_odcs_contracts(include_capture_eligibility=False)
+    extended = archive_odcs.export_odcs_contracts(include_capture_eligibility=True)
+
+    base_url_state = next(o for o in base['bundle_contract']['schema'] if o['name'] == 'url_state')
+    ext_url_state = next(o for o in extended['bundle_contract']['schema'] if o['name'] == 'url_state')
+    base_names = [p['name'] for p in base_url_state['properties']]
+    ext_names = [p['name'] for p in ext_url_state['properties']]
+
+    assert 'capture_disposition' not in base_names
+    assert ext_names[: len(base_names)] == base_names
+    assert ext_names[len(base_names) :] == ['capture_disposition', 'capture_reason', 'capture_decision_id']
+    assert archive_odcs.validate_odcs_contract(extended['bundle_contract']) == []
+
+
+def test_compare_parquet_schema_parity_normalize_arrow_encodings():
+    schema_obj = {
+        'name': 'normalized_example',
+        'logicalType': 'object',
+        'properties': [
+            {'name': 'dict_col', 'logicalType': 'string', 'physicalType': 'Utf8', 'required': False},
+            {
+                'name': 'tags',
+                'logicalType': 'array',
+                'required': True,
+                'items': {'logicalType': 'string', 'physicalType': 'Utf8', 'required': False},
+            },
+            {
+                'name': 'obs',
+                'logicalType': 'object',
+                'required': False,
+                'properties': [
+                    {
+                        'name': 'observed_at',
+                        'logicalType': 'timestamp',
+                        'logicalTypeOptions': {
+                            'format': "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+                            'timezone': True,
+                            'defaultTimezone': 'UTC',
+                        },
+                        'required': True,
+                    },
+                ],
+            },
+        ],
+    }
+    actual = pa.schema([
+        pa.field('dict_col', pa.dictionary(pa.int32(), pa.string()), nullable=True),
+        pa.field('tags', pa.list_(pa.field('element', pa.string(), nullable=False)), nullable=True),
+        pa.field('obs', pa.struct([pa.field('observed_at', pa.timestamp('us', tz='+00:00'), nullable=True)]), nullable=True),
+    ])
+    strict_issues = archive_odcs.compare_parquet_schema_parity(
+        schema_obj, actual, check_order=True, check_nullability=False, normalize_arrow_encodings=False,
+    )
+    assert any('type mismatch' in issue for issue in strict_issues)
+    assert archive_odcs.compare_parquet_schema_parity(
+        schema_obj, actual, check_order=True, check_nullability=False, normalize_arrow_encodings=True,
+    ) == []
+
+
+def test_validate_relationships_and_nested_array_urn_recursion():
+    exported = archive_odcs.export_odcs_contracts()
+    bundle = deepcopy(exported['bundle_contract'])
+
+    # Bad relationship column on declared target table
+    bad_target_col = deepcopy(bundle)
+    links_obj = next(obj for obj in bad_target_col['schema'] if obj['name'] == 'retired_links')
+    links_obj['relationships'][0]['to'] = 'links.nonexistent_col'
+    assert any('does not match a declared property' in e for e in archive_odcs.validate_odcs_contract(bad_target_col))
+
+    # Bad relationship source column
+    bad_src_col = deepcopy(bundle)
+    links_obj = next(obj for obj in bad_src_col['schema'] if obj['name'] == 'retired_links')
+    links_obj['relationships'][0]['from'] = 'retired_links.nonexistent_col'
+    assert any('does not match a declared property' in e for e in archive_odcs.validate_odcs_contract(bad_src_col))
+
+    # Bad target table in multi-table bundle
+    bad_target_tbl = deepcopy(bundle)
+    links_obj = next(obj for obj in bad_target_tbl['schema'] if obj['name'] == 'retired_links')
+    links_obj['relationships'][0]['to'] = 'ghost_table.link_key'
+    assert any('targets undeclared table' in e for e in archive_odcs.validate_odcs_contract(bad_target_tbl))
+
+    # Nested array<array<...>> URN binding collection
+    nested_obj = {
+        'name': 'nested_test',
+        'properties': [
+            {
+                'name': 'matrix',
+                'logicalType': 'array',
+                'required': True,
+                'items': {
+                    'logicalType': 'array',
+                    'required': False,
+                    'items': {
+                        'logicalType': 'string',
+                        'physicalType': 'Utf8',
+                        'required': False,
+                        'customProperties': [
+                            {'vendor': 'ddk', 'property': 'concept', 'value': 'urn:ddk:legislative:concept:bill-id'},
+                            {'vendor': 'ddk', 'property': 'conceptKind', 'value': 'identifier'},
+                        ],
+                    },
+                },
+            },
+        ],
+    }
+    bindings = archive_odcs._collect_urn_bindings(nested_obj, table_name='nested_test')
+    assert [(b['path'], b['concept']) for b in bindings] == [
+        ('matrix[][]', 'urn:ddk:legislative:concept:bill-id'),
+    ]
+
+
+def test_verify_live_release_parity_security_and_range_hardening(monkeypatch, tmp_path):
+    import io
+    import socket
+    import urllib.error
+    import urllib.request
+
+    # Reject bad release IDs and unsafe URLs before network access
+    for bad_target in [
+        'not-a-64-hex-id',
+        'A' * 64,
+        'http://congressional-data.spicygov.ai/releases/1',
+        'https://user:pass@congressional-data.spicygov.ai/releases/1',
+        'https://congressional-data.spicygov.ai/releases/1?token=abc',
+        'https://congressional-data.spicygov.ai/releases/1#frag',
+        'https://127.0.0.1/releases/1',
+        'https://10.0.0.5/releases/1',
+        'https://169.254.169.254/latest/meta-data',
+        'https://[::1]/releases/1',
+    ]:
+        with pytest.raises(ValueError):
+            archive_odcs.verify_live_release_parity(bad_target)
+
+    # DNS resolution returning private IP must also be rejected
+    monkeypatch.setattr(
+        socket,
+        'getaddrinfo',
+        lambda host, port, type=0: [(socket.AF_INET, socket.SOCK_STREAM, 6, '', ('192.168.1.10', 443))],
+    )
+    with pytest.raises(ValueError, match='disallowed IP'):
+        archive_odcs.verify_live_release_parity('https://example.org/releases/1')
+
+    # Redirect handler must refuse HTTP 302
+    handler = archive_odcs._NoRedirectHandler()
+    req = urllib.request.Request('https://congressional-data.spicygov.ai/x')
+    with pytest.raises(urllib.error.HTTPError, match='redirect refused'):
+        handler.redirect_request(req, None, 302, 'Found', {}, 'https://127.0.0.1/x')
+
+    # Build real in-memory Parquet payload for `links`
+    exported = archive_odcs.export_odcs_contracts()
+    links_obj = next(o for o in exported['bundle_contract']['schema'] if o['name'] == 'links')
+    links_schema = archive_odcs.odcs_object_to_arrow_schema(links_obj, pa)
+    buf = io.BytesIO()
+    pq.write_table(pa.Table.from_pylist([{'link_key': b'12345678', 'list_row': 0}], schema=links_schema), buf)
+    links_bytes = buf.getvalue()
+
+    class _FakeResp:
+        def __init__(self, status: int, data: bytes):
+            self.status = status
+            self._data = data
+
+        def read(self) -> bytes:
+            return self._data
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+    manifest_payload: dict[str, Any] = {
+        'files': [
+            {'name': 'links.parquet', 'size': len(links_bytes)},
+        ],
+    }
+    range_status = 206
+    seen_headers: list[tuple[str, dict[str, str]]] = []
+
+    class _FakeOpener:
+        def open(self, req_obj, timeout=30):
+            url = req_obj.full_url
+            hdrs = {k.lower(): v for k, v in req_obj.header_items()}
+            seen_headers.append((url, hdrs))
+            assert hdrs.get('user-agent') == archive_odcs.LIVE_VERIFY_USER_AGENT
+            if url.endswith('/manifest.json'):
+                return _FakeResp(200, json.dumps(manifest_payload).encode('utf-8'))
+            if url.endswith('/capture_profile.json'):
+                return _FakeResp(200, json.dumps({'version': 2}).encode('utf-8'))
+            if url.endswith('/links.parquet'):
+                rng = hdrs.get('range')
+                if rng is None:
+                    return _FakeResp(200, links_bytes)
+                assert rng.startswith('bytes=')
+                start_s, end_s = rng.removeprefix('bytes=').split('-', 1)
+                start, end = int(start_s), int(end_s)
+                assert 0 <= start <= end < len(links_bytes), rng
+                return _FakeResp(range_status, links_bytes[start : end + 1])
+            raise AssertionError(f'Unexpected URL: {url}')
+
+    monkeypatch.setattr(urllib.request, 'build_opener', lambda *handlers: _FakeOpener())
+
+    # Valid 64-hex release ID succeeds cleanly and returns CLI exit 0
+    valid_id = 'a' * 64
+    res = archive_odcs.verify_live_release_parity(valid_id)
+    assert res['release_url'] == f'https://congressional-data.spicygov.ai/viewer-publications/releases/{valid_id}'
+    assert res['unexpectedTables'] == []
+    assert res['tables']['links']['normalizedUnorderedIssues'] == []
+    assert archive_odcs.main(['--verify-live', valid_id]) == 0
+
+    # Extra unknown parquet table is reported in unexpectedTables and fails CLI with exit 1
+    manifest_payload = {
+        'files': [
+            {'name': 'links.parquet', 'size': len(links_bytes)},
+            {'name': 'extra_unregistered.parquet', 'size': 128},
+        ],
+    }
+    res_extra = archive_odcs.verify_live_release_parity(valid_id)
+    assert res_extra['unexpectedTables'] == ['extra_unregistered']
+    assert archive_odcs.main(['--verify-live', valid_id]) == 1
+
+    # Unsafe filename or invalid size rejected
+    for bad_entry in [
+        {'name': '../escape.parquet', 'size': 10},
+        {'name': 'bad-name.parquet', 'size': 10},
+        {'name': 'links.parquet', 'size': -1},
+        {'name': 'links.parquet', 'size': True},
+    ]:
+        manifest_payload = {'files': [bad_entry]}
+        with pytest.raises(ValueError):
+            archive_odcs.verify_live_release_parity(valid_id)
+
+    # Non-206 status on Range request is rejected
+    manifest_payload = {'files': [{'name': 'links.parquet', 'size': len(links_bytes)}]}
+    range_status = 200
+    with pytest.raises(ValueError, match='Expected HTTP 206'):
+        archive_odcs.verify_live_release_parity(valid_id)
+
+    # Drift in normalizedUnorderedIssues makes CLI return 1
+    range_status = 206
+    bad_buf = io.BytesIO()
+    pq.write_table(
+        pa.Table.from_pylist([{'link_key': 'not-fixed-binary', 'list_row': 0}], schema=pa.schema([
+            pa.field('link_key', pa.string()),
+            pa.field('list_row', pa.int32()),
+        ])),
+        bad_buf,
+    )
+    links_bytes = bad_buf.getvalue()
+    manifest_payload = {'files': [{'name': 'links.parquet', 'size': len(links_bytes)}]}
+    assert archive_odcs.main(['--verify-live', valid_id]) == 1

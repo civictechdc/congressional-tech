@@ -42,7 +42,7 @@
         {
           "name": "canonical_url",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Active canonical URL for capture joins",
           "primaryKey": true,
@@ -58,7 +58,7 @@
         {
           "name": "variant_url",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Active alternate URL for capture joins",
           "primaryKey": true,

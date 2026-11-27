@@ -42,7 +42,7 @@
         {
           "name": "video_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -69,7 +69,7 @@
         {
           "name": "handle",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -83,14 +83,14 @@
         {
           "name": "channel_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "YouTube channel ID, null when the cache has none"
         },
         {
           "name": "system_code",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -120,14 +120,14 @@
         {
           "name": "title",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Title as the channel states it"
         },
         {
           "name": "source_description",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Description as the channel states it, distinct from any HTML description"
         },
@@ -139,7 +139,6 @@
             "timezone": true,
             "defaultTimezone": "UTC"
           },
-          "physicalType": "TIMESTAMPTZ",
           "required": false,
           "description": "YouTube's publication time for the upload"
         },
@@ -151,7 +150,6 @@
             "timezone": true,
             "defaultTimezone": "UTC"
           },
-          "physicalType": "TIMESTAMPTZ",
           "required": false,
           "description": "YouTube's video publication time"
         },
@@ -161,21 +159,21 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": false,
           "description": "Duration in seconds when retained"
         },
         {
           "name": "available",
           "logicalType": "boolean",
-          "physicalType": "BOOLEAN",
+          "physicalType": "Boolean",
           "required": false,
           "description": "Whether the last check found it available"
         },
         {
           "name": "has_caption",
           "logicalType": "boolean",
-          "physicalType": "BOOLEAN",
+          "physicalType": "Boolean",
           "required": false,
           "description": "Whether YouTube states a caption exists"
         },
@@ -187,20 +185,18 @@
             "timezone": true,
             "defaultTimezone": "UTC"
           },
-          "physicalType": "TIMESTAMPTZ",
           "required": false,
           "description": "When details were last checked"
         },
         {
           "name": "stated_event_ids",
           "logicalType": "array",
-          "physicalType": "BIGINT[]",
           "items": {
             "logicalType": "integer",
             "logicalTypeOptions": {
               "format": "i64"
             },
-            "physicalType": "BIGINT",
+            "physicalType": "Int64",
             "customProperties": [
               {
                 "vendor": "ddk",

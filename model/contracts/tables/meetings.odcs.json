@@ -45,7 +45,7 @@
           "logicalTypeOptions": {
             "format": "i64"
           },
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -77,7 +77,7 @@
         {
           "name": "chamber",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -91,14 +91,14 @@
         {
           "name": "chamber_basis",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "source if the meeting record supplies a chamber, source_chamber_unknown if the meeting record has no supported chamber, or meeting_detail_missing if only a document references the event. Earlier releases omit this field."
         },
         {
           "name": "title",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Document or publisher title when known"
         },
@@ -108,14 +108,14 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Meeting date"
         },
         {
           "name": "meeting_type",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -137,14 +137,14 @@
           "logicalTypeOptions": {
             "format": "i16"
           },
-          "physicalType": "SMALLINT",
+          "physicalType": "Int16",
           "required": false,
           "description": "Congress session number"
         },
         {
           "name": "status",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -158,10 +158,8 @@
         {
           "name": "sittings",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "start",
@@ -171,7 +169,6 @@
                   "timezone": true,
                   "defaultTimezone": "UTC"
                 },
-                "physicalType": "TIMESTAMPTZ",
                 "description": "Start instant of this sitting, when stated."
               },
               {
@@ -182,31 +179,30 @@
                   "timezone": true,
                   "defaultTimezone": "UTC"
                 },
-                "physicalType": "TIMESTAMPTZ",
                 "description": "End instant of this sitting, when stated."
               },
               {
                 "name": "place",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Room, building and address joined with commas, when supplied."
               },
               {
                 "name": "room",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Room stated for this sitting."
               },
               {
                 "name": "building",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Building stated for this sitting."
               },
               {
                 "name": "address",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Address stated for this sitting."
               }
             ],
@@ -218,15 +214,13 @@
         {
           "name": "committees",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "system_code",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -255,7 +249,7 @@
               {
                 "name": "role",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -274,10 +268,9 @@
         {
           "name": "subject_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -317,15 +310,13 @@
         {
           "name": "transcripts",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "source",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -338,7 +329,7 @@
               {
                 "name": "package_id",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "ddk",
@@ -365,16 +356,15 @@
                 "logicalTypeOptions": {
                   "format": "i32"
                 },
-                "physicalType": "INTEGER",
+                "physicalType": "Int32",
                 "description": "Release-local document row for this transcript, when applicable."
               },
               {
                 "name": "formats",
                 "logicalType": "array",
-                "physicalType": "VARCHAR[]",
                 "items": {
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Available format label for this transcript."
                 },
                 "description": "Format names (pdf, html, ...) the package is retained in, in format-preference order; values, not keys."
@@ -382,7 +372,7 @@
               {
                 "name": "video_key",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "ddk",
@@ -406,7 +396,7 @@
               {
                 "name": "language",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -419,7 +409,7 @@
               {
                 "name": "production",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -438,27 +428,25 @@
         {
           "name": "videos",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "name",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Recorded name of this meeting video."
               },
               {
                 "name": "url",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Recorded address of this meeting video."
               },
               {
                 "name": "video_key",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "ddk",
@@ -491,7 +479,7 @@
           "logicalTypeOptions": {
             "format": "i16"
           },
-          "physicalType": "SMALLINT",
+          "physicalType": "Int16",
           "required": false,
           "description": "Congress the publisher record states; null when no record states it, never inferred from documents"
         },
@@ -503,21 +491,20 @@
             "timezone": true,
             "defaultTimezone": "UTC"
           },
-          "physicalType": "TIMESTAMPTZ",
           "required": false,
           "description": "Congress.gov's updateDate for this record: a publisher record update, distinct from the hearing date and capture time"
         },
         {
           "name": "house_xml_updated",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "House XML update-date, literally as stated with no zone: a publisher record update, distinct from the hearing date and capture time"
         },
         {
           "name": "congress_gov_meeting_type",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -531,7 +518,7 @@
         {
           "name": "access",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -545,7 +532,7 @@
         {
           "name": "access_basis",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -559,7 +546,7 @@
         {
           "name": "not_held",
           "logicalType": "boolean",
-          "physicalType": "BOOLEAN",
+          "physicalType": "Boolean",
           "required": false,
           "description": "Publisher status Canceled or Postponed, or the title opens with postponed, canceled or test; false where the meeting's own print was held that day under its title, or a curated read found the meeting's own recording of it on its date (status conflict, model/registries/meeting-status-conflicts.json); null with no record"
         },
@@ -569,7 +556,7 @@
           "logicalTypeOptions": {
             "format": "i64"
           },
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -599,7 +586,7 @@
         {
           "name": "rescheduled_basis",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -613,15 +600,13 @@
         {
           "name": "document_references",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "collection",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Source collection name, meetingDocuments or witnessDocuments. Witness documents are linked to this event without a witness identity claim."
               },
               {
@@ -630,43 +615,43 @@
                 "logicalTypeOptions": {
                   "format": "i32"
                 },
-                "physicalType": "INTEGER",
+                "physicalType": "Int32",
                 "description": "Zero-based occurrence within its source collection. Different references to the same URL keep their own values."
               },
               {
                 "name": "url",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Publisher link. Use the existing document address lookup to find saved copies."
               },
               {
                 "name": "role",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Publisher documentType. Null when omitted."
               },
               {
                 "name": "format",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Publisher format, independent of the format of the saved body. Null when omitted."
               },
               {
                 "name": "description",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Description stated for this document reference."
               },
               {
                 "name": "name",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Name stated for this document reference."
               },
               {
                 "name": "listing_status",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "listed when present on the current Congress.gov read; no_longer_listed when an earlier Congress.gov read of this meeting listed the URL and a later read omitted it (ct-960v)."
               },
               {
@@ -675,7 +660,7 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "Latest Congress.gov read date on which this document link appeared."
               },
               {
@@ -684,13 +669,13 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "First Congress.gov read date on which this previously listed document link was absent."
               },
               {
                 "name": "unlisted_by_record_sha",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Hexadecimal SHA-256 digest of the Congress.gov meeting body that first omitted this document link."
               }
             ],
@@ -702,15 +687,13 @@
         {
           "name": "unlisted_subjects",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "subject_key",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "ddk",
@@ -745,7 +728,7 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "Latest Congress.gov read date on which this subject appeared on the meeting."
               },
               {
@@ -754,13 +737,13 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "First Congress.gov read date on which this previously listed subject was absent."
               },
               {
                 "name": "unlisted_by_record_sha",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Hexadecimal SHA-256 digest of the Congress.gov meeting body that first omitted this subject."
               }
             ],
@@ -772,28 +755,26 @@
         {
           "name": "publisher_status",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Selected publisher-reported status, independent of the outcome"
         },
         {
           "name": "publisher_status_observations",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "source",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Publisher source family reporting this status observation (congress_gov or house_xml)."
               },
               {
                 "name": "status",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Normalized meeting status stated by this publisher observation."
               },
               {
@@ -802,13 +783,13 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "Meeting calendar date stated alongside this publisher status observation."
               },
               {
                 "name": "record_sha",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Hexadecimal SHA-256 digest of the raw publisher record stating this observation."
               },
               {
@@ -819,7 +800,6 @@
                   "timezone": true,
                   "defaultTimezone": "UTC"
                 },
-                "physicalType": "TIMESTAMPTZ",
                 "description": "Capture or publisher timestamp associated with this status observation, when known."
               }
             ],
@@ -831,57 +811,55 @@
         {
           "name": "outcome",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "held, canceled or unknown on this event date; older releases omit outcome evidence"
         },
         {
           "name": "outcome_basis",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "printed_hearing, committee_transcript, curated_source_review, publisher_cancellation or no_outcome_evidence"
         },
         {
           "name": "outcome_source_reference",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Print package ID, transcript document link_key, event ID with curated review, or cancellation record_sha"
         },
         {
           "name": "outcome_reason",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Evidence supporting outcome, or why the date-specific outcome remains unknown"
         },
         {
           "name": "congress_gov_detail_observation",
           "logicalType": "object",
-          "physicalType": "STRUCT",
           "properties": [
             {
               "name": "state",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "Overall Congress.gov event-detail state: successful, failed, listing_only_in_scope or unknown."
             },
             {
               "name": "coverage",
               "logicalType": "string",
-              "physicalType": "VARCHAR",
+              "physicalType": "Utf8",
               "description": "Scope of evaluated Congress.gov detail inputs: selected_release_inputs or unknown."
             },
             {
               "name": "successful_read",
               "logicalType": "object",
-              "physicalType": "STRUCT",
               "properties": [
                 {
                   "name": "source_url",
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Captured Congress.gov address for this successful read evidence."
                 },
                 {
@@ -892,13 +870,12 @@
                     "timezone": true,
                     "defaultTimezone": "UTC"
                   },
-                  "physicalType": "TIMESTAMPTZ",
                   "description": "Capture timestamp of this successful read evidence, when recorded."
                 },
                 {
                   "name": "receipt_key",
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Raw capture receipt key recording this successful read."
                 },
                 {
@@ -907,7 +884,7 @@
                   "logicalTypeOptions": {
                     "format": "i32"
                   },
-                  "physicalType": "INTEGER",
+                  "physicalType": "Int32",
                   "description": "Zero-based line number inside the capture receipt for this successful read."
                 },
                 {
@@ -916,25 +893,25 @@
                   "logicalTypeOptions": {
                     "format": "i32"
                   },
-                  "physicalType": "INTEGER",
+                  "physicalType": "Int32",
                   "description": "Capture index within the receipt line for this successful read."
                 },
                 {
                   "name": "body_sha256",
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Hexadecimal SHA-256 digest of the captured response body for this successful read."
                 },
                 {
                   "name": "meeting_parser_version",
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Version of the meeting_records parser that read this successful read body."
                 },
                 {
                   "name": "proof_parser_version",
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Version of the appearance_records detail reader qualifying this successful read body."
                 }
               ],
@@ -943,17 +920,15 @@
             {
               "name": "latest_attempt",
               "logicalType": "object",
-              "physicalType": "STRUCT",
               "properties": [
                 {
                   "name": "evidence",
                   "logicalType": "object",
-                  "physicalType": "STRUCT",
                   "properties": [
                     {
                       "name": "source_url",
                       "logicalType": "string",
-                      "physicalType": "VARCHAR",
+                      "physicalType": "Utf8",
                       "description": "Captured Congress.gov address for this latest attempt.evidence evidence."
                     },
                     {
@@ -964,13 +939,12 @@
                         "timezone": true,
                         "defaultTimezone": "UTC"
                       },
-                      "physicalType": "TIMESTAMPTZ",
                       "description": "Capture timestamp of this latest attempt.evidence evidence, when recorded."
                     },
                     {
                       "name": "receipt_key",
                       "logicalType": "string",
-                      "physicalType": "VARCHAR",
+                      "physicalType": "Utf8",
                       "description": "Raw capture receipt key recording this latest attempt.evidence."
                     },
                     {
@@ -979,7 +953,7 @@
                       "logicalTypeOptions": {
                         "format": "i32"
                       },
-                      "physicalType": "INTEGER",
+                      "physicalType": "Int32",
                       "description": "Zero-based line number inside the capture receipt for this latest attempt.evidence."
                     },
                     {
@@ -988,25 +962,25 @@
                       "logicalTypeOptions": {
                         "format": "i32"
                       },
-                      "physicalType": "INTEGER",
+                      "physicalType": "Int32",
                       "description": "Capture index within the receipt line for this latest attempt.evidence."
                     },
                     {
                       "name": "body_sha256",
                       "logicalType": "string",
-                      "physicalType": "VARCHAR",
+                      "physicalType": "Utf8",
                       "description": "Hexadecimal SHA-256 digest of the captured response body for this latest attempt.evidence."
                     },
                     {
                       "name": "meeting_parser_version",
                       "logicalType": "string",
-                      "physicalType": "VARCHAR",
+                      "physicalType": "Utf8",
                       "description": "Version of the meeting_records parser that read this latest attempt.evidence body."
                     },
                     {
                       "name": "proof_parser_version",
                       "logicalType": "string",
-                      "physicalType": "VARCHAR",
+                      "physicalType": "Utf8",
                       "description": "Version of the appearance_records detail reader qualifying this latest attempt.evidence body."
                     }
                   ],
@@ -1015,13 +989,13 @@
                 {
                   "name": "state",
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Recorded state of the latest Congress.gov detail capture attempt."
                 },
                 {
                   "name": "outcome",
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Capture outcome recorded on the latest Congress.gov detail attempt."
                 },
                 {
@@ -1030,7 +1004,7 @@
                   "logicalTypeOptions": {
                     "format": "i32"
                   },
-                  "physicalType": "INTEGER",
+                  "physicalType": "Int32",
                   "description": "HTTP response status code recorded on the latest Congress.gov detail attempt, when present."
                 }
               ],
@@ -1039,12 +1013,11 @@
             {
               "name": "listing",
               "logicalType": "object",
-              "physicalType": "STRUCT",
               "properties": [
                 {
                   "name": "source_url",
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Captured Congress.gov address for this listing evidence."
                 },
                 {
@@ -1055,13 +1028,12 @@
                     "timezone": true,
                     "defaultTimezone": "UTC"
                   },
-                  "physicalType": "TIMESTAMPTZ",
                   "description": "Capture timestamp of this listing evidence, when recorded."
                 },
                 {
                   "name": "receipt_key",
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Raw capture receipt key recording this listing."
                 },
                 {
@@ -1070,7 +1042,7 @@
                   "logicalTypeOptions": {
                     "format": "i32"
                   },
-                  "physicalType": "INTEGER",
+                  "physicalType": "Int32",
                   "description": "Zero-based line number inside the capture receipt for this listing."
                 },
                 {
@@ -1079,25 +1051,25 @@
                   "logicalTypeOptions": {
                     "format": "i32"
                   },
-                  "physicalType": "INTEGER",
+                  "physicalType": "Int32",
                   "description": "Capture index within the receipt line for this listing."
                 },
                 {
                   "name": "body_sha256",
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Hexadecimal SHA-256 digest of the captured response body for this listing."
                 },
                 {
                   "name": "meeting_parser_version",
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Version of the meeting_records parser that read this listing body."
                 },
                 {
                   "name": "proof_parser_version",
                   "logicalType": "string",
-                  "physicalType": "VARCHAR",
+                  "physicalType": "Utf8",
                   "description": "Version of the appearance_records detail reader qualifying this listing body."
                 }
               ],
@@ -1106,7 +1078,7 @@
             {
               "name": "has_undated_attempt",
               "logicalType": "boolean",
-              "physicalType": "BOOLEAN",
+              "physicalType": "Boolean",
               "description": "Whether any Congress.gov detail attempt lacked a retrieval timestamp for chronological ordering."
             }
           ],

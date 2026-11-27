@@ -45,7 +45,7 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": true,
           "description": "Zero-based row in list.parquet",
           "primaryKey": true,
@@ -57,7 +57,7 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": true,
           "description": "Order within a document",
           "primaryKey": true,
@@ -66,7 +66,7 @@
         {
           "name": "url",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Source address",
           "customProperties": [
@@ -80,7 +80,7 @@
         {
           "name": "member_path",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Path inside an archive container",
           "customProperties": [
@@ -94,7 +94,7 @@
         {
           "name": "is_saved",
           "logicalType": "boolean",
-          "physicalType": "BOOLEAN",
+          "physicalType": "Boolean",
           "required": true,
           "description": "Whether this source names the saved file"
         },
@@ -104,28 +104,28 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "First observed date of this source"
         },
         {
           "name": "listed_on",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Publisher page listing the source"
         },
         {
           "name": "link_text",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Publisher link label"
         },
         {
           "name": "doc_type",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Publisher document type"
         },
@@ -135,7 +135,7 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Publisher link posting date"
         }

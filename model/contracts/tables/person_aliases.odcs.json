@@ -42,7 +42,7 @@
         {
           "name": "old_person_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -79,7 +79,7 @@
         {
           "name": "person_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -109,7 +109,7 @@
         {
           "name": "status",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -123,7 +123,7 @@
         {
           "name": "kind",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -137,24 +137,23 @@
         {
           "name": "decision_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Identifier of the reviewed decision in model/registries/person-decisions.json when applicable; null for rule-driven transitions"
         },
         {
           "name": "last_release_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Release SHA-256 of the last published release in which old_person_key appeared in people.parquet"
         },
         {
           "name": "candidate_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "ddk",

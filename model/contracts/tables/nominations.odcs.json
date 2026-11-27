@@ -50,7 +50,7 @@
         {
           "name": "nomination_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -77,14 +77,14 @@
         {
           "name": "description",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Nomination description"
         },
         {
           "name": "organization",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Executive or independent agency name"
         },
@@ -94,7 +94,7 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Date received in the Senate"
         },
@@ -104,24 +104,23 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Date of latest action"
         },
         {
           "name": "latest_action_text",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Text of latest action"
         },
         {
           "name": "committees",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "congressional-tech",
@@ -153,15 +152,13 @@
         {
           "name": "committee_activities",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "system_code",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "ddk",
@@ -185,21 +182,19 @@
               {
                 "name": "activities",
                 "logicalType": "array",
-                "physicalType": "STRUCT[]",
                 "items": {
                   "logicalType": "object",
-                  "physicalType": "STRUCT",
                   "properties": [
                     {
                       "name": "name",
                       "logicalType": "string",
-                      "physicalType": "VARCHAR",
+                      "physicalType": "Utf8",
                       "description": "Name of this committee activity."
                     },
                     {
                       "name": "date",
                       "logicalType": "string",
-                      "physicalType": "VARCHAR",
+                      "physicalType": "Utf8",
                       "description": "Exact source date or timestamp string, including offset and precision. Null when missing."
                     }
                   ],
@@ -216,10 +211,9 @@
         {
           "name": "transcripts",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "ddk",
@@ -246,15 +240,13 @@
         {
           "name": "floor_votes",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "vote_id",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "ddk",
@@ -281,19 +273,19 @@
                 "logicalTypeOptions": {
                   "format": "yyyy-MM-dd"
                 },
-                "physicalType": "DATE",
+                "physicalType": "Date32",
                 "description": "Calendar date of this vote."
               },
               {
                 "name": "question",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Question put to this vote."
               },
               {
                 "name": "result",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "description": "Recorded result of this vote."
               },
               {
@@ -302,7 +294,7 @@
                 "logicalTypeOptions": {
                   "format": "i16"
                 },
-                "physicalType": "SMALLINT",
+                "physicalType": "Int16",
                 "description": "Recorded number of yea votes."
               },
               {
@@ -311,7 +303,7 @@
                 "logicalTypeOptions": {
                   "format": "i16"
                 },
-                "physicalType": "SMALLINT",
+                "physicalType": "Int16",
                 "description": "Recorded number of nay votes."
               }
             ],
@@ -323,7 +315,7 @@
         {
           "name": "source_updated_at",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal Congress.gov update_date; a publisher update, not the latest action date"
         }

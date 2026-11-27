@@ -42,7 +42,7 @@
         {
           "name": "video_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -84,7 +84,7 @@
           "logicalTypeOptions": {
             "format": "i64"
           },
-          "physicalType": "BIGINT",
+          "physicalType": "Int64",
           "required": true,
           "description": "Zero for the root; one-based playlist declaration order for each segment",
           "primaryKey": true,
@@ -93,14 +93,14 @@
         {
           "name": "source_url",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Original root fetch address or child URI resolved in that root context; never an archive fetch target"
         },
         {
           "name": "declared_uri",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Literal child URI in the retained playlist; null for a root"
         },
@@ -117,7 +117,7 @@
         {
           "name": "suffix",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -131,7 +131,7 @@
         {
           "name": "format",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -145,14 +145,14 @@
         {
           "name": "parser_version",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Pinned playlist reading that declared the ordered child resources; null for direct caption files"
         },
         {
           "name": "status",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",

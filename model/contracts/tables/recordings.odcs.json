@@ -42,7 +42,7 @@
         {
           "name": "video_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -69,13 +69,12 @@
         {
           "name": "event_ids",
           "logicalType": "array",
-          "physicalType": "BIGINT[]",
           "items": {
             "logicalType": "integer",
             "logicalTypeOptions": {
               "format": "i64"
             },
-            "physicalType": "BIGINT",
+            "physicalType": "Int64",
             "customProperties": [
               {
                 "vendor": "ddk",
@@ -107,10 +106,8 @@
         {
           "name": "tracks",
           "logicalType": "array",
-          "physicalType": "STRUCT[]",
           "items": {
             "logicalType": "object",
-            "physicalType": "STRUCT",
             "properties": [
               {
                 "name": "body",
@@ -124,7 +121,7 @@
               {
                 "name": "suffix",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -137,7 +134,7 @@
               {
                 "name": "format",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -150,7 +147,7 @@
               {
                 "name": "language",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -163,7 +160,7 @@
               {
                 "name": "production",
                 "logicalType": "string",
-                "physicalType": "VARCHAR",
+                "physicalType": "Utf8",
                 "customProperties": [
                   {
                     "vendor": "congressional-tech",
@@ -182,7 +179,7 @@
         {
           "name": "recording_scope",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",

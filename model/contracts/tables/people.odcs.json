@@ -42,7 +42,7 @@
         {
           "name": "person_key",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -74,7 +74,7 @@
         {
           "name": "bioguide_id",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "ddk",
@@ -99,24 +99,23 @@
         {
           "name": "name",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": true,
           "description": "Primary display name from the person's most recent canonical appearance"
         },
         {
           "name": "rank",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Primary military or uniformed-service rank from the person's most recent canonical appearance stating one; null when none is stated"
         },
         {
           "name": "ranks",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "description": "Stated military or uniformed-service rank strings from hearing records; values, not keys."
           },
           "required": true,
@@ -125,17 +124,16 @@
         {
           "name": "credentials",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Primary post-nominal credentials from the person's most recent canonical appearance stating any; null when none are stated"
         },
         {
           "name": "name_variants",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "description": "Stated display strings from hearing records; values, not keys."
           },
           "required": true,
@@ -144,17 +142,16 @@
         {
           "name": "organization",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "required": false,
           "description": "Primary stated organization from the person's most recent canonical appearance naming one; null when none is stated"
         },
         {
           "name": "organizations",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "description": "Stated organization strings from hearing records; values, not keys."
           },
           "required": true,
@@ -163,10 +160,9 @@
         {
           "name": "positions",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "description": "Stated position/title strings from hearing records; values, not keys."
           },
           "required": true,
@@ -175,7 +171,7 @@
         {
           "name": "grouping_basis",
           "logicalType": "string",
-          "physicalType": "VARCHAR",
+          "physicalType": "Utf8",
           "customProperties": [
             {
               "vendor": "congressional-tech",
@@ -192,7 +188,7 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": true,
           "description": "Count of canonical (superseded_by IS NULL) appearances belonging to this person"
         },
@@ -202,7 +198,7 @@
           "logicalTypeOptions": {
             "format": "i32"
           },
-          "physicalType": "INTEGER",
+          "physicalType": "Int32",
           "required": true,
           "description": "Count of distinct hearing occasions across canonical appearances belonging to this person"
         },
@@ -212,7 +208,7 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Earliest hearing date across canonical appearances; null when every appearance is undated"
         },
@@ -222,17 +218,16 @@
           "logicalTypeOptions": {
             "format": "yyyy-MM-dd"
           },
-          "physicalType": "DATE",
+          "physicalType": "Date32",
           "required": false,
           "description": "Latest hearing date across canonical appearances; null when every appearance is undated"
         },
         {
           "name": "witness_keys",
           "logicalType": "array",
-          "physicalType": "VARCHAR[]",
           "items": {
             "logicalType": "string",
-            "physicalType": "VARCHAR",
+            "physicalType": "Utf8",
             "customProperties": [
               {
                 "vendor": "ddk",
