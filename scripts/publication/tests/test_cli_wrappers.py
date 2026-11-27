@@ -9,6 +9,7 @@ SCRIPTS_DIR = ROOT / 'scripts' / 'publication'
 
 PUBLICATION_WRAPPERS = [
     'backfill-uncompressed-pdfs.py',
+    'export-odcs-contracts.py',
     'publish-docspec-runtime.py',
 ]
 

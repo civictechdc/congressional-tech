@@ -1,0 +1,237 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:retired_links",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: retired_links",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Redirects and removal notices for link keys no longer published",
+    "usage": "Find a successor link or removal notice for a document link key no longer published."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "retired_links",
+      "name": "retired_links",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "retired_links.parquet",
+      "businessName": "Redirects and removal notices for link keys no longer published",
+      "dataGranularityDescription": "One retired link key with its successor or a removal notice",
+      "description": "Find a successor link or removal notice for a document link key no longer published.",
+      "properties": [
+        {
+          "name": "link_key",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[8]",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:congressional-tech:concept:link-key"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Disjoint from links.link_key. A key published again leaves the ledger. Data model §8.2, Retired keys."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:congressional-tech:concept:link-key"
+            }
+          ],
+          "required": true,
+          "description": "A link key an earlier release published and this release no longer publishes in links",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "successor_key",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[8]",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:congressional-tech:concept:link-key"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:congressional-tech:concept:link-key"
+            }
+          ],
+          "required": false,
+          "description": "The current document's primary link key that the retired key redirects to; null means a removal notice"
+        },
+        {
+          "name": "last_release_id",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "The latest release that published the key"
+        },
+        {
+          "name": "last_filename",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "The filename the key resolved to in that release"
+        },
+        {
+          "name": "address_versions",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "string",
+            "logicalTypeOptions": {
+              "format": "binary"
+            },
+            "physicalType": "fixed[8]",
+            "customProperties": [
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:congressional-tech:concept:link-key"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:congressional-tech:concept:link-key"
+              }
+            ],
+            "description": "Eight-byte endpoint key associated with the retired document address."
+          },
+          "required": false,
+          "description": "With a removal notice: the current documents (primary link keys) listed at the retired document's addresses, other editions shown as versions, never as a redirect",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Set only when successor_key is null; an address can hold several editions (data model §7.5), so the notice lists them instead of choosing one."
+            }
+          ]
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "link_key"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes data model §8.1 (retired_links.parquet row)."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "retired_link_successor",
+              "source": {
+                "table": "retired_links",
+                "fields": [
+                  "successor_key"
+                ]
+              },
+              "target": {
+                "table": "links",
+                "fields": [
+                  "link_key"
+                ]
+              },
+              "meaning": "A retired key redirects to the document its successor key resolves to.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "retired_link_successor",
+          "type": "foreignKey",
+          "from": "retired_links.successor_key",
+          "to": "links.link_key",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "required"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

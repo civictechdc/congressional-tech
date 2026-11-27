@@ -1,0 +1,249 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:historical_recording_matches",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: historical_recording_matches",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Retained package-level scores, methods and observations from the historical recording matcher",
+    "usage": "Inspect retained package-level scores, methods and observations from the historical recording matcher snapshot."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "historical_recording_matches",
+      "name": "historical_recording_matches",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "historical_recording_matches.parquet",
+      "businessName": "Retained package-level scores, methods and observations from the historical recording matcher",
+      "dataGranularityDescription": "One original CSV record from one exact historical matcher snapshot",
+      "description": "Inspect retained package-level scores, methods and observations from the historical recording matcher snapshot.",
+      "properties": [
+        {
+          "name": "package_id",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:gpo:concept:package-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:gpo:concept:package-id"
+            }
+          ],
+          "required": true,
+          "description": "Government Publishing Office package identifier as supplied"
+        },
+        {
+          "name": "congress",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Congress as supplied"
+        },
+        {
+          "name": "chamber",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Chamber as supplied"
+        },
+        {
+          "name": "committee_code",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:committee-code"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:committee-code"
+            }
+          ],
+          "required": true,
+          "description": "Committee code as supplied"
+        },
+        {
+          "name": "held_date",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Held date as supplied"
+        },
+        {
+          "name": "hearing_dates",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Additional hearing dates as supplied"
+        },
+        {
+          "name": "record_type",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Publication record type as supplied"
+        },
+        {
+          "name": "status",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Original matcher status; a negative status does not establish checked absence"
+        },
+        {
+          "name": "video_ids",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Original video identifiers or URLs in their supplied order and spacing"
+        },
+        {
+          "name": "channels",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Original channel text"
+        },
+        {
+          "name": "method",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Original package-level method text, which can name several methods"
+        },
+        {
+          "name": "score",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i16"
+          },
+          "physicalType": "Int16",
+          "required": false,
+          "description": "Original aggregate package score; null means blank. Zero is a supplied score"
+        },
+        {
+          "name": "video_minutes",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Original duration text"
+        },
+        {
+          "name": "flags",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Original flags text"
+        },
+        {
+          "name": "source",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Original matcher or research source label"
+        },
+        {
+          "name": "note",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Original note text"
+        },
+        {
+          "name": "source_snapshot_sha256",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "SHA-256 of the exact input CSV",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "source_record_ordinal",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "Int64",
+          "required": true,
+          "description": "One-based CSV data record ordinal, excluding the header",
+          "primaryKey": true,
+          "primaryKeyPosition": 2
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "source_snapshot_sha256",
+              "source_record_ordinal"
+            ],
+            "scope": "input snapshot and physical data record",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "A blank score becomes null. Other empty CSV fields remain empty strings."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "Historical package observations do not assign recordings to individual hearings or update meeting coverage."
+          ]
+        }
+      ]
+    }
+  ]
+}

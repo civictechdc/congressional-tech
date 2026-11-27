@@ -1,0 +1,317 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:videos",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: videos",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Collected committee channel uploads, matched or not",
+    "usage": "Explore uploads listed in the retained committee YouTube cache, including uploads that have not been matched to a meeting."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "videos",
+      "name": "videos",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "videos.parquet",
+      "businessName": "Collected committee channel uploads, matched or not",
+      "dataGranularityDescription": "One upload a retained YouTube cache lists",
+      "description": "Explore uploads listed in the retained committee YouTube cache, including uploads that have not been matched to a meeting.",
+      "properties": [
+        {
+          "name": "video_key",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:congressional-tech:concept:video-key"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:congressional-tech:concept:video-key"
+            }
+          ],
+          "required": true,
+          "description": "youtube:{id} video identity",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "handle",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "Channel handle whose cache table lists it"
+        },
+        {
+          "name": "channel_id",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "YouTube channel ID, null when the cache has none"
+        },
+        {
+          "name": "system_code",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            },
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:committee-code"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:committee-code"
+            }
+          ],
+          "required": false,
+          "description": "Committee of the curated channel; channel membership does not make a video a hearing"
+        },
+        {
+          "name": "title",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Title as the channel states it"
+        },
+        {
+          "name": "source_description",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Description as the channel states it, distinct from any HTML description"
+        },
+        {
+          "name": "published_at",
+          "logicalType": "timestamp",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+            "timezone": true,
+            "defaultTimezone": "UTC"
+          },
+          "required": false,
+          "description": "YouTube's publication time for the upload"
+        },
+        {
+          "name": "video_published_at",
+          "logicalType": "timestamp",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+            "timezone": true,
+            "defaultTimezone": "UTC"
+          },
+          "required": false,
+          "description": "YouTube's video publication time"
+        },
+        {
+          "name": "duration_seconds",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "Int32",
+          "required": false,
+          "description": "Duration in seconds when retained"
+        },
+        {
+          "name": "available",
+          "logicalType": "boolean",
+          "physicalType": "Boolean",
+          "required": false,
+          "description": "Whether the last check found it available"
+        },
+        {
+          "name": "has_caption",
+          "logicalType": "boolean",
+          "physicalType": "Boolean",
+          "required": false,
+          "description": "Whether YouTube states a caption exists"
+        },
+        {
+          "name": "details_checked_at",
+          "logicalType": "timestamp",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+            "timezone": true,
+            "defaultTimezone": "UTC"
+          },
+          "required": false,
+          "description": "When details were last checked"
+        },
+        {
+          "name": "stated_event_ids",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "integer",
+            "logicalTypeOptions": {
+              "format": "i64"
+            },
+            "physicalType": "Int64",
+            "customProperties": [
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:ddk:legislative:concept:event-id"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              },
+              {
+                "vendor": "congressional-tech",
+                "property": "representationNote",
+                "value": "64-bit integer event ID."
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:ddk:legislative:concept:event-id"
+              }
+            ],
+            "description": "A claim the video makes, not a verified link; recording_matches keeps it as claimed."
+          },
+          "required": true,
+          "description": "Event IDs the video's own text names: claims, since committees mistag"
+        },
+        {
+          "name": "record_sha",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[32]",
+          "required": true,
+          "description": "SHA-256 of the cache body, which also holds upstream API JSON and is the evidence reference"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "video_key"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "video_channel",
+              "source": {
+                "table": "videos",
+                "fields": [
+                  "handle"
+                ]
+              },
+              "target": {
+                "table": "channels",
+                "fields": [
+                  "handle"
+                ]
+              },
+              "meaning": "The curated channel whose cache lists the video.",
+              "cardinality": "many-to-one",
+              "nullable": false,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "video_channel",
+          "type": "foreignKey",
+          "from": "videos.handle",
+          "to": "channels.handle",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

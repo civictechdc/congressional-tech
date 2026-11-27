@@ -1,0 +1,296 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:witness_key_map",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: witness_key_map",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Earlier witness keys and the current witness each resolves to",
+    "usage": "Look up earlier witness keys and their recorded successors or candidates. Some earlier keys remain unresolved."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "witness_key_map",
+      "name": "witness_key_map",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "witness_key_map.parquet",
+      "businessName": "Earlier witness keys and the current witness each resolves to",
+      "dataGranularityDescription": "One witness key this release no longer publishes, with its successor, its candidates, or neither",
+      "description": "Look up earlier witness keys and their recorded successors or candidates. Some earlier keys remain unresolved.",
+      "properties": [
+        {
+          "name": "old_key",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:congressional-tech:concept:witness-key"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "Disjoint from witnesses.witness_key. Carried witness keys stay in witnesses.parquet across re-fetches and parser splits; only edited names (locator), ambiguous multiplicity changes, carried 1-hop ledger entries, and reviewed historical Senate keys enter witness_key_map (ct-46f3). Any unmapped live key refuses export (lost_witness_keys). A name alone never maps (ct-30fp)."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:congressional-tech:concept:witness-key"
+            }
+          ],
+          "required": true,
+          "description": "A witness_key that an earlier body or capture context held for an occasion produces and this release does not publish in witnesses",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "witness_key",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:congressional-tech:concept:witness-key"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "The successor can itself be superseded_by a higher-ranked row of the same person; follow witnesses.superseded_by to the row to show."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:congressional-tech:concept:witness-key"
+            }
+          ],
+          "required": false,
+          "description": "The current witnesses.witness_key the old key resolves to; null when status is ambiguous or unresolved"
+        },
+        {
+          "name": "status",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "unambiguous (one successor), ambiguous (several candidates, listed in candidate_keys, none chosen) or unresolved (no candidate)"
+        },
+        {
+          "name": "basis",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "The strongest evidence found: occurrence (the same body and locator, published under another occasion or capture context), content (the same occasion, source and print, with an equal name and equal other attributes, at least one of them stated or the same locator; repeats of one person pair in list order) or locator (the same locator, occasion, source and print, an edited name of the same family and given name, every other attribute equal and a position, organization or Bioguide ID stated); null when unresolved"
+        },
+        {
+          "name": "candidate_keys",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "Utf8",
+            "customProperties": [
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:congressional-tech:concept:witness-key"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:congressional-tech:concept:witness-key"
+              }
+            ],
+            "description": "Possible current witness key for an ambiguous earlier key."
+          },
+          "required": true,
+          "description": "With status ambiguous: the current witness keys the old key could resolve to, sorted; empty otherwise"
+        },
+        {
+          "name": "occasion",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "The occasion the old key's body is filed under in this release (meeting:{event_id}, package:{package_id}, or page:{sha256_prefix})"
+        },
+        {
+          "name": "source",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "Observation source family of the old key (house_xml, congress_gov, senate_page, or mods)"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "old_key"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "witness_key is set exactly when status is unambiguous; basis is null exactly when status is unresolved (ct-kb4w)."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "Five historical Senate page keys from pre-ledger releases whose pages no longer belong to any meeting carry reviewed status unresolved in model/registries/historical-witness-keys.json"
+          ]
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "witness_key_map_successor",
+              "source": {
+                "table": "witness_key_map",
+                "fields": [
+                  "witness_key"
+                ]
+              },
+              "target": {
+                "table": "witnesses",
+                "fields": [
+                  "witness_key"
+                ]
+              },
+              "meaning": "The current appearance an earlier witness key resolves to; a saved link to the old key opens this row.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "witness_key_map_candidates",
+              "source": {
+                "table": "witness_key_map",
+                "fields": [
+                  "candidate_keys[]"
+                ]
+              },
+              "target": {
+                "table": "witnesses",
+                "fields": [
+                  "witness_key"
+                ]
+              },
+              "meaning": "Current appearances an ambiguous earlier key could resolve to; none is chosen.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "witness_key_map_successor",
+          "type": "foreignKey",
+          "from": "witness_key_map.witness_key",
+          "to": "witnesses.witness_key",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "required"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

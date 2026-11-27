@@ -1,0 +1,361 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:people",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: people",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Hearing people grouped across appearances",
+    "usage": "Explore congressional members and recurring hearing witnesses grouped across appearances. Non-member witnesses group only when normalized names and full normalized organizations agree under middle-initial and suffix guards."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "people",
+      "name": "people",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "people.parquet",
+      "businessName": "Hearing people grouped across appearances",
+      "dataGranularityDescription": "One Member of Congress (by Bioguide) or one non-Member witness group sharing normalized name and full normalized organization under middle-initial and suffix guards (or one singleton appearance)",
+      "description": "Explore congressional members and recurring hearing witnesses grouped across appearances. Non-member witnesses group only when normalized names and full normalized organizations agree under middle-initial and suffix guards.",
+      "properties": [
+        {
+          "name": "person_key",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:entity:concept:person-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "representationNote",
+              "value": "Archive person_key (Bioguide ID for matched Members, 16-hex hash otherwise)."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:entity:concept:person-id"
+            }
+          ],
+          "required": true,
+          "description": "Published person identifier: Bioguide ID for Members; lowercase 16-hex SHA-256 prefix over [\"person-v1\", name_key, org_key, middle, suffix] for grouped non-Members or [\"person-singleton-v1\", witness_key] when organization is empty or name is unusable",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "bioguide_id",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:bioguide-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:bioguide-id"
+            }
+          ],
+          "required": false,
+          "description": "Bioguide identifier in members.parquet when grouping_basis is bioguide; null otherwise"
+        },
+        {
+          "name": "name",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Primary display name from the person's most recent canonical appearance"
+        },
+        {
+          "name": "rank",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Primary military or uniformed-service rank from the person's most recent canonical appearance stating one; null when none is stated"
+        },
+        {
+          "name": "ranks",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "Utf8",
+            "description": "Stated military or uniformed-service rank strings from hearing records; values, not keys."
+          },
+          "required": true,
+          "description": "Distinct non-empty stated military or uniformed-service ranks across the person's canonical appearances, sorted"
+        },
+        {
+          "name": "credentials",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Primary post-nominal credentials from the person's most recent canonical appearance stating any; null when none are stated"
+        },
+        {
+          "name": "name_variants",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "Utf8",
+            "description": "Stated display strings from hearing records; values, not keys."
+          },
+          "required": true,
+          "description": "Distinct stated names across the person's canonical appearances, sorted"
+        },
+        {
+          "name": "organization",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Primary stated organization from the person's most recent canonical appearance naming one; null when none is stated"
+        },
+        {
+          "name": "organizations",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "Utf8",
+            "description": "Stated organization strings from hearing records; values, not keys."
+          },
+          "required": true,
+          "description": "Distinct non-empty stated organizations across the person's canonical appearances, sorted"
+        },
+        {
+          "name": "positions",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "Utf8",
+            "description": "Stated position/title strings from hearing records; values, not keys."
+          },
+          "required": true,
+          "description": "Distinct non-empty stated titles/positions across the person's canonical appearances, sorted"
+        },
+        {
+          "name": "grouping_basis",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "How the person's appearances were grouped: bioguide, name_organization, singleton, or reviewed"
+        },
+        {
+          "name": "appearance_count",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "Int32",
+          "required": true,
+          "description": "Count of canonical (superseded_by IS NULL) appearances belonging to this person"
+        },
+        {
+          "name": "hearing_count",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i32"
+          },
+          "physicalType": "Int32",
+          "required": true,
+          "description": "Count of distinct hearing occasions across canonical appearances belonging to this person"
+        },
+        {
+          "name": "first_seen_date",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "Date32",
+          "required": false,
+          "description": "Earliest hearing date across canonical appearances; null when every appearance is undated"
+        },
+        {
+          "name": "last_seen_date",
+          "logicalType": "date",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd"
+          },
+          "physicalType": "Date32",
+          "required": false,
+          "description": "Latest hearing date across canonical appearances; null when every appearance is undated"
+        },
+        {
+          "name": "witness_keys",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "string",
+            "physicalType": "Utf8",
+            "customProperties": [
+              {
+                "vendor": "ddk",
+                "property": "concept",
+                "value": "urn:congressional-tech:concept:witness-key"
+              },
+              {
+                "vendor": "ddk",
+                "property": "conceptKind",
+                "value": "identifier"
+              }
+            ],
+            "authoritativeDefinitions": [
+              {
+                "type": "definition",
+                "url": "urn:congressional-tech:concept:witness-key"
+              }
+            ],
+            "description": "Canonical witness_key references into witnesses.parquet; superseded witness rows also carry person_key on witnesses.parquet."
+          },
+          "required": true,
+          "description": "Sorted canonical witness_key values belonging to this person"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "person_key"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "person_key, name, grouping_basis, counts, and list columns are required; bioguide_id, rank, credentials, organization, and date bounds are nullable."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "Non-Members merge only on exact normalized name plus full normalized organization with middle-initial and suffix guards; career moves across employers, sub-unit vs parent agency variants, and appearances with empty organizations remain separate person rows until reviewed cross-employer evidence ships"
+          ]
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "person_member",
+              "source": {
+                "table": "people",
+                "fields": [
+                  "bioguide_id"
+                ]
+              },
+              "target": {
+                "table": "members",
+                "fields": [
+                  "bioguide_id"
+                ]
+              },
+              "meaning": "Member of Congress record when a person row is grouped by Bioguide ID.",
+              "cardinality": "one-to-one",
+              "nullable": true,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "person_witnesses",
+              "source": {
+                "table": "people",
+                "fields": [
+                  "witness_keys[]"
+                ]
+              },
+              "target": {
+                "table": "witnesses",
+                "fields": [
+                  "witness_key"
+                ]
+              },
+              "meaning": "Canonical (superseded_by IS NULL) witness appearance rows belonging to this person.",
+              "cardinality": "many-to-many",
+              "nullable": false,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "person_member",
+          "type": "foreignKey",
+          "from": "people.bioguide_id",
+          "to": "members.bioguide_id",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "one-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "required"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

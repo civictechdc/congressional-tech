@@ -1,0 +1,123 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:corrections",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: corrections",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Permanent recovery rejections that corrected dead-link answers",
+    "usage": "Inspect permanent recovery rejections recorded when dead-link answers were corrected. Each entry names the original address and rejected recovery copy."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "corrections",
+      "name": "corrections",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "corrections.parquet",
+      "businessName": "Permanent recovery rejections that corrected dead-link answers",
+      "dataGranularityDescription": "One rejected recovery copy for an original dead address",
+      "description": "Inspect permanent recovery rejections recorded when dead-link answers were corrected. Each entry names the original address and rejected recovery copy.",
+      "properties": [
+        {
+          "name": "original_url",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Original dead address whose wrong recovered copy was rejected",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "rejected_body",
+          "logicalType": "string",
+          "logicalTypeOptions": {
+            "format": "binary"
+          },
+          "physicalType": "fixed[32]",
+          "required": true,
+          "description": "SHA-256 of the rejected recovery copy for original_url",
+          "primaryKey": true,
+          "primaryKeyPosition": 2
+        },
+        {
+          "name": "decision_id",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Permanent provenance recovery rejection record identifier"
+        },
+        {
+          "name": "decided_at",
+          "logicalType": "timestamp",
+          "logicalTypeOptions": {
+            "format": "yyyy-MM-dd'T'HH:mm:ss.SSSSSSXXX",
+            "timezone": true,
+            "defaultTimezone": "UTC"
+          },
+          "required": true,
+          "description": "UTC timestamp when the rejection was recorded"
+        },
+        {
+          "name": "recovered_url",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Address where the rejected copy was found, when recorded"
+        },
+        {
+          "name": "identity_note",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Authored explanation of why the copy was rejected, when recorded"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "original_url",
+              "rejected_body"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "original_url, rejected_body, decision_id and decided_at are required on every active rejection decision; recovered_url and identity_note are optional provenance fields."
+        }
+      ]
+    }
+  ]
+}

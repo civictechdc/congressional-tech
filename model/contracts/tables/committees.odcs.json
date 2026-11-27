@@ -1,0 +1,295 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:committees",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: committees",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Current and historical committees",
+    "usage": "Look up current and historical congressional committees by their Congress.gov system codes."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    },
+    {
+      "vendor": "spicy-regs",
+      "property": "sourceGenerations",
+      "value": {
+        "committee-rosters": "32ac9696f43b585ec5f1bc3f3fd001812cc181787571af551eed33544b472f17"
+      }
+    }
+  ],
+  "schema": [
+    {
+      "id": "committees",
+      "name": "committees",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "committees.parquet",
+      "businessName": "Current and historical committees",
+      "dataGranularityDescription": "One Congress.gov system code",
+      "description": "Look up current and historical congressional committees by their Congress.gov system codes.",
+      "properties": [
+        {
+          "name": "system_code",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:committee-code"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:committee-code"
+            }
+          ],
+          "required": true,
+          "description": "Congress.gov committee system code",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "name",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Official committee name"
+        },
+        {
+          "name": "chamber",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "House, Senate or joint"
+        },
+        {
+          "name": "committee_type",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "Committee category"
+        },
+        {
+          "name": "parent_system_code",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            },
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:committee-code"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:committee-code"
+            }
+          ],
+          "required": false,
+          "description": "Parent committee code"
+        },
+        {
+          "name": "names",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "object",
+            "properties": [
+              {
+                "name": "name",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Committee name during this recorded period."
+              },
+              {
+                "name": "start",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "Date32",
+                "description": "Start date of this committee-name period."
+              },
+              {
+                "name": "end",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "Date32",
+                "description": "End date of this committee-name period."
+              }
+            ],
+            "description": "Embedded names with half-open [start,end) dates, ordered latest start first. Null endpoints mean unknown or open-ended."
+          },
+          "required": true,
+          "description": "Dated committee names"
+        },
+        {
+          "name": "website",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Official committee website"
+        },
+        {
+          "name": "is_current",
+          "logicalType": "boolean",
+          "physicalType": "Boolean",
+          "required": false,
+          "description": "Current committee record"
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "spicy-regs"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "system_code"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+        },
+        {
+          "vendor": "spicy-regs",
+          "property": "sourceGenerations",
+          "value": {
+            "committee-rosters": "32ac9696f43b585ec5f1bc3f3fd001812cc181787571af551eed33544b472f17"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "committee_parent",
+              "source": {
+                "table": "committees",
+                "fields": [
+                  "parent_system_code"
+                ]
+              },
+              "target": {
+                "table": "committees",
+                "fields": [
+                  "system_code"
+                ]
+              },
+              "meaning": "Subcommittee’s parent committee when identified.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "committee_website",
+              "source": {
+                "table": "committees",
+                "fields": [
+                  "website"
+                ]
+              },
+              "target": {
+                "external": "web URL"
+              },
+              "meaning": "Published URL, not proof of a locally retained document. Use the fixed urls lookup for document address searches.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "committee_parent",
+          "type": "foreignKey",
+          "from": "committees.parent_system_code",
+          "to": "committees.system_code",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,382 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:members",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: members",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Current and historical members",
+    "usage": "Look up current and historical congressional members by their Bioguide identifiers."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    },
+    {
+      "vendor": "spicy-regs",
+      "property": "sourceGenerations",
+      "value": {
+        "members": "3cc904755362ac65b801fdbca37d9a80e3b6a84581bcc40c5b9a4178e204bc29"
+      }
+    }
+  ],
+  "schema": [
+    {
+      "id": "members",
+      "name": "members",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "members.parquet",
+      "businessName": "Current and historical members",
+      "dataGranularityDescription": "One Bioguide member",
+      "description": "Look up current and historical congressional members by their Bioguide identifiers.",
+      "properties": [
+        {
+          "name": "bioguide_id",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:bioguide-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:bioguide-id"
+            }
+          ],
+          "required": true,
+          "description": "Bioguide member identifier",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "name",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Member display name ({name_first} {name_last})"
+        },
+        {
+          "name": "terms",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "object",
+            "properties": [
+              {
+                "name": "chamber",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Chamber of service for this term."
+              },
+              {
+                "name": "state",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "State represented during this term."
+              },
+              {
+                "name": "district",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i16"
+                },
+                "physicalType": "Int16",
+                "description": "District represented during this term, when applicable."
+              },
+              {
+                "name": "party",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "Party recorded for this term."
+              },
+              {
+                "name": "start",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "Date32",
+                "description": "Start date of this term."
+              },
+              {
+                "name": "end",
+                "logicalType": "date",
+                "logicalTypeOptions": {
+                  "format": "yyyy-MM-dd"
+                },
+                "physicalType": "Date32",
+                "description": "End date of this term."
+              }
+            ],
+            "description": "Embedded service terms with half-open [start,end) dates, latest first. Terms do not establish historical committee seats."
+          },
+          "required": true,
+          "description": "Congressional service terms ordered latest first"
+        },
+        {
+          "name": "cross_ids",
+          "logicalType": "object",
+          "properties": [
+            {
+              "name": "lis",
+              "logicalType": "string",
+              "physicalType": "Utf8",
+              "description": "Legislative Information System member identifier."
+            },
+            {
+              "name": "opensecrets",
+              "logicalType": "string",
+              "physicalType": "Utf8",
+              "description": "OpenSecrets member identifier."
+            },
+            {
+              "name": "govtrack",
+              "logicalType": "string",
+              "physicalType": "Utf8",
+              "description": "GovTrack member identifier."
+            },
+            {
+              "name": "icpsr",
+              "logicalType": "string",
+              "physicalType": "Utf8",
+              "description": "Inter-university Consortium for Political and Social Research member identifier."
+            },
+            {
+              "name": "wikidata",
+              "logicalType": "string",
+              "physicalType": "Utf8",
+              "description": "Wikidata entity identifier."
+            },
+            {
+              "name": "fec",
+              "logicalType": "array",
+              "items": {
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "customProperties": [
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:ddk:fec:concept:candidate-id"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:ddk:fec:concept:candidate-id"
+                  }
+                ],
+                "description": "One Federal Election Commission identifier retained for this member."
+              },
+              "description": "Federal Election Commission identifiers retained for this member."
+            }
+          ],
+          "required": true,
+          "description": "Cross-walk identifiers across legislative datasets",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "fieldNote",
+              "value": "External dataset identifiers; an identifier does not imply that dataset is included in this release."
+            }
+          ]
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "spicy-regs"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "bioguide_id"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Nullability transcribes the phase-2 annex §3 file table (docs/plans/phase-2-annex-20261028.md): a type without \"nullable\" there is required."
+        },
+        {
+          "vendor": "spicy-regs",
+          "property": "sourceGenerations",
+          "value": {
+            "members": "3cc904755362ac65b801fdbca37d9a80e3b6a84581bcc40c5b9a4178e204bc29"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "member_lis",
+              "source": {
+                "table": "members",
+                "fields": [
+                  "cross_ids.lis"
+                ]
+              },
+              "target": {
+                "external": "Senate LIS"
+              },
+              "meaning": "Published member crosswalk identifier; null or an empty list means unavailable.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "member_opensecrets",
+              "source": {
+                "table": "members",
+                "fields": [
+                  "cross_ids.opensecrets"
+                ]
+              },
+              "target": {
+                "external": "OpenSecrets"
+              },
+              "meaning": "Published member crosswalk identifier; null or an empty list means unavailable.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "member_govtrack",
+              "source": {
+                "table": "members",
+                "fields": [
+                  "cross_ids.govtrack"
+                ]
+              },
+              "target": {
+                "external": "GovTrack"
+              },
+              "meaning": "Published member crosswalk identifier; null or an empty list means unavailable.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "member_icpsr",
+              "source": {
+                "table": "members",
+                "fields": [
+                  "cross_ids.icpsr"
+                ]
+              },
+              "target": {
+                "external": "ICPSR"
+              },
+              "meaning": "Published member crosswalk identifier; null or an empty list means unavailable.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "member_wikidata",
+              "source": {
+                "table": "members",
+                "fields": [
+                  "cross_ids.wikidata"
+                ]
+              },
+              "target": {
+                "external": "Wikidata"
+              },
+              "meaning": "Published member crosswalk identifier; null or an empty list means unavailable.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            },
+            {
+              "id": "member_fec",
+              "source": {
+                "table": "members",
+                "fields": [
+                  "cross_ids.fec[]"
+                ]
+              },
+              "target": {
+                "external": "FEC"
+              },
+              "meaning": "Published member crosswalk identifier; null or an empty list means unavailable.",
+              "cardinality": "many-to-many",
+              "nullable": true,
+              "resolution": "external",
+              "match": "identifier",
+              "scope": "external identifier or retained object; no local entity table implied"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

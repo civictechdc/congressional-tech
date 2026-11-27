@@ -1,0 +1,658 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:roll_call_votes",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: roll_call_votes",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Full roll calls, including votes outside local bill profiles",
+    "usage": "Explore House and Senate roll-call votes, party totals and linked measures across the retained upstream vote collection."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    },
+    {
+      "vendor": "spicy-regs",
+      "property": "sourceGenerations",
+      "value": {
+        "roll-call-votes": "1b86d720096977c373640c6dbb1dee216feb14b254d046183abce00d3d593072"
+      }
+    }
+  ],
+  "schema": [
+    {
+      "id": "roll_call_votes",
+      "name": "roll_call_votes",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "roll_call_votes.parquet",
+      "businessName": "Full roll calls, including votes outside local bill profiles",
+      "dataGranularityDescription": "One retained upstream row; no filter to local bill profiles",
+      "description": "Explore House and Senate roll-call votes, party totals and linked measures across the retained upstream vote collection.",
+      "properties": [
+        {
+          "name": "vote_id",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:roll-call-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:roll-call-id"
+            }
+          ],
+          "required": true,
+          "description": "Literal selected upstream roll_call_votes.vote_id",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "congress",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.congress"
+        },
+        {
+          "name": "chamber",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.chamber"
+        },
+        {
+          "name": "session",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.session"
+        },
+        {
+          "name": "roll_number",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.roll_number"
+        },
+        {
+          "name": "vote_date",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.vote_date"
+        },
+        {
+          "name": "question",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.question"
+        },
+        {
+          "name": "result",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.result"
+        },
+        {
+          "name": "yea",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "Int64",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.yea"
+        },
+        {
+          "name": "nay",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "Int64",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.nay"
+        },
+        {
+          "name": "present",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "Int64",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.present"
+        },
+        {
+          "name": "not_voting",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "Int64",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.not_voting"
+        },
+        {
+          "name": "tallies",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "object",
+            "properties": [
+              {
+                "name": "choice",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Recorded ballot choice label (such as Yea, Nay, Present or Not Voting)."
+              },
+              {
+                "name": "count",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i64"
+                },
+                "physicalType": "Int64",
+                "description": "Number of members recorded under this ballot choice."
+              }
+            ],
+            "description": "Literal nested upstream values; source order and missing fields are preserved."
+          },
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.tallies"
+        },
+        {
+          "name": "member_vote_count",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "Int64",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.member_vote_count"
+        },
+        {
+          "name": "bill_id",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:bill-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:bill-id"
+            }
+          ],
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.bill_id"
+        },
+        {
+          "name": "tally_kind",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.tally_kind"
+        },
+        {
+          "name": "documents",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "object",
+            "properties": [
+              {
+                "name": "congress",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i64"
+                },
+                "physicalType": "Int64",
+                "description": "Congress number of the measure or document associated with this roll-call vote."
+              },
+              {
+                "name": "name",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Display name or citation of the associated measure or document."
+              },
+              {
+                "name": "number",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Measure or document number as stated in the upstream vote record."
+              },
+              {
+                "name": "short_title",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Short title of the associated measure or document, when supplied."
+              },
+              {
+                "name": "title",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Official title of the associated measure or document, when supplied."
+              },
+              {
+                "name": "type",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Measure or document type code (such as HR, S, HRES or PN)."
+              }
+            ],
+            "description": "Literal nested upstream values; source order and missing fields are preserved."
+          },
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.documents"
+        },
+        {
+          "name": "amendments",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "object",
+            "properties": [
+              {
+                "name": "number",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Amendment number stated in the roll-call vote record."
+              },
+              {
+                "name": "purpose",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Stated purpose or description of the amendment."
+              },
+              {
+                "name": "to_amendment_number",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Target first-degree amendment number when voting on a second-degree amendment."
+              },
+              {
+                "name": "to_amendment_to_amendment_number",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Nested target amendment number when stated in the upstream vote record."
+              },
+              {
+                "name": "to_document_number",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Measure or document number that this amendment proposes to amend."
+              },
+              {
+                "name": "to_document_short_title",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Short title of the measure or document that this amendment proposes to amend."
+              }
+            ],
+            "description": "Literal nested upstream values; source order and missing fields are preserved."
+          },
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.amendments"
+        },
+        {
+          "name": "vote_day",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.vote_day"
+        },
+        {
+          "name": "legis_num",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.legis_num"
+        },
+        {
+          "name": "clerk_body_element",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.clerk_body_element"
+        },
+        {
+          "name": "vote_desc",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.vote_desc"
+        },
+        {
+          "name": "vote_question_text",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.vote_question_text"
+        },
+        {
+          "name": "vote_title",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.vote_title"
+        },
+        {
+          "name": "majority_requirement",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.majority_requirement"
+        },
+        {
+          "name": "modify_date",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.modify_date"
+        },
+        {
+          "name": "tie_breaker_by_whom",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.tie_breaker_by_whom"
+        },
+        {
+          "name": "tie_breaker_vote",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.tie_breaker_vote"
+        },
+        {
+          "name": "party_totals",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "object",
+            "properties": [
+              {
+                "name": "party",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Party code or label for this party vote-tally breakdown."
+              },
+              {
+                "name": "yea-total",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i64"
+                },
+                "physicalType": "Int64",
+                "description": "Count of Yea ballots cast by members of this party."
+              },
+              {
+                "name": "nay-total",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i64"
+                },
+                "physicalType": "Int64",
+                "description": "Count of Nay ballots cast by members of this party."
+              },
+              {
+                "name": "present-total",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i64"
+                },
+                "physicalType": "Int64",
+                "description": "Count of Present responses recorded for members of this party."
+              },
+              {
+                "name": "not-voting-total",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i64"
+                },
+                "physicalType": "Int64",
+                "description": "Count of non-voting members recorded for this party."
+              }
+            ],
+            "description": "Literal nested upstream values; source order and missing fields are preserved."
+          },
+          "required": false,
+          "description": "Literal selected upstream roll_call_votes.party_totals"
+        },
+        {
+          "name": "source_generation",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Exact selected SpicyRegs family generation digest"
+        },
+        {
+          "name": "source_reference",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Selected upstream Parquet path; identify a source row using this table primary key"
+        },
+        {
+          "name": "bill_references",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "object",
+            "properties": [
+              {
+                "name": "bill_id",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "customProperties": [
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:ddk:legislative:concept:bill-id"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:ddk:legislative:concept:bill-id"
+                  }
+                ],
+                "description": "Canonical bill identifier ({congress}-{type}-{number}) matched from bill actions."
+              },
+              {
+                "name": "action_index",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i64"
+                },
+                "physicalType": "Int64",
+                "description": "Index of the matching action in the bill's upstream action history."
+              },
+              {
+                "name": "congress",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Congress number stated on the matching bill-action vote reference."
+              },
+              {
+                "name": "chamber",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Chamber stated on the matching bill-action vote reference."
+              },
+              {
+                "name": "session",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Congressional session stated on the matching bill-action vote reference."
+              },
+              {
+                "name": "roll_number",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Roll-call number stated on the matching bill-action vote reference."
+              },
+              {
+                "name": "date",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Action date stated on the matching bill-action vote reference."
+              },
+              {
+                "name": "full_action_name",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Full action text naming this roll-call vote in the bill history."
+              },
+              {
+                "name": "source_generation",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Upstream bill-family generation digest from which this bill reference was read."
+              },
+              {
+                "name": "source_reference",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "description": "Upstream locator for the bill-action record naming this roll-call vote."
+              }
+            ],
+            "description": "Source associations retain their action_index, literal date and bill-family generation/path. The vote itself belongs to roll-call-votes. A referenced bill may be absent from local bill profiles."
+          },
+          "required": false,
+          "description": "All pinned bill-action references matching this roll call by congress/chamber/session/roll number; null means no matching source reference. Raw bill_id remains separate."
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "spicy-regs"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "kind": "primary_key",
+            "fields": [
+              "vote_id"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "Only source primary keys and release provenance are required; missing source values stay null."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "All rows of the selected upstream generation; publisher collection completeness is not established.",
+            "member_key remains authoritative when bioguide_id is missing; vote totals do not imply recorded individual ballots."
+          ]
+        },
+        {
+          "vendor": "spicy-regs",
+          "property": "sourceGenerations",
+          "value": {
+            "roll-call-votes": "1b86d720096977c373640c6dbb1dee216feb14b254d046183abce00d3d593072"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "roll_call_bill",
+              "source": {
+                "table": "roll_call_votes",
+                "fields": [
+                  "bill_id"
+                ]
+              },
+              "target": {
+                "table": "bills",
+                "fields": [
+                  "bill_id"
+                ]
+              },
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "meaning": "Exact published source key; missing profile rows remain unresolved.",
+              "scope": "All selected detail rows, including subjects outside local profiles"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "roll_call_bill",
+          "type": "foreignKey",
+          "from": "roll_call_votes.bill_id",
+          "to": "bills.bill_id",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

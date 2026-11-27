@@ -1,0 +1,463 @@
+{
+  "apiVersion": "v3.2.0",
+  "kind": "DataContract",
+  "id": "urn:congressional-tech:archive:table:recording_matches",
+  "version": "1.0.0",
+  "name": "Congressional Tech Archive Table: recording_matches",
+  "status": "active",
+  "domain": "congressional-archive",
+  "description": {
+    "purpose": "Recording links and decisions with their basis",
+    "usage": "Inspect recorded decisions about whether a subject has a recording, together with the basis for each decision."
+  },
+  "authoritativeDefinitions": [
+    {
+      "type": "definition",
+      "url": "urn:congressional-tech:archive:release"
+    }
+  ],
+  "customProperties": [
+    {
+      "vendor": "congressional-tech",
+      "property": "schemaVersion",
+      "value": 1
+    },
+    {
+      "vendor": "congressional-tech",
+      "property": "relationshipsVersion",
+      "value": 1
+    }
+  ],
+  "schema": [
+    {
+      "id": "recording_matches",
+      "name": "recording_matches",
+      "logicalType": "object",
+      "physicalType": "table",
+      "physicalName": "recording_matches.parquet",
+      "businessName": "Recording links and decisions with their basis",
+      "dataGranularityDescription": "One observation that a subject has, or lacks, a recording",
+      "description": "Inspect recorded decisions about whether a subject has a recording, together with the basis for each decision.",
+      "properties": [
+        {
+          "name": "match_id",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Hex SHA-256 of the compact JSON [subject_kind, subject_id, video ref, basis]",
+          "primaryKey": true,
+          "primaryKeyPosition": 1
+        },
+        {
+          "name": "subject_kind",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "event or package"
+        },
+        {
+          "name": "subject_id",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": true,
+          "description": "Original subject identifier, including a stated event number without a meeting"
+        },
+        {
+          "name": "event_id",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i64"
+          },
+          "physicalType": "Int64",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:legislative:concept:event-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "representationNote",
+              "value": "64-bit integer event ID."
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:legislative:concept:event-id"
+            }
+          ],
+          "required": false,
+          "description": "Meeting subject; null for a package or a stated number no meeting has"
+        },
+        {
+          "name": "package_id",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:ddk:gpo:concept:package-id"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:ddk:gpo:concept:package-id"
+            }
+          ],
+          "required": false,
+          "description": "GPO package subject"
+        },
+        {
+          "name": "video_key",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "ddk",
+              "property": "concept",
+              "value": "urn:congressional-tech:concept:video-key"
+            },
+            {
+              "vendor": "ddk",
+              "property": "conceptKind",
+              "value": "identifier"
+            }
+          ],
+          "authoritativeDefinitions": [
+            {
+              "type": "definition",
+              "url": "urn:congressional-tech:concept:video-key"
+            }
+          ],
+          "required": false,
+          "description": "Video identity; can lack a video row"
+        },
+        {
+          "name": "url",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Off-channel recording URL"
+        },
+        {
+          "name": "basis",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "publisher_link, committee_page, video_states_event_id or curated"
+        },
+        {
+          "name": "decision",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "The verdict as stated, or linked"
+        },
+        {
+          "name": "score",
+          "logicalType": "integer",
+          "logicalTypeOptions": {
+            "format": "i16"
+          },
+          "physicalType": "Int16",
+          "required": false,
+          "description": "100 publisher or committee-page link, 95 stated event ID; null otherwise"
+        },
+        {
+          "name": "recording_scope",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": false,
+          "description": "full, excerpt or unknown"
+        },
+        {
+          "name": "status",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "archivePhysicalEncoding",
+              "value": "dictionary"
+            }
+          ],
+          "required": true,
+          "description": "asserted, claimed, decided, conflicting or unresolved; unresolved is a negative verdict that old matcher evidence disputes"
+        },
+        {
+          "name": "note",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Curator note, or the unmatched stated number"
+        },
+        {
+          "name": "source_ref",
+          "logicalType": "string",
+          "physicalType": "Utf8",
+          "required": false,
+          "description": "Evidence reference: the record or decision"
+        },
+        {
+          "name": "meeting_links",
+          "logicalType": "array",
+          "items": {
+            "logicalType": "object",
+            "properties": [
+              {
+                "name": "event_id",
+                "logicalType": "integer",
+                "logicalTypeOptions": {
+                  "format": "i64"
+                },
+                "physicalType": "Int64",
+                "customProperties": [
+                  {
+                    "vendor": "ddk",
+                    "property": "concept",
+                    "value": "urn:ddk:legislative:concept:event-id"
+                  },
+                  {
+                    "vendor": "ddk",
+                    "property": "conceptKind",
+                    "value": "identifier"
+                  },
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "representationNote",
+                    "value": "64-bit integer event ID."
+                  }
+                ],
+                "authoritativeDefinitions": [
+                  {
+                    "type": "definition",
+                    "url": "urn:ddk:legislative:concept:event-id"
+                  }
+                ],
+                "description": "Event identifier of the supported meeting."
+              },
+              {
+                "name": "basis",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "direct_event for the observation’s stated event or print_agreement for vetted printed-hearing evidence."
+              },
+              {
+                "name": "scope",
+                "logicalType": "string",
+                "physicalType": "Utf8",
+                "customProperties": [
+                  {
+                    "vendor": "congressional-tech",
+                    "property": "archivePhysicalEncoding",
+                    "value": "dictionary"
+                  }
+                ],
+                "description": "event identifies the subject of the observation. package_context supplies related evidence without establishing coverage for a sitting."
+              }
+            ],
+            "description": "One supported meeting link for this recording observation."
+          },
+          "required": true,
+          "description": "Supported meeting links ordered by event ID. Empty means no supported link. Absent on older releases."
+        }
+      ],
+      "customProperties": [
+        {
+          "vendor": "congressional-tech",
+          "property": "producer",
+          "value": "archive"
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "identity",
+          "value": {
+            "fields": [
+              "match_id"
+            ],
+            "scope": "published identifier",
+            "validation": "native publication key checks",
+            "kind": "primary_key"
+          }
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "nullabilityBasis",
+          "value": "The documents are silent; decided from the row meaning: the key and the fields that define the row are required, descriptive fields from upstream records can be absent, and list columns are empty, never null."
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "gaps",
+          "value": [
+            "Historical package matcher scores are available separately when historical_recording_matches is published"
+          ]
+        },
+        {
+          "vendor": "congressional-tech",
+          "property": "archiveRelationships",
+          "value": [
+            {
+              "id": "match_meeting",
+              "source": {
+                "table": "recording_matches",
+                "fields": [
+                  "event_id"
+                ]
+              },
+              "target": {
+                "table": "meetings",
+                "fields": [
+                  "event_id"
+                ]
+              },
+              "meaning": "The original event subject when the number resolves to a meeting.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "match_meeting_associations",
+              "source": {
+                "table": "recording_matches",
+                "fields": [
+                  "meeting_links[].event_id"
+                ]
+              },
+              "target": {
+                "table": "meetings",
+                "fields": [
+                  "event_id"
+                ]
+              },
+              "meaning": "Meetings linked by the observation’s direct event evidence or by print agreement. See basis and scope before drawing conclusions about a sitting.",
+              "cardinality": "many-to-many",
+              "nullable": false,
+              "resolution": "required",
+              "match": "equal",
+              "scope": "selected release"
+            },
+            {
+              "id": "match_recording",
+              "source": {
+                "table": "recording_matches",
+                "fields": [
+                  "video_key"
+                ]
+              },
+              "target": {
+                "table": "videos",
+                "fields": [
+                  "video_key"
+                ]
+              },
+              "meaning": "The collected video; a publisher or curated key can lack one.",
+              "cardinality": "many-to-one",
+              "nullable": true,
+              "resolution": "unresolved_allowed",
+              "match": "equal",
+              "scope": "selected release"
+            }
+          ]
+        }
+      ],
+      "relationships": [
+        {
+          "id": "match_meeting",
+          "type": "foreignKey",
+          "from": "recording_matches.event_id",
+          "to": "meetings.event_id",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "required"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        },
+        {
+          "id": "match_recording",
+          "type": "foreignKey",
+          "from": "recording_matches.video_key",
+          "to": "videos.video_key",
+          "customProperties": [
+            {
+              "vendor": "congressional-tech",
+              "property": "cardinality",
+              "value": "many-to-one"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "resolution",
+              "value": "unresolved_allowed"
+            },
+            {
+              "vendor": "congressional-tech",
+              "property": "nullable",
+              "value": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
