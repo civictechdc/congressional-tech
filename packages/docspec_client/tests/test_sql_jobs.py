@@ -198,3 +198,95 @@ def test_create_file_refuses_missing_configuration_before_executing(tmp_path, mi
     with pytest.raises(ValueError, match='remote|limits|pin'):
         client.create_file(tmp_path / 'upload.json')
     assert not log.exists()
+
+
+def test_run_job_decodes_exact_json_query_cells(tmp_path):
+    import base64
+    import binascii
+    client, _, binary = executable(tmp_path)
+    digest = b'\x3e\x23\xe8\x16'
+    payload = {
+        'steps': [],
+        'outputs': [],
+        'queries': [
+            {
+                'name': 'counts',
+                'columns': ['n', 'neg', 'sci', 'ratio', 'sha256', 'empty_bin', 'floats', 'map_pairs', 'lit_json', 'meta'],
+                'data': [{
+                    'n': {'$number': '9007199254740993'},
+                    'neg': {'$number': '-9007199254740992'},
+                    'sci': {'$number': '1.23E+4'},
+                    'ratio': {'$number': '12.50'},
+                    'sha256': {'type': 'binary', 'encoding': 'base64', 'value': base64.b64encode(digest).decode('ascii')},
+                    'empty_bin': {'type': 'binary', 'encoding': 'base64', 'value': ''},
+                    'floats': ['NaN', 'Infinity', '-Infinity', -0.0],
+                    'map_pairs': [['k1', {'$number': '1'}], ['k2', {'type': 'binary', 'encoding': 'base64', 'value': base64.b64encode(b'\xab').decode('ascii')}]],
+                    'lit_json': '{"$number": "7"}',
+                    'meta': {'$object': [['$number', {'$number': '7'}], ['nested', [{'type': 'binary', 'encoding': 'base64', 'value': base64.b64encode(b'\xab').decode('ascii')}]]]},
+                }],
+            },
+            {
+                'name': 'top_level_object_and_three_col',
+                'columns': ['type', 'encoding', 'value'],
+                'data': [
+                    {'$object': [['$number', {'$number': '1'}], ['bin', {'type': 'binary', 'encoding': 'base64', 'value': base64.b64encode(b'\xcd').decode('ascii')}]]},
+                    {'type': 'binary', 'encoding': 'base64', 'value': 'hello'},
+                ],
+            },
+        ],
+    }
+    body = f'#!/bin/sh\nprintf "%s\\n" {shlex.quote(json.dumps(payload))}\n'
+    binary.write_text(body)
+    client.binary_sha256 = sha256(body.encode()).hexdigest()
+    spec = tmp_path / 'job.json'
+    spec.write_text('{}')
+    result = client.run_job(spec)
+    assert result['queries'][0]['data'] == [{
+        'n': 9007199254740993,
+        'neg': -9007199254740992,
+        'sci': 12300.0,
+        'ratio': 12.5,
+        'sha256': '3e23e816',
+        'empty_bin': '',
+        'floats': ['NaN', 'Infinity', '-Infinity', -0.0],
+        'map_pairs': [['k1', 1], ['k2', 'ab']],
+        'lit_json': '{"$number": "7"}',
+        'meta': {'$number': 7, 'nested': ['ab']},
+    }]
+    assert result['queries'][1]['data'] == [
+        {'$number': 1, 'bin': 'cd'},
+        {'type': 'binary', 'encoding': 'base64', 'value': 'hello'},
+    ]
+
+    bad_payload = {'steps': [], 'outputs': [], 'queries': [{'name': 'bad', 'columns': ['b'], 'data': [{'b': {'type': 'binary', 'encoding': 'base64', 'value': 'not*valid!'}}]}]}
+    bad_body = f'#!/bin/sh\nprintf "%s\\n" {shlex.quote(json.dumps(bad_payload))}\n'
+    binary.write_text(bad_body)
+    client.binary_sha256 = sha256(bad_body.encode()).hexdigest()
+    with pytest.raises(binascii.Error):
+        client.run_job(spec)
+
+
+def test_run_job_real_docspec_decodes_exact_json(tmp_path):
+    import os
+    config = os.environ.get('DOCSPEC_JOB_CONFIG')
+    if not config or not Path(config).is_file():
+        pytest.skip('DOCSPEC_JOB_CONFIG required')
+    spec = tmp_path / 'job.json'
+    spec.write_text(json.dumps({
+        'scratch': str(tmp_path / 'native'),
+        'inputs': [],
+        'steps': [],
+        'outputs': [],
+        'queries': [{
+            'name': 'exact',
+            'sql': "SELECT 9007199254740993::BIGINT AS big, 12.50::DECIMAL(10,2) AS dec, decode('abcd', 'hex') AS bin, 1 AS \"$number\"",
+        }],
+    }))
+    with NativeDatasets.from_config(config) as engine:
+        result = engine.run_job(spec)
+    assert result['queries'][0]['data'] == [{
+        'big': 9007199254740993,
+        'dec': 12.5,
+        'bin': 'abcd',
+        '$number': 1,
+    }]

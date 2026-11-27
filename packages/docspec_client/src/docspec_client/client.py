@@ -86,6 +86,33 @@ def _cleanup_dataset_client(host: Host, responses: set[Any]) -> None:
 
 
 _VERIFIED_BINARY_CACHE: dict[tuple[str, int, int, int], tuple[str, bytes]] = {}
+_EXACT_INT_RE = re.compile(r'-?(?:0|[1-9][0-9]*)')
+
+
+def _decode_job_query_value(value: Any) -> Any:
+    """Decode ddk-exact-json-v1 query cells to Python scalars and lowercase hex."""
+    if isinstance(value, list):
+        return [_decode_job_query_value(item) for item in value]
+    if isinstance(value, dict):
+        if len(value) == 1 and '$number' in value and isinstance(value['$number'], str):
+            lex = value['$number']
+            return int(lex) if _EXACT_INT_RE.fullmatch(lex) else float(lex)
+        if len(value) == 1 and '$object' in value and isinstance(value['$object'], list):
+            return {str(k): _decode_job_query_value(v) for k, v in value['$object']}
+        if (len(value) == 3 and value.get('type') == 'binary'
+                and value.get('encoding') == 'base64' and isinstance(value.get('value'), str)):
+            return base64.b64decode(value['value'], validate=True).hex()
+        return {k: _decode_job_query_value(v) for k, v in value.items()}
+    return value
+
+
+def _decode_job_query_row(row: Any) -> Any:
+    """Decode a top-level query row without misclassifying 3-column rows as binary cells."""
+    if isinstance(row, dict):
+        if len(row) == 1 and '$object' in row and isinstance(row['$object'], list):
+            return {str(k): _decode_job_query_value(v) for k, v in row['$object']}
+        return {str(k): _decode_job_query_value(v) for k, v in row.items()}
+    return _decode_job_query_value(row)
 
 #: The runtime file's fields that name files, each resolved against the runtime file's own folder. The one list:
 #: from_config, and the pipeline's model-only build (which copies a runtime) and publisher (which reads its remote
@@ -536,7 +563,12 @@ class NativeDatasets:
         ``log`` names a file that receives the engine's stderr (its metric lines and any
         error) as it is produced; ``docspec_client.metric_events`` reads the events back.
         """
-        return self._run_spec('job', spec, log=log)
+        result = self._run_spec('job', spec, log=log)
+        if isinstance(result, dict) and isinstance(result.get('queries'), list):
+            for entry in result['queries']:
+                if isinstance(entry, dict) and isinstance(entry.get('data'), list):
+                    entry['data'] = [_decode_job_query_row(row) for row in entry['data']]
+        return result
 
     def create_file(self, spec: Path | str) -> dict[str, Any]:
         """Transfer a known file once through the native create-only adapter."""

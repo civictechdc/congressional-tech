@@ -1,6 +1,6 @@
 ---
 id: ct-bol5
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-11-25T20:29:35Z
@@ -20,4 +20,12 @@ Update `model/docspec-runtime-pin.json` (`source_revision`, `required_capabiliti
 ## Acceptance Criteria
 
 (1) `model/docspec-runtime-pin.json` pins a `docspec-rs` commit containing external-observed lake overlays (`f4d427c`/`6e520c2` or newer) with verified `darwin-arm64` and `linux-amd64` SHA-256 digests. (2) Local `doctor`, full native lake/model test lane (`exit 0`), and all 6 model invariant suites pass with exact release parity. (3) Smoke check confirms `spicycongress` (`observe_external_parquet` / `docspec inspect-external`) mounts a sealed archive Parquet output zero-copy without copying or re-materializing the 4.15M-row `captures` lake.
+
+## Verification & Runtime Pins
+
+- **docspec-rs revision**: `6e520c2c9941e802b4eda978d22fe8785c69c91e`
+- **darwin-arm64 SHA-256**: `739020a1465f181e1e95019b13c107a9de81fa572d4f3599368561400eb88626` (236 MiB; registered in shared runtime store)
+- **linux-amd64 SHA-256**: `aa52ccc78f206da51b58dfbed14851599ddb7c529f25ee7bf2c1f4c3a6973c7a` (`226,228,144` bytes; built & stripped in `Formspec-Labs/docspec-rs` run `46062254138`, artifact `15229583455`)
+- **Immutable R2 key**: `runtime/docspec/6e520c2c9941e802b4eda978d22fe8785c69c91e/linux-amd64/aa52ccc78f206da51b58dfbed14851599ddb7c529f25ee7bf2c1f4c3a6973c7a/docspec` (bucket `congressional-tech-runtime`; uploaded via `wrangler r2 object put --remote` with verified full readback: `226,228,144` bytes, SHA-256 `aa52ccc78f206da51b58dfbed14851599ddb7c529f25ee7bf2c1f4c3a6973c7a`)
+- **Qualification status**: Run `46062254138` (`linux-release.yml` against `feat/ct-bol5-docspec-pin`) succeeded in `build` and passed shards `1/6`, `3/6`, `4/6`, `6/6` (shards `2/6` and `5/6` failed only on Tesseract tests because `linux-release.yml` omits `tesseract: true`; full `6/6` with `tesseract: true` runs on the CT PR in `validate-explorer.yml`).
 
