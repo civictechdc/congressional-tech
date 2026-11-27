@@ -306,14 +306,16 @@ def test_odcs_arrow_physical_types_and_float_round_trip():
         from ddk.documents import validate_document
         from ddk.publication import verify_parquet_schema_parity
 
-        validate_document(exported['bundle_contract'], kind='DataContract')
+        assert validate_document(exported['bundle_contract'], kind='dataset') == []
+        for tname, table_doc in exported['table_contracts'].items():
+            assert validate_document(table_doc, kind='dataset') == [], tname
         for obj in exported['bundle_contract']['schema']:
             mapped = map_declaration(obj, profile=EXACT_PROFILE)
             unsupported = [c for c in mapped.coverage if c.get('status') == 'unsupported']
             assert unsupported == [], (obj['name'], unsupported)
             canonical_pa = pyarrow_schema(mapped.schema, pa)
             observed = observe_declaration(canonical_pa, obj, pa, profile=EXACT_PROFILE)
-            assert observed.status in {'passed', 'unknown'}, (obj['name'], observed)
+            assert observed.status == 'passed', (obj['name'], observed)
             pa_schema = archive_odcs.odcs_object_to_arrow_schema(obj, pa)
             parity = verify_parquet_schema_parity(
                 pa_schema,
@@ -452,7 +454,9 @@ def test_verify_live_release_parity_security_and_range_hardening(monkeypatch, tm
         'https://congressional-data.spicygov.ai/releases/1#frag',
         'https://127.0.0.1/releases/1',
         'https://10.0.0.5/releases/1',
+        'https://100.64.0.1/releases/1',
         'https://169.254.169.254/latest/meta-data',
+        'https://[::ffff:127.0.0.1]/releases/1',
         'https://[::1]/releases/1',
     ]:
         with pytest.raises(ValueError):
@@ -495,11 +499,12 @@ def test_verify_live_release_parity_security_and_range_hardening(monkeypatch, tm
         def __exit__(self, *exc):
             return False
 
-    manifest_payload: dict[str, Any] = {
+    manifest_payload: Any = {
         'files': [
             {'name': 'links.parquet', 'size': len(links_bytes)},
         ],
     }
+    cap_profile_payload: Any = {'version': 2}
     range_status = 206
     seen_headers: list[tuple[str, dict[str, str]]] = []
 
@@ -512,7 +517,7 @@ def test_verify_live_release_parity_security_and_range_hardening(monkeypatch, tm
             if url.endswith('/manifest.json'):
                 return _FakeResp(200, json.dumps(manifest_payload).encode('utf-8'))
             if url.endswith('/capture_profile.json'):
-                return _FakeResp(200, json.dumps({'version': 2}).encode('utf-8'))
+                return _FakeResp(200, json.dumps(cap_profile_payload).encode('utf-8'))
             if url.endswith('/links.parquet'):
                 rng = hdrs.get('range')
                 if rng is None:
@@ -561,6 +566,17 @@ def test_verify_live_release_parity_security_and_range_hardening(monkeypatch, tm
     range_status = 200
     with pytest.raises(ValueError, match='Expected HTTP 206'):
         archive_odcs.verify_live_release_parity(valid_id)
+
+    # Non-dict JSON in manifest.json or capture_profile.json must raise ValueError, not AttributeError
+    manifest_payload = ['not', 'an', 'object']
+    with pytest.raises(ValueError, match='manifest.json must be a JSON object'):
+        archive_odcs.verify_live_release_parity(valid_id)
+
+    manifest_payload = {'files': [{'name': 'capture_profile.json', 'size': 12}]}
+    cap_profile_payload = ['not', 'an', 'object']
+    with pytest.raises(ValueError, match='capture_profile.json must be a JSON object'):
+        archive_odcs.verify_live_release_parity(valid_id)
+    cap_profile_payload = {'version': 2}
 
     # Drift in normalizedUnorderedIssues makes CLI return 1
     range_status = 206

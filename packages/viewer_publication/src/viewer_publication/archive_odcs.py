@@ -1211,8 +1211,12 @@ def check_drift(output_dir: Path = CONTRACTS_DIR, *, root: Path = ROOT) -> list[
 
 
 def _is_disallowed_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    mapped = getattr(ip_obj, 'ipv4_mapped', None)
+    if mapped is not None and _is_disallowed_ip(mapped):
+        return True
     return (
-        ip_obj.is_private
+        not ip_obj.is_global
+        or ip_obj.is_private
         or ip_obj.is_loopback
         or ip_obj.is_link_local
         or ip_obj.is_multicast
@@ -1325,20 +1329,29 @@ def verify_live_release_parity(release_id_or_url: str, *, root: Path = ROOT) -> 
             end = min(self.size, self.pos + n)
             if end <= self.pos:
                 return b''
+            expected = end - self.pos
             if self.pos >= self.tail_start:
                 chunk = self.tail[self.pos - self.tail_start : end - self.tail_start]
             else:
                 chunk = _get(self.url, f'bytes={self.pos}-{end - 1}')
-            self.pos = end
+            if len(chunk) != expected:
+                raise ValueError(
+                    f'Unexpected Range read length on {self.url}: expected {expected} bytes, got {len(chunk)}'
+                )
+            self.pos += len(chunk)
             return chunk
 
     manifest = json.loads(_get(f'{base_url}/manifest.json').decode('utf-8'))
+    if not isinstance(manifest, dict):
+        raise ValueError('Remote manifest.json must be a JSON object')
     files = manifest.get('files')
     if not isinstance(files, list):
         raise ValueError('Remote manifest.json missing files list')
     has_v2_profile = any(isinstance(f, dict) and f.get('name') == 'capture_profile.json' for f in files)
     if has_v2_profile:
         cap_profile = json.loads(_get(f'{base_url}/capture_profile.json').decode('utf-8'))
+        if not isinstance(cap_profile, dict):
+            raise ValueError('Remote capture_profile.json must be a JSON object')
         include_cap = cap_profile.get('version') == 2
     else:
         include_cap = False
