@@ -27,6 +27,14 @@ embeddings, `spicyengine-update` refuses a bare publish that would drop them
 unless you supply `--passages-manifest /path/to/manifest.json` (which validates
 the manifest against the target release before publishing and attaches passages
 with the new `config_version`) or explicitly pass `--allow-drop-passages`.
+When live SpicyEngine also indexes `keyword_parquet`, `spicyengine-update`
+refuses to attach a vector-only manifest unless you pass `--ensure-keywords`
+(which builds and verifies the sibling `keywords/` directory before publishing,
+hard-linking unchanged shards from the live keyword directory or
+`--previous-keywords /path/to/keywords` and writing `keyword_parquet` into
+`passages-attach.json`) or explicitly pass `--allow-drop-passage-keywords`.
+The keyword builder can also be run standalone via
+`python -m viewer_publication.passage_keywords --serving <dir> --prepared <dir> --output <dir> --release-id <sha>`.
 Inspect the latest attempt with `journalctl -u spicyengine-update.service`.
 Stop the timer before deliberately holding the host on an earlier pin.
 An exact release match is required for Congress Explorer’s hosted search tools.
