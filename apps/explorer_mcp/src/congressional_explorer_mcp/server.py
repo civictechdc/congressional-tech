@@ -1,6 +1,7 @@
 """The public MCP surface uses only the current published archive model."""
 from contextlib import AsyncExitStack, asynccontextmanager
 from functools import partial
+import math
 import time
 
 import anyio
@@ -20,10 +21,13 @@ from .release import PUBLICATION, encoded, load_selection, prepare
 from .hearing_models import HearingBundleQuery, TranscriptQuery
 
 
-def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PUBLICATION, warm_on_start=False,
-                  search_origin=None):
+def create_server(selection=None, *, timeout=10.0, search_timeout=35.0, data_dir=None, publication=PUBLICATION,
+                  warm_on_start=False, search_origin=None):
     if selection is None and data_dir is None:
         raise ValueError('A selected release or data directory is required')
+    if (isinstance(search_timeout, bool) or not isinstance(search_timeout, (int, float))
+            or not math.isfinite(search_timeout) or search_timeout <= 0):
+        raise ValueError('Archive search timeout must be a positive number')
     worker = Worker(selection, timeout=timeout)
     setup_lock = anyio.Lock()
     origin = backend_origin(search_origin) if search_origin else None
@@ -50,7 +54,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
                 clients = {}
                 if origin:
                     clients['archive_search'] = await stack.enter_async_context(
-                        httpx.AsyncClient(base_url=origin, timeout=timeout, follow_redirects=False, trust_env=False))
+                        httpx.AsyncClient(base_url=origin, timeout=search_timeout, follow_redirects=False, trust_env=False))
                 yield clients
         finally:
             await worker.close()
@@ -76,7 +80,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
             await ensure_selection()
             return worker.selection['release_id']
 
-        register_tools(mcp, origin, selected_release, timeout)
+        register_tools(mcp, origin, selected_release, search_timeout)
 
     @mcp.custom_route('/ready', methods=['GET'])
     async def ready(request):

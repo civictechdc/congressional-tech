@@ -226,3 +226,128 @@ def test_http_warm_startup_warms_replica_before_accepting_requests(tmp_path, pha
         finally:
             process.terminate()
             process.wait(timeout=10)
+
+
+def test_archive_search_timeout_decoupled_from_query_timeout(tmp_path, phase2):
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    import os
+    from threading import Thread
+    from congressional_explorer_mcp.cli import main
+
+    root = tmp_path / 'timeout-data'
+    selected = prepare(root, phase2)['release_id']
+    state = {'delay': 0.4}
+
+    class SlowOrigin(BaseHTTPRequestHandler):
+        def reply(self, data):
+            raw = json.dumps(dict(data, release_id=selected)).encode()
+            self.send_response(200)
+            self.send_header('Content-Length', str(len(raw)))
+            self.end_headers()
+            self.wfile.write(raw)
+
+        def do_GET(self):
+            if self.path == '/v1/health':
+                self.reply({'searchType': 'hybrid', 'serenedb': {'connected': True}, 'index': {'sections': 1}})
+            else:
+                self.send_error(404)
+
+        def do_POST(self):
+            assert self.path == '/v1/search'
+            _ = self.rfile.read(int(self.headers['Content-Length']))
+            time.sleep(state['delay'])
+            self.reply({'results': [{'id': 'doc:1', 'url': '/page?id=doc%3A1', 'publisher_url': 'https://example.gov/'}]})
+
+    @contextmanager
+    def start_http(extra_args, extra_env=None):
+        with socket.socket() as listener:
+            listener.bind(('127.0.0.1', 0))
+            port = listener.getsockname()[1]
+        args = [sys.executable, '-m', 'congressional_explorer_mcp.cli', 'serve',
+                '--transport', 'http', '--host', '127.0.0.1', '--port', str(port),
+                '--data-dir', str(root), *extra_args]
+        env = dict(os.environ, CONGRESS_MCP_SEARCH_ORIGIN=origin)
+        if extra_env:
+            env.update(extra_env)
+        url = f'http://127.0.0.1:{port}/mcp'
+        with (tmp_path / f'http-timeout-{port}.log').open('w+') as log:
+            process = subprocess.Popen(args, stdout=log, stderr=log, env=env)
+            try:
+                deadline = time.monotonic() + 15
+                while time.monotonic() < deadline and process.poll() is None:
+                    try:
+                        if httpx.get(url, timeout=.5).status_code == 405:
+                            break
+                    except httpx.TransportError:
+                        pass
+                    time.sleep(.05)
+                else:
+                    log.seek(0)
+                    pytest.fail(f'HTTP server did not become ready: {log.read()}')
+                yield url
+            finally:
+                process.terminate()
+                process.wait(timeout=10)
+
+    with ThreadingHTTPServer(('127.0.0.1', 0), SlowOrigin) as backend:
+        thread = Thread(target=backend.serve_forever, daemon=True)
+        thread.start()
+        origin = f'http://127.0.0.1:{backend.server_port}'
+        try:
+            # 1a. CLI --query-timeout 0.2 --search-timeout 2.0 allows 0.4s /v1/search while keeping query_sql timeout at 0.2s
+            with start_http(['--query-timeout', '0.2', '--search-timeout', '2.0']) as url:
+                async def verify_cli():
+                    async with Client(url, timeout=15) as client:
+                        res = (await client.call_tool('search_docs', {'query': 'health', 'limit': 1})).data
+                        assert len(res['results']) == 1
+                        slow_sql = await client.call_tool('query_sql', {
+                            'query': {'sql': 'WITH RECURSIVE t(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM t WHERE x < 50000000) SELECT count(*) AS n FROM t'}
+                        }, raise_on_error=False)
+                        assert slow_sql.is_error
+                asyncio.run(verify_cli())
+
+            # 1b. CONGRESS_MCP_SEARCH_TIMEOUT=2.0 env var also overrides default cleanly alongside --query-timeout 0.2
+            with start_http(['--query-timeout', '0.2'], {'CONGRESS_MCP_SEARCH_TIMEOUT': '2.0'}) as url:
+                async def verify_env():
+                    async with Client(url, timeout=15) as client:
+                        res = (await client.call_tool('search_docs', {'query': 'health', 'limit': 1})).data
+                        assert len(res['results']) == 1
+                asyncio.run(verify_env())
+
+            # 2. --search-timeout 0.1 with 0.3s delay fails cleanly with Archive search is unavailable
+            state['delay'] = 0.3
+            with start_http(['--search-timeout', '0.1']) as url:
+                async def verify_short_timeout():
+                    async with Client(url, timeout=15) as client:
+                        err = await client.call_tool('search_docs', {'query': 'health', 'limit': 1}, raise_on_error=False)
+                        assert err.is_error
+                        assert 'Archive search is unavailable. Retry shortly.' in err.content[0].text
+                asyncio.run(verify_short_timeout())
+        finally:
+            backend.shutdown()
+            thread.join()
+
+    # 3. Invalid CONGRESS_MCP_SEARCH_TIMEOUT and --search-timeout exit 1 with actionable stderr error
+    for bad_env in ('0', '-1', 'abc'):
+        res = subprocess.run(
+            [sys.executable, '-m', 'congressional_explorer_mcp.cli', 'serve', '--data-dir', str(root)],
+            env=dict(os.environ, CONGRESS_MCP_SEARCH_TIMEOUT=bad_env),
+            capture_output=True, text=True,
+        )
+        assert res.returncode == 1
+        assert 'Archive search timeout must be a positive number' in res.stderr
+
+    for bad_flag in ('0', '-1'):
+        res = subprocess.run(
+            [sys.executable, '-m', 'congressional_explorer_mcp.cli', 'serve', '--data-dir', str(root), '--search-timeout', bad_flag],
+            capture_output=True, text=True,
+        )
+        assert res.returncode == 1
+        assert 'Archive search timeout must be a positive number' in res.stderr
+
+    # Verify create_server itself validates search_timeout and ignores booleans/NaN/negative
+    with pytest.raises(ValueError, match='Archive search timeout must be a positive number'):
+        create_server(prepare(root, phase2), search_timeout=False)
+    with pytest.raises(ValueError, match='Archive search timeout must be a positive number'):
+        create_server(prepare(root, phase2), search_timeout=float('nan'))
+    assert callable(main)
