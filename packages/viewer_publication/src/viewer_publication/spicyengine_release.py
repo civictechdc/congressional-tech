@@ -18,6 +18,7 @@ import duckdb
 import pyarrow.parquet as pq
 
 from congress_shared.custody import write_atomic_bytes
+from viewer_publication import passage_keywords
 from viewer_publication.archive_format import release_identity
 
 ORIGIN = "https://congressional-data.spicygov.ai"
@@ -513,9 +514,20 @@ def load_passages_manifest(path, *, release_id, expected_documents):
     return raw
 
 
+def keyword_directory(manifest):
+    """The sibling ``keywords`` directory for a manifest whose ``parquet`` is ``<serving>/*.parquet``."""
+    pattern = Path(manifest["parquet"])
+    if pattern.name != "*.parquet":
+        raise ValueError("Building keyword passages requires a passages manifest parquet of <directory>/*.parquet")
+    return pattern.parent, pattern.parent.parent / "keywords"
+
+
 def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_query=None,
            staged=False, prefer_staged=False, expected_release_id=None,
-           allow_drop_passages=False, passages_manifest=None):
+           allow_drop_passages=False, passages_manifest=None,
+           ensure_keywords=False, previous_keywords=None, allow_drop_passage_keywords=False):
+    if ensure_keywords and passages_manifest is None:
+        raise ValueError("--ensure-keywords requires --passages-manifest")
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     with (root / ".release.lock").open("a") as lock:
@@ -557,16 +569,45 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
         if not manifest.exists() or json.loads(manifest.read_text()) != definition:
             save(manifest, definition)
         if engine:
+            live_status = []
+
+            def live():
+                if not live_status:
+                    live_status.append(engine_status(engine))
+                return live_status[0]
+
             validated_passages = (
                 load_passages_manifest(passages_manifest, release_id=release, expected_documents=ready["records"])
                 if passages_manifest is not None
                 else None
             )
+            if validated_passages is not None and ensure_keywords:
+                # Build before publishing: a failed build must leave the live index and its passages intact.
+                serving, keywords = keyword_directory(validated_passages)
+                declared = validated_passages.get("keyword_parquet")
+                if declared is not None and declared != str(keywords / "*.parquet"):
+                    raise ValueError(f"Passages manifest keyword_parquet {declared!r} differs from {keywords}/*.parquet")
+                if previous_keywords is None:
+                    attached = ((live() or {}).get("passages") or {}).get("keyword_parquet")
+                    previous_keywords = Path(attached).parent if attached else None
+                passage_keywords.ensure_keywords(
+                    serving, work / "prepared", keywords, release_id=release, previous=previous_keywords,
+                    expected_passages=validated_passages["passages"], expected_documents=ready["records"])
+                validated_passages = validated_passages | {"keyword_parquet": str(keywords / "*.parquet")}
+            if (validated_passages is not None and "keyword_parquet" not in validated_passages
+                    and not allow_drop_passage_keywords):
+                attached = ((live() or {}).get("passages") or {}).get("keyword_parquet")
+                if attached:
+                    raise RuntimeError(
+                        f"Refusing to attach vector-only passages to {release[:12]}: live SpicyEngine ranks passages "
+                        f"by keyword from {attached}. Pass --ensure-keywords to build keyword passages for this "
+                        f"release or --allow-drop-passage-keywords to attach vectors only."
+                    )
             if validated_passages is None and not allow_drop_passages:
-                live = engine_status(engine)
-                if would_drop_passages(live, definition):
-                    attached = live["passages"]
-                    live_release = attached.get("release_id") or (live.get("dataset") or {}).get("release_id")
+                live_now = live()
+                if would_drop_passages(live_now, definition):
+                    attached = live_now["passages"]
+                    live_release = attached.get("release_id") or (live_now.get("dataset") or {}).get("release_id")
                     raise RuntimeError(
                         f"Refusing to publish {release[:12]} without passages: live SpicyEngine currently has "
                         f"{attached.get('passages')} attached passages ({attached.get('model')}) on release "
@@ -608,11 +649,21 @@ def main():
                         help="Permit publishing a replacement index even when live SpicyEngine has attached passages")
     parser.add_argument("--passages-manifest", type=Path,
                         help="Attach matching passage embeddings immediately after publishing (stamps config_version)")
+    parser.add_argument("--ensure-keywords", action="store_true",
+                        help="Build and verify keyword passages in the sibling keywords/ directory before publishing")
+    parser.add_argument("--previous-keywords", type=Path,
+                        help="Hard-link unchanged files from this keyword directory (default: the live one)")
+    parser.add_argument("--allow-drop-passage-keywords", action="store_true",
+                        help="Permit attaching vector-only passages when live SpicyEngine ranks passages by keyword")
     args = parser.parse_args()
+    if args.ensure_keywords and args.passages_manifest is None:
+        parser.error("--ensure-keywords requires --passages-manifest")
     print(update(args.root, saved=args.pin, local=args.source_dir, engine=args.engine,
                  check_query=args.check_query, staged=args.staged, prefer_staged=args.prefer_staged,
                  expected_release_id=args.release_id, allow_drop_passages=args.allow_drop_passages,
-                 passages_manifest=args.passages_manifest))
+                 passages_manifest=args.passages_manifest, ensure_keywords=args.ensure_keywords,
+                 previous_keywords=args.previous_keywords,
+                 allow_drop_passage_keywords=args.allow_drop_passage_keywords))
 
 
 if __name__ == "__main__":

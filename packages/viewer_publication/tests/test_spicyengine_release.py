@@ -564,3 +564,88 @@ def test_passage_drop_guard_blocks_bare_publish_and_supports_override_and_attach
     release.main()
     assert recorded["allow_drop_passages"] is True
     assert recorded["passages_manifest"] == good_manifest
+
+
+def test_keyword_passages_are_built_before_publish_and_never_silently_dropped(tmp_path, monkeypatch):
+    import subprocess
+
+    origin, release_id = _make_minimal_origin(tmp_path)
+    root = tmp_path / "local"
+    key = b"12345678".hex()
+    serving = tmp_path / "embeddings" / "serving"
+    serving.mkdir(parents=True)
+    body_sha = (b"Z" * 32).hex()
+    pq.write_table(pa.Table.from_pylist([
+        dict(source_id="archive-documents", member_key=key, source_field="body", text_sha256=body_sha,
+             char_start=0, char_end=7, excerpt="housing", page=1, page_at=0, vector=[0.5, 0.5]),
+        dict(source_id="archive-documents", member_key=key, source_field="title", text_sha256=None,
+             char_start=0, char_end=7, excerpt="Housing", page=None, page_at=None, vector=[0.5, 0.5]),
+    ]), serving / "archive-00.parquet")
+    vectors = tmp_path / "vectors-only.json"
+    vectors.write_text(json.dumps(dict(release_id=release_id, model="google/embeddinggemma-2", dimensions=2,
+                                       passages=2, documents=1, parquet=str(serving / "*.parquet"))))
+    live_keywords = "/srv/spicyengine/input/embeddings/older/keywords/*.parquet"
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(list(args))
+        if args[1] == "status":
+            return subprocess.CompletedProcess(args, 0, stderr="", stdout=json.dumps({
+                "revision": "b" * 64, "dataset": {"release_id": "0" * 64},
+                "passages": {"release_id": "0" * 64, "keyword_parquet": live_keywords, "passages": 9}}))
+        if args[1] == "publish":
+            return subprocess.CompletedProcess(args, 0, stderr="", stdout=json.dumps({"revision": "a" * 64}))
+        return subprocess.CompletedProcess(args, 0, stdout="{}", stderr="")
+
+    monkeypatch.setattr(release.subprocess, "run", fake_run)
+    engine = "/bin/fake-spicyengine"
+
+    # A vector-only manifest would silently drop live keyword ranking.
+    with pytest.raises(RuntimeError, match="Refusing to attach vector-only passages"):
+        release.update(root, origin=origin, engine=engine, passages_manifest=vectors)
+    assert [c[1] for c in calls] == ["status"]
+    with pytest.raises(ValueError, match="requires --passages-manifest"):
+        release.update(root, origin=origin, engine=engine, ensure_keywords=True)
+
+    # The explicit override attaches vectors only.
+    calls.clear()
+    work = release.update(root, origin=origin, engine=engine, passages_manifest=vectors,
+                          allow_drop_passage_keywords=True)
+    assert [c[1] for c in calls] == ["publish", "attach-passages"]
+    assert "keyword_parquet" not in json.loads((work / "passages-attach.json").read_text())
+
+    # --ensure-keywords builds and verifies keywords/ before publishing, then attaches them.
+    calls.clear()
+    work = release.update(root, origin=origin, engine=engine, passages_manifest=vectors, ensure_keywords=True)
+    assert [c[1] for c in calls] == ["status", "publish", "attach-passages"]
+    keywords_dir = tmp_path / "embeddings" / "keywords"
+    stamped = json.loads((work / "passages-attach.json").read_text())
+    assert stamped["keyword_parquet"] == str(keywords_dir / "*.parquet") and stamped["config_version"] == "a" * 64
+    built = json.loads((keywords_dir / "manifest.json").read_text())
+    assert built["release_id"] == release_id and built["passages"] == 2 and built["documents"] == 1
+    rows = pq.read_table(sorted(keywords_dir.glob("*.parquet"))).to_pylist()
+    assert sorted(r["text"] for r in rows) == ["Housing", "housing"]
+
+    # A failed keyword build stops before publish, so live passages stay attached.
+    calls.clear()
+    broken = tmp_path / "embeddings2" / "serving"
+    broken.mkdir(parents=True)
+    pq.write_table(pa.Table.from_pylist([
+        dict(source_id="archive-documents", member_key=key, source_field="body", text_sha256=body_sha,
+             char_start=0, char_end=7, excerpt="nowhere", page=1, page_at=0, vector=[0.5, 0.5])]),
+        broken / "archive-00.parquet")
+    bad = tmp_path / "bad-keywords.json"
+    bad.write_text(json.dumps(json.loads(vectors.read_text()) | {"passages": 1, "parquet": str(broken / "*.parquet")}))
+    with pytest.raises(ValueError, match="Excerpt is not a verbatim part"):
+        release.update(root, origin=origin, engine=engine, passages_manifest=bad, ensure_keywords=True,
+                       previous_keywords=keywords_dir)
+    assert calls == [] and not (tmp_path / "embeddings2" / "keywords").exists()
+
+    recorded = {}
+    monkeypatch.setattr(release, "update", lambda root_arg, **kwargs: recorded.update(kwargs) or work)
+    monkeypatch.setattr("sys.argv", ["spicyengine_release", "--root", str(root), "--engine", engine,
+                                     "--passages-manifest", str(vectors), "--ensure-keywords",
+                                     "--previous-keywords", str(keywords_dir), "--allow-drop-passage-keywords"])
+    release.main()
+    assert recorded["ensure_keywords"] is True and recorded["previous_keywords"] == keywords_dir
+    assert recorded["allow_drop_passage_keywords"] is True
