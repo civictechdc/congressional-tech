@@ -198,3 +198,35 @@ def test_create_file_refuses_missing_configuration_before_executing(tmp_path, mi
     with pytest.raises(ValueError, match='remote|limits|pin'):
         client.create_file(tmp_path / 'upload.json')
     assert not log.exists()
+
+
+def test_run_job_decodes_exact_json_query_cells(tmp_path):
+    import base64
+    client, _, binary = executable(tmp_path)
+    digest = b'\x3e\x23\xe8\x16'
+    payload = {
+        'steps': [],
+        'outputs': [],
+        'queries': [{
+            'name': 'counts',
+            'columns': ['n', 'ratio', 'sha256', 'meta'],
+            'data': [{
+                'n': {'$number': '9007199254740993'},
+                'ratio': {'$number': '12.5'},
+                'sha256': {'type': 'binary', 'encoding': 'base64', 'value': base64.b64encode(digest).decode('ascii')},
+                'meta': {'$object': [['$number', {'$number': '7'}], ['nested', [{'type': 'binary', 'encoding': 'base64', 'value': base64.b64encode(b'\xab').decode('ascii')}]]]},
+            }],
+        }],
+    }
+    body = f'#!/bin/sh\nprintf "%s\\n" {shlex.quote(json.dumps(payload))}\n'
+    binary.write_text(body)
+    client.binary_sha256 = sha256(body.encode()).hexdigest()
+    spec = tmp_path / 'job.json'
+    spec.write_text('{}')
+    result = client.run_job(spec)
+    assert result['queries'][0]['data'] == [{
+        'n': 9007199254740993,
+        'ratio': 12.5,
+        'sha256': '3e23e816',
+        'meta': {'$number': 7, 'nested': ['ab']},
+    }]
