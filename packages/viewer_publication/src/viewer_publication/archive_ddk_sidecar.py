@@ -6,6 +6,8 @@ from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from hashlib import sha256
 import importlib
+import io
+import ipaddress
 import json
 from pathlib import Path, PurePosixPath
 import re
@@ -108,23 +110,76 @@ def _safe_rel_path(value: str, *, label: str = 'key') -> str:
     return '/'.join(parts)
 
 
+def _is_loopback_ip(ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    mapped = getattr(ip_obj, 'ipv4_mapped', None)
+    if mapped is not None:
+        return _is_loopback_ip(mapped)
+    return bool(ip_obj.is_loopback)
+
+
+def _is_disallowed_ip(
+    ip_obj: ipaddress.IPv4Address | ipaddress.IPv6Address,
+    *,
+    allow_loopback: bool = False,
+) -> bool:
+    mapped = getattr(ip_obj, 'ipv4_mapped', None)
+    if mapped is not None:
+        return _is_disallowed_ip(mapped, allow_loopback=allow_loopback)
+    if ip_obj.is_loopback:
+        return not allow_loopback
+    return bool(
+        not ip_obj.is_global
+        or ip_obj.is_private
+        or ip_obj.is_link_local
+        or ip_obj.is_multicast
+        or ip_obj.is_reserved
+        or ip_obj.is_unspecified
+    )
+
+
+def _is_loopback_host(host_clean: str, ip_literal: ipaddress.IPv4Address | ipaddress.IPv6Address | None) -> bool:
+    if ip_literal is not None:
+        return _is_loopback_ip(ip_literal)
+    return host_clean == 'localhost' or host_clean.endswith('.localhost')
+
+
 def validate_public_origin(origin: str, *, allow_insecure_http: bool = False) -> str:
-    """Validate and normalize the public HTTPS origin (or loopback HTTP when explicitly permitted)."""
+    """Validate and normalize the public HTTPS origin (or loopback HTTP/HTTPS when explicitly permitted)."""
     if not isinstance(origin, str) or not origin.strip():
         raise ValueError(f'public_origin must be a nonempty URL, got {origin!r}')
-    raw = origin.strip().rstrip('/')
+    raw = origin.strip()
+    if '?' in raw or '#' in raw:
+        raise ValueError(f'public_origin must not contain query or fragment: {origin!r}')
     parts = urlsplit(raw)
-    if parts.username or parts.password or parts.query or parts.fragment:
-        raise ValueError(f'public_origin must not contain credentials, query, or fragment: {origin!r}')
-    if not parts.netloc:
+    if parts.username is not None or parts.password is not None or '@' in parts.netloc:
+        raise ValueError(f'public_origin must not contain credentials: {origin!r}')
+    if parts.query or parts.fragment:
+        raise ValueError(f'public_origin must not contain query or fragment: {origin!r}')
+    if parts.path not in {'', '/'}:
+        raise ValueError(f'public_origin must not contain a path: {origin!r}')
+    hostname = parts.hostname
+    if not parts.netloc or not hostname:
         raise ValueError(f'public_origin requires host: {origin!r}')
+
+    host_clean = hostname.strip('[]').lower()
+    try:
+        ip_literal: ipaddress.IPv4Address | ipaddress.IPv6Address | None = ipaddress.ip_address(host_clean)
+    except ValueError:
+        ip_literal = None
+
+    if ip_literal is not None:
+        if _is_disallowed_ip(ip_literal, allow_loopback=allow_insecure_http):
+            raise ValueError(f'public_origin resolves to disallowed IP {ip_literal}: {origin!r}')
+    elif _is_loopback_host(host_clean, None) and not allow_insecure_http:
+        raise ValueError(f'public_origin loopback host requires allow_insecure_http=True: {origin!r}')
+
     scheme = parts.scheme.lower()
+    clean = raw.rstrip('/')
     if scheme == 'https':
-        return raw
-    if scheme == 'http' and allow_insecure_http:
-        host = (parts.hostname or '').lower()
-        if host in {'127.0.0.1', 'localhost', '::1'}:
-            return raw
+        return clean
+    if scheme == 'http':
+        if allow_insecure_http and _is_loopback_host(host_clean, ip_literal):
+            return clean
         raise ValueError(f'allow_insecure_http only permits loopback origins, got {origin!r}')
     raise ValueError(f'public_origin must use https (or loopback http with allow_insecure_http=True): {origin!r}')
 
@@ -154,9 +209,6 @@ def _http_status_from_client_error(exc: Exception) -> int | None:
     resp = getattr(exc, 'response', None)
     if not isinstance(resp, Mapping):
         return None
-    meta = resp.get('ResponseMetadata')
-    if isinstance(meta, Mapping) and isinstance(meta.get('HTTPStatusCode'), int):
-        return meta['HTTPStatusCode']
     err = resp.get('Error')
     if isinstance(err, Mapping):
         code = str(err.get('Code', ''))
@@ -164,7 +216,14 @@ def _http_status_from_client_error(exc: Exception) -> int | None:
             return 404
         if code in {'412', 'PreconditionFailed', 'ConditionalRequestConflict'}:
             return 412
+    meta = resp.get('ResponseMetadata')
+    if isinstance(meta, Mapping) and isinstance(meta.get('HTTPStatusCode'), int):
+        return meta['HTTPStatusCode']
     return None
+
+
+def _is_missing_object_error(exc: Exception) -> bool:
+    return getattr(exc, 'code', None) == 'CATALOG-OBJECT-MISSING' or _http_status_from_client_error(exc) == 404
 
 
 class _BotoSidecarStorage:
@@ -188,7 +247,11 @@ class _BotoSidecarStorage:
         self.client = client
         self.bucket = bucket.strip()
         self.sidecar_prefix = validate_sidecar_prefix(sidecar_prefix)
-        self.pointer_key = _safe_rel_path(pointer_key, label='pointer_key') if pointer_key else f'{self.sidecar_prefix}/current.json'
+        resolved_pointer = _safe_rel_path(pointer_key, label='pointer_key') if pointer_key else f'{self.sidecar_prefix}/current.json'
+        if not resolved_pointer.startswith(f'{self.sidecar_prefix}/'):
+            prefix_slash = f'{self.sidecar_prefix}/'
+            raise ValueError(f'pointer_key {resolved_pointer!r} must reside inside isolated prefix {prefix_slash!r}')
+        self.pointer_key = resolved_pointer
         self.put_keys: list[str] = []
 
     def _error(self, code: str, message: str) -> Exception:
@@ -289,6 +352,70 @@ class _BotoSidecarStorage:
         }
 
 
+class _StorageRangeFile(io.RawIOBase):
+    """Seekable HTTP/S3 byte-range reader so remote Parquet schema checks read footers only."""
+
+    def __init__(self, storage: Any, remote_key: str):
+        self.storage = storage
+        self.remote_key = remote_key
+        head = storage.head_object(remote_key)
+        size = head.get('size')
+        if type(size) is not int or size < 12:
+            raise ValueError(f'Remote Parquet object {remote_key!r} requires valid byte size >= 12 in HEAD, got {size!r}')
+        self.size = size
+        self.pos = 0
+        self._spans: list[tuple[int, int, bytes]] = []
+
+    def readable(self) -> bool:
+        return True
+
+    def seekable(self) -> bool:
+        return True
+
+    def tell(self) -> int:
+        return self.pos
+
+    def seek(self, offset: int, whence: int = io.SEEK_SET) -> int:
+        if whence == io.SEEK_SET:
+            target = offset
+        elif whence == io.SEEK_CUR:
+            target = self.pos + offset
+        elif whence == io.SEEK_END:
+            target = self.size + offset
+        else:
+            raise OSError(f'Unsupported seek whence: {whence!r}')
+        if target < 0:
+            raise OSError('Negative seek position')
+        self.pos = min(target, self.size)
+        return self.pos
+
+    def _read_interval(self, start: int, end_excl: int) -> bytes:
+        if start >= end_excl:
+            return b''
+        for sp_start, sp_end, sp_buf in self._spans:
+            if sp_start <= start and end_excl <= sp_end:
+                return sp_buf[start - sp_start : end_excl - sp_start]
+        fetched = self.storage.get_bytes(self.remote_key, byte_range=(start, end_excl - 1))
+        self._spans.append((start, start + len(fetched), fetched))
+        return fetched[: end_excl - start]
+
+    def read(self, size: int | None = -1) -> bytes:
+        if self.pos >= self.size or size == 0:
+            return b''
+        if size is None or size < 0:
+            size = self.size - self.pos
+        end_excl = min(self.size, self.pos + size)
+        out = self._read_interval(self.pos, end_excl)
+        self.pos = end_excl
+        return out
+
+    def readinto(self, b: Any) -> int:
+        data = self.read(len(b))
+        n = len(data)
+        b[:n] = data
+        return n
+
+
 def _load_json_input(source: Mapping[str, Any] | Path | str, *, label: str) -> dict[str, Any]:
     if isinstance(source, Mapping):
         return deepcopy(dict(source))
@@ -363,13 +490,16 @@ def detect_capture_profile_v2(
         key = f'{PUBLIC_RELEASE_PREFIX}/{manifest["release_id"]}/capture_profile.json'
         try:
             raw = storage.get_bytes(key)
-        except Exception:
+        except Exception as exc:
+            if not _is_missing_object_error(exc):
+                raise
             raw = None
         if raw is not None:
             parsed = json.loads(raw.decode('utf-8'))
-            if isinstance(parsed, dict):
-                profile_obj = parsed
-                source = f'storage:{key}'
+            if not isinstance(parsed, dict):
+                raise ValueError(f'Remote capture_profile.json at {key!r} must be a JSON object')
+            profile_obj = parsed
+            source = f'storage:{key}'
 
     version = profile_obj.get('version') if isinstance(profile_obj, dict) else None
     enabled = version == 2
@@ -394,6 +524,7 @@ def validate_body_text_ssot_binding(
     release_id: str,
     manifest: Mapping[str, Any],
     public_origin: str = DEFAULT_PUBLIC_ORIGIN,
+    allow_insecure_http: bool = False,
     pointer_key: str = body_text_export.load_definition()['pointer'],
     storage: Any | None = None,
     verify_storage_object: bool = False,
@@ -403,6 +534,7 @@ def validate_body_text_ssot_binding(
         return None
     if not _HEX64_RE.fullmatch(release_id):
         raise ValueError(f'Invalid release_id for BodyTextSSOT binding: {release_id!r}')
+    clean_origin = validate_public_origin(public_origin, allow_insecure_http=allow_insecure_http)
 
     if isinstance(body_text_pointer, Mapping):
         pointer = deepcopy(dict(body_text_pointer))
@@ -414,7 +546,10 @@ def validate_body_text_ssot_binding(
             resolved_pointer_ref = pointer_key
         elif isinstance(body_text_pointer, str) and storage is not None and callable(getattr(storage, 'get_bytes', None)):
             raw_key = _safe_rel_path(body_text_pointer, label='body_text_pointer')
-            pointer = json.loads(storage.get_bytes(raw_key).decode('utf-8'))
+            parsed_ptr = json.loads(storage.get_bytes(raw_key).decode('utf-8'))
+            if not isinstance(parsed_ptr, dict):
+                raise ValueError(f'Remote BodyTextSSOT pointer at {raw_key!r} must be a JSON object')
+            pointer = parsed_ptr
             resolved_pointer_ref = raw_key
         else:
             raise FileNotFoundError(f'body_text pointer file not found: {body_text_pointer!r}')
@@ -460,7 +595,6 @@ def validate_body_text_ssot_binding(
         if head.get('size') != byte_count:
             raise ValueError(f'BodyTextSSOT object {key} size {head.get("size")!r} disagrees with pointer {byte_count!r}')
 
-    clean_origin = public_origin.rstrip('/')
     return {
         'ticket': CT_0A35_TICKET,
         'version': pointer.get('version'),
@@ -507,11 +641,11 @@ def _matches_documented_arrow_type(arrow_type: Any, expected_kind: str, pa: Any)
     return False
 
 
-def _odcs_type_for_documented_kind(expected_kind: str) -> dict[str, str]:
+def _odcs_type_for_documented_kind(expected_kind: str) -> dict[str, Any]:
     if expected_kind == 'string':
         return {'logicalType': 'string', 'physicalType': 'Utf8'}
     if expected_kind == 'float64':
-        return {'logicalType': 'number', 'physicalType': 'double'}
+        return {'logicalType': 'number', 'logicalTypeOptions': {'format': 'f64'}, 'physicalType': 'Float64'}
     raise ValueError(f'Unsupported documented drift kind: {expected_kind!r}')
 
 
@@ -521,18 +655,33 @@ def _read_parquet_arrow_schema(
     storage: Any | None = None,
     remote_key: str | None = None,
 ) -> Any:
-    import io
-    pa = _import_pyarrow()
     import pyarrow.parquet as pq
 
     if hasattr(parquet_source, 'names') and hasattr(parquet_source, 'field'):
         return parquet_source
     if isinstance(parquet_source, (Path, str)) and Path(parquet_source).is_file():
         return pq.read_schema(Path(parquet_source))
-    if storage is not None and remote_key is not None and callable(getattr(storage, 'get_bytes', None)):
-        raw = storage.get_bytes(remote_key)
-        return pq.read_schema(io.BytesIO(raw))
+    if (
+        storage is not None
+        and remote_key is not None
+        and callable(getattr(storage, 'head_object', None))
+        and callable(getattr(storage, 'get_bytes', None))
+    ):
+        with _StorageRangeFile(storage, remote_key) as rf:
+            return pq.ParquetFile(rf).schema_arrow
     raise FileNotFoundError(f'Cannot read Parquet schema from {parquet_source!r}')
+
+
+def _find_schema_object_mut(contract: dict[str, Any], table_name: str) -> dict[str, Any]:
+    schemas = contract.get('schema')
+    if not isinstance(schemas, list) or not schemas:
+        raise ValueError('ODCS contract must define nonempty schema list')
+    for item in schemas:
+        if isinstance(item, dict) and item.get('name') == table_name:
+            return item
+    if len(schemas) == 1 and isinstance(schemas[0], dict):
+        return schemas[0]
+    raise ValueError(f'ODCS contract has no schema object matching table {table_name!r}')
 
 
 def _build_drift_annotated_contract(
@@ -544,7 +693,7 @@ def _build_drift_annotated_contract(
 ) -> dict[str, Any]:
     """Create a deep-copied ODCS contract annotated for documented SQL drift without mutating canonical."""
     contract = deepcopy(dict(canonical_contract))
-    schema_obj = contract['schema'][0]
+    schema_obj = _find_schema_object_mut(contract, table_name)
     props = schema_obj.setdefault('properties', [])
     spec = DOCUMENTED_LIVE_SQL_DRIFT[table_name]
 
@@ -572,11 +721,15 @@ def _build_drift_annotated_contract(
             items = prop.setdefault('items', {})
             nested_props = items.setdefault('properties', [])
             existing_nested = {np.get('name') for np in nested_props if isinstance(np, Mapping)}
-            for div in divergences:
+            ordered_divs = sorted(
+                divergences,
+                key=lambda d: d['struct_index'] if isinstance(d.get('struct_index'), int) else len(nested_props),
+            )
+            for div in ordered_divs:
                 sub = div['struct_field']
                 if sub in existing_nested:
                     continue
-                nested_props.append({
+                new_prop = {
                     'name': sub,
                     'required': False,
                     **_odcs_type_for_documented_kind(div['type']),
@@ -585,7 +738,27 @@ def _build_drift_annotated_contract(
                         {'property': 'documentedProducerSqlDrift', 'value': True},
                         {'property': 'absentFromCanonicalReleaseSchema', 'value': True},
                     ],
-                })
+                }
+                idx_val = div.get('struct_index')
+                if isinstance(idx_val, int) and 0 <= idx_val <= len(nested_props):
+                    nested_props.insert(idx_val, new_prop)
+                else:
+                    nested_props.append(new_prop)
+                existing_nested.add(sub)
+
+            struct_orders = [tuple(d['struct_order']) for d in ordered_divs if isinstance(d.get('struct_order'), Sequence)]
+            if struct_orders:
+                if len(set(struct_orders)) != 1:
+                    raise SchemaDriftError(f'Conflicting struct_order metadata on {table_name}.{target_field}[]')
+                target_order = list(struct_orders[0])
+                current_order = [np.get('name') for np in nested_props if isinstance(np, Mapping)]
+                if current_order != target_order:
+                    by_name = {np.get('name'): np for np in nested_props if isinstance(np, dict)}
+                    if set(by_name) != set(target_order):
+                        raise SchemaDriftError(
+                            f'Annotated struct fields {current_order!r} do not match observed struct_order {target_order!r}'
+                        )
+                    items['properties'] = [by_name[name] for name in target_order]
 
     custom = schema_obj.setdefault('customProperties', [])
     if not isinstance(custom, list):
@@ -696,12 +869,25 @@ def inspect_table_schema_parity(
             raise SchemaDriftError(
                 f'Unexpected Parquet schema drift on {table_name}.{target_field}[]: expected struct, got {elem_type!r}'
             )
-        extra_sub = [sf for sf in elem_type if sf.name in doc_subfields]
+
+        canon_idx = expected_schema.get_field_index(target_field)
+        canon_list_type = _unwrap_dictionary_type(expected_schema.field(canon_idx).type, pa)
+        canon_struct_order = [sf.name for sf in canon_list_type.value_field.type]
+        observed_struct_order = [sf.name for sf in elem_type]
+
+        extra_sub = [(sub_idx, sf) for sub_idx, sf in enumerate(elem_type) if sf.name in doc_subfields]
         if not extra_sub:
             raise SchemaDriftError(
                 f'Unexpected Parquet schema drift on {table_name!r}: {"; ".join(canonical_issues)}'
             )
-        for sf in extra_sub:
+        remaining_struct_order = [sf.name for sf in elem_type if sf.name not in doc_subfields]
+        if remaining_struct_order != canon_struct_order:
+            raise SchemaDriftError(
+                f'Unexpected struct field order or drift on {table_name}.{target_field}[]: '
+                f'remaining {remaining_struct_order!r} != canonical {canon_struct_order!r}'
+            )
+
+        for sub_idx, sf in extra_sub:
             expected_kind = doc_subfields[sf.name]
             if not _matches_documented_arrow_type(sf.type, expected_kind, pa):
                 raise SchemaDriftError(
@@ -711,6 +897,8 @@ def inspect_table_schema_parity(
                 'table_name': table_name,
                 'field': f'{target_field}[]',
                 'struct_field': sf.name,
+                'struct_index': sub_idx,
+                'struct_order': list(observed_struct_order),
                 'type': expected_kind,
                 'observed_arrow_type': str(sf.type),
                 'source': 'producerSqlDriftInLiveRelease',
@@ -753,6 +941,20 @@ def inspect_table_schema_parity(
         'documented_divergences': observed_divergences,
         'contract_for_sidecar': adjusted_contract,
     }
+
+
+def _divergence_signature(divergences: Sequence[Mapping[str, Any]]) -> frozenset[tuple[Any, ...]]:
+    return frozenset(
+        (
+            d.get('column'),
+            d.get('field'),
+            d.get('struct_field'),
+            d.get('struct_index'),
+            tuple(d['struct_order']) if isinstance(d.get('struct_order'), Sequence) else None,
+            d.get('type'),
+        )
+        for d in divergences
+    )
 
 
 def _format_semver_version(raw: Any) -> str:
@@ -958,6 +1160,7 @@ def build_sidecar_descriptor(
         release_id=eff_release_id,
         manifest=manifest,
         public_origin=clean_origin,
+        allow_insecure_http=allow_insecure_http,
         storage=storage,
         verify_storage_object=verify_body_text_storage,
     )
@@ -998,6 +1201,7 @@ def build_sidecar_descriptor(
             'canonical_issues': [],
             'documented_divergences': [],
         }
+        verified_shard = False
 
         members_desc: list[dict[str, Any]] = []
         entries_sorted = sorted(grouped_members[tname], key=lambda item: item[1])
@@ -1013,9 +1217,12 @@ def build_sidecar_descriptor(
                 raise ValueError(f'Manifest file {filename!r} requires positive int size, got {size!r}')
             if type(rows) is not int or rows < 0:
                 raise ValueError(f'Manifest file {filename!r} requires non-negative int rows, got {rows!r}')
-            md5 = entry.get('md5')
-            if md5 is not None and (not isinstance(md5, str) or not _HEX32_RE.fullmatch(md5)):
-                raise ValueError(f'Manifest file {filename!r} requires 32-hex md5, got {md5!r}')
+            md5_hex = entry.get('md5')
+            if md5_hex is not None and (not isinstance(md5_hex, str) or not _HEX32_RE.fullmatch(md5_hex)):
+                raise ValueError(f'Manifest file {filename!r} requires 32-hex md5, got {md5_hex!r}')
+            footer_sha = entry.get('footer_sha256')
+            if footer_sha is not None and (not isinstance(footer_sha, str) or not _HEX64_RE.fullmatch(footer_sha)):
+                raise ValueError(f'Manifest file {filename!r} requires 64-hex footer_sha256, got {footer_sha!r}')
 
             member_dict: dict[str, Any] = {
                 'remote_key': remote_key,
@@ -1026,10 +1233,10 @@ def build_sidecar_descriptor(
                 'output_name': f'{tname}__{idx}' if multi else tname,
                 'allow_insecure_http': allow_insecure_http,
             }
-            if md5 is not None:
-                member_dict['md5'] = md5
-            if entry.get('footer_sha256') is not None:
-                member_dict['footer_sha256'] = entry['footer_sha256']
+            if md5_hex is not None:
+                member_dict['md5'] = md5_hex
+            if footer_sha is not None:
+                member_dict['footer_sha256'] = footer_sha
             members_desc.append(member_dict)
 
             candidate_path: Path | None = None
@@ -1050,13 +1257,20 @@ def build_sidecar_descriptor(
                 checked = None
 
             if checked is not None:
-                if (
-                    table_parity['status'] != 'not_verified_locally'
-                    and checked['status'] != table_parity['status']
-                ):
-                    raise SchemaDriftError(f'Inconsistent shard schemas on table {tname!r}')
+                if verified_shard:
+                    if (
+                        checked['status'] != table_parity['status']
+                        or _divergence_signature(checked['documented_divergences'])
+                        != _divergence_signature(table_parity['documented_divergences'])
+                    ):
+                        raise SchemaDriftError(f'Inconsistent shard schemas on table {tname!r}')
+                elif idx > 0:
+                    raise SchemaDriftError(f'Partial shard verification missing earlier shards on table {tname!r}')
+                verified_shard = True
                 table_parity = {k: v for k, v in checked.items() if k != 'contract_for_sidecar'}
                 contract_for_sidecar = checked['contract_for_sidecar']
+            elif verified_shard:
+                raise SchemaDriftError(f'Partial shard verification missing later shard {filename!r} on table {tname!r}')
 
         if table_parity['status'] == 'documented_sql_drift':
             documented_drift_tables.append(tname)
@@ -1307,7 +1521,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument('--public-origin', default=DEFAULT_PUBLIC_ORIGIN, help=f'Public HTTPS origin (default: {DEFAULT_PUBLIC_ORIGIN}).')
     parser.add_argument('--sidecar-prefix', default=DEFAULT_SIDECAR_PREFIX, help=f'Isolated additive sidecar prefix (default: {DEFAULT_SIDECAR_PREFIX}).')
     parser.add_argument('--bucket', default=DEFAULT_BUCKET, help=f'Target S3/R2 bucket name (default: {DEFAULT_BUCKET}).')
-    parser.add_argument('--expected-prior-release-id', default=None, help='Expected live sidecar release_id for CAS writes (use empty string or --expect-absent when uninitialized).')
+    parser.add_argument('--expected-prior-release-id', default=None, help='Expected live sidecar release_id for CAS writes (cannot be combined with --expect-absent).')
     parser.add_argument('--expect-absent', action='store_true', help='Require the live sidecar current.json pointer to be absent.')
     parser.add_argument('--dry-run', action='store_true', help='Validate descriptor, schema parity, and DDK dry-run plan without publishing.')
     parser.add_argument('--publish', action='store_true', help='Publish sidecar metadata only (0 Parquet PUTs) and run readback verification.')
@@ -1317,11 +1531,25 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, (set, frozenset)):
+        return sorted((_json_safe(v) for v in value), key=str)
+    if isinstance(value, Mapping):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    if isinstance(value, Path):
+        return str(value)
+    return value
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(list(argv) if argv is not None else None)
     if args.dry_run and args.publish:
         parser.error('Cannot specify both --dry-run and --publish')
+    if args.expect_absent and args.expected_prior_release_id is not None:
+        parser.error('Cannot specify both --expect-absent and --expected-prior-release-id')
 
     if args.expect_absent:
         exp_prior: Any = None
@@ -1329,6 +1557,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         exp_prior = args.expected_prior_release_id or None
     else:
         exp_prior = _SENTINEL
+
+    storage: _BotoSidecarStorage | None = None
+    if args.publish:
+        _load_ddk_publication()
+        boto_client = _create_boto_client_from_env()
+        storage = _BotoSidecarStorage(
+            boto_client,
+            bucket=args.bucket,
+            sidecar_prefix=args.sidecar_prefix,
+        )
 
     descriptor = build_sidecar_descriptor(
         args.release_dir,
@@ -1338,6 +1576,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         bucket=args.bucket,
         body_text_pointer=args.body_text_pointer,
         allow_insecure_http=args.allow_insecure_http,
+        storage=storage,
+        verify_storage_schemas=bool(args.publish),
+        verify_body_text_storage=bool(args.publish),
     )
 
     result: dict[str, Any] = {
@@ -1355,13 +1596,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     }
 
     if args.publish:
-        _load_ddk_publication()
-        boto_client = _create_boto_client_from_env()
-        storage = _BotoSidecarStorage(
-            boto_client,
-            bucket=descriptor['bucket'],
-            sidecar_prefix=descriptor['sidecar_prefix'],
-        )
+        assert storage is not None
         with tempfile.TemporaryDirectory(prefix='ct-ddk-sidecar-') as tmpdir:
             tmp_path = Path(tmpdir)
             bundle = build_sidecar_bundle(
@@ -1386,22 +1621,39 @@ def main(argv: Sequence[str] | None = None) -> int:
                 _load_ddk_publication()
             result['sidecar_status'] = 'descriptor_verified_ddk_unavailable'
         else:
+            dp = _load_ddk_publication()
+            local_paths = descriptor.get('local_parquet_paths') or None
+            if exp_prior is _SENTINEL or exp_prior is None:
+                eff_dry_prior = None
+                dry_expected_pointer = dp.ExpectedPointer.absent()
+                dry_live_bytes: bytes | None = None
+                dry_live_etag: str | None = None
+            else:
+                eff_dry_prior = exp_prior
+                dry_live_bytes = json.dumps({'release_id': exp_prior}, sort_keys=True).encode('utf-8')
+                dry_live_etag = 'dryrun-prior-etag'
+                dry_expected_pointer = dp.ExpectedPointer.present(
+                    dry_live_etag,
+                    sha256(dry_live_bytes).hexdigest(),
+                    len(dry_live_bytes),
+                )
             with tempfile.TemporaryDirectory(prefix='ct-ddk-sidecar-') as tmpdir:
                 tmp_path = Path(tmpdir)
-                local_paths = descriptor.get('local_parquet_paths') or None
                 bundle = build_sidecar_bundle(
                     descriptor,
                     output_dir=tmp_path / 'catalog',
                     bundle_dir=tmp_path / 'bundle',
-                    expected_prior_release_id=None if exp_prior is _SENTINEL else exp_prior,
+                    expected_pointer=dry_expected_pointer,
+                    expected_prior_release_id=eff_dry_prior,
                     allow_insecure_http=args.allow_insecure_http,
                     verify_schema_parity=bool(local_paths),
                     local_parquet_paths=local_paths,
                 )
                 dry_receipt = dry_run_sidecar(
                     bundle,
-                    expected_prior_release_id=None if exp_prior is _SENTINEL else exp_prior,
-                    live_pointer_bytes=None if exp_prior in {_SENTINEL, None} else json.dumps({'release_id': exp_prior}).encode('utf-8'),
+                    expected_prior_release_id=eff_dry_prior,
+                    live_pointer_bytes=dry_live_bytes,
+                    live_pointer_etag=dry_live_etag,
                     member_paths=local_paths,
                     verify_schema_parity=bool(local_paths),
                     verify_member_bytes=bool(local_paths),
@@ -1410,7 +1662,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             result['sidecar_status'] = 'dry_run_passed'
             result['dry_run'] = dry_receipt
 
-    encoded = json.dumps(result, indent=2, sort_keys=True) + '\n'
+    encoded = json.dumps(_json_safe(result), indent=2, sort_keys=True) + '\n'
     if args.out is not None:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(encoded, encoding='utf-8')
@@ -1429,6 +1681,7 @@ __all__ = [
     'SERENEDB_ITERATOR_SYMBOL',
     'SchemaDriftError',
     '_BotoSidecarStorage',
+    '_StorageRangeFile',
     'build_arg_parser',
     'build_sidecar_bundle',
     'build_sidecar_descriptor',

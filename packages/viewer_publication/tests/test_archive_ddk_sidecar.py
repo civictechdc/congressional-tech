@@ -4,6 +4,7 @@ from __future__ import annotations
 from copy import deepcopy
 from hashlib import md5, sha256
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import inspect
 import io
 import json
 from pathlib import Path
@@ -38,12 +39,13 @@ class _BytesBody:
 
 
 class _InMemoryBotoClient:
-    """Minimal boto3 S3-compatible client supporting ETag CAS preconditions and Range reads."""
+    """Minimal boto3 S3-compatible client supporting ETag CAS preconditions, Range reads, and list_objects_v2."""
 
     def __init__(self, store: dict[str, dict[str, object]] | None = None, *, max_attempts: int = 1):
         self.meta = SimpleNamespace(config=Config(retries={'total_max_attempts': max_attempts}))
         self.store: dict[str, dict[str, object]] = store if store is not None else {}
         self.put_calls: list[dict[str, object]] = []
+        self.get_calls: list[dict[str, object]] = []
 
     def _client_error(self, code: str, message: str, status_code: int) -> ClientError:
         return ClientError(
@@ -68,7 +70,16 @@ class _InMemoryBotoClient:
             'ContentType': item['content_type'],
         }
 
+    def list_objects_v2(self, *, Bucket: str, Prefix: str = '', ContinuationToken: str | None = None) -> dict[str, object]:
+        contents = [
+            {'Key': k, 'Size': len(bytes(v['body']))}
+            for k, v in sorted(self.store.items())
+            if k.startswith(Prefix)
+        ]
+        return {'Contents': contents, 'IsTruncated': False}
+
     def get_object(self, *, Bucket: str, Key: str, Range: str | None = None, IfMatch: str | None = None) -> dict[str, object]:
+        self.get_calls.append({'Bucket': Bucket, 'Key': Key, 'Range': Range, 'IfMatch': IfMatch})
         item = self.store.get(Key)
         if item is None:
             raise self._client_error('NoSuchKey', f'Missing {Key}', 404)
@@ -241,6 +252,24 @@ def _write_empty_parquet_from_schema(path: Path, schema: pa.Schema) -> dict[str,
     }
 
 
+def _make_drifted_roll_call_votes_schema(contracts: dict[str, dict[str, object]]) -> tuple[pa.Schema, pa.Schema, int, pa.Field, pa.StructType]:
+    """Build roll_call_votes Arrow schema matching SPICY_SCHEMAS with nomination_id at struct index 2."""
+    rcv_canon = archive_odcs.odcs_object_to_arrow_schema(
+        sidecar._schema_object_from_contract(contracts['roll_call_votes'], 'roll_call_votes'), pa=pa,
+    )
+    doc_idx = rcv_canon.get_field_index('documents')
+    doc_field = rcv_canon.field(doc_idx)
+    doc_elem = doc_field.type.value_field
+    canon_fields = list(doc_elem.type)
+    # SPICY_SCHEMAS['spicy_roll_call_votes']['documents'] places nomination_id at index 2 (after congress, name)
+    drifted_struct_fields = canon_fields[:2] + [pa.field('nomination_id', pa.string())] + canon_fields[2:]
+    drifted_struct = pa.struct(drifted_struct_fields)
+    drifted_docs = pa.field('documents', pa.list_(pa.field(doc_elem.name, drifted_struct, nullable=doc_elem.nullable)))
+    rcv_fields = [drifted_docs if i == doc_idx else f for i, f in enumerate(rcv_canon)]
+    # Reverse top-level column order matching SELECT * FROM roll_call_votes_export behavior
+    return rcv_canon, pa.schema(list(reversed(rcv_fields))), doc_idx, doc_elem, drifted_struct
+
+
 def _build_fixture_five_table_dir(tmp_path: Path) -> tuple[Path, dict[str, object]]:
     manifest = json.loads((FIXTURE_RELEASE_DIR / 'manifest.json').read_text(encoding='utf-8'))
     target_names = {'committees.parquet', 'links.parquet', 'recoveries.parquet', 'sources.parquet', 'urls.parquet'}
@@ -302,7 +331,60 @@ def test_build_sidecar_descriptor_deterministic_zero_copy_and_body_text_binding(
     assert pointer['key'] in product['context']['instructions']
 
 
-def test_capture_profile_v2_extends_url_state_contract(tmp_path: Path) -> None:
+def test_validate_public_origin_and_manifest_edge_guards(tmp_path: Path) -> None:
+    assert sidecar.validate_public_origin('https://congressional-data.spicygov.ai/') == 'https://congressional-data.spicygov.ai'
+    assert sidecar.validate_public_origin('http://127.0.0.1:8080', allow_insecure_http=True) == 'http://127.0.0.1:8080'
+    assert sidecar.validate_public_origin('https://127.0.0.1:8443', allow_insecure_http=True) == 'https://127.0.0.1:8443'
+
+    for bad in (
+        '',
+        'ftp://congressional-data.spicygov.ai',
+        'https://user:pass@congressional-data.spicygov.ai',
+        'https://@congressional-data.spicygov.ai',
+        'https://congressional-data.spicygov.ai/subpath',
+        'https://congressional-data.spicygov.ai?q=1',
+        'https://congressional-data.spicygov.ai#frag',
+        'https://10.0.0.1',
+        'https://169.254.169.254',
+        'https://0.0.0.0',
+        'https://[::ffff:127.0.0.1]',
+        'https://127.0.0.1',
+        'https://localhost',
+        'http://congressional-data.spicygov.ai',
+    ):
+        with pytest.raises(ValueError):
+            sidecar.validate_public_origin(bad)
+
+    # Http non-loopback rejected even when allow_insecure_http=True
+    with pytest.raises(ValueError, match='disallowed IP'):
+        sidecar.validate_public_origin('http://10.0.0.5', allow_insecure_http=True)
+    with pytest.raises(ValueError, match='loopback'):
+        sidecar.validate_public_origin('http://congressional-data.spicygov.ai', allow_insecure_http=True)
+
+    # Malformed manifest rejections
+    with pytest.raises(ValueError, match='64-hex release_id'):
+        sidecar.resolve_release_manifest({'schema_version': 1, 'release_id': 'short', 'files': [{'name': 'a.parquet'}]})
+    with pytest.raises(ValueError, match='nonempty files list'):
+        sidecar.resolve_release_manifest({'schema_version': 1, 'release_id': 'a' * 64, 'files': []})
+    bad_json = tmp_path / 'bad.json'
+    bad_json.write_text('[]', encoding='utf-8')
+    with pytest.raises(ValueError, match='must be a JSON object'):
+        sidecar.resolve_release_manifest(bad_json)
+
+    # Bad footer_sha256 in manifest entry and export.parquet smuggling rejected
+    rel_dir, manifest = _build_fixture_five_table_dir(tmp_path)
+    bad_footer_manifest = deepcopy(manifest)
+    bad_footer_manifest['files'][0]['footer_sha256'] = 'not-hex'
+    with pytest.raises(ValueError, match='footer_sha256'):
+        sidecar.build_sidecar_descriptor(bad_footer_manifest)
+
+    export_smuggle = deepcopy(manifest)
+    export_smuggle['files'].append({'name': 'export.parquet', 'sha256': 'a' * 64, 'size': 10, 'rows': 1})
+    with pytest.raises(ValueError, match='export.parquet'):
+        sidecar.build_sidecar_descriptor(export_smuggle)
+
+
+def test_capture_profile_v2_extends_url_state_contract_and_error_handling(tmp_path: Path) -> None:
     rel_dir = tmp_path / 'rel-v2'
     rel_dir.mkdir()
     url_contract_v1 = archive_odcs.export_odcs_contracts(include_capture_eligibility=False)['table_contracts']['url_state']
@@ -329,8 +411,24 @@ def test_capture_profile_v2_extends_url_state_contract(tmp_path: Path) -> None:
     v1_names = {p['name'] for p in url_contract_v1['schema'][0]['properties']}
     assert not ({'capture_disposition', 'capture_reason', 'capture_decision_id'} & v1_names)
 
+    # Non-404 errors in remote capture_profile.json lookup MUST re-raise (never silently swallowed!)
+    class _BrokenStorage:
+        def get_bytes(self, key: str) -> bytes:
+            raise ClientError({'Error': {'Code': 'InternalError'}, 'ResponseMetadata': {'HTTPStatusCode': 500}}, 'GetObject')
 
-def test_body_text_ssot_rejects_mismatched_release_and_detail(tmp_path: Path) -> None:
+    with pytest.raises(ClientError):
+        sidecar.detect_capture_profile_v2(manifest, storage=_BrokenStorage())
+
+    # Remote non-dict JSON capture_profile.json MUST fail loudly
+    class _ArrayProfileStorage:
+        def get_bytes(self, key: str) -> bytes:
+            return b'[1, 2, 3]'
+
+    with pytest.raises(ValueError, match='must be a JSON object'):
+        sidecar.detect_capture_profile_v2(manifest, storage=_ArrayProfileStorage())
+
+
+def test_body_text_ssot_rejects_mismatched_release_detail_and_remote_edges(tmp_path: Path) -> None:
     rel_dir, manifest = _build_fixture_five_table_dir(tmp_path)
     release_id = manifest['release_id']
     wrong_pointer = _sample_body_text_pointer('b' * 64)
@@ -356,6 +454,71 @@ def test_body_text_ssot_rejects_mismatched_release_and_detail(tmp_path: Path) ->
     assert bound is not None
     assert bound['detail'] == {'sha256': 'c' * 64, 'size': 1234}
 
+    # Edge cases: public_origin validation inside validate_body_text_ssot_binding, bad sha256/bytes/footer_sha256
+    with pytest.raises(ValueError, match='disallowed IP'):
+        sidecar.validate_body_text_ssot_binding(
+            valid_detail_ptr, release_id=release_id, manifest=detail_manifest, public_origin='http://127.0.0.1:8080',
+        )
+    for field, bad_val in (
+        ('sha256', 'xyz'),
+        ('bytes', -1),
+        ('bytes', True),
+        ('footer_sha256', '1234'),
+    ):
+        bad_ptr = deepcopy(valid_detail_ptr)
+        bad_ptr[field] = bad_val
+        with pytest.raises(ValueError):
+            sidecar.validate_body_text_ssot_binding(bad_ptr, release_id=release_id, manifest=detail_manifest)
+
+    # Remote pointer lookup + verify_storage_object size check + non-dict JSON rejection
+    client = _InMemoryBotoClient()
+    storage = sidecar._BotoSidecarStorage(client, bucket='bkt')
+    bt_payload = b'PARQUET-STUB-BODY-TEXT'
+    ptr = _sample_body_text_pointer(release_id, payload=bt_payload)
+    client.store['derived/body_text/current.json'] = {
+        'body': json.dumps(ptr).encode('utf-8'),
+        'etag': 'e1',
+        'content_type': 'application/json',
+        'cache_control': 'no-store',
+    }
+    client.store[ptr['key']] = {
+        'body': b'WRONG_SIZE',
+        'etag': 'e2',
+        'content_type': 'application/vnd.apache.parquet',
+        'cache_control': 'immutable',
+    }
+    with pytest.raises(ValueError, match='disagrees with pointer'):
+        sidecar.validate_body_text_ssot_binding(
+            'derived/body_text/current.json',
+            release_id=release_id,
+            manifest=manifest,
+            storage=storage,
+            verify_storage_object=True,
+        )
+    client.store[ptr['key']]['body'] = bt_payload
+    ok_remote = sidecar.validate_body_text_ssot_binding(
+        'derived/body_text/current.json',
+        release_id=release_id,
+        manifest=manifest,
+        storage=storage,
+        verify_storage_object=True,
+    )
+    assert ok_remote is not None and ok_remote['pointer_key'] == 'derived/body_text/current.json'
+
+    client.store['derived/body_text/bad.json'] = {
+        'body': b'[1, 2]',
+        'etag': 'e3',
+        'content_type': 'application/json',
+        'cache_control': 'no-store',
+    }
+    with pytest.raises(ValueError, match='must be a JSON object'):
+        sidecar.validate_body_text_ssot_binding(
+            'derived/body_text/bad.json',
+            release_id=release_id,
+            manifest=manifest,
+            storage=storage,
+        )
+
 
 def test_documented_sql_drift_reported_without_faking_parity_and_unexpected_drift_fails_closed(tmp_path: Path) -> None:
     contracts = archive_odcs.export_odcs_contracts(include_capture_eligibility=False)['table_contracts']
@@ -369,12 +532,12 @@ def test_documented_sql_drift_reported_without_faking_parity_and_unexpected_drif
     assert res_org['status'] == 'documented_sql_drift'
     assert res_org['canonical_parity_passed'] is False
     assert any(d.get('column') == 'evidence' for d in res_org['documented_divergences'])
-    # Ensure canonical parity fails closed if an UNDOCUMENTED extra column is present alongside 'evidence'
+    # Unexpected column alongside documented 'evidence' fails closed
     org_unexpected = pa.schema(list(org_drift_schema) + [pa.field('mystery_col', pa.string())])
     with pytest.raises(sidecar.SchemaDriftError, match='Unexpected Parquet schema drift'):
         sidecar.inspect_table_schema_parity('organization_ids', org_unexpected, contracts['organization_ids'])
 
-    # 2) witness_organizations: documented extra columns ('method', 'score', 'evidence')
+    # 2) witness_organizations: documented extra columns ('method', 'score', 'evidence') with Float64 / f64
     wo_canon = archive_odcs.odcs_object_to_arrow_schema(
         sidecar._schema_object_from_contract(contracts['witness_organizations'], 'witness_organizations'), pa=pa,
     )
@@ -387,6 +550,9 @@ def test_documented_sql_drift_reported_without_faking_parity_and_unexpected_drif
     assert res_wo['status'] == 'documented_sql_drift'
     assert res_wo['canonical_parity_passed'] is False
     assert {d['column'] for d in res_wo['documented_divergences']} == {'method', 'score', 'evidence'}
+    score_prop = next(p for p in res_wo['contract_for_sidecar']['schema'][0]['properties'] if p['name'] == 'score')
+    assert score_prop['physicalType'] == 'Float64'
+    assert score_prop['logicalTypeOptions'] == {'format': 'f64'}
     # Wrong Arrow type on documented 'score' fails closed
     wo_bad_type = pa.schema(
         list(wo_canon) + [pa.field('method', pa.string()), pa.field('score', pa.string()), pa.field('evidence', pa.string())]
@@ -394,32 +560,53 @@ def test_documented_sql_drift_reported_without_faking_parity_and_unexpected_drif
     with pytest.raises(sidecar.SchemaDriftError, match='unexpected Arrow type'):
         sidecar.inspect_table_schema_parity('witness_organizations', wo_bad_type, contracts['witness_organizations'])
 
-    # 3) roll_call_votes: documented extra documents[].nomination_id (string), even with reversed top-level column order
-    rcv_canon = archive_odcs.odcs_object_to_arrow_schema(
-        sidecar._schema_object_from_contract(contracts['roll_call_votes'], 'roll_call_votes'), pa=pa,
-    )
-    doc_idx = rcv_canon.get_field_index('documents')
-    doc_field = rcv_canon.field(doc_idx)
-    doc_elem = doc_field.type.value_field
-    drifted_struct = pa.struct(list(doc_elem.type) + [pa.field('nomination_id', pa.string())])
-    drifted_docs = pa.field('documents', pa.list_(pa.field(doc_elem.name, drifted_struct, nullable=doc_elem.nullable)))
-    rcv_fields = [drifted_docs if i == doc_idx else f for i, f in enumerate(rcv_canon)]
-    rcv_drift_schema = pa.schema(list(reversed(rcv_fields)))
+    # 3) roll_call_votes: nomination_id at exact struct index 2 (matching SPICY_SCHEMAS['spicy_roll_call_votes']['documents'])
+    rcv_canon, rcv_drift_schema, doc_idx, doc_elem, drifted_struct = _make_drifted_roll_call_votes_schema(contracts)
     res_rcv = sidecar.inspect_table_schema_parity('roll_call_votes', rcv_drift_schema, contracts['roll_call_votes'])
     assert res_rcv['status'] == 'documented_sql_drift'
     assert res_rcv['canonical_parity_passed'] is False
     assert res_rcv['documented_divergences'][0]['struct_field'] == 'nomination_id'
+    assert res_rcv['documented_divergences'][0]['struct_index'] == 2
+    docs_prop = next(p for p in res_rcv['contract_for_sidecar']['schema'][0]['properties'] if p['name'] == 'documents')
+    nested_names = [sp['name'] for sp in docs_prop['items']['properties']]
+    assert nested_names[2] == 'nomination_id'
+    assert nested_names == ['congress', 'name', 'nomination_id', 'number', 'short_title', 'title', 'type']
+
+    # Canonical struct field reordering inside roll_call_votes.documents[] MUST fail closed
+    reordered_fields = list(drifted_struct)
+    reordered_fields[-1], reordered_fields[-2] = reordered_fields[-2], reordered_fields[-1]
+    reordered_docs = pa.field('documents', pa.list_(pa.field(doc_elem.name, pa.struct(reordered_fields))))
+    with pytest.raises(sidecar.SchemaDriftError, match='struct field order'):
+        sidecar.inspect_table_schema_parity(
+            'roll_call_votes',
+            pa.schema([reordered_docs if i == doc_idx else f for i, f in enumerate(rcv_canon)]),
+            contracts['roll_call_votes'],
+        )
+
     # Unexpected extra struct field inside roll_call_votes.documents[] fails closed
     bad_struct = pa.struct(list(drifted_struct) + [pa.field('bogus_sub', pa.string())])
     bad_docs = pa.field('documents', pa.list_(pa.field(doc_elem.name, bad_struct)))
-    with pytest.raises(sidecar.SchemaDriftError, match='Unexpected Parquet schema drift'):
+    with pytest.raises(sidecar.SchemaDriftError, match='struct field order'):
         sidecar.inspect_table_schema_parity(
             'roll_call_votes',
             pa.schema([bad_docs if i == doc_idx else f for i, f in enumerate(rcv_canon)]),
             contracts['roll_call_votes'],
         )
 
-    # 4) Standard non-drift table (committees) fails closed on any extra column
+    # 4) Multi-shard inconsistent drift on organization_ids (shard 0 has 'evidence', shard 1 does not) MUST fail closed!
+    shard_dir = tmp_path / 'shards'
+    shard_dir.mkdir()
+    e0 = _write_empty_parquet_from_schema(shard_dir / 'organization_ids-00.parquet', org_drift_schema)
+    e1 = _write_empty_parquet_from_schema(shard_dir / 'organization_ids-01.parquet', org_canon)
+    e0['table_name'] = 'organization_ids'
+    e1['table_name'] = 'organization_ids'
+    with pytest.raises(sidecar.SchemaDriftError, match='Inconsistent shard schemas'):
+        sidecar.build_sidecar_descriptor({'schema_version': 1, 'release_id': 'f' * 64, 'files': [e0, e1]}, local_parquet_paths={
+            'viewer-publications/releases/' + 'f' * 64 + '/organization_ids-00.parquet': shard_dir / 'organization_ids-00.parquet',
+            'viewer-publications/releases/' + 'f' * 64 + '/organization_ids-01.parquet': shard_dir / 'organization_ids-01.parquet',
+        })
+
+    # 5) Standard non-drift table (committees) fails closed on any extra column
     com_canon = archive_odcs.odcs_object_to_arrow_schema(
         sidecar._schema_object_from_contract(contracts['committees'], 'committees'), pa=pa,
     )
@@ -431,14 +618,19 @@ def test_documented_sql_drift_reported_without_faking_parity_and_unexpected_drif
         )
 
 
-def test_boto_sidecar_storage_guards_zero_parquet_and_isolated_prefix() -> None:
+def test_storage_range_reader_and_boto_sidecar_guards() -> None:
     client = _InMemoryBotoClient()
     storage = sidecar._BotoSidecarStorage(client, bucket='test-bucket')
 
+    # Uppercase .PARQUET, traversal, outside prefix, pointer_key outside prefix
     with pytest.raises(ValueError, match='forbids writing Parquet'):
-        storage.put_bytes('ddk-catalogs/congressional-tech/releases/r1/committees.parquet', b'PAR1')
+        storage.put_bytes('ddk-catalogs/congressional-tech/releases/r1/committees.PARQUET', b'PAR1')
+    with pytest.raises(ValueError, match='Unsafe key'):
+        storage.put_bytes('ddk-catalogs/congressional-tech/../escape.json', b'{}')
     with pytest.raises(ValueError, match='outside isolated prefix'):
         storage.put_bytes('viewer-publications/manifest.json', b'{}')
+    with pytest.raises(ValueError, match='pointer_key'):
+        sidecar._BotoSidecarStorage(client, bucket='test-bucket', pointer_key='viewer-publications/current.json')
     with pytest.raises(ValueError, match='sidecar_prefix'):
         sidecar.validate_sidecar_prefix('viewer-publications/sub')
     with pytest.raises(ValueError, match='sidecar_prefix'):
@@ -449,7 +641,17 @@ def test_boto_sidecar_storage_guards_zero_parquet_and_isolated_prefix() -> None:
     with pytest.raises(ValueError, match='retries'):
         sidecar._BotoSidecarStorage(bad_client, bucket='test-bucket')
 
-    # Verify CacheControl and CAS translations
+    # ConditionalRequestConflict (HTTP 409) MUST map to 412 / CATALOG-REMOTE-CONFLICT
+    class _Conflict409Client(_InMemoryBotoClient):
+        def put_object(self, **kwargs):  # type: ignore[override]
+            raise self._client_error('ConditionalRequestConflict', '409 conflict', 409)
+
+    storage_409 = sidecar._BotoSidecarStorage(_Conflict409Client(), bucket='test-bucket')
+    with pytest.raises(Exception) as conflict_409:
+        storage_409.put_bytes('ddk-catalogs/congressional-tech/current.json', b'{}', if_none_match=True)
+    assert getattr(conflict_409.value, 'code', None) == 'CATALOG-REMOTE-CONFLICT'
+
+    # CacheControl + IfMatch CAS preconditions + 404
     put_res = storage.put_bytes(
         'ddk-catalogs/congressional-tech/current.json',
         b'{"release_id":"r1"}',
@@ -460,14 +662,40 @@ def test_boto_sidecar_storage_guards_zero_parquet_and_isolated_prefix() -> None:
     with pytest.raises(Exception) as conflict_exc:
         storage.put_bytes('ddk-catalogs/congressional-tech/current.json', b'{}', if_none_match=True)
     assert getattr(conflict_exc.value, 'code', None) == 'CATALOG-REMOTE-CONFLICT'
+    # Wrong IfMatch fails CAS; matching IfMatch updates cleanly
+    with pytest.raises(Exception) as mismatch_exc:
+        storage.put_bytes('ddk-catalogs/congressional-tech/current.json', b'{}', if_match='wrong-etag')
+    assert getattr(mismatch_exc.value, 'code', None) == 'CATALOG-REMOTE-CONFLICT'
+    put_res2 = storage.put_bytes(
+        'ddk-catalogs/congressional-tech/current.json',
+        b'{"release_id":"r2"}',
+        if_match=put_res['etag'],
+    )
+    assert put_res2['bytes'] == 19
     with pytest.raises(Exception) as missing_exc:
         storage.head_object('ddk-catalogs/congressional-tech/missing.json')
     assert getattr(missing_exc.value, 'code', None) == 'CATALOG-OBJECT-MISSING'
-    assert storage.get_bytes('ddk-catalogs/congressional-tech/current.json', byte_range=(0, 9)) == b'{"release_'
-    assert put_res['bytes'] == 19
+
+    # Verify remote Parquet schema check uses ONLY byte-range reads (never full-object GET with Range=None)
+    contracts = archive_odcs.export_odcs_contracts()['table_contracts']
+    pq_bytes = (FIXTURE_RELEASE_DIR / 'committees.parquet').read_bytes()
+    remote_pq_key = 'viewer-publications/releases/' + 'a' * 64 + '/committees.parquet'
+    client.store[remote_pq_key] = {
+        'body': pq_bytes,
+        'etag': md5(pq_bytes).hexdigest(),
+        'content_type': 'application/vnd.apache.parquet',
+        'cache_control': 'public,max-age=31536000,immutable',
+    }
+    client.get_calls.clear()
+    res = sidecar.inspect_table_schema_parity(
+        'committees', remote_pq_key, contracts['committees'], storage=storage, remote_key=remote_pq_key,
+    )
+    assert res['status'] == 'passed'
+    assert client.get_calls
+    assert all(c['Range'] is not None for c in client.get_calls)
 
 
-def test_archive_publish_post_flip_sidecar_hook_ordering_and_failure_isolation(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_archive_publish_commit_and_candidate_post_flip_sidecar_hooks(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     client = _InMemoryBotoClient()
     live_manifest = json.dumps({'release_id': '1' * 64}).encode('utf-8')
     client.put_object(Bucket='bkt', Key=archive_publish.POINTER, Body=live_manifest)
@@ -490,6 +718,8 @@ def test_archive_publish_post_flip_sidecar_hook_ordering_and_failure_isolation(m
 
     def fake_gate_and_flip(cli, *, bucket, release_id, previous_release_id, expected_etag, contract, canary, manifest_origin, comparison_acceptance, before_flip):
         events.append('gate_and_flip')
+        if callable(canary):
+            canary()
         cli.put_object(Bucket=bucket, Key=archive_publish.POINTER, Body=json.dumps({'release_id': release_id}).encode('utf-8'))
         return SimpleNamespace(etag='etag-new-1', reconciled=False)
 
@@ -502,7 +732,7 @@ def test_archive_publish_post_flip_sidecar_hook_ordering_and_failure_isolation(m
     monkeypatch.setattr(archive_publish, 'gate_and_flip', fake_gate_and_flip)
     monkeypatch.setattr(archive_publish, 'clear_staged_pointer', wrapped_clear)
 
-    # 1) Hook runs strictly AFTER gate_and_flip & clear_staged_pointer
+    # 1) commit_staged_release runs hook strictly AFTER gate_and_flip & clear_staged_pointer
     def ok_hook(*, release_id, status, pointer_etag, **_kw):
         assert status['status'] == 'published'
         assert status['live_release'] == release_id
@@ -552,11 +782,7 @@ def test_archive_publish_post_flip_sidecar_hook_ordering_and_failure_isolation(m
 
     # 3) If gate_and_flip fails before flipping pointer, post_flip_sidecar MUST NOT run
     called_on_gate_fail = []
-
-    def abort_gate(*_a, **_kw):
-        raise ValueError('gate failed')
-
-    monkeypatch.setattr(archive_publish, 'gate_and_flip', abort_gate)
+    monkeypatch.setattr(archive_publish, 'gate_and_flip', lambda *_a, **_kw: (_ for _ in ()).throw(ValueError('gate failed')))
     with pytest.raises(ValueError, match='gate failed'):
         archive_publish.commit_staged_release(
             client=client,
@@ -571,8 +797,119 @@ def test_archive_publish_post_flip_sidecar_hook_ordering_and_failure_isolation(m
         )
     assert called_on_gate_fail == []
 
+    # 4) publish_candidate: stage_only=True skips hook; stage_only=False invokes hook strictly post-flip & isolates failure
+    assert inspect.signature(archive_publish.publish_candidate).parameters['post_flip_sidecar'].default is None
+    cand_client = _InMemoryBotoClient()
+    rel_dir = tmp_path / 'cand-rel'
+    rel_dir.mkdir()
+    pq_bytes = (FIXTURE_RELEASE_DIR / 'committees.parquet').read_bytes()
+    (rel_dir / 'committees.parquet').write_bytes(pq_bytes)
+    files = [{'name': 'committees.parquet', 'sha256': sha256(pq_bytes).hexdigest(), 'size': len(pq_bytes), 'rows': 0}]
+    cand_rid = archive_publish.release_identity(1, files)
+    cand_manifest = {'schema_version': 1, 'release_id': cand_rid, 'files': files, 'origin': {'kind': 'test'}}
+    m_bytes = json.dumps(cand_manifest).encode('utf-8')
+    m_path = rel_dir / 'manifest.json'
+    m_path.write_bytes(m_bytes)
+    r_path = rel_dir / 'result.json'
+    r_path.write_text('{}', encoding='utf-8')
 
-def test_cli_wrapper_dry_run_and_body_text_binding(tmp_path: Path) -> None:
+    in_rec = {'provenance': [], 'profile': {'schema_version': 1}, 'entity_digests': {}}
+    expected_dig = archive_publish.input_digest(receipt_keys=[], provenance=in_rec['provenance'], profile=in_rec['profile'], entity_digests=in_rec['entity_digests'], extra_pins=None)
+    in_rec['input_digest'] = expected_dig
+
+    monkeypatch.setattr(archive_publish, '_candidate', lambda *_a, **_kw: (cand_manifest, m_bytes, cand_rid, {}))
+    monkeypatch.setattr(archive_publish, 'require_release_gates', lambda *_a, **_kw: None)
+    monkeypatch.setattr(archive_publish, 'write_input_receipts', lambda *_a, **_kw: None)
+    monkeypatch.setattr(archive_publish, 'validate_receipt', lambda *_a, **_kw: None)
+    monkeypatch.setattr(
+        archive_publish,
+        'NativeArchiveStore',
+        lambda **_kw: SimpleNamespace(upload_file=lambda *_a, **_k: None),
+    )
+
+    stage_hook_calls: list[object] = []
+    staged_res = archive_publish.publish_candidate(
+        client=cand_client,
+        engine=None,
+        bucket='bkt',
+        work=tmp_path / 'work-stage',
+        release=rel_dir,
+        manifest_pin={'path': m_path},
+        result_pin={'path': r_path},
+        input_record=in_rec,
+        receipt_keys=[],
+        pointer=None,
+        expected_etag=None,
+        public_origin='https://congressional-data.spicygov.ai',
+        contract=lambda **_kw: {'status': 'passed'},
+        canary=lambda **_kw: {'status': 'passed'},
+        first_release=True,
+        stage_only=True,
+        post_flip_sidecar=lambda **_kw: stage_hook_calls.append(True),
+    )
+    assert staged_res['status'] == 'staged'
+    assert stage_hook_calls == []
+    assert 'ddk_sidecar' not in staged_res
+
+    cand_events: list[str] = []
+
+    def cand_gate_and_flip(cli, *, bucket, release_id, previous_release_id, expected_etag, contract, canary, manifest_origin, comparison_acceptance, before_flip):
+        cand_events.append('gate_and_flip')
+        canary()
+        cli.put_object(Bucket=bucket, Key=archive_publish.POINTER, Body=json.dumps({'release_id': release_id}).encode('utf-8'))
+        return SimpleNamespace(etag='etag-cand-1', reconciled=False)
+
+    monkeypatch.setattr(archive_publish, 'gate_and_flip', cand_gate_and_flip)
+    monkeypatch.setattr(archive_publish, 'clear_staged_pointer', lambda cli, *, bucket: cand_events.append('clear_staged_pointer'))
+
+    pub_res = archive_publish.publish_candidate(
+        client=cand_client,
+        engine=None,
+        bucket='bkt',
+        work=tmp_path / 'work-pub',
+        release=rel_dir,
+        manifest_pin={'path': m_path},
+        result_pin={'path': r_path},
+        input_record=in_rec,
+        receipt_keys=[],
+        pointer=None,
+        expected_etag=None,
+        public_origin='https://congressional-data.spicygov.ai',
+        contract=lambda **_kw: {'status': 'passed'},
+        canary=lambda **_kw: {'status': 'passed'},
+        first_release=True,
+        stage_only=False,
+        post_flip_sidecar=lambda **_kw: (cand_events.append('post_flip_sidecar'), {'ok': True})[1],
+    )
+    assert cand_events == ['gate_and_flip', 'clear_staged_pointer', 'post_flip_sidecar']
+    assert pub_res['status'] == 'published'
+    assert pub_res['ddk_sidecar'] == {'status': 'published', 'ok': True}
+
+    pub_fail = archive_publish.publish_candidate(
+        client=cand_client,
+        engine=None,
+        bucket='bkt',
+        work=tmp_path / 'work-fail',
+        release=rel_dir,
+        manifest_pin={'path': m_path},
+        result_pin={'path': r_path},
+        input_record=in_rec,
+        receipt_keys=[],
+        pointer=None,
+        expected_etag=None,
+        public_origin='https://congressional-data.spicygov.ai',
+        contract=lambda **_kw: {'status': 'passed'},
+        canary=lambda **_kw: {'status': 'passed'},
+        first_release=True,
+        stage_only=False,
+        post_flip_sidecar=failing_hook,
+    )
+    assert pub_fail['status'] == 'published'
+    assert pub_fail['ddk_sidecar']['status'] == 'failed'
+    assert json.loads(bytes(cand_client.store[archive_publish.POINTER]['body']))['release_id'] == cand_rid
+
+
+def test_cli_wrapper_dry_run_and_flag_validation(tmp_path: Path) -> None:
     rel_dir, manifest = _build_fixture_five_table_dir(tmp_path)
     pointer_path = tmp_path / 'body_text.json'
     pointer_path.write_text(json.dumps(_sample_body_text_pointer(manifest['release_id'])), encoding='utf-8')
@@ -599,6 +936,22 @@ def test_cli_wrapper_dry_run_and_body_text_binding(tmp_path: Path) -> None:
     assert report['zero_copy'] is True
     assert report['body_text_ssot']['release_id'] == manifest['release_id']
     assert report['parity_summary']['status'] == 'passed'
+
+    # Mutually exclusive flags --expect-absent and --expected-prior-release-id MUST fail cleanly
+    conflict = subprocess.run(
+        [
+            sys.executable,
+            str(WRAPPER_SCRIPT),
+            '--release-dir', str(rel_dir),
+            '--expect-absent',
+            '--expected-prior-release-id', 'a' * 64,
+            '--dry-run',
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert conflict.returncode != 0
 
 
 # ---------------------------------------------------------------------------
@@ -781,6 +1134,83 @@ def test_ddk_e2e_loopback_publication_iceberg_v2_cas_and_zero_parquet_puts(tmp_p
 
 
 @pytest.mark.skipif(not _HAS_DDK_BRIDGE, reason='ddk.publication external generation bridge not installed in pure-CT venv')
+def test_ddk_cli_main_dry_run_expected_prior_and_remote_publish(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    rel_dir, manifest = _build_fixture_five_table_dir(tmp_path)
+    release_id = manifest['release_id']
+    prior_id = '9' * 64
+
+    # 1) --dry-run --expected-prior-release-id <id> --require-ddk with local manifest & Parquets
+    dry_out = tmp_path / 'dry-prior.json'
+    rc = sidecar.main([
+        '--release-dir', str(rel_dir),
+        '--expected-prior-release-id', prior_id,
+        '--dry-run',
+        '--require-ddk',
+        '--out', str(dry_out),
+    ])
+    assert rc == 0
+    dry_payload = json.loads(dry_out.read_text(encoding='utf-8'))
+    assert dry_payload['sidecar_status'] == 'dry_run_passed'
+    assert dry_payload['dry_run']['status'] == 'dry_run_accepted'
+
+    # 2) --publish with remote storage key --body-text-pointer + remote Parquet schema check (no local .parquet!)
+    manifest_only_dir = tmp_path / 'manifest-only'
+    manifest_only_dir.mkdir()
+    (manifest_only_dir / 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+
+    bt_payload = b'CLI_PUBLISH_REMOTE_BODY_TEXT'
+    pointer = _sample_body_text_pointer(release_id, payload=bt_payload)
+    store: dict[str, dict[str, object]] = {
+        'derived/body_text/current.json': {
+            'body': json.dumps(pointer).encode('utf-8'),
+            'etag': 'bt-ptr-etag',
+            'content_type': 'application/json',
+            'cache_control': 'no-store',
+        },
+        pointer['key']: {
+            'body': bt_payload,
+            'etag': md5(bt_payload).hexdigest(),
+            'content_type': 'application/vnd.apache.parquet',
+            'cache_control': 'public,max-age=31536000,immutable',
+        },
+    }
+    for entry in manifest['files']:
+        raw = (rel_dir / entry['name']).read_bytes()
+        store[f'viewer-publications/releases/{release_id}/{entry["name"]}'] = {
+            'body': raw,
+            'etag': md5(raw).hexdigest(),
+            'content_type': 'application/vnd.apache.parquet',
+            'cache_control': 'public,max-age=31536000,immutable',
+        }
+    boto_cli = _InMemoryBotoClient(store)
+    monkeypatch.setattr(sidecar, '_create_boto_client_from_env', lambda: boto_cli)
+
+    with _LoopbackR2Server(store) as srv:
+        pub_out = tmp_path / 'cli-pub.json'
+        rc_pub = sidecar.main([
+            '--release-dir', str(manifest_only_dir),
+            '--public-origin', srv.base_url,
+            '--bucket', 'cli-bucket',
+            '--body-text-pointer', 'derived/body_text/current.json',
+            '--expect-absent',
+            '--publish',
+            '--allow-insecure-http',
+            '--out', str(pub_out),
+        ])
+        assert rc_pub == 0
+        pub_report = json.loads(pub_out.read_text(encoding='utf-8'))
+        assert pub_report['mode'] == 'publish'
+        assert pub_report['body_text_ssot']['pointer_key'] == 'derived/body_text/current.json'
+        assert pub_report['parity_summary']['status'] == 'passed'
+        assert pub_report['publication']['status'] == 'committed'
+        assert pub_report['put_keys']
+        assert all(not k.lower().endswith('.parquet') for k in pub_report['put_keys'])
+        # Remote Parquet schema verification issued ONLY byte-range reads (no full-file GET with Range=None)
+        parquet_gets = [c for c in boto_cli.get_calls if str(c['Key']).endswith('.parquet')]
+        assert parquet_gets and all(c['Range'] is not None for c in parquet_gets)
+
+
+@pytest.mark.skipif(not _HAS_DDK_BRIDGE, reason='ddk.publication external generation bridge not installed in pure-CT venv')
 def test_ddk_parity_bridge_handles_documented_sql_drift_tables_without_faking_parity(tmp_path: Path) -> None:
     contracts = archive_odcs.export_odcs_contracts(include_capture_eligibility=False)['table_contracts']
     dp = sidecar._load_ddk_publication()
@@ -798,15 +1228,8 @@ def test_ddk_parity_bridge_handles_documented_sql_drift_tables_without_faking_pa
         drifted = pa.schema(list(canon) + [pa.field(n, tp) for n, tp in extra])
         entries.append(_write_empty_parquet_from_schema(rel_dir / f'{tname}.parquet', drifted))
 
-    # Also test roll_call_votes documents[].nomination_id drift with reversed column order through DDK
-    rcv_canon = archive_odcs.odcs_object_to_arrow_schema(
-        sidecar._schema_object_from_contract(contracts['roll_call_votes'], 'roll_call_votes'), pa=pa,
-    )
-    doc_idx = rcv_canon.get_field_index('documents')
-    doc_elem = rcv_canon.field(doc_idx).type.value_field
-    drifted_struct = pa.struct(list(doc_elem.type) + [pa.field('nomination_id', pa.string())])
-    drifted_docs = pa.field('documents', pa.list_(pa.field(doc_elem.name, drifted_struct, nullable=doc_elem.nullable)))
-    rcv_drifted = pa.schema(list(reversed([drifted_docs if i == doc_idx else f for i, f in enumerate(rcv_canon)])))
+    # roll_call_votes documents[].nomination_id at exact struct index 2 (SPICY_SCHEMAS ordering) + reversed columns
+    _, rcv_drifted, _, _, _ = _make_drifted_roll_call_votes_schema(contracts)
     entries.append(_write_empty_parquet_from_schema(rel_dir / 'roll_call_votes.parquet', rcv_drifted))
 
     release_id = 'e' * 64
@@ -822,6 +1245,17 @@ def test_ddk_parity_bridge_handles_documented_sql_drift_tables_without_faking_pa
     assert desc['parity_summary']['status'] == 'documented_sql_drift'
     assert desc['parity_summary']['canonical_parity_passed'] is False
     assert desc['parity_summary']['documented_sql_drift_tables'] == ['organization_ids', 'roll_call_votes', 'witness_organizations']
+
+    # Directly confirm ddk.publication.verify_parquet_schema_parity passes on annotated roll_call_votes (index 2)
+    rcv_desc = next(t for t in desc['tables'] if t['table_name'] == 'roll_call_votes')
+    direct_ddk = dp.verify_parquet_schema_parity(
+        rel_dir / 'roll_call_votes.parquet',
+        rcv_desc['contract'],
+        table_name='roll_call_votes',
+        normalize_arrow_encodings=True,
+        check_column_order=False,
+    )
+    assert direct_ddk['status'] == 'passed'
 
     bundle = sidecar.build_sidecar_bundle(
         desc,
