@@ -1,6 +1,6 @@
 ---
 id: ct-lwxs
-status: open
+status: closed
 deps: []
 links: [ct-f6qv, ct-kt2o]
 created: 2026-11-09T00:51:32Z
@@ -38,3 +38,8 @@ The organization plan and the review of sample witness appearances are complete.
 **2026-11-25T22:23:00Z**
 
 2026-11-25 P3 follow-ups: `ct-aory` shipped RefSpec 1.4 (`Formspec-Labs/RefSpec#2` + PR #251 `586cbd43`, lifting `house_xml` federal coverage to `90.31%`) and closed. `ct-39u8` merged live-probe refinements, capture/qualification wiring, and AC #3 fresh 150-link hand audit (`0–1/150` wrong <= `3/150`) in PR #252 (`73575906`); `ct-39u8` and `ct-lwxs` remain open solely for live R2 `wikidata/reconcile` capture + `include_wikidata_links=True` activation.
+
+**2026-11-27T13:45:00Z**
+
+Epic closed: all four child phases (`ct-6him`, `ct-w34j` + RefSpec `ct-aory`, `ct-39u8`, `ct-lvdf`) are closed and shipped live in combined release `efd7973e200f05a15c5f9d732d343a3b2bab1ac88915d15b7053cba096d8943c` (`Archive publish` run `46007066768`, live at `2026-11-27T13:38:29Z`; PRs #254, #256, #259, #260, #261).
+- Live release summary: `50,409` canonical organizations (`9,125` Wikidata-anchored, `293` FR agency-anchored, `7` RefSpec target-anchored, `40,984` token-bag clusters), `68,563` `organization_ids`, `154,841` `witness_organizations` links (`43,969` `wikidata_auto`, `40,587` `registry`, `70,285` `token_bag`), and `11,154` 1-hop `organization_redirects` (`10,970` -> `wikidata`, `179` -> `fr_agency`, `5` -> `refspec_target`). Synchronized across R2 `manifest.json`, `derived/body_text/current.json`, SpicyEngine hybrid search (`320,671` documents, `10,874,972` passages), and hosted Cloudflare MCP (`21/21` tools passing `smoke.py`).
