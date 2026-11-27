@@ -889,10 +889,11 @@ test('cat2-pkk1 and P0-3b UI: military rank/credentials, MODS witness stubs, par
   assert(hearingOrgHtml.includes('Transit Lab')&&hearingOrgHtml.includes('archive-measure-pill'),hearingOrgHtml);
 });
 
-test('Wave 2 renders citable receipt cards, cross-branch SpicyGov/DeltaTrack links, accountability view, and passage search boundaries',async()=>{
+test('Wave 2 renders citable receipt cards, verified SpicyGov links, accountability view, and passage search boundaries',async()=>{
   const relId='efd7973e200f05a15c5f9d732d343a3b2bab1ac88915d15b7053cba096d8943c';
   const docHtml=render({
     releaseId:relId,
+    detailShard:{name:'detail-00001.parquet',rowStart:1000},
     document:{...row,measure_keys:['119-hr-475','119-pn-730-2']},
     detail,
     sources:[],
@@ -903,23 +904,27 @@ test('Wave 2 renders citable receipt cards, cross-branch SpicyGov/DeltaTrack lin
     'Copy DuckDB SQL',
     relId,
     '1111111111111111',
-    'read_parquet(',
+    'links.parquet',
+    'file_row_number=true',
+    'detail-00001.parquet',
+    'd.file_row_number + 1000 = k.list_row',
     'Explore on SpicyGov →',
-    'Diff in DeltaTrack →',
-    'bill=119-hr-475',
+    'congress_bills',
   ]){
     assert(docHtml.includes(expected),`Missing in ArchiveDetail: ${expected}`);
   }
-  assert(!docHtml.includes('bill=119-pn-730-2'),'Nominations must not emit DeltaTrack bill diff links');
+  assert(!docHtml.includes('Diff in DeltaTrack'),'DeltaTrack static diff URL must not be emitted without a verified diff route');
+  assert(!docHtml.includes('119-pn-730-2'),'Nominations must not emit SpicyGov bill links');
 
   const hearingHtml=renderToStaticMarkup(React.createElement(HearingDetail,{
     releaseId:relId,
     rawBase:'https://congressional-data.spicygov.ai/',
     meeting:{event_id:'118001',congress:118,chamber:'house',title:'Oversight Hearing',committees:[],sittings:[],coverage:[],witnesses:[],subjects:[{subject_key:'119-hr-475',bill_id:'119-hr-475'}],transcripts:[],videos:[],documents:[]},
   }));
-  for(const expected of ['Citable Receipt',relId,'118001','meetings.parquet','Explore on SpicyGov →','Diff in DeltaTrack →']){
+  for(const expected of ['Citable Receipt',relId,'118001','meetings.parquet','Explore on SpicyGov →','committee_meetings']){
     assert(hearingHtml.includes(expected),`Missing in HearingDetail: ${expected}`);
   }
+  assert(!hearingHtml.includes('Diff in DeltaTrack'));
 
   const {OrganizationDetail}=await compile('OrganizationDetail.tsx');
   const orgReceiptHtml=renderToStaticMarkup(React.createElement(OrganizationDetail,{
@@ -927,9 +932,10 @@ test('Wave 2 renders citable receipt cards, cross-branch SpicyGov/DeltaTrack lin
     rawBase:'https://congressional-data.spicygov.ai/',
     organization:{org_id:'e5b88f10d3d5a5ea',display_name:'EPA',organization_ids:[{scheme:'wikidata',value:'Q460173'},{scheme:'fr_agency',value:'145'}],appearances:[],documents:[]},
   }));
-  for(const expected of ['Citable Receipt',relId,'e5b88f10d3d5a5ea','organizations.parquet','Explore on SpicyGov →','wikidata=Q460173','fr_agency=145']){
+  for(const expected of ['Citable Receipt',relId,'e5b88f10d3d5a5ea','organizations.parquet']){
     assert(orgReceiptHtml.includes(expected),`Missing in OrganizationDetail: ${expected}`);
   }
+  assert(!orgReceiptHtml.includes('Explore on SpicyGov'),'Organizations have no supported SpicyGov URL filter route');
 
   const {AccountabilityView}=await compile('AccountabilityView.tsx');
   const accHtml=renderToStaticMarkup(React.createElement(AccountabilityView,{
@@ -998,4 +1004,102 @@ test('Wave 2 renders citable receipt cards, cross-branch SpicyGov/DeltaTrack lin
     onSwitchToMetadata:()=>{},
   }));
   assert(topOrgsHtml.includes('AI Policy Lab')&&topOrgsHtml.includes('4 matching appearances'));
+});
+
+test('Wave 2 ArchiveExplorer triggers subjects load after switching from accountability tab, gates passageRows on info.status ready, and hides unsupported activeFilters pills',async()=>{
+  const {JSDOM}=await import('jsdom');
+  const {createRoot}=await import('react-dom/client');
+  const {act}=React;
+  const dom=new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>',{url:'https://archive.test/congressional-tech/archive/'});
+  const prevWindow=globalThis.window,prevDocument=globalThis.document,prevFetch=globalThis.fetch,prevActEnv=globalThis.IS_REACT_ACT_ENVIRONMENT;
+  globalThis.window=dom.window;
+  globalThis.document=dom.window.document;
+  globalThis.IS_REACT_ACT_ENVIRONMENT=true;
+  const {Workspace,readArchiveNavigation}=await compile('ArchiveExplorer.tsx');
+
+  try{
+    const listEntitiesCalls=[];
+    const fetchCalls=[];
+    const relId='efd7973e200f05a15c5f9d732d343a3b2bab1ac88915d15b7053cba096d8943c';
+    let resolveInfo;
+    const infoPromise=new Promise(res=>{resolveInfo=res;});
+    globalThis.fetch=async(url)=>{
+      fetchCalls.push(String(url));
+      return new Response(JSON.stringify({query:'testimony',mode:'hybrid',release_id:relId,total:0,hasMore:false,tookMs:5,results:[]}),{status:200});
+    };
+    const fakeClient={
+      async request(kind){
+        if(kind==='info')return infoPromise;
+        return {total:0,rows:[],next:null};
+      },
+      async accountability(){
+        return {releaseId:relId,availability:{retiredLinks:'ready',removedOn:'ready',recoveries:'ready'},counts:{removedOn:0,hidden:0,retiredRedirected:0,retiredRemoved:0,recoveredOnly:0,withIdentityNote:0,multiEdition:0},total:0,rows:[]};
+      },
+      async listEntities(kind,args){
+        listEntitiesCalls.push({kind,args});
+        return {total:1,rows:[{subject_key:'119-hr-475',bill_id:'119-hr-475',congress:119,title:'Demo Accountability Bill'}],next:null};
+      },
+    };
+
+    function Harness({initialNav}){
+      const [nav,setNav]=React.useState(initialNav);
+      return React.createElement(Workspace,{
+        client:fakeClient,
+        nav,
+        navigate:change=>setNav(prev=>({...prev,...change})),
+        rawBase:'https://congressional-data.spicygov.ai/',
+      });
+    }
+
+    const container=dom.window.document.getElementById('root');
+    const root=createRoot(container);
+
+    // 1. Deep-linked passages mode waits for info.status === 'ready' (single POST /v1/search, no double-POST)
+    await act(async()=>{
+      root.render(React.createElement(Harness,{
+        initialNav:readArchiveNavigation('?tab=documents&mode=passages&q=testimony&congress=119&chamber=house&committee=hsif00'),
+      }));
+    });
+    assert.equal(fetchCalls.length,0,'Must not POST /v1/search while info is pending');
+    // Verify unsupported activeFilters pills are hidden in passages mode while Search pill stays visible
+    const passageFilterPills=[...container.querySelectorAll('.archive-active-filters .archive-filter-pill')].map(el=>el.textContent?.trim());
+    assert(passageFilterPills.some(t=>t?.startsWith('Search:')), 'Search pill stays visible');
+    assert(!passageFilterPills.some(t=>t?.includes('Chamber:')), 'Chamber pill hidden in passages mode');
+    assert(!passageFilterPills.some(t=>t?.includes('119th Congress')), 'Congress pill hidden in passages mode');
+
+    await act(async()=>{
+      resolveInfo({
+        releaseId:relId,
+        count:10,
+        facets:[],
+        committees:[],
+        kindSynonyms:[],
+        entityCounts:{meetings:1,committees:1,witnesses:1,organizations:1,members:1,bills:1,nominations:0},
+      });
+    });
+    assert.equal(fetchCalls.length,1,'Must POST /v1/search exactly once after info resolves');
+
+    // 2. Switch to Accountability & Churn, then click Bills & Nominations (subjects) -> must call listEntities('subjects')
+    const accBtn=[...container.querySelectorAll('.explorer-tabs button')].find(b=>b.textContent?.includes('Accountability & Churn'));
+    assert(accBtn,'Accountability tab button should render');
+    await act(async()=>{accBtn.click();});
+    assert.equal(listEntitiesCalls.length,0);
+    const accFilterPills=[...container.querySelectorAll('.archive-active-filters .archive-filter-pill')].map(el=>el.textContent?.trim());
+    assert(!accFilterPills.some(t=>t?.includes('Chamber:')), 'Chamber pill hidden in accountability mode');
+
+    const subjBtn=[...container.querySelectorAll('.explorer-tabs button')].find(b=>b.textContent?.includes('Bills & Nominations'));
+    assert(subjBtn,'Bills & Nominations tab button should render');
+    await act(async()=>{subjBtn.click();});
+    assert.equal(listEntitiesCalls.length,1,'Switching from accountability to subjects must trigger listEntities');
+    assert.equal(listEntitiesCalls[0].kind,'subjects');
+    assert(container.textContent?.includes('Demo Accountability Bill'),'Bills & Nominations results must render instead of error notice');
+    assert(!container.textContent?.includes('Could not load bills and nominations'));
+
+    await act(async()=>{root.unmount();});
+  }finally{
+    globalThis.window=prevWindow;
+    globalThis.document=prevDocument;
+    globalThis.fetch=prevFetch;
+    globalThis.IS_REACT_ACT_ENVIRONMENT=prevActEnv;
+  }
 });

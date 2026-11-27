@@ -58,7 +58,7 @@ self.onmessage=async({data})=>{
           ({index,redirectedFrom}=found);
         }
         const opened=await reader.openDocument(index,controller.signal);
-        const entry={document:opened.document,detail:opened.detail,sources:opened.sources,recoveries:opened.recoveries,releaseId:reader.releaseId};
+        const entry={document:opened.document,detail:opened.detail,sources:opened.sources,recoveries:opened.recoveries,detailShard:opened.detailShard,releaseId:reader.releaseId};
         const versions=await displayedDates(reader,opened.versions,controller.signal);
         result={
           ...opened,

@@ -17,17 +17,29 @@ export function buildCitableDuckDbSql(props: {
   releaseId?: string;
   rawBase?: string;
   linkKey?: string;
+  detailFile?: string;
+  detailRowStart?: number;
   eventId?: string | number;
   orgId?: string;
 }): string {
   const base = releaseParquetBase(props.rawBase, props.releaseId);
   if (props.kind === 'document') {
-    const key = String(props.linkKey || '<link_key>').toLowerCase();
+    const key = String(props.linkKey || '<link_key>').toLowerCase().replace(/'/g, "''");
+    const detailFile = props.detailFile && /^[a-z0-9_.-]+\.parquet$/i.test(props.detailFile)
+      ? props.detailFile
+      : 'detail.parquet';
+    const rowStart = Number.isSafeInteger(props.detailRowStart) && (props.detailRowStart as number) >= 0
+      ? (props.detailRowStart as number)
+      : 0;
+    const detailJoin = rowStart > 0
+      ? `d.file_row_number + ${rowStart} = k.list_row`
+      : 'd.file_row_number = k.list_row';
     return [
-      'SELECT l.list_row, l.filename, l.title, lower(hex(d.link_key)) AS link_key, lower(hex(d.saved_body)) AS saved_body_sha256',
-      `FROM read_parquet('${base}list.parquet') l`,
-      `JOIN read_parquet('${base}detail.parquet') d USING (list_row)`,
-      `WHERE lower(hex(d.link_key)) = '${key}';`,
+      'SELECT k.list_row, l.filename, l.title, lower(hex(k.link_key)) AS link_key, lower(hex(d.saved_body)) AS saved_body_sha256',
+      `FROM read_parquet('${base}links.parquet') k`,
+      `JOIN read_parquet('${base}list.parquet', file_row_number=true) l ON l.file_row_number = k.list_row`,
+      `JOIN read_parquet('${base}${detailFile}', file_row_number=true) d ON ${detailJoin}`,
+      `WHERE lower(hex(k.link_key)) = '${key}';`,
     ].join('\n');
   }
   if (props.kind === 'hearing') {
@@ -53,6 +65,8 @@ export function CitableReceipt({
   rawBase,
   linkKey,
   savedBodySha256,
+  detailFile,
+  detailRowStart,
   eventId,
   orgId,
 }: {
@@ -61,6 +75,8 @@ export function CitableReceipt({
   rawBase?: string;
   linkKey?: string;
   savedBodySha256?: string | null;
+  detailFile?: string;
+  detailRowStart?: number;
   eventId?: string | number;
   orgId?: string;
 }) {
@@ -70,7 +86,7 @@ export function CitableReceipt({
   const canonicalId = kind === 'document' ? cleanLinkKey : kind === 'hearing' ? (eventId != null ? String(eventId) : undefined) : orgId;
   if (!canonicalId && !releaseId) return null;
 
-  const sql = buildCitableDuckDbSql({kind, releaseId, rawBase, linkKey: cleanLinkKey, eventId, orgId});
+  const sql = buildCitableDuckDbSql({kind, releaseId, rawBase, linkKey: cleanLinkKey, detailFile, detailRowStart, eventId, orgId});
   const receiptPayload = JSON.stringify({
     kind,
     release_id: releaseId ?? null,

@@ -261,7 +261,10 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       detail.src_len?read('sources.parquet',detail.src_start,detail.src_start+detail.src_len):[],
       detail.rec_len?read('recoveries.parquet',detail.rec_start,detail.rec_start+detail.rec_len):[]]),signal);
     if(sources.some(item=>item.list_row!==index)||recoveries.some(item=>item.list_row!==index))throw new Error('Archive attachment row failed verification.');
-    return {document:row(index),detail,sources,recoveries};
+    const detailGroup=shards.get('detail');
+    const matchingShard=detailGroup?.find((item: any)=>item.row_range[0]<=index&&index<item.row_range[1]);
+    const detailShard=matchingShard?{name:matchingShard.name,rowStart:matchingShard.row_range[0]}:{name:'detail.parquet',rowStart:0};
+    return {document:row(index),detail,sources,recoveries,detailShard};
   };
   const resolve=async(key: string)=>{
     if(!/^[a-f0-9]{16}$/.test(key))throw new Error('Invalid archive link key.');
@@ -446,23 +449,27 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
           if(!list){list=[];recoveriesByRow.set(lr,list);}
           list.push(item);
         }
-        const removedOnMap=new Map<number,{removed_on:string;review_note:string|null;review_decided_at:string|null}>();
-        if(hasRemovedOn){
-          const cols=['removed_on'];
-          if(detailInput.names.includes('review_note'))cols.push('review_note');
-          if(detailInput.names.includes('review_decided_at'))cols.push('review_decided_at');
+        const hasReviewNote=detailInput.names.includes('review_note');
+        const hasReviewDecided=detailInput.names.includes('review_decided_at');
+        const detailMetaMap=new Map<number,{removed_on:string|null;review_note:string|null;review_decided_at:string|null}>();
+        if(hasRemovedOn||hasReviewNote||hasReviewDecided){
+          const cols:string[]=[];
+          if(hasRemovedOn)cols.push('removed_on');
+          if(hasReviewNote)cols.push('review_note');
+          if(hasReviewDecided)cols.push('review_decided_at');
           const chunkSize=16384;
           for(let start=0;start<count;start+=chunkSize){
             await yieldToMessages(signal);
             const end=Math.min(count,start+chunkSize);
             const chunk=await read('detail.parquet',start,end,undefined,cols);
             for(let j=0;j<chunk.length;j++){
+              const idx=start+j;
               const d=chunk[j];
-              if(d?.removed_on!=null){
-                removedOnMap.set(start+j,{
-                  removed_on:date(d.removed_on)??String(d.removed_on),
-                  review_note:d.review_note??null,
-                  review_decided_at:d.review_decided_at?date(d.review_decided_at):null,
+              if(d?.removed_on!=null||Boolean(value('hidden',idx))){
+                detailMetaMap.set(idx,{
+                  removed_on:d?.removed_on!=null?(date(d.removed_on)??String(d.removed_on)):null,
+                  review_note:d?.review_note??null,
+                  review_decided_at:d?.review_decided_at?date(d.review_decided_at):null,
                 });
               }
             }
@@ -473,7 +480,8 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
         for(let i=0;i<count;i++){
           if(i%scanBatchRows===0)await yieldToMessages(signal);
           const isHidden=Boolean(value('hidden',i));
-          const rem=removedOnMap.get(i);
+          const meta=detailMetaMap.get(i);
+          const rem=meta?.removed_on!=null?meta:undefined;
           const isRecovered=value('saved_kind',i)==='recovery';
           const vKeys:string[]=value('version_keys',i)??[];
           const recs=recoveriesByRow.get(i)??[];
@@ -486,7 +494,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
             items.push({churn_kind:'removed_on',list_row:i,document:doc,removed_on:rem.removed_on,review_note:rem.review_note,review_decided_at:rem.review_decided_at,recoveries:recs,edition_count:vKeys.length});
           }else if(isHidden){
             counts.hidden++;
-            items.push({churn_kind:'review_removed',list_row:i,document:doc,recoveries:recs,edition_count:vKeys.length});
+            items.push({churn_kind:'review_removed',list_row:i,document:doc,review_note:meta?.review_note??null,review_decided_at:meta?.review_decided_at??null,recoveries:recs,edition_count:vKeys.length});
           }
           if(isRecovered){
             counts.recoveredOnly++;
@@ -673,7 +681,7 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
           case 'removed': return item.churn_kind==='removed_on'||item.churn_kind==='review_removed'||item.churn_kind==='retired_removed';
           case 'retired': return item.churn_kind==='retired_redirected'||item.churn_kind==='retired_removed';
           case 'recovered': return item.churn_kind==='recovered_only';
-          case 'identity_notes': return Boolean(item.has_identity_note)||(Array.isArray(item.recoveries)&&item.recoveries.some((r:any)=>Boolean(r.identity_note)));
+          case 'identity_notes': return item.churn_kind==='identity_note'||(item.churn_kind==='recovered_only'&&Boolean(item.has_identity_note));
           case 'multi_edition': return item.churn_kind==='multi_edition';
           default: return true;
         }

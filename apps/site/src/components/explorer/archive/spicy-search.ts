@@ -63,7 +63,7 @@ export async function searchSpicyPassages(
   const trimmed = String(query ?? '').trim();
   const origin = (options.origin || SPICYENGINE_SEARCH_ORIGIN).replace(/\/+$/, '');
   const mode = options.mode ?? 'hybrid';
-  const limit = Math.min(20, Math.max(1, Number(options.limit) || 10));
+  const limit = Math.min(10, Math.max(1, Number(options.limit) || 10));
   const fetcher = options.fetcher ?? fetch;
 
   if (!trimmed) {

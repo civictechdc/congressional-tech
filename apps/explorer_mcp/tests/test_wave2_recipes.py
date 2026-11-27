@@ -71,16 +71,21 @@ def test_accountability_documents_surfaces_removed_retired_recovered_and_edition
     with duckdb.connect() as db:
         detail_cols = {r[0] for r in db.execute(f"DESCRIBE SELECT * FROM read_parquet({literal(root / 'detail.parquet')})").fetchall()}
         removed_expr = "CASE WHEN file_row_number=3 THEN DATE '2025-03-10' ELSE NULL::DATE END"
-        if 'removed_on' in detail_cols:
-            db.execute(f"""COPY (
-                SELECT * EXCLUDE(file_row_number) REPLACE({removed_expr} AS removed_on)
-                FROM read_parquet({literal(root / 'detail.parquet')}, file_row_number=true)
-            ) TO {literal(root / 'detail.parquet')} (FORMAT PARQUET)""")
-        else:
-            db.execute(f"""COPY (
-                SELECT * EXCLUDE(file_row_number), {removed_expr} AS removed_on
-                FROM read_parquet({literal(root / 'detail.parquet')}, file_row_number=true)
-            ) TO {literal(root / 'detail.parquet')} (FORMAT PARQUET)""")
+        decided_expr = "CASE WHEN file_row_number=0 THEN DATE '2025-02-01' ELSE NULL::DATE END"
+        note_expr = "CASE WHEN file_row_number=0 THEN 'Reviewed duplicate' ELSE NULL::VARCHAR END"
+        replaces = []
+        adds = []
+        for col, expr in [('removed_on', removed_expr), ('review_note', note_expr), ('review_decided_at', decided_expr)]:
+            if col in detail_cols:
+                replaces.append(f'{expr} AS {col}')
+            else:
+                adds.append(f'{expr} AS {col}')
+        replace_sql = f" REPLACE({', '.join(replaces)})" if replaces else ''
+        add_sql = (', ' + ', '.join(adds)) if adds else ''
+        db.execute(f"""COPY (
+            SELECT * EXCLUDE(file_row_number){replace_sql}{add_sql}
+            FROM read_parquet({literal(root / 'detail.parquet')}, file_row_number=true)
+        ) TO {literal(root / 'detail.parquet')} (FORMAT PARQUET)""")
         db.execute(f"""COPY (
             SELECT unhex('1111222233334444') AS link_key,
                    unhex((SELECT lower(hex(link_key)) FROM read_parquet({literal(root / 'detail.parquet')}, file_row_number=true) WHERE file_row_number=1)) AS successor_key,
@@ -129,6 +134,17 @@ def test_accountability_documents_surfaces_removed_retired_recovered_and_edition
         assert editions['rows']
         assert 2 in [r['edition_count'] for r in editions['rows']]
         assert all(r['edition_count'] >= 1 for r in editions['rows'])
+
+        # P2: DATE-typed review_decided_at in union works with review_removed and retired_links,
+        # and kind='all' with chamber/committee/date filters warns that retired_links are omitted.
+        review_removed = next(r for r in removed['rows'] if r['churn_kind'] == 'review_removed')
+        assert review_removed['review_note'] == 'Reviewed duplicate'
+        assert review_removed['review_decided_at'] == '2025-02-01'
+        retired_row = next(r for r in all_rows if r['churn_kind'] == 'retired_redirected')
+        assert retired_row['review_decided_at'] is None
+
+        filtered_all = reader.run_research_query({'name': 'accountability_documents', 'churn_kind': 'all', 'chamber': 'house'})
+        assert any('retired_links records do not carry' in msg for msg in filtered_all['coverage']['limits'])
 
 
 def test_mcp_tool_surface_remains_exact_21_tools_and_warm_unchanged(selection):

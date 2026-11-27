@@ -1,7 +1,6 @@
 import {
   committeeLabel,
   congressLabel,
-  deltaTrackBillUrl,
   formatChamber,
   formatDuration,
   formatMeetingType,
@@ -211,14 +210,12 @@ export function HearingDetail({
           const label=formatSubject(key,sub);
           const title=sub.short_title||sub.title||sub.description||'';
           const subUnlisted=unlistedText(sub);
-          const deltaUrl=deltaTrackBillUrl(sub);
           return <span key={key} className="archive-subject-item">
             {onSubject
               ?<button type="button" className="archive-measure-pill" onClick={()=>onSubject(key)}>
                   {label}{title?` — ${title}`:''}
                 </button>
               :<span className="archive-measure-pill">{label}{title?` — ${title}`:''}</span>}
-            {deltaUrl&&<a className="archive-measure-pill" href={deltaUrl} target="_blank" rel="noreferrer">Diff in DeltaTrack →</a>}
             {subUnlisted&&<span className="archive-source-meta"> ({subUnlisted})</span>}
           </span>;
         })}

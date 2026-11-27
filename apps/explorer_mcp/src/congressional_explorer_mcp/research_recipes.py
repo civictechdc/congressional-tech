@@ -200,7 +200,7 @@ def run_accountability_documents(reader, query):
     removed_expr = 'd.removed_on' if has_removed_on else 'NULL::DATE'
     removed_kind = "CASE WHEN d.removed_on IS NOT NULL THEN 'removed_on' ELSE 'review_removed' END" if has_removed_on else "'review_removed'"
     review_note_expr = 'd.review_note' if 'review_note' in reader.schemas['detail'] else 'NULL::VARCHAR'
-    review_decided_expr = 'd.review_decided_at' if 'review_decided_at' in reader.schemas['detail'] else 'NULL::TIMESTAMP'
+    review_decided_expr = 'd.review_decided_at' if 'review_decided_at' in reader.schemas['detail'] else 'NULL::DATE'
 
     rec_select = (
         "(SELECT list(struct_pack(kind:=r.kind,identity_note:=r.identity_note,recovered_url:=r.recovered_url,imported_at:=cast(r.imported_at AS VARCHAR)) ORDER BY r.ordinal) "
@@ -259,12 +259,12 @@ def run_accountability_documents(reader, query):
             f"{addr_expr} AS address_versions,last_filename AS filename,NULL::VARCHAR AS title,"
             f"NULL::SMALLINT AS congress,NULL::VARCHAR AS format,NULL::DATE AS document_date,"
             f"NULL::DATE AS first_captured,NULL::VARCHAR AS saved_kind,NULL::BOOLEAN AS hidden,"
-            f"NULL::DATE AS removed_on,NULL::VARCHAR AS review_note,NULL::TIMESTAMP AS review_decided_at,"
+            f"NULL::DATE AS removed_on,NULL::VARCHAR AS review_note,NULL::DATE AS review_decided_at,"
             f"len({addr_expr}) AS edition_count,NULL::VARCHAR AS saved_body,NULL::VARCHAR AS saved_suffix,"
             f"[]::STRUCT(kind VARCHAR,identity_note VARCHAR,recovered_url VARCHAR,imported_at VARCHAR)[] AS recoveries "
             f"FROM retired_links"
         )
-    elif kind == 'retired' and (committee or query.chamber or query.since or query.until):
+    elif kind in ('all', 'retired') and has_retired and (committee or query.chamber or query.since or query.until):
         coverage['limits'].append('retired_links records do not carry committee, chamber, or document_date metadata; omit those filters to list retired links.')
 
     if not unions:

@@ -164,7 +164,7 @@ export default function ArchiveExplorer({pointerUrl,rawBase}:{pointerUrl:string;
   return client?<Workspace key={historyEpoch} client={client} nav={nav} navigate={navigate} rawBase={new URL(rawBase,location.href).href}/>:<p role="status">Loading the document archive…</p>;
 }
 
-function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof createArchiveClient>;nav:Navigation;navigate:(change:Partial<Navigation>,replace?:boolean)=>void;rawBase:string}){
+export function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof createArchiveClient>;nav:Navigation;navigate:(change:Partial<Navigation>,replace?:boolean)=>void;rawBase:string}){
   const workspaceRef=useRef<HTMLDivElement>(null);
   const [selection,setSelection]=useState<number|null>(null),[savedError,setSavedError]=useState('');
   const [info,retryInfo]=useRequest(signal=>client.request('info',{},signal),[client]);
@@ -228,11 +228,12 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
     nav.committee?committeeFacets.length:0,
   ]);
 
-  const activeReleaseId=info.status==='ready'?info.value.releaseId:undefined;
+  const isReady=info.status==='ready';
+  const activeReleaseId=isReady?info.value.releaseId:undefined;
   const [passageRows,retryPassageRows]=useRequest(async signal=>{
-    if(!isDocTab||nav.mode!=='passages')return null;
+    if(!isDocTab||nav.mode!=='passages'||!isReady)return null;
     return searchSpicyPassages(nav.text,{expectedReleaseId:activeReleaseId,limit:10,signal});
-  },[isDocTab,nav.mode,nav.text,activeReleaseId]);
+  },[isDocTab,nav.mode,nav.text,isReady,activeReleaseId]);
 
   const [topOrgs,retryTopOrgs]=useRequest(async signal=>{
     if(!isDocTab||nav.mode!=='top_orgs')return null;
@@ -282,6 +283,8 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   },[
     client,
     isDocTab,
+    isAccountabilityTab,
+    nav.tab,
     isInspectingEntity,
     entityBrowseKind,
     nav.text,
@@ -380,23 +383,29 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
   const rawHearingTitle=activeEntities?.meeting?.title?String(activeEntities.meeting.title):'';
   const shortHearingTitle=rawHearingTitle.length>60?`${rawHearingTitle.slice(0,60)}…`:rawHearingTitle;
 
+  const isDetail=selection!==null||Boolean(nav.key);
+  const showFilterBar=!isDetail&&!isInspectingEntity&&nav.tab!=='organizations'&&(!isDocTab||nav.mode!=='passages');
+  const showsCongress=nav.tab!=='organizations'&&(!isDocTab||nav.mode!=='passages');
+  const showsChamber=showsCongress&&(nav.tab==='hearings'||nav.tab==='committees'||nav.tab==='members');
+  const showsCommittee=showsCongress&&!isAccountabilityTab&&(!isDocTab||nav.mode==='metadata')&&nav.tab!=='committees';
+  const showsDocMetadataFilters=isDocTab&&nav.mode==='metadata';
+
   const activeFilters=[
     nav.text&&{label:`Search: "${nav.text.length>45?`${nav.text.slice(0,45)}…`:nav.text}"`,clear:()=>filter({text:''})},
-    nav.congress&&{label:congressLabel(nav.congress)||`Congress ${nav.congress}`,clear:()=>filter({congress:''})},
-    nav.chamber&&{label:`Chamber: ${nav.chamber.charAt(0).toUpperCase()+nav.chamber.slice(1)}`,clear:()=>filter({chamber:''})},
-    (isDocTab||nav.tab!=='committees')&&nav.committee&&{label:committeeLabel(nav.committee,committeesCatalog,nav.congress||undefined),clear:()=>filter({committee:''})},
-    isDocTab&&nav.kind&&{label:documentKindLabel(selectedKind),clear:()=>filter({kind:''})},
-    isDocTab&&nav.hearing&&{label:shortHearingTitle?`Hearing: ${shortHearingTitle}`:`Hearing ${nav.hearing}`,clear:()=>filter({hearing:''})},
-    isDocTab&&nav.subject&&{label:formatMeasure(nav.subject),clear:()=>filter({subject:''})},
+    showsCongress&&nav.congress&&{label:congressLabel(nav.congress)||`Congress ${nav.congress}`,clear:()=>filter({congress:''})},
+    showsChamber&&nav.chamber&&{label:`Chamber: ${nav.chamber.charAt(0).toUpperCase()+nav.chamber.slice(1)}`,clear:()=>filter({chamber:''})},
+    showsCommittee&&nav.committee&&{label:committeeLabel(nav.committee,committeesCatalog,nav.congress||undefined),clear:()=>filter({committee:''})},
+    showsDocMetadataFilters&&nav.kind&&{label:documentKindLabel(selectedKind),clear:()=>filter({kind:''})},
+    showsDocMetadataFilters&&nav.hearing&&{label:shortHearingTitle?`Hearing: ${shortHearingTitle}`:`Hearing ${nav.hearing}`,clear:()=>filter({hearing:''})},
+    showsDocMetadataFilters&&nav.subject&&{label:formatMeasure(nav.subject),clear:()=>filter({subject:''})},
     nav.tab==='subjects'&&nav.subjectKind&&{label:nav.subjectKind==='bills'?'Legislation only':'Nominations only',clear:()=>filter({subjectKind:''})},
-    isDocTab&&nav.witness&&{label:activeEntities?.witness?.name?`Witness: ${formatRankedName(activeEntities.witness.name,activeEntities.witness.rank)}`:`Witness ${nav.witness}`,clear:()=>filter({witness:''})},
-    isDocTab&&nav.person&&{label:activeEntities?.person?.name?`Person: ${formatRankedName(activeEntities.person.name,activeEntities.person.rank)}`:`Person ${nav.person}`,clear:()=>filter({person:''})},
-    isDocTab&&nav.org&&{label:activeEntities?.org?.display_name?`Organization: ${activeEntities.org.display_name}`:`Organization ${nav.org}`,clear:()=>filter({org:''})},
-    isDocTab&&nav.member&&{label:activeEntities?.member?.name?`Member: ${activeEntities.member.name}`:`Member ${nav.member}`,clear:()=>filter({member:''})},
-    isDocTab&&nav.format&&{label:formatLabel(nav.format),clear:()=>filter({format:''})},
+    showsDocMetadataFilters&&nav.witness&&{label:activeEntities?.witness?.name?`Witness: ${formatRankedName(activeEntities.witness.name,activeEntities.witness.rank)}`:`Witness ${nav.witness}`,clear:()=>filter({witness:''})},
+    showsDocMetadataFilters&&nav.person&&{label:activeEntities?.person?.name?`Person: ${formatRankedName(activeEntities.person.name,activeEntities.person.rank)}`:`Person ${nav.person}`,clear:()=>filter({person:''})},
+    showsDocMetadataFilters&&nav.org&&{label:activeEntities?.org?.display_name?`Organization: ${activeEntities.org.display_name}`:`Organization ${nav.org}`,clear:()=>filter({org:''})},
+    showsDocMetadataFilters&&nav.member&&{label:activeEntities?.member?.name?`Member: ${activeEntities.member.name}`:`Member ${nav.member}`,clear:()=>filter({member:''})},
+    showsDocMetadataFilters&&nav.format&&{label:formatLabel(nav.format),clear:()=>filter({format:''})},
   ].filter(Boolean) as Array<{label:string;clear:()=>void}>;
 
-  const isDetail=selection!==null||Boolean(nav.key);
   const inspectedEntityValue=!isInspectingEntity||!activeEntities?null:
     nav.tab==='hearings'?activeEntities.meeting:
     nav.tab==='committees'?activeEntities.committee:
@@ -470,15 +479,15 @@ function Workspace({client,nav,navigate,rawBase}:{client:ReturnType<typeof creat
       onRunRecipe={(mode,topic)=>filter({mode,text:topic})}
       onOpenAccountability={()=>filter({tab:'accountability',mode:'metadata',churn:'all'})}
     />}
-    {!isDetail&&!isInspectingEntity&&nav.tab!=='organizations'&&(!isDocTab||nav.mode!=='passages')&&<div className="archive-filters">
+    {showFilterBar&&<div className="archive-filters">
       <label><span>Congress</span><select value={nav.congress} onChange={event=>filter({congress:event.target.value})}><option value="">All congresses</option>{congresses.map((item:any)=><option key={item.value} value={item.value}>{congressOptionLabel(item.value)} ({integer(Number(item.count))})</option>)}</select></label>
-      {(nav.tab==='hearings'||nav.tab==='committees'||nav.tab==='members')&&<label><span>Chamber</span><select value={nav.chamber} onChange={event=>filter({chamber:event.target.value})}><option value="">All chambers</option><option value="house">House</option><option value="senate">Senate</option><option value="joint">Joint</option></select></label>}
+      {showsChamber&&<label><span>Chamber</span><select value={nav.chamber} onChange={event=>filter({chamber:event.target.value})}><option value="">All chambers</option><option value="house">House</option><option value="senate">Senate</option><option value="joint">Joint</option></select></label>}
       {nav.tab==='subjects'&&<label><span>Subject type</span><select value={nav.subjectKind} onChange={event=>filter({subjectKind:event.target.value})}><option value="">Bills &amp; nominations</option><option value="bills">Bills &amp; resolutions</option><option value="nominations">Presidential nominations</option></select></label>}
-      {!isAccountabilityTab&&(!isDocTab||nav.mode==='metadata')&&nav.tab!=='committees'&&<label><span>Committee</span><select value={nav.committee} onChange={event=>filter({committee:event.target.value})}><option value="">All committees</option>
+      {showsCommittee&&<label><span>Committee</span><select value={nav.committee} onChange={event=>filter({committee:event.target.value})}><option value="">All committees</option>
         {committeeGroups.primary.length>0&&<optgroup label="Committees">{committeeGroups.primary.map(item=><option key={item.value} value={item.value}>{item.label} ({integer(item.count)})</option>)}</optgroup>}
         {committeeGroups.subItems.length>0&&<optgroup label="Subcommittees">{committeeGroups.subItems.map(item=><option key={item.value} value={item.value}>{item.label} ({integer(item.count)})</option>)}</optgroup>}
       </select></label>}
-      {isDocTab&&nav.mode==='metadata'&&<>
+      {showsDocMetadataFilters&&<>
         <label><span>Document type</span><select value={selectedKind} onChange={event=>filter({kind:event.target.value})}><option value="">All document types</option>{kinds.map((item:any)=><option key={item.value} value={item.value}>{documentKindLabel(item.value)} ({integer(Number(item.count))})</option>)}</select></label>
         <ArchiveFormatFilter options={formats} value={nav.format} onChange={format=>filter({format})}/>
         <label><span>Order</span><select value={effectiveSort} onChange={event=>filter({sort:event.target.value==='document_date'?'':event.target.value})}><option value="document_date">Document date, newest first</option><option value="first_captured">Capture date, newest first</option><option value="filename">Filename (A–Z)</option></select></label>

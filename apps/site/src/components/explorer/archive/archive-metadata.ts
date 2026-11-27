@@ -1,7 +1,7 @@
 import congressMetadata from '../../../data/congress_metadata.json' with { type: 'json' };
 
 import documentClassifications from '../../../../../../packages/congress_shared/src/congress_shared/data/document-classifications.json' with { type: 'json' };
-import {DELTATRACK_ORIGIN, SPICYGOV_ORIGIN} from './search-config.ts';
+import {SPICYGOV_ORIGIN} from './search-config.ts';
 
 const documentKindLabels: Readonly<Record<string, { label: string } | undefined>> = documentClassifications.kinds;
 
@@ -1087,46 +1087,29 @@ export function spicyRegsUrl(queryOrBill: string): string | null {
   return `https://spicyregs.org/?q=${encodeURIComponent(clean)}`;
 }
 
-export function spicyGovOrganizationUrl(org: any): string | null {
-  if (!org) return null;
-  const ids: any[] = Array.isArray(org.organization_ids) ? org.organization_ids : [];
-  const wikidata = ids.find(id => String(id?.scheme ?? id?.id_scheme ?? '').trim().toLowerCase() === 'wikidata')?.value;
-  const frAgency = ids.find(id => String(id?.scheme ?? id?.id_scheme ?? '').trim().toLowerCase() === 'fr_agency')?.value;
-  const query = String(wikidata || org.display_name || (frAgency ? `fr_agency:${frAgency}` : '') || org.org_id || '').trim();
-  if (!query) return null;
-  const params = new URLSearchParams({q: query});
-  if (frAgency) params.set('fr_agency', String(frAgency).trim());
-  if (wikidata && /^Q\d+$/i.test(String(wikidata).trim())) params.set('wikidata', String(wikidata).trim().toUpperCase());
-  return `${SPICYGOV_ORIGIN}/?${params.toString()}`;
-}
-
 export function spicyGovHearingUrl(meeting: any): string | null {
   if (!meeting) return null;
-  const eventId = meeting.event_id ?? meeting.meeting_key;
-  const clean = String(eventId ?? meeting.title ?? '').trim();
-  if (!clean) return null;
-  return `${SPICYGOV_ORIGIN}/?q=${encodeURIComponent(clean)}`;
+  const eventId = String(meeting.event_id ?? meeting.meeting_key ?? '').trim();
+  if (!eventId) return null;
+  const params = new URLSearchParams({
+    table: 'committee_meetings',
+    where: JSON.stringify([{column: 'event_id', value: eventId}]),
+  });
+  return `${SPICYGOV_ORIGIN}/?${params.toString()}`;
 }
 
 export function spicyGovBillUrl(billOrKey: any): string | null {
   if (!billOrKey) return null;
-  const key = typeof billOrKey === 'object'
-    ? String(billOrKey.subject_key ?? billOrKey.bill_id ?? billOrKey.nomination_id ?? '')
-    : String(billOrKey);
-  if (!key || /^(?:\d+-)?pn-/i.test(key.trim())) return null;
-  const label = typeof billOrKey === 'object' ? formatSubject(key, billOrKey) : formatMeasure(key);
-  return `${SPICYGOV_ORIGIN}/?q=${encodeURIComponent(label || key)}`;
-}
-
-export function deltaTrackBillUrl(billOrKey: any): string | null {
-  if (!billOrKey) return null;
-  const key = typeof billOrKey === 'object'
-    ? String(billOrKey.subject_key ?? billOrKey.bill_id ?? billOrKey.nomination_id ?? '')
-    : String(billOrKey);
-  const clean = key.trim();
-  if (!clean || /^(?:\d+-)?pn-/i.test(clean)) return null;
   if (typeof billOrKey === 'object' && billOrKey.kind === 'nomination') return null;
-  return `${DELTATRACK_ORIGIN}/?bill=${encodeURIComponent(clean)}`;
+  const key = (typeof billOrKey === 'object'
+    ? String(billOrKey.bill_id ?? billOrKey.subject_key ?? billOrKey.nomination_id ?? '')
+    : String(billOrKey)).trim().toLowerCase();
+  if (!key || /^(?:\d+-)?pn-/.test(key)) return null;
+  const params = new URLSearchParams({
+    table: 'congress_bills',
+    where: JSON.stringify([{column: 'bill_id', value: key}]),
+  });
+  return `${SPICYGOV_ORIGIN}/?${params.toString()}`;
 }
 
 export function formatDuration(seconds: number | null | undefined): string | null {

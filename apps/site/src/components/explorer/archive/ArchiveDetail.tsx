@@ -7,7 +7,6 @@ import {dateLabels, recoveryLabel, savedCopy} from '../reader/archive.ts';
 import {formatLabel} from './ArchiveFormats.tsx';
 import {
   cleanIdentityNote,
-  deltaTrackBillUrl,
   effectiveFormat,
   formatBytes,
   formatSubject,
@@ -240,11 +239,9 @@ export function ArchiveDetail({
         const key=m.subject_key??m.key;
         const text=m.short_title||m.title?`${m.label} (${m.short_title||m.title})`:m.label;
         const spicyUrl=spicyGovBillUrl(key);
-        const deltaUrl=deltaTrackBillUrl(key);
         return <span key={key} className="archive-pill-group">
           {handleSubject?<button type="button" className="archive-measure-pill" onClick={()=>handleSubject(key)}>{text}</button>:<span className="archive-measure-pill">{text}</span>}
           {spicyUrl&&<a className="archive-measure-pill" href={spicyUrl} target="_blank" rel="noreferrer">Explore on SpicyGov →</a>}
-          {deltaUrl&&<a className="archive-measure-pill" href={deltaUrl} target="_blank" rel="noreferrer">Diff in DeltaTrack →</a>}
         </span>;
       })}</span></p>}
       {witnessItems.length>0&&<p className="archive-dates-measures">
@@ -291,6 +288,8 @@ export function ArchiveDetail({
         rawBase={rawBase}
         linkKey={detail?.link_key?keyHex(detail.link_key):undefined}
         savedBodySha256={detail?.saved_body?keyHex(detail.saved_body):null}
+        detailFile={entry.detailShard?.name}
+        detailRowStart={entry.detailShard?.rowStart}
       />
     </section>
     {recoveries.length>0&&<section><h3>Recovered and related files</h3><ul>{recoveries.map((recovery:any,i:number)=>{
