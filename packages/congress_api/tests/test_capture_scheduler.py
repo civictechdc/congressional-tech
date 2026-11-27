@@ -263,6 +263,9 @@ def test_capture_policy_sql_and_wordpress_scope(tmp_path):
         ('https://www-senate-gov-msl3archive.akamaized.net/jointeconomic/jec041813_1/captions.vtt', 'senate/captions'),
         ('https://www-senate-gov-msl3archive.akamaized.net/jointeconomic/jec041813_1/captions.srt?lang=en', 'senate/captions'),
         ('https://www-senate-gov-msl3archive.akamaized.net/armedservices/armedA041823_1/master0.ts', None),
+        ('https://api.govinfo.gov/collections/CHRG/2026-11-20T03:23:00Z?pageSize=1000&offsetMark=*', 'govinfo/collections'),
+        ('https://api.govinfo.gov/collections/CHRG/2026-11-20T03:23:00Z?offsetMark=AoEp&pageSize=1000', 'govinfo/collections'),
+        ('https://api.govinfo.gov/collections/BILLS/2026-11-20T03:23:00Z?pageSize=1000&offsetMark=*', None),
     ]
     for url, expected in cases:
         assert policy.pattern_family(url) == expected

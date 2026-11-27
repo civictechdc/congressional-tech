@@ -1,8 +1,45 @@
 const RELEASE_ID = /^[0-9a-f]{64}$/;
 const HOLD_MS = 60_000;
+const READY_STARTUP_TIMEOUT_MS = 8_000;
+const MCP_STARTUP_TIMEOUT_MS = 90_000;
 export const SPICYENGINE_MISMATCH = "SpicyEngine is not serving the archive release selected by Congress Explorer.";
 
 export type PointerResolver = (options?: { refresh?: boolean }) => Promise<string>;
+
+export function selectContainerSlot(pathname: string, randomByte: () => number): number {
+  // Always route readiness probes to slot 0 so cold-start probes warm one primary
+  // replica instead of waking a second cold container on 50% of attempts.
+  if (pathname === "/ready") return 0;
+  return randomByte() % 2;
+}
+
+export function startupOptionsForPath(pathname: string, abort: AbortSignal) {
+  const timeoutMS = pathname === "/ready" ? READY_STARTUP_TIMEOUT_MS : MCP_STARTUP_TIMEOUT_MS;
+  return {
+    instanceGetTimeoutMS: timeoutMS,
+    portReadyTimeoutMS: timeoutMS,
+    abort,
+  };
+}
+
+export function releaseIdFromPublication(publication: string): string | null {
+  const match = publication.match(/\/releases\/([0-9a-f]{64})\/manifest\.json$/);
+  return match ? match[1] : null;
+}
+
+export function startingResponse(publication: string): Response {
+  const releaseId = releaseIdFromPublication(publication);
+  return Response.json(
+    releaseId ? { status: "starting", release_id: releaseId } : { status: "starting" },
+    {
+      status: 503,
+      headers: {
+        "Cache-Control": "no-store",
+        "Retry-After": "5",
+      },
+    },
+  );
+}
 
 /**
  * Follow the archive's moving pointer to the immutable manifest it selects now.

@@ -197,3 +197,122 @@ def test_bad_footer_count_and_legacy_shape_fail_before_selection(tmp_path):
     path.write_text('{"schema_version":6,"files":[]}')
     with pytest.raises(ExplorerError,match='legacy'):
         release.prepare(tmp_path/'cache',path)
+
+
+def test_remote_prepare_downloads_concurrently_and_cleans_up_on_error(tmp_path, phase2, monkeypatch):
+    import threading
+    from urllib.parse import urlsplit
+
+    identity = json.loads((CURRENT / 'manifest.json').read_bytes())['release_id']
+    base = f'https://archive.example/viewer-publications/releases/{identity}/'
+    manifest_url = base + 'manifest.json'
+    active, peak = 0, 0
+    lock = threading.Lock()
+    two_in_flight = threading.Event()
+    local_open = release.opened
+
+    @contextmanager
+    def concurrent_remote(location):
+        nonlocal active, peak
+        loc = str(location)
+        if not loc.startswith(('http://', 'https://')):
+            with local_open(loc) as stream:
+                yield stream
+            return
+        if loc.endswith('/viewer-publications/manifest.json'):
+            raise OSError('pointer unavailable')
+        assert loc.startswith(base)
+        name = urlsplit(loc).path.rsplit('/', 1)[-1]
+        if name != 'manifest.json':
+            with lock:
+                active += 1
+                peak = max(peak, active)
+                if active >= 2:
+                    two_in_flight.set()
+            two_in_flight.wait(timeout=2.0)
+        try:
+            with local_open(CURRENT / name) as stream:
+                yield stream
+        finally:
+            if name != 'manifest.json':
+                with lock:
+                    active -= 1
+
+    monkeypatch.setattr(release, 'opened', concurrent_remote)
+    cache = tmp_path / 'cache'
+    selected = release.prepare(cache, manifest_url)
+    assert selected['release_id'] == identity
+    assert selected['archive_origin'] == 'https://archive.example'
+    assert peak >= 2
+    assert not list((cache / 'objects').glob('*.partial'))
+
+    # A failure mid-parallel download preserves the prior selection and leaves no partial files.
+    next_id = json.loads(phase2.read_bytes())['release_id']
+    next_base = f'https://archive.example/viewer-publications/releases/{next_id}/'
+
+    @contextmanager
+    def failing_remote(location):
+        loc = str(location)
+        if not loc.startswith(('http://', 'https://')):
+            with local_open(loc) as stream:
+                yield stream
+            return
+        if loc.endswith('/viewer-publications/manifest.json'):
+            raise OSError('pointer unavailable')
+        name = urlsplit(loc).path.rsplit('/', 1)[-1]
+        if name == 'witnesses.parquet':
+            raise OSError('simulated remote error')
+        with local_open(phase2.parent / name) as stream:
+            yield stream
+
+    monkeypatch.setattr(release, 'opened', failing_remote)
+    with pytest.raises(OSError, match='simulated remote error'):
+        release.prepare(cache, next_base + 'manifest.json')
+    assert release.load_selection(cache)['release_id'] == identity
+    assert not list((cache / 'objects').glob('*.partial'))
+
+
+def test_concurrent_remote_prepare_cleans_partials_and_reuses_completed_downloads(tmp_path, monkeypatch):
+    cache = tmp_path / 'cache'
+    source_manifest = (CURRENT / 'manifest.json').as_uri().replace('file://', 'https://archive.example')
+    opened = release.opened
+    attempts = []
+
+    @contextmanager
+    def flaky_remote(location):
+        text = str(location)
+        if not text.startswith(('http://', 'https://')):
+            with opened(text) as stream:
+                yield stream
+            return
+        if text == source_manifest:
+            local = CURRENT / 'manifest.json'
+        else:
+            name = text.rsplit('/', 1)[-1]
+            attempts.append(name)
+            if name == 'url_state.parquet' and attempts.count(name) == 1:
+                raise OSError('simulated concurrent transfer failure')
+            local = CURRENT / name
+        with opened(local) as stream:
+            yield stream
+
+    monkeypatch.setattr(release, 'opened', flaky_remote)
+    with pytest.raises(OSError, match='concurrent transfer failure'):
+        release.prepare(cache, source_manifest)
+    assert not list((cache / 'objects').glob('*.partial'))
+    assert not (cache / 'selection.json').exists()
+
+    seen_second_pass = []
+    @contextmanager
+    def retry_remote(location):
+        text = str(location)
+        if text.startswith(('http://', 'https://')) and text != source_manifest:
+            seen_second_pass.append(text.rsplit('/', 1)[-1])
+        with flaky_remote(location) as stream:
+            yield stream
+
+    monkeypatch.setattr(release, 'opened', retry_remote)
+    selected = release.prepare(cache, source_manifest)
+    assert selected['release_id'] == json.loads((CURRENT / 'manifest.json').read_bytes())['release_id']
+    assert 'url_state.parquet' in seen_second_pass
+    assert len(seen_second_pass) < len(selected['manifest']['files'])

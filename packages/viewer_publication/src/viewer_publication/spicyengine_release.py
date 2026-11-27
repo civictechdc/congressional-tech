@@ -448,8 +448,74 @@ def filter_vocabulary(committees):
     return {**committees, "facet_labels": labels, "facet_help": help_text}
 
 
+_COMPATIBLE_METADATA_KEYS = ("excerpt_key", "facet_labels", "facet_aliases", "facet_help")
+_PASSAGE_MANIFEST_REQUIRED = frozenset({"release_id", "model", "dimensions", "passages", "documents", "parquet"})
+_PASSAGE_MANIFEST_ALLOWED = _PASSAGE_MANIFEST_REQUIRED | {"config_version", "keyword_parquet"}
+
+
+def engine_status(engine):
+    """Query the live SpicyEngine dataset status, returning None when no dataset is published yet."""
+    proc = subprocess.run([engine, "status"], check=False, capture_output=True, text=True)
+    if proc.returncode != 0:
+        detail = ((proc.stderr or "") + "\n" + (proc.stdout or "")).strip()
+        lowered = detail.lower()
+        if "publish a dataset before searching" in lowered or "does not exist" in lowered:
+            return None
+        raise RuntimeError(f"Unable to inspect live SpicyEngine status before publish: {detail or proc.returncode}")
+    try:
+        status = json.loads(proc.stdout)
+    except json.JSONDecodeError as error:
+        raise RuntimeError(f"Live SpicyEngine status returned invalid JSON: {error}") from error
+    if not isinstance(status, dict):
+        raise RuntimeError("Live SpicyEngine status did not return a JSON object")
+    return status
+
+
+def would_drop_passages(live_status, definition):
+    """Return True when publishing definition would drop currently attached passage embeddings."""
+    if not live_status or not live_status.get("passages"):
+        return False
+    old_dataset = live_status.get("dataset")
+    if not isinstance(old_dataset, dict):
+        return True
+    if old_dataset == definition:
+        return False
+    if old_dataset.get("release_id") != definition.get("release_id"):
+        return True
+    mask = dict.fromkeys(_COMPATIBLE_METADATA_KEYS)
+    return (old_dataset | mask) != (definition | mask)
+
+
+def load_passages_manifest(path, *, release_id, expected_documents):
+    """Validate a passage attachment manifest before publishing a replacement dataset."""
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(raw, dict) or not (_PASSAGE_MANIFEST_REQUIRED <= set(raw) <= _PASSAGE_MANIFEST_ALLOWED):
+        raise ValueError(
+            "Passages manifest must define release_id, model, dimensions, passages, documents, and parquet"
+        )
+    if raw["release_id"] != release_id:
+        raise ValueError(
+            f"Passages manifest release_id {raw['release_id']!r} differs from target release {release_id!r}"
+        )
+    if type(raw["documents"]) is not int or raw["documents"] != expected_documents:
+        raise ValueError(
+            f"Passages manifest documents ({raw['documents']!r}) differs from prepared rows ({expected_documents})"
+        )
+    if type(raw["passages"]) is not int or raw["passages"] < 1:
+        raise ValueError("Passages manifest must declare a positive passages count")
+    if type(raw["dimensions"]) is not int or not 1 <= raw["dimensions"] <= 1024:
+        raise ValueError("Passages manifest dimensions must be an integer between 1 and 1024")
+    if not isinstance(raw["model"], str) or not raw["model"].strip():
+        raise ValueError("Passages manifest model must be a non-empty string")
+    for key in ("parquet", "keyword_parquet"):
+        if key in raw and (not isinstance(raw[key], str) or not raw[key].startswith("/")):
+            raise ValueError(f"Passages manifest {key} must be an absolute mounted path")
+    return raw
+
+
 def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_query=None,
-           staged=False, prefer_staged=False, expected_release_id=None):
+           staged=False, prefer_staged=False, expected_release_id=None,
+           allow_drop_passages=False, passages_manifest=None):
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     with (root / ".release.lock").open("a") as lock:
@@ -491,11 +557,40 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
         if not manifest.exists() or json.loads(manifest.read_text()) != definition:
             save(manifest, definition)
         if engine:
+            validated_passages = (
+                load_passages_manifest(passages_manifest, release_id=release, expected_documents=ready["records"])
+                if passages_manifest is not None
+                else None
+            )
+            if validated_passages is None and not allow_drop_passages:
+                live = engine_status(engine)
+                if would_drop_passages(live, definition):
+                    attached = live["passages"]
+                    live_release = attached.get("release_id") or (live.get("dataset") or {}).get("release_id")
+                    raise RuntimeError(
+                        f"Refusing to publish {release[:12]} without passages: live SpicyEngine currently has "
+                        f"{attached.get('passages')} attached passages ({attached.get('model')}) on release "
+                        f"{str(live_release)[:12]}. Pass --passages-manifest <path> to attach matching passages "
+                        f"or --allow-drop-passages to publish full-text only."
+                    )
             args = [engine, "publish", str(manifest), "--shards-from", str(work / "prepared"),
                     "--expected-rows", str(ready["records"])]
             if check_query:
                 args.extend(["--check-query", check_query])
-            subprocess.run(args, check=True)
+            if validated_passages is not None:
+                published = subprocess.run(args, check=True, stdout=subprocess.PIPE, text=True)
+                try:
+                    config = json.loads(published.stdout)
+                except json.JSONDecodeError as error:
+                    raise RuntimeError(f"SpicyEngine publish did not return JSON config: {error}") from error
+                revision = config.get("revision") if isinstance(config, dict) else None
+                if not isinstance(revision, str) or not re.fullmatch("[0-9a-f]{64}", revision):
+                    raise RuntimeError("SpicyEngine publish output did not include a 64-hex revision")
+                stamped = work / "passages-attach.json"
+                save(stamped, validated_passages | {"config_version": revision})
+                subprocess.run([engine, "attach-passages", str(stamped)], check=True)
+            else:
+                subprocess.run(args, check=True)
         return work
 
 
@@ -509,10 +604,15 @@ def main():
     parser.add_argument("--staged", action="store_true", help="Resolve staged candidate pointers ahead of the live flip")
     parser.add_argument("--prefer-staged", action="store_true", help="Prefer active staged candidate pointers, else live")
     parser.add_argument("--release-id", help="Require this exact 64-hex release ID")
+    parser.add_argument("--allow-drop-passages", action="store_true",
+                        help="Permit publishing a replacement index even when live SpicyEngine has attached passages")
+    parser.add_argument("--passages-manifest", type=Path,
+                        help="Attach matching passage embeddings immediately after publishing (stamps config_version)")
     args = parser.parse_args()
     print(update(args.root, saved=args.pin, local=args.source_dir, engine=args.engine,
                  check_query=args.check_query, staged=args.staged, prefer_staged=args.prefer_staged,
-                 expected_release_id=args.release_id))
+                 expected_release_id=args.release_id, allow_drop_passages=args.allow_drop_passages,
+                 passages_manifest=args.passages_manifest))
 
 
 if __name__ == "__main__":

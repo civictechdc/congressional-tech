@@ -43,6 +43,8 @@ def family(source="", url="", pointer=(), media_type=""):
             return "youtube/captions"
         return "youtube/watch-pages"
     if host.endswith("govinfo.gov") or host.endswith("gpo.gov"):
+        if "/collections/" in upath:
+            return "govinfo/collections"
         if "mods" in upath:
             return "govinfo/mods"
         if "premis" in upath:

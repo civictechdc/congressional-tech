@@ -383,3 +383,184 @@ def test_listed_on_normalization_zip_exclusion_and_title_fallbacks(tmp_path):
     assert rows[b"lbltxt00".hex()]["title"] == "041415_HoltzEakin_Testimony.pdf"
     assert rows[b"archwins".hex()]["title"] == "Authoritative Archive Title"
     assert not list((work / "downloads").glob("*.parquet"))
+
+
+def _make_minimal_origin(tmp_path, *, title="Housing report"):
+    archive = tmp_path / "origin" / "viewer-publications"
+    stage = archive / "releases" / "staging"
+    stage.mkdir(parents=True)
+    text_dir = tmp_path / "origin" / "derived" / "body_text"
+    text_dir.mkdir(parents=True)
+    body_key = bytes.fromhex("ef" * 32)
+    doc = dict(link_key=b"12345678", saved_body=body_key, hidden=False, saved_suffix=".gz",
+               title=title, filename="report.pdf", package_id="HR-1", format="pdf",
+               document_date=date(2026, 11, 20), document_date_status="accepted", congress=119, chambers=["house"],
+               committee_keys=[], document_kind=["report"], document_family=["legislative"],
+               src_start=0, src_len=1)
+    pq.write_table(pa.Table.from_pylist([doc]), stage / "detail.parquet")
+    pq.write_table(pa.Table.from_pylist([
+        dict(ordinal=0, url="https://example.gov/a.pdf", listed_on="https://example.gov/hearing",
+             link_text="Report", member_path=None, is_saved=True),
+    ]), stage / "sources.parquet")
+    files = []
+    for f in sorted(stage.glob("*.parquet")):
+        raw = f.read_bytes()
+        files.append(dict(name=f.name, sha256=sha256(raw).hexdigest(), size=len(raw), rows=pq.read_metadata(f).num_rows))
+    release_id = release_identity(1, files)
+    (stage / "manifest.json").write_text(json.dumps(dict(schema_version=1, files=files, release_id=release_id)))
+    stage.rename(stage.with_name(release_id))
+    (archive / "manifest.json").write_text(json.dumps({"release_id": release_id}))
+    body = text_dir / "body.parquet"
+    pq.write_table(pa.Table.from_pylist([dict(saved_body=body_key, text="housing evidence", page_offsets=[0],
+                                              text_sha256=b"Z" * 32)]), body)
+    digest = sha256(body.read_bytes()).hexdigest()
+    detail_entry = next(f for f in files if f["name"] == "detail.parquet")
+    pointer = dict(release_id=release_id, sha256=digest, bytes=body.stat().st_size,
+                   key=f"derived/body_text/{digest}.parquet", detail={k: detail_entry[k] for k in ("sha256", "size")})
+    body.rename(text_dir / f"{digest}.parquet")
+    (text_dir / "current.json").write_text(json.dumps(pointer))
+    return (tmp_path / "origin").as_uri(), release_id
+
+
+def test_passage_drop_guard_blocks_bare_publish_and_supports_override_and_attach(tmp_path, monkeypatch):
+    import subprocess
+    import sys
+
+    origin, release_id = _make_minimal_origin(tmp_path)
+    root = tmp_path / "local"
+    prepared = release.update(root, origin=origin)
+    definition = json.loads((prepared / "dataset.json").read_text())
+    other_release = "0" * 64
+    new_revision = "a" * 64
+    live_passages = {
+        "release_id": other_release,
+        "config_version": "b" * 64,
+        "model": "BAAI/bge-small-en-v1.5",
+        "dimensions": 384,
+        "passages": 1000,
+        "documents": 1,
+        "parquet": "/srv/spicyengine/input/passages/old/*.parquet",
+    }
+
+    calls = []
+    status_state = {}
+
+    def fake_run(args, **kwargs):
+        calls.append(list(args))
+        cmd = args[1]
+        if cmd == "status":
+            return subprocess.CompletedProcess(
+                args, status_state.get("rc", 0),
+                stdout=status_state.get("stdout", ""),
+                stderr=status_state.get("stderr", ""),
+            )
+        if cmd == "publish":
+            return subprocess.CompletedProcess(
+                args, 0,
+                stdout=json.dumps({"operation": "installed", "revision": new_revision, "records": 1}),
+                stderr="",
+            )
+        if cmd == "attach-passages":
+            return subprocess.CompletedProcess(args, 0, stdout="{}", stderr="")
+        raise AssertionError(f"Unexpected engine command: {args}")
+
+    monkeypatch.setattr(release.subprocess, "run", fake_run)
+
+    # 1. Refuses bare publish when live SpicyEngine has attached passages on a different release.
+    status_state.update(rc=0, stderr="", stdout=json.dumps({
+        "revision": "b" * 64,
+        "dataset": definition | {"release_id": other_release, "input": {"parquet": "/srv/other/serving/*.parquet"}},
+        "passages": live_passages,
+        "records": 1,
+    }))
+    with pytest.raises(RuntimeError, match="Refusing to publish .* without passages"):
+        release.update(root, origin=origin, engine="/bin/fake-spicyengine")
+    assert [c[1] for c in calls] == ["status"]
+
+    # 2. Fails closed on unexpected status errors (e.g. missing DB password or unreachable daemon).
+    calls.clear()
+    status_state.update(rc=1, stdout="", stderr="Set SPICYENGINE_DATABASE_PASSWORD before using the local database")
+    with pytest.raises(RuntimeError, match="Unable to inspect live SpicyEngine status"):
+        release.update(root, origin=origin, engine="/bin/fake-spicyengine")
+    assert [c[1] for c in calls] == ["status"]
+
+    # 3. Allows initial publish when no dataset is published yet.
+    calls.clear()
+    status_state.update(rc=1, stdout="", stderr="Publish a dataset before searching")
+    release.update(root, origin=origin, engine="/bin/fake-spicyengine")
+    assert [c[1] for c in calls] == ["status", "publish"]
+
+    # 4. Allows bare publish when live passages stay intact (identical dataset or compatible facet metadata only).
+    calls.clear()
+    status_state.update(rc=0, stderr="", stdout=json.dumps({
+        "revision": "b" * 64,
+        "dataset": definition | {"facet_labels": {"chambers": {"house": "Old Label"}}},
+        "passages": live_passages | {"release_id": release_id},
+        "records": 1,
+    }))
+    release.update(root, origin=origin, engine="/bin/fake-spicyengine")
+    assert [c[1] for c in calls] == ["status", "publish"]
+
+    # 5. Allows bare publish with explicit --allow-drop-passages override (skips status guard).
+    calls.clear()
+    status_state.update(rc=0, stderr="", stdout=json.dumps({
+        "revision": "b" * 64,
+        "dataset": definition | {"release_id": other_release},
+        "passages": live_passages,
+        "records": 1,
+    }))
+    release.update(root, origin=origin, engine="/bin/fake-spicyengine", allow_drop_passages=True)
+    assert [c[1] for c in calls] == ["publish"]
+
+    # 6. Rejects mismatched passages manifest BEFORE calling publish.
+    calls.clear()
+    bad_manifest = tmp_path / "bad-passages.json"
+    bad_manifest.write_text(json.dumps(live_passages))
+    with pytest.raises(ValueError, match="differs from target release"):
+        release.update(root, origin=origin, engine="/bin/fake-spicyengine", passages_manifest=bad_manifest)
+    assert calls == []
+
+    bad_docs = tmp_path / "bad-docs-passages.json"
+    bad_docs.write_text(json.dumps(live_passages | {"release_id": release_id, "documents": 99}))
+    with pytest.raises(ValueError, match="differs from prepared rows"):
+        release.update(root, origin=origin, engine="/bin/fake-spicyengine", passages_manifest=bad_docs)
+    assert calls == []
+
+    # 7. Valid passages manifest publishes, stamps config_version with the new revision, and runs attach-passages.
+    calls.clear()
+    good_manifest = tmp_path / "good-passages.json"
+    good_manifest.write_text(json.dumps({
+        "release_id": release_id,
+        "model": "BAAI/bge-small-en-v1.5",
+        "dimensions": 384,
+        "passages": 12,
+        "documents": 1,
+        "parquet": "/srv/spicyengine/input/passages/new/*.parquet",
+        "keyword_parquet": "/srv/spicyengine/input/passages/new-kw/*.parquet",
+    }))
+    work = release.update(root, origin=origin, engine="/bin/fake-spicyengine", passages_manifest=good_manifest)
+    assert [c[1] for c in calls] == ["publish", "attach-passages"]
+    stamped_path = work / "passages-attach.json"
+    assert calls[1][2] == str(stamped_path)
+    stamped = json.loads(stamped_path.read_text())
+    assert stamped["config_version"] == new_revision
+    assert stamped["release_id"] == release_id
+    assert stamped["keyword_parquet"] == "/srv/spicyengine/input/passages/new-kw/*.parquet"
+
+    # 8. CLI parses --allow-drop-passages and --passages-manifest and passes them through to update().
+    recorded = {}
+
+    def fake_update(root_arg, **kwargs):
+        recorded["root"] = root_arg
+        recorded.update(kwargs)
+        return work
+
+    monkeypatch.setattr(release, "update", fake_update)
+    monkeypatch.setattr(
+        sys, "argv",
+        ["spicyengine_release", "--root", str(root), "--engine", "/bin/fake-spicyengine",
+         "--allow-drop-passages", "--passages-manifest", str(good_manifest)],
+    )
+    release.main()
+    assert recorded["allow_drop_passages"] is True
+    assert recorded["passages_manifest"] == good_manifest

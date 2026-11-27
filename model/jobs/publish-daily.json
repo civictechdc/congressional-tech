@@ -67,6 +67,7 @@
     "external/legislators",
     "external/provider-responses",
     "external/wayback",
+    "govinfo/collections",
     "govinfo/mets",
     "govinfo/mods",
     "govinfo/premis",

@@ -34,6 +34,7 @@ def test_genuine_youtube_routing_is_preserved(source, url, expected):
     ("https://docs.house.gov/meetings/IF/IF00/20261010/118001/HMKP-119-IF00-WList-20261010.xml", "house/witness-xml"),
     ("https://docs.house.gov/meetings/IF/IF00/20261010/118001/HMTG-119-IF00-WList-20261010.xml", "house/witness-xml"),
     ("https://docs.house.gov/meetings/IF/IF00/20261010/118001/OTHER-119-IF00-20261010.xml", "documents"),
+    ("https://api.govinfo.gov/collections/CHRG/2026-11-20T03:23:00Z?pageSize=1000&offsetMark=*", "govinfo/collections"),
 ])
 def test_house_meeting_and_witness_xml_routing(url, expected):
     assert family(url=url) == expected
