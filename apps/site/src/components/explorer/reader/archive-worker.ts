@@ -58,7 +58,7 @@ self.onmessage=async({data})=>{
           ({index,redirectedFrom}=found);
         }
         const opened=await reader.openDocument(index,controller.signal);
-        const entry={document:opened.document,detail:opened.detail,sources:opened.sources,recoveries:opened.recoveries,releaseId:reader.releaseId};
+        const entry={document:opened.document,detail:opened.detail,sources:opened.sources,recoveries:opened.recoveries,detailShard:opened.detailShard,releaseId:reader.releaseId};
         const versions=await displayedDates(reader,opened.versions,controller.signal);
         result={
           ...opened,
@@ -86,6 +86,8 @@ self.onmessage=async({data})=>{
       case '/bill':result=await reader.getBill(args.subjectKey??args.subject_key??args.bill_id??args.key,controller.signal);break;
       case '/nomination':result=await reader.getNomination(args.subjectKey??args.subject_key??args.nomination_id??args.key,controller.signal);break;
       case '/entities':result=await reader.listEntities(args.kind,args,controller.signal);break;
+      case '/accountability':result=await reader.accountability(args,controller.signal);break;
+      case '/topOrganizations':result=await reader.topOrganizationsByTopic(args,controller.signal);break;
       case '/pageMetadata':result=await reader.pageMetadata(args.index,controller.signal);break;
       case '/selectedText':result=await reader.selectedText(args.index,controller.signal);break;
       case '/saved':result=await reader.openSaved(args);break;

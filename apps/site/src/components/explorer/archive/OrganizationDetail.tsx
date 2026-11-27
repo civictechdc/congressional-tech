@@ -5,6 +5,7 @@ import {
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
 import {PublicLink, day} from './ArchiveRows.tsx';
+import {CitableReceipt} from './CitableReceipt.tsx';
 
 const parentLabels = new Map<string, string>(
   (taxonomy.parent_categories ?? []).map((p: any) => [String(p.id), String(p.label)]),
@@ -43,6 +44,8 @@ function externalIdUrl(scheme: string, value: string): string | null {
 export function OrganizationDetail({
   organization,
   committeesCatalog,
+  rawBase,
+  releaseId,
   compact,
   onSelect,
   onHearing,
@@ -56,6 +59,8 @@ export function OrganizationDetail({
 }: {
   organization: any;
   committeesCatalog?: CommitteeCatalogInput;
+  rawBase?: string;
+  releaseId?: string;
   compact?: boolean;
   onSelect?: (row: number) => void;
   onHearing?: (key: string) => void;
@@ -136,6 +141,7 @@ export function OrganizationDetail({
       <p className="archive-source-meta">
         Organization ID: <code>{organization.org_id}</code> · {Number(organization.appearance_count ?? appearances.length)} linked witness {Number(organization.appearance_count ?? appearances.length) === 1 ? 'appearance' : 'appearances'}
       </p>
+      {!compact && organization.org_id && <CitableReceipt kind="organization" releaseId={releaseId} rawBase={rawBase} orgId={String(organization.org_id)} />}
     </header>
 
     {appearances.length > 0 && <div className="archive-entity-section">

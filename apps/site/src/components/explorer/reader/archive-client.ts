@@ -34,5 +34,9 @@ export function createArchiveClient(pointerUrl:string,rawBase:string,onReload:()
       request('nomination',{subjectKey},signal),
     listEntities:(kind:string,options:any={},signal?:AbortSignal)=>
       request('entities',{...options,kind},signal),
+    accountability:(options:any={},signal?:AbortSignal)=>
+      request('accountability',options,signal),
+    topOrganizations:(options:any={},signal?:AbortSignal)=>
+      request('topOrganizations',options,signal),
   };
 }

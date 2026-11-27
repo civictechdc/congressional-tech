@@ -1811,5 +1811,124 @@ export function createArchiveEntities(ctx: ArchiveEntityContext) {
     };
   }
 
-  return { prepareQuery, getMeeting, getCommittee, getWitness, getPerson, getOrganization, getMember, getBill, getNomination, getSubject, listEntities, openDocument };
+  async function topOrganizationsByTopic(options: { topic?: string; congress?: string | number; limit?: number } = {}, signal?: AbortSignal) {
+    signal?.throwIfAborted();
+    const topic = String(options.topic ?? '').trim();
+    if (!topic) {
+      return { state: 'ready' as const, topic: '', matchedDocuments: 0, matchedHearings: 0, totalOrgs: 0, rows: [] };
+    }
+    if (!files.has('organizations.parquet') || !files.has('witness_organizations.parquet')) {
+      return { state: 'unavailable' as const, topic, matchedDocuments: 0, matchedHearings: 0, totalOrgs: 0, rows: [], reason: 'Organizations are not published in this release.' };
+    }
+    const lowerTopic = topic.toLowerCase();
+    const rawCong = options.congress;
+    const congressFilter = rawCong != null && rawCong !== '' && rawCong !== 'all' ? Number(rawCong) : null;
+    const limit = Math.min(50, Math.max(1, Number(options.limit) || 20));
+
+    const [{ data: mIdx }, { data: woIdx }, { data: orgsIdx }, { data: orgIdsIdx }, { data: wIdx }] = await Promise.all([
+      optional('meetings', meetingsIndex, signal),
+      optional('witness_organizations', witnessOrganizationsIndex, signal),
+      optional('organizations', organizationsIndex, signal),
+      optional('organization_ids', organizationIdsIndex, signal),
+      optional('witnesses', witnessesIndex, signal),
+    ]);
+    if (!woIdx || !orgsIdx) {
+      return { state: 'unavailable' as const, topic, matchedDocuments: 0, matchedHearings: 0, totalOrgs: 0, rows: [], reason: 'Organizations could not be loaded.' };
+    }
+
+    const matchedWitnesses = new Set<string>();
+    const witnessDocs = new Map<string, Set<number>>();
+    let matchedDocuments = 0;
+    for (let i = 0; i < count; i++) {
+      if (value('hidden', i)) continue;
+      if (congressFilter != null && Number(value('congress', i)) !== congressFilter) continue;
+      const hay = `${value('title', i) ?? ''} ${value('filename', i) ?? ''} ${(value('measure_keys', i) ?? []).join(' ')}`.toLowerCase();
+      if (!hay.includes(lowerTopic)) continue;
+      matchedDocuments++;
+      for (const wk of value('witness_keys', i) ?? []) {
+        const cleanWk = String(wk ?? '').trim().toLowerCase();
+        if (!cleanWk) continue;
+        matchedWitnesses.add(cleanWk);
+        let set = witnessDocs.get(cleanWk);
+        if (!set) { set = new Set(); witnessDocs.set(cleanWk, set); }
+        set.add(i);
+      }
+    }
+
+    let matchedHearings = 0;
+    const matchedEvents = new Set<string>();
+    for (const m of mIdx?.rows ?? []) {
+      if (congressFilter != null && Number(m.congress) !== congressFilter) continue;
+      if (!String(m.title ?? '').toLowerCase().includes(lowerTopic)) continue;
+      matchedHearings++;
+      const ev = String(m.event_id ?? '');
+      if (ev) matchedEvents.add(ev);
+      for (const wk of m.witness_keys ?? []) {
+        const cleanWk = String(wk ?? '').trim().toLowerCase();
+        if (cleanWk) matchedWitnesses.add(cleanWk);
+      }
+      for (const w of wIdx?.byEventId.get(ev) ?? []) {
+        if (w.superseded_by != null) continue;
+        const cleanWk = String(w.witness_key ?? '').trim().toLowerCase();
+        if (cleanWk) matchedWitnesses.add(cleanWk);
+      }
+    }
+
+    const byOrg = new Map<string, {
+      org: any;
+      witnessKeys: Set<string>;
+      eventIds: Set<string>;
+      docRows: Set<number>;
+      sampleHearings: string[];
+    }>();
+    for (const wk of matchedWitnesses) {
+      for (const link of woIdx.byWitnessKey.get(wk) ?? []) {
+        const org = orgsIdx.byId.get(link.org_id);
+        if (!org) continue;
+        let bucket = byOrg.get(org.org_id);
+        if (!bucket) {
+          bucket = { org, witnessKeys: new Set(), eventIds: new Set(), docRows: new Set(), sampleHearings: [] };
+          byOrg.set(org.org_id, bucket);
+        }
+        bucket.witnessKeys.add(wk);
+        const w = wIdx?.byKey.get(wk);
+        const ev = String(link.event_id ?? w?.event_id ?? '');
+        if (ev) {
+          bucket.eventIds.add(ev);
+          if (bucket.sampleHearings.length < 3) {
+            const m = mIdx?.byEventId.get(ev)?.[0];
+            if (m?.title && !bucket.sampleHearings.includes(m.title)) bucket.sampleHearings.push(m.title);
+          }
+        }
+        for (const r of witnessDocs.get(wk) ?? []) bucket.docRows.add(r);
+      }
+    }
+
+    const rows = [...byOrg.values()]
+      .map(b => ({
+        ...b.org,
+        organization_ids: orgIdsIdx?.byOrgId.get(b.org.org_id) ?? [],
+        matching_appearances: b.witnessKeys.size,
+        matching_hearings: b.eventIds.size,
+        matching_documents: b.docRows.size,
+        sample_hearings: b.sampleHearings,
+      }))
+      .sort((a, b) =>
+        (b.matching_appearances - a.matching_appearances)
+        || (b.matching_hearings - a.matching_hearings)
+        || (b.matching_documents - a.matching_documents)
+        || (b.appearance_count - a.appearance_count)
+        || String(a.display_name ?? '').localeCompare(String(b.display_name ?? '')));
+
+    return {
+      state: 'ready' as const,
+      topic,
+      matchedDocuments,
+      matchedHearings,
+      totalOrgs: rows.length,
+      rows: rows.slice(0, limit),
+    };
+  }
+
+  return { prepareQuery, getMeeting, getCommittee, getWitness, getPerson, getOrganization, getMember, getBill, getNomination, getSubject, listEntities, openDocument, topOrganizationsByTopic };
 }

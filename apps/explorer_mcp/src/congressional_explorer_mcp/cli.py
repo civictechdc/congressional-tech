@@ -43,8 +43,19 @@ def serve(args, selection=None):
         options = dict(host=args.host, port=args.port, path='/mcp',
                        stateless_http=True, json_response=True)
     warm_on_start = bool(args.warm or (args.transport == 'http' and selection is not None))
+    if args.search_timeout is not None:
+        search_timeout = args.search_timeout
+    else:
+        env_timeout = os.environ.get('CONGRESS_MCP_SEARCH_TIMEOUT')
+        if env_timeout:
+            try:
+                search_timeout = float(env_timeout)
+            except ValueError as error:
+                raise ValueError('Archive search timeout must be a positive number') from error
+        else:
+            search_timeout = 35.0
     create_server(selection, data_dir=args.data_dir, publication=args.publication,
-                  timeout=args.query_timeout, warm_on_start=warm_on_start,
+                  timeout=args.query_timeout, search_timeout=search_timeout, warm_on_start=warm_on_start,
                   search_origin=os.environ.get('CONGRESS_MCP_SEARCH_ORIGIN')).run(
         transport=args.transport, show_banner=False, **options)
 
@@ -75,6 +86,8 @@ def main(argv=None):
             command.add_argument('--host', default='127.0.0.1', help='HTTP listen address')
             command.add_argument('--port', type=int, default=8080, help='HTTP listen port')
             command.add_argument('--query-timeout', type=float, default=10.0)
+            command.add_argument('--search-timeout', type=float, default=None,
+                help='Seconds allowed for remote archive search requests (default 35 or CONGRESS_MCP_SEARCH_TIMEOUT)')
             command.add_argument('--warm', action='store_true',
                 help='Warm the query worker and large tables before accepting requests')
             command.add_argument('--prepare-if-missing', action='store_true',

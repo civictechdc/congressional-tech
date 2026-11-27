@@ -261,7 +261,10 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
       detail.src_len?read('sources.parquet',detail.src_start,detail.src_start+detail.src_len):[],
       detail.rec_len?read('recoveries.parquet',detail.rec_start,detail.rec_start+detail.rec_len):[]]),signal);
     if(sources.some(item=>item.list_row!==index)||recoveries.some(item=>item.list_row!==index))throw new Error('Archive attachment row failed verification.');
-    return {document:row(index),detail,sources,recoveries};
+    const detailGroup=shards.get('detail');
+    const matchingShard=detailGroup?.find((item: any)=>item.row_range[0]<=index&&index<item.row_range[1]);
+    const detailShard=matchingShard?{name:matchingShard.name,rowStart:matchingShard.row_range[0]}:{name:'detail.parquet',rowStart:0};
+    return {document:row(index),detail,sources,recoveries,detailShard};
   };
   const resolve=async(key: string)=>{
     if(!/^[a-f0-9]{16}$/.test(key))throw new Error('Invalid archive link key.');
@@ -411,6 +414,127 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     return prepared;
   };
 
+  const retiredLinksList=()=>entity('retired_links');
+  const recoveriesList=()=>entity('recoveries');
+  const cleanNote=(note: any)=>{
+    const text=String(note??'').trim();
+    if(!text)return null;
+    if(/^Reconciled from pinned accepted mappings\s+[0-9a-f]{16,}(?:; receipt categories preserved)?$/i.test(text))return null;
+    return text;
+  };
+  let accountabilityCache:Promise<{
+    availability:{retiredLinks:'ready'|'missing';removedOn:'ready'|'missing';recoveries:'ready'|'missing'};
+    items:any[];
+    counts:{removedOn:number;hidden:number;retiredRedirected:number;retiredRemoved:number;recoveredOnly:number;withIdentityNote:number;multiEdition:number};
+  }>|undefined;
+  const loadAccountability=(signal?: AbortSignal)=>{
+    signal?.throwIfAborted();
+    if(!accountabilityCache){
+      accountabilityCache=(async()=>{
+        const hasRetired=files.has('retired_links.parquet');
+        const hasRecoveries=files.has('recoveries.parquet');
+        const detailInput=shards.has('detail')?await table(shards.get('detail')![0].name):await table('detail.parquet');
+        const hasRemovedOn=detailInput.names.includes('removed_on');
+        const [retiredRows,recoveryRows]=await Promise.all([
+          hasRetired?retiredLinksList():Promise.resolve([]),
+          hasRecoveries?recoveriesList():Promise.resolve([]),
+        ]);
+        const recoveriesByRow=new Map<number,any[]>();
+        for(const r of recoveryRows){
+          const lr=Number(r.list_row);
+          if(!Number.isSafeInteger(lr))continue;
+          const note=cleanNote(r.identity_note);
+          const item={kind:r.kind??'recovered_document',identity_note:note,recovered_url:r.recovered_url??null,imported_at:r.imported_at?date(r.imported_at):null};
+          let list=recoveriesByRow.get(lr);
+          if(!list){list=[];recoveriesByRow.set(lr,list);}
+          list.push(item);
+        }
+        const hasReviewNote=detailInput.names.includes('review_note');
+        const hasReviewDecided=detailInput.names.includes('review_decided_at');
+        const detailMetaMap=new Map<number,{removed_on:string|null;review_note:string|null;review_decided_at:string|null}>();
+        if(hasRemovedOn||hasReviewNote||hasReviewDecided){
+          const cols:string[]=[];
+          if(hasRemovedOn)cols.push('removed_on');
+          if(hasReviewNote)cols.push('review_note');
+          if(hasReviewDecided)cols.push('review_decided_at');
+          const chunkSize=16384;
+          for(let start=0;start<count;start+=chunkSize){
+            await yieldToMessages(signal);
+            const end=Math.min(count,start+chunkSize);
+            const chunk=await read('detail.parquet',start,end,undefined,cols);
+            for(let j=0;j<chunk.length;j++){
+              const idx=start+j;
+              const d=chunk[j];
+              if(d?.removed_on!=null||Boolean(value('hidden',idx))){
+                detailMetaMap.set(idx,{
+                  removed_on:d?.removed_on!=null?(date(d.removed_on)??String(d.removed_on)):null,
+                  review_note:d?.review_note??null,
+                  review_decided_at:d?.review_decided_at?date(d.review_decided_at):null,
+                });
+              }
+            }
+          }
+        }
+        const items:any[]=[];
+        const counts={removedOn:0,hidden:0,retiredRedirected:0,retiredRemoved:0,recoveredOnly:0,withIdentityNote:0,multiEdition:0};
+        for(let i=0;i<count;i++){
+          if(i%scanBatchRows===0)await yieldToMessages(signal);
+          const isHidden=Boolean(value('hidden',i));
+          const meta=detailMetaMap.get(i);
+          const rem=meta?.removed_on!=null?meta:undefined;
+          const isRecovered=value('saved_kind',i)==='recovery';
+          const vKeys:string[]=value('version_keys',i)??[];
+          const recs=recoveriesByRow.get(i)??[];
+          const hasNote=recs.some(r=>Boolean(r.identity_note));
+          const isMulti=!isHidden&&vKeys.length>0;
+          if(!isHidden&&!rem&&!isRecovered&&!isMulti&&!hasNote)continue;
+          const doc=row(i);
+          if(rem){
+            counts.removedOn++;
+            items.push({churn_kind:'removed_on',list_row:i,document:doc,removed_on:rem.removed_on,review_note:rem.review_note,review_decided_at:rem.review_decided_at,recoveries:recs,edition_count:vKeys.length});
+          }else if(isHidden){
+            counts.hidden++;
+            items.push({churn_kind:'review_removed',list_row:i,document:doc,review_note:meta?.review_note??null,review_decided_at:meta?.review_decided_at??null,recoveries:recs,edition_count:vKeys.length});
+          }
+          if(isRecovered){
+            counts.recoveredOnly++;
+            if(hasNote)counts.withIdentityNote++;
+            items.push({churn_kind:'recovered_only',list_row:i,document:doc,recoveries:recs,has_identity_note:hasNote,edition_count:vKeys.length});
+          }else if(hasNote){
+            counts.withIdentityNote++;
+            items.push({churn_kind:'identity_note',list_row:i,document:doc,recoveries:recs,has_identity_note:true,edition_count:vKeys.length});
+          }
+          if(isMulti){
+            counts.multiEdition++;
+            items.push({churn_kind:'multi_edition',list_row:i,document:doc,version_keys:vKeys,edition_count:vKeys.length,recoveries:recs});
+          }
+        }
+        for(const r of retiredRows){
+          const lk=hex(r.link_key);
+          const succ=hex(r.successor_key);
+          const versions:string[]=Array.isArray(r.address_versions)?r.address_versions.map(hex).filter((v:string|null):v is string=>Boolean(v)):[];
+          if(succ){
+            counts.retiredRedirected++;
+            items.push({churn_kind:'retired_redirected',link_key:lk,successor_key:succ,last_release_id:r.last_release_id??null,last_filename:r.last_filename??null,address_versions:versions});
+          }else{
+            counts.retiredRemoved++;
+            items.push({churn_kind:'retired_removed',link_key:lk,successor_key:null,last_release_id:r.last_release_id??null,last_filename:r.last_filename??null,address_versions:versions});
+          }
+        }
+        return {
+          availability:{
+            retiredLinks:hasRetired?'ready' as const:'missing' as const,
+            removedOn:hasRemovedOn?'ready' as const:'missing' as const,
+            recoveries:hasRecoveries?'ready' as const:'missing' as const,
+          },
+          items,
+          counts,
+        };
+      })().catch(err=>{accountabilityCache=undefined;throw err;});
+    }
+    return awaitShared(accountabilityCache!,signal);
+  };
+
   const reader={releaseId,manifest,metrics,count,
     has:(name: string)=>files.has(name+'.parquet')||shards.has(name),
     async search(rawQuery: any={},signal?: AbortSignal){
@@ -542,6 +666,50 @@ export async function openArchive(pointerUrl: string, options: any = {}) {
     getSubject:entityStore.getSubject,
     listEntities:entityStore.listEntities,
     openDocument:entityStore.openDocument,
+    topOrganizationsByTopic:entityStore.topOrganizationsByTopic,
+    async accountability(options: any={},signal?: AbortSignal){
+      signal?.throwIfAborted();
+      const kind=String(options.kind||'all');
+      const offset=Math.max(0,Number(options.offset)||0);
+      const limit=Math.min(200,Math.max(1,Number(options.limit)||30));
+      const q=String(options.q??'').trim().toLowerCase();
+      const rawCong=options.congress;
+      const congressFilter=rawCong!=null&&rawCong!==''&&rawCong!=='all'?Number(rawCong):null;
+      const loaded=await loadAccountability(signal);
+      const matchesKind=(item: any)=>{
+        switch(kind){
+          case 'removed': return item.churn_kind==='removed_on'||item.churn_kind==='review_removed'||item.churn_kind==='retired_removed';
+          case 'retired': return item.churn_kind==='retired_redirected'||item.churn_kind==='retired_removed';
+          case 'recovered': return item.churn_kind==='recovered_only';
+          case 'identity_notes': return item.churn_kind==='identity_note'||(item.churn_kind==='recovered_only'&&Boolean(item.has_identity_note));
+          case 'multi_edition': return item.churn_kind==='multi_edition';
+          default: return true;
+        }
+      };
+      const filtered=loaded.items.filter(item=>{
+        if(!matchesKind(item))return false;
+        if(congressFilter!=null){
+          if(!item.document||Number(item.document.congress)!==congressFilter)return false;
+        }
+        if(q){
+          const doc=item.document;
+          const notes=(item.recoveries??[]).map((r:any)=>r.identity_note).filter(Boolean).join(' ');
+          const hay=[doc?.title,doc?.filename,item.last_filename,item.link_key,item.successor_key,item.last_release_id,notes].filter(Boolean).join(' ').toLowerCase();
+          if(!hay.includes(q))return false;
+        }
+        return true;
+      });
+      const page=filtered.slice(offset,offset+limit);
+      return {
+        releaseId,
+        availability:loaded.availability,
+        counts:loaded.counts,
+        total:filtered.length,
+        rows:page,
+        offset,
+        next:offset+limit<filtered.length?offset+limit:null,
+      };
+    },
     retired,
     witnessKeyMap,
     personAlias,

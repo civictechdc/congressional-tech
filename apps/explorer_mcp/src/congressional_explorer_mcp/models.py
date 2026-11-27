@@ -222,6 +222,15 @@ class ActivityQuery(DatedPage):
 
 
 class ResearchQuery(DatedPage):
-    name: Literal['recent_bills', 'pending_nominations', 'hearings_by_committee', 'legislation_by_subject']
+    name: Literal[
+        'recent_bills',
+        'pending_nominations',
+        'hearings_by_committee',
+        'legislation_by_subject',
+        'organization_dossier',
+        'accountability_documents',
+    ]
     committee: str | None = Field(default=None, max_length=256)
     subject: str | None = Field(default=None, max_length=256)
+    org_id: str | None = Field(default=None, max_length=256)
+    churn_kind: Literal['all', 'removed', 'retired', 'recovered', 'multi_edition'] | None = None

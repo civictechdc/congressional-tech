@@ -6,9 +6,11 @@ import {
   formatMeetingType,
   formatSubject,
   presentDocument,
+  spicyGovHearingUrl,
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
 import {PublicLink, RelationNotice, day} from './ArchiveRows.tsx';
+import {CitableReceipt} from './CitableReceipt.tsx';
 import {savedCopy} from '../reader/archive.ts';
 import {transcriptSourceLabel, witnessLabel, witnessMember, witnessRecordEntryLabel} from '../reader/archive-entities.ts';
 
@@ -53,6 +55,7 @@ export function HearingDetail({
   meeting,
   committeesCatalog,
   rawBase,
+  releaseId,
   compact,
   onSelect,
   onCommittee,
@@ -69,6 +72,7 @@ export function HearingDetail({
   meeting:any;
   committeesCatalog?:CommitteeCatalogInput;
   rawBase?:string;
+  releaseId?:string;
   compact?:boolean;
   onSelect?:(row:number)=>void;
   onCommittee?:(key:string)=>void;
@@ -138,6 +142,7 @@ export function HearingDetail({
       <div className="archive-entity-header-top">
         <p className="archive-detail-context">{contextParts.join(' · ')||'Congressional Hearing'}</p>
         <div className="archive-pill-list">
+          {spicyGovHearingUrl(meeting)&&<a className="archive-measure-pill" href={spicyGovHearingUrl(meeting)!} target="_blank" rel="noreferrer">Explore on SpicyGov →</a>}
           {onInspect&&<button type="button" className="archive-measure-pill" onClick={onInspect}>Open full profile →</button>}
           {onFilterDocuments&&<button type="button" className="archive-measure-pill" onClick={onFilterDocuments}>Filter documents in Document Search</button>}
           {onClose&&<button type="button" className="archive-measure-pill" onClick={onClose}>{closeLabel||'Close hearing details'}</button>}
@@ -154,6 +159,7 @@ export function HearingDetail({
           <span>Event ID: {eventId}</span>
         </>}
       </p>
+      {!compact&&eventId&&<CitableReceipt kind="hearing" releaseId={releaseId} rawBase={rawBase} eventId={eventId}/>}
     </header>
 
     <RelationNotice label="Committee details" state={relation.committees}/>

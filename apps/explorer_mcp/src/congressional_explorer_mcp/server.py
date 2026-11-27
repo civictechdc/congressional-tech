@@ -1,6 +1,7 @@
 """The public MCP surface uses only the current published archive model."""
 from contextlib import AsyncExitStack, asynccontextmanager
 from functools import partial
+import math
 import time
 
 import anyio
@@ -20,10 +21,13 @@ from .release import PUBLICATION, encoded, load_selection, prepare
 from .hearing_models import HearingBundleQuery, TranscriptQuery
 
 
-def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PUBLICATION, warm_on_start=False,
-                  search_origin=None):
+def create_server(selection=None, *, timeout=10.0, search_timeout=35.0, data_dir=None, publication=PUBLICATION,
+                  warm_on_start=False, search_origin=None):
     if selection is None and data_dir is None:
         raise ValueError('A selected release or data directory is required')
+    if (isinstance(search_timeout, bool) or not isinstance(search_timeout, (int, float))
+            or not math.isfinite(search_timeout) or search_timeout <= 0):
+        raise ValueError('Archive search timeout must be a positive number')
     worker = Worker(selection, timeout=timeout)
     setup_lock = anyio.Lock()
     origin = backend_origin(search_origin) if search_origin else None
@@ -50,7 +54,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
                 clients = {}
                 if origin:
                     clients['archive_search'] = await stack.enter_async_context(
-                        httpx.AsyncClient(base_url=origin, timeout=timeout, follow_redirects=False, trust_env=False))
+                        httpx.AsyncClient(base_url=origin, timeout=search_timeout, follow_redirects=False, trust_env=False))
                 yield clients
         finally:
             await worker.close()
@@ -76,7 +80,7 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
             await ensure_selection()
             return worker.selection['release_id']
 
-        register_tools(mcp, origin, selected_release, timeout)
+        register_tools(mcp, origin, selected_release, search_timeout)
 
     @mcp.custom_route('/ready', methods=['GET'])
     async def ready(request):
@@ -439,13 +443,16 @@ def create_server(selection=None, *, timeout=10.0, data_dir=None, publication=PU
 
     @mcp.tool(annotations=annotations)
     async def run_research_query(query: ResearchQuery) -> dict:
-        """Run recent_bills, pending_nominations, hearings_by_committee or legislation_by_subject.
+        """Run recent_bills, pending_nominations, hearings_by_committee, legislation_by_subject, organization_dossier, or accountability_documents.
 
         Dates filter introduced, received or meeting_date, since inclusive/until exclusive; order is newest
         date then canonical ID. committee is one exact published code or unambiguous name; subject is one
-        published subject label. Ambiguous input returns candidates. Pending means no terminal action recorded
-        in a known latest action in this snapshot; missing latest actions remain unknown. Source references,
-        missing fields and unavailable collection coverage are explicit. Continue with the returned cursor.
+        published subject label. organization_dossier resolves org_id (including 1-hop organization_redirects) with
+        external IDs, witness breakdown, and linked documents. accountability_documents surfaces removed_on, hidden,
+        retired_links (with/without successor_key), recovered-only (saved_kind='recovery'), and multi-edition records.
+        Ambiguous input returns candidates. Pending means no terminal action recorded in a known latest action in
+        this snapshot; missing latest actions remain unknown. Source references, missing fields and unavailable
+        collection coverage are explicit. Continue with the returned cursor.
         """
         return await call('run_research_query', query.model_dump())
 

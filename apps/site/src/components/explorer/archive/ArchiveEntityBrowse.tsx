@@ -12,7 +12,7 @@ import {day} from './ArchiveRows.tsx';
 import {integer} from '../view/request-state.tsx';
 import {witnessLabel} from '../reader/archive-entities.ts';
 
-export type ArchiveTab = 'documents' | 'hearings' | 'committees' | 'witnesses' | 'organizations' | 'members' | 'subjects';
+export type ArchiveTab = 'documents' | 'hearings' | 'committees' | 'witnesses' | 'organizations' | 'members' | 'subjects' | 'accountability';
 
 export const ARCHIVE_TABS: ReadonlyArray<{
   key: ArchiveTab;
@@ -27,6 +27,7 @@ export const ARCHIVE_TABS: ReadonlyArray<{
   {key: 'organizations', label: 'Organizations', noun: 'organizations', singular: 'organization'},
   {key: 'members', label: 'Members', noun: 'members', singular: 'member'},
   {key: 'subjects', label: 'Bills & Nominations', noun: 'bills and nominations', singular: 'bill or nomination'},
+  {key: 'accountability', label: 'Accountability & Churn', noun: 'accountability records', singular: 'accountability record'},
 ];
 
 export function visibleArchiveTabs(entityCounts?: Record<string, number>) {
@@ -63,6 +64,10 @@ export function normalizeArchiveTab(raw: string | null | undefined): ArchiveTab 
     case 'nominations':
     case 'nomination':
       return 'subjects';
+    case 'accountability':
+    case 'churn':
+    case 'removed':
+      return 'accountability';
     default:
       return 'documents';
   }
@@ -70,6 +75,7 @@ export function normalizeArchiveTab(raw: string | null | undefined): ArchiveTab 
 
 export function tabTotalCount(tab: ArchiveTab, docCount?: number, entityCounts?: Record<string, number>): number | null {
   if (tab === 'documents') return typeof docCount === 'number' ? docCount : null;
+  if (tab === 'accountability') return null;
   if (!entityCounts) return null;
   switch (tab) {
     case 'hearings':
@@ -101,7 +107,7 @@ export function ArchiveEntityRows({
   onInspectMember,
   onInspectSubject,
 }: {
-  tab: Exclude<ArchiveTab, 'documents'>;
+  tab: Exclude<ArchiveTab, 'documents' | 'accountability'>;
   rows: any[];
   committeesCatalog?: CommitteeCatalogInput;
   onInspectHearing: (key: string) => void;

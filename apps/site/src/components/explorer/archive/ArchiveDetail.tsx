@@ -11,9 +11,11 @@ import {
   formatBytes,
   formatSubject,
   presentDocument,
+  spicyGovBillUrl,
   type CommitteeCatalogInput,
 } from './archive-metadata.ts';
 import {ArchiveRows, PublicLink, day, siteBase} from './ArchiveRows.tsx';
+import {CitableReceipt} from './CitableReceipt.tsx';
 import {HearingDetail} from './HearingDetail.tsx';
 import {CommitteeDetail} from './CommitteeDetail.tsx';
 import {WitnessDetail} from './WitnessDetail.tsx';
@@ -236,7 +238,11 @@ export function ArchiveDetail({
       {allMeasures.length>0&&<p className="archive-dates-measures"><strong>Related legislation:</strong> <span className="archive-measure-list">{allMeasures.map(m=>{
         const key=m.subject_key??m.key;
         const text=m.short_title||m.title?`${m.label} (${m.short_title||m.title})`:m.label;
-        return handleSubject?<button key={key} type="button" className="archive-measure-pill" onClick={()=>handleSubject(key)}>{text}</button>:<span key={key} className="archive-measure-pill">{text}</span>;
+        const spicyUrl=spicyGovBillUrl(key);
+        return <span key={key} className="archive-pill-group">
+          {handleSubject?<button type="button" className="archive-measure-pill" onClick={()=>handleSubject(key)}>{text}</button>:<span className="archive-measure-pill">{text}</span>}
+          {spicyUrl&&<a className="archive-measure-pill" href={spicyUrl} target="_blank" rel="noreferrer">Explore on SpicyGov →</a>}
+        </span>;
       })}</span></p>}
       {witnessItems.length>0&&<p className="archive-dates-measures">
         <strong>Witnesses:</strong>{' '}
@@ -275,7 +281,17 @@ export function ArchiveDetail({
           {primaryDetail?.saved_media_type&&<div><dt>Media type</dt><dd><code>{primaryDetail.saved_media_type}</code></dd></div>}
           {detail?.link_key&&<div><dt>Archive key</dt><dd><code>{keyHex(detail.link_key)}</code></dd></div>}
         </dl>
-      </details></>:<p>No usable primary copy is available.</p>}</section>
+      </details></>:<p>No usable primary copy is available.</p>}
+      <CitableReceipt
+        kind="document"
+        releaseId={entry.releaseId}
+        rawBase={rawBase}
+        linkKey={detail?.link_key?keyHex(detail.link_key):undefined}
+        savedBodySha256={detail?.saved_body?keyHex(detail.saved_body):null}
+        detailFile={entry.detailShard?.name}
+        detailRowStart={entry.detailShard?.rowStart}
+      />
+    </section>
     {recoveries.length>0&&<section><h3>Recovered and related files</h3><ul>{recoveries.map((recovery:any,i:number)=>{
       const note=cleanIdentityNote(recovery.identity_note);
       const sameAsPrimary=Boolean(detail.saved_body&&recovery.body&&keyHex(recovery.body)===keyHex(detail.saved_body));

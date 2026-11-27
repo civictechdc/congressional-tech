@@ -8,6 +8,7 @@ const pointerUrl=import.meta.env.PUBLIC_ARCHIVE_POINTER_URL||'https://congressio
 const rawBase=import.meta.env.PUBLIC_ARCHIVE_RAW_BASE_URL||'https://congressional-data.spicygov.ai/';
 ---
 <Base title="Congress Explorer" active="archive" description="Search congressional committee hearings, witness statements, bills, markups, saved copies, and recovered records.">
+  <link slot="head" rel="alternate" type="application/atom+xml" title="Congress Explorer Accountability & Churn Feed" href={withBase('/archive/feed.xml')} />
   <section class="explorer-page explorer-archive-page">
     <div class="container">
       <div class="explorer-page-heading">

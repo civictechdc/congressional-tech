@@ -1,6 +1,7 @@
 import congressMetadata from '../../../data/congress_metadata.json' with { type: 'json' };
 
 import documentClassifications from '../../../../../../packages/congress_shared/src/congress_shared/data/document-classifications.json' with { type: 'json' };
+import {SPICYGOV_ORIGIN} from './search-config.ts';
 
 const documentKindLabels: Readonly<Record<string, { label: string } | undefined>> = documentClassifications.kinds;
 
@@ -1084,6 +1085,31 @@ export function spicyRegsUrl(queryOrBill: string): string | null {
   const clean = String(queryOrBill ?? '').trim();
   if (!clean) return null;
   return `https://spicyregs.org/?q=${encodeURIComponent(clean)}`;
+}
+
+export function spicyGovHearingUrl(meeting: any): string | null {
+  if (!meeting) return null;
+  const eventId = String(meeting.event_id ?? meeting.meeting_key ?? '').trim();
+  if (!eventId) return null;
+  const params = new URLSearchParams({
+    table: 'committee_meetings',
+    where: JSON.stringify([{column: 'event_id', value: eventId}]),
+  });
+  return `${SPICYGOV_ORIGIN}/?${params.toString()}`;
+}
+
+export function spicyGovBillUrl(billOrKey: any): string | null {
+  if (!billOrKey) return null;
+  if (typeof billOrKey === 'object' && billOrKey.kind === 'nomination') return null;
+  const key = (typeof billOrKey === 'object'
+    ? String(billOrKey.bill_id ?? billOrKey.subject_key ?? billOrKey.nomination_id ?? '')
+    : String(billOrKey)).trim().toLowerCase();
+  if (!key || /^(?:\d+-)?pn-/.test(key)) return null;
+  const params = new URLSearchParams({
+    table: 'congress_bills',
+    where: JSON.stringify([{column: 'bill_id', value: key}]),
+  });
+  return `${SPICYGOV_ORIGIN}/?${params.toString()}`;
 }
 
 export function formatDuration(seconds: number | null | undefined): string | null {
