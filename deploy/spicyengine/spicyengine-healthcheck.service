@@ -1,0 +1,12 @@
+[Unit]
+Description=Read-only SpicyEngine health, error-rate, swap, and disk check
+After=network-online.target spicyengine.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/spicyengine-healthcheck
+SyslogLevelPrefix=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true

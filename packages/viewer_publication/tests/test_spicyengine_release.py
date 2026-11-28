@@ -649,3 +649,235 @@ def test_keyword_passages_are_built_before_publish_and_never_silently_dropped(tm
     release.main()
     assert recorded["ensure_keywords"] is True and recorded["previous_keywords"] == keywords_dir
     assert recorded["allow_drop_passage_keywords"] is True
+
+
+def test_unified_passages_layout_validation_guard_and_post_attach_swap(tmp_path, monkeypatch, capsys):
+    import subprocess
+
+    origin, release_id = _make_minimal_origin(tmp_path)
+    root = tmp_path / "local"
+    key = b"12345678".hex()
+    serving = tmp_path / "embeddings" / "serving"
+    serving.mkdir(parents=True)
+    body_sha = (b"Z" * 32).hex()
+    pq.write_table(pa.Table.from_pylist([
+        dict(source_id="archive-documents", member_key=key, source_field="body", text_sha256=body_sha,
+             char_start=0, char_end=7, excerpt="housing", page=1, page_at=0, vector=[0.5, 0.25]),
+        dict(source_id="archive-documents", member_key=key, source_field="title", text_sha256=None,
+             char_start=0, char_end=7, excerpt="Housing", page=None, page_at=None, vector=[0.25, 0.5]),
+    ]), serving / "archive-00.parquet")
+
+    base_manifest = dict(release_id=release_id, model="google/embeddinggemma-2", dimensions=2,
+                         passages=2, documents=1, parquet=str(serving / "*.parquet"))
+    vectors = tmp_path / "vectors.json"
+    vectors.write_text(json.dumps(base_manifest))
+
+    # Manifest layout validation matches SpicyEngine passages.py contract.
+    bad_layout = tmp_path / "bad-layout.json"
+    bad_layout.write_text(json.dumps(base_manifest | {"layout": "bogus"}))
+    with pytest.raises(ValueError, match="must be 'dual' or 'unified'"):
+        release.load_passages_manifest(bad_layout, release_id=release_id, expected_documents=1)
+
+    bad_combo = tmp_path / "bad-combo.json"
+    bad_combo.write_text(json.dumps(base_manifest | {"layout": "unified", "keyword_parquet": "/srv/kw/*.parquet"}))
+    with pytest.raises(ValueError, match="does not accept keyword_parquet"):
+        release.load_passages_manifest(bad_combo, release_id=release_id, expected_documents=1)
+
+    calls = []
+
+    def fake_run(args, **kwargs):
+        calls.append(list(args))
+        if args[1] == "status":
+            return subprocess.CompletedProcess(args, 0, stderr="", stdout=json.dumps({
+                "revision": "b" * 64, "dataset": {"release_id": "0" * 64},
+                "passages": {"release_id": "0" * 64, "layout": "unified", "parquet": "/srv/old/unified/*.parquet",
+                             "passages": 9},
+            }))
+        if args[1] == "publish":
+            return subprocess.CompletedProcess(args, 0, stderr="", stdout=json.dumps({"revision": "c" * 64}))
+        return subprocess.CompletedProcess(args, 0, stdout="{}", stderr="")
+
+    monkeypatch.setattr(release.subprocess, "run", fake_run)
+    engine = "/bin/fake-spicyengine"
+
+    # Guard refuses dropping passage keyword ranking when live uses layout="unified".
+    with pytest.raises(RuntimeError, match="Refusing to attach vector-only passages"):
+        release.update(root, origin=origin, engine=engine, passages_manifest=vectors)
+    assert [c[1] for c in calls] == ["status"]
+
+    with pytest.raises(ValueError, match="Cannot combine --ensure-keywords with --unified-passages"):
+        release.update(root, origin=origin, engine=engine, passages_manifest=vectors,
+                       ensure_keywords=True, unified_passages=True)
+
+    already_unified = tmp_path / "already-unified.json"
+    already_unified.write_text(json.dumps(base_manifest | {"layout": "unified"}))
+    with pytest.raises(ValueError, match="already declares layout='unified'"):
+        release.update(root, origin=origin, engine=engine, passages_manifest=already_unified, unified_passages=True)
+
+    # --unified-passages builds sibling unified/ Parquet before publish and emits layout="unified" attach manifest.
+    calls.clear()
+    swap_calls = []
+    monkeypatch.setattr(release, "check_post_attach_swap", lambda **kwargs: swap_calls.append(kwargs))
+    work = release.update(root, origin=origin, engine=engine, passages_manifest=vectors,
+                          unified_passages=True, recycle_db_if_swapped=True, swap_warn_gib=1.5)
+    assert [c[1] for c in calls] == ["status", "publish", "attach-passages"]
+    unified_dir = tmp_path / "embeddings" / "unified"
+    stamped = json.loads((work / "passages-attach.json").read_text())
+    assert stamped["layout"] == "unified"
+    assert stamped["parquet"] == str(unified_dir / "*.parquet")
+    assert stamped["config_version"] == "c" * 64
+    assert "keyword_parquet" not in stamped
+    assert swap_calls == [{"threshold_gib": 1.5, "recycle_db": True}]
+    u_files = sorted(unified_dir.glob("*.parquet"))
+    assert len(u_files) == 1
+    assert pq.read_schema(u_files[0]).field("vector").type == pa.list_(pa.float16(), 2)
+
+    # Post-attach swap hygiene unit tests (low swap, high swap warn-only, high swap + recycle).
+    monkeypatch.undo()
+    low_mem = tmp_path / "meminfo_low"
+    low_mem.write_text("SwapTotal:       8388608 kB\nSwapFree:        8000000 kB\n")
+    res_low = release.check_post_attach_swap(meminfo=low_mem, threshold_gib=2.0, recycle_db=True)
+    assert res_low["warned"] is False and res_low["recycled"] is False
+
+    high_mem = tmp_path / "meminfo_high"
+    high_mem.write_text("SwapTotal:       8388608 kB\nSwapFree:        4194304 kB\n")
+    capsys.readouterr()
+    res_warn = release.check_post_attach_swap(meminfo=high_mem, threshold_gib=2.0, recycle_db=False)
+    assert res_warn["warned"] is True and res_warn["recycled"] is False
+    warn_event = json.loads(capsys.readouterr().err.strip())
+    assert warn_event["event"] == "spicyengine_post_attach_swap_high" and warn_event["recycle_db"] is False
+
+    systemctl_calls = []
+
+    def fake_systemctl(cmd, **kwargs):
+        systemctl_calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0)
+
+    res_rec = release.check_post_attach_swap(
+        meminfo=high_mem, threshold_gib=2.0, recycle_db=True, runner=fake_systemctl
+    )
+    assert res_rec["warned"] is True and res_rec["recycled"] is True
+    assert systemctl_calls == [
+        ["systemctl", "restart", "spicyengine-db.service"],
+        ["systemctl", "start", "spicyengine.service"],
+    ]
+
+    # CLI wires new unified & swap flags cleanly.
+    recorded = {}
+    monkeypatch.setattr(release, "update", lambda root_arg, **kwargs: recorded.update(kwargs) or work)
+    monkeypatch.setattr("sys.argv", [
+        "spicyengine_release", "--root", str(root), "--engine", engine,
+        "--passages-manifest", str(vectors), "--unified-passages",
+        "--previous-unified", str(unified_dir), "--recycle-db-if-swapped", "--swap-warn-gib", "1.5",
+    ])
+    release.main()
+    assert recorded["unified_passages"] is True and recorded["previous_unified"] == unified_dir
+    assert recorded["recycle_db_if_swapped"] is True and recorded["swap_warn_gib"] == 1.5
+
+
+def test_deploy_install_preserves_search_env_and_healthcheck_reports_alerts(tmp_path):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    deploy_dir = Path(__file__).resolve().parents[3] / "deploy" / "spicyengine"
+    install_sh = deploy_dir / "install.sh"
+    healthcheck_sh = deploy_dir / "healthcheck.sh"
+    default_env = deploy_dir / "search.env"
+
+    # Both scripts must pass POSIX sh syntax checks.
+    subprocess.run(["sh", "-n", str(install_sh)], check=True)
+    subprocess.run(["sh", "-n", str(healthcheck_sh)], check=True)
+
+    # Extract and exercise sync_search_env from install.sh on an isolated temp search.env.
+    script_text = install_sh.read_text(encoding="utf-8")
+    func_start = script_text.index("sync_search_env()")
+    func_end = script_text.index("\n}\n", func_start) + 3
+    sync_fn = script_text[func_start:func_end]
+
+    dest_env = tmp_path / "search.env"
+    subprocess.run(
+        ["sh", "-eu", "-c", f'{sync_fn}\nsync_search_env "$1" "$2"', "--", str(default_env), str(dest_env)],
+        check=True,
+    )
+    assert dest_env.read_text(encoding="utf-8") == default_env.read_text(encoding="utf-8")
+
+    # Host customizes one existing key, adds rate limit, omits one default key, and drops trailing newline.
+    dest_env.write_text(
+        "# host override\nSPICYENGINE_SEARCH_CONNECTIONS=48\nSPICYENGINE_SEARCH_RATE_LIMIT=120/m:30",
+        encoding="utf-8",
+    )
+    subprocess.run(
+        ["sh", "-eu", "-c", f'{sync_fn}\nsync_search_env "$1" "$2"', "--", str(default_env), str(dest_env)],
+        check=True,
+    )
+    merged = dest_env.read_text(encoding="utf-8")
+    assert "SPICYENGINE_SEARCH_CONNECTIONS=48\n" in merged
+    assert "SPICYENGINE_SEARCH_CONNECTIONS=24" not in merged
+    assert "SPICYENGINE_SEARCH_RATE_LIMIT=120/m:30\n" in merged
+    assert "SPICYENGINE_READY_QUERY=housing\n" in merged
+    assert "# host override\n" in merged
+
+    # Exercise deploy/spicyengine/healthcheck.sh (strictly read-only) in both healthy and alert scenarios.
+    health_file = tmp_path / "health.json"
+    health_file.write_text(json.dumps({
+        "ok": True,
+        "serenedb": {"connected": True},
+        "index": {"ready": True, "documents": 10, "sections": 20, "release_id": "a" * 64, "searchType": "hybrid"},
+    }))
+    mem_ok = tmp_path / "meminfo_ok"
+    mem_ok.write_text("MemAvailable:   4096000 kB\nSwapTotal:      8388608 kB\nSwapFree:       7340032 kB\n")
+    journal_log = tmp_path / "journal_err.txt"
+    journal_all = tmp_path / "journal_all.txt"
+    journal_log.write_text("-- No entries --\n")
+    journal_all.write_text('Nov 27 17:00:00 host spicyengine[1]: "POST /v1/search HTTP/1.1" 200 -\n')
+    logger_out = tmp_path / "logger.txt"
+
+    fake_journalctl = tmp_path / "fake-journalctl"
+    fake_journalctl.write_text(
+        f'#!/bin/sh\ncase "$*" in *" -p err "*) cat "{journal_log}" ;; *) cat "{journal_all}" ;; esac\n'
+    )
+    fake_journalctl.chmod(0o755)
+    fake_logger = tmp_path / "fake-logger"
+    fake_logger.write_text(f'#!/bin/sh\nprintf "%s\\n" "$*" >> "{logger_out}"\n')
+    fake_logger.chmod(0o755)
+
+    base_env = os.environ | {
+        "SPICYENGINE_HEALTH_URL": health_file.as_uri(),
+        "SPICYENGINE_HEALTHCHECK_MEMINFO_PATH": str(mem_ok),
+        "SPICYENGINE_HEALTHCHECK_DISK_PATH": str(tmp_path),
+        "SPICYENGINE_HEALTHCHECK_MIN_DISK_FREE_GIB": "0",
+        "SPICYENGINE_HEALTHCHECK_JOURNALCTL": str(fake_journalctl),
+        "SPICYENGINE_HEALTHCHECK_LOGGER": str(fake_logger),
+        "SPICYENGINE_HEALTHCHECK_PYTHON": sys.executable,
+    }
+    ok_proc = subprocess.run(["sh", str(healthcheck_sh)], env=base_env, capture_output=True, text=True, check=False)
+    assert ok_proc.returncode == 0, ok_proc.stderr
+    ok_data = json.loads(ok_proc.stdout)
+    assert ok_data["status"] == "ok" and ok_data["alerts"] == [] and ok_data["health_ok"] is True
+    assert ok_data["documents"] == 10 and ok_data["sections"] == 20 and ok_data["search_type"] == "hybrid"
+    assert "-p user.info" in logger_out.read_text(encoding="utf-8")
+
+    # Trigger nested health degradation (serenedb/index not ready), err logs, 429 burst, low SwapFree, and low disk.
+    health_file.write_text(json.dumps({
+        "ok": True,
+        "serenedb": {"connected": False},
+        "index": {"ready": False, "documents": 0, "sections": 0},
+    }))
+    mem_low = tmp_path / "meminfo_low"
+    mem_low.write_text("MemAvailable:   1024000 kB\nSwapTotal:      8388608 kB\nSwapFree:        524288 kB\n")
+    journal_log.write_text("Nov 27 17:01:00 host spicyengine[1]: TimeoutError\n")
+    journal_all.write_text('Nov 27 17:01:00 host spicyengine[1]: "POST /v1/search HTTP/1.1" 429 -\n' * 25)
+    logger_out.write_text("")
+    alert_env = base_env | {
+        "SPICYENGINE_HEALTHCHECK_MEMINFO_PATH": str(mem_low),
+        "SPICYENGINE_HEALTHCHECK_MIN_DISK_FREE_GIB": "999999999",
+    }
+    bad_proc = subprocess.run(["sh", str(healthcheck_sh)], env=alert_env, capture_output=True, text=True, check=False)
+    assert bad_proc.returncode == 1
+    bad_data = json.loads(bad_proc.stdout)
+    assert bad_data["status"] == "alert"
+    alert_tags = {a.split(":")[0] for a in bad_data["alerts"]}
+    assert alert_tags == {"health_not_ok", "service_errors", "rate_limit_429_burst", "low_swap_free", "low_disk_free"}
+    assert "-p user.err" in logger_out.read_text(encoding="utf-8")

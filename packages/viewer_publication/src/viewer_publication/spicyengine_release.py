@@ -6,6 +6,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from collections import Counter
 from contextlib import closing
 from hashlib import file_digest, sha256
@@ -451,7 +452,64 @@ def filter_vocabulary(committees):
 
 _COMPATIBLE_METADATA_KEYS = ("excerpt_key", "facet_labels", "facet_aliases", "facet_help")
 _PASSAGE_MANIFEST_REQUIRED = frozenset({"release_id", "model", "dimensions", "passages", "documents", "parquet"})
-_PASSAGE_MANIFEST_ALLOWED = _PASSAGE_MANIFEST_REQUIRED | {"config_version", "keyword_parquet"}
+_PASSAGE_MANIFEST_ALLOWED = _PASSAGE_MANIFEST_REQUIRED | {"config_version", "keyword_parquet", "layout"}
+DEFAULT_SWAP_WARN_GIB = 2.0
+
+
+def has_passage_keywords(passages):
+    """Whether a passage attachment provides passage-level BM25 keyword ranking (dual or unified)."""
+    return isinstance(passages, dict) and (
+        passages.get("layout") == passage_keywords.LAYOUT_UNIFIED or bool(passages.get("keyword_parquet"))
+    )
+
+
+def read_swap_usage(meminfo=Path("/proc/meminfo")):
+    """Read Linux swap totals from ``/proc/meminfo``; return None when unavailable."""
+    path = Path(meminfo)
+    if not path.is_file():
+        return None
+    values = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        parts = line.split()
+        if len(parts) >= 2 and parts[0] in ("SwapTotal:", "SwapFree:"):
+            try:
+                values[parts[0][:-1]] = int(parts[1]) * 1024
+            except ValueError:
+                return None
+    if "SwapTotal" not in values or "SwapFree" not in values:
+        return None
+    total, free = values["SwapTotal"], values["SwapFree"]
+    return {"swap_total_bytes": total, "swap_free_bytes": free, "swap_used_bytes": max(0, total - free)}
+
+
+def check_post_attach_swap(*, meminfo=Path("/proc/meminfo"), threshold_gib=DEFAULT_SWAP_WARN_GIB,
+                           recycle_db=False, runner=None):
+    """Warn on high post-attach swap usage and optionally recycle ``spicyengine-db.service``."""
+    if threshold_gib <= 0:
+        raise ValueError("Swap warning threshold must be positive")
+    usage = read_swap_usage(meminfo)
+    if usage is None:
+        return None
+    threshold_bytes = int(threshold_gib * (1024 ** 3))
+    used = usage["swap_used_bytes"]
+    warned = used > threshold_bytes
+    recycled = False
+    if warned:
+        event = {
+            "event": "spicyengine_post_attach_swap_high",
+            "swap_used_mib": round(used / (1024 ** 2), 1),
+            "swap_free_mib": round(usage["swap_free_bytes"] / (1024 ** 2), 1),
+            "swap_total_mib": round(usage["swap_total_bytes"] / (1024 ** 2), 1),
+            "threshold_gib": threshold_gib,
+            "recycle_db": bool(recycle_db),
+        }
+        print(json.dumps(event, sort_keys=True), file=sys.stderr)
+        if recycle_db:
+            run = runner or subprocess.run
+            run(["systemctl", "restart", "spicyengine-db.service"], check=True)
+            run(["systemctl", "start", "spicyengine.service"], check=True)
+            recycled = True
+    return usage | {"warned": warned, "recycled": recycled}
 
 
 def engine_status(engine):
@@ -508,26 +566,43 @@ def load_passages_manifest(path, *, release_id, expected_documents):
         raise ValueError("Passages manifest dimensions must be an integer between 1 and 1024")
     if not isinstance(raw["model"], str) or not raw["model"].strip():
         raise ValueError("Passages manifest model must be a non-empty string")
+    layout = raw.get("layout", passage_keywords.LAYOUT_DUAL)
+    if not isinstance(layout, str) or layout not in passage_keywords.LAYOUTS:
+        raise ValueError("Passages manifest layout must be 'dual' or 'unified'")
+    if layout == passage_keywords.LAYOUT_UNIFIED and "keyword_parquet" in raw:
+        raise ValueError("Unified passage layout reads text from parquet and does not accept keyword_parquet")
     for key in ("parquet", "keyword_parquet"):
         if key in raw and (not isinstance(raw[key], str) or not raw[key].startswith("/")):
             raise ValueError(f"Passages manifest {key} must be an absolute mounted path")
     return raw
 
 
-def keyword_directory(manifest):
-    """The sibling ``keywords`` directory for a manifest whose ``parquet`` is ``<serving>/*.parquet``."""
+def sibling_passage_directory(manifest, name):
+    """The sibling directory (e.g. ``keywords`` or ``unified``) for ``parquet`` = ``<serving>/*.parquet``."""
     pattern = Path(manifest["parquet"])
     if pattern.name != "*.parquet":
-        raise ValueError("Building keyword passages requires a passages manifest parquet of <directory>/*.parquet")
-    return pattern.parent, pattern.parent.parent / "keywords"
+        raise ValueError(f"Building {name} passages requires a passages manifest parquet of <directory>/*.parquet")
+    return pattern.parent, pattern.parent.parent / name
+
+
+def keyword_directory(manifest):
+    """The sibling ``keywords`` directory for a manifest whose ``parquet`` is ``<serving>/*.parquet``."""
+    return sibling_passage_directory(manifest, "keywords")
 
 
 def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_query=None,
            staged=False, prefer_staged=False, expected_release_id=None,
            allow_drop_passages=False, passages_manifest=None,
-           ensure_keywords=False, previous_keywords=None, allow_drop_passage_keywords=False):
-    if ensure_keywords and passages_manifest is None:
-        raise ValueError("--ensure-keywords requires --passages-manifest")
+           ensure_keywords=False, previous_keywords=None, allow_drop_passage_keywords=False,
+           unified_passages=False, previous_unified=None,
+           recycle_db_if_swapped=False, swap_warn_gib=DEFAULT_SWAP_WARN_GIB):
+    if ensure_keywords and unified_passages:
+        raise ValueError("Cannot combine --ensure-keywords with --unified-passages")
+    if (ensure_keywords or unified_passages) and passages_manifest is None:
+        flag = "--unified-passages" if unified_passages else "--ensure-keywords"
+        raise ValueError(f"{flag} requires --passages-manifest")
+    if swap_warn_gib <= 0:
+        raise ValueError("--swap-warn-gib must be positive")
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     with (root / ".release.lock").open("a") as lock:
@@ -582,6 +657,8 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
                 else None
             )
             if validated_passages is not None and ensure_keywords:
+                if validated_passages.get("layout") == passage_keywords.LAYOUT_UNIFIED:
+                    raise ValueError("Cannot use --ensure-keywords with a layout='unified' passages manifest")
                 # Build before publishing: a failed build must leave the live index and its passages intact.
                 serving, keywords = keyword_directory(validated_passages)
                 declared = validated_passages.get("keyword_parquet")
@@ -594,14 +671,33 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
                     serving, work / "prepared", keywords, release_id=release, previous=previous_keywords,
                     expected_passages=validated_passages["passages"], expected_documents=ready["records"])
                 validated_passages = validated_passages | {"keyword_parquet": str(keywords / "*.parquet")}
-            if (validated_passages is not None and "keyword_parquet" not in validated_passages
+            if validated_passages is not None and unified_passages:
+                if validated_passages.get("layout") == passage_keywords.LAYOUT_UNIFIED:
+                    raise ValueError(
+                        "Cannot use --unified-passages with a manifest that already declares layout='unified'"
+                    )
+                # Build combined text + float16 vector shards before publishing so live passages stay intact on error.
+                serving, unified = sibling_passage_directory(validated_passages, "unified")
+                if previous_unified is None:
+                    live_passages = (live() or {}).get("passages") or {}
+                    if live_passages.get("layout") == passage_keywords.LAYOUT_UNIFIED and live_passages.get("parquet"):
+                        previous_unified = Path(live_passages["parquet"]).parent
+                passage_keywords.build_unified_passages(
+                    serving, work / "prepared", unified, release_id=release,
+                    dimensions=validated_passages["dimensions"], previous=previous_unified,
+                    expected_passages=validated_passages["passages"], expected_documents=ready["records"])
+                validated_passages = {
+                    k: v for k, v in validated_passages.items() if k != "keyword_parquet"
+                } | {"parquet": str(unified / "*.parquet"), "layout": passage_keywords.LAYOUT_UNIFIED}
+            if (validated_passages is not None and not has_passage_keywords(validated_passages)
                     and not allow_drop_passage_keywords):
-                attached = ((live() or {}).get("passages") or {}).get("keyword_parquet")
-                if attached:
+                live_passages = (live() or {}).get("passages")
+                if has_passage_keywords(live_passages):
+                    source = live_passages.get("keyword_parquet") or live_passages.get("parquet")
                     raise RuntimeError(
                         f"Refusing to attach vector-only passages to {release[:12]}: live SpicyEngine ranks passages "
-                        f"by keyword from {attached}. Pass --ensure-keywords to build keyword passages for this "
-                        f"release or --allow-drop-passage-keywords to attach vectors only."
+                        f"by keyword from {source}. Pass --ensure-keywords or --unified-passages to preserve "
+                        f"passage keyword ranking, or --allow-drop-passage-keywords to attach vectors only."
                     )
             if validated_passages is None and not allow_drop_passages:
                 live_now = live()
@@ -630,6 +726,7 @@ def update(root, *, origin=ORIGIN, saved=None, local=None, engine=None, check_qu
                 stamped = work / "passages-attach.json"
                 save(stamped, validated_passages | {"config_version": revision})
                 subprocess.run([engine, "attach-passages", str(stamped)], check=True)
+                check_post_attach_swap(threshold_gib=swap_warn_gib, recycle_db=recycle_db_if_swapped)
             else:
                 subprocess.run(args, check=True)
         return work
@@ -653,17 +750,33 @@ def main():
                         help="Build and verify keyword passages in the sibling keywords/ directory before publishing")
     parser.add_argument("--previous-keywords", type=Path,
                         help="Hard-link unchanged files from this keyword directory (default: the live one)")
+    parser.add_argument("--unified-passages", action="store_true",
+                        help="Build combined text+float16-vector Parquet in sibling unified/ and attach layout='unified'")
+    parser.add_argument("--previous-unified", type=Path,
+                        help="Hard-link unchanged files from this unified directory (default: live unified dir)")
     parser.add_argument("--allow-drop-passage-keywords", action="store_true",
                         help="Permit attaching vector-only passages when live SpicyEngine ranks passages by keyword")
+    parser.add_argument("--recycle-db-if-swapped", action="store_true",
+                        help="Restart spicyengine-db.service after attach-passages if swap usage exceeds --swap-warn-gib "
+                             "(requires root/systemctl privileges)")
+    parser.add_argument("--swap-warn-gib", type=float, default=DEFAULT_SWAP_WARN_GIB,
+                        help=f"Warn (or recycle with --recycle-db-if-swapped) when post-attach swap exceeds this GiB "
+                             f"(default: {DEFAULT_SWAP_WARN_GIB})")
     args = parser.parse_args()
-    if args.ensure_keywords and args.passages_manifest is None:
-        parser.error("--ensure-keywords requires --passages-manifest")
+    if args.ensure_keywords and args.unified_passages:
+        parser.error("Cannot combine --ensure-keywords with --unified-passages")
+    if (args.ensure_keywords or args.unified_passages) and args.passages_manifest is None:
+        parser.error("--ensure-keywords and --unified-passages require --passages-manifest")
+    if args.swap_warn_gib <= 0:
+        parser.error("--swap-warn-gib must be positive")
     print(update(args.root, saved=args.pin, local=args.source_dir, engine=args.engine,
                  check_query=args.check_query, staged=args.staged, prefer_staged=args.prefer_staged,
                  expected_release_id=args.release_id, allow_drop_passages=args.allow_drop_passages,
                  passages_manifest=args.passages_manifest, ensure_keywords=args.ensure_keywords,
                  previous_keywords=args.previous_keywords,
-                 allow_drop_passage_keywords=args.allow_drop_passage_keywords))
+                 allow_drop_passage_keywords=args.allow_drop_passage_keywords,
+                 unified_passages=args.unified_passages, previous_unified=args.previous_unified,
+                 recycle_db_if_swapped=args.recycle_db_if_swapped, swap_warn_gib=args.swap_warn_gib))
 
 
 if __name__ == "__main__":

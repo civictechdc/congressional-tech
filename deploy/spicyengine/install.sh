@@ -22,9 +22,32 @@ if [ ! -f "$target/installed" ]; then
     PYTHONPATH="$target" "$runtime/bin/python" -m viewer_publication.spicyengine_release --help >/dev/null
     touch "$target/installed"
 fi
+sync_search_env() {
+    src=$1
+    dst=$2
+    if [ ! -f "$dst" ]; then
+        install -m 0644 "$src" "$dst"
+        return 0
+    fi
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            ''|\#*) continue ;;
+            *=*) key=${line%%=*} ;;
+            *) continue ;;
+        esac
+        if ! grep -Eq "^[[:space:]]*(export[[:space:]]+)?${key}=" "$dst"; then
+            if [ -s "$dst" ] && [ -n "$(tail -c 1 "$dst")" ]; then
+                printf '\n' >> "$dst"
+            fi
+            printf '%s\n' "$line" >> "$dst"
+        fi
+    done < "$src"
+}
 ln -sfn "$target" /opt/spicyengine/congress-current.next
 mv -Tf /opt/spicyengine/congress-current.next /opt/spicyengine/congress-current
-install -m 0644 "$assets/search.env" /etc/spicyengine/search.env
+sync_search_env "$assets/search.env" /etc/spicyengine/search.env
 install -m 0755 "$assets/update.sh" /usr/local/sbin/spicyengine-update
-install -m 0644 "$assets/spicyengine-update.service" "$assets/spicyengine-update.timer" /etc/systemd/system/
+install -m 0755 "$assets/healthcheck.sh" /usr/local/sbin/spicyengine-healthcheck
+install -m 0644 "$assets/spicyengine-update.service" "$assets/spicyengine-update.timer" \
+    "$assets/spicyengine-healthcheck.service" "$assets/spicyengine-healthcheck.timer" /etc/systemd/system/
 systemctl daemon-reload
