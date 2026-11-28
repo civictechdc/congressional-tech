@@ -49,6 +49,9 @@ The passage builder can also be run standalone via
 `python -m viewer_publication.passage_keywords --serving <dir> --prepared <dir> --output <dir> --release-id <sha>`
 (add `--build-unified --dimensions 512` for unified Parquet or `--stamp-manifest`
 to verify an existing `keywords/` directory and seed `manifest.json` in place).
+For incremental Apple Silicon EmbeddingGemma 2 delta encoding and serving overlay
+assembly, use `python -m viewer_publication.passage_delta_encode` (`source-delta`,
+`encode-delta`, `prepare-serving`, `verify-parity`).
 Inspect the latest attempt with `journalctl -u spicyengine-update.service`.
 Stop the timer before deliberately holding the host on an earlier pin.
 An exact release match is required for Congress Explorer’s hosted search tools.
