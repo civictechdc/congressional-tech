@@ -3,8 +3,12 @@
 On the private Linux search host, install the producer from its checkout or
 Git archive using `sh deploy/spicyengine/install.sh <full-commit>`. Install
 the SpicyEngine wheel with its Linux deployment installer. The two installers
-can be run again. They use the same read-only serving mount and retain the
-database volume. The host profile keeps the search runtime uncapped.
+can be run again. `install.sh` preserves any existing `/etc/spicyengine/search.env`
+overrides (appending only missing default keys) and installs the read-only
+`/usr/local/sbin/spicyengine-healthcheck` script plus its optional 15-minute
+`spicyengine-healthcheck.timer` unit (`sudo systemctl enable --now spicyengine-healthcheck.timer`).
+They use the same read-only serving mount and retain the database volume. The
+host profile keeps the search runtime uncapped.
 
 Run `sudo spicyengine-update` to install the current release. The command reads
 the archive and text pointers, requires the same release and detail-file pin,
@@ -27,14 +31,24 @@ embeddings, `spicyengine-update` refuses a bare publish that would drop them
 unless you supply `--passages-manifest /path/to/manifest.json` (which validates
 the manifest against the target release before publishing and attaches passages
 with the new `config_version`) or explicitly pass `--allow-drop-passages`.
-When live SpicyEngine also indexes `keyword_parquet`, `spicyengine-update`
-refuses to attach a vector-only manifest unless you pass `--ensure-keywords`
-(which builds and verifies the sibling `keywords/` directory before publishing,
-hard-linking unchanged shards from the live keyword directory or
-`--previous-keywords /path/to/keywords` and writing `keyword_parquet` into
-`passages-attach.json`) or explicitly pass `--allow-drop-passage-keywords`.
-The keyword builder can also be run standalone via
-`python -m viewer_publication.passage_keywords --serving <dir> --prepared <dir> --output <dir> --release-id <sha>`.
+When live SpicyEngine also indexes `keyword_parquet` or uses `layout="unified"`,
+`spicyengine-update` refuses to attach a vector-only manifest unless you pass
+`--ensure-keywords` (which builds and verifies the sibling `keywords/` directory
+before publishing, hard-linking unchanged shards from the live keyword directory
+or `--previous-keywords /path/to/keywords` and writing `keyword_parquet` into
+`passages-attach.json`), `--unified-passages` (which builds and verifies a
+single combined text + `float16` vector dataset in sibling `unified/` with
+`layout="unified"`, reusing unchanged shards from `--previous-unified` or the
+live unified directory), or explicitly pass `--allow-drop-passage-keywords`.
+After `attach-passages`, `spicyengine-update` inspects `/proc/meminfo` and logs
+a structured stderr warning if swap usage exceeds `--swap-warn-gib` (default
+`2.0` GiB); pass `--recycle-db-if-swapped` (requires root/systemctl privileges)
+to restart `spicyengine-db.service` and `spicyengine.service` automatically when
+swap exceeds that threshold.
+The passage builder can also be run standalone via
+`python -m viewer_publication.passage_keywords --serving <dir> --prepared <dir> --output <dir> --release-id <sha>`
+(add `--build-unified --dimensions 512` for unified Parquet or `--stamp-manifest`
+to verify an existing `keywords/` directory and seed `manifest.json` in place).
 Inspect the latest attempt with `journalctl -u spicyengine-update.service`.
 Stop the timer before deliberately holding the host on an earlier pin.
 An exact release match is required for Congress Explorer’s hosted search tools.

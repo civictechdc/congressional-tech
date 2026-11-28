@@ -199,3 +199,105 @@ def test_cli_builds_and_prints_manifest(tmp_path, monkeypatch, capsys):
     printed = json.loads(capsys.readouterr().out)
     assert printed["release_id"] == "a" * 64 and printed["passages"] == 7 and printed["documents"] == 4
     assert (output / "manifest.json").is_file()
+
+
+def test_stamp_keywords_manifest_seeds_existing_dir_and_enables_hardlink_reuse(tmp_path, monkeypatch, capsys):
+    prepared, serving = release_one(tmp_path)
+    kw_dir = tmp_path / "r1" / "keywords"
+    keywords.ensure_keywords(serving, prepared, kw_dir, release_id="a" * 64)
+    # Remove manifest.json to simulate a pre-manifest live keywords/ directory.
+    (kw_dir / "manifest.json").unlink()
+    before_stats = {p.name: (p.stat().st_ino, p.stat().st_mtime_ns) for p in kw_dir.glob("*.parquet")}
+
+    monkeypatch.setattr("sys.argv", [
+        "passage_keywords", "--stamp-manifest", "--serving", str(serving), "--prepared", str(prepared),
+        "--output", str(kw_dir), "--release-id", "a" * 64,
+        "--expected-passages", "7", "--expected-documents", "4",
+    ])
+    keywords.main()
+    stamped = json.loads(capsys.readouterr().out)
+    assert stamped["passages"] == 7 and stamped["documents"] == 4 and stamped["reused"] == 0
+    assert (kw_dir / "manifest.json").stat().st_mode & 0o777 == 0o444
+    # No existing Parquet file was rewritten.
+    assert {p.name: (p.stat().st_ino, p.stat().st_mtime_ns) for p in kw_dir.glob("*.parquet")} == before_stats
+    # Idempotent rerun returns the same manifest.
+    assert keywords.stamp_keywords_manifest(serving, prepared, kw_dir, release_id="a" * 64) == stamped
+
+    # Subsequent incremental release hard-links every shard from the stamped directory.
+    next_dir = tmp_path / "r2" / "keywords"
+    next_dir.parent.mkdir()
+    reused = keywords.ensure_keywords(serving, prepared, next_dir, release_id="b" * 64, previous=kw_dir)
+    assert reused["reused"] == 3
+    for name, (ino, _) in before_stats.items():
+        assert (next_dir / name).stat().st_ino == ino
+
+
+def test_unified_build_emits_float16_fsl_reuses_hardlinks_and_invalidates_changed_vectors(
+    tmp_path, monkeypatch, capsys
+):
+    prepared, serving = release_one(tmp_path)
+    first = tmp_path / "r1" / "unified"
+    manifest = keywords.build_unified_passages(
+        serving, prepared, first, release_id="a" * 64, dimensions=2, expected_passages=7, expected_documents=4
+    )
+    assert manifest["layout"] == "unified" and manifest["dimensions"] == 2
+    assert manifest["passages"] == 7 and manifest["documents"] == 4 and manifest["reused"] == 0
+    expected_schema = keywords.unified_schema(2)
+    assert expected_schema.field("vector").type == pa.list_(pa.float16(), 2)
+    for path in first.glob("*.parquet"):
+        assert pq.read_schema(path).equals(expected_schema)
+        assert path.stat().st_mode & 0o777 == 0o444
+    rows = keyword_rows(first)
+    assert len(rows) == 7
+    assert all(len(r["vector"]) == 2 and r["vector"] == [0.5, 0.25] for r in rows)
+    # Idempotent rerun on unchanged serving files.
+    assert keywords.build_unified_passages(serving, prepared, first, release_id="a" * 64, dimensions=2) == manifest
+
+    # Release 2: unchanged shards archive-00 and archive-01 hard-link, while a vector-only change on doc D rebuilds!
+    r2_rows = pq.read_table(serving / "archive-01.parquet").to_pylist()
+    for row in r2_rows:
+        if row["member_key"] == "d":
+            row["vector"] = [0.25, 0.5]
+    serving2 = tmp_path / "r2" / "serving"
+    serving2.mkdir(parents=True)
+    pq.write_table(pq.read_table(serving / "archive-00.parquet"), serving2 / "archive-00.parquet")
+    pq.write_table(pa.Table.from_pylist(r2_rows), serving2 / "archive-01.parquet")
+    second = tmp_path / "r2" / "unified"
+    manifest2 = keywords.build_unified_passages(
+        serving2, prepared, second, release_id="b" * 64, dimensions=2, previous=first
+    )
+    assert manifest2["reused"] == 2
+    assert (second / "archive-00.parquet").stat().st_ino == (first / "archive-00.parquet").stat().st_ino
+    assert (second / "archive-01.parquet").stat().st_ino == (first / "archive-01.parquet").stat().st_ino
+    delta_rows = pq.read_table(second / "delta-bbbbbbbbbbbb.parquet").to_pylist()
+    assert [r["member_key"] for r in delta_rows] == ["d"]
+    assert delta_rows[0]["vector"] == [0.25, 0.5]
+
+    # Wrong dimension or non-finite vector is rejected without publishing.
+    bad_dir = tmp_path / "bad_vec"
+    bad_dir.mkdir()
+    with pytest.raises(ValueError, match="non-4-d vectors"):
+        keywords.build_unified_passages(serving, prepared, bad_dir / "unified", release_id="a" * 64, dimensions=4)
+    assert not (bad_dir / "unified").exists()
+
+    inf_serving = tmp_path / "inf_serving"
+    inf_serving.mkdir()
+    inf_rows = pq.read_table(serving / "archive-01.parquet").to_pylist()
+    inf_rows[0]["vector"] = [float("inf"), 0.0]
+    pq.write_table(pq.read_table(serving / "archive-00.parquet"), inf_serving / "archive-00.parquet")
+    pq.write_table(pa.Table.from_pylist(inf_rows), inf_serving / "archive-01.parquet")
+    with pytest.raises(ValueError, match="must be finite"):
+        keywords.build_unified_passages(inf_serving, prepared, bad_dir / "unified", release_id="a" * 64, dimensions=2)
+    assert not (bad_dir / "unified").exists()
+
+    # CLI --build-unified --dimensions works end-to-end.
+    cli_out = tmp_path / "r3" / "unified"
+    cli_out.parent.mkdir()
+    monkeypatch.setattr("sys.argv", [
+        "passage_keywords", "--build-unified", "--dimensions", "2",
+        "--serving", str(serving2), "--prepared", str(prepared), "--output", str(cli_out),
+        "--release-id", "c" * 64, "--previous", str(second),
+    ])
+    keywords.main()
+    cli_manifest = json.loads(capsys.readouterr().out)
+    assert cli_manifest["layout"] == "unified" and cli_manifest["reused"] == 3
